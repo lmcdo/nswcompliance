@@ -1,0 +1,60 @@
+{
+  "contextual_guidance_real": {
+    "sqlite": 6655,
+    "postgres": 6655,
+    "match": true
+  },
+  "regulatory_provisions_clean": {
+    "sqlite": 9364,
+    "postgres": 9364,
+    "match": true
+  },
+  "visual_elements_real": {
+    "sqlite": 3017,
+    "postgres": 3017,
+    "match": true
+  },
+  "regulatory_refs": {
+    "sqlite": 2698,
+    "postgres": 2698,
+    "match": true
+  },
+  "kg_relationships_from_refs": {
+    "sqlite": 2294,
+    "postgres": 2294,
+    "match": true
+  },
+  "visual_elements": {
+    "sqlite": 1473,
+    "postgres": 1473,
+    "match": true
+  },
+  "kg_entities": {
+    "sqlite": 1394,
+    "postgres": 1394,
+    "match": true
+  },
+  "regulatory_refs_core": {
+    "sqlite": 762,
+    "postgres": 762,
+    "match": true
+  },
+  "documents": {
+    "sqlite": 274,
+    "postgres": 274,
+    "match": true
+  },
+  "sepp_lep_overrides": {
+    "sqlite": 91,
+    "postgres": 91,
+    "match": true
+  },
+  "verified_compliance_rules": {
+    "sqlite": 6,
+    "postgres": 6,
+    "match": true
+  },
+  "paragraph_links": 46,
+  "timestamp": "2025-09-06T16:16:43.741685",
+  "success": true
+}
