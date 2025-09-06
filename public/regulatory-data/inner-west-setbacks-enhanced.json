@@ -1,0 +1,96 @@
+{
+  "lga": "INNER WEST COUNCIL",
+  "areas": {
+    "Ashfield": {
+      "name": "Ashfield",
+      "dcp_version": "Ashfield DCP 2016",
+      "processed_files": [
+        "Chapter E2 Haberfield Neighbourhood.pdf",
+        "Inner West Ashfield DCP 2016 - Chapter F - Development Category with IWLEP 2022 amendment.pdf"
+      ],
+      "setbacks": {
+        "rear": {
+          "distance": 1.2,
+          "height_limit": null,
+          "min_distance": null,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_file": "Chapter E2 Haberfield Neighbourhood.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        },
+        "side": {
+          "distance": 500.0,
+          "height_limit": null,
+          "min_distance": null,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_file": "Chapter E2 Haberfield Neighbourhood.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        },
+        "front": {
+          "distance": null,
+          "height_limit": null,
+          "min_distance": 500.0,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_file": "Chapter E2 Haberfield Neighbourhood.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        }
+      },
+      "extraction_confidence": 1.0
+    },
+    "Leichhardt": {
+      "name": "Leichhardt",
+      "dcp_version": "Leichhardt DCP 2013",
+      "processed_files": [
+        "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf",
+        "Leichhardt DCP 2013 - 12 - Part G Section 13 - Amdt 19 - Pyrmont Bridge Road Nov 2023.pdf",
+        "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf",
+        "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf",
+        "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf",
+        "Leichhardt DCP 2013 - 7 - Part C Place Section 3 - with IWLEP 2022 amendments.pdf",
+        "Leichhardt DCP 2013 - 8 - Part C Place Section 4 - with IWLEP 2022 amendments.pdf",
+        "Leichhardt DCP 2013 Part C Section 5.pdf"
+      ],
+      "setbacks": {
+        "rear": {
+          "distance": 1.1,
+          "height_limit": null,
+          "min_distance": null,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        },
+        "side": {
+          "distance": 1.5,
+          "height_limit": null,
+          "min_distance": null,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        },
+        "front": {
+          "distance": null,
+          "height_limit": null,
+          "min_distance": 900.0,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf",
+          "applicable_zones": null,
+          "conditions": null
+        }
+      },
+      "extraction_confidence": 1.0
+    }
+  },
+  "processing_metadata": {
+    "total_areas_processed": 2,
+    "processing_timestamp": "2025-08-25T05:14:48.452182",
+    "avg_confidence": 1.0,
+    "total_files_processed": 13,
+    "successful_extractions": 8,
+    "autoschema_extractions": 0,
+    "processing_method": "RAG-Anything + AutoSchemaKG"
+  }
+}

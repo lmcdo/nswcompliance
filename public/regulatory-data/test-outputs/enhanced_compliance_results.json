@@ -1,0 +1,37 @@
+[
+  {
+    "rule_id": "IW_SIDE_SETBACK_ASHFIELD_SEMANTIC",
+    "requirement_type": "side_setback",
+    "compliant": false,
+    "proposed_value": 0.8,
+    "required_value": 0.9,
+    "gap": -0.09999999999999998,
+    "source": {
+      "document": "Ashfield DCP",
+      "section": "Part B Section 4.3.2",
+      "clause": "ASHFIELD_SIDE_SETBACK_001",
+      "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+      "effective_date": "Current"
+    },
+    "regulatory_text": "Side setbacks shall be 0.9m minimum for residential development in R2 zones.",
+    "mitigation": "Increase side setback by 0.1m",
+    "confidence": "HIGH",
+    "processing_method": "semantic",
+    "rule_classification": {
+      "tier": 1,
+      "enforcement_level": "MANDATORY",
+      "compliance_message_type": "MUST_COMPLY"
+    },
+    "source_grounding": {
+      "extraction_text": "Side setbacks shall be 0.9m minimum for residential development in R2 zones.",
+      "source_section": "Part B Section 4.3.2",
+      "highlighted_spans": [
+        [
+          0,
+          71
+        ]
+      ],
+      "semantic_confidence": 0.93
+    }
+  }
+]

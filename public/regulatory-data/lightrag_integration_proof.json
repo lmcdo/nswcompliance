@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-08-25T15:10:25.939168",
+  "api_calls_made": [
+    {
+      "timestamp": "2025-08-25T15:10:23.768900",
+      "call_type": "OpenAI GPT-4o-mini Completion",
+      "request_preview": "{'prompt_length': 8875, 'model': 'gpt-4o-mini'}",
+      "response_preview": "{'response_length': 14}",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-25T15:10:25.906837",
+      "call_type": "OpenAI GPT-4o-mini Completion",
+      "request_preview": "{'prompt_length': 8873, 'model': 'gpt-4o-mini'}",
+      "response_preview": "{'response_length': 14}",
+      "success": true
+    },
+    {
+      "timestamp": "2025-08-25T15:10:25.932445",
+      "call_type": "Compliance API Test",
+      "request_preview": "{'propertyData': {'constraints': {'lga': 'INNER WEST'}}, 'proposal': {'height': 9, 'fsr': 0.5, 'front_setback': 2, 'side_setback': 1, 'rear_setback': 1}, 'formerCouncilArea': 'Leichhardt', 'useSemanti...",
+      "response_preview": "{'status_code': 200, 'response_length': 2119}",
+      "success": true
+    }
+  ],
+  "areas_processed": [],
+  "system_integration_verified": true,
+  "proof_status": "VERIFIED"
+}

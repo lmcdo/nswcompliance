@@ -1,0 +1,476 @@
+// lib/compliance/inner-west-engine.ts
+import { DatabaseClient } from '@/lib/database/client';
+import { SEPPLEPProcessor, HierarchicalComplianceResult } from './sepp-lep-processor';
+
+export interface NSWPlanningAPILayer {
+  id: string;
+  layerName: string;
+  results: Array<{
+    [key: string]: any;
+    legislationUrl?: string;
+    title?: string;
+  }>;
+}
+
+export interface SetbackRequirement {
+  boundary_type: 'front' | 'side' | 'rear' | 'general';
+  minimum_setback_meters: number;
+  maximum_setback_meters?: number;
+  confidence_score: number;
+  legal_source: string;
+  clause_reference: string;
+  contextual_requirements: string;
+  council_area: string;
+  zone_applicability: string;
+  // PRP-K2: Legal authority hierarchy
+  authority_level?: string;
+  legal_precedence?: number;
+  can_be_varied?: boolean;
+  domain_classification?: string;
+  variation_clause?: string;
+}
+
+export interface ComplianceAssessment {
+  property_address: string;
+  property_id: number;
+  zone: string;
+  council_area: string;
+  statutory_compliance: Record<string, any>;
+  setback_compliance: Record<string, SetbackRequirement>;
+  development_pathway: 'COMPLYING_DEVELOPMENT' | 'DEVELOPMENT_APPLICATION_MINOR' | 'DEVELOPMENT_APPLICATION_MAJOR';
+  compliance_confidence: number;
+  legal_references: string[];
+  professional_review_required: boolean;
+  audit_trail: string[];
+}
+
+export interface ProposedDevelopment {
+  property_id?: number;
+  height?: number;
+  fsr?: number;
+  lot_area?: number;
+  front_setback?: number;
+  side_setback?: number;
+  rear_setback?: number;
+}
+
+export class InnerWestComplianceEngine {
+  private dbClient: DatabaseClient;
+  private seppLepProcessor: SEPPLEPProcessor;
+  
+  private councilAreas = {
+    marrickville: {
+      dcp_documents: ['Marrickville_DCP_2011'],
+      suburbs: ['marrickville', 'dulwich hill', 'petersham', 'stanmore', 
+               'newtown', 'enmore', 'sydenham', 'tempe', 'st peters'],
+      quantitative_standards: 70,
+      setback_controls: 77,
+      reliability_grade: 'HIGH' as const
+    },
+    leichhardt: {
+      dcp_documents: ['Leichhardt_DCP_2013'],
+      suburbs: ['leichhardt', 'annandale', 'lilyfield', 'rozelle', 'balmain', 
+               'birchgrove', 'forest lodge'],
+      quantitative_standards: 100,
+      setback_controls: 43, 
+      reliability_grade: 'HIGH' as const
+    },
+    ashfield: {
+      dcp_documents: ['Inner_West_Ashfield_DCP_2016'],
+      suburbs: ['ashfield', 'haberfield', 'five dock', 'rodd point', 
+               'russell lea', 'wareemba', 'croydon', 'summer hill'],
+      quantitative_standards: 6,
+      setback_controls: 11,
+      reliability_grade: 'MEDIUM' as const
+    }
+  } as const;
+
+  constructor(dbPath?: string) {
+    this.dbClient = new DatabaseClient();
+    this.seppLepProcessor = new SEPPLEPProcessor(dbPath);
+  }
+
+  identifyCouncilArea(address: string, suburb?: string): keyof typeof this.councilAreas {
+    const addressLower = address.toLowerCase();
+    const suburbLower = (suburb || address).toLowerCase();
+    
+    // Check against known suburbs for each council area
+    for (const [council, data] of Object.entries(this.councilAreas)) {
+      for (const suburbName of data.suburbs) {
+        if (suburbLower.includes(suburbName)) {
+          return council as keyof typeof this.councilAreas;
+        }
+      }
+    }
+    
+    // Fallback: try to extract suburb from address
+    const suburbMatch = address.match(/,\s*([^,]+)\s+NSW/i);
+    if (suburbMatch) {
+      const extractedSuburb = suburbMatch[1].toLowerCase().trim();
+      for (const [council, data] of Object.entries(this.councilAreas)) {
+        for (const suburbName of data.suburbs) {
+          if (extractedSuburb.includes(suburbName)) {
+            return council as keyof typeof this.councilAreas;
+          }
+        }
+      }
+    }
+    
+    // Default to marrickville if cannot determine (largest coverage)
+    return 'marrickville';
+  }
+
+  async getZoneSpecificSetbacks(zone: string, councilArea: keyof typeof this.councilAreas): Promise<SetbackRequirement[]> {
+    console.log(`[PRP-K2] Getting domain-aware setbacks for ${zone} in ${councilArea}`);
+    
+    // PRP-K2: Use domain-aware PostgreSQL query to prevent cross-contamination
+    const propertyLocation = { lga: councilArea, suburb: councilArea };
+    const queryDomain = 'RESIDENTIAL_BUILDINGS'; // Filter to residential domain only
+    
+    // Use the hierarchical setback controls method with domain classification
+    const zoneSetbacks = await this.dbClient.getHierarchicalSetbackControls(zone, propertyLocation, queryDomain);
+    
+    console.log(`[PRP-K2] Found ${zoneSetbacks.length} domain-filtered setbacks (${queryDomain})`);
+    
+    // Filter to specific council area
+    const councilDocuments = this.councilAreas[councilArea].dcp_documents;
+    const relevantSetbacks = zoneSetbacks.filter(setback => 
+      councilDocuments.some(docPattern => 
+        setback.document_id?.includes(docPattern)
+      ) && setback.confidence_score >= 0.6
+    );
+    
+    console.log(`[PRP-K2] Cross-contamination prevention: ${relevantSetbacks.length} residential setbacks (excludes signage/advertising)`);
+    
+    // Convert to SetbackRequirement format with legal authority information
+    return relevantSetbacks.map(setback => ({
+      boundary_type: this.determineBoundaryType(setback.value_text || ''),
+      minimum_setback_meters: this.extractNumericValue(setback.value_text || '') || 0,
+      maximum_setback_meters: undefined,
+      confidence_score: setback.confidence_score,
+      legal_source: `${setback.authority_level || 'Unknown Authority'}: ${setback.document_id || ''}`,
+      clause_reference: this.extractClauseReference(setback.provision_text || ''),
+      contextual_requirements: (setback.provision_text || '').substring(0, 200),
+      council_area: councilArea,
+      zone_applicability: zone,
+      // PRP-K2: Add legal authority metadata
+      authority_level: setback.authority_level,
+      legal_precedence: setback.legal_precedence,
+      can_be_varied: setback.can_be_varied,
+      domain_classification: queryDomain
+    }));
+  }
+
+  private extractNumericValue(text: string): number | null {
+    const match = text.match(/(\d+(?:\.\d+)?)\s*m(?:etres?)?/i);
+    return match ? parseFloat(match[1]) : null;
+  }
+
+  private determineBoundaryType(valueText: string): 'front' | 'side' | 'rear' | 'general' {
+    const text = valueText.toLowerCase();
+    if (text.includes('front')) return 'front';
+    if (text.includes('side')) return 'side';  
+    if (text.includes('rear')) return 'rear';
+    return 'general';
+  }
+
+  private extractClauseReference(provisionText: string): string {
+    const clauseMatch = provisionText.match(/(clause|section)\s+([0-9]+\.?[0-9]*[a-z]?)/i);
+    return clauseMatch ? clauseMatch[0] : 'Not specified';
+  }
+
+  async assessStatutoryCompliance(nswApiData: NSWPlanningAPILayer[], proposedDevelopment: ProposedDevelopment) {
+    const compliance: Record<string, any> = {};
+    
+    // Find relevant layers
+    const zoningLayer = nswApiData.find(layer => layer.layerName === 'Land Zoning Map');
+    const fsrLayer = nswApiData.find(layer => layer.layerName === 'Floor Space Ratio Map');
+    const lotSizeLayer = nswApiData.find(layer => layer.layerName === 'Lot Size Map');
+    const heightLayer = nswApiData.find(layer => layer.layerName === 'Height of Buildings Map');
+    
+    const zone = zoningLayer?.results?.[0]?.['Zone'] || 'R1';
+    
+    // Height compliance using hierarchical SEPP-LEP processing
+    try {
+      const heightCompliance = await this.seppLepProcessor.processHierarchicalCompliance(
+        nswApiData, zone, 'height'
+      );
+      
+      const heightLimit = parseFloat(String(heightCompliance.compliance_value)) || 9.5; // Fallback only if no data
+      compliance.height = {
+        limit: heightLimit,
+        proposed: proposedDevelopment.height || 0,
+        compliant: (proposedDevelopment.height || 0) <= heightLimit,
+        source: `${heightCompliance.controlling_authority}: ${heightCompliance.applicable_provision.document_id}`,
+        legal_authority: heightCompliance.controlling_authority,
+        hierarchical_justification: heightCompliance.legal_justification,
+        overridden_provisions: heightCompliance.overridden_provisions.map(p => p.document_id)
+      };
+    } catch (error) {
+      // Fallback to Height of Buildings layer if hierarchical processing fails
+      const heightFromLayer = heightLayer?.results?.[0]?.['Maximum Building Height'];
+      const heightLimit = heightFromLayer ? parseFloat(heightFromLayer) : 9.5;
+      
+      compliance.height = {
+        limit: heightLimit,
+        proposed: proposedDevelopment.height || 0,
+        compliant: (proposedDevelopment.height || 0) <= heightLimit,
+        source: 'NSW Planning API Height of Buildings Map',
+        legal_authority: 'LEP',
+        note: 'Hierarchical SEPP-LEP processing failed, using direct API data'
+      };
+    }
+    
+    // FSR compliance
+    if (fsrLayer?.results?.[0]) {
+      const fsrLimit = parseFloat(fsrLayer.results[0]['Floor Space Ratio'] || '0.6');
+      compliance.fsr = {
+        limit: fsrLimit,
+        proposed: proposedDevelopment.fsr || 0,
+        compliant: (proposedDevelopment.fsr || 0) <= fsrLimit,
+        source: 'Inner West LEP 2022, Clause 4.4',
+        legal_authority: 'STATUTORY'
+      };
+    }
+    
+    // Lot size compliance
+    if (lotSizeLayer?.results?.[0]) {
+      const minLotSize = parseFloat(lotSizeLayer.results[0]['Lot Size'] || '200');
+      compliance.lot_size = {
+        minimum: minLotSize,
+        actual: proposedDevelopment.lot_area || 0,
+        compliant: (proposedDevelopment.lot_area || 0) >= minLotSize,
+        source: 'Inner West LEP 2022, Schedule 1',
+        legal_authority: 'STATUTORY'
+      };
+    }
+    
+    return compliance;
+  }
+
+  determineDevelopmentPathway(statutoryCompliance: Record<string, any>, setbackCompliance: Record<string, any>): {
+    pathway: ComplianceAssessment['development_pathway'];
+    discretionRequired: boolean;
+  } {
+    // Check if all statutory requirements are met exactly
+    const statutoryCompliant = Object.values(statutoryCompliance).every(
+      (result: any) => result?.compliant === true
+    );
+    
+    // Check if all setback requirements are met  
+    const setbackCompliant = Object.values(setbackCompliance).every(
+      (result: any) => result?.compliant === true
+    );
+    
+    // Determine pathway
+    if (statutoryCompliant && setbackCompliant) {
+      return { pathway: 'COMPLYING_DEVELOPMENT', discretionRequired: false };
+    } else if (statutoryCompliant) {
+      return { pathway: 'DEVELOPMENT_APPLICATION_MINOR', discretionRequired: true };
+    } else {
+      return { pathway: 'DEVELOPMENT_APPLICATION_MAJOR', discretionRequired: true };
+    }
+  }
+
+  calculateComplianceConfidence(setbackRequirements: SetbackRequirement[], statutoryCompliance: Record<string, any>): number {
+    const confidenceFactors: number[] = [];
+    
+    // Statutory data confidence (NSW API is authoritative)
+    const statutoryConfidence = statutoryCompliance ? 1.0 : 0.5;
+    confidenceFactors.push(statutoryConfidence * 0.4);  // 40% weight
+    
+    // Setback data confidence  
+    if (setbackRequirements.length > 0) {
+      const setbackConfidence = setbackRequirements.reduce((sum, req) => sum + req.confidence_score, 0) / setbackRequirements.length;
+      confidenceFactors.push(setbackConfidence * 0.4);  // 40% weight
+    } else {
+      confidenceFactors.push(0.3);  // Low confidence if no setback data
+    }
+        
+    // Data completeness confidence
+    const expectedSetbacks = ['front', 'side', 'rear'];
+    const availableSetbacks = setbackRequirements.map(req => req.boundary_type);
+    const completeness = expectedSetbacks.filter(type => availableSetbacks.includes(type as any)).length / expectedSetbacks.length;
+    confidenceFactors.push(completeness * 0.2);  // 20% weight
+    
+    return Math.min(confidenceFactors.reduce((sum, factor) => sum + factor, 0), 1.0);
+  }
+
+  async assessPropertyCompliance(
+    address: string, 
+    nswApiData: NSWPlanningAPILayer[], 
+    proposedDevelopment: ProposedDevelopment
+  ): Promise<ComplianceAssessment> {
+    console.log(`Assessing compliance for ${address}`);
+    
+    // Identify council area
+    const councilArea = this.identifyCouncilArea(address);
+    
+    // Extract zone from NSW API data
+    const zoningLayer = nswApiData.find(layer => layer.layerName === 'Land Zoning Map');
+    const zone = zoningLayer?.results?.[0]?.['Zone'] || 'R1';  // Default to R1
+    
+    console.log(`Council Area: ${councilArea}`);
+    console.log(`Zone: ${zone}`);
+    console.log(`Data Reliability: ${this.councilAreas[councilArea].reliability_grade}`);
+    
+    // Assess statutory compliance using NSW API data with hierarchical SEPP-LEP processing
+    const statutoryCompliance = await this.assessStatutoryCompliance(nswApiData, proposedDevelopment);
+    
+    // Get reliable setback requirements
+    const setbackRequirements = await this.getZoneSpecificSetbacks(zone, councilArea);
+    
+    // Assess setback compliance
+    const setbackCompliance: Record<string, any> = {};
+    for (const req of setbackRequirements) {
+      const proposedSetback = proposedDevelopment[`${req.boundary_type}_setback` as keyof ProposedDevelopment] || 0;
+      
+      setbackCompliance[req.boundary_type] = {
+        requirement: req,
+        proposed: proposedSetback,
+        compliant: proposedSetback >= req.minimum_setback_meters,
+        variance: proposedSetback - req.minimum_setback_meters
+      };
+    }
+    
+    // Determine development pathway
+    const { pathway, discretionRequired } = this.determineDevelopmentPathway(
+      statutoryCompliance, setbackCompliance
+    );
+    
+    // Calculate confidence
+    const complianceConfidence = this.calculateComplianceConfidence(
+      setbackRequirements, statutoryCompliance
+    );
+    
+    // Build legal references
+    const legalReferences: string[] = [];
+    
+    // Add NSW API legal references
+    const lepLayer = nswApiData.find(layer => layer.layerName === 'Land Application Map');
+    if (lepLayer?.results?.[0]?.legislationUrl) {
+      legalReferences.push(`Inner West LEP 2022: ${lepLayer.results[0].legislationUrl}`);
+    }
+    
+    // Add DCP references
+    for (const req of setbackRequirements) {
+      legalReferences.push(`${req.legal_source}: ${req.clause_reference}`);
+    }
+    
+    // Build audit trail
+    const auditTrail = [
+      `Assessment conducted: ${new Date().toISOString()}`,
+      `NSW Planning API data processed: ${nswApiData.length} layers`,
+      `Council area identified: ${councilArea} (${this.councilAreas[councilArea].reliability_grade} reliability)`,
+      `Zone-specific controls retrieved: ${setbackRequirements.length} setback requirements`,
+      `Compliance confidence: ${complianceConfidence.toFixed(3)}`
+    ];
+    
+    return {
+      property_address: address,
+      property_id: proposedDevelopment.property_id || 0,
+      zone,
+      council_area: councilArea,
+      statutory_compliance: statutoryCompliance,
+      setback_compliance: setbackRequirements.reduce((acc, req) => {
+        acc[req.boundary_type] = req;
+        return acc;
+      }, {} as Record<string, SetbackRequirement>),
+      development_pathway: pathway,
+      compliance_confidence: complianceConfidence,
+      legal_references: legalReferences,
+      professional_review_required: complianceConfidence < 0.8 || discretionRequired,
+      audit_trail: auditTrail
+    };
+  }
+
+  generateComplianceReport(assessment: ComplianceAssessment) {
+    return {
+      property_details: {
+        address: assessment.property_address,
+        property_id: assessment.property_id,
+        zone: assessment.zone,
+        council_area: assessment.council_area.replace(/^./, c => c.toUpperCase()),
+        reliability_grade: this.councilAreas[assessment.council_area as keyof typeof this.councilAreas].reliability_grade
+      },
+      statutory_compliance: assessment.statutory_compliance,
+      setback_requirements: Object.fromEntries(
+        Object.entries(assessment.setback_compliance).map(([boundaryType, req]) => [
+          boundaryType,
+          {
+            minimum_setback_meters: req.minimum_setback_meters,
+            confidence_score: req.confidence_score,
+            legal_source: req.legal_source,
+            clause_reference: req.clause_reference,
+            contextual_requirements: req.contextual_requirements
+          }
+        ])
+      ),
+      compliance_summary: {
+        development_pathway: assessment.development_pathway,
+        compliance_confidence: `${(assessment.compliance_confidence * 100).toFixed(1)}%`,
+        professional_review_required: assessment.professional_review_required,
+        ready_for_submission: assessment.compliance_confidence >= 0.8 && !assessment.professional_review_required
+      },
+      legal_references: assessment.legal_references,
+      recommendations: this.generateRecommendations(assessment),
+      audit_trail: assessment.audit_trail
+    };
+  }
+
+  private generateRecommendations(assessment: ComplianceAssessment): string[] {
+    const recommendations: string[] = [];
+    const councilData = this.councilAreas[assessment.council_area as keyof typeof this.councilAreas];
+    
+    // Council area specific recommendations
+    if (councilData.reliability_grade === 'MEDIUM') {
+      recommendations.push(
+        `Data reliability is MEDIUM for ${assessment.council_area.replace(/^./, c => c.toUpperCase())} area. ` +
+        `Professional verification recommended for precise setback requirements.`
+      );
+    }
+    
+    // Compliance confidence recommendations  
+    if (assessment.compliance_confidence < 0.7) {
+      recommendations.push(
+        "Compliance confidence is below 70%. Recommend engaging qualified planning consultant " +
+        "for detailed assessment and professional certification."
+      );
+    } else if (assessment.compliance_confidence < 0.8) {
+      recommendations.push(
+        "Compliance confidence is moderate. Consider professional review before lodging application."
+      );
+    }
+    
+    // Pathway specific recommendations
+    if (assessment.development_pathway === 'COMPLYING_DEVELOPMENT') {
+      recommendations.push(
+        "Development meets complying development standards. " +
+        "Consider certification by private certifier for faster approval (10-20 days)."
+      );
+    } else if (assessment.development_pathway === 'DEVELOPMENT_APPLICATION_MINOR') {
+      recommendations.push(
+        "Development requires minor variations. Lodge Development Application with Inner West Council. " +
+        "Typical assessment time: 8-12 weeks."
+      );
+    } else {
+      recommendations.push(
+        "Development requires major variations. Lodge Development Application with Inner West Council. " +
+        "Consider pre-DA consultation. Typical assessment time: 12-16 weeks."
+      );
+    }
+    
+    // Council area specific guidance
+    recommendations.push(
+      `For ${assessment.council_area.replace(/^./, c => c.toUpperCase())} properties, refer to ${councilData.dcp_documents[0]} ` +
+      `for detailed design requirements and local character guidelines.`
+    );
+    
+    return recommendations;
+  }
+
+  close() {
+    this.dbClient.close();
+    this.seppLepProcessor.close();
+  }
+}

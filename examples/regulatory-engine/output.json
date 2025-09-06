@@ -1,0 +1,65 @@
+{
+    "lga": "INNER WEST COUNCIL",
+    "areas": {
+      "Ashfield": {
+        "setbacks": {
+          "rear": {
+            "distance": 1.5,
+            "height_limit": 6.5,
+            "source": "Ashfield DCP 2014 Section 5.4.2",
+            "source_link": "https://www.innerwest.nsw.gov.au/planning-building/planning-documents/dcp-2014#section-5.4.2"
+          },
+          "side": {
+            "height_limit": 9.5,
+            "source": "Ashfield LEP 2014 Clause 4.3",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          },
+          "front": {
+            "min_distance": 5.0,
+            "source": "Ashfield LEP 2014 Clause 4.2",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          }
+        }
+      },
+      "Leichhardt": {
+        "setbacks": {
+          "rear": {
+            "distance": 2.0,
+            "height_limit": 7.0,
+            "source": "Leichhardt DCP 2014 Section 5.4.2",
+            "source_link": "https://www.innerwest.nsw.gov.au/planning-building/planning-documents/dcp-2014#section-5.4.2"
+          },
+          "side": {
+            "height_limit": 9.5,
+            "source": "Leichhardt LEP 2014 Clause 4.3",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          },
+          "front": {
+            "min_distance": 5.5,
+            "source": "Leichhardt LEP 2014 Clause 4.2",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          }
+        }
+      },
+      "Marrickville": {
+        "setbacks": {
+          "rear": {
+            "distance": 1.8,
+            "height_limit": 6.8,
+            "source": "Marrickville DCP 2014 Section 5.4.2",
+            "source_link": "https://www.innerwest.nsw.gov.au/planning-building/planning-documents/dcp-2014#section-5.4.2"
+          },
+          "side": {
+            "height_limit": 9.5,
+            "source": "Marrickville LEP 2014 Clause 4.3",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          },
+          "front": {
+            "min_distance": 4.5,
+            "source": "Marrickville LEP 2014 Clause 4.2",
+            "source_link": "https://www.legislation.nsw.gov.au/#/view/EPI/2014/389"
+          }
+        }
+      }
+    }
+  }

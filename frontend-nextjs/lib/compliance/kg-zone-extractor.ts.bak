@@ -1,0 +1,449 @@
+// lib/compliance/kg-zone-extractor.ts
+import { DatabaseClient } from '@/lib/database/client';
+
+export interface KGZoneEntity {
+  entity_id: number;
+  zone_code: string;  // R1, R2, R3, etc.
+  zone_name: string;  // "R1 - General Residential"
+  document_id: string;
+  confidence: number;
+}
+
+export interface KGSetbackRequirement {
+  zone_code: string;
+  boundary_type: 'front' | 'side' | 'rear' | 'general';
+  setback_meters: number;
+  requirement_text: string;
+  section_reference: string;  // Section 4.1, 4.2, etc.
+  document_source: string;
+  confidence_score: number;
+  legal_basis: string;
+  extraction_method: 'kg_entity' | 'kg_relationship' | 'text_parsing';
+  authority_level?: 'SEPP' | 'LEP' | 'DCP';
+  legal_precedence?: number;
+}
+
+export interface ZoneControlMapping {
+  zone_code: string;
+  section_reference: string;
+  control_type: 'low_density_residential' | 'multi_dwelling_housing' | 'commercial_mixed_use';
+  document_id: string;
+  confidence: number;
+}
+
+export class KGZoneExtractor {
+  private dbClient: DatabaseClient;
+
+  constructor(dbPath?: string) {
+    this.dbClient = new DatabaseClient();
+  }
+
+  /**
+   * Extract all zone entities from KG without hardcoding
+   */
+  getKGZoneEntities(): KGZoneEntity[] {
+    console.log('[KG Zone] Extracting zone entities from knowledge graph');
+    
+    const zones: KGZoneEntity[] = [];
+    
+    try {
+      // Query ALL entities that contain zone patterns - no hardcoding
+      const zoneQuery = `
+        SELECT id, entity_name, document_id
+        FROM kg_entities 
+        WHERE entity_name GLOB '*[RBE][0-9]*'
+           OR entity_name LIKE '%zone%'
+           OR entity_name LIKE '%residential%'
+           OR entity_name LIKE '%centre%'
+           OR entity_name LIKE '%mixed%'
+        ORDER BY entity_name
+      `;
+      
+      const stmt = this.dbClient.db.prepare(zoneQuery);
+      const zoneEntities = stmt.all() as any[];
+      
+      for (const entity of zoneEntities) {
+        // Extract zone code from entity name (e.g., "R1 - General Residential" -> "R1")
+        const zoneCodeMatch = entity.entity_name.match(/\b([A-Z]+\d+)\b/);
+        if (zoneCodeMatch) {
+          zones.push({
+            entity_id: entity.id,
+            zone_code: zoneCodeMatch[1],
+            zone_name: entity.entity_name,
+            document_id: entity.document_id,
+            confidence: 1.0  // KG entities are high confidence
+          });
+        }
+      }
+      
+      console.log(`[KG Zone] Found ${zones.length} zone entities in KG`);
+      return zones;
+      
+    } catch (error) {
+      console.error('[KG Zone] Error extracting zone entities:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Map zones to their applicable control sections using KG relationships
+   */
+  getZoneControlMappings(): ZoneControlMapping[] {
+    console.log('[KG Zone] Extracting zone-control mappings from KG relationships');
+    
+    const mappings: ZoneControlMapping[] = [];
+    
+    try {
+      // Find ALL zone-control mapping relationships dynamically
+      const mappingQuery = `
+        SELECT DISTINCT
+          subject_text, object_text, document_id, confidence_score
+        FROM kg_relationships 
+        WHERE (
+          (subject_text GLOB '*[RBE][0-9]*' AND object_text LIKE '%Section%')
+          OR (object_text GLOB '*[RBE][0-9]*' AND subject_text LIKE '%Section%')
+          OR (subject_text LIKE '%zone%' AND object_text LIKE '%Section%')
+          OR (object_text LIKE '%zone%' AND subject_text LIKE '%Section%')
+        )
+        AND confidence_score >= 0.8
+        ORDER BY confidence_score DESC
+      `;
+      
+      const stmt = this.dbClient.db.prepare(mappingQuery);
+      const relationships = stmt.all() as any[];
+      
+      for (const rel of relationships) {
+        // Extract zone codes from relationship text
+        const zoneMatches = (rel.subject_text + ' ' + rel.object_text).match(/\b([A-Z]+\d+)\b/g);
+        const sectionMatches = (rel.subject_text + ' ' + rel.object_text).match(/Section (\d+\.\d+|\d+)/g);
+        
+        if (zoneMatches && sectionMatches) {
+          for (const zoneCode of zoneMatches) {
+            for (const sectionRef of sectionMatches) {
+              // Determine control type based on section and relationship context
+              let controlType: ZoneControlMapping['control_type'] = 'multi_dwelling_housing';
+              
+              if (rel.object_text.includes('low density residential') || rel.subject_text.includes('low density residential')) {
+                controlType = 'low_density_residential';
+              } else if (rel.object_text.includes('commercial') || rel.object_text.includes('mixed use')) {
+                controlType = 'commercial_mixed_use';
+              }
+              
+              mappings.push({
+                zone_code: zoneCode,
+                section_reference: sectionRef,
+                control_type: controlType,
+                document_id: rel.document_id,
+                confidence: rel.confidence_score
+              });
+            }
+          }
+        }
+      }
+      
+      console.log(`[KG Zone] Found ${mappings.length} zone-control mappings`);
+      return mappings;
+      
+    } catch (error) {
+      console.error('[KG Zone] Error extracting zone-control mappings:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Extract setback requirements for a specific zone using KG relationships
+   */
+  getKGZoneSetbacks(zoneCode: string): KGSetbackRequirement[] {
+    console.log(`[KG Zone] Extracting setback requirements for zone ${zoneCode}`);
+    
+    const setbacks: KGSetbackRequirement[] = [];
+    
+    try {
+      // Get zone-control mappings first
+      const controlMappings = this.getZoneControlMappings();
+      const zoneMappings = controlMappings.filter(m => m.zone_code === zoneCode);
+      
+      console.log(`[KG Zone] Found ${zoneMappings.length} control mappings for ${zoneCode}`);
+      
+      // Find ALL setback relationships with any numeric content - no hardcoding
+      const setbackQuery = `
+        SELECT DISTINCT
+          subject_text, predicate, object_text, document_id, confidence_score
+        FROM kg_relationships 
+        WHERE (
+          (subject_text LIKE '%setback%' OR object_text LIKE '%setback%')
+          AND (
+            subject_text GLOB '*[0-9]*' OR object_text GLOB '*[0-9]*'
+          )
+        )
+        AND confidence_score >= 0.7
+        ORDER BY confidence_score DESC
+      `;
+      
+      const stmt = this.dbClient.db.prepare(setbackQuery);
+      const setbackRels = stmt.all() as any[];
+      
+      console.log(`[KG Zone] Found ${setbackRels.length} setback measurement relationships`);
+      
+      for (const rel of setbackRels) {
+        const measurements = this.extractMeasurementsFromText(rel.subject_text + ' ' + rel.object_text);
+        
+        if (measurements.length > 0) {
+          const combinedText = rel.subject_text + ' ' + rel.object_text;
+          
+          // Get all possible boundary types for this text
+          const boundaryTypes = this.getAllBoundaryTypes(combinedText);
+          
+          // Get section reference from zone mappings
+          const sectionRef = zoneMappings.length > 0 ? zoneMappings[0].section_reference : 'Section 4.1';
+          
+          // Create setback requirement for each boundary type found
+          for (const boundaryType of boundaryTypes) {
+            for (const measurement of measurements) {
+              // Determine authority level from document source
+              const authorityLevel = this.determineAuthorityLevel(rel.document_id);
+              const legalPrecedence = this.getLegalPrecedence(authorityLevel);
+              
+              setbacks.push({
+                zone_code: zoneCode,
+                boundary_type: boundaryType,
+                setback_meters: measurement,
+                requirement_text: rel.subject_text.length > rel.object_text.length ? rel.subject_text : rel.object_text,
+                section_reference: sectionRef,
+                document_source: rel.document_id,
+                confidence_score: rel.confidence_score,
+                legal_basis: `KG relationship extraction: ${rel.predicate}`,
+                extraction_method: 'kg_relationship',
+                authority_level: authorityLevel,
+                legal_precedence: legalPrecedence
+              });
+            }
+          }
+        }
+      }
+      
+      console.log(`[KG Zone] Generated ${setbacks.length} setback requirements for ${zoneCode}`);
+      return setbacks;
+      
+    } catch (error) {
+      console.error(`[KG Zone] Error extracting setbacks for ${zoneCode}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Extract numeric measurements from text using universal patterns
+   */
+  private extractMeasurementsFromText(text: string): number[] {
+    const measurements: number[] = [];
+    
+    // Universal pattern: any number followed by any unit indicator
+    const measurementPattern = /(\d+(?:\.\d+)?)\s*(?:millimetres?|millimeters?|mm|metres?|meters?|m(?!\w)|centimetres?|centimeters?|cm)/gi;
+    let match;
+    
+    while ((match = measurementPattern.exec(text)) !== null) {
+      const value = parseFloat(match[1]);
+      const unitText = match[0].toLowerCase();
+      
+      let meters = value;
+      if (unitText.includes('mm') || unitText.includes('millimeter') || unitText.includes('millimetre')) {
+        meters = value / 1000;
+      } else if (unitText.includes('cm') || unitText.includes('centimeter') || unitText.includes('centimetre')) {
+        meters = value / 100;
+      }
+      // else already in meters
+      
+      // Only include reasonable setback values (0.1m to 50m)
+      if (meters >= 0.1 && meters <= 50) {
+        measurements.push(meters);
+      }
+    }
+    
+    // Also check for range patterns: "2 to 4", "2-4"
+    const rangePattern = /(\d+(?:\.\d+)?)\s*(?:to|through|-|–)\s*(\d+(?:\.\d+)?)/gi;
+    while ((match = rangePattern.exec(text)) !== null) {
+      const min = parseFloat(match[1]);
+      const max = parseFloat(match[2]);
+      
+      // If reasonable range, use minimum as primary requirement
+      if (min >= 0.1 && min <= 50 && max >= min && max <= 50) {
+        measurements.push(min);
+      }
+    }
+    
+    // Remove duplicates and sort
+    return Array.from(new Set(measurements)).sort((a, b) => a - b);
+  }
+
+  /**
+   * Get ALL boundary types that could apply to this text (not just one)
+   */
+  private getAllBoundaryTypes(text: string): KGSetbackRequirement['boundary_type'][] {
+    const textLower = text.toLowerCase();
+    const boundaryTypes: KGSetbackRequirement['boundary_type'][] = [];
+    
+    // Check for front indicators
+    const frontIndicators = ['front', 'street', 'road', 'frontage', 'facade'];
+    if (frontIndicators.some(indicator => textLower.includes(indicator))) {
+      boundaryTypes.push('front');
+    }
+    
+    // Check for rear indicators  
+    const rearIndicators = ['rear', 'back'];
+    if (rearIndicators.some(indicator => textLower.includes(indicator))) {
+      boundaryTypes.push('rear');
+    }
+    
+    // Check for side indicators (comprehensive)
+    const sideIndicators = [
+      'side', 'lateral', 'boundary', 'boundaries',
+      'southern', 'northern', 'eastern', 'western',
+      'north', 'south', 'east', 'west',
+      'left', 'right', 'adjacent'
+    ];
+    if (sideIndicators.some(indicator => textLower.includes(indicator))) {
+      boundaryTypes.push('side');
+    }
+    
+    // If no specific boundary type found, use general
+    if (boundaryTypes.length === 0) {
+      boundaryTypes.push('general');
+    }
+    
+    return boundaryTypes;
+  }
+
+  /**
+   * Determine boundary type from relationship text using comprehensive analysis (legacy single-type method)
+   */
+  private determineBoundaryType(text: string): KGSetbackRequirement['boundary_type'] {
+    const types = this.getAllBoundaryTypes(text);
+    return types[0]; // Return first type for legacy compatibility
+  }
+
+  /**
+   * Get comprehensive zone-based setback requirements with SEPP-LEP-DCP hierarchy
+   */
+  getHierarchicalZoneSetbacks(zoneCode: string, councilArea?: string): KGSetbackRequirement[] {
+    console.log(`[KG Zone] Getting hierarchical setback requirements for ${zoneCode} in ${councilArea || 'Inner West'}`);
+    
+    // Step 1: Get KG-based setback requirements
+    const kgSetbacks = this.getKGZoneSetbacks(zoneCode);
+    
+    // Step 2: Get traditional database setbacks for comparison/fallback
+    const dbSetbacks = this.dbClient.getHierarchicalSetbackControls(zoneCode);
+    
+    // Step 3: Merge and prioritize (KG relationships higher priority)
+    const allSetbacks: KGSetbackRequirement[] = [...kgSetbacks];
+    
+    // Add database setbacks if no KG setbacks found
+    if (kgSetbacks.length === 0) {
+      console.log(`[KG Zone] No KG setbacks found for ${zoneCode}, using database fallback`);
+      
+      for (const dbSetback of dbSetbacks) {
+        if (dbSetback.confidence_score >= 0.7) {
+          const measurements = this.extractMeasurementsFromText(dbSetback.provision_text || dbSetback.value_text || '');
+          
+          for (const measurement of measurements) {
+            allSetbacks.push({
+              zone_code: zoneCode,
+              boundary_type: this.determineBoundaryType(dbSetback.provision_text || ''),
+              setback_meters: measurement,
+              requirement_text: dbSetback.provision_text || dbSetback.value_text || '',
+              section_reference: 'Database derived',
+              document_source: dbSetback.document_id || 'Unknown',
+              confidence_score: dbSetback.confidence_score || 0.7,
+              legal_basis: `Database extraction: ${dbSetback.authority_level || 'DCP'}`,
+              extraction_method: 'text_parsing'
+            });
+          }
+        }
+      }
+    }
+    
+    // Step 4: Deduplicate by boundary type, keeping highest legal precedence (SEPP > LEP > DCP)
+    const deduped = new Map<string, KGSetbackRequirement>();
+    
+    for (const setback of allSetbacks) {
+      const key = setback.boundary_type;  // Group by boundary type only
+      const existing = deduped.get(key);
+      
+      if (!existing || 
+          (setback.legal_precedence || 3) < (existing.legal_precedence || 3) ||
+          ((setback.legal_precedence || 3) === (existing.legal_precedence || 3) && 
+           setback.confidence_score > existing.confidence_score)) {
+        deduped.set(key, setback);
+      }
+    }
+    
+    const finalSetbacks = Array.from(deduped.values());
+    console.log(`[KG Zone] Final hierarchical setbacks for ${zoneCode}: ${finalSetbacks.length} requirements`);
+    
+    return finalSetbacks;
+  }
+
+  /**
+   * Get real document ID from generic document ID
+   */
+  private async getRealDocumentId(genericDocId: string): Promise<string> {
+    try {
+      const result = await this.dbClient.execute(`
+        SELECT d.id as real_document_id
+        FROM documents d
+        WHERE d.id = ?
+        LIMIT 1
+      `, [genericDocId]);
+      
+      if (result.length > 0) {
+        return result[0].real_document_id as string;
+      }
+      
+      // If no mapping found, return the generic ID
+      return genericDocId;
+    } catch (error) {
+      console.warn(`[KG Zone] Failed to get real document ID for ${genericDocId}:`, error);
+      return genericDocId;
+    }
+  }
+
+  /**
+   * Determine authority level from document ID
+   */
+  private determineAuthorityLevel(documentId: string): 'SEPP' | 'LEP' | 'DCP' {
+    const docIdLower = documentId.toLowerCase();
+    
+    // Check for SEPP indicators
+    if (docIdLower.includes('sepp') || 
+        docIdLower.includes('state environmental planning policy') ||
+        docIdLower.includes('state_environmental_planning_policy')) {
+      return 'SEPP';
+    }
+    
+    // Check for LEP indicators  
+    if (docIdLower.includes('lep') ||
+        docIdLower.includes('local environmental plan') ||
+        docIdLower.includes('iwlep') ||
+        docIdLower.includes('with_iwlep_2022_amendments')) {
+      return 'LEP';
+    }
+    
+    // Everything else is DCP (Development Control Plan)
+    return 'DCP';
+  }
+
+  /**
+   * Get legal precedence number based on authority level
+   */
+  private getLegalPrecedence(authorityLevel: 'SEPP' | 'LEP' | 'DCP'): number {
+    switch (authorityLevel) {
+      case 'SEPP': return 1; // Highest precedence
+      case 'LEP': return 2;  // Medium precedence  
+      case 'DCP': return 3;  // Lowest precedence
+      default: return 3;
+    }
+  }
+
+  close() {
+    this.dbClient.close();
+  }
+}

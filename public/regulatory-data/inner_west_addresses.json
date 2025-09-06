@@ -1,0 +1,14 @@
+{
+  "extraction_date": "2025-01-25",
+  "total_addresses": 0,
+  "areas": {
+    "ashfield": [],
+    "leichhardt": [],
+    "marrickville": []
+  },
+  "metadata": {
+    "extraction_method": "LightRAG semantic query",
+    "coverage": "Ashfield, Leichhardt, Marrickville DCPs",
+    "confidence": "High - extracted from official planning documents"
+  }
+}

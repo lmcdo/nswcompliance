@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSW Planning Compliance Engine</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8fafc;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #1e293b;
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: calc(100vh - 200px);
+        }
+        
+        .query-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+            color: #1e293b;
+            font-size: 16px;
+        }
+        
+        .panel-content {
+            padding: 16px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            color: #374151;
+            font-size: 14px;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .query-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .query-btn:hover {
+            background: #2563eb;
+        }
+        
+        .query-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .results-panel {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .results-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .accordion {
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .accordion-header {
+            background: #f9fafb;
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 500;
+            color: #374151;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .accordion-header:hover {
+            background: #f3f4f6;
+        }
+        
+        .accordion-content {
+            padding: 16px;
+            display: none;
+        }
+        
+        .accordion-content.open {
+            display: block;
+        }
+        
+        .accordion-toggle {
+            transition: transform 0.2s;
+        }
+        
+        .accordion-toggle.rotated {
+            transform: rotate(180deg);
+        }
+        
+        .result-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .result-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+        
+        .result-text {
+            color: #475569;
+            font-size: 13px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+        
+        .result-source {
+            font-size: 12px;
+            color: #64748b;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-connected {
+            background: #10b981;
+        }
+        
+        .status-disconnected {
+            background: #ef4444;
+        }
+        
+        .intelligence-section {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .intelligence-section h4 {
+            color: #1e293b;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        .intel-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .intel-row:last-child {
+            border-bottom: none;
+        }
+        
+        .intel-label {
+            font-weight: 500;
+            color: #374151;
+            font-size: 13px;
+        }
+        
+        .intel-value {
+            color: #1e293b;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        
+        .metric-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        
+        .metric-status {
+            margin-right: 8px;
+            font-weight: bold;
+            color: #10b981;
+        }
+        
+        .metric-status.fail {
+            color: #ef4444;
+        }
+        
+        /* Google Places Autocomplete Styling - Compact */
+        .pac-container {
+            z-index: 10000 !important;
+            border-radius: 6px !important;
+            border: 1px solid #d1d5db !important;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+            font-size: 13px !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+        }
+        
+        .pac-item {
+            padding: 8px 12px !important;
+            border-bottom: 1px solid #f3f4f6 !important;
+            cursor: pointer !important;
+            line-height: 1.3 !important;
+            min-height: auto !important;
+        }
+        
+        .pac-item:last-child {
+            border-bottom: none !important;
+        }
+        
+        .pac-item:hover {
+            background-color: #f8fafc !important;
+        }
+        
+        .pac-item-selected {
+            background-color: #3b82f6 !important;
+            color: white !important;
+        }
+        
+        .pac-matched {
+            font-weight: 600 !important;
+        }
+        
+        .pac-item-query {
+            font-size: 13px !important;
+            padding-right: 3px !important;
+        }
+        
+        .pac-icon {
+            margin-top: 0 !important;
+            margin-right: 8px !important;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .query-panel, .results-panel {
+                min-height: 400px;
+            }
+        }
+        /* NEW: Property Intelligence Styles */
+        
+        /* Property Context Header */
+        .property-context-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .context-tags {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .zone-tag, .lga-tag, .heritage-tag {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .applicable-documents {
+            margin-top: 10px;
+            opacity: 0.8;
+        }
+        
+        /* Critical Controls Alert */
+        .critical-controls-section {
+            margin-bottom: 30px;
+        }
+        
+        .critical-alert {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3);
+        }
+        
+        .alert-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .alert-icon {
+            font-size: 1.2em;
+            margin-right: 10px;
+        }
+        
+        .status-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+        }
+        
+        .main-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .measurement, .source {
+            margin: 5px 0;
+            opacity: 0.9;
+        }
+        
+        .exceptions {
+            margin-top: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 6px;
+        }
+        
+        /* Important Controls Grid */
+        .important-controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .priority-badge.important {
+            background: #f39c12;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        
+        .priority {
+            background: #27ae60;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.8em;
+        }
+        
+        .control-value {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .measurement-note {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .card-footer {
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        /* Connected Requirements Panel */
+        .connected-requirements-panel {
+            background: #f8f9fa;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 20px;
+        }
+        
+        /* Clause Citation Accordion */
+        .clause-citation {
+            display: block;
+            width: 100%;
+            background: white;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            margin: 8px 0;
+        }
+        
+        .clause-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            cursor: pointer;
+            font-weight: 500;
+            color: #1e293b;
+            background: #f8fafc;
+            border-radius: 6px;
+            width: 100%;
+        }
+        
+        .clause-header:hover {
+            background: #f1f5f9;
+            border-color: #3b82f6;
+        }
+        
+        .clause-arrow {
+            font-size: 12px;
+            transition: transform 0.2s;
+            color: #6b7280;
+        }
+        
+        .clause-arrow.expanded {
+            transform: rotate(180deg);
+        }
+        
+        .clause-content {
+            padding: 12px 0;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+            display: none;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .clause-content.open {
+            display: block;
+        }
+        
+        .clause-type {
+            color: #6b7280;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        /* Council Validation Styles */
+        .council-validation-panel {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .validation-summary {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        
+        .document-group {
+            margin-bottom: 20px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background: white;
+        }
+        
+        .document-group h5 {
+            background: #f3f4f6;
+            margin: 0;
+            padding: 12px 16px;
+            border-bottom: 1px solid #d1d5db;
+            border-radius: 6px 6px 0 0;
+            font-size: 14px;
+            color: #374151;
+        }
+        
+        .council-citation {
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .council-citation:last-child {
+            border-bottom: none;
+        }
+        
+        .clause-ref {
+            font-weight: bold;
+            color: #1f2937;
+            margin-right: 8px;
+        }
+        
+        .section-title {
+            color: #6b7280;
+            flex-grow: 1;
+        }
+        
+        .confidence-badge {
+            background: #dcfce7;
+            color: #16a34a;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        
+        .authority {
+            color: #059669;
+            font-size: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .context-before, .context-after {
+            color: #6b7280;
+            font-size: 12px;
+            margin: 4px 0;
+            font-style: italic;
+        }
+        
+        .full-text {
+            background: #f8fafc;
+            padding: 12px;
+            border-left: 3px solid #3b82f6;
+            margin: 8px 0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .relationships-section {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e5e7eb;
+        }
+        
+        .relationship-item {
+            background: #fefefe;
+            border: 1px solid #f0f0f0;
+            border-radius: 4px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .relationship-flow {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        
+        .primary-clause, .connected-clause {
+            font-weight: bold;
+            color: #1f2937;
+        }
+        
+        .relationship-type {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+        
+        .validation-note {
+            font-size: 12px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        
+        .precedence {
+            font-size: 11px;
+            color: #9ca3af;
+        }
+        
+        .clause-text {
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        
+        .clause-source {
+            font-size: 11px;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        
+        .connection-flow {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .primary-control {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .relationship-arrow {
+            text-align: center;
+            color: #3498db;
+            margin: 10px 0;
+        }
+        
+        .connected-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .connected-control {
+            background: #ecf0f1;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .impact-explanation {
+            margin-top: 10px;
+            padding: 10px;
+            background: #e8f5e8;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        /* Actionable Summary */
+        .actionable-summary {
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+        
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        
+        .status-indicator {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .development-potential.highlight {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+        }
+        
+        .potential-icon {
+            font-size: 2em;
+            margin-top: 5px;
+        }
+        
+        .potential-content strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+        
+        .constraints-section, .next-steps-section {
+            margin: 15px 0;
+        }
+        
+        .constraints-section h4, .next-steps-section h4 {
+            margin-bottom: 10px;
+        }
+        
+        /* Debug Panel */
+        .debug-panel {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: monospace;
+        }
+        
+        .debug-info p {
+            margin: 5px 0;
+            font-size: 0.9em;
+        }
+        
+        .debug-info strong {
+            color: #3498db;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .important-controls-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .alert-header, .card-header, .summary-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .context-tags {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .development-potential.highlight {
+                flex-direction: column;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NSW Planning Compliance Engine</h1>
+            <p>
+                <span class="status-indicator status-disconnected" id="status-indicator"></span>
+                <span id="status-text">Connecting to Ultimate Processor...</span>
+            </p>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Property Intelligence Panel -->
+            <div class="query-panel">
+                <div class="panel-header">🏠 Property Intelligence</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label for="address">Property Address</label>
+                        <input type="text" id="address" placeholder="Start typing an address...">
+                        <button class="query-btn" id="analyze-btn" onclick="analyzeProperty()" style="margin-top: 8px;">
+                            Analyze Property
+                        </button>
+                    </div>
+                    
+                    <div id="property-intelligence" style="display: none;">
+                        <div class="intelligence-section">
+                            <h4>📍 Location Details</h4>
+                            <div id="location-details"></div>
+                        </div>
+                        
+                        <div class="intelligence-section">
+                            <h4>🏗️ Planning Controls</h4>
+                            <div id="planning-controls"></div>
+                        </div>
+                        
+                        <div class="intelligence-section">
+                            <h4>⚡ Quick Assessment</h4>
+                            <div id="quick-metrics"></div>
+                        </div>
+                        
+                        <button class="query-btn" onclick="getConnectedRequirements()" style="width: 100%; margin-top: 16px;">
+                            Show Connected Requirements
+                        </button>
+                        
+                        <!-- Council-Ready Setback Calculator -->
+                        <div style="margin-top: 16px; padding: 12px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px;">
+                            <h4 style="color: #0369a1; margin: 0 0 8px 0; font-size: 14px; font-weight: 600;">
+                                🏛️ Council-Ready Setback Calculator
+                            </h4>
+                            <div style="font-size: 12px; color: #475569; margin-bottom: 8px;">
+                                Authoritative procedure for Inner West LGA<br>
+                                <strong>MVP Scope:</strong> R2 zones, Marrickville DCP area only
+                            </div>
+                            <button class="query-btn" onclick="calculateCouncilSetbacks()" style="width: 100%; background: #0369a1; font-size: 13px;">
+                                Calculate Authoritative Setbacks
+                            </button>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 6px; font-style: italic;">
+                                Follows 6-step certifier procedure - Professional verification required
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; font-size: 12px; color: #64748b;">
+                        <strong>Test Addresses:</strong><br>
+                        • 15 Norton Street, Leichhardt NSW 2040<br>
+                        • 45 Liverpool Street, Ashfield NSW 2131<br>
+                        • 67 Marrickville Road, Marrickville NSW 2204
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Connected Requirements Panel -->
+            <div class="results-panel">
+                <div class="panel-header">🔗 Connected Regulatory Requirements</div>
+                <div class="results-content" id="results">
+                    <div class="loading">
+                        Analyze a property to see connected regulatory requirements and relationships.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration - centralized endpoint management
+        const API_CONFIG = {
+            // Auto-detect API server or use environment-specific defaults
+            baseURL: (() => {
+                // Try to use same protocol and host as frontend, different port
+                if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                    return `http://${window.location.hostname}:8006`;
+                }
+                // Production fallback - could be configured via environment variables
+                return 'http://127.0.0.1:8006';
+            })(),
+            endpoints: {
+                health: '/citations/stats',
+                propertyIntelligence: '/property-intelligence',
+                propertyComplete: '/property-intelligence-complete',
+                councilValidation: '/council-validation',
+                clauseCitation: '/clause-citation',
+                setbackCalculation: '/calculate-setbacks-council'
+            }
+        };
+        
+        console.log('API Configuration:', API_CONFIG);
+        
+        let isConnected = false;
+        let autocompleteInitialized = false;
+        let selectedCoordinates = null;
+        
+        // Simple Google Maps API loading (no callback complexity)
+        function loadGoogleMapsAPI() {
+            if (document.querySelector('script[src*="maps.googleapis.com"]')) {
+                console.log('Google Maps script already exists');
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyCi5UBAg6X-k6W8v1vv9XEQaML9aQE-w60&libraries=places';
+            script.onload = function() {
+                console.log('Google Maps script loaded');
+                // Wait a moment then initialize
+                setTimeout(initializeAutocomplete, 500);
+            };
+            script.onerror = function() {
+                console.error('Failed to load Google Maps');
+            };
+            document.head.appendChild(script);
+        }
+        
+        // Initialize Google Places autocomplete
+        function initializeAutocomplete() {
+            console.log('initializeAutocomplete called');
+            
+            if (autocompleteInitialized) {
+                console.log('Already initialized');
+                return;
+            }
+            
+            if (!window.google || !window.google.maps || !window.google.maps.places) {
+                console.log('Google Maps API not ready yet, retrying in 1 second...');
+                setTimeout(initializeAutocomplete, 1000);
+                return;
+            }
+            
+            const input = document.getElementById('address');
+            if (!input) {
+                console.log('Address input not found');
+                return;
+            }
+            
+            try {
+                console.log('Creating autocomplete...');
+                
+                // NSW bounds - roughly covering NSW coordinates
+                const nswBounds = new google.maps.LatLngBounds(
+                    new google.maps.LatLng(-37.5, 140.9), // SW corner
+                    new google.maps.LatLng(-28.1, 153.6)  // NE corner  
+                );
+                
+                const autocomplete = new google.maps.places.Autocomplete(input, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'au' },
+                    bounds: nswBounds,
+                    fields: ['formatted_address', 'geometry', 'address_components']
+                });
+                
+                autocomplete.addListener('place_changed', function() {
+                    const place = autocomplete.getPlace();
+                    console.log('Place changed:', place.formatted_address);
+                    
+                    if (place.formatted_address) {
+                        // Check if address is in NSW
+                        const isNSW = place.formatted_address.includes('NSW') || 
+                                     place.address_components?.some(component => 
+                                         component.types.includes('administrative_area_level_1') && 
+                                         component.short_name === 'NSW'
+                                     );
+                        
+                        if (isNSW) {
+                            input.value = place.formatted_address;
+                            
+                            // Store coordinates and get standardized address via reverse geocoding
+                            if (place.geometry && place.geometry.location) {
+                                selectedCoordinates = {
+                                    lat: place.geometry.location.lat(),
+                                    lng: place.geometry.location.lng()
+                                };
+                                
+                                // Store the exact formatted address like mapviewer
+                                console.log('✓ Using Google Places formatted address for NSW API:', place.formatted_address);
+                                
+                                // Store both original and any potential standardized version
+                                window.selectedPlaceInfo = {
+                                    originalAddress: place.formatted_address,
+                                    coordinates: selectedCoordinates,
+                                    placeId: place.place_id
+                                };
+                                
+                                console.log('✓ NSW address accepted with coordinates:', 
+                                           place.formatted_address, selectedCoordinates);
+                            } else {
+                                selectedCoordinates = null;
+                                console.log('✓ NSW address accepted (no coordinates available):', 
+                                           place.formatted_address);
+                            }
+                        } else {
+                            console.log('✗ Non-NSW address rejected:', place.formatted_address);
+                            input.value = '';
+                            selectedCoordinates = null;
+                            alert('Please select an address in NSW');
+                        }
+                    }
+                });
+                
+                autocompleteInitialized = true;
+                input.placeholder = 'Start typing an address... (autocomplete ready)';
+                console.log('✓ Google Places Autocomplete ready!');
+                
+            } catch (error) {
+                console.error('Autocomplete initialization failed:', error);
+            }
+        }
+        
+        // Check API connection
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.health}`);
+                if (response.ok) {
+                    isConnected = true;
+                    document.getElementById('status-indicator').className = 'status-indicator status-connected';
+                    document.getElementById('status-text').textContent = 'Connected to Regulatory Radar System';
+                } else {
+                    throw new Error('API not responding');
+                }
+            } catch (error) {
+                isConnected = false;
+                document.getElementById('status-indicator').className = 'status-indicator status-disconnected';
+                document.getElementById('status-text').textContent = 'API Server Offline - Start FastAPI server';
+            }
+        }
+        
+        // Analyze property intelligence 
+        async function analyzeProperty() {
+            const address = document.getElementById('address').value.trim();
+            const analyzeBtn = document.getElementById('analyze-btn');
+            const intelligenceDiv = document.getElementById('property-intelligence');
+            
+            if (!address) {
+                alert('Please enter a property address');
+                return;
+            }
+            
+            if (!isConnected) {
+                alert('API server is offline. Please start the FastAPI server first.');
+                return;
+            }
+            
+            // Show loading state
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Analyzing...';
+            
+            try {
+                // Use exact Google Places formatted address like mapviewer
+                let finalAddress = address;
+                if (window.selectedPlaceInfo && window.selectedPlaceInfo.originalAddress) {
+                    finalAddress = window.selectedPlaceInfo.originalAddress;
+                    console.log('Using Google Places formatted address:', finalAddress);
+                }
+                
+                // Use basic property intelligence endpoint
+                let apiUrl = `${API_CONFIG.baseURL}${API_CONFIG.endpoints.propertyIntelligence}?address=${encodeURIComponent(finalAddress)}`;
+                if (selectedCoordinates) {
+                    apiUrl += `&lat=${selectedCoordinates.lat}&lng=${selectedCoordinates.lng}`;
+                    console.log('Sending coordinates with request:', selectedCoordinates);
+                }
+                
+                const response = await fetch(apiUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Property intelligence:', data);
+                displayBasicPropertyInfo(data);
+                intelligenceDiv.style.display = 'block';
+                
+            } catch (error) {
+                alert(`Analysis failed: ${error.message}`);
+            } finally {
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Property';
+            }
+        }
+        
+        // Display property intelligence
+        function displayPropertyIntelligence(data) {
+            // Store property data globally for connected requirements
+            window.currentPropertyIntelligence = data;
+            console.log('Stored property intelligence:', data);
+            
+            // Location Details
+            const locationDiv = document.getElementById('location-details');
+            locationDiv.innerHTML = `
+                <div class="intel-row">
+                    <span class="intel-label">Address:</span>
+                    <span class="intel-value">${data.address}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Property ID:</span>
+                    <span class="intel-value">${data.prop_id || 'Not found'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Local Government:</span>
+                    <span class="intel-value">${data.lga_name || 'Unknown'}</span>
+                </div>
+            `;
+            
+            // Planning Controls
+            const controlsDiv = document.getElementById('planning-controls');
+            controlsDiv.innerHTML = `
+                <div class="intel-row">
+                    <span class="intel-label">Zone:</span>
+                    <span class="intel-value">${data.zone || 'Unknown'} (${data.zone_description || 'Not specified'})</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Height Limit:</span>
+                    <span class="intel-value">${data.height_limit || 'Not specified'} ${data.height_units || ''}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">FSR Limit:</span>
+                    <span class="intel-value">${data.fsr_limit || 'Not specified'}${data.fsr_limit && data.fsr_limit !== 'Not specified' ? ' sq metres' : ''}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Land Area:</span>
+                    <span class="intel-value">${data.land_area || 'Not available'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Land Value:</span>
+                    <span class="intel-value">${data.land_value ? data.land_value.trim() : 'Not available'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Heritage Status:</span>
+                    <span class="intel-value">${data.heritage_status || 'No heritage constraints'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Height Clause:</span>
+                    <span class="intel-value">${data.height_clause || 'Not specified'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Applicable LEP:</span>
+                    <span class="intel-value">${data.applicable_lep || 'Unknown'}</span>
+                </div>
+            `;
+            
+            // Quick Metrics
+            const metricsDiv = document.getElementById('quick-metrics');
+            let metricsHtml = '';
+            data.quick_metrics.forEach(metric => {
+                const statusClass = metric.status === 'OK' ? '' : 'fail';
+                metricsHtml += `
+                    <div class="metric-item">
+                        <span class="metric-status ${statusClass}">${metric.status}</span>
+                        <span><strong>${metric.name}:</strong> ${metric.value}</span>
+                    </div>
+                `;
+            });
+            metricsDiv.innerHTML = metricsHtml;
+        }
+        
+        // Get connected requirements (placeholder for AutoSchemaKG)
+        async function getConnectedRequirements() {
+            const address = document.getElementById('address').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!address) {
+                resultsDiv.innerHTML = '<div class="error">Please analyze a property first</div>';
+                return;
+            }
+            
+            // Use same address format as property intelligence
+            let finalAddress = address;
+            if (window.selectedPlaceInfo && window.selectedPlaceInfo.originalAddress) {
+                finalAddress = window.selectedPlaceInfo.originalAddress;
+                console.log('Using Google Places formatted address for requirements:', finalAddress);
+            }
+            
+            resultsDiv.innerHTML = '<div class="loading">Finding connected regulatory requirements...</div>';
+            
+            try {
+                // Get current property intelligence for LGA filtering
+                const propertyData = window.currentPropertyIntelligence;
+                const lga_name = propertyData ? propertyData.lga_name : null;
+                
+                console.log('Using LGA for filtering:', lga_name);
+                
+                // Use council validation endpoint with correct format for QueryRequest
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.councilValidation}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: finalAddress,
+                        query_type: 'council_validation',
+                        context: 'setback height building floor space ratio development controls'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Received council validation data:', data);
+                
+                // Display the council validation results
+                displayCouncilValidation(data);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        Failed to get connected requirements: ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Display results with accordion
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data.results || data.results.length === 0) {
+                resultsDiv.innerHTML = '<div class="error">No planning rules found for this address</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            // Group results by type
+            const grouped = {};
+            data.results.forEach(result => {
+                const type = result.type || 'General';
+                if (!grouped[type]) grouped[type] = [];
+                grouped[type].push(result);
+            });
+            
+            Object.entries(grouped).forEach(([type, results]) => {
+                html += `
+                    <div class="accordion">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <span>${type} (${results.length} rules)</span>
+                            <span class="accordion-toggle">▼</span>
+                        </div>
+                        <div class="accordion-content">
+                `;
+                
+                results.forEach(result => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-title">${result.title || 'Planning Rule'}</div>
+                            <div class="result-text">${result.text.replace(/\\n/g, '<br>').substring(0, 500)}${result.text.length > 500 ? '...' : ''}</div>
+                            ${result.source ? `<div class="result-source">Source: ${result.source}</div>` : ''}
+                            ${result.citation_text ? `
+                                <details style="margin-top: 12px; padding: 12px; background: #f1f5f9; border-radius: 4px;">
+                                    <summary style="cursor: pointer; font-weight: 600; color: #1e293b; font-size: 13px;">
+                                        📄 Full Regulatory Citation ${result.citation_clause ? `- ${result.citation_clause}` : ''}
+                                    </summary>
+                                    <pre style="white-space: pre-wrap; font-family: monospace; font-size: 12px; line-height: 1.5; margin-top: 8px; color: #334155;">${result.citation_text.replace(/\\n/g, '\n')}</pre>
+                                </details>
+                            ` : ''}
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // NEW: Display property-centric intelligence results
+        function displayPropertyIntelligence(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data.success || !data.property_analysis) {
+                console.error('Property analysis failed:', data);
+                resultsDiv.innerHTML = `<div class="error">Property analysis failed: ${data.error || 'Unknown error'}</div>`;
+                return;
+            }
+            
+            const analysis = data.property_analysis;
+            let html = '';
+            
+            // Property Context Header
+            html += `
+                <div class="property-context-header">
+                    <h2>${analysis.address}</h2>
+                    <div class="context-tags">
+                        <span class="zone-tag">${analysis.property_context.zone || 'Unknown Zone'}</span>
+                        <span class="lga-tag">${analysis.property_context.lga_name || 'Unknown LGA'}</span>
+                        ${analysis.property_context.heritage_status && analysis.property_context.heritage_status !== 'None' ? 
+                            `<span class="heritage-tag">${analysis.property_context.heritage_status}</span>` : ''}
+                    </div>
+                    <div class="applicable-documents">
+                        <small>Applicable: ${analysis.property_context.applicable_lep || 'LEP'} + ${analysis.property_context.applicable_dcp || 'DCP'}</small>
+                    </div>
+                </div>
+            `;
+            
+            // Critical Controls Alert
+            if (analysis.critical_controls && analysis.critical_controls.length > 0) {
+                html += '<div class="critical-controls-section">';
+                analysis.critical_controls.forEach(control => {
+                    html += `
+                        <div class="critical-alert">
+                            <div class="alert-header">
+                                <span class="alert-icon">🚨</span>
+                                <h3>Critical: ${control.control_type.replace('_', ' ').toUpperCase()}</h3>
+                                <span class="status-badge">${control.priority}</span>
+                            </div>
+                            <div class="control-details">
+                                <div class="main-value">${control.value}</div>
+                                ${control.measurement_method ? `<div class="measurement">📏 ${control.measurement_method}</div>` : ''}
+                                <div class="source">📋 ${control.source_document} - ${control.source_clause}</div>
+                                ${control.exceptions && control.exceptions.length > 0 ? `
+                                    <div class="exceptions">
+                                        <strong>Exceptions:</strong> ${control.exceptions.join(', ')}
+                                    </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Important Controls Grid
+            if (analysis.important_controls && analysis.important_controls.length > 0) {
+                html += '<div class="important-controls-grid">';
+                analysis.important_controls.forEach(control => {
+                    html += `
+                        <div class="control-card">
+                            <div class="card-header">
+                                <h4>${control.control_type.replace('_', ' ').toUpperCase()}</h4>
+                                <span class="priority-badge important">Important</span>
+                                <span class="priority">${control.priority}</span>
+                            </div>
+                            <div class="card-content">
+                                <div class="control-value">${control.value}</div>
+                                ${control.measurement_method ? `<div class="measurement-note">📐 ${control.measurement_method}</div>` : ''}
+                            </div>
+                            <div class="card-footer">
+                                <small>Source: ${control.source_document} - ${control.source_clause}</small>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Council Validation - Full Citations with Accordions
+            if (analysis.active_citations && analysis.active_citations.length > 0) {
+                html += `
+                    <div class="council-validation-panel">
+                        <h4>🏛️ Council Validation Report</h4>
+                        <div class="validation-summary">
+                            <strong>Confidence:</strong> ${analysis.confidence_assessment || 'Medium'}<br>
+                            <strong>Summary:</strong> ${analysis.regulatory_summary || 'Regulatory relationships identified'}
+                        </div>
+                `;
+                
+                // Group citations by document
+                const citationsByDoc = {};
+                analysis.active_citations.forEach(citation => {
+                    const docName = citation.document_name || 'Unknown Document';
+                    if (!citationsByDoc[docName]) {
+                        citationsByDoc[docName] = [];
+                    }
+                    citationsByDoc[docName].push(citation);
+                });
+                
+                Object.entries(citationsByDoc).forEach(([docName, citations]) => {
+                    html += `
+                        <div class="document-group">
+                            <h5>📋 ${docName}</h5>
+                    `;
+                    
+                    citations.forEach((citation, index) => {
+                        const clauseId = `council_clause_${docName.replace(/[^a-z0-9]/gi, '_')}_${index}`;
+                        html += `
+                            <div class="council-citation">
+                                <div class="clause-header" onclick="toggleClause('${clauseId}')">
+                                    <span class="clause-ref">${citation.clause_ref}</span>
+                                    <span class="section-title">${citation.section_title}</span>
+                                    <span class="confidence-badge">${Math.round(citation.confidence * 100)}%</span>
+                                    <span class="clause-arrow" id="${clauseId}_arrow">▼</span>
+                                </div>
+                                <div class="clause-content" id="${clauseId}_content" style="display: none;">
+                                    <div class="authority"><strong>Authority:</strong> ${citation.authority}</div>
+                                    ${citation.text_before ? `<div class="context-before"><em>...${citation.text_before}</em></div>` : ''}
+                                    <div class="full-text"><strong>Full Regulatory Text:</strong><br>${citation.full_text}</div>
+                                    ${citation.text_after ? `<div class="context-after"><em>${citation.text_after}...</em></div>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                });
+                
+                // Show validated relationships if available
+                if (analysis.validated_relationships && analysis.validated_relationships.length > 0) {
+                    html += `
+                        <div class="relationships-section">
+                            <h5>🔗 Validated Relationships</h5>
+                    `;
+                    analysis.validated_relationships.forEach((rel, index) => {
+                        html += `
+                            <div class="relationship-item">
+                                <div class="relationship-flow">
+                                    <span class="primary-clause">${rel.primary_clause_ref}</span>
+                                    <span class="relationship-type">${rel.relationship_type.replace('_', ' ')}</span>
+                                    <span class="connected-clause">${rel.connected_clause_ref}</span>
+                                </div>
+                                <div class="validation-note">${rel.validation_notes}</div>
+                                <div class="precedence">Precedence: ${rel.precedence_order}</div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                }
+                
+                html += '</div>';
+            } else if (analysis.connected_requirements && analysis.connected_requirements.length > 0) {
+                // Fallback to old format if council validation not available
+                html += `
+                    <div class="connected-requirements-panel">
+                        <h4>🔗 How Requirements Connect</h4>
+                `;
+                analysis.connected_requirements.forEach(connection => {
+                    html += `
+                        <div class="connection-flow">
+                            <div class="primary-control">${connection.primary_control.replace('_', ' ').toUpperCase()}</div>
+                            <div class="relationship-arrow">
+                                <span class="relation">${connection.relationship_type}</span>
+                                <span class="arrow">↓</span>
+                            </div>
+                            <div class="connected-controls">
+                                ${connection.connected_controls.map(control => 
+                                    `<span class="connected-control">${control.replace('_', ' ')}</span>`
+                                ).join('')}
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            // Actionable Summary
+            if (analysis.actionable_summary) {
+                const summary = analysis.actionable_summary;
+                html += `
+                    <div class="actionable-summary">
+                        <div class="summary-header">
+                            <h3>🎯 Development Summary</h3>
+                            <span class="status-indicator">${summary.status || 'Analysis Complete'}</span>
+                        </div>
+                        ${summary.development_potential ? `
+                            <div class="development-potential highlight">
+                                <div class="potential-icon">🏠</div>
+                                <div class="potential-content">
+                                    <strong>Development Potential</strong>
+                                    <p>${summary.development_potential}</p>
+                                </div>
+                            </div>
+                        ` : ''}
+                        ${summary.key_constraints ? `
+                            <div class="constraints-section">
+                                <h4>⚠️ Key Constraints</h4>
+                                <p>${summary.key_constraints}</p>
+                            </div>
+                        ` : ''}
+                        ${summary.next_steps ? `
+                            <div class="next-steps-section">
+                                <h4>📋 Recommended Next Steps</h4>
+                                <p>${summary.next_steps}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            // Processing Metadata (Debug Info)
+            if (analysis.processing_metadata) {
+                const metadata = analysis.processing_metadata;
+                html += `
+                    <details class="debug-panel">
+                        <summary>🔧 Processing Details</summary>
+                        <div class="debug-info">
+                            <p><strong>Stacks Used:</strong> ${metadata.stacks_used ? metadata.stacks_used.join(', ') : 'Unknown'}</p>
+                            <p><strong>Processing Time:</strong> ${metadata.processing_time_seconds ? metadata.processing_time_seconds.toFixed(2) + 's' : 'Unknown'}</p>
+                            <p><strong>Processing Status:</strong> ${metadata.processing_success ? 'Complete' : 'Incomplete'}</p>
+                            <p><strong>Documents Filtered:</strong> ${metadata.documents_filtered || 'Unknown'}</p>
+                        </div>
+                    </details>
+                `;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        // Update the property intelligence panel (shared by both functions)
+        function updatePropertyIntelligencePanel(data) {
+            // Location Details
+            const locationDiv = document.getElementById('location-details');
+            locationDiv.innerHTML = `
+                <div class="intel-row">
+                    <span class="intel-label">Address:</span>
+                    <span class="intel-value">${data.address}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Property ID:</span>
+                    <span class="intel-value">${data.prop_id || 'Not found'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Local Government:</span>
+                    <span class="intel-value">${data.lga_name || 'Unknown'}</span>
+                </div>
+            `;
+            
+            // Planning Controls
+            const controlsDiv = document.getElementById('planning-controls');
+            controlsDiv.innerHTML = `
+                <div class="intel-row">
+                    <span class="intel-label">Zone:</span>
+                    <span class="intel-value">${data.zone || 'Unknown'} (${data.zone_description || 'Not specified'})</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Height Limit:</span>
+                    <span class="intel-value">${data.height_limit || 'Not specified'} ${data.height_units || ''}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">FSR Limit:</span>
+                    <span class="intel-value">${data.fsr_limit || 'Not specified'}${data.fsr_limit && data.fsr_limit !== 'Not specified' ? ' sq metres' : ''}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Land Area:</span>
+                    <span class="intel-value">${data.land_area || 'Not available'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Land Value:</span>
+                    <span class="intel-value">${data.land_value ? data.land_value.trim() : 'Not available'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Heritage Status:</span>
+                    <span class="intel-value">${data.heritage_status || 'No heritage constraints'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Height Clause:</span>
+                    <span class="intel-value">${data.height_clause || 'Not specified'}</span>
+                </div>
+                <div class="intel-row">
+                    <span class="intel-label">Applicable LEP:</span>
+                    <span class="intel-value">${data.applicable_lep || 'Unknown'}</span>
+                </div>
+            `;
+            
+            // Quick Metrics
+            const metricsDiv = document.getElementById('quick-metrics');
+            let metricsHtml = '';
+            if (data.quick_metrics) {
+                data.quick_metrics.forEach(metric => {
+                    const statusClass = metric.status === 'OK' ? '' : 'fail';
+                    metricsHtml += `
+                        <div class="metric-item">
+                            <span class="metric-status ${statusClass}">${metric.status}</span>
+                            <span><strong>${metric.name}:</strong> ${metric.value}</span>
+                        </div>
+                    `;
+                });
+            }
+            metricsDiv.innerHTML = metricsHtml;
+        }
+
+        // Display basic property information (for Analyze Property button)
+        function displayBasicPropertyInfo(data) {
+            // Store property data globally for connected requirements
+            window.currentPropertyIntelligence = data;
+            console.log('Stored basic property intelligence:', data);
+            
+            // Update the left panel with basic property info
+            updatePropertyIntelligencePanel(data);
+            
+            // Show a simple success message in the results area
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div style="text-align: center; padding: 20px; background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px;">
+                    <h3 style="color: #0369a1; margin: 0 0 10px 0;">✓ Property Analysis Complete</h3>
+                    <p style="margin: 0; color: #475569;">
+                        Basic property information has been loaded. Use "Connected Regulatory Requirements" 
+                        for detailed compliance analysis.
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Toggle accordion
+        function toggleAccordion(header) {
+            const content = header.nextElementSibling;
+            const toggle = header.querySelector('.accordion-toggle');
+            
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                toggle.classList.remove('rotated');
+            } else {
+                content.classList.add('open');
+                toggle.classList.add('rotated');
+            }
+        }
+        
+        // Toggle clause citation accordion
+        async function toggleClause(clauseId) {
+            const content = document.getElementById(clauseId + '_content');
+            const arrow = document.getElementById(clauseId + '_arrow');
+            const header = arrow.parentElement;
+            const originalClauseRef = header.getAttribute('data-clause');
+            
+            if (content.classList.contains('open')) {
+                // Close accordion
+                content.classList.remove('open');
+                arrow.classList.remove('expanded');
+                arrow.textContent = '▼';
+            } else {
+                // Open accordion and load content if needed
+                content.classList.add('open');
+                arrow.classList.add('expanded');
+                arrow.textContent = '▲';
+                
+                // Load clause content if not already loaded
+                if (content.innerHTML.includes('Loading clause details...')) {
+                    await loadClauseContent(originalClauseRef, content);
+                }
+            }
+        }
+        
+        // Load clause content from API
+        async function loadClauseContent(originalClauseRef, contentElement) {
+            try {
+                // Extract just the clause number from the full reference
+                // Input might be "Clause 4.2.4(c) - setback: Building setbacks"
+                // We need just "Clause 4.2.4(c)"
+                let clauseRef = originalClauseRef;
+                
+                // If it contains " - " (extended format), extract just the clause part
+                if (clauseRef.includes(' - ')) {
+                    clauseRef = clauseRef.split(' - ')[0];
+                }
+                
+                console.log('Loading content for clause:', clauseRef);
+                
+                // Show loading state
+                contentElement.innerHTML = `
+                    <div class="clause-type">Loading...</div>
+                    <div class="clause-text">Fetching clause details...</div>
+                `;
+                
+                // Call our inline citation service
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.clauseCitation}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        clause_ref: clauseRef
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Received clause data:', data);
+                    
+                    contentElement.innerHTML = `
+                        <div class="clause-type">${data.clause_type || 'Regulatory Control'}</div>
+                        <div class="clause-text">${data.clause_text || 'Clause details not available'}</div>
+                        <div class="clause-source">Source: ${data.source || 'DCP Document'}</div>
+                    `;
+                } else {
+                    contentElement.innerHTML = `
+                        <div class="clause-type">Error</div>
+                        <div class="clause-text">Could not load clause details</div>
+                        <div class="clause-source">API response: ${response.status}</div>
+                    `;
+                }
+                
+            } catch (error) {
+                console.error('Error loading clause content:', error);
+                contentElement.innerHTML = `
+                    <div class="clause-type">Error</div>
+                    <div class="clause-text">Failed to load clause details</div>
+                    <div class="clause-source">Error: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Initialize on page load
+        function initialize() {
+            // Check API connection
+            checkConnection();
+            
+            // Load Google Maps for address autocomplete
+            loadGoogleMapsAPI();
+        }
+        
+        // Initialize when page loads
+        initialize();
+        
+        // Recheck connection every 10 seconds
+        setInterval(checkConnection, 10000);
+        
+        // Allow Enter key to submit
+        document.getElementById('address').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeProperty();
+            }
+        });
+        
+        // Council-Ready Setback Calculator
+        async function calculateCouncilSetbacks() {
+            const address = document.getElementById('address').value.trim();
+            const resultsDiv = document.getElementById('results');
+            
+            if (!address) {
+                resultsDiv.innerHTML = '<div class="error">Please analyze a property first</div>';
+                return;
+            }
+            
+            // Use same address format as property intelligence
+            let finalAddress = address;
+            if (window.selectedPlaceInfo && window.selectedPlaceInfo.originalAddress) {
+                finalAddress = window.selectedPlaceInfo.originalAddress;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loading">🏛️ Calculating authoritative setbacks using Inner West LGA 6-step procedure...</div>';
+            
+            try {
+                const response = await fetch(`${API_CONFIG.baseURL}${API_CONFIG.endpoints.setbackCalculation}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        address: finalAddress,
+                        query_type: 'setbacks',
+                        context: 'council-ready calculation'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Council setback calculation:', data);
+                
+                if (data.success) {
+                    displayCouncilSetbackResults(data);
+                } else {
+                    displayCouncilSetbackError(data);
+                }
+                
+            } catch (error) {
+                console.error('Council setback calculation error:', error);
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        Council setback calculation failed: ${error.message}<br>
+                        <small>Note: This is a preliminary tool. Contact Inner West Council for authoritative guidance.</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayCouncilSetbackResults(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            resultsDiv.innerHTML = `
+                <div style="background: #f0f9ff; border: 2px solid #0369a1; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <span style="font-size: 24px; margin-right: 10px;">🏛️</span>
+                        <div>
+                            <h3 style="margin: 0; color: #0369a1; font-size: 18px;">COUNCIL-READY SETBACK CALCULATION</h3>
+                            <div style="color: #475569; font-size: 14px;">${data.mvp_scope}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-bottom: 15px;">
+                        <strong>⚖️ PROFESSIONAL VERIFICATION REQUIRED</strong><br>
+                        <small>These are preliminary calculations only. Final setbacks must be verified by licensed professionals.</small>
+                    </div>
+                </div>
+                
+                <!-- Property Assessment -->
+                <div class="intelligence-section">
+                    <h4>📍 Property Assessment</h4>
+                    <div class="intel-row">
+                        <span class="intel-label">Address:</span>
+                        <span class="intel-value">${data.property_assessment.address}</span>
+                    </div>
+                    <div class="intel-row">
+                        <span class="intel-label">Zoning:</span>
+                        <span class="intel-value">${data.property_assessment.zoning}</span>
+                    </div>
+                    <div class="intel-row">
+                        <span class="intel-label">Former Council Area:</span>
+                        <span class="intel-value">${data.property_assessment.former_council_area}</span>
+                    </div>
+                </div>
+                
+                <!-- Regulatory Compliance -->
+                <div class="intelligence-section">
+                    <h4>📋 Regulatory Compliance</h4>
+                    <div class="intel-row">
+                        <span class="intel-label">Procedure:</span>
+                        <span class="intel-value">${data.regulatory_compliance.procedure_followed}</span>
+                    </div>
+                    <div class="intel-row">
+                        <span class="intel-label">Primary Authority:</span>
+                        <span class="intel-value">${data.regulatory_compliance.primary_authority}</span>
+                    </div>
+                    <div class="intel-row">
+                        <span class="intel-label">Supporting DCP:</span>
+                        <span class="intel-value">${data.regulatory_compliance.supporting_dcp}</span>
+                    </div>
+                    <div class="intel-row">
+                        <span class="intel-label">Development Pathway:</span>
+                        <span class="intel-value">${data.regulatory_compliance.development_pathway}</span>
+                    </div>
+                </div>
+                
+                <!-- Calculated Setbacks -->
+                <div class="critical-controls-section">
+                    <div class="critical-alert">
+                        <div class="alert-header">
+                            <div>
+                                <span class="alert-icon">📐</span>
+                                <strong>CALCULATED SETBACKS</strong>
+                            </div>
+                            <div class="status-badge">ANALYSIS COMPLETE</div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                                <div class="main-value">${data.setback_calculations.front_setback.distance}</div>
+                                <div><strong>Front Setback</strong></div>
+                                <div class="measurement">${data.setback_calculations.front_setback.measurement}</div>
+                                <div class="source">${data.setback_calculations.front_setback.authority}</div>
+                            </div>
+                            
+                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                                <div class="main-value">${data.setback_calculations.side_setbacks.distance}</div>
+                                <div><strong>Side Setbacks</strong></div>
+                                <div class="measurement">${data.setback_calculations.side_setbacks.measurement}</div>
+                                <div class="source">${data.setback_calculations.side_setbacks.authority}</div>
+                            </div>
+                            
+                            <div style="background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
+                                <div class="main-value">${data.setback_calculations.rear_setback.distance}</div>
+                                <div><strong>Rear Setback</strong></div>
+                                <div class="measurement">${data.setback_calculations.rear_setback.measurement}</div>
+                                <div class="source">${data.setback_calculations.rear_setback.authority}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Professional Requirements -->
+                <div class="intelligence-section">
+                    <h4>⚖️ Required Professional Verifications</h4>
+                    ${data.professional_requirements.required_verifications.map(req => 
+                        `<div class="intel-row"><span class="intel-value" style="color: #dc2626;">• ${req}</span></div>`
+                    ).join('')}
+                    <div class="intel-row" style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+                        <span class="intel-label">Council Contact:</span>
+                        <span class="intel-value">${data.professional_requirements.council_contact}</span>
+                    </div>
+                </div>
+                
+                <!-- Mandatory Disclaimers -->
+                <div style="background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                    <h4 style="color: #dc2626; margin: 0 0 10px 0;">🚨 MANDATORY DISCLAIMERS</h4>
+                    <div style="font-size: 12px; color: #374151; line-height: 1.5;">
+                        <strong>PRELIMINARY WARNING:</strong><br>
+                        ${data.mandatory_disclaimers.preliminary_warning.replace(/\\n/g, '<br>')}<br><br>
+                        
+                        <strong>CERTIFIER RESPONSIBILITY:</strong><br>
+                        ${data.mandatory_disclaimers.certifier_responsibility.replace(/\\n/g, '<br>')}<br><br>
+                        
+                        <strong>NOT SUITABLE FOR:</strong><br>
+                        ${data.mandatory_disclaimers.not_suitable_for.replace(/\\n/g, '<br>')}<br><br>
+                        
+                        <strong>CONTACT AUTHORITY:</strong><br>
+                        ${data.mandatory_disclaimers.contact_authority.replace(/\\n/g, '<br>')}
+                    </div>
+                </div>
+                
+                <!-- Calculation Metadata -->
+                <div class="debug-panel">
+                    <h4>🔧 Calculation Details</h4>
+                    <div class="debug-info">
+                        <p><strong>Calculator Version:</strong> ${data.calculation_metadata.calculator_version}</p>
+                        <p><strong>Procedure:</strong> ${data.calculation_metadata.regulatory_procedure}</p>
+                        <p><strong>Data Sources:</strong> ${data.calculation_metadata.data_sources.join(', ')}</p>
+                        <p><strong>Timestamp:</strong> ${new Date(data.calculation_metadata.timestamp).toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayCouncilSetbackError(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (data.error_type === 'OUTSIDE_MVP_SCOPE') {
+                resultsDiv.innerHTML = `
+                    <div style="background: #fef3c7; border: 2px solid #f59e0b; border-radius: 8px; padding: 20px;">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <span style="font-size: 24px; margin-right: 10px;">⚠️</span>
+                            <div>
+                                <h3 style="margin: 0; color: #92400e; font-size: 18px;">PROPERTY OUTSIDE MVP SCOPE</h3>
+                                <div style="color: #78716c; font-size: 14px;">This property cannot be calculated using the current MVP version</div>
+                            </div>
+                        </div>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                            <strong>Error:</strong> ${data.error_message}<br><br>
+                            <strong>Current MVP Scope:</strong><br>
+                            ${data.mvp_scope_info.current_scope}<br><br>
+                            <strong>Recommendation:</strong> ${data.mvp_scope_info.recommendation}
+                        </div>
+                        
+                        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 12px;">
+                            <strong>Contact Authority:</strong><br>
+                            ${data.contact_authority.replace(/\\n/g, '<br>')}
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <strong>Calculation Failed:</strong> ${data.error_message}<br><br>
+                        ${data.fallback_guidance ? `
+                            <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 10px;">
+                                <strong>Fallback Estimates:</strong><br>
+                                • Front setback: ${data.fallback_guidance.front_setback}<br>
+                                • Side setbacks: ${data.fallback_guidance.side_setbacks}<br>
+                                • Rear setback: ${data.fallback_guidance.rear_setback}<br>
+                                <em>${data.fallback_guidance.important_note}</em>
+                            </div>
+                        ` : ''}
+                        <br>
+                        <small>For authoritative guidance, contact Inner West Council: (02) 9392 5000</small>
+                    </div>
+                `;
+            }
+        }
+        
+        // Toggle council validation clause accordion
+        function toggleCouncilClause(clauseId) {
+            const content = document.getElementById(clauseId);
+            const arrow = document.getElementById('arrow-' + clauseId);
+            
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                arrow.classList.remove('expanded');
+                arrow.textContent = '▼';
+            } else {
+                content.classList.add('open');
+                arrow.classList.add('expanded');
+                arrow.textContent = '▲';
+            }
+        }
+        
+        // Display Council Validation Results
+        function displayCouncilValidation(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || !data.success) {
+                resultsDiv.innerHTML = `<div class="error">Council validation failed: ${data?.error || 'Unknown error'}</div>`;
+                return;
+            }
+            
+            let html = `
+                <div class="council-validation-panel">
+                    <div class="validation-summary">
+                        <strong>Council Validation Report</strong><br>
+                        Property: ${data.property_address}<br>
+                        Zone: ${data.zone}<br>
+                        Confidence: ${data.confidence_assessment}<br>
+                        Generated: ${data.validation_timestamp}
+                    </div>
+            `;
+            
+            // Show summary
+            if (data.regulatory_summary) {
+                html += `
+                    <div style="background: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                        <strong>📋 Summary:</strong><br>
+                        ${data.regulatory_summary}
+                    </div>
+                `;
+            }
+            
+            // Group citations by document
+            if (data.active_citations && data.active_citations.length > 0) {
+                const citationsByDoc = {};
+                data.active_citations.forEach(citation => {
+                    const docName = citation.document_name || 'Unknown Document';
+                    if (!citationsByDoc[docName]) {
+                        citationsByDoc[docName] = [];
+                    }
+                    citationsByDoc[docName].push(citation);
+                });
+                
+                Object.entries(citationsByDoc).forEach(([docName, citations]) => {
+                    html += `
+                        <div class="document-group">
+                            <h5>${docName}</h5>
+                    `;
+                    
+                    citations.forEach((citation, index) => {
+                        const confidenceClass = citation.confidence >= 0.9 ? 'high' : citation.confidence >= 0.7 ? 'medium' : 'low';
+                        
+                        // Skip citations with no meaningful content or low-confidence concepts
+                        if (!citation.full_text || citation.full_text.trim() === '' || 
+                            (citation.authority === 'NSW Planning Concepts' && citation.confidence < 0.5)) {
+                            return; // Skip this citation
+                        }
+                        
+                        html += `
+                            <div class="council-citation">
+                                <button class="clause-header" onclick="toggleCouncilClause('citation-${docName.replace(/\s+/g, '-')}-${index}')">
+                                    <div style="display: flex; align-items: center; width: 100%;">
+                                        <span class="clause-ref">${citation.clause_ref}</span>
+                                        <span class="section-title">${citation.section_title}</span>
+                                        <span class="confidence-badge confidence-${confidenceClass}">${Math.round(citation.confidence * 100)}%</span>
+                                        <span class="clause-arrow" id="arrow-citation-${docName.replace(/\s+/g, '-')}-${index}">▼</span>
+                                    </div>
+                                </button>
+                                <div class="clause-content" id="citation-${docName.replace(/\s+/g, '-')}-${index}">
+                                    <div class="clause-type">Authority: ${citation.authority}</div>
+                                    ${citation.text_before ? `<p><strong>Text Before:</strong> (${citation.text_before_source})<br>${citation.text_before}</p>` : ''}
+                                    <p><strong>Full Regulatory Text:</strong><br>${citation.full_text || '<em>No text available for this citation</em>'}</p>
+                                    ${citation.text_after ? `<p><strong>Text After:</strong> (${citation.text_after_source})<br>${citation.text_after}</p>` : ''}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `</div>`;
+                });
+            }
+            
+            // Show validated relationships
+            if (data.validated_relationships && data.validated_relationships.length > 0) {
+                html += `
+                    <div style="margin-top: 16px; background: #fef7cd; border: 1px solid #fbbf24; border-radius: 6px; padding: 12px;">
+                        <strong>🔗 Validated Relationships (${data.validated_relationships.length})</strong>
+                        <ul style="margin: 8px 0 0 20px;">
+                `;
+                
+                data.validated_relationships.forEach(rel => {
+                    html += `<li>${rel.relationship_type}: ${rel.primary_clause_ref} → ${rel.connected_clause_ref}</li>`;
+                });
+                
+                html += `
+                        </ul>
+                    </div>
+                `;
+            }
+            
+            // Show extracted values if any
+            if (data.extracted_values && (Object.keys(data.extracted_values.setbacks || {}).length > 0 || Object.keys(data.extracted_values.heights || {}).length > 0)) {
+                html += `
+                    <div style="margin-top: 16px; background: #ecfdf5; border: 1px solid #10b981; border-radius: 6px; padding: 12px;">
+                        <strong>📏 Extracted Values</strong><br>
+                `;
+                
+                if (data.extracted_values.setbacks && Object.keys(data.extracted_values.setbacks).length > 0) {
+                    html += `<strong>Setbacks:</strong><br>`;
+                    Object.entries(data.extracted_values.setbacks).forEach(([type, value]) => {
+                        html += `• ${type}: ${value.value}${value.unit} (${value.source})<br>`;
+                    });
+                }
+                
+                if (data.extracted_values.heights && Object.keys(data.extracted_values.heights).length > 0) {
+                    html += `<strong>Heights:</strong><br>`;
+                    Object.entries(data.extracted_values.heights).forEach(([type, value]) => {
+                        html += `• ${type}: ${value.value}${value.unit} (${value.source})<br>`;
+                    });
+                }
+                
+                html += `</div>`;
+            }
+            
+            html += `</div>`;
+            
+            if (!data.active_citations || data.active_citations.length === 0) {
+                html += `
+                    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin-top: 16px;">
+                        <strong>⚠️ Limited Data</strong><br>
+                        No specific citations found for this property. This may be because:<br>
+                        • The property is in a different council area<br>
+                        • The database doesn't contain relevant DCP clauses<br>
+                        • The query terms didn't match available data<br><br>
+                        <strong>Recommendation:</strong> Contact Inner West Council directly for property-specific requirements.
+                    </div>
+                `;
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

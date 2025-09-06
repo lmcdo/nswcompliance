@@ -1,0 +1,101 @@
+{
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 1 - Statutory Information with IWLEP 2022 amendments Nov 22": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 1 - Statutory Information with IWLEP 2022 amendments Nov 22.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.107305",
+    "file_size_kb": 429.873046875,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 10.0 Definitions": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 10.0 Definitions.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.116334",
+    "file_size_kb": 378.5595703125,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 1 Urban Design": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 1 Urban Design.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.128472",
+    "file_size_kb": 1477.919921875,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 10 Parking": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 10 Parking.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.139995",
+    "file_size_kb": 488.326171875,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 11 Fencing": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 11 Fencing.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.151040",
+    "file_size_kb": 723.728515625,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 12 Signs and Advertising Structures": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 12 Signs and Advertising Structures.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.166103",
+    "file_size_kb": 566.3525390625,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 13 Biodiversity": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 13 Biodiversity.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.178298",
+    "file_size_kb": 596.697265625,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 14 Unique Environmental Features": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 14 Unique Environmental Features.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.193496",
+    "file_size_kb": 4426.8427734375,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 16 Energy Efficiency": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 16 Energy Efficiency.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.206148",
+    "file_size_kb": 411.7080078125,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 17 Water Sensitive Urban Design": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 17 Water Sensitive Urban Design.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.220947",
+    "file_size_kb": 427.5458984375,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  },
+  "docs_dcps_INNERWEST_Marrickville_Marrickville DCP 2011 - 2 18 Landscaping and Open Spaces": {
+    "source_path": "docs/dcps/INNERWEST/Marrickville/Marrickville DCP 2011 - 2 18 Landscaping and Open Spaces.pdf",
+    "content": null,
+    "error": "mineru command not found. Please ensure MinerU 2.0 is properly installed:\npip install -U 'mineru[core]' or uv pip install -U 'mineru[core]'",
+    "processed_timestamp": "2025-08-27T14:26:31.236243",
+    "file_size_kb": 1296.8671875,
+    "processing_stage": "A2_EXT_marrickville_failed",
+    "extraction_method": "raganything_failed"
+  }
+}

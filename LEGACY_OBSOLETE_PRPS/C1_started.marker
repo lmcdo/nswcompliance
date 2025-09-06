@@ -1,0 +1,33 @@
+PRP-C1: Full Clause Citation System with LangExtract Augmentation
+Started: 2025-08-31
+Branch: rules-engine-refactor
+Status: IN PROGRESS
+Priority: CRITICAL - COUNCIL MVP BLOCKER
+
+Objective: Implement complete clause citations using enhanced LangExtract to provide 
+full regulatory paragraph text instead of summaries.
+
+FOUNDATION DISCOVERED:
+✅ apply_langextract_to_a3_5.py - Existing LangExtract processing script
+✅ examples/regulatory-engine/langextract_config.py - LangExtract schema config
+✅ validated_outputs/A3_5_langextract_grounded.json - 47KB processed data
+
+CURRENT ISSUE:
+- System only shows summarized clause text
+- Councils need complete authoritative regulatory paragraphs
+- Existing LangExtract simulates output via Gemini, not true library usage
+
+ENHANCEMENT PLAN:
+1. Enhance langextract_config.py for full clause paragraph extraction
+2. Implement services/full_clause_extractor.py using existing foundation
+3. Create clause_number → full_text mapping storage
+4. Update API responses to include complete citations
+5. Enhance frontend to display full regulatory text
+
+SUCCESS CRITERIA:
+- Frontend displays complete regulatory paragraph text
+- All clause numbers have full text mappings
+- Council staff can copy authoritative citations
+- < 2 second citation retrieval performance
+
+This PRP blocks council MVP demonstration - complete citations are mandatory for regulatory authority.

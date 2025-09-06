@@ -1,0 +1,5 @@
+PRP-A5 REAL Integration completed: 2025-08-29T20:17:14.825386
+Provisions processed: 2028
+Working directory: ./validated_nsw_processor_20250829_193537
+Files created: 10
+Total storage: 10,050,484 bytes

@@ -1,0 +1,31 @@
+{
+  "test_status": "SUCCESS",
+  "raw_response": "```json\n{\n    \"extractions\": [\n        {\n            \"provision_type\": \"height_limit\",\n            \"provision_text\": \"The maximum height of a building on any land is the height shown on the Height of Buildings Map.\",\n            \"clause_number\": \"4.3\",\n            \"char_start\": 0,\n            \"char_end\": 111\n        },\n        {\n            \"provision_type\": \"setback_requirement\",\n            \"provision_text\": \"Buildings must be setback at least 6m from the front boundary and 3m from side boundaries.\",\n            \"clause_number\": \"5.1\",\n            \"char_start\": 113,\n            \"char_end\": 229\n        },\n        {\n            \"provision_type\": \"fsr_control\",\n            \"provision_text\": \"The maximum FSR for residential development is 0.75:1.\",\n            \"clause_number\": \"6.2\",\n            \"char_start\": 231,\n            \"char_end\": 293\n        }\n    ]\n}\n```",
+  "cleaned_json": "{\n    \"extractions\": [\n        {\n            \"provision_type\": \"height_limit\",\n            \"provision_text\": \"The maximum height of a building on any land is the height shown on the Height of Buildings Map.\",\n            \"clause_number\": \"4.3\",\n            \"char_start\": 0,\n            \"char_end\": 111\n        },\n        {\n            \"provision_type\": \"setback_requirement\",\n            \"provision_text\": \"Buildings must be setback at least 6m from the front boundary and 3m from side boundaries.\",\n            \"clause_number\": \"5.1\",\n            \"char_start\": 113,\n            \"char_end\": 229\n        },\n        {\n            \"provision_type\": \"fsr_control\",\n            \"provision_text\": \"The maximum FSR for residential development is 0.75:1.\",\n            \"clause_number\": \"6.2\",\n            \"char_start\": 231,\n            \"char_end\": 293\n        }\n    ]\n}",
+  "parsed_data": {
+    "extractions": [
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum height of a building on any land is the height shown on the Height of Buildings Map.",
+        "clause_number": "4.3",
+        "char_start": 0,
+        "char_end": 111
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Buildings must be setback at least 6m from the front boundary and 3m from side boundaries.",
+        "clause_number": "5.1",
+        "char_start": 113,
+        "char_end": 229
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "The maximum FSR for residential development is 0.75:1.",
+        "clause_number": "6.2",
+        "char_start": 231,
+        "char_end": 293
+      }
+    ]
+  },
+  "extraction_count": 3
+}

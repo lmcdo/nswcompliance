@@ -1,0 +1,35 @@
+{
+  "propertyData": {
+    "propId": 123456,
+    "address": "123 Liverpool Road, Ashfield NSW 2131",
+    "landValue": "$800,000",
+    "valuationDate": "1 July 2024",
+    "propertyArea": "600 square metres",
+    "zoneDescription": "R2 - Low Density Residential",
+    "urbanity": "U",
+    "constraints": {
+      "maxFsr": 0.5,
+      "maxHeight": 9,
+      "minLotSize": 550,
+      "zone": "R2",
+      "lga": "Inner West",
+      "heritage": false,
+      "floodProne": false,
+      "bushfireProne": false
+    },
+    "heritage": { "isHeritage": false },
+    "environmental": {
+      "floodProne": false,
+      "bushfireProne": false
+    },
+    "geometry": { "x": 334624, "y": 6261847 }
+  },
+  "proposal": {
+    "front_setback": 2.5,
+    "height": 8.5,
+    "fsr": 0.6
+  },
+  "formerCouncilArea": "Ashfield",
+  "useSemanticRules": true,
+  "includeSourceGrounding": true
+}

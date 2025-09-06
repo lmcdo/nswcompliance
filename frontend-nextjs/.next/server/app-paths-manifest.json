@@ -1,0 +1,6 @@
+{
+  "/not-found": "app/not-found.js",
+  "/api/property/route": "app/api/property/route.js",
+  "/api/setbacks/calculate/route": "app/api/setbacks/calculate/route.js",
+  "/page": "app/page.js"
+}

@@ -1,0 +1,8 @@
+{
+  "id": "validation_001",
+  "text": "Planning Document: Height Controls\n\nClause 2.1: Buildings must not exceed 12 metres in height.\nClause 2.2: Chimneys and other building elements may extend above the height limit by up to 1 metre.\nClause 2.3: Solar panels and mechanical equipment are exempt from height restrictions.",
+  "metadata": {
+    "doc_name": "Height_Controls",
+    "type": "building_controls"
+  }
+}

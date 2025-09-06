@@ -1,0 +1,192 @@
+/**
+ * Regulatory Text Retriever
+ * Retrieves actual regulatory text from processed LEP chunks
+ */
+
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+export interface RegulatoryTextMatch {
+  text: string;
+  source: string;
+  confidence: number;
+  chunk_id: string;
+}
+
+export class RegulatoryTextRetriever {
+  private lepChunks: Map<string, string> = new Map();
+  private lepChunksLoaded = false;
+
+  constructor() {
+    this.loadLEPChunks();
+  }
+
+  /**
+   * Load LEP chunks from processed files
+   */
+  private loadLEPChunks() {
+    if (this.lepChunksLoaded) return;
+
+    try {
+      const lepDir = join(process.cwd(), 'temp_extraction_LEP');
+      
+      // Load chunks 0-69 (we know we have 70 chunks from metadata)
+      for (let i = 0; i < 70; i++) {
+        try {
+          const chunkPath = join(lepDir, `lep_chunk_${i}.txt`);
+          const content = readFileSync(chunkPath, 'utf-8');
+          
+          // Remove the header lines and get the actual LEP text
+          const lines = content.split('\n');
+          const textStartIndex = lines.findIndex(line => line.trim() === '') + 1;
+          const actualText = lines.slice(textStartIndex).join('\n').trim();
+          
+          if (actualText.length > 100) { // Only store substantial chunks
+            this.lepChunks.set(`chunk_${i}`, actualText);
+          }
+        } catch (e) {
+          // Skip missing chunks
+          continue;
+        }
+      }
+      
+      this.lepChunksLoaded = true;
+      console.log(`✅ Loaded ${this.lepChunks.size} LEP regulatory text chunks`);
+      
+    } catch (error) {
+      console.error('Failed to load LEP chunks:', error);
+    }
+  }
+
+  /**
+   * Get regulatory text for height requirements (Clause 4.3)
+   */
+  getHeightRegulatoryText(): RegulatoryTextMatch | null {
+    const heightKeywords = ['4.3', 'height of buildings', 'maximum height', 'Height of Buildings Map'];
+    return this.searchForRegulatoryText(heightKeywords, 'Height Requirements (Clause 4.3)');
+  }
+
+  /**
+   * Get regulatory text for FSR requirements (Clause 4.4)
+   */
+  getFSRRegulatoryText(): RegulatoryTextMatch | null {
+    const fsrKeywords = ['4.4', 'floor space ratio', 'Floor Space Ratio Map', 'maximum floor space'];
+    return this.searchForRegulatoryText(fsrKeywords, 'Floor Space Ratio (Clause 4.4)');
+  }
+
+  /**
+   * Get regulatory text for setback requirements
+   * First tries precise citations, then falls back to keyword search
+   */
+  getSetbackRegulatoryText(ruleType?: string, formerCouncilArea?: string): RegulatoryTextMatch | null {
+    // Try precise citations first
+    const preciseText = this.getPreciseCitation(ruleType, formerCouncilArea);
+    if (preciseText) {
+      return preciseText;
+    }
+    
+    // Fallback to keyword search
+    const setbackKeywords = ['setback', 'rear boundary', 'side boundary', 'front boundary', 'building envelope'];
+    return this.searchForRegulatoryText(setbackKeywords, 'Setback Requirements');
+  }
+  
+  /**
+   * Get precise citation from unified extraction data
+   */
+  private getPreciseCitation(ruleType?: string, formerCouncilArea?: string): RegulatoryTextMatch | null {
+    if (!ruleType || !formerCouncilArea) return null;
+    
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      
+      // Try to load unified extraction data
+      const unifiedFile = path.join(process.cwd(), 'public', 'regulatory-data', 'unified', `${formerCouncilArea.toLowerCase()}_unified.json`);
+      
+      if (fs.existsSync(unifiedFile)) {
+        const unifiedData = JSON.parse(fs.readFileSync(unifiedFile, 'utf8'));
+        
+        // Find rule matching the type
+        const matchingRule = unifiedData.enhanced_rules?.find((rule: any) => 
+          rule.rule_type === ruleType && rule.source_grounding?.exact_sentence
+        );
+        
+        if (matchingRule) {
+          return {
+            text: matchingRule.source_grounding.extraction_text || matchingRule.source_grounding.exact_sentence,
+            source: `${formerCouncilArea} DCP - Precise Extraction`,
+            confidence: matchingRule.overall_confidence || 0.9,
+            chunk_id: `precise_${matchingRule.rule_id}`
+          };
+        }
+      }
+    } catch (error) {
+      console.log(`Could not load precise citations for ${formerCouncilArea}: ${error.message}`);
+    }
+    
+    return null;
+  }
+
+  /**
+   * Search for regulatory text containing specific keywords
+   */
+  private searchForRegulatoryText(keywords: string[], source: string): RegulatoryTextMatch | null {
+    let bestMatch: { chunk: string; content: string; score: number } | null = null;
+
+    for (const [chunkId, content] of this.lepChunks) {
+      const contentLower = content.toLowerCase();
+      let score = 0;
+
+      // Score based on keyword matches
+      for (const keyword of keywords) {
+        const keywordLower = keyword.toLowerCase();
+        const matches = (contentLower.match(new RegExp(keywordLower, 'g')) || []).length;
+        score += matches * keyword.length; // Longer keywords get higher weight
+      }
+
+      if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+        bestMatch = { chunk: chunkId, content, score };
+      }
+    }
+
+    if (!bestMatch) return null;
+
+    // Extract the most relevant portion (first 500 characters containing keywords)
+    const content = bestMatch.content;
+    let relevantText = content;
+
+    // Try to find the specific clause section
+    for (const keyword of keywords) {
+      const keywordLower = keyword.toLowerCase();
+      const index = content.toLowerCase().indexOf(keywordLower);
+      if (index !== -1) {
+        // Extract text around the keyword (up to 800 characters)
+        const start = Math.max(0, index - 100);
+        const end = Math.min(content.length, index + 700);
+        relevantText = content.substring(start, end);
+        
+        // Clean up partial sentences at the beginning - find complete sentence boundaries
+        const sentences = relevantText.split(/\. /);
+        if (sentences.length > 1) {
+          // Skip the first sentence if it appears to be a fragment (starts with lowercase or is very short)
+          const firstSentence = sentences[0].trim();
+          if (firstSentence.length < 20 || (firstSentence.length > 0 && firstSentence[0] >= 'a' && firstSentence[0] <= 'z')) {
+            relevantText = sentences.slice(1).join('. ');
+            // Ensure it starts with a capital letter
+            if (relevantText.length > 0 && relevantText[0] >= 'a' && relevantText[0] <= 'z') {
+              relevantText = relevantText[0].toUpperCase() + relevantText.slice(1);
+            }
+          }
+        }
+        break;
+      }
+    }
+
+    return {
+      text: relevantText.trim(),
+      source: `Inner West Local Environmental Plan 2022 - ${source}`,
+      confidence: Math.min(0.95, bestMatch.score / 100), // Cap confidence at 95%
+      chunk_id: bestMatch.chunk
+    };
+  }
+}

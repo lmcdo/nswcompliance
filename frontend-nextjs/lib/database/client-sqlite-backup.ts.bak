@@ -1,0 +1,497 @@
+// lib/database/client.ts
+import Database from 'better-sqlite3';
+import type { 
+  DevelopmentControl, 
+  QuantitativeStandard, 
+  KGRelationship,
+  RegulatoryProvision,
+  DevelopmentPathway
+} from '@/types/database';
+
+export class DatabaseClient {
+  public db: Database.Database | null = null;
+  private dbPath: string;
+
+  constructor(dbPath = process.env.DATABASE_PATH || 'C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\nsw_planning.db') {
+    this.dbPath = dbPath;
+  }
+
+  private initDb() {
+    if (!this.db) {
+      try {
+        this.db = new Database(this.dbPath);
+        this.db.pragma('journal_mode = WAL'); // Performance optimization
+        this.db.pragma('foreign_keys = ON'); // Enforce referential integrity
+      } catch (error) {
+        console.error('Database initialization failed:', error);
+        throw error;
+      }
+    }
+    return this.db;
+  }
+
+  // Debug method to investigate setback data systematically
+  debugR2SetbackData(): any {
+    const db = this.initDb();
+    console.log('\n=== R2 SETBACK DATABASE INVESTIGATION ===\n');
+    
+    // 1. Check all setback records for R2 (any confidence level)
+    const allR2Setbacks = db.prepare(`
+      SELECT dc.*, rpc.provision_text, rpc.document_id, d.pdf_name, d.document_type
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      LEFT JOIN documents d ON rpc.document_id = d.id
+      WHERE dc.control_type = 'setback'
+      AND (dc.zone_applicable = 'R2' OR dc.zone_applicable = 'general')
+      ORDER BY dc.confidence_score DESC
+    `).all();
+    
+    console.log(`1. ALL R2 SETBACK RECORDS: ${allR2Setbacks.length} found`);
+    allR2Setbacks.slice(0, 5).forEach((record: any, i: number) => {
+      console.log(`   [${i+1}] Zone: ${record.zone_applicable}, Confidence: ${record.confidence_score}`);
+      console.log(`       Value: "${record.value_text}"`);
+      console.log(`       Provision: "${record.provision_text?.substring(0, 80)}..."`);
+      console.log(`       Document: ${record.pdf_name || record.document_id}`);
+      console.log('');
+    });
+
+    // 2. Check Inner West specific documents
+    const innerWestR2 = this.db.prepare(`
+      SELECT dc.*, rpc.provision_text, rpc.document_id, d.pdf_name, d.document_type
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      LEFT JOIN documents d ON rpc.document_id = d.id
+      WHERE dc.control_type = 'setback'
+      AND (dc.zone_applicable = 'R2' OR dc.zone_applicable = 'general')
+      AND (d.pdf_name LIKE '%Inner West%' OR d.pdf_name LIKE '%Marrickville%' OR rpc.document_id LIKE '%inner%')
+      ORDER BY dc.confidence_score DESC
+    `).all();
+    
+    console.log(`2. INNER WEST R2 RECORDS: ${innerWestR2.length} found`);
+    innerWestR2.forEach((record: any, i: number) => {
+      console.log(`   [${i+1}] Zone: ${record.zone_applicable}, Confidence: ${record.confidence_score}`);
+      console.log(`       Value: "${record.value_text}"`);
+      console.log(`       Document: ${record.pdf_name}`);
+      console.log('');
+    });
+
+    // 3. Check SEPP overrides for R2
+    const seppR2 = this.db.prepare(`
+      SELECT slo.*, rpc.provision_text, rpc.document_id
+      FROM sepp_lep_overrides slo
+      JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id
+      WHERE rpc.provision_text LIKE '%setback%' 
+      AND (rpc.provision_text LIKE '%R2%' OR rpc.provision_text LIKE '%residential%')
+      ORDER BY slo.confidence_score DESC
+      LIMIT 5
+    `).all();
+    
+    console.log(`3. SEPP R2 OVERRIDES: ${seppR2.length} found`);
+    seppR2.forEach((record: any, i: number) => {
+      console.log(`   [${i+1}] Confidence: ${record.confidence_score}`);
+      console.log(`       Text: "${record.provision_text?.substring(0, 80)}..."`);
+      console.log('');
+    });
+
+    // 4. Check quantitative standards for R2
+    const quantR2 = this.db.prepare(`
+      SELECT qs.*, rpc.provision_text, rpc.document_id
+      FROM quantitative_standards qs
+      JOIN regulatory_provisions_clean rpc ON qs.provision_id = rpc.id
+      WHERE qs.context = 'setback'
+      AND (rpc.document_id LIKE '%R2%' OR rpc.provision_text LIKE '%R2%')
+      ORDER BY qs.confidence_score DESC
+      LIMIT 10
+    `).all();
+    
+    console.log(`4. QUANTITATIVE R2 STANDARDS: ${quantR2.length} found`);
+    quantR2.forEach((record: any, i: number) => {
+      console.log(`   [${i+1}] Value: ${record.numeric_value} ${record.unit}, Confidence: ${record.confidence_score}`);
+      console.log(`       Text: "${record.provision_text?.substring(0, 80)}..."`);
+      console.log('');
+    });
+
+    // 5. Check KG relationships for R2-specific setback rules
+    const r2KGRelationships = this.db.prepare(`
+      SELECT kr.subject_text, kr.predicate, kr.object_text, kr.confidence_score, kr.document_id
+      FROM kg_relationships kr
+      WHERE (kr.subject_text LIKE '%R2%' OR kr.object_text LIKE '%R2%')
+      AND (kr.subject_text LIKE '%setback%' OR kr.object_text LIKE '%setback%')
+      ORDER BY kr.confidence_score DESC
+      LIMIT 10
+    `).all();
+    
+    console.log(`5. R2 KG RELATIONSHIPS: ${r2KGRelationships.length} found`);
+    r2KGRelationships.forEach((rel: any, i: number) => {
+      console.log(`   [${i+1}] "${rel.subject_text}" --${rel.predicate}--> "${rel.object_text}"`);
+      console.log(`       Confidence: ${rel.confidence_score}, Doc: ${rel.document_id}`);
+      console.log('');
+    });
+
+    // 6. Check KG entities for zone-specific concepts
+    const r2ZoneEntities = this.db.prepare(`
+      SELECT ke.entity_text, ke.entity_type
+      FROM kg_entities ke
+      WHERE ke.entity_text LIKE '%R2%' 
+      AND (ke.entity_text LIKE '%zone%' OR ke.entity_text LIKE '%residential%')
+      LIMIT 5
+    `).all();
+    
+    console.log(`6. R2 ZONE ENTITIES: ${r2ZoneEntities.length} found`);
+    r2ZoneEntities.forEach((entity: any, i: number) => {
+      console.log(`   [${i+1}] "${entity.entity_text}" (${entity.entity_type})`);
+    });
+
+    return {
+      allR2Setbacks: allR2Setbacks.length,
+      innerWestR2: innerWestR2.length,  
+      seppR2: seppR2.length,
+      quantR2: quantR2.length,
+      r2KGRelationships: r2KGRelationships.length,
+      r2ZoneEntities: r2ZoneEntities.length,
+      summary: `Found ${allR2Setbacks.length} total R2 setback records, ${innerWestR2.length} Inner West specific, ${r2KGRelationships.length} KG relationships`
+    };
+  }
+
+  // Hierarchical setback query methods (following SEPP > LEP > DCP authority)
+  
+  /**
+   * Get setback controls using NSW planning hierarchy (SEPP > LEP > DCP)
+   * Returns results from highest authority level that has data
+   */
+  getHierarchicalSetbackControls(zone: string, propertyLocation?: { lga?: string, suburb?: string }): DevelopmentControl[] {
+    console.log(`[DB] Hierarchical setback query for zone: ${zone}, location: ${JSON.stringify(propertyLocation)}`);
+    
+    // Step 1: Check SEPP overrides (highest authority)
+    const seppControls = this.getSEPPSetbackOverrides(zone);
+    if (seppControls.length > 0) {
+      console.log(`[DB] Found ${seppControls.length} SEPP override controls (highest authority)`);
+      return seppControls.map(control => ({
+        ...control,
+        authority_level: 'SEPP - State Policy',
+        legal_precedence: 1,
+        can_be_varied: false
+      }));
+    }
+
+    // Step 2: Check LEP controls (second authority)
+    const lepControls = this.getLEPSetbackControls(zone, propertyLocation);
+    if (lepControls.length > 0) {
+      console.log(`[DB] Found ${lepControls.length} LEP controls (second authority)`);
+      return lepControls.map(control => ({
+        ...control,
+        authority_level: 'LEP - Local Environmental Plan',
+        legal_precedence: 2,
+        can_be_varied: true // Via Clause 4.6
+      }));
+    }
+
+    // Step 3: Fallback to DCP controls (guidance only)
+    const dcpControls = this.getDCPSetbackControls(zone, propertyLocation);
+    console.log(`[DB] Found ${dcpControls.length} DCP controls (guidance only)`);
+    return dcpControls.map(control => ({
+      ...control,
+      authority_level: 'DCP - Development Control Plan',
+      legal_precedence: 3,
+      can_be_varied: true,
+      note: 'Guidance only - cannot override SEPP/LEP'
+    }));
+  }
+
+  /**
+   * Query SEPP override controls for setbacks
+   */
+  private getSEPPSetbackOverrides(zone: string): DevelopmentControl[] {
+    // First check dedicated SEPP overrides table
+    const overridesStmt = this.db.prepare(`
+      SELECT slo.*, rpc.provision_text, rpc.document_id, slo.confidence_score
+      FROM sepp_lep_overrides slo
+      JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id
+      WHERE rpc.provision_text LIKE '%setback%' 
+      AND (rpc.provision_text LIKE '%' || ? || '%' OR rpc.provision_text LIKE '%general%')
+      ORDER BY slo.confidence_score DESC
+      LIMIT 5
+    `);
+    
+    const overrides = overridesStmt.all(zone) as DevelopmentControl[];
+    
+    // Also check main development_controls table for SEPP documents
+    const seppDocsStmt = this.db.prepare(`
+      SELECT dc.*, rpc.provision_text, rpc.document_id, d.pdf_name, d.document_type
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      LEFT JOIN documents d ON rpc.document_id = d.id
+      WHERE dc.control_type = 'setback'
+      AND (dc.zone_applicable = ? OR dc.zone_applicable = 'general')
+      AND (d.pdf_name LIKE '%State Environmental Planning Policy%' OR d.pdf_name LIKE '%SEPP%' 
+           OR rpc.document_id LIKE '%SEPP%' OR d.document_type = 'SEPP')
+      ORDER BY dc.confidence_score DESC
+      LIMIT 5
+    `);
+    
+    const seppDocs = seppDocsStmt.all(zone) as DevelopmentControl[];
+    
+    // Combine and deduplicate results
+    const combined = [...overrides, ...seppDocs];
+    return combined.slice(0, 5); // Return top 5 results
+  }
+
+  /**
+   * Query LEP setback controls for specific zone and location
+   */
+  private getLEPSetbackControls(zone: string, location?: { lga?: string, suburb?: string }): DevelopmentControl[] {
+    const stmt = this.db.prepare(`
+      SELECT dc.*, rpc.provision_text, rpc.document_id, d.pdf_name, d.document_type
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      JOIN documents d ON rpc.document_id = d.id
+      WHERE dc.control_type = 'setback'
+      AND d.document_type = 'LEP'
+      AND d.pdf_name LIKE '%Inner West Local Environmental Plan%'  -- Geographic filtering
+      AND (dc.zone_applicable = ? OR dc.zone_applicable = 'general')
+      ORDER BY dc.confidence_score DESC
+      LIMIT 5
+    `);
+    
+    return stmt.all(zone) as DevelopmentControl[];
+  }
+
+  /**
+   * Query DCP setback controls with geographic relevance
+   */
+  private getDCPSetbackControls(zone: string, location?: { lga?: string, suburb?: string }): DevelopmentControl[] {
+    const stmt = this.db.prepare(`
+      SELECT dc.*, rpc.provision_text, rpc.document_id, d.pdf_name, d.document_type
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      JOIN documents d ON rpc.document_id = d.id
+      WHERE dc.control_type = 'setback'
+      AND d.document_type = 'DCP'
+      AND d.pdf_name LIKE '%Marrickville%'  -- Geographic relevance for Dulwich Hill
+      AND (dc.zone_applicable = ? OR dc.zone_applicable = 'general')
+      ORDER BY dc.confidence_score DESC
+      LIMIT 3  -- Fewer DCP results since they're guidance only
+    `);
+    
+    return stmt.all(zone) as DevelopmentControl[];
+  }
+
+  /**
+   * Get geographic entities from knowledge graph for location filtering
+   */
+  getGeographicEntities(location: { lga?: string, suburb?: string }): any[] {
+    const stmt = this.db.prepare(`
+      SELECT DISTINCT ke.entity_text, COUNT(*) as usage_count
+      FROM kg_entities ke
+      JOIN kg_relationships kr ON (ke.id = kr.subject_entity_id OR ke.id = kr.object_entity_id)
+      WHERE ke.entity_text LIKE '%' || ? || '%'
+         OR ke.entity_text LIKE '%Inner West%'
+         OR ke.entity_text LIKE '%precinct%'
+         OR ke.entity_text LIKE '%conservation area%'
+      GROUP BY ke.entity_text
+      ORDER BY usage_count DESC
+      LIMIT 10
+    `);
+    
+    const searchTerm = location.suburb || location.lga || 'Dulwich Hill';
+    return stmt.all(searchTerm);
+  }
+
+  // Get setback quantitative standards (from PRP-F pattern)
+  getSetbackQuantitativeStandards(zone: string): QuantitativeStandard[] {
+    const stmt = this.db.prepare(`
+      SELECT qs.*, rpc.provision_text, rpc.document_id
+      FROM quantitative_standards qs
+      JOIN regulatory_provisions_clean rpc ON qs.provision_id = rpc.id
+      WHERE qs.context = 'setback'
+      AND qs.numeric_value IS NOT NULL
+      AND (rpc.document_id LIKE '%${zone}%' OR rpc.document_id LIKE '%general%')
+      ORDER BY qs.confidence_score DESC
+      LIMIT 10
+    `);
+    
+    return stmt.all() as QuantitativeStandard[];
+  }
+
+  getQuantitativeStandards(context: string, zone?: string): QuantitativeStandard[] {
+    let sql = `
+      SELECT qs.*, rpc.provision_text, rpc.document_id
+      FROM quantitative_standards qs
+      JOIN regulatory_provisions_clean rpc ON qs.provision_id = rpc.id
+      WHERE qs.context = ?
+      AND qs.numeric_value IS NOT NULL
+    `;
+    
+    const params = [context];
+    
+    if (zone) {
+      sql += ` AND rpc.document_id LIKE '%${zone}%' OR rpc.document_id LIKE '%general%'`;
+    }
+    
+    sql += ` ORDER BY qs.confidence_score DESC LIMIT 20`;
+    
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as QuantitativeStandard[];
+  }
+
+  // Knowledge graph queries
+  getKGRelationships(predicate: string, subjectContains?: string, limit = 10): KGRelationship[] {
+    let sql = `
+      SELECT subject_text, predicate, object_text, confidence_score, document_id
+      FROM kg_relationships
+      WHERE predicate = ?
+    `;
+    
+    const params = [predicate];
+    
+    if (subjectContains) {
+      sql += ` AND subject_text LIKE ?`;
+      params.push(`%${subjectContains}%`);
+    }
+    
+    sql += ` ORDER BY confidence_score DESC LIMIT ${limit}`;
+    
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as KGRelationship[];
+  }
+
+  // Heritage-specific queries
+  getHeritageControls(zone?: string): DevelopmentControl[] {
+    let sql = `
+      SELECT dc.*, rpc.provision_text, rpc.document_id
+      FROM development_controls dc
+      JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+      WHERE dc.control_type = 'heritage'
+    `;
+    
+    const params: string[] = [];
+    
+    if (zone) {
+      sql += ` AND (dc.zone_applicable = ? OR dc.zone_applicable = 'heritage_conservation_area' OR dc.zone_applicable = 'general')`;
+      params.push(zone);
+    }
+    
+    sql += ` ORDER BY dc.confidence_score DESC LIMIT 20`;
+    
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as DevelopmentControl[];
+  }
+
+  getHeritageProtections(): KGRelationship[] {
+    const stmt = this.db.prepare(`
+      SELECT subject_text, object_text, confidence_score, document_id
+      FROM kg_relationships
+      WHERE predicate = 'protect'
+      AND (subject_text LIKE '%heritage%' OR object_text LIKE '%heritage%')
+      ORDER BY confidence_score DESC
+      LIMIT 10
+    `);
+    
+    return stmt.all() as KGRelationship[];
+  }
+
+  // Development pathway queries
+  getDevelopmentPathways(zone: string, developmentType?: string): DevelopmentPathway[] {
+    let sql = `
+      SELECT *
+      FROM development_pathways
+      WHERE zone = ? OR zone = 'general'
+    `;
+    
+    const params = [zone];
+    
+    if (developmentType) {
+      sql += ` AND development_type = ?`;
+      params.push(developmentType);
+    }
+    
+    sql += ` ORDER BY confidence_score DESC`;
+    
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as DevelopmentPathway[];
+  }
+
+  // General regulatory provision queries
+  searchProvisions(searchTerm: string, documentType?: string): RegulatoryProvision[] {
+    let sql = `
+      SELECT *
+      FROM regulatory_provisions_clean
+      WHERE provision_text LIKE ?
+    `;
+    
+    const params = [`%${searchTerm}%`];
+    
+    if (documentType) {
+      sql += ` AND document_id LIKE ?`;
+      params.push(`%${documentType}%`);
+    }
+    
+    sql += ` ORDER BY confidence_score DESC LIMIT 15`;
+    
+    const stmt = this.db.prepare(sql);
+    return stmt.all(...params) as RegulatoryProvision[];
+  }
+
+  // Health check and statistics
+  getDatabaseStats() {
+    const stats = {
+      development_controls: this.db.prepare('SELECT COUNT(*) as count FROM development_controls').get() as { count: number },
+      quantitative_standards: this.db.prepare('SELECT COUNT(*) as count FROM quantitative_standards').get() as { count: number },
+      kg_relationships: this.db.prepare('SELECT COUNT(*) as count FROM kg_relationships').get() as { count: number },
+      regulatory_provisions: this.db.prepare('SELECT COUNT(*) as count FROM regulatory_provisions_clean').get() as { count: number },
+      development_pathways: this.db.prepare('SELECT COUNT(*) as count FROM development_pathways').get() as { count: number }
+    };
+    
+    return {
+      development_controls: stats.development_controls.count,
+      quantitative_standards: stats.quantitative_standards.count,
+      kg_relationships: stats.kg_relationships.count,
+      regulatory_provisions: stats.regulatory_provisions.count,
+      development_pathways: stats.development_pathways.count,
+      total_records: Object.values(stats).reduce((sum, stat) => sum + stat.count, 0)
+    };
+  }
+
+  // Get control types and their counts
+  getControlTypeCounts(): Array<{ control_type: string; count: number }> {
+    const stmt = this.db.prepare(`
+      SELECT control_type, COUNT(*) as count
+      FROM development_controls
+      GROUP BY control_type
+      ORDER BY count DESC
+    `);
+    
+    return stmt.all() as Array<{ control_type: string; count: number }>;
+  }
+
+  // Test database connection
+  testConnection(): boolean {
+    try {
+      const result = this.db.prepare('SELECT 1 as test').get() as { test: number };
+      return result.test === 1;
+    } catch (error) {
+      console.error('Database connection test failed:', error);
+      return false;
+    }
+  }
+
+  // Close database connection
+  close() {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+    }
+  }
+
+  // Execute raw SQL query
+  execute(sql: string, params: any[] = []): any[] {
+    const db = this.initDb();
+    const stmt = db.prepare(sql);
+    return stmt.all(...params);
+  }
+
+  // Destructor to ensure connection is closed
+  [Symbol.dispose]() {
+    this.close();
+  }
+}

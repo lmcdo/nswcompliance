@@ -1,0 +1,11 @@
+Name,Type
+height_limit,Entity
+8 metres,Entity
+Maximum height,Entity
+Maximum height is 8 metres.,Event
+Clause 1 - height_limit (development_control),Event
+Maximum height for development control is set at 8 metres.,Event
+development_control,Relation
+is,Relation
+is participated by,Relation
+because,Relation

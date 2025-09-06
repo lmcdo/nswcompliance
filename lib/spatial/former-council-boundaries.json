@@ -1,0 +1,56 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Ashfield",
+        "formerCouncil": "Ashfield"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [151.1200, -33.8700],
+          [151.1400, -33.8700],
+          [151.1400, -33.8900],
+          [151.1200, -33.8900],
+          [151.1200, -33.8700]
+        ]]
+      }
+    },
+    {
+      "type": "Feature", 
+      "properties": {
+        "name": "Leichhardt",
+        "formerCouncil": "Leichhardt"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [151.1400, -33.8500],
+          [151.1700, -33.8500],
+          [151.1700, -33.8800],
+          [151.1400, -33.8800],
+          [151.1400, -33.8500]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "name": "Marrickville", 
+        "formerCouncil": "Marrickville"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [151.1300, -33.8900],
+          [151.1600, -33.8900],
+          [151.1600, -33.9200],
+          [151.1300, -33.9200],
+          [151.1300, -33.8900]
+        ]]
+      }
+    }
+  ]
+}

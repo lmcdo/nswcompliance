@@ -1,0 +1,7 @@
+name:ID,type,concepts,synsets,:LABEL
+height_limit,entity,[],[],Node
+Maximum height,entity,[],[],Node
+8 metres,entity,[],[],Node
+Maximum height is 8 metres.,event,[],[],Node
+Clause 1 - height_limit (development_control),event,[],[],Node
+Maximum height for development control is set at 8 metres.,event,[],[],Node

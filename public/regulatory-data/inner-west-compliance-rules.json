@@ -1,0 +1,223 @@
+{
+  "generated_at": "2025-08-25T05:17:00.000Z",
+  "rule_count": 6,
+  "rules": [
+    {
+      "id": "ASHFIELD_REAR_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Ashfield Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Ashfield"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "rear",
+          "operator": ">=",
+          "value": 1.2,
+          "units": "metres",
+          "context": "minimum rear boundary setback for residential development",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Ashfield DCP 2016 Chapter E2",
+        "section": "Haberfield Neighbourhood",
+        "clause": "Rear Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2016-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + AutoSchemaKG Processing",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Chapter E2 Haberfield Neighbourhood.pdf"
+      }
+    },
+    {
+      "id": "ASHFIELD_SIDE_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Ashfield Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Ashfield"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "side",
+          "operator": ">=",
+          "value": 0.9,
+          "units": "metres",
+          "context": "minimum side boundary setback for residential development",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Ashfield DCP 2016 Chapter E2",
+        "section": "Haberfield Neighbourhood", 
+        "clause": "Side Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2016-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + AutoSchemaKG Processing",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Chapter E2 Haberfield Neighbourhood.pdf"
+      }
+    },
+    {
+      "id": "ASHFIELD_FRONT_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Ashfield Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Ashfield"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "front",
+          "operator": ">=",
+          "value": 6.0,
+          "units": "metres",
+          "context": "minimum front setback consistent with streetscape character",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Ashfield DCP 2016 Chapter E2",
+        "section": "Haberfield Neighbourhood",
+        "clause": "Front Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2016-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + Manual Verification",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Chapter E2 Haberfield Neighbourhood.pdf"
+      }
+    },
+    {
+      "id": "LEICHHARDT_REAR_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Leichhardt Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Leichhardt"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "rear",
+          "operator": ">=",
+          "value": 1.1,
+          "units": "metres",
+          "context": "minimum rear boundary setback for residential development",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Leichhardt DCP 2013 Part G",
+        "section": "Section 1-12",
+        "clause": "Rear Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2013-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + AutoSchemaKG Processing",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+      }
+    },
+    {
+      "id": "LEICHHARDT_SIDE_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Leichhardt Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Leichhardt"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "side",
+          "operator": ">=",
+          "value": 1.5,
+          "units": "metres",
+          "context": "minimum side boundary setback for residential development",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Leichhardt DCP 2013 Part G",
+        "section": "Section 1-12",
+        "clause": "Side Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2013-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + AutoSchemaKG Processing",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+      }
+    },
+    {
+      "id": "LEICHHARDT_FRONT_SETBACK_R2",
+      "jurisdiction": "DCP",
+      "authority": "Leichhardt Council",
+      "applies_to": {
+        "lga": "Inner West",
+        "zones": ["R2"],
+        "former_council": "Leichhardt"
+      },
+      "requirements": [
+        {
+          "type": "min_setback",
+          "subtype": "front",
+          "operator": ">=",
+          "value": 3.0,
+          "units": "metres",
+          "context": "minimum front boundary setback for residential development",
+          "confidence": "VERIFIED"
+        }
+      ],
+      "source": {
+        "document": "Leichhardt DCP 2013 Part G",
+        "section": "Section 1-12",
+        "clause": "Front Setback Requirements",
+        "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+        "effective_date": "2013-01-01"
+      },
+      "priority": 3,
+      "extraction_metadata": {
+        "method": "RAG-Anything + Manual Verification",
+        "quality_score": 0.95,
+        "extracted_at": "2025-08-25T05:17:00.000Z",
+        "source_file": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+      }
+    }
+  ],
+  "metadata": {
+    "generator": "RAG-Anything + AutoSchemaKG Enhanced Extractor",
+    "method": "Semantic Knowledge Graph Extraction with Regex Fallback",
+    "version": "2.0",
+    "autoschema_installed": true,
+    "processing_notes": "AutoSchemaKG successfully installed and configured with OpenAI API, used for semantic understanding of regulatory documents"
+  }
+}

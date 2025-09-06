@@ -1,0 +1,84 @@
+{
+  "area": "Ashfield",
+  "extraction_method": "lightrag_v1.0",
+  "enhanced_rules": [
+    {
+      "rule_id": "ASHFIELD_SIDE_SETBACK_001",
+      "rule_text": "Side setbacks shall be 0.9m minimum for residential development in R2 zones.",
+      "rule_type": "side_setback",
+      "measurements": [
+        {
+          "measurement_type": "side_setback",
+          "value": 0.9,
+          "unit": "metres",
+          "context": "minimum requirement",
+          "confidence": 0.9
+        }
+      ],
+      "rule_classification": {
+        "tier": 1,
+        "enforcement_level": "MANDATORY",
+        "linguistic_confidence": 0.92,
+        "prescriptive_indicators": [
+          "shall be",
+          "minimum"
+        ],
+        "compliance_message_type": "MUST_COMPLY"
+      },
+      "source_grounding": {
+        "extraction_text": "Side setbacks shall be 0.9m minimum for residential development in R2 zones.",
+        "source_section": "Part B Section 4.3.2",
+        "source_page": 45,
+        "confidence": 0.93,
+        "highlighted_spans": [
+          [
+            0,
+            71
+          ]
+        ]
+      },
+      "overall_confidence": 0.93,
+      "rule_complexity": "SIMPLE"
+    },
+    {
+      "rule_id": "ASHFIELD_REAR_SETBACK_001",
+      "rule_text": "Rear setbacks must be 6m minimum OR 0.5 times building height, whichever is greater.",
+      "rule_type": "rear_setback",
+      "measurements": [
+        {
+          "measurement_type": "rear_setback_conditional",
+          "value": "6m minimum OR 0.5 times building height",
+          "unit": "metres",
+          "context": "conditional minimum with height calculation",
+          "confidence": 0.88
+        }
+      ],
+      "rule_classification": {
+        "tier": 1,
+        "enforcement_level": "MANDATORY",
+        "linguistic_confidence": 0.9,
+        "prescriptive_indicators": [
+          "must be",
+          "minimum"
+        ],
+        "compliance_message_type": "MUST_COMPLY"
+      },
+      "source_grounding": {
+        "extraction_text": "Rear setbacks must be 6m minimum OR 0.5 times building height, whichever is greater.",
+        "source_section": "Part B Section 4.3.1",
+        "source_page": 43,
+        "confidence": 0.88,
+        "highlighted_spans": [
+          [
+            0,
+            85
+          ]
+        ]
+      },
+      "overall_confidence": 0.88,
+      "rule_complexity": "CONDITIONAL"
+    }
+  ],
+  "total_enhanced_rules": 2,
+  "high_confidence_rules": 2
+}

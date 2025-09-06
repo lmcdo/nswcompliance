@@ -1,0 +1,60 @@
+[
+  {
+    "id": "IW_SIDE_SETBACK_ASHFIELD_SEMANTIC",
+    "jurisdiction": "DCP",
+    "authority": "Inner West Council (former Ashfield)",
+    "applies_to": {
+      "lga": [
+        "Inner West"
+      ],
+      "zones": [
+        "R2"
+      ],
+      "former_council": [
+        "Ashfield"
+      ]
+    },
+    "requirements": [
+      {
+        "type": "side_setback",
+        "operator": ">=",
+        "value": 0.9,
+        "units": "metres",
+        "context": "minimum requirement (MANDATORY)"
+      }
+    ],
+    "source": {
+      "document": "Ashfield DCP",
+      "section": "Part B Section 4.3.2",
+      "clause": "ASHFIELD_SIDE_SETBACK_001",
+      "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+      "effective_date": "Current"
+    },
+    "priority": 1
+  },
+  {
+    "id": "IW_REAR_SETBACK_ASHFIELD_SEMANTIC",
+    "jurisdiction": "DCP",
+    "authority": "Inner West Council (former Ashfield)",
+    "applies_to": {
+      "lga": [
+        "Inner West"
+      ],
+      "zones": [
+        "R2"
+      ],
+      "former_council": [
+        "Ashfield"
+      ]
+    },
+    "requirements": [],
+    "source": {
+      "document": "Ashfield DCP",
+      "section": "Part B Section 4.3.1",
+      "clause": "ASHFIELD_REAR_SETBACK_001",
+      "url": "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+      "effective_date": "Current"
+    },
+    "priority": 1
+  }
+]

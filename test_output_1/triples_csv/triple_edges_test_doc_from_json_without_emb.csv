@@ -1,0 +1,5 @@
+:START_ID,:END_ID,relation,concepts,synsets,:TYPE
+height_limit,Maximum height,development_control,[],[],Relation
+Maximum height,8 metres,is,[],[],Relation
+Maximum height is 8 metres.,Clause 1 - height_limit (development_control),because,[],[],Relation
+Maximum height for development control is set at 8 metres.,height_limit,is participated by,[],[],Relation

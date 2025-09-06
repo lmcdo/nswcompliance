@@ -1,0 +1,8 @@
+{
+  "id": "validation_003",
+  "text": "Planning Document: Car Parking Standards\n\nClause 4.1: Residential dwellings require 1 parking space per dwelling.\nClause 4.2: Retail premises require 1 space per 25 square metres of floor area.\nClause 4.3: Office developments require 1 space per 40 square metres.\nClause 4.4: Parking spaces must be minimum 2.4m x 5.5m in size.",
+  "metadata": {
+    "doc_name": "Parking_Standards",
+    "type": "infrastructure"
+  }
+}

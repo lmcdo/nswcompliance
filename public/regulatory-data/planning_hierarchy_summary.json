@@ -1,0 +1,13 @@
+{
+  "processing_date": "2025-08-25T20:29:37.229648",
+  "total_documents": 0,
+  "document_breakdown": {
+    "SEPP": 0,
+    "LEP": 0
+  },
+  "processed_documents": {},
+  "lightrag_storages": {
+    "sepp_storage": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\lightrag_sepp_storage",
+    "lep_storage": "C:\\Users\\lawre\\Downloads\\solvyra\\projects\\compliance engine\\compliance-engine\\lightrag_lep_storage"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "lga": "INNER WEST COUNCIL",
+  "areas": {
+    "Ashfield": {
+      "setbacks": {
+        "rear": {
+          "distance": 1.2,
+          "height_limit": null,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_link": "file:///Chapter E2 Haberfield Neighbourhood.pdf"
+        },
+        "side": {
+          "height_limit": null,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_link": "file:///Chapter E2 Haberfield Neighbourhood.pdf"
+        },
+        "front": {
+          "min_distance": 500.0,
+          "source": "Ashfield DCP 2014 Chapter E",
+          "source_link": "file:///Chapter E2 Haberfield Neighbourhood.pdf"
+        }
+      }
+    },
+    "Leichhardt": {
+      "setbacks": {
+        "rear": {
+          "distance": 1.1,
+          "height_limit": null,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_link": "file:///Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+        },
+        "side": {
+          "height_limit": null,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_link": "file:///Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+        },
+        "front": {
+          "min_distance": 900.0,
+          "source": "Leichhardt DCP 2013 Part G Section 1",
+          "source_link": "file:///Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,4 @@
+# AutoSchemaKG OUTPUT DIRECTORY - NOT COMMITTED
+# Contains generated knowledge graphs, CSV files, and GraphML outputs
+# These are large generated files that should not be in git
+# Created during PRP-A4 AutoSchemaKG processing attempts

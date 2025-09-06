@@ -1,0 +1,27 @@
+{
+  "area": "Marrickville",
+  "document_path": "docs/dcps/INNERWEST/Marrickville/",
+  "source_groundings": [],
+  "knowledge_triples": [],
+  "concept_hierarchy": {
+    "setbacks": [],
+    "zones": [
+      "R2",
+      "residential_low_density"
+    ],
+    "development_types": [
+      "dwelling_house",
+      "secondary_dwelling"
+    ]
+  },
+  "enhanced_rules": [],
+  "processing_metadata": {
+    "timestamp": "2025-08-25T14:50:15.536462",
+    "processors_used": [
+      "PatternExtraction",
+      "RealDocuments"
+    ],
+    "documents_processed": 1,
+    "extraction_method": "real_document_pattern_extraction"
+  }
+}

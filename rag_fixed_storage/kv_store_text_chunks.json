@@ -1,0 +1,16 @@
+{
+  "chunk-fddb9a116002f5fba7900393df558bd9": {
+    "tokens": 189,
+    "content": "Inner West Local Environmental Plan 2022 - Building Height Controls: Residential buildings must not exceed 8.5 metres in height. Commercial buildings are limited to 12 metres in mixed use zones. Height is measured from natural ground level to the highest point of the roof.\n\nFloor Space Ratio Controls: Residential zones R1 and R2 have a maximum FSR of 0.6:1. Mixed use zones B4 have a maximum FSR of 1.2:1. Additional FSR may be available through community contribution schemes.\n\nSetback Requirements: Front boundary requires minimum 6 metre setback. Side boundaries require minimum 1.5 metre setback for single storey buildings. Rear boundary requires minimum 6 metre setback from property line.\n\nParking Requirements: Residential development requires minimum 1 parking space per dwelling unit. Visitor parking requires 1 space per 4 dwelling units. Accessible parking requires minimum 1 space per 50 parking spaces.",
+    "chunk_order_index": 0,
+    "full_doc_id": "doc-708d401e037597b7c5e4287063713898",
+    "file_path": "Inner_West_LEP_2022.pdf",
+    "llm_cache_list": [
+      "default:extract:2004962728c6cddee793622f080ac801",
+      "default:extract:d7daa8c03d0c21c34b4dbf76f2a439d4"
+    ],
+    "create_time": 1756184925,
+    "update_time": 1756184945,
+    "_id": "chunk-fddb9a116002f5fba7900393df558bd9"
+  }
+}

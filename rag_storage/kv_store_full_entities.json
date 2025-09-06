@@ -1,0 +1,50 @@
+{
+  "doc-2aba9adbee1b08bb26aa69ae2da5f285": {
+    "entity_names": [
+      "Development Controls",
+      "Floor Space Ratio (FSR)",
+      "R2 Low Density Residential",
+      "Setback Requirements",
+      "Mixed Use Zones",
+      "Residential Zones",
+      "Commercial Buildings",
+      "Inner West Local Environmental Plan 2022",
+      "R1 General Residential",
+      "Residential Buildings",
+      "Community Contribution Schemes",
+      "Parking Requirements",
+      "Architectural Features",
+      "B4 Mixed Use",
+      "Development Consent",
+      "R3 Medium Density Residential",
+      "RE1 Public Recreation",
+      "Affordable Housing Schemes",
+      "Front Boundary Setback",
+      "Building Height Restrictions",
+      "Heritage Conservation Areas",
+      "NSW Planning Controls"
+    ],
+    "count": 22,
+    "create_time": 1756183467,
+    "update_time": 1756183467,
+    "_id": "doc-2aba9adbee1b08bb26aa69ae2da5f285"
+  },
+  "doc-097fe992d343038c149b10370de3c52d": {
+    "entity_names": [
+      "Parking Requirements",
+      "Inner West Local Environmental Plan 2022",
+      "Setback Requirements",
+      "Mixed Use Zones",
+      "Commercial Buildings",
+      "R1 Zone",
+      "R2 Zone",
+      "B4 Zone",
+      "Floor Space Ratio Controls",
+      "Residential Buildings"
+    ],
+    "count": 10,
+    "create_time": 1756185293,
+    "update_time": 1756185293,
+    "_id": "doc-097fe992d343038c149b10370de3c52d"
+  }
+}

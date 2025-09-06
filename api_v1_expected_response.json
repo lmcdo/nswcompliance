@@ -1,0 +1,85 @@
+{
+  "version": "1.0",
+  "success": true,
+  "data": {
+    "propId": 855978,
+    "address": "3 WILKINSON LANE, TELOPEA NSW 2117",
+    "landValue": "$1,370,000",
+    "valuationDate": "1 July 2024",
+    "propertyArea": "645 square metres",
+    "lot": "N/A",
+    "section": "N/A",
+    "lga": "CITY OF PARRAMATTA",
+    "propertyType": "Residential",
+    "zoneDescription": "R2 - Low Density Residential",
+    "minimumLotSize": "550 m\u00b2",
+    "floorSpaceRatio": "0.5:1",
+    "heightOfBuildings": "9 m",
+    "heritageItem": "Not heritage listed",
+    "bushfireProneStatus": "The land is NOT bushfire prone land",
+    "floodProneStatus": "The land is NOT in a known flood prone area",
+    "acidSulfateSoils": "Class 5",
+    "acidSulfateSoilsClass": "Naturally occurring, no acid sulfate soil constraints",
+    "treeCanopyCover": "16.8%",
+    "treeCanopyPercentage": 16.78,
+    "mineSubsidence": "No mine subsidence district",
+    "regionalPlan": "Greater Sydney",
+    "regionalPlanDetails": {
+      "planName": "Greater Sydney",
+      "planUrl": "https://bit.ly/3oaehef",
+      "strategicDirections": [
+        "A city supported by infrastructure",
+        "A collaborative city",
+        "A city for everyone"
+      ]
+    },
+    "planningInstrument": "Parramatta Local Environmental Plan 2023",
+    "planningInstrumentDetails": {
+      "lepName": "Parramatta Local Environmental Plan 2023",
+      "lepDate": "3-3-2023",
+      "lepUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2023-0117",
+      "dcpName": "Parramatta DCP 2023",
+      "dcpDate": "2023-07-01",
+      "dcpUrl": "https://www.cityofparramatta.nsw.gov.au/development/development-control-plan"
+    },
+    "developmentControlPlan": "Parramatta DCP 2023",
+    "dcpProvisions": {
+      "applicableProvisions": [
+        "Residential character and streetscape",
+        "Building height and bulk",
+        "Setbacks and landscaping",
+        "Privacy and solar access"
+      ],
+      "specialProvisions": [
+        "BASIX Climate Zone 5",
+        "BASIX Water Target 40%",
+        "Wind Turbine Buffer Zone 30km"
+      ]
+    },
+    "geometry": {
+      "x": 334624,
+      "y": 6261847,
+      "centroid": {
+        "latitude": -33.7892,
+        "longitude": 151.0456
+      }
+    },
+    "dataQuality": {
+      "completeness": 95,
+      "lastUpdated": "2024-08-24T00:00:00Z",
+      "dataSources": [
+        "NSW Planning Portal",
+        "NSW Spatial Services",
+        "City of Parramatta Council",
+        "NSW Rural Fire Service",
+        "Greater Sydney Tree Canopy Cover 2019"
+      ],
+      "confidence": "HIGH"
+    }
+  },
+  "metadata": {
+    "timestamp": "2024-08-24T00:00:00Z",
+    "source": "NSW Planning Portal + Australian Government Data",
+    "api_version": "1.0"
+  }
+}

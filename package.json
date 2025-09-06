@@ -1,0 +1,53 @@
+{
+  "name": "nsw-development-compliance-mvp",
+  "version": "1.0.0",
+  "description": "NSW Development Compliance MVP - Inner West Council setback rule extraction and compliance checking",
+  "scripts": {
+    "dev": "next dev -p 3005",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "update-data": "python scripts/update_setback_data.py",
+    "process-dcps": "python scripts/process_inner_west_dcps.py",
+    "install-lightrag": "pip install lightrag-hku",
+    "process-unified": "python scripts/unified_document_processor.py",
+    "preprocess-docs": "python scripts/unified_document_processor.py && npm run build-cache",
+    "build-cache": "node scripts/build-unified-cache.js",
+    "test": "python -m pytest tests/ -v",
+    "test-integration": "python -m pytest tests/test_integration.py -v",
+    "test-e2e": "python -m pytest tests/test_end_to_end_validation.py -v"
+  },
+  "dependencies": {
+    "@types/google.maps": "^3.54.0",
+    "next": "14.2.15",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.12",
+    "@types/react": "18.3.24",
+    "@types/react-dom": "^18.0.0",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.0.0",
+    "typescript": "5.9.2"
+  },
+  "keywords": [
+    "nsw",
+    "development",
+    "compliance",
+    "inner-west",
+    "setbacks",
+    "regulatory",
+    "dcp"
+  ],
+  "author": "Claude Code",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "python": ">=3.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  }
+}

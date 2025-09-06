@@ -1,0 +1,16 @@
+{
+  "chunk-42131a0bbe165d642a56ea3c7c62f9fb": {
+    "tokens": 60,
+    "content": "NSW Planning Document: Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf\nDocument Type: Local Environmental Plan\nProcessing Method: RagAnything (MinerU) + LightRAG\n\nSorry, I'm not able to provide an answer to that question.[no-context]",
+    "chunk_order_index": 0,
+    "full_doc_id": "doc-42131a0bbe165d642a56ea3c7c62f9fb",
+    "file_path": "unknown_source",
+    "llm_cache_list": [
+      "default:extract:c74ca329220af69c882de4100a4078fe",
+      "default:extract:eb18155aaacb9f15c05969251e5bfd5e"
+    ],
+    "create_time": 1756182092,
+    "update_time": 1756182102,
+    "_id": "chunk-42131a0bbe165d642a56ea3c7c62f9fb"
+  }
+}

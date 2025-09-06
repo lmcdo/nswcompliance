@@ -1,0 +1,201 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd">
+  <key id="d11" for="edge" attr.name="created_at" attr.type="long" />
+  <key id="d10" for="edge" attr.name="file_path" attr.type="string" />
+  <key id="d9" for="edge" attr.name="source_id" attr.type="string" />
+  <key id="d8" for="edge" attr.name="keywords" attr.type="string" />
+  <key id="d7" for="edge" attr.name="description" attr.type="string" />
+  <key id="d6" for="edge" attr.name="weight" attr.type="double" />
+  <key id="d5" for="node" attr.name="created_at" attr.type="long" />
+  <key id="d4" for="node" attr.name="file_path" attr.type="string" />
+  <key id="d3" for="node" attr.name="source_id" attr.type="string" />
+  <key id="d2" for="node" attr.name="description" attr.type="string" />
+  <key id="d1" for="node" attr.name="entity_type" attr.type="string" />
+  <key id="d0" for="node" attr.name="entity_id" attr.type="string" />
+  <graph edgedefault="undirected">
+    <node id="Inner West Local Environmental Plan 2022">
+      <data key="d0">Inner West Local Environmental Plan 2022</data>
+      <data key="d1">organization</data>
+      <data key="d2">The Inner West Local Environmental Plan 2022 is a regulatory framework that outlines building height controls, floor space ratio controls, setback requirements, and parking requirements for residential and commercial developments in the Inner West area.&lt;SEP&gt;The Inner West Local Environmental Plan 2022 is a regulatory framework that outlines building height controls, floor space ratio controls, setback requirements, and parking requirements for residential and commercial developments.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Residential Buildings">
+      <data key="d0">Residential Buildings</data>
+      <data key="d1">category</data>
+      <data key="d2">Residential buildings are defined within the local plan and must adhere to specific height restrictions and parking requirements.&lt;SEP&gt;Residential buildings are structures used for housing that must adhere to specific height and space regulations under the Inner West Local Environmental Plan 2022.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Commercial Buildings">
+      <data key="d0">Commercial Buildings</data>
+      <data key="d1">category</data>
+      <data key="d2">Commercial buildings are structures intended for business activities that are subject to height limitations in mixed-use zones under the Inner West Local Environmental Plan 2022.&lt;SEP&gt;Commercial buildings, according to the local plan, are subject to height restrictions, particularly in mixed use zones, necessitating compliance with established regulations.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Mixed Use Zones">
+      <data key="d0">Mixed Use Zones</data>
+      <data key="d1">category</data>
+      <data key="d2">Mixed use zones are areas where both residential and commercial buildings are permitted, with specific regulations on building height and floor space ratios.&lt;SEP&gt;Mixed use zones are designated areas where both residential and commercial developments may occur, with specific height and floor space ratio restrictions.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Community Contribution Schemes">
+      <data key="d0">Community Contribution Schemes</data>
+      <data key="d1">category</data>
+      <data key="d2">Community contribution schemes allow for additional floor space ratios in residential and mixed-use developments as part of regulatory planning.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185169</data>
+    </node>
+    <node id="Floor Space Ratio Controls">
+      <data key="d0">Floor Space Ratio Controls</data>
+      <data key="d1">category</data>
+      <data key="d2">Floor Space Ratio Controls refer to regulations that dictate the allowable density of building development in certain zones, specifically outlining the maximum floor space ratio for residential and mixed-use areas.&lt;SEP&gt;Floor space ratio controls specify the maximum allowable floor area relative to the size of the land parcel for both residential and mixed-use developments.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Setback Requirements">
+      <data key="d0">Setback Requirements</data>
+      <data key="d1">category</data>
+      <data key="d2">Setback Requirements are the regulations that determine the minimum distance buildings must be set back from property boundaries, ensuring adequate space and compliance in residential development.&lt;SEP&gt;Setback requirements dictate the minimum distance structures must be set back from property boundaries to ensure adequate space and privacy.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="Parking Requirements">
+      <data key="d0">Parking Requirements</data>
+      <data key="d1">category</data>
+      <data key="d2">Parking Requirements specify the amount of parking spaces that must be provided in residential developments, including standards for visitor and accessible parking.&lt;SEP&gt;Parking requirements stipulate the minimum number of parking spaces needed for residential developments and visitor parking based on the number of dwelling units.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="R1 Zone">
+      <data key="d0">R1 Zone</data>
+      <data key="d1">category</data>
+      <data key="d2">The R1 Zone is a residential zoning category under the Inner West Local Environmental Plan 2022, which has specific regulations for building height and floor space ratio.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185287</data>
+    </node>
+    <node id="R2 Zone">
+      <data key="d0">R2 Zone</data>
+      <data key="d1">category</data>
+      <data key="d2">The R2 Zone is another residential zoning category under the Inner West Local Environmental Plan 2022, with its own regulations regarding height and floor space ratio.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185288</data>
+    </node>
+    <node id="B4 Zone">
+      <data key="d0">B4 Zone</data>
+      <data key="d1">category</data>
+      <data key="d2">The B4 Zone is a mixed-use zoning category in the Inner West Local Environmental Plan 2022 that allows for both residential and commercial development with specific controls on floor space ratio.</data>
+      <data key="d3">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d4">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d5">1756185288</data>
+    </node>
+    <edge source="Inner West Local Environmental Plan 2022" target="Residential Buildings">
+      <data key="d6">19.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 includes specific controls and requirements that residential buildings must follow."&lt;&lt;"regulatory framework, building regulations&lt;SEP&gt;The Inner West Local Environmental Plan 2022 outlines specific regulations that residential buildings must conform to, including height and space standards.</data>
+      <data key="d8">10,planning framework,regulatory compliance</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185289</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="Commercial Buildings">
+      <data key="d6">18.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 establishes guidelines that commercial buildings must follow regarding height in mixed use zones.&lt;SEP&gt;The plan establishes regulations governing the height and other aspects of commercial buildings in conjunction with residential regulations."&lt;&lt;"building permissions, regulatory impact</data>
+      <data key="d8">9,planning framework,regulatory compliance</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185289</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="Mixed Use Zones">
+      <data key="d6">18.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 includes regulations for mixed use zones where both residential and commercial activities take place.&lt;SEP&gt;The local plan provides guidelines for development in mixed use zones, affecting both residential and commercial structures."&lt;&lt;"development guidelines, zoning regulations</data>
+      <data key="d8">9,land use,zoning regulations</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185290</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="Floor Space Ratio Controls">
+      <data key="d6">8.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 includes specific regulations for Floor Space Ratio Controls affecting densification in residential and mixed use zones."&lt;&lt;"density regulations, planning framework</data>
+      <data key="d8">8</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185172</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="Setback Requirements">
+      <data key="d6">17.0</data>
+      <data key="d7">Setback requirements are specified by the Inner West Local Environmental Plan 2022 to regulate the positioning of buildings on lots.&lt;SEP&gt;The plan outlines the Setback Requirements for front, side, and rear boundaries, which must be adhered to in residential developments."&lt;&lt;"building regulations, compliance</data>
+      <data key="d8">9,building placement,regulatory framework</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185291</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="Parking Requirements">
+      <data key="d6">16.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 includes stipulations for the number of parking spaces required for residential developments.&lt;SEP&gt;The local plan establishes Parking Requirements to ensure adequate parking facilities in new residential developments."&lt;&lt;"development standards, parking regulations</data>
+      <data key="d8">8,development planning,parking regulation</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185291</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="R1 Zone">
+      <data key="d6">9.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 specifies regulations that apply to the R1 Zone regarding building height and floor space ratio.</data>
+      <data key="d8">planning framework,zoning regulations</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185292</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="R2 Zone">
+      <data key="d6">9.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 includes provisions that govern the R2 Zone concerning building height and floor space ratio.</data>
+      <data key="d8">planning framework,zoning regulations</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185292</data>
+    </edge>
+    <edge source="Inner West Local Environmental Plan 2022" target="B4 Zone">
+      <data key="d6">9.0</data>
+      <data key="d7">The Inner West Local Environmental Plan 2022 sets rules for the B4 Zone that apply to both residential and commercial developments.</data>
+      <data key="d8">mixed-use development,zoning regulations</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185293</data>
+    </edge>
+    <edge source="Residential Buildings" target="Community Contribution Schemes">
+      <data key="d6">7.0</data>
+      <data key="d7">Community contribution schemes are relevant to residential developments, allowing for flexibility in the maximum floor space ratio based on contributions."&lt;&lt;"planning incentives, residential development</data>
+      <data key="d8">7</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185171</data>
+    </edge>
+    <edge source="Commercial Buildings" target="Mixed Use Zones">
+      <data key="d6">8.0</data>
+      <data key="d7">Commercial buildings are permitted within mixed use zones and are subject to the specific regulations of the Inner West Local Environmental Plan."&lt;&lt;"zoning, building allowances</data>
+      <data key="d8">8</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185172</data>
+    </edge>
+    <edge source="Mixed Use Zones" target="Floor Space Ratio Controls">
+      <data key="d6">8.0</data>
+      <data key="d7">Floor space ratio controls apply to mixed use zones, impacting the allowable construction scale in these areas.</data>
+      <data key="d8">development density,zoning impact</data>
+      <data key="d9">chunk-065c424b168a4972c8483e38860e056c</data>
+      <data key="d10">Inner_West_LEP_2022_API.pdf</data>
+      <data key="d11">1756185289</data>
+    </edge>
+  </graph>
+</graphml>

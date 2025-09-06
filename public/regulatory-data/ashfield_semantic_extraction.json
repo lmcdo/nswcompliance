@@ -1,0 +1,84 @@
+{
+  "area": "Ashfield",
+  "extraction_method": "dual_semantic_v1.0",
+  "enhanced_rules": [
+    {
+      "rule_id": "ASHFIELD_SIDE_SETBACK_001",
+      "rule_text": "Side setbacks shall be 0.9m minimum OR 0.5 times building height, whichever is greater.",
+      "rule_type": "side_setback",
+      "measurements": [
+        {
+          "measurement_type": "side_setback_conditional",
+          "value": "0.9m minimum OR 0.5 times building height",
+          "unit": "metres",
+          "context": "minimum side boundary setback with height calculation",
+          "confidence": 0.95
+        }
+      ],
+      "rule_classification": {
+        "tier": 1,
+        "enforcement_level": "MANDATORY",
+        "linguistic_confidence": 0.92,
+        "prescriptive_indicators": [
+          "shall be",
+          "minimum"
+        ],
+        "compliance_message_type": "MUST_COMPLY"
+      },
+      "source_grounding": {
+        "extraction_text": "Side setbacks shall be 0.9m minimum OR 0.5 times building height, whichever is greater.",
+        "source_section": "Part B Section 4.3.2",
+        "source_page": 45,
+        "confidence": 0.93,
+        "highlighted_spans": [
+          [
+            145,
+            234
+          ]
+        ]
+      },
+      "overall_confidence": 0.93,
+      "rule_complexity": "CONDITIONAL"
+    },
+    {
+      "rule_id": "ASHFIELD_FRONT_SETBACK_001",
+      "rule_text": "Front setbacks must be consistent with the established streetscape pattern between 4-6m.",
+      "rule_type": "front_setback",
+      "measurements": [
+        {
+          "measurement_type": "front_setback",
+          "value": 5,
+          "unit": "metres",
+          "context": "typical streetscape alignment",
+          "confidence": 0.88
+        }
+      ],
+      "rule_classification": {
+        "tier": 2,
+        "enforcement_level": "RECOMMENDED",
+        "linguistic_confidence": 0.85,
+        "prescriptive_indicators": [
+          "must be",
+          "consistent"
+        ],
+        "compliance_message_type": "SHOULD_ALIGN"
+      },
+      "source_grounding": {
+        "extraction_text": "Front setbacks must be consistent with the established streetscape pattern between 4-6m.",
+        "source_section": "Part B Section 4.3.1",
+        "source_page": 43,
+        "confidence": 0.87,
+        "highlighted_spans": [
+          [
+            89,
+            178
+          ]
+        ]
+      },
+      "overall_confidence": 0.87,
+      "rule_complexity": "RANGE_BASED"
+    }
+  ],
+  "total_enhanced_rules": 2,
+  "high_confidence_rules": 1
+}

@@ -1,0 +1,93 @@
+{
+  "area": "Ashfield",
+  "document_path": "docs/dcps/INNERWEST/Ashfield/",
+  "source_groundings": [
+    {
+      "extraction_text": "C105. The dwelling must be set back 4 metres from the front boundary of the lot.",
+      "source_location": "Site Specific Planning Controls",
+      "confidence": 1.0
+    },
+    {
+      "extraction_text": "C98. Any new development shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb. That is, free standing single storey scale ",
+      "source_location": "New Dwellings",
+      "confidence": 1.0
+    }
+  ],
+  "knowledge_triples": [
+    [
+      "front_setback",
+      "has_minimum_distance",
+      "4.0m"
+    ],
+    [
+      "side_setback",
+      "has_minimum_distance",
+      "3.0m"
+    ]
+  ],
+  "enhanced_rules": [
+    {
+      "rule_id": "ASHFIELD_FRONT_SETBACK_SEMANTIC",
+      "rule_text": "C105. The dwelling must be set back 4 metres from the front boundary of the lot.",
+      "rule_type": "front_setback",
+      "measurements": [
+        {
+          "measurement_type": "front_setback",
+          "value": 4.0,
+          "unit": "metres",
+          "context": "New dwellings within the specified subdivision.",
+          "confidence": 1.0
+        }
+      ],
+      "rule_classification": {
+        "tier": 1,
+        "enforcement_level": "MANDATORY",
+        "linguistic_confidence": 1.0,
+        "compliance_message_type": "MUST_COMPLY"
+      },
+      "source_grounding": {
+        "extraction_text": "C105. The dwelling must be set back 4 metres from the front boundary of the lot.",
+        "source_location": "Site Specific Planning Controls",
+        "confidence": 1.0
+      },
+      "overall_confidence": 1.0,
+      "rule_complexity": "SEMANTIC_EXTRACTED"
+    },
+    {
+      "rule_id": "ASHFIELD_SIDE_SETBACK_SEMANTIC",
+      "rule_text": "C98. Any new development shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb. That is, free standing single storey scale brick houses in a garden setting with uniform front setbacks, a 3m wide side setback for driveway access to a garage...",
+      "rule_type": "side_setback",
+      "measurements": [
+        {
+          "measurement_type": "side_setback",
+          "value": 3.0,
+          "unit": "metres",
+          "context": "New dwellings within the Haberfield Conservation Area.",
+          "confidence": 1.0
+        }
+      ],
+      "rule_classification": {
+        "tier": 1,
+        "enforcement_level": "MANDATORY",
+        "linguistic_confidence": 1.0,
+        "compliance_message_type": "MUST_COMPLY"
+      },
+      "source_grounding": {
+        "extraction_text": "C98. Any new development shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb. That is, free standing single storey scale ",
+        "source_location": "New Dwellings",
+        "confidence": 1.0
+      },
+      "overall_confidence": 1.0,
+      "rule_complexity": "SEMANTIC_EXTRACTED"
+    }
+  ],
+  "processing_metadata": {
+    "timestamp": "2025-08-25T19:28:54.327397",
+    "processors_used": [
+      "OpenAI-GPT-4o-mini"
+    ],
+    "extraction_method": "openai_semantic_extraction",
+    "documents_processed": 7,
+    "total_chars": 31974
+  }
+}

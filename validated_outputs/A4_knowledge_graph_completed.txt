@@ -1,0 +1,4 @@
+PRP-A4 completed: 2025-08-29T11:51:18.979281
+GraphML file: autoschemakg_output_ollama_final\kg_graphml\nsw_planning_docs_graph.graphml
+File size: 6,468,139 bytes
+NSW Planning Knowledge Graph construction complete

@@ -1,0 +1,2823 @@
+{
+  "docs_sepps_State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation": {
+    "source_path": "docs/sepps/State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf",
+    "original_size_kb": 944.6279296875,
+    "total_chunks_processed": 26,
+    "total_extractions": 32,
+    "extractions": [
+      {
+        "provision_type": "heritage_controls",
+        "provision_text": "draft heritage conservation area means an area of land identified as a heritage conservation area or place of Aboriginal heritage significance in a local environmental plan that has been subject to community consultation, other than an area that was consulted on before 1 March 2006, but has not been included in a plan before 27 February 2009.",
+        "clause_reference": null,
+        "char_start": 6602,
+        "char_end": 6968,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_controls",
+        "provision_text": "draft heritage item means a building, work, archeological site, tree, place or aboriginal object identified as a heritage item in a local environmental plan that has been subject to community consultation, other than an item that was consulted on before 1 March 2006, but has not been included in a plan before 27 February 2009.",
+        "clause_reference": null,
+        "char_start": 6969,
+        "char_end": 7296,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_controls",
+        "provision_text": "must not be carried out on land that is, or on which there is, an item that is listed on the State Heritage Register under the Heritage Act 1977, or that is subject to an interim heritage order under that Act",
+        "clause_reference": "1.16(1)(c)",
+        "char_start": 42869,
+        "char_end": 43109,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum height for a dwelling house and any attached development is $8 . 5 \\mathrm { m }$ above ground level (existing).",
+        "clause_reference": "3C.9",
+        "char_start": 524879,
+        "char_end": 524993,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "FSR_control",
+        "provision_text": "The maximum gross floor area of all buildings on a lot is shown in the following table—",
+        "clause_reference": "3C.10",
+        "char_start": 525080,
+        "char_end": 525165,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "The front building line of, and articulation zone for, a dwelling house and an attached development, other than a garage or carport, must have a minimum setback from the primary road as shown in the following table—",
+        "clause_reference": "3C.11",
+        "char_start": 525864,
+        "char_end": 526056,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Side setbacks The ground level of a dwelling house and any attached development (other than a garage to which subclause (4) applies) must have—",
+        "clause_reference": "3C.11",
+        "char_start": 526058,
+        "char_end": 526209,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "The upper level of a dwelling house and any attached development (other than a garage) must have—",
+        "clause_reference": "3C.11",
+        "char_start": 526444,
+        "char_end": 526561,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "A garage that is attached to the rear elevation of a dwelling house must have a minimum setback from a side boundary as shown in the following table—",
+        "clause_reference": "3C.11",
+        "char_start": 526725,
+        "char_end": 526865,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Maximum height of walls within $\\mathfrak { s oo m m }$ of side boundary The height of a wall erected within $9 0 0 \\mathrm { m m }$ of a side boundary must not exceed—",
+        "clause_reference": "3C.11",
+        "char_start": 527314,
+        "char_end": 527480,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Rear setbacks A dwelling house and any attached development must have a setback from the rear boundary as shown in the following table—",
+        "clause_reference": "3C.11",
+        "char_start": 528026,
+        "char_end": 528161,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Secondary road setbacks for corner lots Despite any other standard for a setback specified by this clause, a dwelling house and any attached development must have a minimum setback from a boundary with a secondary road as shown in the following table—",
+        "clause_reference": "3C.11",
+        "char_start": 528163,
+        "char_end": 528382,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Parallel road setbacks for parallel road lots Despite any other standard for a setback specified by this clause, a dwelling house and any attached development must have a setback from a boundary with a parallel road of at least $3 \\mathrm { m }$ .",
+        "clause_reference": "3C.11",
+        "char_start": 528384,
+        "char_end": 528578,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Classified road setbacks Despite any other standard for a setback specified by this clause, a dwelling house and any attached development must have a setback from a boundary with a classified road of at least—",
+        "clause_reference": "3C.11",
+        "char_start": 528580,
+        "char_end": 528774,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Public reserve setbacks Despite any other standard for a setback specified by this clause, a dwelling house and any cabana, cubby house, garden shed, gazebo, fernery, greenhouse or shed must have a setback from a boundary with a public reserve of at least $3 \\mathrm { m }$ .",
+        "clause_reference": "3C.11",
+        "char_start": 528776,
+        "char_end": 529009,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Front setbacks for battle-axe lots A dwelling house and any attached development on a battle-axe lot must have a setback from the rear boundary of the lot that is in front of the battle-axe lot of at least $3 \\mathrm { m }$ .",
+        "clause_reference": "3C.11",
+        "char_start": 529011,
+        "char_end": 529209,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "the maximum height of an attached rear garage is $3 . 3 \\mathrm { m }$",
+        "clause_reference": "3C.13",
+        "char_start": 530179,
+        "char_end": 530250,
+        "source_chunk": 14,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "if the swimming pool is being constructed in a heritage conservation area or a draft heritage conservation area, the swimming pool must be located— (a) behind the building line of the dwelling house that is adjacent to the rear boundary of the lot, and (b) no closer to each side boundary than the dwelling house.",
+        "clause_reference": "9",
+        "char_start": 675139,
+        "char_end": 675450,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "A fence may be erected on a lot under this code if it is not constructed or installed— (a) on a lot, or along a common boundary of a lot, that contains a heritage item or a draft heritage item, or (b) along the boundary of, or within the setback area of, a primary or secondary road within a heritage conservation area or draft heritage conservation area.",
+        "clause_reference": "3D.53(2)",
+        "char_start": 675579,
+        "char_end": 675968,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "not be higher than $1 . 8 \\mathrm { m }$ above ground level (existing)",
+        "clause_reference": "3D.53(3)(a)",
+        "char_start": 676009,
+        "char_end": 676068,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "be no higher than $2 . 2 \\mathrm { m }$ above ground level (existing) at each step",
+        "clause_reference": "3D.53(3)(e)",
+        "char_start": 676249,
+        "char_end": 676314,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "not be higher than $1 . 2 \\mathrm { m }$ above ground level (existing)",
+        "clause_reference": "3D.53(4)(a)",
+        "char_start": 676356,
+        "char_end": 676415,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "any fence located in the setback area of a primary or secondary road must not be higher than $1 . 2 \\mathrm { m }$ above ground level (existing)",
+        "clause_reference": "3D.53(5)",
+        "char_start": 676682,
+        "char_end": 676801,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum height for any development that is a farm building is shown in the following table— Landholding area Maximum height 7m",
+        "clause_reference": "3D.56(1)",
+        "char_start": 677549,
+        "char_end": 677665,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "be more than $7 \\mathrm { m }$ in height above ground level (existing)",
+        "clause_reference": "3D.60(2)(b)",
+        "char_start": 679326,
+        "char_end": 679386,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Fill must not exceed a maximum height, measured from ground level (existing), of— (a) if the fill is for the purposes of the erection or alteration of, or an addition to, a dwelling house under this code—1m, and   (b) if the fill is for any other purpose under this code— $6 0 0 \\mathrm { m m }$",
+        "clause_reference": "3D.61(5)",
+        "char_start": 679686,
+        "char_end": 679964,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "development that is a farm building must have a minimum setback from a boundary with any primary, secondary or parallel road as shown in the following table",
+        "clause_reference": "3D.59(1)",
+        "char_start": 678296,
+        "char_end": 678444,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Minimum setback from primary, secondary or parallel road boundary Zone R5 15mZone RU4 30mZone RU1, RU2, RU3 or RU6 50m",
+        "clause_reference": "3D.59(1)",
+        "char_start": 678504,
+        "char_end": 678616,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "development that is a farm building must have a minimum setback from a boundary with a classified road as— (a) shown in the table to this subclause, or   (b) specified by another environmental planning instrument or a development control plan applying to the land, whichever is the greater.",
+        "clause_reference": "3D.59(2)",
+        "char_start": 678617,
+        "char_end": 678878,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Development that is a farm building must have a minimum setback from a side or rear boundary as shown in the following table—",
+        "clause_reference": "3D.59(3)",
+        "char_start": 678879,
+        "char_end": 679001,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "development that is a farm building with a footprint of $5 0 0 \\mathrm { m } ^ { 2 }$ or more must have a minimum setback from any boundary of the lot of $2 0 0 \\mathrm { m }$",
+        "clause_reference": "3D.59(4)",
+        "char_start": 679002,
+        "char_end": 679145,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Development that is a farm building must be located at least $5 0 \\mathrm { m }$ from a waterbody (natural).",
+        "clause_reference": "3D.59(5)",
+        "char_start": 679146,
+        "char_end": 679220,
+        "source_chunk": 18,
+        "document": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:38:37.932519"
+  },
+  "docs_dcps_INNERWEST_leichhardt_Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments": {
+    "source_path": "docs/dcps/INNERWEST/leichhardt/Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf",
+    "original_size_kb": 376.4912109375,
+    "total_chunks_processed": 11,
+    "total_extractions": 59,
+    "extractions": [
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Annandale and as such the suburb is within a Heritage Conservation Area.",
+        "clause_reference": null,
+        "char_start": 2325,
+        "char_end": 2392,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "The entire area of Balmain, Balmain East and Birchgrove is a Heritage Conservation Area.",
+        "clause_reference": null,
+        "char_start": 4095,
+        "char_end": 4177,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Landscape Conservation Items",
+        "clause_reference": null,
+        "char_start": 38049,
+        "char_end": 38075,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "typically low scale domestic character",
+        "clause_reference": null,
+        "char_start": 38697,
+        "char_end": 38732,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "small scale residential dwellings, such as studios or single storey dwellings",
+        "clause_reference": null,
+        "char_start": 40505,
+        "char_end": 40574,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "single storey in height",
+        "clause_reference": null,
+        "char_start": 41754,
+        "char_end": 41777,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "maximum building wall height of 3.6m",
+        "clause_reference": null,
+        "char_start": 43099,
+        "char_end": 43134,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "two storey or higher building",
+        "clause_reference": null,
+        "char_start": 43177,
+        "char_end": 43207,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "6m building wall height",
+        "clause_reference": null,
+        "char_start": 43287,
+        "char_end": 43310,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Heritage Items and Heritage Conservation Areas",
+        "clause_reference": null,
+        "char_start": 42961,
+        "char_end": 43004,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "street trees and landscaping within Annandale Street (stretching from Parramatta Road in the south to Piper Street in the north) are listed as heritage items.",
+        "clause_reference": null,
+        "char_start": 42341,
+        "char_end": 42486,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "low scale domestic character",
+        "clause_reference": null,
+        "char_start": 43645,
+        "char_end": 43672,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "small scale residential dwellings, such as studios or single storey dwellings",
+        "clause_reference": null,
+        "char_start": 44392,
+        "char_end": 44461,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Setbacks vary from 3m to 5m for larger dwellings, to 1m to 2m for more modest developments.",
+        "clause_reference": null,
+        "char_start": 76039,
+        "char_end": 76125,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_controls",
+        "provision_text": "Promote land uses and urban design that enhances and contributes to the character and identity of the neighbourhood, whilst protecting Heritage Items and Heritage Conservation Areas that combine to help create that character.",
+        "clause_reference": null,
+        "char_start": 76457,
+        "char_end": 76662,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "a. 3.6m building wall heights apply north of Piper Street;",
+        "clause_reference": null,
+        "char_start": 78538,
+        "char_end": 78592,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "b. 6m building wall heights apply south of Piper Street.",
+        "clause_reference": null,
+        "char_start": 78594,
+        "char_end": 78646,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "a maximum building wall height of 6m applies to the neighbourhood except in Taylor Street, Susan Street and Albion Street east of Nelson Street where a 3.6m wall height will apply;",
+        "clause_reference": null,
+        "char_start": 79471,
+        "char_end": 79661,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "A minimum building setback of 10m from the Pa",
+        "clause_reference": null,
+        "char_start": 80946,
+        "char_end": 80990,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum building wall height is 6m for residential sites and $7 . 2 \\mathsf { m }$ for commercial sites",
+        "clause_reference": "C5",
+        "char_start": 113791,
+        "char_end": 113883,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "the maximum building wall height for the Balmain Village Precinct is to be 10m on the southern side and $7 . 2 \\mathsf { m }$ on the northern side",
+        "clause_reference": "C5",
+        "char_start": 113899,
+        "char_end": 114034,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "the maximum building wall height in the commercial and eastern portion of the neighbourhood is generally $7 \\mathsf { m } - 1 0 \\mathsf { m }$",
+        "clause_reference": "C6",
+        "char_start": 114121,
+        "char_end": 114278,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Uses of public buildings within the civic precinct should respect the heritage values of the sites.",
+        "clause_reference": "C2",
+        "char_start": 116179,
+        "char_end": 116267,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Maintain a maximum building wall height of $7 . 2 \\mathsf { m }$ on the northern side of Darling Street and 10m on southern side of Darling Street.",
+        "clause_reference": "C3",
+        "char_start": 117814,
+        "char_end": 117944,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "nil – 1m setbacks for housing",
+        "clause_reference": null,
+        "char_start": 119899,
+        "char_end": 119927,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "setbacks are generally $0 \\mathsf { m } - 3 \\mathsf { m }$",
+        "clause_reference": null,
+        "char_start": 151892,
+        "char_end": 151929,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "All structures built prior to 1860 are rare and should be conserved.",
+        "clause_reference": "C2",
+        "char_start": 152866,
+        "char_end": 152930,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum building wall height applying to the neighbourhood is $3 . 6 \\mathsf { m }$",
+        "clause_reference": null,
+        "char_start": 153445,
+        "char_end": 153523,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "a maximum building wall height of 6m is appropriate",
+        "clause_reference": null,
+        "char_start": 153635,
+        "char_end": 153685,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Front setbacks shall be generally $0  { \\mathrm { m } } - 2  { \\mathrm { m } }$",
+        "clause_reference": null,
+        "char_start": 153699,
+        "char_end": 153760,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "A zero setback is generally appropriate to narrow streets such as Gladstone and Ann Streets.",
+        "clause_reference": null,
+        "char_start": 153829,
+        "char_end": 153918,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Jane Street - A 3.6m maximum building wall height is applicable.",
+        "clause_reference": null,
+        "char_start": 155786,
+        "char_end": 155848,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Vincent Street - A 6m maximum building wall height is applicable, subject to solar access being sustained to the properties on the south side of the street.",
+        "clause_reference": null,
+        "char_start": 155933,
+        "char_end": 156079,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "requires a stepped form with a two storey maximum, with the upper floors stepped back, and flat or low roof lines.",
+        "clause_reference": null,
+        "char_start": 156213,
+        "char_end": 156320,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "The view of the Balmain townscape focussed on St Augustine’s tower, from the City, the waterways and the bridge approaches from the east and south should be maintained.",
+        "clause_reference": null,
+        "char_start": 156328,
+        "char_end": 156493,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "The exterior form as seen from the surrounding streets and the longer views from the Harbour is to be conserved and/or restored.",
+        "clause_reference": null,
+        "char_start": 156742,
+        "char_end": 156865,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "setbacks of $_ { 2 \\mathsf { m } }$",
+        "clause_reference": null,
+        "char_start": 190061,
+        "char_end": 190089,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum wall height of 6m applies to the neighbourhood.",
+        "clause_reference": null,
+        "char_start": 194809,
+        "char_end": 194861,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Development visible from the water is to be designed to preserve the conservation values of the area. When viewed from the water a balance between built form and landscape is to be achieved/maintained through side setbacks and landscaping. Additionally the rear elevation must be designed so it does not detract from the form, character and scale of the conservation area. The amount of glazing to solid ratio on the rear elevation must be sympathetic to the immediately surrounding development.",
+        "clause_reference": null,
+        "char_start": 195363,
+        "char_end": 195869,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building wall height is to be a maximum of $_ { 3 . 6 \\mathsf { m } }$",
+        "clause_reference": null,
+        "char_start": 231501,
+        "char_end": 231554,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Neighbourhood shops or buildings originally designed for non-residential use may have a maximum building wall height of $7 . 2 \\mathsf { m }$ to incorporate a parapet.",
+        "clause_reference": null,
+        "char_start": 231557,
+        "char_end": 231703,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m for new development shall apply in the industrial area.",
+        "clause_reference": null,
+        "char_start": 233117,
+        "char_end": 233197,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building wall height is to be a maximum of $_ { 3 . 6 \\mathsf { m } }$",
+        "clause_reference": null,
+        "char_start": 234275,
+        "char_end": 234328,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "where a maximum building wall height of $_ { 6 . 0 \\mathsf { m } }$ shall apply.",
+        "clause_reference": null,
+        "char_start": 234392,
+        "char_end": 234455,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Development along Balmain Road shall have a front setback of at least 4m.",
+        "clause_reference": "C5",
+        "char_start": 265383,
+        "char_end": 265455,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "For commercial development fronting Balmain Road a maximum building wall height of 9m applies to new development.",
+        "clause_reference": "C6",
+        "char_start": 265458,
+        "char_end": 265577,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 12m may be achieved where a setback of at least 3m from the building frontage is achieved.",
+        "clause_reference": "C6",
+        "char_start": 265578,
+        "char_end": 265706,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Maintain the predominant bulk, scale and siting of buildings and protect the heritage significance of the relevant Heritage Conservation Area.",
+        "clause_reference": null,
+        "char_start": 266292,
+        "char_end": 266447,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m applies to this location.",
+        "clause_reference": null,
+        "char_start": 266552,
+        "char_end": 266612,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building wall height is to be a maximum of $3 . 6 \\mathsf { m }$ , unless an alternate building wall height is prescribed under the relevant Sub Area controls.",
+        "clause_reference": null,
+        "char_start": 268954,
+        "char_end": 269107,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Neighbourhood shops or buildings originally designed for non-residential use may have a maximum building wall height of $7 . 2 \\mathsf { m }$ in order to incorporate a parapet.",
+        "clause_reference": null,
+        "char_start": 269108,
+        "char_end": 269285,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Setbacks shall be between 3m and 5m to Ilka Street, and 3m to Moore Lane.",
+        "clause_reference": null,
+        "char_start": 270138,
+        "char_end": 270216,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of $3 . 6 \\mathsf { m }$ applies to the Ilka Street frontage.",
+        "clause_reference": null,
+        "char_start": 270345,
+        "char_end": 270421,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m applies to the northern face of buildings to Moore Lane.",
+        "clause_reference": null,
+        "char_start": 270503,
+        "char_end": 270584,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation_area",
+        "provision_text": "Three (3) distinct areas within the neighbourhood are located within Heritage Conservation Areas. The areas include: \na. Evans Street; b. most of the area east of Gordon Street; and c. the knoll west of Easton Park.",
+        "clause_reference": null,
+        "char_start": 344556,
+        "char_end": 344788,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of $_ { 3 . 6 \\mathsf { m } }$ applies to the neighbourhood.",
+        "clause_reference": null,
+        "char_start": 346554,
+        "char_end": 346643,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A 6m maximum building wall height may be suitable where two storey terraced development is dominant.",
+        "clause_reference": null,
+        "char_start": 346643,
+        "char_end": 346742,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Front building setbacks within the neighbourhood should be a minimum of 1m.",
+        "clause_reference": null,
+        "char_start": 346766,
+        "char_end": 346848,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "However, where the prevailing setbacks in the immediate area of the development site (i.e. the adjoining three (3) sites on either side of the development site) are different, the setback for new development should be compatible with the prevailing setbacks.",
+        "clause_reference": null,
+        "char_start": 346848,
+        "char_end": 347130,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:39:15.993452"
+  },
+  "docs_dcps_INNERWEST_leichhardt_Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size": {
+    "source_path": "docs/dcps/INNERWEST/leichhardt/Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf",
+    "original_size_kb": 376.21875,
+    "total_chunks_processed": 11,
+    "total_extractions": 82,
+    "extractions": [
+      {
+        "provision_type": "zoning_and_land_use",
+        "provision_text": "The provisions of Section C2 – Urban Character of this Development Control Plan give guidance on how to facilitate development that gives effect to the aims of the Inner West LEP 2022 and achieves the objectives of the R1 General Residential Zone.",
+        "clause_reference": "C2",
+        "char_start": 1014,
+        "char_end": 1242,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "the suburb is within a Heritage Conservation Area.",
+        "clause_reference": null,
+        "char_start": 1867,
+        "char_end": 1910,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Keep future development and/or additions consistent with the predominant built character of The Crescent in relation to height, built form and siting, typically low scale domestic character.",
+        "clause_reference": null,
+        "char_start": 41125,
+        "char_end": 41319,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "The street trees along Railway Parade have been identified as significant attributes of the Annandale suburb and are listed as Landscape Conservation Items.",
+        "clause_reference": null,
+        "char_start": 38156,
+        "char_end": 38335,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Promote land uses and urban design that enhances and contributes to the character and identity of the neighbourhood, whilst protecting Heritage Items and Heritage Conservation Areas that combine to help create that character.",
+        "clause_reference": null,
+        "char_start": 46046,
+        "char_end": 46259,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A range of maximum building wall heights apply to the Trafalgar Street Distinctive Neighbourhood:   \na. 3.6m building wall heights apply north of Piper Street; \nb. 6m building wall heights apply south of Piper Street.",
+        "clause_reference": null,
+        "char_start": 77593,
+        "char_end": 77776,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Where new development adjoins two storey or higher buildings such development may exceed the applicable building wall height control but should not exceed the higher ridge height adjoining.",
+        "clause_reference": null,
+        "char_start": 77779,
+        "char_end": 77954,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Setbacks vary from 3m to 5m for larger dwellings, to 1m to 2m for more modest developments.",
+        "clause_reference": null,
+        "char_start": 76270,
+        "char_end": 76358,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Promote land uses and urban design that enhances and contributes to the character and identity of the neighbourhood, whilst protecting Heritage Items and Heritage Conservation Areas that combine to help create that character.",
+        "clause_reference": null,
+        "char_start": 76741,
+        "char_end": 76923,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Significant sandstone walls shall be retained in their existing form and enhanced by integration into the landscape.",
+        "clause_reference": null,
+        "char_start": 78041,
+        "char_end": 78145,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Promote land uses and urban design that enhances and contributes to the character and identity of the neighbourhood, whilst protecting Heritage Items and Heritage Conservation Areas that combine to help create that character.",
+        "clause_reference": null,
+        "char_start": 76741,
+        "char_end": 76923,
+        "source_chunk": 2,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "C5 The maximum building wall height is 6m for residential sites and $7 . 2 \\mathsf { m }$ for commercial sites except as follows:\na. the maximum building wall height for the Balmain Village Precinct is to be 10m on the southern side and $7 . 2 \\mathsf { m }$ on the northern side.",
+        "clause_reference": "C5",
+        "char_start": 114173,
+        "char_end": 114392,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "C6 Due to the diversity of building scale along Darling Street, the maximum building wall heights listed above should also be determined on the basis of the following:\na. the primary reference is the building scale in the immediate vicinity of the subject site, eg terrace houses, traditional Victorian shop top terraces and single storey dwellings. i.e. they should be in keeping with their neighbours;   \nb. the maximum building wall height in the commercial and eastern portion of the neighbourhood is generally 7m – 10m.",
+        "clause_reference": "C6",
+        "char_start": 114393,
+        "char_end": 114811,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Rooftop additions higher than the building wall height, if permitted, are to be set back from the front of the building to preserve the traditional scale of development and streetscape.",
+        "clause_reference": null,
+        "char_start": 114947,
+        "char_end": 115113,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Significant sandstone walls and rocky outcrops shall be retained in their existing form and where appropriate, be integrated into the landscape or building fabric.",
+        "clause_reference": null,
+        "char_start": 115355,
+        "char_end": 115505,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "C12 Development adjacent to residentially zoned land is to be considered in light of Part C4.5 – Interface Amenity within this Development Control Plan. Such consideration is to apply only to the interface boundary and has the following objectives: \na. to preserve residential amenity, and b. to ensure an appropriate transition in bulk and scale of development.",
+        "clause_reference": "C12",
+        "char_start": 115506,
+        "char_end": 115859,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "C13 Original detailing including façade finishes, roofing and guttering, windows and doors, fenestration, verandahs and posted balconies should be retained or restored where appropriate.",
+        "clause_reference": "C13",
+        "char_start": 115860,
+        "char_end": 116029,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "C2 Uses of public buildings within the civic precinct should respect the heritage values of the sites.",
+        "clause_reference": "C2",
+        "char_start": 116661,
+        "char_end": 116752,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "C1 Maintain differentiation between front setbacks in residential and commercial uses to permit landscaping in residential areas.",
+        "clause_reference": "C1",
+        "char_start": 116559,
+        "char_end": 116660,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "C3 Maintain a maximum building wall height of $7 . 2 \\mathsf { m }$ on the northern side of Darling Street and 10m on southern side of Darling Street.",
+        "clause_reference": "C3",
+        "char_start": 117934,
+        "char_end": 118052,
+        "source_chunk": 3,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "setbacks of 2m",
+        "clause_reference": "C2.2.2.5(c)",
+        "char_start": 189961,
+        "char_end": 189975,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum wall height of 6m applies to the neighbourhood.",
+        "clause_reference": null,
+        "char_start": 194476,
+        "char_end": 194532,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Retain existing stone houses and walls and exposed rock face.",
+        "clause_reference": null,
+        "char_start": 194943,
+        "char_end": 195003,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Development visible from the water is to be designed to preserve the conservation values of the area. When viewed from the water a balance between built form and landscape is to be achieved/maintained through side setbacks and landscaping. Additionally the rear elevation must be designed so it does not detract from the form, character and scale of the conservation area. The amount of glazing to solid ratio on the rear elevation must be sympathetic to the immediately surrounding development.",
+        "clause_reference": null,
+        "char_start": 195005,
+        "char_end": 195377,
+        "source_chunk": 5,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building wall height is to be a maximum of $3 . 6 \\mathsf { m }$ , unless an alternative maximum building wall height is prescribed within the relevant Sub Area.",
+        "clause_reference": null,
+        "char_start": 230534,
+        "char_end": 230732,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Neighbourhood shops or buildings originally designed for non-residential use may have a maximum building wall height of $7 . 2 \\mathsf { m }$ to incorporate a parapet.",
+        "clause_reference": null,
+        "char_start": 230735,
+        "char_end": 230885,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Promote land uses and urban design that enhances and contributes to the character and identity of the neighbourhood whilst protecting Heritage Items and Heritage Conservation Areas that combine to help create that character.",
+        "clause_reference": null,
+        "char_start": 230158,
+        "char_end": 230374,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Encourage mixed use of commercial buildings to incorporate residential living above or where permissible, to the rear of the buildings.",
+        "clause_reference": null,
+        "char_start": 230434,
+        "char_end": 230530,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Front setbacks for single dwellings are mostly between 1m and 3m, creating a level of consistency in streets of mixed housing styles.",
+        "clause_reference": null,
+        "char_start": 228483,
+        "char_end": 228622,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Dwellings shall be discouraged on land fronting the lane where sites have a frontage of less than 5m and where the carriageway width is less than 5m.",
+        "clause_reference": null,
+        "char_start": 231475,
+        "char_end": 231614,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "building_control",
+        "provision_text": "New buildings or alterations and additions fronting the lane should be unobtrusive from the primary street.",
+        "clause_reference": null,
+        "char_start": 231617,
+        "char_end": 231718,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m for new development shall apply in the industrial area.",
+        "clause_reference": null,
+        "char_start": 232293,
+        "char_end": 232376,
+        "source_chunk": 6,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m applies to this location.",
+        "clause_reference": "C4",
+        "char_start": 265309,
+        "char_end": 265366,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Development along Balmain Road shall have a front setback of at least 4m.",
+        "clause_reference": "C5",
+        "char_start": 265369,
+        "char_end": 265442,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "For commercial development fronting Balmain Road a maximum building wall height of 9m applies to new development. A maximum building wall height of 12m may be achieved where a setback of at least 3m from the building frontage is achieved. The wall height is measured from natural ground level at any point.",
+        "clause_reference": "C6",
+        "char_start": 265445,
+        "char_end": 265739,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "The area is zoned Business",
+        "clause_reference": null,
+        "char_start": 265962,
+        "char_end": 265987,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Maintain the predominant bulk, scale and siting of buildings and protect the heritage significance of the relevant Heritage Conservation Area.",
+        "clause_reference": null,
+        "char_start": 266203,
+        "char_end": 266328,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 6m applies to this location.",
+        "clause_reference": null,
+        "char_start": 266406,
+        "char_end": 266463,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building wall height is to be a maximum of $3 . 6 \\mathsf { m }$ , unless an alternate building wall height is prescribed under the relevant Sub Area controls.",
+        "clause_reference": null,
+        "char_start": 268547,
+        "char_end": 268686,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Neighbourhood shops or buildings originally designed for non-residential use may have a maximum building wall height of $7 . 2 \\mathsf { m }$ in order to incorporate a parapet.",
+        "clause_reference": null,
+        "char_start": 268687,
+        "char_end": 268848,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Setbacks shall be between 3m and 5m to Ilka Street, and 3m to Moore Lane.",
+        "clause_reference": null,
+        "char_start": 269367,
+        "char_end": 269436,
+        "source_chunk": 7,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum building wall height shall be $7 . 2 \\mathsf { m }$ .",
+        "clause_reference": "C3",
+        "char_start": 303300,
+        "char_end": 303359,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The maximum building wall height for the Balmain Road Terraces is $7 . 2 \\mathsf { m }$ .",
+        "clause_reference": null,
+        "char_start": 304299,
+        "char_end": 304369,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Preserve and enhance the particular qualities which define their heritage conservation value.",
+        "clause_reference": null,
+        "char_start": 304225,
+        "char_end": 304308,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "The existing façades of the Balmain Road Terraces must be retained when considering alterations or additions to the buildings.",
+        "clause_reference": null,
+        "char_start": 304372,
+        "char_end": 304484,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "New front fences shall be constructed of iron palisade with a masonry plinth.",
+        "clause_reference": null,
+        "char_start": 304487,
+        "char_end": 304560,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Retain the industrial uses and preserve the existing character of the area at the junction of Justin Street and Lilyfield Road.",
+        "clause_reference": "C1",
+        "char_start": 305206,
+        "char_end": 305305,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "Front setbacks for single dwellings are consistently between 1m and 3m.",
+        "clause_reference": null,
+        "char_start": 306838,
+        "char_end": 306907,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "Side setbacks within the neighbourhood are distinctive in that they are consistent between dwellings in each street but vary from street to street, generally between $6 0 0 \\mathsf { m m }$ and $_ { 2 . 5 \\mathsf { m } }$ .",
+        "clause_reference": null,
+        "char_start": 306910,
+        "char_end": 307155,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Enhance the value of Heritage Conservation Areas and Heritage Items identified in Inner West LEP 2022.",
+        "clause_reference": null,
+        "char_start": 307620,
+        "char_end": 307724,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Maximum building wall height of $3 . 6 \\mathsf { m }$ applies unless an alternative building wall height is prescribed under the Sub Area controls.",
+        "clause_reference": null,
+        "char_start": 307887,
+        "char_end": 308018,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Neighbourhood shops or buildings originally designed for a non-residential use may have a 7.2m maximum building wall height in order to incorporate a parapet.",
+        "clause_reference": null,
+        "char_start": 308021,
+        "char_end": 308172,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Preserve and enhance the predominantly Federation-style streetscape in Eric and Rayner Streets.",
+        "clause_reference": null,
+        "char_start": 308588,
+        "char_end": 308677,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Preserve and enhance the Californian bungalow streetscape in Campbell Avenue and Perry Street.",
+        "clause_reference": null,
+        "char_start": 308680,
+        "char_end": 308773,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "To encourage and enhance landscaping in the front building setback on Campbell Avenue and Perry, Eric and Rayner Streets.",
+        "clause_reference": null,
+        "char_start": 308776,
+        "char_end": 308897,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "The provision of off-street parking in front of the front building setback shall not occur.",
+        "clause_reference": null,
+        "char_start": 308900,
+        "char_end": 308983,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "Front fences and gardens should be reconstructed in Perry Street.",
+        "clause_reference": null,
+        "char_start": 309106,
+        "char_end": 309167,
+        "source_chunk": 8,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Preserve the commercial architecture of this street, with nil setbacks, parapet roof forms and posted balconies where appropriate.",
+        "clause_reference": null,
+        "char_start": 341271,
+        "char_end": 341379,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Three (3) distinct areas within the neighbourhood are located within Heritage Conservation Areas. The areas include: \na. Evans Street; b. most of the area east of Gordon Street; and c. the knoll west of Easton Park.",
+        "clause_reference": null,
+        "char_start": 344237,
+        "char_end": 344458,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Identifiable characteristics of the neighbourhood include setbacks of $0 \\mathsf { m } { - } 3 \\mathsf { m }$ and mature trees on private land which contribute significantly to the streetscape.",
+        "clause_reference": null,
+        "char_start": 344536,
+        "char_end": 344700,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "The scale of buildings is mixed and ranges between single storey (with a $3 . 6 \\mathsf { m }$ wall height) and two storeys (with a 6m wall height).",
+        "clause_reference": null,
+        "char_start": 344701,
+        "char_end": 344830,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Preserve the established setbacks for each street.",
+        "clause_reference": null,
+        "char_start": 345402,
+        "char_end": 345452,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Maintain the existing roof forms, setbacks and fencing styles prevalent in each street.",
+        "clause_reference": null,
+        "char_start": 345549,
+        "char_end": 345642,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "A maximum building wall height of 3.6m applies to the neighbourhood.",
+        "clause_reference": null,
+        "char_start": 345755,
+        "char_end": 345825,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "0 A 6m maximum building wall height may be suitable where two storey terraced development is dominant.",
+        "clause_reference": null,
+        "char_start": 345825,
+        "char_end": 345925,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Front building setbacks within the neighbourhood should be a minimum of 1m. However, where the prevailing setbacks in the immediate area of the development site (i.e. the adjoining three (3) sites on either side of the development site) are different, the setback for new development should be compatible with the prevailing setbacks.",
+        "clause_reference": null,
+        "char_start": 345926,
+        "char_end": 346358,
+        "source_chunk": 9,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "This building has an imposing 10m–15m wall height built to the boundary, and a sawtooth factory roof behind a parapet.",
+        "clause_reference": null,
+        "char_start": 379069,
+        "char_end": 379209,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Along the eastern end of Robert Street the scale of the built environment ranges up to a 15m wall height (with an 8m wall height at the rear of the building, along Mansfield Street).",
+        "clause_reference": null,
+        "char_start": 379614,
+        "char_end": 379802,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Along the western end of Robert Street and Parsons Street the scale of development is 6m – 8m with single storey scale adjacent to The Crescent and along Victoria Road.",
+        "clause_reference": null,
+        "char_start": 379803,
+        "char_end": 379969,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Allow industrial development to be built to the street alignment to continue the prevalent setbacks and provide a “hard edge” along the street.",
+        "clause_reference": null,
+        "char_start": 381314,
+        "char_end": 381470,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Where provided, front setbacks and internal areas should be appropriately landscaped to provide a visual buffer to the street.",
+        "clause_reference": null,
+        "char_start": 381659,
+        "char_end": 381788,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Where a building retains its original unpainted or rendered face brick façade, this will be retained and conserved.",
+        "clause_reference": null,
+        "char_start": 381846,
+        "char_end": 381971,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Where a building has been painted or rendered, an appropriate heritage-derived colour scheme should be used to ensure compatibility with the prevailing streetscape character.",
+        "clause_reference": null,
+        "char_start": 381972,
+        "char_end": 382138,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Encourage a range of industrial uses which contribute to the ongoing viability of the surrounding uses.",
+        "clause_reference": null,
+        "char_start": 380697,
+        "char_end": 380800,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Provide for a range of industrial spaces that encourage diversity of industrial uses.",
+        "clause_reference": null,
+        "char_start": 380801,
+        "char_end": 380881,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Retain and enhance the industrial areas to maximise its continuance for employment opportunities.",
+        "clause_reference": null,
+        "char_start": 380882,
+        "char_end": 380975,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Maintain the integrity of the neighbourhood by discouraging residential development in the area.",
+        "clause_reference": null,
+        "char_start": 380976,
+        "char_end": 381063,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Discourage uses that may compromise the viability of compatible industrial activity which will cause nuisance to adjoining/nearby uses.",
+        "clause_reference": null,
+        "char_start": 381064,
+        "char_end": 381186,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Promote the viability of compatible industrial activity at street level to provide an active street frontage.",
+        "clause_reference": null,
+        "char_start": 381187,
+        "char_end": 381284,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Encourage the adaptive reuse of existing buildings whilst allowing for a range of contemporary and compatible industrial uses.",
+        "clause_reference": null,
+        "char_start": 381285,
+        "char_end": 381404,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Encourage uses that are compatible with surrounding industrial uses.",
+        "clause_reference": null,
+        "char_start": 381539,
+        "char_end": 381602,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Industrial uses are to be predominantly located within the building area, to minimise noise and ensure that streetscape amenity is maintained.",
+        "clause_reference": null,
+        "char_start": 381603,
+        "char_end": 381658,
+        "source_chunk": 10,
+        "document": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:52:57.816275",
+    "processing_note": "Completed with adaptive rate limiting"
+  },
+  "docs_dcps_INNERWEST_Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments": {
+    "source_path": "docs/dcps/INNERWEST/Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments.pdf",
+    "original_size_kb": 361.9091796875,
+    "total_chunks_processed": 10,
+    "total_extractions": 2,
+    "extractions": [
+      {
+        "provision_type": "heritage_conservation_area",
+        "provision_text": "C53 Tavistock Estate, Summer Hill Heritage Conservation Area",
+        "clause_reference": null,
+        "char_start": 345995,
+        "char_end": 346053,
+        "source_chunk": 9,
+        "document": "Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation_area",
+        "provision_text": "The Tavistock Estate Heritage Conservation Area is of local heritage significance.",
+        "clause_reference": null,
+        "char_start": 346120,
+        "char_end": 346199,
+        "source_chunk": 9,
+        "document": "Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:39:24.933469"
+  },
+  "docs_lep_Inner West Local Environmental Plan 2022 - NSW Legislation": {
+    "source_path": "docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation.pdf",
+    "original_size_kb": 313.9501953125,
+    "total_chunks_processed": 9,
+    "total_extractions": 26,
+    "extractions": [
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "R1 General Residential\nR2 Low Density Residential\nR3 Medium Density Residential\nR4 High Density Residential",
+        "clause_reference": null,
+        "char_start": 3286,
+        "char_end": 3381,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "E1 Local Centre\nE2 Commercial Centre\nE3 Productivity Support\nE4 General Industrial",
+        "clause_reference": null,
+        "char_start": 3383,
+        "char_end": 3472,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "MU1 Mixed Use",
+        "clause_reference": null,
+        "char_start": 3474,
+        "char_end": 3488,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "SP1 Special Activities\nSP2 Infrastructure",
+        "clause_reference": null,
+        "char_start": 3490,
+        "char_end": 3538,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "RE1 Public Recreation\nRE2 Private Recreation",
+        "clause_reference": null,
+        "char_start": 3540,
+        "char_end": 3588,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "W1 Natural Waterways\nW2 Recreational Waterways\nW4 Working Waterfront",
+        "clause_reference": null,
+        "char_start": 3590,
+        "char_end": 3650,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "land is within the zones shown on the Land Zoning Map",
+        "clause_reference": null,
+        "char_start": 3672,
+        "char_end": 3720,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "5.10 Heritage conservation . .. 50",
+        "clause_reference": "5.10",
+        "char_start": 1871,
+        "char_end": 1899,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "6.20 Development on land in Haberfield Heritage Conservation Area .. 77",
+        "clause_reference": "6.20",
+        "char_start": 2582,
+        "char_end": 2644,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "7.3 Floor space ratio on Dulwich Grove land . . 90",
+        "clause_reference": "7.3",
+        "char_start": 3047,
+        "char_end": 3090,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "7.2 Height of buildings on Dulwich Grove land. . 89",
+        "clause_reference": "7.2",
+        "char_start": 3004,
+        "char_end": 3046,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "4.4A Exception to maximum floor space ratio for active street frontages... 40",
+        "clause_reference": "4.4A",
+        "char_start": 1370,
+        "char_end": 1442,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "4.5 Calculation of floor space ratio and site area . . 40",
+        "clause_reference": "4.5",
+        "char_start": 1444,
+        "char_end": 1494,
+        "source_chunk": 0,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Development involving the construction of a new building, or external alterations to an existing building, that will result in a building that is equal to, or greater than, $\\mathsf { 1 4 m }$ in height.",
+        "clause_reference": "6.9(2)",
+        "char_start": 123350,
+        "char_end": 123527,
+        "source_chunk": 3,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use_control",
+        "provision_text": "Development consent must not be granted for the purposes of restricted premises or sex services premises unless, when measured from the boundary of the lot on which the premises will be used, the development will be located— \n(a) more than ${ 2 0 0 } \\mathsf { m }$ from land in a residential zone or Zone RE1 Public Recreation",
+        "clause_reference": "6.10(2)",
+        "char_start": 124008,
+        "char_end": 124227,
+        "source_chunk": 3,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use_control",
+        "provision_text": "more than 200m from a place of public worship, hospital, school, centre-based child care facility, community facility or recreation area",
+        "clause_reference": "6.10(2)(b)",
+        "char_start": 124236,
+        "char_end": 124399,
+        "source_chunk": 3,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use_control",
+        "provision_text": "more than $5 0 \\mathsf { m }$ from a railway station entrance, bus stop, taxi rank, ferry terminal or similar public utility undertaking.",
+        "clause_reference": "6.10(2)(c)",
+        "char_start": 124404,
+        "char_end": 124523,
+        "source_chunk": 3,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "Development that is permissible in Zone E1",
+        "clause_reference": "32",
+        "char_start": 196430,
+        "char_end": 196469,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_provision",
+        "provision_text": "Development that is permissible in Zone R4 High Density Residential is permitted with development consent.",
+        "clause_reference": "33",
+        "char_start": 196655,
+        "char_end": 196747,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Must not be constructed or installed on or in a heritage item or draft heritage item.",
+        "clause_reference": null,
+        "char_start": 199655,
+        "char_end": 199735,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Must not be higher than $_ { 1 . 2 \\mathsf { m } }$ above ground level (existing).",
+        "clause_reference": null,
+        "char_start": 199960,
+        "char_end": 200037,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "dimension_limit",
+        "provision_text": "Maximum width—0.6m.",
+        "clause_reference": null,
+        "char_start": 200179,
+        "char_end": 200202,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "dimension_limit",
+        "provision_text": "Maximum depth— $. 0 . 6 \\mathsf { m }$ .",
+        "clause_reference": null,
+        "char_start": 200218,
+        "char_end": 200250,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Must not involve damage to, or removal of, historical fabric or trees or vegetation subject to protection.",
+        "clause_reference": null,
+        "char_start": 200458,
+        "char_end": 200561,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "setback_requirement",
+        "provision_text": "Must be limited to one in the front setback and must not cause damage to significant or early fabric.",
+        "clause_reference": null,
+        "char_start": 200876,
+        "char_end": 200965,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "Minor routine maintenance of heritage items or on land in heritage conservation areas",
+        "clause_reference": null,
+        "char_start": 200978,
+        "char_end": 201063,
+        "source_chunk": 5,
+        "document": "Inner West Local Environmental Plan 2022 - NSW Legislation.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:39:52.204740"
+  },
+  "docs_sepps_State Environmental Planning Policy (Housing) 2021 - NSW Legislation": {
+    "source_path": "docs/sepps/State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf",
+    "original_size_kb": 295.98046875,
+    "total_chunks_processed": 9,
+    "total_extractions": 11,
+    "extractions": [
+      {
+        "provision_type": "height_limit",
+        "provision_text": "(b) all buildings will have a height not exceeding the greater of— (i) 11m, or (ii) the maximum permissible building height for the development on the land, and",
+        "clause_reference": "42(1)",
+        "char_start": 43436,
+        "char_end": 43602,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "FSR_control",
+        "provision_text": "(c) all buildings will have a floor space ratio not exceeding the greater of— (i) 0.65:1, or (ii) the maximum permissible floor space ratio for the development on the land, and",
+        "clause_reference": "42(1)",
+        "char_start": 43603,
+        "char_end": 43775,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_control",
+        "provision_text": "(ii) is not identified in an environmental planning instrument as being in a heritage conservation area,",
+        "clause_reference": "42(2)(a)",
+        "char_start": 43926,
+        "char_end": 44033,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "no building has a height of more than $9 . 5 \\mathrm { m }$ , excluding servicing equipment on the roof of a building",
+        "clause_reference": "107(2)(a)",
+        "char_start": 113899,
+        "char_end": 114008,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "does not result in the building having a height of more than $1 1 . 5 \\mathrm { m }$",
+        "clause_reference": "107(2)(b)(iii)",
+        "char_start": 114183,
+        "char_end": 114261,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "the density and scale of the buildings when expressed as a floor space ratio is 1:1 or less",
+        "clause_reference": "107(2)(c)",
+        "char_start": 114276,
+        "char_end": 114372,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "no building has a height of more than $9 . 5 \\mathrm { m }$ , excluding servicing equipment on the roof of a building",
+        "clause_reference": "108(2)(a)",
+        "char_start": 114739,
+        "char_end": 114848,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "does not result in the building having a height of more than $1 1 . 5 \\mathrm { m }$",
+        "clause_reference": "108(2)(b)(iii)",
+        "char_start": 115022,
+        "char_end": 115100,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "fsr_control",
+        "provision_text": "the density and scale of the buildings when expressed as a floor space ratio is 0.5:1 or less",
+        "clause_reference": "108(2)(c)",
+        "char_start": 115115,
+        "char_end": 115211,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "the development will not result in a building with a height of more than— (i) $9 . 5 \\mathrm { m }$",
+        "clause_reference": "108B(1)(b)(i)",
+        "char_start": 116368,
+        "char_end": 116460,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "if the roof of the building contains servicing equipment resulting in the building having a height of more than $9 . 5 \\mathrm { m }$ and the servicing equipment complies with section 84(3)— $. 1 1 . 5 \\mathrm { m }$",
+        "clause_reference": "108B(1)(b)(ii)",
+        "char_start": 116464,
+        "char_end": 116663,
+        "source_chunk": 3,
+        "document": "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:40:02.492923"
+  },
+  "docs_sepps_State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation": {
+    "source_path": "docs/sepps/State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf",
+    "original_size_kb": 248.8505859375,
+    "total_chunks_processed": 8,
+    "total_extractions": 29,
+    "extractions": [
+      {
+        "provision_type": "zoning_and_land_use_provisions",
+        "provision_text": "land within the following zones under an environmental planning instrument— \nZone RU5 Village, Zone R1 General Residential, Zone R2 Low Density Residential, Zone R3 Medium Density Residential, Zone R4 High Density Residential, Zone R5 Large Lot Residential, Zone B1 Neighbourhood Centre, Zone B2 Local Centre, Zone B3 Commercial Core, Zone B4 Mixed Use, Zone B5 Business Development, Zone B6 Enterprise Corridor, Zone B7 Business Park, Zone B8 Metropolitan Centre, Zone E1 Local Centre, Zone E2 Commercial Centre, Zone E3 Productivity Support, Zone E4 General Industrial, Zone E5 Heavy Industrial, Zone IN1 General Industrial, Zone IN2 Light Industrial, Zone IN3 Heavy Industrial, Zone IN4 Working Waterfront, Zone MU1 Mixed Use, Zone IN4 Working Waterfront, Zone SP1 Special Activities, Zone SP2 Infrastructure, Zone SP3 Tourist, Zone SP4 Enterprise, Zone SP5 Metropolitan Centre, Zone RE1 Public Recreation, Zone RE2 Private Recreation, Zone C2 Environmental Conservation, Zone C3 Environmental Management, Zone C4 Environmental Living, Zone W3 Working Waterways or Zone W4 Working Waterfront.",
+        "clause_reference": "2.3",
+        "char_start": 3217,
+        "char_end": 4193,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_and_conservation_requirements",
+        "provision_text": "the vegetation is not— \n(i) a heritage item or an Aboriginal object, or (ii) located in a heritage conservation area or Aboriginal place of heritage significance.",
+        "clause_reference": null,
+        "char_start": 5349,
+        "char_end": 5527,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_and_land_use",
+        "provision_text": "This Chapter applies to land in the following land use zones, or an equivalent land use zone, in a local government area specified in Schedule 2, but not if the local government area is marked with an * in that Schedule— (a) Zone RU1 Primary Production, (b) Zone RU2 Rural Landscape, (c) Zone RU3 Forestry.",
+        "clause_reference": "3.3",
+        "char_start": 40744,
+        "char_end": 40922,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_and_conservation",
+        "provision_text": "(1) In order to give effect to the aims of this Chapter, a council of a local government area in which there is land to which this Chapter applies must— (a) survey the land so as to identify areas of potential koala habitat and core koala habitat, and (b) consider making or amending a local environmental plan— (i) to include land identified as a core koala habitat within a conservation zone, or (ii) to identify land that is a core koala habitat and apply special provisions to control the development of that land, and (c) consider preparing an appropriate development control plan for land that is or adjoins a core koala habitat.",
+        "clause_reference": "3.13",
+        "char_start": 42527,
+        "char_end": 43164,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_and_land_use",
+        "provision_text": "(1) If, under a planning proposal, a council proposes to zone or rezone land that is a potential koala habitat or a core koala habitat otherwise than as a conservation zone, the Minister may require the council to prepare an environmental study of the land.",
+        "clause_reference": "3.14",
+        "char_start": 43166,
+        "char_end": 43444,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent means that the development may only be carried out with the consent of the relevant council.",
+        "clause_reference": null,
+        "char_start": 77029,
+        "char_end": 77126,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Prohibited means the development must not be carried out (either generally or only in the circumstances specified).",
+        "clause_reference": null,
+        "char_start": 77162,
+        "char_end": 77256,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 78493,
+        "char_end": 78509,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 78722,
+        "char_end": 78738,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent (except work by or for DWR or RWC (Vic)).",
+        "clause_reference": null,
+        "char_start": 78927,
+        "char_end": 78987,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 79173,
+        "char_end": 79189,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 79372,
+        "char_end": 79388,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 79591,
+        "char_end": 79607,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 79994,
+        "char_end": 80010,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent (except work by or for DWR or RWC (Vic)).",
+        "clause_reference": null,
+        "char_start": 80516,
+        "char_end": 80576,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Prohibited on flood liable land.",
+        "clause_reference": null,
+        "char_start": 80762,
+        "char_end": 80793,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent elsewhere.",
+        "clause_reference": null,
+        "char_start": 80797,
+        "char_end": 80825,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Prohibited on flood liable land.",
+        "clause_reference": null,
+        "char_start": 80964,
+        "char_end": 80995,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent elsewhere.",
+        "clause_reference": null,
+        "char_start": 80999,
+        "char_end": 81027,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning_land_use",
+        "provision_text": "Council consent.",
+        "clause_reference": null,
+        "char_start": 81171,
+        "char_end": 81187,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "conservation_requirements",
+        "provision_text": "The aims of this Chapter are as follows— \n(a) to ensure development in the nominated areas is consistent with the biodiversity certification under the Biodiversity Conservation Act 2016, Part 8 and strategic assessment under the Environment Protection and Biodiversity Conservation Act 1999 of the Commonwealth, Part 10,   \n(b) to facilitate appropriate development on biodiversity certified areas,   \n(c) to identify and protect areas with high biodiversity value or regionally significant biodiversity that can support ecological functions, including threatened ecological communities, species and areas with important connectivity or ecological restoration potential,   \n(d) to avoid or minimise impacts from future development on biodiversity values in areas with high biodiversity value,   \n(e) to support the acquisition of priority areas with high biodiversity value as conservation lands in perpetuity.",
+        "clause_reference": "13.2",
+        "char_start": 190920,
+        "char_end": 191669,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "conservation_requirements",
+        "provision_text": "to protect and enhance native vegetation on avoided land, and (b) to promote the conservation of, and minimise the impact of development on, native vegetation.",
+        "clause_reference": "13.7 (1)",
+        "char_start": 192551,
+        "char_end": 192697,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "conservation_requirements",
+        "provision_text": "Development consent must not be granted for the clearing of native vegetation unless the consent authority is satisfied— \n(a) sufficient measures have been, or will be, taken— \n(i) to avoid or minimise the impact of the development on biodiversity values, and   \n(ii) to avoid the impact of the development on matters of national environmental significance set out in the Environment Protection and Biodiversity Conservation Act 1999 of the Commonwealth, Chapter 2, Part 3, Division 1, and \n(iii) to protect or enhance the biodiversity values and ecological integrity of the land, and (b) there is no reasonable alternative available to the disturbance of the native vegetation, and (c) the loss of native vegetation caused by the disturbance will be compensated by—",
+        "clause_reference": "13.7 (3)",
+        "char_start": 192756,
+        "char_end": 193578,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "conservation_requirements",
+        "provision_text": "The objectives of this section are as follows— \n(a) to protect threatened ecological communities, threatened species and their habitats, (b) to protect and enhance koala habitat and corridors,   \n(c) to protect matters of national environmental significance,   \n(d) to encourage the conservation and recovery of ecological communities and their habitats.",
+        "clause_reference": "13.8 (1)",
+        "char_start": 193982,
+        "char_end": 194470,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "conservation_requirements",
+        "provision_text": "Development consent must not be granted for development on avoided land unless the consent authority has considered whether the development is likely to cause an adverse impact on the following— \n(a) threatened ecological communities, threatened species and their habitats, both on the site of the development and on adjoining land that is avoided land,   \n(b) habitat connectivity and fauna movement, including koala and wildlife corridors, both on the site of the development and on adjoining land that is avoided land,   \n(c) the integrity and resilience of the biophysical, ecological and hydrological environments, including surface and groundwater, and the quality of the natural flow of water in a riparian corridor,   \n(d) matters of national environmental significance set out in the Environment Protection and Biodiversity Conservation Act 1999 of the Commonwealth, Chapter 2, Part 3, Division 1.",
+        "clause_reference": "13.8 (2)",
+        "char_start": 194531,
+        "char_end": 195491,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "the height, bulk, scale, size and proposed use of the development avoids an adverse impact",
+        "clause_reference": "13.8 (3)(b)",
+        "char_start": 195774,
+        "char_end": 195878,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Sections 6.54, 6.55 and 6.56 do not apply to development for the purposes of residential accommodation, or a mixed use development that includes development for the purposes of residential accommodation, on land identified as an “Accelerated TOD Precinct” on the Accelerated Transport Oriented Development Precincts Rezoning Areas Map.",
+        "clause_reference": "6.66 (1)",
+        "char_start": 190197,
+        "char_end": 190515,
+        "source_chunk": 5,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "clearing_distance",
+        "provision_text": "(3) The maximum clearing distance is 6m.",
+        "clause_reference": "13.18",
+        "char_start": 216109,
+        "char_end": 216145,
+        "source_chunk": 6,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "section applies to the following land used for primary production within the meaning of the Land Tax Management Act 1956, section 10AA— \n(a) avoided land, (b) land in a strategic conservation area.",
+        "clause_reference": "13.18",
+        "char_start": 215844,
+        "char_end": 216036,
+        "source_chunk": 6,
+        "document": "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:54:11.208791",
+    "processing_note": "Completed with adaptive rate limiting"
+  },
+  "docs_dcps_INNERWEST_leichhardt_Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23": {
+    "source_path": "docs/dcps/INNERWEST/leichhardt/Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf",
+    "original_size_kb": 180.65234375,
+    "total_chunks_processed": 5,
+    "total_extractions": 50,
+    "extractions": [
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Proposed developments, including new buildings, landscapes and even provision for parking or signage, need to reflect and complement the identified values of individual Heritage Items and Heritage Conservation Areas in their design.",
+        "clause_reference": "C1.0",
+        "char_start": 257,
+        "char_end": 422,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "Building heights, setbacks, landscaping and architectural style respond to the desired future character.",
+        "clause_reference": "C1.0",
+        "char_start": 1521,
+        "char_end": 1610,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Development within Heritage Conservation Areas or to Heritage Items must be responsive to the heritage significance of the item and locality.",
+        "clause_reference": "C1.0",
+        "char_start": 1611,
+        "char_end": 1743,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "setbacks",
+        "clause_reference": "C1.0",
+        "char_start": 1537,
+        "char_end": 1545,
+        "source_chunk": 0,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Where a site is known or discovered to be contaminated, contamination must have been dealt with appropriately prior to the issue of a Subdivision Certificate.",
+        "clause_reference": null,
+        "char_start": 37816,
+        "char_end": 37963,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "This section of the Development Control Plan has been prepared in accordance with the Environmental Planning and Assessment Act 1979, State Environmental Planning Policy No. 55 – Remediation of Land and the Managing Land Contamination: Planning Guidelines.",
+        "clause_reference": null,
+        "char_start": 39555,
+        "char_end": 39782,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "In the event of an inconsistency between the provisions of this section of the Leichhardt Development Control Plan 2013 and State Environmental Planning Policy No. 55 – Remediation of Land, the latter prevails.",
+        "clause_reference": null,
+        "char_start": 39783,
+        "char_end": 39957,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "To implement a precautionary approach by identifying and dealing with contamination issues at an early stage in the planning process to prevent harm and avoid unnecessary restrictions on land use.",
+        "clause_reference": null,
+        "char_start": 40029,
+        "char_end": 40217,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "To ensure Council exercises it’s planning functions in relation to contaminated land by adhering to the relevant legislation, policies and guidelines.",
+        "clause_reference": null,
+        "char_start": 40385,
+        "char_end": 40532,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Contaminated land has the potential to harm human health and the biophysical environment.",
+        "clause_reference": null,
+        "char_start": 40554,
+        "char_end": 40638,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "When carrying out planning functions under the Environmental Planning and Assessment Act 1979 a planning authority must consider if the land is contaminated, if it is suitable in its contaminated state for the proposed uses and whether it can be remediated, if it is not suitable, and made suitable for the use.",
+        "clause_reference": null,
+        "char_start": 40639,
+        "char_end": 40934,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Failure to consider the possibility of contamination at the initial stage of the planning process may result in inappropriate land use decisions which impact the safety of existing and new structures or increase risk to human health and the broader physical environment.",
+        "clause_reference": null,
+        "char_start": 40935,
+        "char_end": 41243,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Information about contaminated land is added to Council’s property information system as it is made available to Council when development and subdivision applications are processed or when information is provided to Council via other sources.",
+        "clause_reference": "C1",
+        "char_start": 41478,
+        "char_end": 41734,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council records in relation to site contamination issues are kept on individual property files.",
+        "clause_reference": "C2",
+        "char_start": 41737,
+        "char_end": 41827,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council does not hold a register of contaminated sites as records change over time and standards for remediation may change with advances in science.",
+        "clause_reference": "C3",
+        "char_start": 41830,
+        "char_end": 41972,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council, must, under s.59 of the Contaminated Land Management Act 1997 (CLM Act) include information provided to Council by either:\na. a relevant authority, or b. accredited auditors on certificates issued for the purpose of s.149 of the Environmental Planning and Assessment Act 1979.",
+        "clause_reference": "C1",
+        "char_start": 42154,
+        "char_end": 42472,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council only provides information on a planning certificate which is required under s.59 of the Contaminated Land Management Act 1997 and s.10.7 of the Environmental Planning and Assessment Act 1979.",
+        "clause_reference": "C2",
+        "char_start": 42475,
+        "char_end": 42647,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "S.10.7 planning certificates can be obtained from Council and contain advice about prescribed matters, which includes the existence of a Council Policy which has the potential to restrict the use of land.",
+        "clause_reference": "C3",
+        "char_start": 42650,
+        "char_end": 42828,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "To outline the ways in which Council, in exercising its planning functions under the Environmental Planning and Assessment Act 1979 will consider if land is contaminated the level of contamination, if it is suitable in its contaminated state for existing or future land uses and whether it can be remediated.",
+        "clause_reference": null,
+        "char_start": 42987,
+        "char_end": 43254,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council will consider contamination issues in its assessment of all development applications. Figure C2: General land contamination assessment process identifies the process that Council will apply in:\na. identifying land contamination; and b. the development application assessment process.",
+        "clause_reference": "C1",
+        "char_start": 43277,
+        "char_end": 43583,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "The level of investigation and the necessity for remediation depends on factors such as past uses of the site and the extent and sensitivity of the proposed use.",
+        "clause_reference": null,
+        "char_start": 43587,
+        "char_end": 43722,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "A site audit may be requested, by Council, for any or all stages of the investigation and/or remediation.",
+        "clause_reference": null,
+        "char_start": 43725,
+        "char_end": 43821,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "If contamination is identified during the development assessment process as being an issue, the following investigations and reports will apply:",
+        "clause_reference": "C5",
+        "char_start": 44003,
+        "char_end": 44145,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council will undertake an initial evaluation of all development applications to determine if contamination may be an issue and therefore whether land contamination issues should be further considered in the assessment process, based on the past uses of the land.",
+        "clause_reference": "C1",
+        "char_start": 44657,
+        "char_end": 44916,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council will, in undertaking an initial evaluation consider past uses of the land and will use Council’s records and information provided by the applicant in the Statement of Environmental Effects",
+        "clause_reference": "C2",
+        "char_start": 44919,
+        "char_end": 45112,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "If the Initial Evaluation concludes that land contamination is not an issue for the site, Council will not require further investigation.",
+        "clause_reference": "C3",
+        "char_start": 45115,
+        "char_end": 45242,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council may, as a consequence of the Initial Evaluation require the applicant to provide a Preliminary Site Investigation Report prepared in accordance with the Environmental Protection Agency’s (EPA) Guidelines for Consultants Reporting on Contaminated Sites (or as updated).",
+        "clause_reference": "C1",
+        "char_start": 45294,
+        "char_end": 45581,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Where the Preliminary Site Investigation satisfies Council that the site is suitable for the proposed use without remediation, Council will not require any further investigations.",
+        "clause_reference": "C4",
+        "char_start": 45912,
+        "char_end": 46068,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Council, as a consequence of the outcome of a Preliminary Site Investigation may require the applicant to undertake a Detailed Site Investigation (Stage 2). Detailed Site Investigations (Stage 2) are to be carried out in accordance with the requirements of the Guidelines for Consultants Reporting on Contaminated Sites. Council is to be provided with a report in relation to the Detailed Site Investigation (Stage 2).",
+        "clause_reference": null,
+        "char_start": 46108,
+        "char_end": 46478,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "A Remediation Action Plan is required when a site has been identified during the Preliminary Site Investigation (Stage 1) or the Detailed Site Investigation (Stage 2) as being contaminated and requiring remediation to make the site suitable for the proposed use.",
+        "clause_reference": "C1",
+        "char_start": 46570,
+        "char_end": 46802,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Remediation Action Plans are to be undertaken in accordance with the Guidelines for Consultants Reporting on Contaminated Sites.",
+        "clause_reference": "C2",
+        "char_start": 46805,
+        "char_end": 46908,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Remediation Action Plans must demonstrate how the applicant proposes to reduce the risks of contamination to acceptable levels to ensure the site is suitable for the proposed use and achieve clean-up objectives for the site.",
+        "clause_reference": "C3",
+        "char_start": 46911,
+        "char_end": 47128,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "Remediation Action Plans must clearly describe the proposal it relates to and the proposed method of remediation. If necessary, the plans of the proposal must be updated to indicate the proposed remediation.",
+        "clause_reference": "C4",
+        "char_start": 47131,
+        "char_end": 47323,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "All Category 1 remediation work requires Development Consent to be issued by Council.",
+        "clause_reference": "C1",
+        "char_start": 47505,
+        "char_end": 47594,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "contamination",
+        "provision_text": "If the Category 1 remediation works are associated with a development application being considered by Council, that application may either be withdrawn or Council may choose to refuse the application in view of the uncertainty attached to the suitability of the land for its intended use and the time required to complete the remediation",
+        "clause_reference": "C2",
+        "char_start": 47597,
+        "char_end": 47946,
+        "source_chunk": 1,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Note that State Environmental Planning Policy 64 – Advertising and Signage prohibits all signs other than business identification and building identification signs in residential areas and in Heritage Conservation Areas.",
+        "clause_reference": null,
+        "char_start": 152232,
+        "char_end": 152451,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Protect Heritage Items, buildings within Heritage Conservation Areas and other visually or environmentally sensitive areas from inappropriate and visually intrusive signs.",
+        "clause_reference": null,
+        "char_start": 152716,
+        "char_end": 152873,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "where located within the vicinity of a Heritage Conservation Area or Heritage Item, take into account the controls specified under the heading “Signs on Heritage Items and in Heritage Conservation Areas” of this section.",
+        "clause_reference": null,
+        "char_start": 153349,
+        "char_end": 153538,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Signs on Heritage Items and in Heritage Conservation Areas",
+        "clause_reference": null,
+        "char_start": 155290,
+        "char_end": 155355,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "minimise interference with significant fabric and features of Heritage Items. The method of installation to the Heritage Item should not result in irreversible damage to significant fabric;",
+        "clause_reference": null,
+        "char_start": 155406,
+        "char_end": 155599,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "respect the heritage qualities of the Heritage Conservation Area including significant streetscape elements;",
+        "clause_reference": null,
+        "char_start": 155602,
+        "char_end": 155722,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "use compatible materials, colours, style and lettering to ensure compatibility with heritage significance;",
+        "clause_reference": null,
+        "char_start": 155725,
+        "char_end": 155844,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "Original signs and signs that are part of the history and heritage significance of the Heritage Item or Heritage Conservation Area are to be retained.",
+        "clause_reference": null,
+        "char_start": 156025,
+        "char_end": 156185,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "projecting roof signs and signs that protrude above the parapet or eaves;",
+        "clause_reference": null,
+        "char_start": 154123,
+        "char_end": 154195,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "not protrude above any parapet or eave of the building.",
+        "clause_reference": null,
+        "char_start": 155976,
+        "char_end": 156020,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "setback_requirements",
+        "provision_text": "The setback from the kerb of all permanent protective structures is to be a minimum of   \n300mm and may be up to 600mm to provide for vehicle movements within the road.",
+        "clause_reference": null,
+        "char_start": 157420,
+        "char_end": 157558,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Signs in Residential Zones",
+        "clause_reference": null,
+        "char_start": 154314,
+        "char_end": 154340,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Signs in Business Zones",
+        "clause_reference": null,
+        "char_start": 154511,
+        "char_end": 154534,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Signs in Industrial Zones",
+        "clause_reference": null,
+        "char_start": 154907,
+        "char_end": 154932,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      },
+      {
+        "provision_type": "building_controls",
+        "provision_text": "Buildings within a Business zone are, in most instances, required to incorporate a permanent   \nprotective structure in the form of a balcony, verandah or awning at first floor level.",
+        "clause_reference": null,
+        "char_start": 157196,
+        "char_end": 157350,
+        "source_chunk": 4,
+        "document": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:55:13.180154",
+    "processing_note": "Completed with adaptive rate limiting"
+  },
+  "docs_sepps_State Environmental Planning Policy (Planning Systems) 2021 - NSW Legislation": {
+    "source_path": "docs/sepps/State Environmental Planning Policy (Planning Systems) 2021 - NSW Legislation.pdf",
+    "original_size_kb": 164.962890625,
+    "total_chunks_processed": 5,
+    "total_extractions": 0,
+    "extractions": [],
+    "processed_timestamp": "2025-08-27T13:55:51.555610",
+    "processing_note": "Completed with adaptive rate limiting"
+  },
+  "docs_sepps_State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation": {
+    "source_path": "docs/sepps/State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf",
+    "original_size_kb": 112.8876953125,
+    "total_chunks_processed": 4,
+    "total_extractions": 12,
+    "extractions": [
+      {
+        "provision_type": "zoning",
+        "provision_text": "The land use zones under this Chapter are as follows— (a) IN1 General Industrial, (b) IN2 Light Industrial, (c) E2 Environmental Conservation, (d) SP2 Infrastructure, (e) RE1 Public Recreation, (f) RE2 Private Recreation.",
+        "clause_reference": "2.8",
+        "char_start": 6973,
+        "char_end": 7194,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "zoning",
+        "provision_text": "For the purposes of this Chapter, land is within the zones shown on the Land Zoning Map.",
+        "clause_reference": "2.9",
+        "char_start": 7196,
+        "char_end": 7281,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Zone IN1 General Industrial\n1 Objectives of zone \n• To facilitate a wide range of employment-generating development including industrial, manufacturing, warehousing, storage and research uses and ancillary office space.   \n• To encourage employment opportunities along motorway corridors, including the M7 and M4.   \n• To minimise any adverse effect of industry on other land uses.   \n• To facilitate road network links to the M7 and M4 Motorways.   \n• To encourage a high standard of development that does not prejudice the sustainability of other enterprises or the environment.   \n• To provide for small-scale local services such as commercial, retail and community facilities (including child care facilities) that service or support the needs of employment-generating uses in the zone.",
+        "clause_reference": null,
+        "char_start": 7662,
+        "char_end": 8314,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "Zone IN2 Light Industrial\n1 Objectives of zone \n• To provide a wide range of light industrial, warehouse and related land uses.   \n• To encourage employment opportunities and to support the viability of centres.   \n• To minimise any adverse effect of industry on other land uses.   \n• To enable other land uses that provide facilities or services to meet the day to day needs of workers in the area.   \n• To support and protect industrial land for industrial uses.   \n• To minimise any adverse effect of development on the natural environment.",
+        "clause_reference": null,
+        "char_start": 9137,
+        "char_end": 9707,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "heritage_conservation",
+        "provision_text": "to conserve and rehabilitate areas that have a high biodiversity or heritage or cultural value, in particular areas of remnant vegetation.",
+        "clause_reference": null,
+        "char_start": 938,
+        "char_end": 1114,
+        "source_chunk": 0,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "aircraft_noise_controls",
+        "provision_text": "(4) Despite another provision of this Chapter, development consent must not be granted to development on land to which this section applies for the purposes of a place of public worship, a centre-based child care facility or a TAFE establishment or for residential development.",
+        "clause_reference": "2.36(4)",
+        "char_start": 40255,
+        "char_end": 40517,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "airspace_operations",
+        "provision_text": "(4) To avoid doubt, the consent authority must not grant development consent for the development if the relevant Commonwealth body advises that the development will penetrate the prescribed airspace and should not be constructed.",
+        "clause_reference": "2.37(4)",
+        "char_start": 40880,
+        "char_end": 41142,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "earthworks_controls",
+        "provision_text": "(3) Before granting development consent for earthworks, the consent authority must consider the following matters \n(a) the likely disruption of, or detrimental effect on, existing drainage patterns and soil stability in the locality, (b) the effect of the proposed development on the likely future use or redevelopment of the land,   \n(c) the quality of the fill or the soil to be excavated, or both,   \n(d) the effect of the proposed development on the existing and likely amenity of adjoining properties, (e) the source of fill material and the destination of excavated material,   \n(f) the likelihood of disturbing relics,   \n(g) the proximity to and potential for adverse impacts on a waterway, drinking water catchment or   \nenvironmentally sensitive area,   \n(h) appropriate measures proposed to avoid, minimise or mitigate the impacts of the development,   \n(i) the proximity to and potential for adverse impacts on a heritage item, an archaeological site, or a heritage conservation area,   \n(j) the visual impact of earthworks as viewed from the waterways.",
+        "clause_reference": "2.40(3)",
+        "char_start": 41769,
+        "char_end": 42660,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "flood_prone_land_controls",
+        "provision_text": "(2) Consent is not to be granted to the carrying out of development to which this section applies unless the consent authority has taken into consideration whether or not— (a) the development will adversely affect flood behaviour resulting in detrimental increases in the potential flood affectation of other development or properties, and (b) the development will alter flow distributions and velocities to the detriment of other properties or the environment of the floodplain, and (c) the development will enable safe occupation of the flood prone land, and (d) the development will detrimentally affect the floodplain environment or cause avoidable erosion, siltation, salinity, destruction of riparian vegetation or a reduction in the stability of the riverbank/watercourse, and (e) the development will be likely to result in unsustainable social and economic costs to the flood affected community or general community, as a consequence of flooding, and \n\n(f) the development is compatible with the flow conveyance function of the floodway, and (g) the development is compatib",
+        "clause_reference": "2.41(2)",
+        "char_start": 42792,
+        "char_end": 43771,
+        "source_chunk": 1,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "height_limit",
+        "provision_text": "(1) This section applies to an advertisement— (a) that has a display area greater than 20 square metres, or (b) that is higher than 8 metres above the ground.",
+        "clause_reference": "3.15",
+        "char_start": 82193,
+        "char_end": 82327,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "(1) This section applies to land that, under an environmental planning instrument, is within a rural or non-urban zone and on which an advertisement may be displayed with the consent of the consent authority.",
+        "clause_reference": "3.13",
+        "char_start": 80044,
+        "char_end": 80238,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      },
+      {
+        "provision_type": "land_use",
+        "provision_text": "waterway   \nresidential (but not including a mixed residential and business zone, or similar zones)   \nscenic protection area   \nnational park   \nnature reserve ",
+        "clause_reference": null,
+        "char_start": 75632,
+        "char_end": 75799,
+        "source_chunk": 2,
+        "document": "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf"
+      }
+    ],
+    "processed_timestamp": "2025-08-27T13:56:25.809843",
+    "processing_note": "Completed with adaptive rate limiting"
+  }
+}

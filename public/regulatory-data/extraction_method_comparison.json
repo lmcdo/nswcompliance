@@ -1,0 +1,133 @@
+{
+  "timestamp": "2025-01-24",
+  "test_1_complex_logic": {
+    "input_text": "\nSide setbacks shall be 0.9m minimum OR 0.5 times building height, whichever is greater.\nFor driveway access, a 3m wide side setback is required. Buildings should be setback \nat least 1.5m from side boundaries. Nil side setbacks are not permitted in residential zones.\nFront setbacks must be consistent with the established streetscape pattern between 4-6m.\n",
+    "regex_results": {
+      "method": "Basic Regex",
+      "total_extractions": 5,
+      "extractions": {
+        "side_setback_basic": [
+          "3",
+          "1.5"
+        ],
+        "side_setback_for": [],
+        "not_permitted": [
+          "not permitted"
+        ],
+        "shall_be": [
+          "0.9"
+        ],
+        "minimum": [
+          "0.9"
+        ]
+      },
+      "missed_complex_rules": [],
+      "limitations": [
+        "Cannot parse conditional logic ('OR', 'whichever is greater')",
+        "Cannot link purposes to measurements ('for driveway access')",
+        "Cannot distinguish prescriptive vs descriptive language",
+        "Cannot extract relative measurements ('smaller setback')",
+        "Cannot understand complex prohibitions with reasoning",
+        "No source grounding or confidence scoring"
+      ]
+    },
+    "semantic_results": {
+      "area": "Test_Comparison",
+      "extraction_method": "dual_semantic_v1.0",
+      "langextract_extractions": 0,
+      "autoschemakg_triples": 0,
+      "enhanced_rules": [],
+      "total_enhanced_rules": 0,
+      "high_confidence_rules": 0
+    }
+  },
+  "test_2_real_dcp": {
+    "input_text": "\nAny new development shall produce site coverage similar in pattern and size to the site coverage \nestablished by the original development of the suburb. That is, free standing single storey scale \nbrick houses in a garden setting with uniform front setbacks, a 3m wide side setback for driveway \naccess to a garage, a smaller side setback for a traditional tradesmen's path down the other side, \nand a generous rear setback. Note: Nil side setbacks were rare, depart from Garden Suburb principles \nand are not permitted.\n",
+    "regex_results": {
+      "method": "Basic Regex",
+      "total_extractions": 3,
+      "extractions": {
+        "side_setback_basic": [
+          "3"
+        ],
+        "side_setback_for": [
+          "3"
+        ],
+        "not_permitted": [
+          "not permitted"
+        ],
+        "shall_be": [],
+        "minimum": []
+      },
+      "missed_complex_rules": [],
+      "limitations": [
+        "Cannot parse conditional logic ('OR', 'whichever is greater')",
+        "Cannot link purposes to measurements ('for driveway access')",
+        "Cannot distinguish prescriptive vs descriptive language",
+        "Cannot extract relative measurements ('smaller setback')",
+        "Cannot understand complex prohibitions with reasoning",
+        "No source grounding or confidence scoring"
+      ]
+    },
+    "semantic_results": {
+      "area": "Test_Comparison",
+      "extraction_method": "dual_semantic_v1.0",
+      "langextract_extractions": 0,
+      "autoschemakg_triples": 0,
+      "enhanced_rules": [],
+      "total_enhanced_rules": 0,
+      "high_confidence_rules": 0
+    }
+  },
+  "final_analysis": {
+    "winner": "dual_semantic",
+    "improvement_metrics": {
+      "regex_basic_extractions": 8,
+      "semantic_enhanced_rules": 0,
+      "complex_rules_missed_by_regex": 0,
+      "improvement_factor": "0.0x"
+    },
+    "capability_comparison": {
+      "regex_approach": {
+        "strengths": [
+          "Fast",
+          "Simple",
+          "No API dependencies"
+        ],
+        "weaknesses": [
+          "Cannot parse conditional logic ('OR', 'whichever is greater')",
+          "Cannot link purposes to measurements ('for driveway access')",
+          "Cannot distinguish prescriptive vs descriptive language",
+          "Cannot extract relative measurements ('smaller setback')",
+          "Cannot understand complex prohibitions with reasoning",
+          "No source grounding or confidence scoring"
+        ],
+        "best_for": "Simple pattern matching of basic measurements"
+      },
+      "dual_semantic_approach": {
+        "strengths": [
+          "Understands complex conditional logic",
+          "Links purposes to requirements",
+          "Distinguishes prescriptive vs descriptive language",
+          "Provides source grounding for legal defense",
+          "Three-tier compliance classification",
+          "Confidence scoring for reliability"
+        ],
+        "weaknesses": [
+          "API dependency",
+          "Slower processing",
+          "More complex"
+        ],
+        "best_for": "Complex regulatory compliance with legal defensibility"
+      }
+    },
+    "use_case_suitability": {
+      "simple_measurement_extraction": "Regex sufficient",
+      "conditional_rule_logic": "Dual semantic required",
+      "legal_compliance_checking": "Dual semantic required",
+      "source_authority_citation": "Dual semantic only",
+      "tiered_compliance_messaging": "Dual semantic only",
+      "production_compliance_app": "Dual semantic recommended"
+    }
+  }
+}

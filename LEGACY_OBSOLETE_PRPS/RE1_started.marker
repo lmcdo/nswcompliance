@@ -1,0 +1,23 @@
+PRP-RE1: Rules Engine Refactor - Query-Based Regulatory Discovery
+Started: 2025-08-31
+Branch: rules-engine-refactor
+Status: IN PROGRESS
+
+Objective: Transform hardcoded Marrickville R2-only setback calculator into universal 
+Inner West regulatory engine that discovers rules dynamically via LightRAG/AutoSchemaKG queries.
+
+Key Goals:
+- Support ANY zone (R1/R2/R3/R4/B1/B2/IN1/etc.)
+- Support ANY development type (dwelling/multi/commercial/industrial)
+- Query existing processed data instead of hardcoding regulatory paths
+- Extract zone→section relationships from knowledge graph
+- Handle edge cases with confidence scoring
+
+Phase 1 Deliverables:
+- services/universal_regulatory_engine.py
+- services/dynamic_dcp_resolver.py
+- services/regulatory_relationship_extractor.py
+- services/setback_value_extractor.py
+- services/confidence_scorer.py
+
+Current Focus: Setting up query-based discovery infrastructure to replace hardcoded rules.

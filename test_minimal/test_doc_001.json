@@ -1,0 +1,8 @@
+{
+  "id": "test_doc_001",
+  "text": "Planning Document: Simple Test\n\nClause 1 - height_limit (development_control): Maximum height is 8 metres.",
+  "metadata": {
+    "document_name": "Simple Test",
+    "extractions_count": 1
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "analysis_date": "2025-08-25T06:02:05.555179",
+  "sepp_directory": "docs/sepps",
+  "available_sepps": {
+    "total_files": 9,
+    "files": [
+      "State Environmental Planning Policy (Biodiversity and Conservation) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Housing) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Industry and Employment) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Planning Systems) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Primary Production) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Resilience and Hazards) 2021 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Sustainable Buildings) 2022 - NSW Legislation.pdf",
+      "State Environmental Planning Policy (Transport and Infrastructure) 2021 - NSW Legislation.pdf"
+    ]
+  },
+  "routing_status": "IMPLEMENTED",
+  "next_steps": [
+    "Test with real NSW Planning Portal API responses",
+    "Monitor special provisions parsing",
+    "Add more SEPP pattern mappings",
+    "Implement contextual fallback routing"
+  ]
+}

@@ -1,0 +1,4 @@
+# PROCESSED OUTPUTS - NOT COMMITTED
+# Contains extracted content, grounded text, and validation results
+# Large JSON files from PRP-A2 and PRP-A3 processing
+# These are generated files, not source code

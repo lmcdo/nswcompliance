@@ -1,0 +1,81 @@
+{
+    "lga": "string",
+    "areas": {
+      "type": "object",
+      "properties": {
+        "Ashfield": {
+          "type": "object",
+          "properties": {
+            "setbacks": {
+              "type": "object",
+              "properties": {
+                "rear": {
+                  "type": "object",
+                  "properties": {
+                    "distance": {"type": "number", "description": "Distance from boundary (m)"},
+                    "height_limit": {"type": "number", "description": "Max height within distance (m)"},
+                    "source": {"type": "string", "description": "Exact clause reference"},
+                    "source_link": {"type": "string", "description": "Direct link to operative document"}
+                  }
+                },
+                "side": {
+                  "type": "object",
+                  "properties": {
+                    "height_limit": {"type": "number", "description": "Max height for side setbacks (m)"},
+                    "source": {"type": "string", "description": "Exact clause reference"},
+                    "source_link": {"type": "string", "description": "Direct link to operative document"}
+                  }
+                },
+                "front": {
+                  "type": "object",
+                  "properties": {
+                    "min_distance": {"type": "number", "description": "Minimum front setback (m)"},
+                    "source": {"type": "string", "description": "Exact clause reference"},
+                    "source_link": {"type": "string", "description": "Direct link to operative document"}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Leichhardt": {
+          "type": "object",
+          "properties": {
+            "setbacks": {
+              "type": "object",
+              "properties": {
+                "rear": {
+                  "type": "object",
+                  "properties": {
+                    "distance": {"type": "number", "description": "Distance from boundary (m)"},
+                    "height_limit": {"type": "number", "description": "Max height within distance (m)"},
+                    "source": {"type": "string", "description": "Exact clause reference"},
+                    "source_link": {"type": "string", "description": "Direct link to operative document"}
+                  }
+                }
+              }
+            }
+          }
+        },
+        "Marrickville": {
+          "type": "object",
+          "properties": {
+            "setbacks": {
+              "type": "object",
+              "properties": {
+                "rear": {
+                  "type": "object",
+                  "properties": {
+                    "distance": {"type": "number", "description": "Distance from boundary (m)"},
+                    "height_limit": {"type": "number", "description": "Max height within distance (m)"},
+                    "source": {"type": "string", "description": "Exact clause reference"},
+                    "source_link": {"type": "string", "description": "Direct link to operative document"}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
