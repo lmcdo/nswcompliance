@@ -220,6 +220,27 @@ export function EnhancedSetbackVerification({
       {/* Compliance Hierarchy */}
       <ComplianceHierarchy results={results} />
 
+      {/* Multiple Rules Explanation */}
+      {results.filter(r => r.boundary_type === 'side').length > 1 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-2">
+              <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div className="text-sm">
+                <strong>Multiple Setback Rules Explained</strong>
+                <p className="mt-1 text-blue-800">
+                  Different setback requirements apply based on your development type. 
+                  The system shows all applicable rules - choose the one matching your intended building height:
+                  <span className="block mt-2 font-medium">
+                    • Single storey = smaller setbacks • Two storey = medium setbacks • Three storey = larger setbacks
+                  </span>
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Setback Results with Full Verification */}
       <div className="space-y-4">
         {results.map((result, index) => (
@@ -285,7 +306,8 @@ function EnhancedSetbackCard({
   
   // Determine authority icon
   const getAuthorityIcon = () => {
-    switch(result.authority_level) {
+    const authority = result.authority || result.authority_level || 'DCP';
+    switch(authority) {
       case 'SEPP': return <Scale className="h-4 w-4 text-red-600" />;
       case 'LEP': return <FileText className="h-4 w-4 text-blue-600" />;
       case 'DCP': return <Building className="h-4 w-4 text-green-600" />;
@@ -302,11 +324,25 @@ function EnhancedSetbackCard({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="text-lg font-semibold">
-              SETBACK {index}: {result.boundary_type.replace('_', ' ').toUpperCase()}
+              {result.boundary_type.replace('_', ' ').toUpperCase()} Setback
+              {/* Show storey information from conditions field */}
+              <span className="text-sm font-normal text-purple-600 ml-2">
+                ({result.conditions || `Rule ${index}`})
+              </span>
             </div>
             {getAuthorityIcon()}
             <span className="text-sm font-normal text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
-              {result.authority_level || 'DCP'} (Precedence: {result.legal_precedence || 3})
+              {result.authority || result.authority_level || 'DCP'} • Level {result.precedence || result.legal_precedence || 3}
+            </span>
+            
+            {/* Enhanced Storey Information Display */}
+            <span className="text-sm font-medium text-purple-700 bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+              🏠 {result.conditions || 'Multi-Storey Rule'}
+            </span>
+            
+            {/* Rule Type Badge */}
+            <span className="text-xs font-medium text-gray-600 bg-gray-50 px-2 py-1 rounded border border-gray-200">
+              #{index} {result.required_setback}m
             </span>
             
             {/* Phase 1A: Domain Classification Badge */}
@@ -336,6 +372,11 @@ function EnhancedSetbackCard({
               {result.required_setback}m
             </div>
             <div className="text-sm text-gray-600">Required Setback</div>
+            {result.conditions && result.conditions !== 'None' && (
+              <div className="text-xs text-purple-600 font-medium mt-1">
+                {result.conditions}
+              </div>
+            )}
           </div>
           <div className="text-center">
             <div className="text-3xl font-bold text-blue-600">

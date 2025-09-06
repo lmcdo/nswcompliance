@@ -3,7 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search, MapPin, Loader2 } from 'lucide-react';
+import { Search, MapPin, Loader2, X } from 'lucide-react';
 
 interface PropertySearchProps {
   onAddressSelect: (address: string, coordinates?: google.maps.LatLngLiteral) => void;
@@ -127,6 +127,21 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
     setInputValue(e.target.value);
   };
 
+  const handleClearInput = (e?: React.MouseEvent) => {
+    e?.preventDefault(); // Prevent form submission
+    e?.stopPropagation(); // Stop event bubbling
+    
+    setInputValue('');
+    if (inputRef.current) {
+      inputRef.current.value = ''; // Also clear the actual input element value
+      inputRef.current.focus();
+    }
+    // Clear any Google Places autocomplete selection
+    if (autocompleteRef.current) {
+      autocompleteRef.current.set('place', null);
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="mb-4">
@@ -139,17 +154,28 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3">
-        <div className="flex-1 relative">
+      <form onSubmit={handleSubmit} className="flex gap-3 justify-center">
+        <div className="relative" style={{ minWidth: '1200px', maxWidth: '1600px', width: '100%' }}>
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
             placeholder="e.g. 15 Norton Street, Leichhardt NSW 2040"
-            className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-1 text-lg shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pr-10 min-w-[600px] max-w-[800px]"
+            className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-1 text-lg shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pr-20"
+            style={{ minWidth: '1200px', maxWidth: '1600px' }}
             disabled={loading}
           />
+          {inputValue && (
+            <button
+              type="button"
+              onClick={handleClearInput}
+              className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+              title="Clear search"
+            >
+              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>
         

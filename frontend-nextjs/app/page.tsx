@@ -29,8 +29,8 @@ export default function DashboardPage() {
   return (
     <ErrorBoundary>
       <div className="compliance-app">
-        <div className="container mx-auto px-4 py-8">
-          {/* Header */}
+        {/* Header */}
+        <div className="container mx-auto px-4 py-8 pb-4">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-2">
               NSW Planning Compliance Engine
@@ -39,15 +39,19 @@ export default function DashboardPage() {
               Precision planning analysis with intelligent reasoning
             </p>
           </div>
+        </div>
 
-          {/* Property Search */}
-          <div className="property-search-container">
-            <PropertySearch 
-              onAddressSelect={handleAddressSelect}
-              loading={loading?.property}
-              selectedAddress={selectedAddress}
-            />
-          </div>
+        {/* Property Search - Full Width */}
+        <div className="w-full px-4 mb-6">
+          <PropertySearch 
+            onAddressSelect={handleAddressSelect}
+            loading={loading?.property}
+            selectedAddress={selectedAddress}
+          />
+        </div>
+
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-4">
 
           {/* Main Content Grid */}
           {(property || loading.property) && (

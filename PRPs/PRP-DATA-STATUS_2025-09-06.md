@@ -16,6 +16,12 @@ nsw_planning.zone_setback_rules (unified table)
 ├── Zones Covered: 7 (R1, R2, R3, R4, B1, B2, B4)
 ├── Councils: 3 (Ashfield, Leichhardt, Marrickville)
 └── Quality Tiers: 19 verified (95%), 29 medium (75%)
+
+nsw_planning.sepp_lep_overrides (hierarchy table) ✅ NEW - PRP-K4
+├── Total Overrides: 91
+├── Override Types: modifies (67), exempts_from (13), replaces (6), adds_to (5)
+├── Status: Imported but not integrated with zone rules
+└── Purpose: SEPP > LEP > DCP legal hierarchy enforcement
 ```
 
 ### Coverage Matrix
@@ -42,6 +48,8 @@ nsw_planning.zone_setback_rules (unified table)
 2. **compliance_result.json** - Compliance analysis results
 3. **autoschemakg_data_ollama_final/** - 8 files with zone references
 4. **Default patterns** - 36 rules based on DCP standards
+5. **sepp_lep_overrides table** (PRP-K4) - 91 SEPP/LEP hierarchy records
+6. **11 additional database tables** (PRP-K4) - 28,032 supporting records
 
 #### Identified But Not Imported (⚠️)
 1. **langextract_verified_output/** - 13 Marrickville files (no numeric values)
@@ -96,6 +104,25 @@ SELECT * FROM zone_setback_rules WHERE zone IN ('IN1','IN2')
 1. **Marrickville business zones** - Only 1 rule each for B1, B2, B4
 2. **No LEP/SEPP data** - All rules are DCP level (precedence 3)
 3. **Missing conditionals** - Heritage overlays, lot size variations
+
+### Frontend Components Status
+
+#### ✅ **ACTIVE Components (Ready for Production):**
+1. **`frontend-nextjs/lib/database/client.ts`** - PostgreSQL integration with getHierarchicalSetbackControls()
+2. **`frontend-nextjs/app/api/setbacks/calculate/route.ts`** - Zone-specific calculation API
+3. **`frontend-nextjs/lib/geometry/calculator.ts`** - Precise setback calculations
+4. **`zone_setback_rules` table** - 48 rules with source paragraph text (96% linked)
+
+#### ⚠️ **INACTIVE Components (Needs Activation - PRP-K5):**
+1. **`frontend-nextjs/lib/compliance/sepp-lep-processor.ts.bak`** - Complete SEPP > LEP > DCP hierarchy engine
+2. **Zone rule authority levels** - All 48 rules currently DCP-only, needs SEPP/LEP upgrades
+3. **Hierarchical API integration** - Processor not integrated into calculation flow
+
+#### 🎯 **Ready for PRP-K5 Hierarchy Activation:**
+- **SEPP/LEP data imported** ✅ (91 override records)
+- **Hierarchy engine exists** ✅ (currently .bak file)
+- **Database queries ready** ✅ (client.ts implementation complete)
+- **Authority upgrade needed** ⚠️ (zone rules need precedence levels)
 
 ## Performance Metrics
 

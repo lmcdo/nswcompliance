@@ -297,10 +297,24 @@ function SetbackCard({ result }: { result: SetbackResult }) {
       {/* Simplified Professional Header */}
       <div className="bg-slate-800 text-white p-6 rounded-lg mb-4 flex justify-between items-center">
         <div>
-          <h3 className="text-xl font-bold">{result.boundary_type.replace('_', ' ')} Setback</h3>
-          <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
-            {result.authority} • Level {result.precedence}
-          </span>
+          <h3 className="text-xl font-bold">
+            {result.boundary_type.replace('_', ' ')} Setback
+            {result.conditions && (
+              <span className="text-lg font-normal text-purple-300 ml-2">
+                ({result.conditions})
+              </span>
+            )}
+          </h3>
+          <div className="flex gap-2 mt-2">
+            <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
+              {result.authority} • Level {result.precedence}
+            </span>
+            {result.conditions && (
+              <span className="bg-purple-500 text-white px-2 py-1 rounded text-sm">
+                🏠 {result.conditions}
+              </span>
+            )}
+          </div>
         </div>
         <div className="text-4xl font-black">{result.required_setback}m</div>
       </div>

@@ -1,6 +1,10 @@
 // lib/compliance/sepp-lep-processor.ts
 import { DatabaseClient } from '@/lib/database/client';
-import type { NSWPlanningAPILayer } from '@/lib/compliance/inner-west-engine';
+// Temporary interface definition - TODO: Move to shared types
+interface NSWPlanningAPILayer {
+  layerName: string;
+  results?: any[];
+}
 
 export interface SEPPProvision {
   sepp_name: string;
@@ -165,7 +169,7 @@ export class SEPPLEPProcessor {
     
     try {
       // Query the sepp_lep_overrides table
-      const seppOverrides = this.dbClient.getHierarchicalSetbackControls(zone);
+      const seppOverrides = await this.dbClient.getHierarchicalSetbackControls(zone);
       
       for (const override of seppOverrides) {
         if (override.authority_level === 'SEPP') {
