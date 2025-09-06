@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test PRP-K3 API</title>
+</head>
+<body>
+    <h1>Testing PRP-K3 Zone-Specific Calculation</h1>
+    <div id="results"></div>
+    
+    <script>
+    const testPayload = {
+        property_id: 1962876,
+        property_zone: 'R2',
+        lot_area: 500,
+        lot_geometry: {
+            hasM: false,
+            hasZ: false,
+            rings: [[
+                [333165.32, 6246431.73],
+                [333165.32, 6246451.73], 
+                [333185.32, 6246451.73],
+                [333185.32, 6246431.73],
+                [333165.32, 6246431.73]
+            ]],
+            spatialReference: {
+                wkid: 28356,
+                latestWkid: 28356
+            }
+        }
+    };
+
+    fetch('http://localhost:3007/api/setbacks/calculate', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testPayload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        let html = '<h2>API Response:</h2>';
+        html += '<p><strong>Success:</strong> ' + data.success + '</p>';
+        html += '<p><strong>Processing Method:</strong> ' + data.processing_method + '</p>';
+        html += '<p><strong>Results count:</strong> ' + (data.setback_results?.length || 0) + '</p>';
+        
+        if (data.setback_results) {
+            html += '<h3>Setback Results:</h3>';
+            data.setback_results.forEach((result, i) => {
+                html += '<div style="border: 1px solid #ccc; margin: 10px; padding: 10px;">';
+                html += '<h4>' + (i+1) + '. ' + result.boundary_type.toUpperCase() + '</h4>';
+                html += '<p><strong>Setback:</strong> ' + result.required_setback + 'm</p>';
+                html += '<p><strong>Confidence:</strong> ' + result.confidence + '%</p>';
+                html += '<p><strong>Authority:</strong> ' + result.authority + '</p>';
+                html += '<p><strong>Conditions:</strong> ' + (result.conditions || 'None') + '</p>';
+                html += '<p><strong>Source:</strong> ' + result.legal_source + '</p>';
+                html += '</div>';
+            });
+        }
+        
+        if (data.error) {
+            html += '<p style="color: red;"><strong>Error:</strong> ' + data.error + '</p>';
+        }
+        
+        document.getElementById('results').innerHTML = html;
+    })
+    .catch(error => {
+        document.getElementById('results').innerHTML = '<p style="color: red;">Error: ' + error + '</p>';
+    });
+    </script>
+</body>
+</html>

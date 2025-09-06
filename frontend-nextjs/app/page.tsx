@@ -44,7 +44,7 @@ export default function DashboardPage() {
           <div className="property-search-container">
             <PropertySearch 
               onAddressSelect={handleAddressSelect}
-              loading={loading.property}
+              loading={loading?.property}
               selectedAddress={selectedAddress}
             />
           </div>

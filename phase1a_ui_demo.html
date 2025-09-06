@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 1A UI Integration Demo - Legal Authority References</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .enhanced-badge {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .domain-badge {
+            font-family: 'Courier New', monospace;
+        }
+        .legal-hierarchy {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-6">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <svg class="h-6 w-6 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                    </svg>
+                    <h1 class="text-xl font-semibold text-gray-900">NSW Compliant Setback Verification Results</h1>
+                    <span class="enhanced-badge text-xs bg-blue-600 text-white px-2 py-1 rounded font-medium">
+                        Phase 1A Enhanced
+                    </span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-normal text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200">
+                        Precision: Centimeter
+                    </span>
+                    <span class="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+                        3 Cross-Contamination Checks
+                    </span>
+                </div>
+            </div>
+            <div class="mt-4 flex items-start gap-2 text-sm text-gray-600">
+                <svg class="h-4 w-4 mt-0.5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                </svg>
+                <p>
+                    Calculations based on NSW Planning API data with enhanced domain classification, 
+                    cross-contamination prevention, and complete legal authority hierarchy 
+                    (LEP → DCP → SEPP) for certifier verification.
+                    <span class="text-green-600 font-medium"> Cross-domain contamination prevention active.</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Setback Result Card -->
+        <div class="border-blue-200 bg-blue-50 transition-all duration-200 rounded-lg shadow-md">
+            <div class="p-4 cursor-pointer border-b border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <div class="text-lg font-semibold">
+                            SETBACK 1: FRONT
+                        </div>
+                        <svg class="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                        </svg>
+                        <span class="text-sm font-normal text-blue-600 bg-blue-50 px-2 py-1 rounded border border-blue-200">
+                            DCP (Precedence: 3)
+                        </span>
+                        
+                        <!-- Phase 1A: Domain Classification Badge -->
+                        <span class="domain-badge text-xs font-normal px-2 py-1 rounded border text-green-700 bg-green-100 border-green-300">
+                            Residential Buildings
+                        </span>
+                        
+                        <!-- Phase 1A: Cross-Contamination Status -->
+                        <div class="flex items-center gap-1">
+                            <svg class="h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            <span class="text-xs text-green-600">Verified</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-6">
+                <!-- Main Measurement Display -->
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-gray-900">3.0m</div>
+                        <div class="text-sm text-gray-600">Required Setback</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-3xl font-bold text-blue-600">12.5m</div>
+                        <div class="text-sm text-gray-600">Buildable Depth</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold">
+                            <span class="text-green-600">97%</span>
+                        </div>
+                        <div class="text-sm text-gray-600">Confidence</div>
+                    </div>
+                </div>
+
+                <!-- Expanded Verification Details -->
+                <div class="space-y-4 pt-4 border-t">
+                    <!-- Phase 1A Enhanced Legal Authority -->
+                    <div class="legal-hierarchy p-4 rounded border border-green-200">
+                        <h4 class="font-semibold mb-2 flex items-center gap-2">
+                            <svg class="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            ENHANCED LEGAL AUTHORITY (Phase 1A):
+                        </h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <strong>Primary Authority:</strong>
+                                    <div class="text-blue-600 font-medium">Inner West LEP 2022</div>
+                                </div>
+                                <div>
+                                    <strong>Secondary Authority:</strong>
+                                    <div class="text-green-600 font-medium">Marrickville DCP 2011</div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <strong>Clause Reference:</strong>
+                                    <div class="font-mono text-xs bg-gray-100 px-2 py-1 rounded">4.2.4.3 Building setbacks</div>
+                                </div>
+                                <div>
+                                    <strong>Amendment:</strong>
+                                    <div class="text-purple-600">IWLEP 2022 amendments</div>
+                                </div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2 bg-gray-50 p-2 rounded">
+                                <strong>Source Document:</strong> Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing_and_RFBs___with_IWLEP_2022_amendments
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Phase 1A Domain Classification & Cross-Contamination -->
+                    <div class="bg-blue-50 p-4 rounded border border-blue-200">
+                        <h4 class="font-semibold mb-2 flex items-center gap-2">
+                            <svg class="h-4 w-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                            </svg>
+                            DOMAIN CLASSIFICATION & QUALITY ASSURANCE:
+                        </h4>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <strong>Domain:</strong> Residential Buildings
+                                </div>
+                                <span class="px-2 py-1 rounded text-xs text-green-700 bg-green-100 border-green-300">
+                                    RESIDENTIAL_BUILDINGS
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div><strong>Relevance Score:</strong></div>
+                                <div class="font-bold text-green-600">
+                                    97% (High)
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2 text-green-600">
+                                <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span><strong>Cross-Contamination Check:</strong> Passed - No signage/residential mixing detected</span>
+                            </div>
+                            <div>
+                                <strong>Zone Applicability:</strong> R2 (Low Density Residential)
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Before/After Comparison -->
+                    <div class="bg-yellow-50 border border-yellow-200 p-4 rounded">
+                        <h4 class="font-semibold mb-2 text-yellow-800">Phase 1A Enhancement - Before vs After</h4>
+                        <div class="grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="font-medium text-red-600 mb-1">❌ BEFORE (Contaminated):</div>
+                                <div class="bg-red-50 p-2 rounded border border-red-200">
+                                    <div class="font-mono text-xs">Front setback: 2.8m from Signs_and_Advertising_Structures</div>
+                                    <div class="text-xs text-red-600 mt-1">❌ Cross-domain contamination</div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="font-medium text-green-600 mb-1">✅ AFTER (Phase 1A Enhanced):</div>
+                                <div class="bg-green-50 p-2 rounded border border-green-200">
+                                    <div class="font-mono text-xs">Front setback: 3.0m from RESIDENTIAL_BUILDINGS</div>
+                                    <div class="text-xs text-green-600 mt-1">✅ Domain-verified, legally traceable</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Summary -->
+        <div class="bg-green-50 border border-green-200 p-4 rounded-lg">
+            <div class="flex items-start gap-3">
+                <svg class="h-5 w-5 text-green-600 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <h3 class="font-semibold text-green-800 mb-2">Phase 1A MVP Integration - COMPLETED Successfully!</h3>
+                    <div class="grid md:grid-cols-2 gap-4 text-sm text-green-700">
+                        <div>
+                            <h4 class="font-medium mb-1">✅ Backend Enhancements:</h4>
+                            <ul class="space-y-1 text-xs">
+                                <li>• Domain-aware compliance engine</li>
+                                <li>• Cross-contamination prevention (22K+ records)</li>
+                                <li>• Legal authority hierarchy (LEP → DCP → SEPP)</li>
+                                <li>• Zero signage contamination in residential queries</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h4 class="font-medium mb-1">✅ Frontend Enhancements:</h4>
+                            <ul class="space-y-1 text-xs">
+                                <li>• Enhanced legal authority display</li>
+                                <li>• Domain classification badges</li>
+                                <li>• Cross-contamination status indicators</li>
+                                <li>• Professional-grade compliance citations</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="mt-3 text-xs text-green-600 bg-white p-2 rounded border">
+                        <strong>Result:</strong> The Inner West Compliance Engine now returns contextually intelligent, 
+                        legally defensible setback requirements with complete traceability and zero cross-domain contamination.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -315,28 +315,28 @@ export class NSWPlanningPortalService {
             const seppNumber = seppMatch[1];
             const seppIdentifier = `SEPP_${seppNumber}`;
             
-            if (!constraints.applicableSepps.includes(seppIdentifier)) {
-              constraints.applicableSepps.push(seppIdentifier);
+            if (!constraints.applicableSepps?.includes(seppIdentifier)) {
+              constraints.applicableSepps?.push(seppIdentifier);
               console.log(`Added SEPP identifier: ${seppIdentifier}`);
             }
           }
           
           // Also check for specific known SEPPs
           if (lowerValue.includes('housing')) {
-            if (!constraints.applicableSepps.includes('SEPP_HOUSING_2021')) {
-              constraints.applicableSepps.push('SEPP_HOUSING_2021');
+            if (!constraints.applicableSepps?.includes('SEPP_HOUSING_2021')) {
+              constraints.applicableSepps?.push('SEPP_HOUSING_2021');
             }
           }
           
           if (lowerValue.includes('planning') && lowerValue.includes('systems')) {
-            if (!constraints.applicableSepps.includes('SEPP_PLANNING_SYSTEMS_2021')) {
-              constraints.applicableSepps.push('SEPP_PLANNING_SYSTEMS_2021');
+            if (!constraints.applicableSepps?.includes('SEPP_PLANNING_SYSTEMS_2021')) {
+              constraints.applicableSepps?.push('SEPP_PLANNING_SYSTEMS_2021');
             }
           }
           
           if (lowerValue.includes('resilience') || lowerValue.includes('hazards')) {
-            if (!constraints.applicableSepps.includes('SEPP_RESILIENCE_HAZARDS_2021')) {
-              constraints.applicableSepps.push('SEPP_RESILIENCE_HAZARDS_2021');
+            if (!constraints.applicableSepps?.includes('SEPP_RESILIENCE_HAZARDS_2021')) {
+              constraints.applicableSepps?.push('SEPP_RESILIENCE_HAZARDS_2021');
             }
           }
         }

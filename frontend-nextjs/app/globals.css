@@ -62,11 +62,7 @@ body {
 }
 
 /* Performance optimizations */
-* {
-  /* Enable hardware acceleration for transforms */
-  transform: translateZ(0);
-  will-change: auto;
-}
+/* Note: Removed global transform that was preventing input fields from working */
 
 /* Reduce paint and layout thrashing */
 .setback-card, .property-panel, .analysis-tabs {

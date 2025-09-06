@@ -1,0 +1,445 @@
+{
+  "database_reliability": {
+    "high_confidence_standards": 124,
+    "geographic_coverage": {
+      "marrickville": 70,
+      "leichhardt": 100,
+      "inner_west_general": 6,
+      "total": 286
+    },
+    "zone_coverage": {
+      "R1": {
+        "total_controls": 50,
+        "measured_controls": 12,
+        "reliability_score": 0.24
+      },
+      "R2": {
+        "total_controls": 50,
+        "measured_controls": 12,
+        "reliability_score": 0.24
+      },
+      "R3": {
+        "total_controls": 50,
+        "measured_controls": 12,
+        "reliability_score": 0.24
+      },
+      "R4": {
+        "total_controls": 50,
+        "measured_controls": 12,
+        "reliability_score": 0.24
+      },
+      "B1": {
+        "total_controls": 0,
+        "measured_controls": 0,
+        "reliability_score": 0.0
+      },
+      "B2": {
+        "total_controls": 0,
+        "measured_controls": 0,
+        "reliability_score": 0.0
+      }
+    },
+    "reliability_assessment": "PASS"
+  },
+  "zone_mapping": {
+    "R1": {
+      "total_setbacks": 50,
+      "measured_setbacks": 12,
+      "measurement_range": {
+        "min": 1.0,
+        "max": 11.0,
+        "count": 12
+      },
+      "reliability": "HIGH"
+    },
+    "R2": {
+      "total_setbacks": 50,
+      "measured_setbacks": 12,
+      "measurement_range": {
+        "min": 1.0,
+        "max": 11.0,
+        "count": 12
+      },
+      "reliability": "HIGH"
+    },
+    "R3": {
+      "total_setbacks": 50,
+      "measured_setbacks": 12,
+      "measurement_range": {
+        "min": 1.0,
+        "max": 11.0,
+        "count": 12
+      },
+      "reliability": "HIGH"
+    },
+    "R4": {
+      "total_setbacks": 50,
+      "measured_setbacks": 12,
+      "measurement_range": {
+        "min": 1.0,
+        "max": 11.0,
+        "count": 12
+      },
+      "reliability": "HIGH"
+    }
+  },
+  "property_tests": {
+    "dulwich_hill": {
+      "property_data": {
+        "address": "36 Pile St, Dulwich Hill NSW 2203, Australia",
+        "expected_zone": "R2",
+        "expected_fsr": "0.6:1",
+        "expected_height": "9.5m",
+        "council_area": "Marrickville",
+        "property_id": 1962876
+      },
+      "nsw_api_simulation": {
+        "address": "36 Pile St, Dulwich Hill NSW 2203, Australia",
+        "property_id": 1962876,
+        "zone": "R2",
+        "fsr_limit": "0.6:1",
+        "height_limit": "9.5m",
+        "council_area": "Marrickville"
+      },
+      "zone_setbacks_found": 50,
+      "relevant_setbacks": 48,
+      "reliable_measurements": {
+        "front": [
+          3.0
+        ],
+        "general": [
+          6.0
+        ]
+      },
+      "compliance_score": 0.8,
+      "test_result": "PASS"
+    },
+    "marrickville": {
+      "property_data": {
+        "address": "123 Marrickville Rd, Marrickville NSW 2204, Australia",
+        "expected_zone": "R1",
+        "council_area": "Marrickville",
+        "property_id": null
+      },
+      "nsw_api_simulation": {
+        "address": "123 Marrickville Rd, Marrickville NSW 2204, Australia",
+        "property_id": null,
+        "zone": "R1",
+        "fsr_limit": null,
+        "height_limit": null,
+        "council_area": "Marrickville"
+      },
+      "zone_setbacks_found": 50,
+      "relevant_setbacks": 48,
+      "reliable_measurements": {
+        "front": [
+          3.0
+        ],
+        "general": [
+          6.0
+        ]
+      },
+      "compliance_score": 0.8,
+      "test_result": "PASS"
+    },
+    "leichhardt": {
+      "property_data": {
+        "address": "45 Balmain Rd, Leichhardt NSW 2040, Australia",
+        "expected_zone": "R1",
+        "council_area": "Leichhardt",
+        "property_id": null
+      },
+      "nsw_api_simulation": {
+        "address": "45 Balmain Rd, Leichhardt NSW 2040, Australia",
+        "property_id": null,
+        "zone": "R1",
+        "fsr_limit": null,
+        "height_limit": null,
+        "council_area": "Leichhardt"
+      },
+      "zone_setbacks_found": 50,
+      "relevant_setbacks": 0,
+      "reliable_measurements": {},
+      "compliance_score": 0.6,
+      "test_result": "FAIL"
+    }
+  },
+  "legal_pathway_tests": {
+    "dulwich_hill": {
+      "property": "dulwich_hill",
+      "zone": "R2",
+      "mock_development": {
+        "proposed_height": 8.0,
+        "proposed_fsr": 0.5,
+        "proposed_front_setback": 6.0,
+        "proposed_side_setback": 2.5
+      },
+      "compliance_checks": [
+        {
+          "control": "height",
+          "limit": 9.5,
+          "proposed": 8.0,
+          "compliant": true,
+          "source": "NSW Planning API"
+        },
+        {
+          "control": "fsr",
+          "limit": 0.6,
+          "proposed": 0.5,
+          "compliant": true,
+          "source": "NSW Planning API"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 4.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_15_Enmore_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 11.0,
+          "proposed": 6.0,
+          "compliant": false,
+          "source": "Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing"
+        },
+        {
+          "control": "front_setback",
+          "limit": 3.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___5_0_Commercial_and_Mixed_U"
+        }
+      ],
+      "overall_compliant": false,
+      "recommended_pathway": "DEVELOPMENT_APPLICATION",
+      "test_result": "PASS"
+    },
+    "marrickville": {
+      "property": "marrickville",
+      "zone": "R1",
+      "mock_development": {
+        "proposed_height": 8.0,
+        "proposed_fsr": 0.5,
+        "proposed_front_setback": 6.0,
+        "proposed_side_setback": 2.5
+      },
+      "compliance_checks": [
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 4.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_15_Enmore_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 11.0,
+          "proposed": 6.0,
+          "compliant": false,
+          "source": "Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing"
+        },
+        {
+          "control": "front_setback",
+          "limit": 3.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___5_0_Commercial_and_Mixed_U"
+        }
+      ],
+      "overall_compliant": false,
+      "recommended_pathway": "DEVELOPMENT_APPLICATION",
+      "test_result": "PASS"
+    },
+    "leichhardt": {
+      "property": "leichhardt",
+      "zone": "R1",
+      "mock_development": {
+        "proposed_height": 8.0,
+        "proposed_fsr": 0.5,
+        "proposed_front_setback": 6.0,
+        "proposed_side_setback": 2.5
+      },
+      "compliance_checks": [
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_24_Marrickville_Town_Cen"
+        },
+        {
+          "control": "front_setback",
+          "limit": 2.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_13_Henson_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 4.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___9_15_Enmore_Park"
+        },
+        {
+          "control": "front_setback",
+          "limit": 11.0,
+          "proposed": 6.0,
+          "compliant": false,
+          "source": "Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing"
+        },
+        {
+          "control": "front_setback",
+          "limit": 3.0,
+          "proposed": 6.0,
+          "compliant": true,
+          "source": "Marrickville_DCP_2011___5_0_Commercial_and_Mixed_U"
+        }
+      ],
+      "overall_compliant": false,
+      "recommended_pathway": "DEVELOPMENT_APPLICATION",
+      "test_result": "PASS"
+    }
+  },
+  "overall_assessment": {
+    "total_tests": 11,
+    "tests_passed": 10,
+    "success_rate": 0.9090909090909091,
+    "overall_grade": "EXCELLENT",
+    "ready_for_production": true
+  }
+}

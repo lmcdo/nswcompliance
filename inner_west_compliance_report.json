@@ -1,0 +1,62 @@
+{
+  "property_details": {
+    "address": "36 Pile St, Dulwich Hill NSW 2203, Australia",
+    "property_id": 1962876,
+    "zone": "R2",
+    "council_area": "Marrickville",
+    "reliability_grade": "HIGH"
+  },
+  "statutory_compliance": {
+    "fsr": {
+      "limit": 0.6,
+      "proposed": 0.55,
+      "compliant": true,
+      "source": "Inner West LEP 2022, Clause 4.4",
+      "legal_authority": "STATUTORY"
+    },
+    "lot_size": {
+      "minimum": 200.0,
+      "actual": 250,
+      "compliant": true,
+      "source": "Inner West LEP 2022, Schedule 1",
+      "legal_authority": "STATUTORY"
+    }
+  },
+  "setback_requirements": {
+    "front": {
+      "minimum_setback_meters": 2.8,
+      "confidence_score": 1.0,
+      "legal_source": "Marrickville_DCP_2011___2_12_Signs_and_Advertising_Structures",
+      "clause_reference": "Not specified",
+      "contextual_requirements": "Where there is no front fence, or where an existing fence does not have sufficient height to display a sign, and where the dwelling has a significant setback from the street front, consideration may b"
+    },
+    "side": {
+      "minimum_setback_meters": 3.0,
+      "confidence_score": 0.8999999999999999,
+      "legal_source": "Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing_and_RFBs___with_IWLEP_2022_amendments",
+      "clause_reference": "Not specified",
+      "contextual_requirements": "Minimum side and rear setbacks: a. A minimum setback of 3 metres must be maintained for one storey residential flat buildings with a wall height of less than 3 metres; and   b. For residential flat bu"
+    }
+  },
+  "compliance_summary": {
+    "development_pathway": "DEVELOPMENT_APPLICATION_MINOR",
+    "compliance_confidence": "91.3%",
+    "professional_review_required": true,
+    "ready_for_submission": false
+  },
+  "legal_references": [
+    "Marrickville_DCP_2011___2_12_Signs_and_Advertising_Structures: Not specified",
+    "Marrickville_DCP_2011___4_2_Multi_Dwelling_Housing_and_RFBs___with_IWLEP_2022_amendments: Not specified"
+  ],
+  "recommendations": [
+    "Development requires minor variations. Lodge Development Application with Inner West Council. Typical assessment time: 8-12 weeks.",
+    "For Marrickville properties, refer to Marrickville_DCP_2011 for detailed design requirements and local character guidelines."
+  ],
+  "audit_trail": [
+    "Assessment conducted: 2025-09-05T16:07:49.950105",
+    "NSW Planning API data processed: 0 SEPP overlays",
+    "Council area identified: marrickville (HIGH reliability)",
+    "Zone-specific controls retrieved: 2 setback requirements",
+    "Compliance confidence: 0.913"
+  ]
+}

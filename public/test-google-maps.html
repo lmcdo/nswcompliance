@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Maps Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 500px; margin: 0 auto; }
+        input { width: 100%; padding: 10px; margin: 10px 0; font-size: 16px; }
+        #log { background: #f5f5f5; padding: 10px; margin-top: 20px; white-space: pre-wrap; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Google Maps Autocomplete Test</h1>
+        <p>API Key: AIzaSyCi5UBAg6X-k6W8v1vv9XEQaML9aQE-w60</p>
+        
+        <input 
+            id="address-input" 
+            type="text" 
+            placeholder="Start typing an Australian address..."
+        >
+        
+        <div id="status">Loading Google Maps...</div>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        
+        function logMessage(msg) {
+            console.log(msg);
+            log.textContent += new Date().toLocaleTimeString() + ': ' + msg + '\n';
+        }
+        
+        function initGoogleMaps() {
+            logMessage('Google Maps callback fired');
+            
+            const checkPlaces = () => {
+                if (window.google && window.google.maps && window.google.maps.places) {
+                    logMessage('Google Maps API fully loaded and ready');
+                    status.textContent = '✅ Ready - Start typing for suggestions';
+                    initAutocomplete();
+                } else {
+                    logMessage('Waiting for places library...');
+                    setTimeout(checkPlaces, 50);
+                }
+            };
+            checkPlaces();
+        }
+        
+        function initAutocomplete() {
+            const input = document.getElementById('address-input');
+            
+            try {
+                logMessage('Creating Google Autocomplete instance...');
+                const autocomplete = new google.maps.places.Autocomplete(input, {
+                    types: ['address'],
+                    componentRestrictions: { country: 'au' },
+                    fields: ['address_components', 'formatted_address', 'geometry']
+                });
+                
+                autocomplete.addListener('place_changed', () => {
+                    logMessage('Place changed event triggered');
+                    const place = autocomplete.getPlace();
+                    logMessage('Selected place: ' + place.formatted_address);
+                });
+                
+                logMessage('Google Autocomplete initialized successfully!');
+                
+            } catch (err) {
+                logMessage('ERROR: ' + err.message);
+                status.textContent = '❌ Failed to initialize autocomplete';
+            }
+        }
+        
+        // Set up callback
+        window.initGoogleMaps = initGoogleMaps;
+        
+        // Load Google Maps script
+        const apiKey = 'AIzaSyCi5UBAg6X-k6W8v1vv9XEQaML9aQE-w60';
+        const script = document.createElement('script');
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
+        script.async = true;
+        script.onerror = () => {
+            logMessage('ERROR: Failed to load Google Maps script');
+            status.textContent = '❌ Failed to load Google Maps';
+        };
+        
+        document.head.appendChild(script);
+        logMessage('Loading Google Maps script...');
+    </script>
+</body>
+</html>

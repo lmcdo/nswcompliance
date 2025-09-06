@@ -275,14 +275,14 @@ export function PreciseSetbackCalculator({
 // Sub-components
 function SetbackCard({ result }: { result: SetbackResult }) {
   const boundaryTypeColors: { [key: string]: string } = {
-    front: 'boundary-front bg-blue-50 border-blue-200',
-    rear: 'boundary-rear bg-green-50 border-green-200', 
-    side_left: 'boundary-side-left bg-purple-50 border-purple-200',
-    side_right: 'boundary-side-right bg-orange-50 border-orange-200',
-    side: 'boundary-side bg-purple-50 border-purple-200'
+    front: 'border-l-4 border-blue-500 bg-blue-50',
+    rear: 'border-l-4 border-green-500 bg-green-50', 
+    side_left: 'border-l-4 border-purple-500 bg-purple-50',
+    side_right: 'border-l-4 border-orange-500 bg-orange-50',
+    side: 'border-l-4 border-purple-500 bg-purple-50'
   };
 
-  const colorClass = boundaryTypeColors[result.boundary_type] || 'bg-gray-50 border-gray-200';
+  const colorClass = boundaryTypeColors[result.boundary_type] || 'border-l-4 border-gray-500 bg-gray-50';
   
   // Get boundary icon
   const getBoundaryIcon = (type: string) => {
@@ -293,87 +293,35 @@ function SetbackCard({ result }: { result: SetbackResult }) {
   };
 
   return (
-    <Card className={`setback-card ${colorClass} border-2 hover:shadow-lg transition-shadow`}>
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          {/* Header with icon and boundary type */}
-          <div className="text-center border-b pb-4">
-            <div className="text-2xl mb-2">{getBoundaryIcon(result.boundary_type)}</div>
-            <div className="text-lg font-semibold capitalize text-gray-900">
-              {result.boundary_type.replace('_', ' ')} Setback
-            </div>
-            <div className="text-4xl font-bold mb-1 text-gray-900">
-              {result.required_setback}m
-            </div>
-            {result.buildable_depth && (
-              <div className="text-sm text-gray-600">
-                Buildable depth: {result.buildable_depth}m
-              </div>
-            )}
-          </div>
-
-          {/* Legal Authority Badge */}
-          <div className="text-center">
-            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium
-              ${result.precedence === 1 ? 'bg-red-100 text-red-800' : 
-                result.precedence === 2 ? 'bg-orange-100 text-orange-800' : 
-                'bg-blue-100 text-blue-800'}`}>
-              {result.authority} • Precedence Level {result.precedence}
-            </span>
-          </div>
-
-          {/* Explanation */}
-          <div className="bg-white/90 p-4 rounded-lg border">
-            <div className="font-medium text-gray-900 mb-2">What this means:</div>
-            <div className="text-sm text-gray-700 mb-3">{result.legal_context}</div>
-            
-            <div className="font-medium text-gray-900 mb-2">Requirement:</div>
-            <div className="text-sm text-gray-700 mb-3">{result.reasoning}</div>
-            
-            <div className="font-medium text-gray-900 mb-2">Legal Authority:</div>
-            <div className="text-sm text-gray-700">{result.authority_explanation}</div>
-          </div>
-
-          {/* Clause Citation */}
-          {result.full_clause_text && (
-            <details className="bg-gray-50 p-3 rounded border">
-              <summary className="cursor-pointer font-medium text-sm text-gray-800 hover:text-blue-600">
-                📋 View Full Legal Clause ({result.clause_reference})
-              </summary>
-              <div className="mt-3 pt-3 border-t">
-                <div className="text-xs text-gray-600 mb-2">
-                  <strong>Source:</strong> {result.legal_source}
-                  {result.document_section && <span> • Section: {result.document_section}</span>}
-                  {result.page_number && <span> • Page: {result.page_number}</span>}
-                </div>
-                <div className="text-sm bg-white p-3 rounded border-l-4 border-blue-200 italic">
-                  "{result.full_clause_text}"
-                </div>
-              </div>
-            </details>
-          )}
-
-          {/* Conditions and Confidence */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div className="text-left">
-              {result.conditions && (
-                <div className="text-xs text-gray-600">
-                  <strong>Conditions:</strong> {result.conditions}
-                </div>
-              )}
-            </div>
-            <div className="text-right">
-              <div className={`px-2 py-1 rounded text-xs font-medium
-                ${result.confidence >= 0.8 ? 'bg-green-100 text-green-800' : 
-                  result.confidence >= 0.6 ? 'bg-yellow-100 text-yellow-800' : 
-                  'bg-red-100 text-red-800'}`}>
-                {Math.round(result.confidence >= 1 ? result.confidence : result.confidence * 100)}% Confidence
-              </div>
-            </div>
-          </div>
+    <div className="bg-white border rounded-lg p-6 mb-4 shadow-lg">
+      {/* Simplified Professional Header */}
+      <div className="bg-slate-800 text-white p-6 rounded-lg mb-4 flex justify-between items-center">
+        <div>
+          <h3 className="text-xl font-bold">{result.boundary_type.replace('_', ' ')} Setback</h3>
+          <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
+            {result.authority} • Level {result.precedence}
+          </span>
         </div>
-      </CardContent>
-    </Card>
+        <div className="text-4xl font-black">{result.required_setback}m</div>
+      </div>
+      
+      <div className="space-y-4">
+        <div className="bg-blue-50 p-4 rounded border-l-4 border-blue-500">
+          <h4 className="font-bold text-blue-900">What this means:</h4>
+          <p className="text-blue-800">{result.legal_context}</p>
+        </div>
+        
+        <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
+          <h4 className="font-bold text-green-900">Requirement:</h4>
+          <p className="text-green-800">{result.reasoning}</p>
+        </div>
+        
+        <div className="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
+          <h4 className="font-bold text-purple-900">Legal Authority:</h4>
+          <p className="text-purple-800">{result.authority_explanation}</p>
+        </div>
+      </div>
+    </div>
   );
 }
 

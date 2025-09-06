@@ -1,0 +1,218 @@
+{
+  "test_document": "Inner West Ashfield DCP 2016 - Chapter B - Public Domain - with IWLEP 2022 amendments.pdf",
+  "test_timestamp": "2025-09-01T16:29:52.151181",
+  "extraction_stats": {
+    "entities": 23,
+    "relationships": 3,
+    "provisions": 4
+  },
+  "entities": [
+    {
+      "id": "entity_1",
+      "type": "section",
+      "reference": "Section 1—Preliminary",
+      "text": "Section 1—Preliminary",
+      "context": "In using this Guideline reference should also be made to Section 1—Preliminary at the front of this DCP."
+    },
+    {
+      "id": "entity_2",
+      "type": "section",
+      "reference": "Section 2 General Guidelines",
+      "text": "Section 2 General Guidelines",
+      "context": "Section 2 General Guidelines"
+    },
+    {
+      "id": "entity_3",
+      "type": "clause",
+      "reference": "PC1",
+      "text": "To ensure that awnings are provided that enhance the amenity and useability of the public domain by",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_4",
+      "type": "clause",
+      "reference": "DS2.1",
+      "text": "A continuous awnings is provided to the entire ground floor of the building fronting the primary street",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_5",
+      "type": "clause",
+      "reference": "DS2.2",
+      "text": "Awnings project a minimum of 50% of the width of the adjoining footpath",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_6",
+      "type": "clause",
+      "reference": "DS2.3",
+      "text": "Awnings are consistent with the design of the buildings and are integrated into the buildings framework",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_7",
+      "type": "clause",
+      "reference": "DS2.4",
+      "text": "Awnings have a simple,flat design",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_8",
+      "type": "clause",
+      "reference": "DS2.5",
+      "text": "Awnings are cantilevered from the topof the ground floor of the building",
+      "context": "Awnings to buildings over public land PC1."
+    },
+    {
+      "id": "entity_9",
+      "type": "clause",
+      "reference": "PC2",
+      "text": "To ensure that street trees create a distinct, unified street character, enhance the attractiveness and comfort of the public domain and provide for environmental",
+      "context": "Street trees PC2."
+    },
+    {
+      "id": "entity_10",
+      "type": "clause",
+      "reference": "DS3.1",
+      "text": "Street res are provided within deep soil zones onal streets as identfed in couneil'sretree strategy",
+      "context": "Street trees PC2."
+    },
+    {
+      "id": "entity_11",
+      "type": "clause",
+      "reference": "DS3.8",
+      "text": "Street trees are to be selected from the list of species on the relevant Tree Policy",
+      "context": "Street trees PC2."
+    },
+    {
+      "id": "entity_12",
+      "type": "clause",
+      "reference": "PC3",
+      "text": "To ensure that buildings do not create or exacerbate",
+      "context": "Wind effets of buildings PC3."
+    },
+    {
+      "id": "entity_13",
+      "type": "clause",
+      "reference": "DS4.1",
+      "text": "Buildings that have a height of 45m or greater or due to their location are likely to create the risk of significant adverse wind affects:",
+      "context": "Wind effets of buildings PC3."
+    },
+    {
+      "id": "entity_14",
+      "type": "clause",
+      "reference": "PC4",
+      "text": "External building materials ensure reflected sunlight does not create risk of discomfort, nuisance or hazard to pedestrians, motorists or occupants of other buildings.",
+      "context": "Reflectivity of buildings PC4."
+    },
+    {
+      "id": "entity_15",
+      "type": "clause",
+      "reference": "DS5.1",
+      "text": "Light reflectivity from building materials used on facades does not exceed 20%",
+      "context": "Reflectivity of buildings PC4."
+    },
+    {
+      "id": "entity_16",
+      "type": "clause",
+      "reference": "PC5",
+      "text": "To ensure that development that proposes to impact on",
+      "context": "Public domain plan PC5."
+    },
+    {
+      "id": "entity_17",
+      "type": "clause",
+      "reference": "DS6.1",
+      "text": "impact on the public domain that is:",
+      "context": "Public domain plan PC5."
+    },
+    {
+      "id": "entity_18",
+      "type": "clause",
+      "reference": "PC6",
+      "text": "To ensure that development provides for a public footway along its entire street frontage that is well designed, accessible to all, safe, comfortable, attractive and functional",
+      "context": "Public Footway PC6."
+    },
+    {
+      "id": "entity_19",
+      "type": "clause",
+      "reference": "DS7.1",
+      "text": "A pedestrian clearway appropriate width for expected pedestrian volumes is provided along the entire length of the site to enable continuous,unobstructed and comfortable pedestrian movement and sightlines",
+      "context": "Public Footway PC6."
+    },
+    {
+      "id": "entity_20",
+      "type": "clause",
+      "reference": "DS7.4",
+      "text": "Street furniture is to be provided in accordance with the relevant council public domain plan",
+      "context": "Public Footway PC6."
+    },
+    {
+      "id": "entity_21",
+      "type": "clause",
+      "reference": "DS7.13",
+      "text": "Damage or disturbance made to the public domain as part of site preparation or construction works, including by public utility providers, is repaired to the same or higher standard as existed",
+      "context": "Public Footway PC6."
+    },
+    {
+      "id": "entity_22",
+      "type": "part",
+      "reference": "Chapter A",
+      "text": "Chapter A",
+      "context": "This Guideline applies to the Inner West Local Government Area for the extent of land show on Map 1 in Chapter A of this DCP."
+    },
+    {
+      "id": "entity_23",
+      "type": "part",
+      "reference": "Chapter B",
+      "text": "Chapter B",
+      "context": "Inner West Ashfield DCP 2016 - Chapter B - Public Domain - with IWLEP 2022 amendments.pdf"
+    }
+  ],
+  "relationships": [
+    {
+      "source": "entity_1",
+      "target": "entity_2",
+      "type": "refers_to",
+      "evidence": "In using this Guideline reference should also be made to Section 1—Preliminary at the front of this DCP."
+    },
+    {
+      "source": "entity_20",
+      "target": "entity_17",
+      "type": "in_accordance_with",
+      "evidence": "Street furniture is to be provided in accordance with the relevant council public domain plan"
+    },
+    {
+      "source": "entity_17",
+      "target": "entity_16",
+      "type": "subject_to",
+      "evidence": "A development appication for development that proposes to impact on the public domain that is:"
+    }
+  ],
+  "provisions": [
+    {
+      "clause_reference": "DS1.1",
+      "provision_type": "active_use_percentage",
+      "regulatory_text": "A minimum of 75% of the ground floor of the building fronting the primary street is occupied by one or more of the following Shops cafes or restaurants offices",
+      "measurements": "75%"
+    },
+    {
+      "clause_reference": "DS2.2",
+      "provision_type": "awning_projection",
+      "regulatory_text": "Awnings project a minimum of 50% of the width of the adjoining footpath",
+      "measurements": "50%"
+    },
+    {
+      "clause_reference": "DS5.1",
+      "provision_type": "reflectivity",
+      "regulatory_text": "Light reflectivity from building materials used on facades does not exceed 20%",
+      "measurements": "20%"
+    },
+    {
+      "clause_reference": "DS4.1",
+      "provision_type": "building_height",
+      "regulatory_text": "Buildings that have a height of 45m or greater or due to their location are likely to create the risk of significant adverse wind affects",
+      "measurements": "45m"
+    }
+  ]
+}

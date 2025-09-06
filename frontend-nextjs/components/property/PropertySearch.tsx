@@ -3,7 +3,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Search, MapPin, Loader2 } from 'lucide-react';
 
 interface PropertySearchProps {
@@ -77,7 +76,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
       }
     };
 
-    // Wait for Google Maps to load with more aggressive checking
+    // Wait for Google Maps to load with timeout
     const checkGoogleMaps = () => {
       if (window.google && window.google.maps && window.google.maps.places) {
         initializeAutocomplete();
@@ -88,9 +87,16 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
     
     // Try immediately first
     if (!checkGoogleMaps()) {
-      // If not available, keep checking
+      // If not available, keep checking with a timeout
+      let attempts = 0;
+      const maxAttempts = 50; // 5 seconds max wait
+      
       const interval = setInterval(() => {
+        attempts++;
         if (checkGoogleMaps()) {
+          clearInterval(interval);
+        } else if (attempts >= maxAttempts) {
+          console.warn('Google Maps failed to load after 5 seconds');
           clearInterval(interval);
         }
       }, 100);
@@ -135,13 +141,13 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
       <form onSubmit={handleSubmit} className="flex gap-3">
         <div className="flex-1 relative">
-          <Input
+          <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
             placeholder="e.g. 15 Norton Street, Leichhardt NSW 2040"
-            className="pr-10 h-14 text-lg w-full min-w-[600px] max-w-[800px]"
+            className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-1 text-lg shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pr-10 min-w-[600px] max-w-[800px]"
             disabled={loading}
           />
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />

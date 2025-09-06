@@ -1,0 +1,11 @@
+{
+  "timestamp": "2025-09-06T12:45:36.249484",
+  "overall_score": 64.88888888888889,
+  "coverage": {},
+  "gaps": [],
+  "strengths": [],
+  "recommendations": [
+    "Extract additional zone data (currently only 7 of 15+ expected zones)",
+    "Add more rules for zones with minimal coverage: B4, B2, B1"
+  ]
+}

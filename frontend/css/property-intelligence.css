@@ -1,0 +1,600 @@
+/* Property Intelligence Styles */
+
+/* Property Context Header */
+.property-context-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.context-tags {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.zone-tag, .lga-tag, .heritage-tag {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9em;
+}
+
+.applicable-documents {
+    margin-top: 10px;
+    opacity: 0.8;
+}
+
+/* Critical Controls Alert */
+.critical-controls-section {
+    margin-bottom: 30px;
+}
+
+.critical-alert {
+    background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    box-shadow: 0 4px 15px rgba(238, 90, 36, 0.3);
+}
+
+.alert-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.alert-icon {
+    font-size: 1.2em;
+    margin-right: 10px;
+}
+
+.status-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8em;
+}
+
+.main-value {
+    font-size: 1.8em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.measurement, .source {
+    margin: 5px 0;
+    opacity: 0.9;
+}
+
+.exceptions {
+    margin-top: 10px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 10px;
+    border-radius: 6px;
+}
+
+/* Important Controls Grid */
+.important-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.control-card {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.priority-badge.important {
+    background: #f39c12;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+.priority {
+    background: #27ae60;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+}
+
+.control-value {
+    font-size: 1.2em;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.measurement-note {
+    color: #666;
+    font-size: 0.9em;
+    margin-bottom: 10px;
+}
+
+.card-footer {
+    border-top: 1px solid #eee;
+    padding-top: 10px;
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #666;
+}
+
+/* Connected Requirements Panel */
+.connected-requirements-panel {
+    background: #f8f9fa;
+    border-left: 4px solid #3498db;
+    padding: 20px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 20px;
+}
+
+/* Clause Citation Accordion */
+.clause-citation {
+    display: block;
+    width: 100%;
+    background: white;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    margin: 8px 0;
+}
+
+.clause-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    cursor: pointer;
+    font-weight: 500;
+    color: #1e293b;
+    background: #f8fafc;
+    border-radius: 6px;
+    width: 100%;
+}
+
+.clause-header:hover {
+    background: #f1f5f9;
+    border-color: #3b82f6;
+}
+
+.clause-arrow {
+    font-size: 12px;
+    transition: transform 0.2s;
+    color: #6b7280;
+}
+
+.clause-arrow.expanded {
+    transform: rotate(180deg);
+}
+
+.clause-content {
+    padding: 12px 0;
+    border-top: 1px solid #e5e7eb;
+    background: white;
+    display: none;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.clause-content.open {
+    display: block;
+}
+
+.clause-type {
+    color: #6b7280;
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+
+/* Council Validation Styles */
+.council-validation-panel {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.validation-summary {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 13px;
+}
+
+.document-group {
+    margin-bottom: 20px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+}
+
+.document-group h5 {
+    background: #f3f4f6;
+    margin: 0;
+    padding: 12px 16px;
+    border-bottom: 1px solid #d1d5db;
+    border-radius: 6px 6px 0 0;
+    font-size: 14px;
+    color: #374151;
+}
+
+.council-citation {
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.council-citation:last-child {
+    border-bottom: none;
+}
+
+.clause-ref {
+    font-weight: bold;
+    color: #1f2937;
+    margin-right: 8px;
+}
+
+.section-title {
+    color: #6b7280;
+    flex-grow: 1;
+}
+
+.confidence-badge {
+    background: #dcfce7;
+    color: #16a34a;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.authority {
+    color: #059669;
+    font-size: 12px;
+    margin-bottom: 8px;
+}
+
+.context-before, .context-after {
+    color: #6b7280;
+    font-size: 12px;
+    margin: 4px 0;
+    font-style: italic;
+}
+
+.full-text {
+    background: #f8fafc;
+    padding: 12px;
+    border-left: 3px solid #3b82f6;
+    margin: 8px 0;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.relationships-section {
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.relationship-item {
+    background: #fefefe;
+    border: 1px solid #f0f0f0;
+    border-radius: 4px;
+    padding: 12px;
+    margin-bottom: 8px;
+}
+
+.relationship-flow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+
+.primary-clause, .connected-clause {
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.relationship-type {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+
+.validation-note {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.precedence {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.clause-text {
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.clause-source {
+    font-size: 11px;
+    color: #9ca3af;
+    font-style: italic;
+}
+
+.connection-flow {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.primary-control {
+    font-weight: bold;
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.relationship-arrow {
+    text-align: center;
+    color: #3498db;
+    margin: 10px 0;
+}
+
+.connected-controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.connected-control {
+    background: #ecf0f1;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.impact-explanation {
+    margin-top: 10px;
+    padding: 10px;
+    background: #e8f5e8;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+/* Actionable Summary */
+.actionable-summary {
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    color: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 30px;
+}
+
+.summary-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.development-potential.highlight {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.potential-icon {
+    font-size: 2em;
+    margin-top: 5px;
+}
+
+.potential-content strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.constraints-section, .next-steps-section {
+    margin: 15px 0;
+}
+
+.constraints-section h4, .next-steps-section h4 {
+    margin-bottom: 10px;
+}
+
+/* Debug Panel */
+.debug-panel {
+    background: #2c3e50;
+    color: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    font-family: monospace;
+}
+
+.debug-info p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.debug-info strong {
+    color: #3498db;
+}
+
+/* NSW Planning Data Styles */
+.nsw-planning-section {
+    margin-top: 30px;
+    border-top: 2px solid #3b82f6;
+    padding-top: 20px;
+}
+
+.planning-data-summary {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #1e40af;
+}
+
+.sepp-item, .condition-item, .instrument-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border-left: 4px solid #3b82f6;
+}
+
+.sepp-header, .condition-header, .instrument-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 8px;
+    gap: 10px;
+}
+
+.sepp-header strong, .condition-header strong, .instrument-header strong {
+    color: #1e293b;
+    font-size: 16px;
+    flex-grow: 1;
+}
+
+.sepp-active, .condition-active {
+    background: #dcfce7;
+    color: #16a34a;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.instrument-type {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.sepp-description, .condition-description, .instrument-description {
+    color: #475569;
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+.sepp-date, .sepp-applicability, .sepp-provisions,
+.condition-impact, .condition-authority,
+.instrument-authority {
+    font-size: 13px;
+    color: #64748b;
+    margin: 4px 0;
+}
+
+.sepp-date {
+    color: #059669;
+    font-weight: 500;
+}
+
+.condition-impact {
+    background: #fef3c7;
+    padding: 6px;
+    border-radius: 4px;
+    border-left: 3px solid #f59e0b;
+}
+
+.no-data {
+    text-align: center;
+    padding: 20px;
+    color: #64748b;
+    font-style: italic;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px dashed #cbd5e1;
+}
+
+.data-source-note {
+    margin-top: 20px;
+    padding: 12px;
+    background: #f1f5f9;
+    border-radius: 6px;
+    border-left: 4px solid #3b82f6;
+}
+
+.data-source-note small {
+    color: #475569;
+}
+
+.sepp-list, .conditions-list, .instruments-list {
+    margin-top: 12px;
+}
+
+/* Responsive Design for Property Intelligence */
+@media (max-width: 768px) {
+    .important-controls-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .alert-header, .card-header, .summary-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .context-tags {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .development-potential.highlight {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .sepp-header, .condition-header, .instrument-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .sepp-item, .condition-item, .instrument-item {
+        padding: 12px;
+    }
+}
