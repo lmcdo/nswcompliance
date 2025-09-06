@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, Calculator, AlertTriangle } from 'lucide-react';
+import { Loader2, Calculator, AlertTriangle, Building, Ruler, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useSetbackCalculation } from '@/hooks/useSetbackCalculation';
 import type { PropertyData, LotGeometry } from '@/types/property';
 import type { SetbackResult } from '@/types/setback';
@@ -205,68 +205,65 @@ export function PreciseSetbackCalculator({
 
   // Results display
   return (
-    <div className="space-y-6 p-6">
-      {/* Results Header */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-3">
-            <Calculator className="h-5 w-5 text-blue-600" />
-            Precise Setback Calculations
-            <span className="text-sm font-normal text-green-600 bg-green-50 px-2 py-1 rounded">
-              Precision: Centimeter
-            </span>
-          </CardTitle>
-        </CardHeader>
-      </Card>
-
-      {/* Setback Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {results.map((result, index) => (
-          <SetbackCard key={`${result.boundary_type}-${index}`} result={result} />
-        ))}
-      </div>
-
-      {/* Buildable Area Summary */}
-      {buildableArea && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              🏗️ Buildable Area Analysis
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-6">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-gray-900">{buildableArea.total_lot_area}m²</div>
-                <div className="text-sm text-gray-600">Total Lot Area</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{buildableArea.buildable_area}m²</div>
-                <div className="text-sm text-gray-600">Buildable Area</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">{buildableArea.buildable_percentage}%</div>
-                <div className="text-sm text-gray-600">Buildable Percentage</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-red-600">{buildableArea.setback_area_lost}m²</div>
-                <div className="text-sm text-gray-600">Area Lost to Setbacks</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Disclaimer */}
-      <div className="text-sm text-gray-500 bg-yellow-50 p-4 rounded border-l-4 border-yellow-200">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+    <div className="max-w-2xl mx-auto">
+      <div className="bg-white shadow-2xl rounded-2xl overflow-hidden">
+        {/* Header */}
+        <div className="bg-indigo-600 text-white p-6 flex items-center">
+          <Building className="w-10 h-10 mr-4" />
           <div>
-            <strong>Professional verification required for final design.</strong>
-            <br />
-            Calculations based on NSW Planning API geometry and database intelligence.
+            <h1 className="text-2xl font-bold">Property Compliance Analysis</h1>
+            <p className="text-sm">{property?.address || 'Property Analysis'}</p>
           </div>
         </div>
+
+        {/* Property Details */}
+        <div className="p-6 bg-gray-50 border-b">
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <p className="text-xs text-gray-600 uppercase">Zone</p>
+              <p className="font-semibold">{property?.zone || 'N/A'}</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600 uppercase">Height Limit</p>
+              <p className="font-semibold">{property?.maxHeight || 'N/A'}m</p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-600 uppercase">FSR Limit</p>
+              <p className="font-semibold">{property?.maxFsr || 'N/A'}:1</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Setback Details */}
+        <div className="divide-y divide-gray-200">
+          {results.map((result, index) => (
+            <SetbackCard key={`${result.boundary_type}-${index}`} result={result} />
+          ))}
+        </div>
+
+        {/* Buildable Area Analysis */}
+        {buildableArea && (
+          <div className="bg-gray-100 p-6">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">Buildable Area Analysis</h3>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs text-gray-600 uppercase">Total Lot Area</p>
+                <p className="font-bold text-gray-800">{buildableArea.total_lot_area}m²</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 uppercase">Buildable Area</p>
+                <p className="font-bold text-gray-800">{buildableArea.buildable_area}m²</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 uppercase">Buildable Percentage</p>
+                <p className="font-bold text-gray-800">{buildableArea.buildable_percentage}%</p>
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-gray-500 italic">
+              Professional verification required for final design. Calculations based on NSW Planning API geometry and database intelligence.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -274,67 +271,62 @@ export function PreciseSetbackCalculator({
 
 // Sub-components
 function SetbackCard({ result }: { result: SetbackResult }) {
-  const boundaryTypeColors: { [key: string]: string } = {
-    front: 'border-l-4 border-blue-500 bg-blue-50',
-    rear: 'border-l-4 border-green-500 bg-green-50', 
-    side_left: 'border-l-4 border-purple-500 bg-purple-50',
-    side_right: 'border-l-4 border-orange-500 bg-orange-50',
-    side: 'border-l-4 border-purple-500 bg-purple-50'
-  };
-
-  const colorClass = boundaryTypeColors[result.boundary_type] || 'border-l-4 border-gray-500 bg-gray-50';
-  
-  // Get boundary icon
-  const getBoundaryIcon = (type: string) => {
-    const icons: { [key: string]: string } = {
-      front: '🏠', rear: '🌳', side: '🏘️', side_left: '⬅️', side_right: '➡️'
-    };
-    return icons[type] || '📏';
-  };
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
-    <div className="bg-white border rounded-lg p-6 mb-4 shadow-lg">
-      {/* Simplified Professional Header */}
-      <div className="bg-slate-800 text-white p-6 rounded-lg mb-4 flex justify-between items-center">
-        <div>
-          <h3 className="text-xl font-bold">
-            {result.boundary_type.replace('_', ' ')} Setback
-            {result.conditions && (
-              <span className="text-lg font-normal text-purple-300 ml-2">
-                ({result.conditions})
-              </span>
-            )}
-          </h3>
-          <div className="flex gap-2 mt-2">
-            <span className="bg-blue-500 text-white px-2 py-1 rounded text-sm">
-              {result.authority} • Level {result.precedence}
-            </span>
-            {result.conditions && (
-              <span className="bg-purple-500 text-white px-2 py-1 rounded text-sm">
-                🏠 {result.conditions}
-              </span>
-            )}
+    <div className="px-6 py-4 hover:bg-gray-50 transition-colors border-b border-gray-200 last:border-b-0">
+      <div 
+        className="flex justify-between items-center cursor-pointer"
+        onClick={() => setIsExpanded(!isExpanded)}
+      >
+        <div className="flex items-center space-x-4">
+          <Ruler className="w-6 h-6 text-indigo-600" />
+          <div>
+            <h3 className="font-semibold text-gray-800 capitalize">
+              {result.boundary_type.replace('_', ' ')} Setback
+              {result.conditions && <span className="text-sm font-normal text-gray-600 ml-1">({result.conditions})</span>}
+            </h3>
+            <p className="text-2xl font-bold text-indigo-700">{result.required_setback}m</p>
           </div>
         </div>
-        <div className="text-4xl font-black">{result.required_setback}m</div>
-      </div>
-      
-      <div className="space-y-4">
-        <div className="bg-blue-50 p-4 rounded border-l-4 border-blue-500">
-          <h4 className="font-bold text-blue-900">What this means:</h4>
-          <p className="text-blue-800">{result.legal_context}</p>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded border-l-4 border-green-500">
-          <h4 className="font-bold text-green-900">Requirement:</h4>
-          <p className="text-green-800">{result.reasoning}</p>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded border-l-4 border-purple-500">
-          <h4 className="font-bold text-purple-900">Legal Authority:</h4>
-          <p className="text-purple-800">{result.authority_explanation}</p>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">
+            {result.authority} | Level {result.precedence}
+          </span>
+          {isExpanded ? <ChevronUp className="text-gray-500" /> : <ChevronDown className="text-gray-500" />}
         </div>
       </div>
+
+      {/* Expanded Details */}
+      {isExpanded && (
+        <div className="mt-4 bg-gray-50 p-4 rounded-lg">
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Description</p>
+              <p className="text-sm text-gray-600">{result.legal_context}</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-700">Legal Authority</p>
+              <p className="text-sm text-gray-600">{result.authority_explanation}</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <p className="text-sm font-medium text-gray-700">Specific Requirement</p>
+            <p className="text-sm text-gray-600">{result.reasoning}</p>
+          </div>
+          <div className="mt-4 flex justify-between items-center">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Reference</p>
+              <p className="text-sm text-gray-600">{result.clause_reference || result.legal_source || 'N/A'}</p>
+            </div>
+            <div className="text-right">
+              <span className="text-sm font-semibold text-green-600">
+                {Math.round((parseFloat(result.confidence) * 100))}% Confidence
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

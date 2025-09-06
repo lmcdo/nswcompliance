@@ -144,9 +144,8 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
   return (
     <div className="w-full">
-      <div className="mb-4">
-        <h2 className="text-2xl font-semibold text-gray-900 mb-2 flex items-center gap-2">
-          <MapPin className="h-6 w-6 text-blue-600" />
+      <div className="mb-6 text-center">
+        <h2 className="text-xl font-semibold text-gray-800 mb-2">
           Property Address
         </h2>
         <p className="text-gray-600 text-sm">
@@ -154,16 +153,15 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-3 justify-center">
-        <div className="relative" style={{ minWidth: '1200px', maxWidth: '1600px', width: '100%' }}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="relative">
           <input
             ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="e.g. 15 Norton Street, Leichhardt NSW 2040"
-            className="flex h-14 w-full rounded-md border border-input bg-background px-3 py-1 text-lg shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pr-20"
-            style={{ minWidth: '1200px', maxWidth: '1600px' }}
+            placeholder="30 Denison Rd, Lewisham NSW 2049, Australia"
+            className="w-full h-10 px-3 pr-16 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
             disabled={loading}
           />
           {inputValue && (
@@ -173,35 +171,34 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
               className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
               title="Clear search"
             >
-              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+              <X className="h-3 w-3 text-gray-400 hover:text-gray-600" />
             </button>
           )}
           <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>
         
-        <Button 
+        <button 
           type="submit" 
           disabled={loading || !inputValue.trim()}
-          className="min-w-[120px]"
+          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm"
         >
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing
+              Analyzing...
             </>
           ) : (
-            <>
-              <Search className="mr-2 h-4 w-4" />
-              Analyze
-            </>
+            'Analyze Property'
           )}
-        </Button>
+        </button>
       </form>
 
-      <div className="mt-3 text-xs text-gray-500">
-        <p>
-          ✓ NSW addresses only • ✓ Google Places integration • ✓ Real-time property lookup
-        </p>
+      <div className="text-xs text-gray-500 text-center space-x-4">
+        <span>✓ NSW addresses only</span>
+        <span>•</span>
+        <span>✓ Google Places integration</span>
+        <span>•</span>
+        <span>✓ Real-time property lookup</span>
       </div>
     </div>
   );

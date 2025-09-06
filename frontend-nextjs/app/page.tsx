@@ -28,21 +28,18 @@ export default function DashboardPage() {
 
   return (
     <ErrorBoundary>
-      <div className="compliance-app">
-        {/* Header */}
-        <div className="container mx-auto px-4 py-8 pb-4">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">
-              NSW Planning Compliance Engine
-            </h1>
-            <p className="text-xl text-gray-600">
-              Precision planning analysis with intelligent reasoning
-            </p>
+      <div className="min-h-screen bg-gray-50">
+        {/* Compact Header with integrated search */}
+        <div className="bg-indigo-600 text-white px-4 py-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-bold">NSW Planning Compliance Engine</h1>
+            </div>
           </div>
         </div>
 
-        {/* Property Search - Full Width */}
-        <div className="w-full px-4 mb-6">
+        {/* Search Bar - Full width, minimal padding */}
+        <div className="bg-white border-b px-4 py-3">
           <PropertySearch 
             onAddressSelect={handleAddressSelect}
             loading={loading?.property}
@@ -51,7 +48,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-4">
+        <div className="max-w-7xl mx-auto px-4 py-6">
 
           {/* Main Content Grid */}
           {(property || loading.property) && (
