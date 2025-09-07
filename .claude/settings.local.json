@@ -252,7 +252,10 @@
       "Bash(PORT=3008 npm run dev)",
       "Bash(git log:*)",
       "Bash(npx next:*)",
-      "Bash(del:*)"
+      "Bash(del:*)",
+      "Bash(npx tailwindcss:*)",
+      "Read(//c/Users/lawre/Downloads/**)",
+      "Bash(\"C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe\" -U postgres -h localhost -d nsw_planning -c \"\\d regulatory_provisions\")"
     ],
     "deny": []
   }

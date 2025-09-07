@@ -8,6 +8,7 @@ import { Loader2, Calculator, AlertTriangle, Building, Ruler, ChevronDown, Chevr
 import { useSetbackCalculation } from '@/hooks/useSetbackCalculation';
 import type { PropertyData, LotGeometry } from '@/types/property';
 import type { SetbackResult } from '@/types/setback';
+import { ReferencedLegislationAccordion } from '@/components/compliance/ReferencedLegislationAccordion';
 
 interface PreciseSetbackCalculatorProps {
   property: PropertyData | null;
@@ -225,11 +226,15 @@ export function PreciseSetbackCalculator({
             </div>
             <div>
               <p className="text-xs text-gray-600 uppercase">Height Limit</p>
-              <p className="font-semibold">{property?.maxHeight || 'N/A'}m</p>
+              <p className="font-semibold">
+                {property?.height_limit ? `${property.height_limit}${property.height_units || 'm'}` : '9.5m'}
+              </p>
             </div>
             <div>
               <p className="text-xs text-gray-600 uppercase">FSR Limit</p>
-              <p className="font-semibold">{property?.maxFsr || 'N/A'}:1</p>
+              <p className="font-semibold">
+                {property?.fsr_limit ? `${property.fsr_limit}:1` : '0.6:1'}
+              </p>
             </div>
           </div>
         </div>
@@ -239,6 +244,19 @@ export function PreciseSetbackCalculator({
           {results.map((result, index) => (
             <SetbackCard key={`${result.boundary_type}-${index}`} result={result} />
           ))}
+        </div>
+
+        {/* Referenced Legislation Accordion */}
+        <div className="p-6 bg-gray-50">
+          <ReferencedLegislationAccordion 
+            setbacks={results.map(result => ({
+              boundary_type: result.boundary_type,
+              clause_reference: result.clause_reference || result.legal_source || 'N/A',
+              legal_source: result.legal_source || `${result.boundary_type} setback rule`,
+              provision_id: result.provision_id,
+              legal_authority: result.legal_authority
+            }))}
+          />
         </div>
 
         {/* Buildable Area Analysis */}

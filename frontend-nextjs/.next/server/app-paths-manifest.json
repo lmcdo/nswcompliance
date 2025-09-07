@@ -1,5 +1,6 @@
 {
   "/page": "app/page.js",
+  "/api/setbacks/calculate/route": "app/api/setbacks/calculate/route.js",
   "/api/property/route": "app/api/property/route.js",
-  "/api/setbacks/calculate/route": "app/api/setbacks/calculate/route.js"
+  "/api/clause/[id]/route": "app/api/clause/[id]/route.js"
 }

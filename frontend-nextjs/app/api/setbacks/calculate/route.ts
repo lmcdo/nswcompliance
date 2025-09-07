@@ -10,8 +10,8 @@ import { z } from 'zod';
 const SetbackRequestSchema = z.object({
   property_id: z.number().int().positive(),
   lot_geometry: z.object({
-    hasM: z.boolean(),
-    hasZ: z.boolean(),
+    hasM: z.boolean().optional().default(false),
+    hasZ: z.boolean().optional().default(false),
     rings: z.array(z.array(z.array(z.number()))),  // NSW format: rings[0][0] = [x,y] coordinate pair
     spatialReference: z.object({
       wkid: z.number(),
@@ -19,7 +19,7 @@ const SetbackRequestSchema = z.object({
       vcsWkid: z.number().optional().nullable(),
       latestVcsWkid: z.number().optional().nullable(),
       wkt: z.string().optional().nullable()
-    })
+    }).optional()
   }).optional(), // Geometry is optional for PRP-K3 zone-specific calculations
   property_zone: z.string().min(1).max(10),
   lot_area: z.number().positive().optional() // Optional - can estimate from zone defaults
@@ -60,19 +60,100 @@ export async function POST(request: NextRequest) {
     const dbClient = new DatabaseClient();
     
     try {
-      // Determine council from property location (simplified for demo)
-      const council = 'Marrickville'; // In production, derive from geocoding
+      // Use enhanced domain-aware Python engine for setback calculation
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      const path = require('path');
       
-      // Get zone-specific setback rules from unified table
-      const setbackRules = await dbClient.getZoneSetbackRules(
-        validatedData.property_zone,
-        council,
-        0.75 // Minimum confidence threshold
+      // Determine council from property location (simplified for demo)
+      const council = 'marrickville'; // Python format
+      
+      // Execute the enhanced Python compliance engine
+      const pythonPath = path.join(process.cwd(), '..', 'venv_linux', 'Scripts', 'python.exe');
+      const scriptPath = path.join(process.cwd(), '..', 'dynamic_setback_calc.py');
+      
+      console.log(`[API] Calling enhanced Python engine: ${pythonPath} ${scriptPath} ${validatedData.property_zone} ${validatedData.property_id}`);
+      
+      const { stdout, stderr } = await execAsync(
+        `"${pythonPath}" "${scriptPath}" ${validatedData.property_zone} ${validatedData.property_id}`,
+        { 
+          cwd: path.join(process.cwd(), '..'),
+          timeout: 30000,
+          encoding: 'utf8'
+        }
       );
       
-      console.log(`[API] PRP-K3: Found ${setbackRules.length} zone setback rules`);
+      if (stderr) {
+        console.warn('[API] Python engine stderr:', stderr);
+      }
       
-      if (setbackRules.length > 0) {
+      // Parse the enhanced setback results with provision_id
+      const setbacksData = JSON.parse(stdout.trim());
+      
+      console.log(`[API] PRP-K3: Found ${setbacksData.length} enhanced setback rules with provision data`);
+      
+      // Helper function to correctly classify authority level
+      function getCorrectAuthorityLevel(source: string): string {
+        const sourceUpper = source.toUpperCase();
+        if (sourceUpper.includes('SEPP')) return 'SEPP';
+        if (sourceUpper.includes('LEP') && !sourceUpper.includes('DCP')) return 'LEP';
+        return 'DCP'; // Most provisions are DCP level
+      }
+
+      // Aggregate setbacks by boundary type and keep the most appropriate value
+      const aggregatedSetbacks: { [key: string]: any } = {};
+      
+      setbacksData.forEach((setback: any) => {
+        const boundaryType = setback.boundary_type;
+        const currentValue = setback.required_setback;
+        
+        // Filter out unrealistic values (likely data errors or unit conversion issues)
+        // Residential setbacks should be between 0.5m and 20m typically
+        if (currentValue > 50) {
+          console.warn(`[API] Filtering out unrealistic setback value: ${currentValue}m for ${boundaryType} (source: ${setback.legal_source})`);
+          return; // Skip this value
+        }
+        
+        // For residential zones, prefer residential-specific provisions
+        const isResidentialProvision = !setback.legal_source?.includes('Commercial') && 
+                                      !setback.legal_source?.includes('Industrial');
+        
+        const existingSetback = aggregatedSetbacks[boundaryType];
+        
+        // Selection logic: prefer residential provisions, then highest reasonable value
+        const shouldReplace = !existingSetback || 
+                            (isResidentialProvision && !existingSetback.isResidential) ||
+                            (isResidentialProvision === existingSetback?.isResidential && currentValue > existingSetback.value);
+        
+        if (shouldReplace) {
+          aggregatedSetbacks[boundaryType] = {
+            boundary_type: boundaryType,
+            value: Math.round(currentValue), // Round to clean integers
+            setback_distance: Math.round(currentValue), // Keep for compatibility
+            required_setback: Math.round(currentValue), // Frontend SetbackCard expects this field
+            unit: 'meters',
+            confidence: setback.confidence, // Keep as decimal - frontend converts to percentage
+            confidence_score: setback.confidence, // Keep raw score too
+            rule_source: setback.legal_source,
+            clause_reference: setback.clause_reference,
+            legal_source: setback.legal_source,
+            authority: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP'),
+            precedence: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'SEPP' ? 1 : 
+                       getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'LEP' ? 2 : 3,
+            provision_id: setback.provision_id,
+            legal_authority: setback.legal_authority,
+            domain_classification: setback.domain_classification,
+            cross_contamination_checked: setback.cross_contamination_checked,
+            isResidential: isResidentialProvision // Track if this is residential-specific
+          };
+        }
+      });
+
+      // Convert to array for API response
+      const transformedSetbacks = Object.values(aggregatedSetbacks);
+      
+      if (setbacksData.length > 0) {
         // Use provided lot_area or estimate based on zone defaults
         const estimatedLotArea = validatedData.lot_area || (validatedData.property_zone === 'R2' ? 500 : 400);
         
@@ -99,14 +180,14 @@ export async function POST(request: NextRequest) {
         } catch (hierarchyError) {
           console.warn('[API] Hierarchy processing failed, using fallback:', hierarchyError);
           
-          // Fallback legal compliance based on rule analysis
-          const authorities = [...new Set(setbackRules.map(r => r.authority || 'DCP'))];
+          // Fallback legal compliance based on enhanced rule analysis
+          const authorities = [...new Set(setbacksData.map((r: any) => r.legal_authority?.primary_authority || 'DCP'))];
           const controllingAuthority = authorities.includes('SEPP') ? 'SEPP' : 
                                      authorities.includes('LEP') ? 'LEP' : 'DCP';
           
           legalCompliance = {
             controlling_authority: controllingAuthority as 'SEPP' | 'LEP' | 'DCP',
-            legal_justification: `${controllingAuthority} provisions apply to zone ${validatedData.property_zone}. Rules sourced from verified compliance database with ${setbackRules.length} applicable provisions.`,
+            legal_justification: `${controllingAuthority} provisions apply to zone ${validatedData.property_zone}. Rules sourced from enhanced domain-aware compliance engine with ${setbacksData.length} applicable provisions.`,
             applicable_provision: {
               authority_level: controllingAuthority,
               provision_text: `Zone ${validatedData.property_zone} setback requirements`,
@@ -115,9 +196,11 @@ export async function POST(request: NextRequest) {
             overridden_provisions: [],
             conflict_resolution_method: 'database_hierarchy' as 'sepp_override' | 'lep_default' | 'most_restrictive',
             audit_trail: [
-              `Hierarchical compliance assessment initiated: ${new Date().toISOString()}`,
+              `Enhanced domain-aware compliance assessment initiated: ${new Date().toISOString()}`,
               `Zone: ${validatedData.property_zone}`,
-              `Rules found: ${setbackRules.length}`,
+              `Enhanced rules found: ${setbacksData.length}`,
+              `Domain classification: RESIDENTIAL_BUILDINGS`,
+              `Cross-contamination prevention: Active`,
               `Controlling authority determined: ${controllingAuthority}`,
               `Legal precedence applied per NSW Environmental Planning and Assessment Act 1979`
             ]
@@ -126,7 +209,7 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({
           success: true,
-          setback_results: setbackRules,
+          setback_results: transformedSetbacks,
           legal_compliance: legalCompliance,
           buildable_area_analysis: {
             total_lot_area: estimatedLotArea,

@@ -62,6 +62,7 @@ class SetbackRequirement:
     domain_classification: str = "GENERAL_PROVISIONS"  # From PRP-K1
     legal_authority: Optional[LegalAuthority] = None
     cross_contamination_checked: bool = False
+    provision_id: Optional[int] = None  # For Referenced Legislation accordion
     relevance_score: float = 1.0  # Domain relevance for query
     
 @dataclass 
@@ -287,7 +288,8 @@ class InnerWestComplianceEngine:
                     clause_reference=clause_ref,
                     contextual_requirements=provision[:200],
                     council_area=council_area,
-                    zone_applicability=zone
+                    zone_applicability=zone,
+                    provision_id=None  # This method doesn't have provision_id
                 )
             else:
                 # Update with better data if available
@@ -421,6 +423,7 @@ class InnerWestComplianceEngine:
                 council_area=council_area,
                 zone_applicability=zone_code or zone,
                 domain_classification=domain_classification,
+                provision_id=provision_id,  # Include provision_id for Referenced Legislation accordion
                 legal_authority=legal_authority,
                 cross_contamination_checked=bool(cross_contamination_checked),
                 relevance_score=relevance_score

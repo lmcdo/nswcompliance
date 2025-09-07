@@ -60,6 +60,9 @@ for req in result:
         'relevance_score': req.relevance_score,
         'cross_contamination_checked': req.cross_contamination_checked,
         
+        # Provision ID for Referenced Legislation accordion
+        'provision_id': getattr(req, 'provision_id', None),
+        
         # Legal authority hierarchy
         'legal_authority': {
             'primary_authority': req.legal_authority.primary_authority if req.legal_authority else "Inner West LEP 2022",

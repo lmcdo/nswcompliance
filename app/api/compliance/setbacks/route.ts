@@ -17,6 +17,7 @@ interface SetbackResult {
   relevance_score: number;
   legal_authority: any;
   cross_contamination_checked: boolean;
+  provision_id?: number; // For Referenced Legislation accordion
 }
 
 interface TransformedSetbacks {
@@ -92,7 +93,8 @@ async function callDomainAwarePythonEngine(councilArea: string, address: string)
           domain_classification: setback.domain_classification,
           relevance_score: setback.relevance_score,
           legal_authority: setback.legal_authority,
-          cross_contamination_checked: setback.cross_contamination_checked
+          cross_contamination_checked: setback.cross_contamination_checked,
+          provision_id: setback.provision_id // Add provision_id for Referenced Legislation accordion
         };
       }
     }
