@@ -71,6 +71,20 @@ cp .env.local.example .env.local
 npm run dev
 ```
 
+### Database Configuration
+
+**PostgreSQL Connection Parameters:**
+- Host: `localhost`
+- Port: `5432` (standard PostgreSQL port)
+- Database: `nsw_planning`
+- User: `postgres`
+- Password: `postgres`
+
+Test your database connection:
+```bash
+python db_config.py
+```
+
 ### Usage
 
 1. **Standard Compliance Check**: Visit `/property` for basic compliance checking
