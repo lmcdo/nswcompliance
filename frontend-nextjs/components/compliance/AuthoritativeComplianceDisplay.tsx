@@ -3,16 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Shield, 
-  Building, 
-  FileText, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Shield,
+  Building,
+  FileText,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   ChevronDown,
   ChevronUp
 } from 'lucide-react';
+import BASIXProvisions from './BASIXProvisions';
 
 // PRP-8B Tier Icons and Colors
 const TIER_CONFIG = {
@@ -75,6 +76,7 @@ interface Provision {
   measurement_context?: string;
   boundary_type?: string;
   confidence_level: number;
+  extraction_confidence: number;
   tier_level: number;
   tier_name: string;
   authority_level: number;
@@ -120,15 +122,19 @@ interface Props {
   developmentType?: string;
   address?: string;
   propertyId?: number;
+  basixProvisions?: any;
+  specialProvisions?: any[];
   onDataLoaded?: (data: AuthoritativeComplianceData) => void;
 }
 
-export default function AuthoritativeComplianceDisplay({ 
-  zoneCode, 
+export default function AuthoritativeComplianceDisplay({
+  zoneCode,
   developmentType,
   address,
   propertyId,
-  onDataLoaded 
+  basixProvisions,
+  specialProvisions,
+  onDataLoaded
 }: Props) {
   const [data, setData] = useState<AuthoritativeComplianceData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -165,7 +171,9 @@ export default function AuthoritativeComplianceDisplay({
       const payload = {
         zone_code: zoneCode,
         property_id: resolvedPropertyId || 1,
-        development_type: developmentType
+        development_type: developmentType,
+        basix_provisions: basixProvisions,
+        special_provisions: specialProvisions
       };
 
       console.log('[AuthoritativeCompliance] Fetching:', payload);
@@ -202,7 +210,7 @@ export default function AuthoritativeComplianceDisplay({
     if (zoneCode) {
       fetchComplianceData();
     }
-  }, [zoneCode, developmentType, address, propertyId]);
+  }, [zoneCode, developmentType, address, propertyId, basixProvisions, specialProvisions]);
 
   const toggleTier = (tier: number) => {
     const newExpanded = new Set(expandedTiers);
@@ -234,6 +242,53 @@ export default function AuthoritativeComplianceDisplay({
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
+  const getDocumentDisplayName = (provision: Provision) => {
+    if (provision.document_type === 'LEP') {
+      // Extract readable LEP name from document_name
+      const lepName = provision.document_name
+        .replace(/_/g, ' ')
+        .replace(/___NSW_Legislation.*/, '')
+        .replace(/Inner_West_Local_Environmental_Plan_2022/, 'Inner West LEP 2022');
+      return `LEP - ${lepName}`;
+    }
+    if (provision.document_type === 'DCP') {
+      const dcpName = provision.document_name
+        .replace(/_/g, ' ')
+        .replace(/Marrickville_DCP_2011/, 'Marrickville DCP 2011');
+      return `DCP - ${dcpName}`;
+    }
+    if (provision.document_type === 'SEPP') {
+      const seppName = provision.document_name
+        .replace(/_/g, ' ')
+        .replace(/___NSW_Legislation/, '')
+        .replace(/State_Environmental_Planning_Policy/, 'SEPP');
+      return `SEPP - ${seppName}`;
+    }
+    return provision.document_type;
+  };
+
+  const getTierExplanation = (provision: Provision) => {
+    const hasNumeric = provision.numeric_value !== null && provision.numeric_value !== undefined;
+    const docType = provision.document_type;
+    
+    if (provision.tier_level === 1) {
+      return `Tier 1: ${docType} with specific numeric value (${provision.numeric_value}${provision.unit}) - Fully enforceable`;
+    }
+    if (provision.tier_level === 2) {
+      return `Tier 2: ${docType} with ${hasNumeric ? 'measurable guidance' : 'clear requirements'} - High authority`;
+    }
+    if (provision.tier_level === 3) {
+      return `Tier 3: ${docType} with qualitative provisions - Professional interpretation required`;
+    }
+    if (provision.tier_level === 4) {
+      return `Tier 4: ${docType} framework guidance - General planning principles`;
+    }
+    if (provision.tier_level === 5) {
+      return `Tier 5: ${docType} complex provisions - Specialist consultation required`;
+    }
+    return `Tier ${provision.tier_level}: ${docType} provision`;
+  };
+
   const renderProvision = (provision: Provision) => {
     const isExpanded = expandedProvisions.has(provision.id);
     const tierConfig = TIER_CONFIG[provision.tier_level as keyof typeof TIER_CONFIG];
@@ -244,13 +299,15 @@ export default function AuthoritativeComplianceDisplay({
         <div className="flex items-start justify-between mb-2">
           <div className="flex items-start gap-2">
             <Badge variant="secondary" className={`${tierConfig.color} text-white text-xs`}>
-              {provision.document_type}
+              {getDocumentDisplayName(provision)}
             </Badge>
             <div className="text-sm">
               <span className="font-medium">{provision.clause_reference}</span>
               {provision.numeric_value && (
                 <span className="ml-2 font-bold text-lg">
-                  {provision.numeric_value}{provision.unit}
+                  {provision.measurement_context === 'fsr' ? 
+                    `${provision.numeric_value}:1 square metres` : 
+                    `${provision.numeric_value}${provision.unit || ''}`}
                 </span>
               )}
             </div>
@@ -278,11 +335,25 @@ export default function AuthoritativeComplianceDisplay({
 
         {/* Provision Metadata */}
         {isExpanded && (
-          <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 pt-2 border-t border-gray-200">
-            <div>Type: {provision.provision_type}</div>
-            <div>Context: {provision.measurement_context || 'General'}</div>
-            {provision.boundary_type && <div>Boundary: {provision.boundary_type}</div>}
-            <div>Authority Level: {provision.authority_level}</div>
+          <div className="space-y-2 pt-2 border-t border-gray-200">
+            {/* Authority Calculation Explanation */}
+            <div className="bg-gray-50 p-2 rounded text-xs">
+              <strong className="text-gray-700">Authority Calculation:</strong>
+              <div className="text-gray-600 mt-1">{getTierExplanation(provision)}</div>
+            </div>
+            
+            {/* Technical Details */}
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+              <div>Type: {provision.provision_type}</div>
+              <div>Context: {provision.measurement_context || 'General'}</div>
+              {provision.boundary_type && <div>Boundary: {provision.boundary_type}</div>}
+              <div>Source: {provision.document_type === 'SEPP' ? 'State Planning' : 
+                           provision.document_type === 'LEP' ? 'Local Planning' : 
+                           provision.document_type === 'DCP' ? 'Development Control' : 
+                           provision.document_type}</div>
+              <div>Document: {provision.document_name.replace(/_/g, ' ')}</div>
+              <div>Extraction Confidence: {(provision.extraction_confidence * 100).toFixed(0)}%</div>
+            </div>
           </div>
         )}
       </div>
@@ -375,6 +446,44 @@ export default function AuthoritativeComplianceDisplay({
 
   return (
     <div className="space-y-6">
+      {/* Authority System Explanation */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="w-5 h-5 text-blue-500" />
+            Authority Hierarchy System
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-sm text-gray-600 space-y-2">
+            <p><strong>How Authority Levels Are Calculated:</strong></p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <span><strong>Tier 1:</strong> SEPP/LEP + Numeric Value = Fully Enforceable</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
+                  <span><strong>Tier 2:</strong> DCP + Clear Measurements = High Authority</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <span><strong>Tier 3:</strong> Qualitative Provisions = Professional Interpretation</span>
+                </div>
+              </div>
+              <div className="space-y-1">
+                <div className="text-xs text-gray-500">
+                  <strong>Document Hierarchy:</strong> SEPP &gt; LEP &gt; DCP<br/>
+                  <strong>Numeric Values:</strong> Automatic Tier 1 if specific measurements<br/>
+                  <strong>Authority Level:</strong> Based on document type and specificity
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Header Summary */}
       <Card>
         <CardHeader>
@@ -418,17 +527,29 @@ export default function AuthoritativeComplianceDisplay({
                   <div>
                     <div className="font-medium capitalize">{context.replace('_', ' ')}</div>
                     <div className="text-sm text-gray-600">
-                      {authority.document_type} - {authority.clause_reference}
+                      {authority.document_type === 'LEP' ? 'LEP - Inner West LEP 2022' : 
+                       authority.document_type === 'DCP' ? 'DCP - Marrickville DCP 2011' :
+                       authority.document_type} - {authority.clause_reference}
                       {authority.overrides_count > 0 && (
                         <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                           Overrides {authority.overrides_count}
                         </span>
                       )}
                     </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {authority.tier_level === 1 ? '✓ Fully Enforceable' : 
+                       authority.tier_level === 2 ? 'High Authority' :
+                       authority.tier_level === 3 ? 'Moderate Authority' :
+                       authority.tier_level === 4 ? 'Framework Guidance' :
+                       'Specialist Required'}
+                    </div>
                   </div>
                   {authority.numeric_value && (
                     <div className="text-right">
-                      <div className="text-lg font-bold">{authority.numeric_value}{authority.unit}</div>
+                      <div className="text-lg font-bold">
+                        {context === 'fsr' ? `${authority.numeric_value}:1 square metres` : 
+                         `${authority.numeric_value}${authority.unit}`}
+                      </div>
                       <div className="text-xs text-gray-500">{Math.round(authority.confidence_level * 100)}% confidence</div>
                     </div>
                   )}
@@ -437,6 +558,16 @@ export default function AuthoritativeComplianceDisplay({
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* BASIX Requirements */}
+      {basixProvisions && (
+        <BASIXProvisions
+          climateZone={basixProvisions.climate_zone}
+          waterZone={basixProvisions.water_zone}
+          provisions={data?.basix_provisions || []}
+          className="mb-6"
+        />
       )}
 
       {/* Tier-by-Tier Provisions */}
