@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 
 def check_database():
-    conn = sqlite3.connect('nsw_planning.db')
+    conn = get_connection()
     cur = conn.cursor()
     
     # Check tables

@@ -1,0 +1,290 @@
+#!/usr/bin/env python3
+"""
+Development Permissions Database Access Layer
+Provides access to consolidated development type permissions for API integration
+"""
+
+import sqlite3
+import json
+from typing import Dict, List, Optional, Tuple
+import os
+
+class DevelopmentPermissionsDB:
+    def __init__(self, db_path: Optional[str] = None):
+        """Initialize development permissions database access"""
+        if db_path is None:
+            # Default to the main database path
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            self.db_path = os.path.join(current_dir, '..', 'nsw_planning.db')
+        else:
+            self.db_path = db_path
+
+    def get_zone_permissions(self, zone: str) -> Dict:
+        """Get all development permissions for a zone from consolidated dataset"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            # Get all permissions for the zone, grouped by status
+            cursor.execute("""
+            SELECT development_type, permission_status, source_type, confidence_score
+            FROM development_permissions
+            WHERE zone = ? AND development_type IS NOT NULL
+            ORDER BY permission_status, development_type
+            """, (zone,))
+
+            results = cursor.fetchall()
+
+            # Group by permission status
+            permissions = {
+                'permitted_without_consent': [],
+                'permitted_with_consent': [],
+                'prohibited': [],
+                'source_summary': {},
+                'total_combinations': len(results),
+                'coverage_note': None
+            }
+
+            source_counts = {}
+
+            for dev_type, status, source_type, confidence in results:
+                # Clean up development type names (remove JSON artifacts)
+                clean_dev_type = dev_type.strip('[]"')
+
+                if status == 'permitted':
+                    permissions['permitted_without_consent'].append({
+                        'development_type': clean_dev_type,
+                        'source': source_type,
+                        'confidence': confidence
+                    })
+                elif status == 'consent':
+                    permissions['permitted_with_consent'].append({
+                        'development_type': clean_dev_type,
+                        'source': source_type,
+                        'confidence': confidence
+                    })
+                elif status == 'prohibited':
+                    permissions['prohibited'].append({
+                        'development_type': clean_dev_type,
+                        'source': source_type,
+                        'confidence': confidence
+                    })
+
+                # Track source distribution
+                source_counts[source_type] = source_counts.get(source_type, 0) + 1
+
+            permissions['source_summary'] = source_counts
+
+            # Add coverage note
+            if len(results) == 0:
+                permissions['coverage_note'] = f"No development permissions found for zone {zone}"
+            elif len(results) < 5:
+                permissions['coverage_note'] = f"Limited coverage for zone {zone} - consider additional data sources"
+            else:
+                permissions['coverage_note'] = f"Good coverage for zone {zone} with {len(results)} combinations"
+
+            return permissions
+
+        except sqlite3.Error as e:
+            return {
+                'error': f'Database error: {str(e)}',
+                'permitted_without_consent': [],
+                'permitted_with_consent': [],
+                'prohibited': [],
+                'source_summary': {},
+                'total_combinations': 0
+            }
+        finally:
+            conn.close()
+
+    def check_development_feasibility(self, zone: str, development_type: str) -> Dict:
+        """Check if specific development type is allowed in zone"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            # Clean up development type (remove common variations)
+            clean_dev_type = development_type.strip().lower()
+
+            cursor.execute("""
+            SELECT permission_status, source_type, confidence_score, conditions
+            FROM development_permissions
+            WHERE zone = ? AND (
+                LOWER(development_type) = ? OR
+                LOWER(development_type) LIKE ? OR
+                LOWER(development_type) LIKE ?
+            )
+            ORDER BY confidence_score DESC
+            LIMIT 3
+            """, (zone, clean_dev_type, f'%{clean_dev_type}%', f'{clean_dev_type}%'))
+
+            results = cursor.fetchall()
+
+            if not results:
+                return {
+                    'development_type': development_type,
+                    'zone': zone,
+                    'permission_status': 'unknown',
+                    'confidence': 'low',
+                    'message': f'No specific permission found for {development_type} in {zone}',
+                    'source_provision': None,
+                    'alternatives': self._get_similar_development_types(cursor, zone, development_type)
+                }
+
+            # Return the highest confidence result
+            best_result = results[0]
+            permission_status, source_type, confidence_score, conditions = best_result
+
+            # Determine confidence level
+            if confidence_score >= 0.9:
+                confidence_level = 'high'
+            elif confidence_score >= 0.7:
+                confidence_level = 'medium'
+            else:
+                confidence_level = 'low'
+
+            return {
+                'development_type': development_type,
+                'zone': zone,
+                'permission_status': permission_status,
+                'confidence': confidence_level,
+                'confidence_score': confidence_score,
+                'source_type': source_type,
+                'conditions': conditions,
+                'message': f'{development_type} in {zone} is {permission_status}',
+                'alternatives': [r[0] for r in results[1:]] if len(results) > 1 else []
+            }
+
+        except sqlite3.Error as e:
+            return {
+                'development_type': development_type,
+                'zone': zone,
+                'permission_status': 'error',
+                'confidence': 'low',
+                'message': f'Database error: {str(e)}',
+                'source_provision': None
+            }
+        finally:
+            conn.close()
+
+    def _get_similar_development_types(self, cursor, zone: str, development_type: str) -> List[str]:
+        """Get similar development types that might be relevant"""
+        try:
+            # Look for partial matches in the same zone
+            cursor.execute("""
+            SELECT DISTINCT development_type
+            FROM development_permissions
+            WHERE zone = ? AND development_type IS NOT NULL
+            LIMIT 5
+            """, (zone,))
+
+            results = cursor.fetchall()
+            return [row[0].strip('[]"') for row in results]
+
+        except sqlite3.Error:
+            return []
+
+    def get_basic_conditions(self, zone: str, dev_type: str) -> List[str]:
+        """Return basic conditions from consolidated dataset"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            cursor.execute("""
+            SELECT conditions
+            FROM development_permissions
+            WHERE zone = ? AND development_type = ? AND conditions IS NOT NULL
+            ORDER BY confidence_score DESC
+            """, (zone, dev_type))
+
+            results = cursor.fetchall()
+            conditions = [row[0] for row in results if row[0] and row[0].strip()]
+
+            return conditions[:3]  # Return up to 3 conditions
+
+        except sqlite3.Error:
+            return []
+        finally:
+            conn.close()
+
+    def get_database_stats(self) -> Dict:
+        """Get statistics about the development permissions database"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+
+        try:
+            stats = {}
+
+            # Total combinations
+            cursor.execute("SELECT COUNT(*) FROM development_permissions")
+            stats['total_combinations'] = cursor.fetchone()[0]
+
+            # Zone coverage
+            cursor.execute("SELECT COUNT(DISTINCT zone) FROM development_permissions WHERE zone IS NOT NULL")
+            stats['zones_covered'] = cursor.fetchone()[0]
+
+            # Development type coverage
+            cursor.execute("SELECT COUNT(DISTINCT development_type) FROM development_permissions WHERE development_type IS NOT NULL")
+            stats['development_types_covered'] = cursor.fetchone()[0]
+
+            # Source distribution
+            cursor.execute("""
+            SELECT source_type, COUNT(*) as count
+            FROM development_permissions
+            GROUP BY source_type
+            """)
+            stats['source_distribution'] = dict(cursor.fetchall())
+
+            # Permission distribution
+            cursor.execute("""
+            SELECT permission_status, COUNT(*) as count
+            FROM development_permissions
+            WHERE permission_status IS NOT NULL
+            GROUP BY permission_status
+            """)
+            stats['permission_distribution'] = dict(cursor.fetchall())
+
+            return stats
+
+        except sqlite3.Error as e:
+            return {'error': f'Database error: {str(e)}'}
+        finally:
+            conn.close()
+
+def test_development_permissions_db():
+    """Test the development permissions database functionality"""
+    db = DevelopmentPermissionsDB()
+
+    print("=== Testing Development Permissions DB ===")
+
+    # Test database stats
+    print("\n1. Database Statistics:")
+    stats = db.get_database_stats()
+    for key, value in stats.items():
+        print(f"   {key}: {value}")
+
+    # Test zone permissions
+    print("\n2. Zone Permissions (R2):")
+    r2_permissions = db.get_zone_permissions('R2')
+    print(f"   Total combinations: {r2_permissions['total_combinations']}")
+    print(f"   Permitted: {len(r2_permissions['permitted_without_consent'])}")
+    print(f"   Consent required: {len(r2_permissions['permitted_with_consent'])}")
+    print(f"   Prohibited: {len(r2_permissions['prohibited'])}")
+    print(f"   Sources: {r2_permissions['source_summary']}")
+
+    # Test feasibility check
+    print("\n3. Feasibility Check (dwelling_house in R1):")
+    feasibility = db.check_development_feasibility('R1', 'dwelling_house')
+    print(f"   Result: {feasibility['permission_status']}")
+    print(f"   Confidence: {feasibility['confidence']}")
+    print(f"   Message: {feasibility['message']}")
+
+    # Test feasibility check (prohibited case)
+    print("\n4. Feasibility Check (general_industry in R1):")
+    feasibility2 = db.check_development_feasibility('R1', 'general_industry')
+    print(f"   Result: {feasibility2['permission_status']}")
+    print(f"   Confidence: {feasibility2['confidence']}")
+    print(f"   Message: {feasibility2['message']}")
+
+if __name__ == '__main__':
+    test_development_permissions_db()

@@ -1017,10 +1017,10 @@ async def get_autoschema_relationships(request: dict):
 @app.get("/visual-content/{provision_id}")
 async def get_visual_content(provision_id: int):
     """Get visual content for a specific regulatory provision"""
-    import sqlite3
+    from db_config import get_connection  # Unified PostgreSQL connection
     
     try:
-        conn = sqlite3.connect('nsw_planning.db')
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get visual elements for this provision
@@ -1062,10 +1062,10 @@ async def get_visual_content(provision_id: int):
 @app.get("/visual-content/search")
 async def search_visual_content(query: str, visual_type: Optional[str] = None, limit: int = 20):
     """Search visual content by description or clause"""
-    import sqlite3
+    from db_config import get_connection  # Unified PostgreSQL connection
     
     try:
-        conn = sqlite3.connect('nsw_planning.db')
+        conn = get_connection()
         cur = conn.cursor()
         
         # Build search query
@@ -1154,8 +1154,8 @@ async def enhanced_complete_assessment(request: QueryRequest):
         # 4. Get relevant visual content
         visual_content = []
         # Get visual content - prioritize setback and building envelope diagrams
-        import sqlite3
-        conn = sqlite3.connect('nsw_planning.db')
+        from db_config import get_connection  # Unified PostgreSQL connection
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get visual elements, prioritizing those related to setbacks and building controls

@@ -3,7 +3,7 @@ Create SQLite Database for Complete NSW Planning Documents
 Store all 139 extracted planning documents in structured database.
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 import os
 from pathlib import Path
@@ -42,14 +42,14 @@ def extract_pdf_text(pdf_path):
 def create_planning_database():
     """Create SQLite database schema for NSW planning documents."""
     
-    db_path = "nsw_planning.db"
+    get_connection()
     
     # Remove existing database to start fresh
     if os.path.exists(db_path):
         os.remove(db_path)
         print(f"Removed existing database: {db_path}")
     
-    conn = sqlite3.connect(db_path)
+    conn = get_connection()
     cursor = conn.cursor()
     
     # Create documents table
@@ -71,7 +71,7 @@ def create_planning_database():
     # Create regulatory references table
     cursor.execute('''
         CREATE TABLE regulatory_refs (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            id SERIAL PRIMARY KEY SERIAL,
             document_id TEXT NOT NULL,
             ref_type TEXT NOT NULL,
             ref_number TEXT NOT NULL,
@@ -393,7 +393,7 @@ def test_database_queries():
     print(f"\nTESTING DATABASE QUERIES:")
     print("="*30)
     
-    conn = sqlite3.connect('nsw_planning.db')
+    conn = get_connection()
     cursor = conn.cursor()
     
     # Test queries

@@ -1,0 +1,289 @@
+{
+  "start_time": "2025-09-20T08:53:51.272462",
+  "services_updated": {
+    "services\\council_validation_service.py": {
+      "backup_created": "services\\council_validation_service.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 29664,
+      "file_size_after": 29719,
+      "timestamp": "2025-09-20T08:53:51.285308"
+    },
+    "services\\database_autoschema_query.py": {
+      "backup_created": "services\\database_autoschema_query.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 16059,
+      "file_size_after": 16114,
+      "timestamp": "2025-09-20T08:53:51.287293"
+    },
+    "services\\development_permissions_db.py": {
+      "backup_created": "services\\development_permissions_db.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 11172,
+      "file_size_after": 11175,
+      "timestamp": "2025-09-20T08:53:51.289299"
+    },
+    "services\\integrated_multimodal_query.py": {
+      "backup_created": "services\\integrated_multimodal_query.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 11146,
+      "file_size_after": 11201,
+      "timestamp": "2025-09-20T08:53:51.291976"
+    },
+    "services\\precise_setback_calculator.py": {
+      "backup_created": "services\\precise_setback_calculator.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 15635,
+      "file_size_after": 15677,
+      "timestamp": "2025-09-20T08:53:51.294982"
+    },
+    "analyze_all_sqlite_dbs.py": {
+      "backup_created": "analyze_all_sqlite_dbs.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 7291,
+      "file_size_after": 7338,
+      "timestamp": "2025-09-20T08:53:51.299586"
+    },
+    "analyze_database_gap.py": {
+      "backup_created": "analyze_database_gap.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 8810,
+      "file_size_after": 8898,
+      "timestamp": "2025-09-20T08:53:51.300687"
+    },
+    "api_server.py": {
+      "backup_created": "api_server.py.backup",
+      "sqlite_references_removed": 7,
+      "file_size_before": 57948,
+      "file_size_after": 58059,
+      "timestamp": "2025-09-20T08:53:51.307317"
+    },
+    "check_db.py": {
+      "backup_created": "check_db.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 1911,
+      "file_size_after": 1948,
+      "timestamp": "2025-09-20T08:53:51.308374"
+    },
+    "check_db_status.py": {
+      "backup_created": "check_db_status.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 2190,
+      "file_size_after": 2227,
+      "timestamp": "2025-09-20T08:53:51.308374"
+    },
+    "check_full_database.py": {
+      "backup_created": "check_full_database.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 3461,
+      "file_size_after": 3600,
+      "timestamp": "2025-09-20T08:53:51.309967"
+    },
+    "check_migration_status.py": {
+      "backup_created": "check_migration_status.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 1424,
+      "file_size_after": 1461,
+      "timestamp": "2025-09-20T08:53:51.309967"
+    },
+    "check_prp_k8_results.py": {
+      "backup_created": "check_prp_k8_results.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 968,
+      "file_size_after": 1005,
+      "timestamp": "2025-09-20T08:53:51.311043"
+    },
+    "complete_preservation_migration.py": {
+      "backup_created": "complete_preservation_migration.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 29148,
+      "file_size_after": 29027,
+      "timestamp": "2025-09-20T08:53:51.314486"
+    },
+    "create_planning_database.py": {
+      "backup_created": "create_planning_database.py.backup",
+      "sqlite_references_removed": 4,
+      "file_size_before": 17536,
+      "file_size_after": 17546,
+      "timestamp": "2025-09-20T08:53:51.316488"
+    },
+    "database_setback_calculator.py": {
+      "backup_created": "database_setback_calculator.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 7318,
+      "file_size_after": 7351,
+      "timestamp": "2025-09-20T08:53:51.317474"
+    },
+    "enhanced_database_migration.py": {
+      "backup_created": "enhanced_database_migration.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 20648,
+      "file_size_after": 20572,
+      "timestamp": "2025-09-20T08:53:51.319464"
+    },
+    "execute_prp_m1.py": {
+      "backup_created": "execute_prp_m1.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 7571,
+      "file_size_after": 7710,
+      "timestamp": "2025-09-20T08:53:51.321162"
+    },
+    "execute_prp_m3.py": {
+      "backup_created": "execute_prp_m3.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 14359,
+      "file_size_after": 14351,
+      "timestamp": "2025-09-20T08:53:51.323142"
+    },
+    "exploit_db_relationships.py": {
+      "backup_created": "exploit_db_relationships.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 8244,
+      "file_size_after": 8281,
+      "timestamp": "2025-09-20T08:53:51.324152"
+    },
+    "fixed_postgresql_migration.py": {
+      "backup_created": "fixed_postgresql_migration.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 14898,
+      "file_size_after": 14919,
+      "timestamp": "2025-09-20T08:53:51.326057"
+    },
+    "prove_sepp_database_structure.py": {
+      "backup_created": "prove_sepp_database_structure.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 14630,
+      "file_size_after": 14718,
+      "timestamp": "2025-09-20T08:53:51.328135"
+    },
+    "prp_h2_ragflow_implementation.py": {
+      "backup_created": "prp_h2_ragflow_implementation.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 13360,
+      "file_size_after": 13394,
+      "timestamp": "2025-09-20T08:53:51.333452"
+    },
+    "prp_h3_error_monitoring.py": {
+      "backup_created": "prp_h3_error_monitoring.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 18237,
+      "file_size_after": 18240,
+      "timestamp": "2025-09-20T08:53:51.334517"
+    },
+    "prp_h4_verification.py": {
+      "backup_created": "prp_h4_verification.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 3631,
+      "file_size_after": 3673,
+      "timestamp": "2025-09-20T08:53:51.335533"
+    },
+    "prp_h4_verification_fixed.py": {
+      "backup_created": "prp_h4_verification_fixed.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 5802,
+      "file_size_after": 5844,
+      "timestamp": "2025-09-20T08:53:51.336516"
+    },
+    "prp_h5_integration_results.py": {
+      "backup_created": "prp_h5_integration_results.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 7899,
+      "file_size_after": 7941,
+      "timestamp": "2025-09-20T08:53:51.337527"
+    },
+    "prp_k1_migration_pipeline.py": {
+      "backup_created": "prp_k1_migration_pipeline.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 29271,
+      "file_size_after": 29164,
+      "timestamp": "2025-09-20T08:53:51.340719"
+    },
+    "prp_k4_migration.py": {
+      "backup_created": "prp_k4_migration.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 9942,
+      "file_size_after": 10030,
+      "timestamp": "2025-09-20T08:53:51.341728"
+    },
+    "prp_p3_adapted.py": {
+      "backup_created": "prp_p3_adapted.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 17796,
+      "file_size_after": 17762,
+      "timestamp": "2025-09-20T08:53:51.344644"
+    },
+    "prp_p3_execution.py": {
+      "backup_created": "prp_p3_execution.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 17987,
+      "file_size_after": 17969,
+      "timestamp": "2025-09-20T08:53:51.346640"
+    },
+    "prp_p3_execution_clean.py": {
+      "backup_created": "prp_p3_execution_clean.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 18079,
+      "file_size_after": 18061,
+      "timestamp": "2025-09-20T08:53:51.347732"
+    },
+    "prp_p4_verification.py": {
+      "backup_created": "prp_p4_verification.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 25430,
+      "file_size_after": 25359,
+      "timestamp": "2025-09-20T08:53:51.351413"
+    },
+    "prp_re2_langextract_sync.py": {
+      "backup_created": "prp_re2_langextract_sync.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 14807,
+      "file_size_after": 14844,
+      "timestamp": "2025-09-20T08:53:51.352406"
+    },
+    "rollback_migration.py": {
+      "backup_created": "rollback_migration.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 6507,
+      "file_size_after": 6578,
+      "timestamp": "2025-09-20T08:53:51.353404"
+    },
+    "safe_database_migration.py": {
+      "backup_created": "safe_database_migration.py.backup",
+      "sqlite_references_removed": 2,
+      "file_size_before": 23331,
+      "file_size_after": 23269,
+      "timestamp": "2025-09-20T08:53:51.356409"
+    },
+    "simple_working_migration.py": {
+      "backup_created": "simple_working_migration.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 3994,
+      "file_size_after": 4031,
+      "timestamp": "2025-09-20T08:53:51.357409"
+    },
+    "test_prp_m1_dryrun.py": {
+      "backup_created": "test_prp_m1_dryrun.py.backup",
+      "sqlite_references_removed": 4,
+      "file_size_before": 17557,
+      "file_size_after": 17607,
+      "timestamp": "2025-09-20T08:53:51.360010"
+    },
+    "verify_prp_k7_implementation.py": {
+      "backup_created": "verify_prp_k7_implementation.py.backup",
+      "sqlite_references_removed": 1,
+      "file_size_before": 12046,
+      "file_size_after": 12036,
+      "timestamp": "2025-09-20T08:53:51.362314"
+    },
+    "working_db_exploitation.py": {
+      "backup_created": "working_db_exploitation.py.backup",
+      "sqlite_references_removed": 3,
+      "file_size_before": 5983,
+      "file_size_after": 6020,
+      "timestamp": "2025-09-20T08:53:51.363316"
+    }
+  },
+  "database_references_fixed": 85,
+  "files_processed": 101,
+  "status": "COMPLETED",
+  "end_time": "2025-09-20T08:53:51.559232"
+}

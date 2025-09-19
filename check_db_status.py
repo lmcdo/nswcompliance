@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Check current database status - SQLite vs PostgreSQL"""
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import psycopg2
 from datetime import datetime
 
@@ -9,7 +9,7 @@ print(f'=== DATABASE COMPARISON AT {datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 print()
 
 # SQLite connection
-sqlite_conn = sqlite3.connect('nsw_planning.db')
+sqlite_conn = get_connection()
 sqlite_cursor = sqlite_conn.cursor()
 
 # PostgreSQL connection  

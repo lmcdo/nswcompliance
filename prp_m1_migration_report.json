@@ -1,0 +1,50 @@
+{
+  "start_time": "2025-09-20T08:19:35.820757",
+  "tables_migrated": {
+    "development_controls": {
+      "source_rows": 4526,
+      "migrated_rows": 4526,
+      "success": true,
+      "timestamp": "2025-09-20T08:19:36.114176"
+    },
+    "quantitative_standards": {
+      "source_rows": 832,
+      "migrated_rows": 832,
+      "success": true,
+      "timestamp": "2025-09-20T08:19:36.173256"
+    },
+    "kg_entities": {
+      "source_rows": 1394,
+      "migrated_rows": 1394,
+      "success": true,
+      "timestamp": "2025-09-20T08:19:36.255649"
+    },
+    "documents": {
+      "source_rows": 274,
+      "migrated_rows": 274,
+      "success": true,
+      "timestamp": "2025-09-20T08:19:36.603399"
+    },
+    "regulatory_refs": {
+      "source_rows": 2698,
+      "migrated_rows": 2698,
+      "success": true,
+      "timestamp": "2025-09-20T08:19:36.762281"
+    }
+  },
+  "verification_results": {
+    "development_controls": {
+      "sample_verified": true,
+      "sample_size": 5,
+      "first_row_id": 745
+    },
+    "quantitative_standards": {
+      "sample_verified": false,
+      "sample_size": 5,
+      "first_row_id": 50
+    }
+  },
+  "total_records_migrated": 9724,
+  "status": "COMPLETED",
+  "end_time": "2025-09-20T08:19:36.764860"
+}

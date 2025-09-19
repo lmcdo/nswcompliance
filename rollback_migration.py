@@ -7,7 +7,7 @@ Safely rollback database migration if issues are found.
 Can restore from backup or selectively remove new tables.
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import os
 import shutil
 import glob
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class MigrationRollback:
     """Handle migration rollback scenarios"""
     
-    def __init__(self, db_path='nsw_planning.db'):
+    def __init__(self, get_connection()):
         self.db_path = db_path
         self.new_tables = [
             'regulatory_provisions',
@@ -82,7 +82,7 @@ class MigrationRollback:
         """Remove only new tables, keep original regulatory_refs"""
         logger.info("Removing new migration tables only...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         try:
@@ -111,7 +111,7 @@ class MigrationRollback:
     
     def verify_original_data(self):
         """Verify original regulatory_refs table is intact"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         try:
@@ -126,7 +126,7 @@ class MigrationRollback:
             logger.info(f"regulatory_refs contains {count:,} records")
             
             # Check structure
-            columns = cur.execute("PRAGMA table_info(regulatory_refs)").fetchall()
+            columns = cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = regulatory_refs").fetchall()
             column_names = [col[1] for col in columns]
             expected_columns = ['id', 'document_id', 'ref_type', 'ref_number', 'ref_context', 'page_number', 'section_header', 'text_level']
             

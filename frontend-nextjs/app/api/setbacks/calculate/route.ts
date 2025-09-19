@@ -69,27 +69,21 @@ export async function POST(request: NextRequest) {
       // Determine council from property location (simplified for demo)
       const council = 'marrickville'; // Python format
       
-      // Execute the enhanced Python compliance engine
-      const pythonPath = path.join(process.cwd(), '..', 'venv_linux', 'Scripts', 'python.exe');
-      const scriptPath = path.join(process.cwd(), '..', 'dynamic_setback_calc.py');
+      // PRP-K7: Direct PostgreSQL query for zone-aware development types
+      const { PRPK7DatabaseClient } = require('@/lib/database/prp-k7-client');
+      const dbClient = new PRPK7DatabaseClient();
       
-      console.log(`[API] Calling enhanced Python engine: ${pythonPath} ${scriptPath} ${validatedData.property_zone} ${validatedData.property_id}`);
+      console.log(`[API] PRP-K7: Querying PostgreSQL for zone ${validatedData.property_zone}`);
       
-      const { stdout, stderr } = await execAsync(
-        `"${pythonPath}" "${scriptPath}" ${validatedData.property_zone} ${validatedData.property_id}`,
-        { 
-          cwd: path.join(process.cwd(), '..'),
-          timeout: 30000,
-          encoding: 'utf8'
-        }
-      );
+      // Get grouped setbacks by development type (no aggregation)
+      const dbGroupedSetbacks = await dbClient.getZoneSetbacksGroupedByDevType(validatedData.property_zone);
+      const setbacksData = await dbClient.getZoneSetbacksFlat(validatedData.property_zone);
       
-      if (stderr) {
-        console.warn('[API] Python engine stderr:', stderr);
-      }
+      console.log(`[API] PRP-K7: Found ${setbacksData.length} setback provisions for zone ${validatedData.property_zone}`);
+      console.log(`[API] Development types: ${Object.keys(dbGroupedSetbacks).join(', ')}`);
       
-      // Parse the enhanced setback results with provision_id
-      const setbacksData = JSON.parse(stdout.trim());
+      // Clean up database connection
+      await dbClient.close();
       
       console.log(`[API] PRP-K3: Found ${setbacksData.length} enhanced setback rules with provision data`);
       
@@ -101,57 +95,75 @@ export async function POST(request: NextRequest) {
         return 'DCP'; // Most provisions are DCP level
       }
 
-      // Aggregate setbacks by boundary type and keep the most appropriate value
-      const aggregatedSetbacks: { [key: string]: any } = {};
-      
-      setbacksData.forEach((setback: any) => {
-        const boundaryType = setback.boundary_type;
-        const currentValue = setback.required_setback;
+      // PRP-K7: DO NOT AGGREGATE - Return all provisions grouped by development type
+      function identifyDevelopmentType(source: string, text?: string): string {
+        const combined = `${source} ${text || ''}`.toLowerCase();
         
-        // Filter out unrealistic values (likely data errors or unit conversion issues)
-        // Residential setbacks should be between 0.5m and 20m typically
-        if (currentValue > 50) {
-          console.warn(`[API] Filtering out unrealistic setback value: ${currentValue}m for ${boundaryType} (source: ${setback.legal_source})`);
-          return; // Skip this value
+        if (combined.includes('multi dwelling') || combined.includes('multi-dwelling')) {
+          return 'multi_dwelling_housing';
+        }
+        if (combined.includes('residential flat') || combined.includes('rfb')) {
+          return 'residential_flat_building';
+        }
+        if (combined.includes('dwelling house') || combined.includes('single dwelling')) {
+          return 'dwelling_house';
+        }
+        if (combined.includes('dual occupancy')) {
+          return 'dual_occupancy';
+        }
+        if (combined.includes('shop top') || combined.includes('shoptop')) {
+          return 'shop_top_housing';
         }
         
-        // For residential zones, prefer residential-specific provisions
-        const isResidentialProvision = !setback.legal_source?.includes('Commercial') && 
-                                      !setback.legal_source?.includes('Industrial');
-        
-        const existingSetback = aggregatedSetbacks[boundaryType];
-        
-        // Selection logic: prefer residential provisions, then highest reasonable value
-        const shouldReplace = !existingSetback || 
-                            (isResidentialProvision && !existingSetback.isResidential) ||
-                            (isResidentialProvision === existingSetback?.isResidential && currentValue > existingSetback.value);
-        
-        if (shouldReplace) {
-          aggregatedSetbacks[boundaryType] = {
-            boundary_type: boundaryType,
-            value: Math.round(currentValue), // Round to clean integers
-            setback_distance: Math.round(currentValue), // Keep for compatibility
-            required_setback: Math.round(currentValue), // Frontend SetbackCard expects this field
-            unit: 'meters',
-            confidence: setback.confidence, // Keep as decimal - frontend converts to percentage
-            confidence_score: setback.confidence, // Keep raw score too
-            rule_source: setback.legal_source,
-            clause_reference: setback.clause_reference,
-            legal_source: setback.legal_source,
-            authority: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP'),
-            precedence: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'SEPP' ? 1 : 
-                       getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'LEP' ? 2 : 3,
-            provision_id: setback.provision_id,
-            legal_authority: setback.legal_authority,
-            domain_classification: setback.domain_classification,
-            cross_contamination_checked: setback.cross_contamination_checked,
-            isResidential: isResidentialProvision // Track if this is residential-specific
-          };
-        }
-      });
+        return 'general';
+      }
 
-      // Convert to array for API response
-      const transformedSetbacks = Object.values(aggregatedSetbacks);
+      // Transform all setbacks without aggregation
+      const enhancedSetbacks = setbacksData.map((setback: any) => {
+        // Identify development type
+        const devType = identifyDevelopmentType(setback.legal_source, setback.provision_text);
+        
+        // Filter out unrealistic values (likely data errors)
+        if (setback.required_setback > 50) {
+          console.warn(`[API] Filtering out unrealistic setback value: ${setback.required_setback}m for ${setback.boundary_type}`);
+          return null;
+        }
+        
+        return {
+          boundary_type: setback.boundary_type,
+          development_type: devType,
+          value: setback.required_setback,
+          setback_distance: setback.required_setback,
+          required_setback: setback.required_setback,
+          unit: 'meters',
+          confidence: setback.confidence,
+          confidence_score: setback.confidence,
+          rule_source: setback.legal_source,
+          clause_reference: setback.clause_reference,
+          legal_source: setback.legal_source,
+          authority: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP'),
+          precedence: getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'SEPP' ? 1 : 
+                     getCorrectAuthorityLevel(setback.legal_authority?.secondary_authority || setback.legal_source || 'DCP') === 'LEP' ? 2 : 3,
+          provision_id: setback.provision_id,
+          legal_authority: setback.legal_authority,
+          domain_classification: setback.domain_classification,
+          cross_contamination_checked: setback.cross_contamination_checked,
+          full_text: setback.contextual_requirements || setback.provision_text // Include full provision text
+        };
+      }).filter(Boolean); // Remove null entries
+
+      // Group by development type for organized display
+      const finalGroupedSetbacks = enhancedSetbacks.reduce((acc: any, setback: any) => {
+        const devType = setback.development_type || 'general';
+        if (!acc[devType]) {
+          acc[devType] = [];
+        }
+        acc[devType].push(setback);
+        return acc;
+      }, {});
+
+      // For compatibility, also create a flat array
+      const transformedSetbacks = enhancedSetbacks;
       
       if (setbacksData.length > 0) {
         // Use provided lot_area or estimate based on zone defaults
@@ -210,6 +222,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           setback_results: transformedSetbacks,
+          grouped_setbacks: finalGroupedSetbacks, // PRP-K7: Include grouped setbacks by development type
+          zone: validatedData.property_zone,
+          development_types_found: Object.keys(finalGroupedSetbacks),
           legal_compliance: legalCompliance,
           buildable_area_analysis: {
             total_lot_area: estimatedLotArea,
@@ -218,7 +233,7 @@ export async function POST(request: NextRequest) {
             setback_area_lost: estimatedLotArea * 0.4
           },
           precision_level: 'legislative_clause',
-          processing_method: 'PRP-K6 Hierarchical Legal Compliance Engine',
+          processing_method: 'PRP-K7 Zone-Aware Development Type System (PostgreSQL)',
           processing_time_ms: Date.now() - startTime
         });
       } else {

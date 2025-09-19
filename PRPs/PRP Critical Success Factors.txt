@@ -1,0 +1,277 @@
+ Critical Success Factors:
+
+  1. Session Context Size - MAJOR FACTOR
+
+  - Current Issue: PRP-8B is ~1,984 lines of detailed implementation
+  - Context Limit: ~200k tokens (varies by model)
+  - Solution: Break into digestible chunks with clear boundaries
+
+  2. Completion Verification - CRITICAL
+
+  - Current Gap: No automated verification that implementation matches
+  specification
+  - Need: Executable test scripts that validate each component
+  - Solution: Each chunk must include verification markers
+
+  3. Stateful Progress Tracking - ESSENTIAL
+
+  - Current Issue: Implementation state lost between sessions
+  - Need: Persistent progress tracking with rollback capability
+  - Solution: Checkpoint files with component completion status
+
+  🔧 Objective Implementation Strategy:
+
+  Phase 1: Chunking with Clear Boundaries
+
+  Break PRP-8B into 6 discrete implementation chunks:
+
+  1. Chunk 1: Database Schema Creation (Lines 18-222)
+    - Input: create_authoritative_schema.sql
+    - Output: All 7 tables exist and are verified
+    - Verification: SELECT COUNT(*) FROM information_schema.tables
+  WHERE table_schema = 'authoritative' = 7
+  2. Chunk 2: Data Migration Service (Lines 224-528)
+    - Input: AuthoritativeMigration class
+    - Output: Data migrated with tier classification
+    - Verification: SELECT COUNT(*) FROM
+  authoritative.planning_provisions > 1000
+  3. Chunk 3: Hierarchy Resolution API (Lines 590-687)
+    - Input: HierarchyResolver class
+    - Output: Working authority resolution
+    - Verification: API returns tiered response structure
+  4. Chunk 4: Frontend Components (Lines 852-1069)
+    - Input: AuthoritativeComplianceDisplay.tsx
+    - Output: 5-tier visual system
+    - Verification: Component renders with tier badges
+  5. Chunk 5: Visual Aid System (Lines 145-165)
+    - Input: compliance_visual_aids table + image assets
+    - Output: Images display in UI
+    - Verification: Visual aids table populated, images load
+  6. Chunk 6: Completion Validation (Lines 1512-1910)
+    - Input: Test suite execution
+    - Output: 100% pass rate
+    - Verification: Completion marker created
+
+  Phase 2: Session Instructions Format
+
+  For Each Chunk, Provide:
+
+  # SESSION TASK: [CHUNK NAME]
+
+  ## SPECIFIC IMPLEMENTATION TARGET:
+  - Lines [X-Y] from PRP-8B_AUTHORITATIVE_COMPLIANCE_SYSTEM.md
+  - Component: [Exact component name]
+  - Expected Output: [Measurable outcome]
+
+  ## SUCCESS CRITERIA:
+  1. [Specific verification command]
+  2. [Expected result/output]
+  3. [Completion marker location]
+
+  ## ROLLBACK CONDITIONS:
+  - If verification fails: [Specific rollback steps]
+  - Checkpoint file: [Location to save state]
+
+  ## CONTEXT BOUNDARIES:
+  - Do not implement: [Other components]
+  - Focus only on: [This specific component]
+  - Reference files: [List of files to read]
+
+  ## COMPLETION VERIFICATION:
+  Execute: [Specific test command]
+  Expected: [Exact success output]
+  Marker: Create file [checkpoint_file_name]
+
+  Phase 3: Critical Implementation Factors
+
+  A. Atomic Operations:
+  - Each chunk must be completely implementable in one session
+  - No dependencies on other incomplete chunks
+  - Self-contained verification possible
+
+  B. Precise Specifications:
+  - Exact line numbers from PRP-8B to implement
+  - Specific file names and locations
+  - Measurable success criteria
+
+  C. State Persistence:
+  {
+    "prp_8b_progress": {
+      "chunk_1_schema": "complete",
+      "chunk_2_migration": "in_progress",
+      "chunk_3_api": "not_started",
+      "last_checkpoint": "2025-09-08T14:30:00Z",
+      "rollback_available": true
+    }
+  }
+
+  Phase 4: Session Management Protocol
+
+  Start of Each Session:
+  1. Read progress checkpoint file
+  2. Verify completed components still work
+  3. Focus on next incomplete chunk only
+
+  During Implementation:
+  - Update progress every major step
+  - Create rollback points before changes
+  - Verify each component works independently
+
+  End of Session:
+  - Run verification tests
+  - Update checkpoint file
+  - Create completion marker if chunk done
+
+  📋 Example Implementation Command:
+
+  # IMPLEMENT PRP-8B CHUNK 1: AUTHORITATIVE SCHEMA
+
+  ## TARGET: Lines 18-222 from PRP-8B specification
+  - Create 7-table authoritative schema
+  - No data migration (that's chunk 2)
+  - Just schema structure
+
+  ## SUCCESS CRITERIA:
+  1. Execute: `psql -c "SELECT table_name FROM
+  information_schema.tables WHERE table_schema = 'authoritative'"`
+  2. Expected: 7 tables listed
+  3. Tables: nsw_properties, planning_provisions,
+  provision_authority_tiers, property_provision_analysis,
+  compliance_visual_aids, hierarchy_resolution_cache,
+  professional_guidance
+
+  ## VERIFICATION SCRIPT:
+  ```sql
+  -- Must return 7
+  SELECT COUNT(*) FROM information_schema.tables WHERE table_schema =
+  'authoritative';
+
+  COMPLETION MARKER:
+
+  Create file: prp_checkpoints/CHUNK_1_SCHEMA_COMPLETE.marker
+  Content: {"completed_at": "timestamp", "tables_created": 7}
+
+  FOCUS BOUNDARY:
+
+  - Do NOT migrate data
+  - Do NOT create API endpoints
+  - ONLY create schema structure
+
+  ### **🎯 Critical Success Requirements:**
+
+  #### **1. Measurable Outcomes:**
+  - Every instruction must have **executable verification**
+  - **Binary success/failure** (no ambiguity)
+  - **Rollback procedure** if verification fails
+
+  #### **2. Context Management:**
+  - **Single chunk per session** maximum
+  - **Specific line references** from PRP-8B
+  - **No implementation of unspecified features**
+
+  #### **3. Progress Persistence:**
+  - **Checkpoint files** after each chunk
+  - **State verification** at session start
+  - **Rollback capability** for failed implementations
+
+  #### **4. Completion Automation:**
+  - **Self-verifying** implementations
+  - **Automated testing** of each component
+  - **Clear completion markers** when done
+
+  ### **⚡ Implementation Command Template:**
+
+  ```bash
+  # Session starter for reliable implementation
+  ./prp_checkpoints/session_control.sh --implement-chunk [1-6]
+  --verify-previous --create-rollback
+
+  The key insight: Break the 1,984-line PRP-8B into 6 atomic,
+  verifiable chunks that can each be completed in one focused session
+  with clear success criteria and rollback procedures. This eliminates
+  ambiguity and ensures objective completion.
+
+╭─────────────────────────────────────────────────────────────────────────╮
+│ > break them up optimally like that. make sure to anticipate failure    │
+│   now. in prp include failure anticipations and error checking that     │
+│   will print out failure reasons.          
+
+Schema Usage Analysis: PUBLIC vs AUTHORITATIVE
+
+  🎯 CURRENT REALITY (What's Actually Running):
+
+  Frontend UI Pipeline:
+
+  UI Request → API Route → prp-k7-client.js →
+  public.regulatory_provisions → Response
+
+  Active Database Queries (Currently Working):
+
+  - Frontend: prp-k7-client.js uses public.regulatory_provisions (lines
+   48, 102, 202, 208)
+  - API Response: Working and returning data from public schema
+  - Current Data Flow: public schema has 200 provisions → Frontend
+  shows them
+
+  📋 PRP-8B INTENDED DESIGN (Not Implemented):
+
+  Intended Pipeline:
+
+  UI Request → Authoritative API → authoritative.planning_provisions →
+  Tiered Response
+
+  Should Use Authoritative Schema:
+
+  - Services: authoritative_migration.py,
+  authoritative_compliance_api.py
+  - Tests: All PRP-8B verification scripts expect authoritative schema
+  - New API: /api/authoritative/compliance-check should query
+  authoritative schema
+
+  💥 THE GAP:
+
+  | Component          | Current Implementation    | PRP-8B Design
+                    | Status                |
+  |--------------------|---------------------------|-------------------
+  ------------------|-----------------------|
+  | Frontend API       | public schema             | authoritative
+  schema                | ❌ Wrong schema        |
+  | Database Client    | prp-k7-client.js → public | Should use
+  authoritative            | ❌ Wrong schema        |
+  | Data Storage       | public: 200 records       | authoritative: 0
+  records            | ❌ Empty target        |
+  | API Endpoints      | /api/setbacks/calculate   |
+  /api/authoritative/compliance-check | ❌ Different endpoints |
+  | Response Structure | Flat provisions           | 5-tier hierarchy
+                    | ❌ Wrong structure     |
+
+  🔧 WHAT NEEDS TO HAPPEN:
+
+  Option 1: Migrate Data to Authoritative (PRP-8B Way)
+
+  1. Migrate: 200 provisions from public →
+  authoritative.planning_provisions
+  2. Update: prp-k7-client.js to query authoritative instead of public
+  3. Deploy: New /api/authoritative/compliance-check endpoint
+  4. Frontend: Update to use new tiered response structure
+
+  Option 2: Keep Using Public (Simple Way)
+
+  1. Keep: Current working system using public schema
+  2. Ignore: Empty authoritative schema (created but unused)
+  3. Continue: With existing /api/setbacks/calculate endpoint
+  4. Result: No 5-tier hierarchy, no authority precedence
+
+  🎯 RECOMMENDATION:
+
+  The authoritative schema exists but is completely unused. The current
+   working system uses public schema exclusively.
+
+  To implement PRP-8B properly:
+  1. Migrate data: public → authoritative
+  2. Update database client: Point queries to authoritative
+  3. Deploy new API: With 5-tier response structure
+  4. Update frontend: To consume tiered responses
+
+  Current Status: We have a parallel system - working public schema +
+  empty authoritative schema waiting for implementation.

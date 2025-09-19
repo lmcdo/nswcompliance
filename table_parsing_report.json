@@ -1,0 +1,59 @@
+{
+  "execution_timestamp": "2025-09-19T16:09:48.825149",
+  "parsing_statistics": {
+    "total_permissions": 14,
+    "unique_zones": 3,
+    "unique_dev_types": 5,
+    "permission_distribution": {
+      "permitted": 14
+    },
+    "avg_confidence": 0.7,
+    "extraction_methods": {
+      "objective_list_parsing": 14
+    }
+  },
+  "validation_results": {
+    "tests": [
+      {
+        "name": "minimum_permissions",
+        "expected": 200,
+        "actual": 14,
+        "status": "fail"
+      },
+      {
+        "name": "zone_coverage",
+        "expected": 10,
+        "actual": 3,
+        "status": "fail"
+      },
+      {
+        "name": "dev_type_coverage",
+        "expected": 12,
+        "actual": 5,
+        "status": "fail"
+      },
+      {
+        "name": "permission_status_variety",
+        "expected": 3,
+        "actual": 1,
+        "status": "fail"
+      },
+      {
+        "name": "average_confidence",
+        "expected": 0.75,
+        "actual": 0.7,
+        "status": "fail"
+      }
+    ],
+    "overall_pass_rate": 0.0,
+    "overall_status": "fail"
+  },
+  "success_criteria": {
+    "minimum_permissions": false,
+    "zone_coverage": false,
+    "dev_type_coverage": false,
+    "permission_variety": false,
+    "average_confidence": false
+  },
+  "overall_success": false
+}

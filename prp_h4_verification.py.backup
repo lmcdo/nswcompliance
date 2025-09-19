@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+PRP-H4: Verification and Testing Module
+Comprehensive testing of extracted data quality and accuracy
+"""
+import sqlite3
+import json
+import time
+from pathlib import Path
+from typing import Dict, List, Tuple
+
+class ExtractionVerification:
+    """Verify and test extraction quality"""
+    
+    def __init__(self):
+        self.base_path = Path("C:/Users/lawre/Downloads/solvyra/projects/compliance engine/compliance-engine")
+        self.db_path = self.base_path / "nsw_planning_data.db"
+        
+    def test_measurement_accuracy(self) -> Dict:
+        """Test accuracy of extracted measurements"""
+        print("Testing measurement accuracy...")
+        
+        results = {
+            'total_measurements': 0,
+            'valid_ranges': 0,
+            'accuracy_score': 0,
+            'issues': []
+        }
+        
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            cursor.execute("SELECT COUNT(*) FROM ragflow_measurements")
+            results['total_measurements'] = cursor.fetchone()[0]
+            
+            # Test reasonable value ranges
+            cursor.execute("""
+                SELECT measurement_type, COUNT(*) as count, AVG(value) as avg_val, MIN(value) as min_val, MAX(value) as max_val
+                FROM ragflow_measurements 
+                GROUP BY measurement_type
+            """)
+            
+            for row in cursor.fetchall():
+                mtype, count, avg_val, min_val, max_val = row
+                
+                # Define reasonable ranges for different measurement types
+                if mtype == 'setback' and 0.1 <= avg_val <= 50:
+                    results['valid_ranges'] += count
+                elif mtype == 'height' and 2 <= avg_val <= 100:
+                    results['valid_ranges'] += count
+                elif mtype == 'fsr' and 0.1 <= avg_val <= 5:
+                    results['valid_ranges'] += count
+                elif mtype in ['area', 'general'] and min_val > 0:
+                    results['valid_ranges'] += count
+                    
+            results['accuracy_score'] = (results['valid_ranges'] / max(1, results['total_measurements'])) * 100
+            conn.close()
+            
+        except Exception as e:
+            results['issues'].append(f"Verification error: {e}")
+            
+        return results
+        
+    def run_verification_suite(self) -> Dict:
+        """Run complete verification suite"""
+        print("=" * 60)
+        print("PRP-H4: VERIFICATION AND TESTING SUITE")
+        print("=" * 60)
+        
+        start_time = time.time()
+        
+        # Run tests
+        accuracy_test = self.test_measurement_accuracy()
+        
+        # Compile results
+        results = {
+            'verification_summary': {
+                'tests_run': 1,
+                'overall_score': accuracy_test['accuracy_score'],
+                'status': 'PASS' if accuracy_test['accuracy_score'] > 70 else 'REVIEW_NEEDED'
+            },
+            'accuracy_test': accuracy_test,
+            'execution_time': time.time() - start_time
+        }
+        
+        print(f"Measurements tested: {accuracy_test['total_measurements']}")
+        print(f"Accuracy score: {accuracy_test['accuracy_score']:.1f}%")
+        print(f"Status: {results['verification_summary']['status']}")
+        
+        return results
+
+def main():
+    verifier = ExtractionVerification()
+    results = verifier.run_verification_suite()
+    
+    with open("PRP_H4_VERIFICATION.json", 'w') as f:
+        json.dump(results, f, indent=2)
+
+if __name__ == "__main__":
+    main()

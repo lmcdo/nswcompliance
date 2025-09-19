@@ -17,7 +17,7 @@ import google.generativeai as genai
 import json
 import os
 import re
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import time
 from datetime import datetime
 from dotenv import load_dotenv
@@ -238,7 +238,7 @@ Extract provisions now:"""
         """Process all documents in the database"""
         
         # Connect to database
-        conn = sqlite3.connect('nsw_planning.db')
+        conn = get_connection()
         cursor = conn.cursor()
         
         # Get all documents with content

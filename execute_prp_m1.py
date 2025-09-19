@@ -4,7 +4,7 @@ PRP-M1: Complete Database Migration Engine
 Migrates all missing tables from SQLite to PostgreSQL with verification
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import psycopg2
 import json
 from datetime import datetime
@@ -12,7 +12,7 @@ from db_config import get_connection
 
 class PRP_M1_Migration:
     def __init__(self):
-        self.sqlite_conn = sqlite3.connect('nsw_planning.db')
+        self.sqlite_conn = get_connection()
         self.postgres_conn = get_connection()
         self.migration_report = {
             'start_time': datetime.now().isoformat(),
@@ -25,7 +25,7 @@ class PRP_M1_Migration:
     def get_table_schema(self, table_name):
         """Get SQLite table schema and convert to PostgreSQL"""
         cursor = self.sqlite_conn.cursor()
-        cursor.execute(f'PRAGMA table_info({table_name})')
+        cursor.execute(f'SELECT column_name FROM information_schema.columns WHERE table_name = {table_name}')
         columns = cursor.fetchall()
 
         # Convert SQLite types to PostgreSQL
@@ -80,7 +80,7 @@ class PRP_M1_Migration:
         postgres_cursor.execute(schema)
 
         # Get column names
-        sqlite_cursor.execute(f'PRAGMA table_info({table_name})')
+        sqlite_cursor.execute(f'SELECT column_name FROM information_schema.columns WHERE table_name = {table_name}')
         columns = [col[1] for col in sqlite_cursor.fetchall()]
 
         # Prepare INSERT statement

@@ -4,7 +4,7 @@ PRP-K4: BULLETPROOF DATABASE MIGRATION
 ATOMIC: Either 100% success or complete rollback
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import psycopg2
 import json
 import os
@@ -28,7 +28,7 @@ def atomic_migration():
     
     # Connect to databases
     print("\nSTEP 2: Connecting to databases...")
-    sqlite_conn = sqlite3.connect('nsw_planning.db')
+    sqlite_conn = get_connection()
     pg_conn = psycopg2.connect(
         host='localhost', 
         database='nsw_planning', 
@@ -72,7 +72,7 @@ def atomic_migration():
             print(f"    Found {count:,} records")
             
             # Get SQLite schema
-            sqlite_cursor.execute(f'PRAGMA table_info({table})')
+            sqlite_cursor.execute(f'SELECT column_name FROM information_schema.columns WHERE table_name = {table}')
             columns = sqlite_cursor.fetchall()
             col_names = [col[1] for col in columns]
             

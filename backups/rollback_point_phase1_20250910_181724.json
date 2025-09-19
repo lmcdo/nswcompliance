@@ -1,0 +1,9 @@
+{
+  "timestamp": "20250910_181724",
+  "sqlite_backup": "backups/nsw_planning_prp_m1_20250910_181724.db",
+  "checksum": "47c6adc33ff6f26205a1ef5f7a0123c2",
+  "provision_count": 22105,
+  "document_count": 274,
+  "quantitative_count": 832,
+  "zone_coverage": 19.325944356480434
+}

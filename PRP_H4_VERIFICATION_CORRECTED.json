@@ -1,0 +1,52 @@
+{
+  "verification_summary": {
+    "tests_run": 1,
+    "overall_score": 96.01657106437222,
+    "status": "EXCELLENT"
+  },
+  "corrected_accuracy_test": {
+    "total_measurements": 9414,
+    "valid_measurements": 9039,
+    "accuracy_score": 96.01657106437222,
+    "breakdown_by_type": {
+      "setback": {
+        "valid": 1063,
+        "total": 1141,
+        "accuracy": 93.2,
+        "range_tested": "0.1 - 100"
+      },
+      "height": {
+        "valid": 1600,
+        "total": 1767,
+        "accuracy": 90.5,
+        "range_tested": "1.0 - 200"
+      },
+      "fsr": {
+        "valid": 2,
+        "total": 3,
+        "accuracy": 66.7,
+        "range_tested": "0.01 - 10"
+      },
+      "site_coverage": {
+        "valid": 2,
+        "total": 6,
+        "accuracy": 33.3,
+        "range_tested": "1 - 100"
+      },
+      "area": {
+        "valid": 954,
+        "total": 979,
+        "accuracy": 97.4,
+        "range_tested": "1 - 100000"
+      },
+      "general": {
+        "valid": 5418,
+        "total": 5518,
+        "accuracy": 98.2,
+        "range_tested": "0.01 - 10000"
+      }
+    },
+    "issues": []
+  },
+  "execution_time": 0.032082557678222656
+}

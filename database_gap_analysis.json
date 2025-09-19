@@ -1,0 +1,285 @@
+{
+  "sqlite": {
+    "total_tables": 31,
+    "tables": [
+      "documents",
+      "regulatory_refs",
+      "sqlite_sequence",
+      "contextual_guidance",
+      "kg_entities",
+      "kg_relationships",
+      "kg_visual_elements",
+      "kg_visual_clause_links",
+      "regulatory_provisions",
+      "development_controls",
+      "visual_elements",
+      "clause_relationships",
+      "query_cache",
+      "regulatory_provisions_clean",
+      "contextual_guidance_real",
+      "kg_relationships_from_refs",
+      "visual_elements_real",
+      "regulatory_refs_core",
+      "sepp_lep_overrides",
+      "quantitative_standards",
+      "development_pathways",
+      "sqlite_stat1",
+      "verified_compliance_rules",
+      "zone_setback_rules",
+      "permissibility_analysis",
+      "pattern_validation",
+      "development_permissions",
+      "table_parsing_results",
+      "verification_tests",
+      "quality_metrics",
+      "expert_validation"
+    ],
+    "key_data_counts": {
+      "regulatory_provisions": 22105,
+      "sepp_provisions": 0,
+      "lep_provisions": 0,
+      "development_controls": 4526,
+      "quantitative_standards": 832,
+      "development_pathways": 1,
+      "development_permissions": 221,
+      "contextual_guidance": 0
+    },
+    "regulatory_provisions_columns": [
+      "id",
+      "document_id",
+      "provision_type",
+      "ref_number",
+      "provision_text",
+      "zone",
+      "development_type",
+      "page_number",
+      "section_header",
+      "text_level",
+      "original_id",
+      "created_at",
+      "domain_classification",
+      "classification_confidence",
+      "cross_contamination_checked",
+      "prp_k1_enhanced",
+      "migration_id",
+      "zone_confidence",
+      "zone_inference_method"
+    ],
+    "development_controls_columns": [
+      "id",
+      "provision_id",
+      "control_type",
+      "control_subtype",
+      "value_numeric",
+      "value_text",
+      "unit",
+      "zone_applicable",
+      "conditions",
+      "confidence_score",
+      "extraction_method"
+    ],
+    "quantitative_standards_columns": [
+      "id",
+      "provision_id",
+      "numeric_value",
+      "unit",
+      "qualifier",
+      "context",
+      "confidence_score",
+      "raw_text",
+      "manual_verified",
+      "created_timestamp"
+    ],
+    "development_pathways_columns": [
+      "id",
+      "development_type",
+      "zone",
+      "qualification_criteria",
+      "pathway_type",
+      "confidence_score",
+      "source_provision_ids",
+      "manual_verified",
+      "created_timestamp"
+    ],
+    "development_permissions_columns": [
+      "id",
+      "zone",
+      "development_type",
+      "permission_status",
+      "conditions",
+      "source_provision_id",
+      "lep_name",
+      "extraction_method",
+      "confidence_score",
+      "created_at",
+      "source_type"
+    ],
+    "contextual_guidance_columns": [
+      "id",
+      "document_id",
+      "guidance_type",
+      "guidance_title",
+      "guidance_text",
+      "page_number",
+      "section_header",
+      "text_level",
+      "original_ref_type",
+      "extraction_timestamp"
+    ]
+  },
+  "postgresql": {
+    "total_tables": 6,
+    "tables": [
+      "regulatory_provisions",
+      "development_controls",
+      "quantitative_standards",
+      "kg_relationships",
+      "development_pathways",
+      "development_permissions"
+    ],
+    "key_data_counts": {
+      "regulatory_provisions": 22105,
+      "sepp_provisions": 0,
+      "lep_provisions": 0,
+      "development_controls": 0,
+      "quantitative_standards": 0,
+      "development_pathways": 0,
+      "development_permissions": 221,
+      "contextual_guidance": 0
+    },
+    "regulatory_provisions_columns": [
+      "id",
+      "document_id",
+      "provision_type",
+      "ref_number",
+      "provision_text",
+      "zone",
+      "development_type",
+      "page_number",
+      "section_header",
+      "text_level",
+      "original_id",
+      "created_at",
+      "domain_classification",
+      "classification_confidence",
+      "cross_contamination_checked",
+      "prp_k1_enhanced",
+      "migration_id"
+    ],
+    "development_controls_columns": [
+      "id",
+      "provision_id",
+      "control_type",
+      "value_text",
+      "zone_applicable",
+      "confidence_score",
+      "created_at"
+    ],
+    "quantitative_standards_columns": [
+      "id",
+      "provision_id",
+      "numeric_value",
+      "unit",
+      "qualifier",
+      "context",
+      "confidence_score",
+      "raw_text",
+      "manual_verified",
+      "created_timestamp"
+    ],
+    "development_pathways_columns": [
+      "id",
+      "development_type",
+      "zone",
+      "qualification_criteria",
+      "pathway_type",
+      "confidence_score",
+      "source_provision_ids",
+      "manual_verified",
+      "created_timestamp"
+    ],
+    "development_permissions_columns": [
+      "id",
+      "zone",
+      "development_type",
+      "permission_status",
+      "conditions",
+      "source_provision_id",
+      "lep_name",
+      "extraction_method",
+      "confidence_score",
+      "created_at",
+      "source_type"
+    ]
+  },
+  "requirements": {
+    "PRP-Q1_Live_Compliance_Calculator": {
+      "needs": [
+        "regulatory_provisions (for FSR/height rules)",
+        "development_controls (for setback calculations)",
+        "quantitative_standards (for numerical limits)",
+        "NSW API integration (already exists)"
+      ],
+      "critical_data": [
+        "FSR limits",
+        "height limits",
+        "setback rules"
+      ]
+    },
+    "PRP-Q2_Development_Pathway_Intelligence": {
+      "needs": [
+        "sepp_provisions (2,186+ exempt/complying rules)",
+        "lep_provisions (4,481+ LEP provisions)",
+        "development_pathways (DA/CDC logic)",
+        "development_permissions (pathway mapping)"
+      ],
+      "critical_data": [
+        "SEPP exempt rules",
+        "SEPP complying rules",
+        "LEP zones"
+      ]
+    },
+    "PRP-Q3_Advanced_Compliance_Rules": {
+      "needs": [
+        "regulatory_provisions (complex rules)",
+        "quantitative_standards (multi-factor calcs)",
+        "development_controls (site coverage, parking)",
+        "contextual_guidance (landscaping rules)"
+      ],
+      "critical_data": [
+        "Site coverage rules",
+        "Parking requirements",
+        "Landscaping rules"
+      ]
+    },
+    "PRP-Q4_Legal_Disclaimers": {
+      "needs": [
+        "API monitoring framework",
+        "Data currency tracking",
+        "Legal disclaimer system"
+      ],
+      "critical_data": [
+        "API health status",
+        "Data freshness timestamps"
+      ]
+    }
+  },
+  "migration_needed": [
+    {
+      "table": "development_controls",
+      "records": 4526,
+      "priority": "MEDIUM"
+    },
+    {
+      "table": "quantitative_standards",
+      "records": 832,
+      "priority": "MEDIUM"
+    },
+    {
+      "table": "development_pathways",
+      "records": 1,
+      "priority": "MEDIUM"
+    }
+  ],
+  "timestamp": "2025-09-20"
+}

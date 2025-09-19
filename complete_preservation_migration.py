@@ -15,7 +15,7 @@ PRESERVATION GUARANTEES:
 - Complete provenance tracking
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 import os
 import shutil
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class CompletePreservationMigration:
     """Migration that preserves every detail of the knowledge graph"""
     
-    def __init__(self, db_path='nsw_planning.db', dry_run=True):
+    def __init__(self, get_connection(), dry_run=True):
         self.db_path = db_path
         self.dry_run = dry_run
         self.backup_path = f"{db_path}.complete_backup_{int(time.time())}"
@@ -40,7 +40,7 @@ class CompletePreservationMigration:
             # === CONTENT TABLES ===
             'regulatory_provisions': '''
                 CREATE TABLE regulatory_provisions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     document_id TEXT NOT NULL,
                     provision_type TEXT NOT NULL,
                     clause_number TEXT,
@@ -55,7 +55,7 @@ class CompletePreservationMigration:
             
             'development_controls': '''
                 CREATE TABLE development_controls (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     control_type TEXT NOT NULL,
                     control_name TEXT,
                     control_value TEXT,
@@ -72,7 +72,7 @@ class CompletePreservationMigration:
             
             'contextual_guidance': '''
                 CREATE TABLE contextual_guidance (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     document_id TEXT NOT NULL,
                     guidance_type TEXT NOT NULL,
                     guidance_title TEXT,
@@ -88,7 +88,7 @@ class CompletePreservationMigration:
             # === KNOWLEDGE GRAPH TABLES ===
             'kg_entities': '''
                 CREATE TABLE kg_entities (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     entity_type TEXT NOT NULL,
                     entity_name TEXT NOT NULL,
                     entity_description TEXT,
@@ -104,7 +104,7 @@ class CompletePreservationMigration:
             
             'kg_relationships': '''
                 CREATE TABLE kg_relationships (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     subject_text TEXT NOT NULL,  -- Original subject as text
                     predicate TEXT NOT NULL,     -- Relationship type
                     object_text TEXT NOT NULL,   -- Original object as text
@@ -125,7 +125,7 @@ class CompletePreservationMigration:
                 
             'kg_visual_elements': '''
                 CREATE TABLE kg_visual_elements (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     element_type TEXT NOT NULL,  -- image, table, diagram
                     file_path TEXT,
                     page_number INTEGER,
@@ -141,7 +141,7 @@ class CompletePreservationMigration:
                 
             'kg_visual_clause_links': '''
                 CREATE TABLE kg_visual_clause_links (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     visual_element_id INTEGER NOT NULL,
                     clause_reference TEXT NOT NULL,
                     illustration_type TEXT,  -- "illustrates", "supports", "defines"
@@ -155,7 +155,7 @@ class CompletePreservationMigration:
             # === PRESERVATION TRACKING ===
             'migration_provenance': '''
                 CREATE TABLE migration_provenance (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     original_id INTEGER NOT NULL,
                     original_ref_type TEXT NOT NULL,
                     original_ref_number TEXT,
@@ -168,7 +168,7 @@ class CompletePreservationMigration:
                 
             'data_integrity_log': '''
                 CREATE TABLE data_integrity_log (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     check_type TEXT NOT NULL,
                     original_count INTEGER,
                     migrated_count INTEGER,
@@ -200,8 +200,8 @@ class CompletePreservationMigration:
                 return False
             
             # Quick table count verification
-            orig_conn = sqlite3.connect(self.db_path)
-            backup_conn = sqlite3.connect(self.backup_path)
+            orig_conn = get_connection()
+            backup_conn = get_connection()
             
             orig_count = orig_conn.execute("SELECT COUNT(*) FROM regulatory_refs").fetchone()[0]
             backup_count = backup_conn.execute("SELECT COUNT(*) FROM regulatory_refs").fetchone()[0]
@@ -230,7 +230,7 @@ class CompletePreservationMigration:
                 logger.info(f"  - {table_name}")
             return True
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         try:
@@ -267,7 +267,7 @@ class CompletePreservationMigration:
         """Migrate all entities with complete preservation"""
         logger.info("Migrating knowledge graph entities...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get all entity entries
@@ -331,7 +331,7 @@ class CompletePreservationMigration:
         """Migrate all relationships as proper triples"""
         logger.info("Migrating knowledge graph relationships...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get all relationship entries
@@ -419,7 +419,7 @@ class CompletePreservationMigration:
         """Migrate all visual elements with clause links"""
         logger.info("Migrating visual elements...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get all autoschema entries
@@ -506,7 +506,7 @@ class CompletePreservationMigration:
         """Verify every piece of data was preserved"""
         logger.info("Verifying complete data preservation...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Original data counts

@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Check FULL database structure after Ultimate Pipeline update"""
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 
 # Connect to database
-conn = sqlite3.connect('nsw_planning.db')
+conn = get_connection()
 cur = conn.cursor()
 
 print("=" * 80)
@@ -21,13 +21,13 @@ for t in tables:
     print(f"  {table_name}: {count} rows")
     
     # Get columns for each table
-    cols = cur.execute(f"PRAGMA table_info({table_name})").fetchall()
+    cols = cur.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name = {table_name}").fetchall()
     print(f"    Columns: {', '.join([c[1] for c in cols])}")
 
 # Check regulatory_refs structure in detail
 print("\n" + "=" * 80)
 print("REGULATORY_REFS TABLE STRUCTURE:")
-cols = cur.execute("PRAGMA table_info(regulatory_refs)").fetchall()
+cols = cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = regulatory_refs").fetchall()
 for col in cols:
     print(f"  {col[1]:20} {col[2]:15} {'NOT NULL' if col[3] else 'NULL OK'}")
 

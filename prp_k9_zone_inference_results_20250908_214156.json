@@ -1,0 +1,14 @@
+{
+  "total_provisions": 22105,
+  "regulatory_provisions": 1230,
+  "zones_before": 3160,
+  "zones_after": 4272,
+  "regulatory_without_zones": 1112,
+  "regulatory_with_zones": 1230,
+  "inference_methods": {
+    "text_analysis": 14,
+    "provision_type_default": 489,
+    "document_context": 48,
+    "fallback_default": 561
+  }
+}

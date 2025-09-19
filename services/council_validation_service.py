@@ -4,7 +4,7 @@ Council Validation Service
 Provides full citation traceability and regulatory text for council verification
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import re
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass

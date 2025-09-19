@@ -8,8 +8,13 @@ Based on PRP-8B lines 590-687
 import json
 import psycopg2
 import hashlib
+import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 class HierarchyResolver:
     """Core hierarchy resolution engine with caching"""
@@ -18,12 +23,13 @@ class HierarchyResolver:
         if db_pool:
             self.db_pool = db_pool
         else:
-            # Create direct connection for standalone usage
+            # Create direct connection for standalone usage using environment variables
             self.pg_conn = psycopg2.connect(
-                host="localhost",
-                database="nsw_planning", 
-                user="postgres",
-                password="postgres"
+                host=os.getenv('PGHOST', 'localhost'),
+                port=int(os.getenv('PGPORT', 5432)),
+                database=os.getenv('PGDATABASE', 'nsw_planning'),
+                user=os.getenv('PGUSER', 'postgres'),
+                password=os.getenv('PGPASSWORD', 'postgres')
             )
     
     def get_cache_key(self, query_params: Dict) -> str:

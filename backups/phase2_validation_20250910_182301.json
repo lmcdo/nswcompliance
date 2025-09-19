@@ -1,0 +1,8 @@
+{
+  "zones_extracted": 193,
+  "zones_staged": 193,
+  "documents_transformed": 274,
+  "standards_transformed": 832,
+  "relationships_mapped": 22105,
+  "validation_passed": true
+}

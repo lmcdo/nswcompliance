@@ -1,0 +1,154 @@
+  Most Practical Use Cases from Raw Data
+
+  1. Planning Document Navigator
+
+  What it does: Help users find the RIGHT documents to read
+  user_query = "R2 setback requirements"
+  system_returns = {
+    "primary_documents": [
+      "Inner West LEP 2022 - Clause 4.3 (Height)",
+      "Marrickville DCP 2011 - Section 4.1 (Setbacks)"
+    ],
+    "relevant_sections": "Pages 23-27, 45-52",
+    "confidence": "These documents contain your zone's rules"
+  }
+
+  Value: Saves 2-3 hours of "which document do I need to read?"
+
+  2. Compliance Checklist Generator
+
+  What it does: Show ALL the things that MIGHT apply
+  compliance_checklist = {
+    "height_requirements": "Check LEP Clause 4.3",
+    "setback_requirements": "Check DCP Section 4.1",
+    "heritage_considerations": "Check if C54 heritage area applies",
+    "car_parking": "Check DCP parking rates",
+    "landscaping": "Check site coverage requirements"
+  }
+
+  Value: Ensures nothing is missed in DA preparation
+
+  3. Planning "Red Flags" Detector
+
+  What it does: Warn about complex/specialist requirements
+  red_flags = {
+    "heritage_overlay": "Professional heritage consultant required",
+    "flood_prone_land": "Flood assessment needed",
+    "contaminated_land": "Site investigation may be required",
+    "aircraft_noise": "ANEF consideration required"
+  }
+
+  Value: Identifies when professional help is essential
+
+  4. Multi-Zone Comparison Tool
+
+  What it does: Compare what's possible across different zones
+  zone_comparison = {
+    "R1": {"typical_height": "8.5m", "density": "Low", "complexity":
+  "Simple"},
+    "R2": {"typical_height": "9m", "density": "Low-Med", "complexity":
+  "Moderate"},
+    "R3": {"typical_height": "12m", "density": "Medium", "complexity":
+  "Complex"}
+  }
+
+  Value: Property buyers understanding development potential
+
+  5. Authority Hierarchy Explainer
+
+  What it does: Explain which rules override others
+  hierarchy_explanation = {
+    "SEPP_Housing": "Overrides council height limits in some cases",
+    "LEP_height": "Sets maximum height for your zone",
+    "DCP_setbacks": "Council's detailed design requirements",
+    "precedence": "SEPP > LEP > DCP (usually)"
+  }
+
+  Value: Understanding the planning system structure
+
+  The Most Viable Business Model
+
+  "Planning Research Assistant"
+
+  Target: Property developers, architects, planning consultants
+  Promise: "Cut your planning research time by 70%"
+
+  interface PlanningAssistant {
+    input: {
+      address: string;
+      development_type: string;
+    }
+
+    output: {
+      document_roadmap: DocumentReference[];
+      potential_issues: RedFlag[];
+      authority_contacts: Contact[];
+      similar_approvals: DAExample[];
+      estimated_complexity: "Simple" | "Moderate" | "Complex";
+    }
+
+    disclaimer: "Research starting point only - professional
+  verification required"
+  }
+
+  Practical Implementation with Your Data
+
+  Document Mapping Service
+
+  def practical_planning_assistant(address, development_type):
+      return {
+          "step_1": "Read these 3 key documents",
+          "step_2": "Check these 5 specific clauses",
+          "step_3": "Contact council about these 2 unclear areas",
+          "step_4": "Consider hiring specialist for heritage/flood
+  issues",
+          "estimated_time": "4-6 hours self-research vs 2 weeks
+  trial-and-error"
+      }
+
+  Planning Complexity Scorer
+
+  complexity_indicators = {
+      "heritage_mentions": count_heritage_provisions(),
+      "special_overlays": count_overlay_provisions(),
+      "unique_requirements": count_uncommon_provisions(),
+      "score": calculate_complexity_score(),
+      "recommendation": get_professional_advice_threshold()
+  }
+
+  Why This Actually Works
+
+  1. Realistic Value Proposition
+  - Not claiming to replace professionals
+  - Genuinely saves time and reduces confusion
+  - Clear about limitations
+
+  2. Defensible Business Model
+  - Research tool, not advice
+  - Professional verification always recommended
+  - Users make informed decisions
+
+  3. Scalable with Imperfect Data
+  - Document navigation doesn't require perfect extraction
+  - Red flag detection works with keyword matching
+  - Complexity scoring improves over time
+
+  Revenue Potential
+
+  Target Segments:
+  - Planning consultants: $50-200/month for research efficiency
+  - Property developers: $500-2000/month for portfolio analysis
+  - Architects: $100-500/month for preliminary assessments
+  - Property lawyers: $200-800/month for due diligence
+
+  Value: Even saving 2-3 hours per project = $300-900 in professional
+  time
+
+  Bottom Line
+
+  Your data is most valuable as a navigation and triage tool, not a
+  compliance engine. The business opportunity is in making the planning
+   system more accessible, not in replacing professional judgment.
+
+  Users pay for efficiency and risk reduction, not for definitive
+  answers they can't legally rely on anyway.

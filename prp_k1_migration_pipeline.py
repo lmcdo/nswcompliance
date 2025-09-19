@@ -12,7 +12,7 @@ Phase 1 Implementation: Enhanced SQLite with PostgreSQL-ready schema
 
 import asyncio
 import logging
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 import hashlib
 import time
@@ -193,7 +193,7 @@ class PRP_K1_MigrationPipeline:
         shutil.copy2(self.config.sqlite_db_path, self.config.backup_db_path)
         
         # Verify backup integrity
-        backup_conn = sqlite3.connect(self.config.backup_db_path)
+        backup_conn = get_connection()
         cursor = backup_conn.cursor()
         
         # Count records in backup
@@ -207,7 +207,7 @@ class PRP_K1_MigrationPipeline:
     async def _validate_source_database(self):
         """Validate source database before migration"""
         
-        conn = sqlite3.connect(self.config.sqlite_db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         # Check core tables exist
@@ -232,7 +232,7 @@ class PRP_K1_MigrationPipeline:
     async def _create_enhanced_schema(self):
         """Create enhanced schema with domain classification support"""
         
-        conn = sqlite3.connect(self.config.sqlite_db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         # Add domain classification columns to regulatory_provisions
@@ -297,7 +297,7 @@ class PRP_K1_MigrationPipeline:
     async def _migrate_data_with_domain_classification(self):
         """Migrate data with domain classification and cross-contamination prevention"""
         
-        conn = sqlite3.connect(self.config.sqlite_db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         # Get all regulatory provisions that need classification
@@ -455,7 +455,7 @@ class PRP_K1_MigrationPipeline:
     async def _execute_comprehensive_validation(self) -> Dict[str, Any]:
         """Execute comprehensive validation of migration results"""
         
-        conn = sqlite3.connect(self.config.sqlite_db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         validation_results = {
@@ -600,7 +600,7 @@ class PRP_K1_MigrationPipeline:
     async def _optimize_database_performance(self):
         """Optimize database performance with additional indexes"""
         
-        conn = sqlite3.connect(self.config.sqlite_db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         # Additional performance indexes (only for existing tables and columns)

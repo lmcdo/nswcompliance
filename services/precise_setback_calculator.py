@@ -7,7 +7,7 @@ Achieves centimeter-level accuracy by combining:
 """
 
 import math
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 from typing import Dict, List, Tuple, Optional, Any
 from dataclasses import dataclass
 from enum import Enum
@@ -138,7 +138,7 @@ class DatabaseSetbackRules:
     def get_setback_requirements(self, property_zone: str, lot_area: float) -> List[SetbackRequirement]:
         """Get setback requirements from database with reasoning"""
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cursor = conn.cursor()
         
         requirements = []

@@ -1,0 +1,227 @@
+https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/layerintersect?type=property&id=1972074&layers=epi[
+    {
+        "id": "6",
+        "layerName": "Local Aboriginal Land Council",
+        "results": [
+            {
+                "Local Council Name": "METROPOLITAN",
+                "Regional Council Name": "SYDNEY NEWCASTLE",
+                "title": "METROPOLITAN"
+            }
+        ]
+    },
+    {
+        "id": "19",
+        "layerName": "Land Zoning Map",
+        "results": [
+            {
+                "Amendment": "Amendment No 13",
+                "Commenced Date": "24-5-2025",
+                "Currency Date": "24-5-2025",
+                "EPI Name": "Inner West Local Environmental Plan 2022",
+                "EPI Type": "LEP",
+                "Land Use": "Low Density Residential",
+                "LGA Name": "INNER WEST",
+                "Published Date": "24-5-2025",
+                "title": "R2: Low Density Residential",
+                "Zone": "R2",
+                "legislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+            }
+        ]
+    },
+    {
+        "id": "149",
+        "layerName": "Special Provisions",
+        "results": [
+            {
+                "Class": "40%",
+                "Commenced Date": "1-10-2023",
+                "Currency Date": "1-10-2023",
+                "EPI Name": "State Environmental Planning Policy (Sustainable Buildings) 2022",
+                "EPI Type": "SEPP",
+                "Label": "2203",
+                "Map Type": "WAT",
+                "Published Date": "29-8-2022",
+                "title": "SEPP (Sustainable Buildings) 2022 Water Use Map",
+                "Type": "Minimum Water Use Standard (%)"
+            },
+            {
+                "Amendment": "State Environmental Planning Policy (Transport and Infrastructure) Amendment (Thermal Energy from Waste) 2022",
+                "Class": "Greater Sydney",
+                "Commenced Date": "16-12-2022",
+                "Currency Date": "16-12-2022",
+                "EPI Name": "State Environmental Planning Policy (Transport and Infrastructure) 2021",
+                "EPI Type": "SEPP",
+                "Map Type": "TEW",
+                "Published Date": "16-12-2022",
+                "title": "Thermal Energy from Waste Prohibition Map - Greater Sydney",
+                "Type": "Greater Sydney"
+            },
+            {
+                "Class": "5",
+                "Commenced Date": "1-10-2023",
+                "Currency Date": "1-10-2023",
+                "EPI Name": "State Environmental Planning Policy (Sustainable Buildings) 2022",
+                "EPI Type": "SEPP",
+                "Label": "INNER WEST",
+                "Map Type": "BAL",
+                "Published Date": "29-8-2022",
+                "title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Alterations Map",
+                "Type": "Climate Zones"
+            },
+            {
+                "Class": "56",
+                "Commenced Date": "1-10-2023",
+                "Currency Date": "1-10-2023",
+                "EPI Name": "State Environmental Planning Policy (Sustainable Buildings) 2022",
+                "EPI Type": "SEPP",
+                "Label": "2203",
+                "Map Type": "CLM",
+                "Published Date": "29-8-2022",
+                "title": "SEPP (Sustainable Buildings) 2022 Climate Zones for BASIX Buildings Map",
+                "Type": "Climate Zones"
+            }
+        ]
+    },
+    {
+        "id": "11",
+        "layerName": "Floor Space Ratio Map",
+        "results": [
+            {
+                "Amendment": "Amendment No 11",
+                "Commenced Date": "14-3-2025",
+                "Currency Date": "14-3-2025",
+                "EPI Name": "Inner West Local Environmental Plan 2022",
+                "EPI Type": "LEP",
+                "Legislative Clause": "Clause 4.4 2C & 2D",
+                "LGA Name": "INNER WEST",
+                "Published Date": "14-3-2025",
+                "legislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+            },
+            {
+                "Amendment": "Map Amendment No 2",
+                "Commenced Date": "22-11-2024",
+                "Currency Date": "14-3-2025",
+                "EPI Name": "Inner West Local Environmental Plan 2022",
+                "EPI Type": "LEP",
+                "Floor Space Ratio": "0.6",
+                "Legislative Clause": "Clause 4.4",
+                "LGA Name": "INNER WEST",
+                "Published Date": "22-11-2024",
+                "title": "0.6:1",
+                "legislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+            }
+        ]
+    },
+    {
+        "id": "14",
+        "layerName": "Height of Buildings Map",
+        "results": [
+            {
+                "Amendment": "Map Amendment No 2",
+                "Commenced Date": "22-11-2024",
+                "Currency Date": "22-11-2024",
+                "EPI Name": "Inner West Local Environmental Plan 2022",
+                "EPI Type": "LEP",
+                "Legislative Clause": "Clause 4.3",
+                "LGA Name": "INNER WEST",
+                "Maximum Building Height": "9.5",
+                "Published Date": "22-11-2024",
+                "title": "9.5 m",
+                "Units": "m",
+                "legislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+            }
+        ]
+    },
+    {
+        "id": "0",
+        "layerName": "Greater Sydney Tree Canopy Cover 2019",
+        "results": [
+            {
+                "Canopy %": "8.14",
+                "title": "Canopy %"
+            }
+        ]
+    },
+    {
+        "id": "310",
+        "layerName": "Regional Plan Boundary",
+        "results": [
+            {
+                "Regional Plan Website": "&lt;a href=\"https://bit.ly/3oaehef\"&gt;Greater Sydney&lt;/a&gt;",
+                "title": "Greater Sydney"
+            }
+        ]
+    },
+    {
+        "id": "8",
+        "layerName": "Land Application Map",
+        "results": [
+            {
+                "Amendment": "Map Amendment No 2",
+                "Commenced Date": "22-11-2024",
+                "Currency Date": "22-11-2024",
+                "EPI Name": "Inner West Local Environmental Plan 2022",
+                "EPI Type": "LEP",
+                "LGA Name": "INNER WEST",
+                "Published Date": "22-11-2024",
+                "title": "Inner West Local Environmental Plan 2022",
+                "Type": "Included",
+                "legislationUrl": "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457"
+            }
+        ]
+    },
+    {
+        "id": "1",
+        "layerName": "Greater Sydney Tree Canopy Cover 2022",
+        "results": [
+            {
+                "Canopy %": "13.23",
+                "title": "Canopy %"
+            }
+        ]
+    }
+]
+https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot?propId=1972074[
+    {
+        "geometry": {
+            "hasM": false,
+            "hasZ": false,
+            "rings": [
+                [
+                    [
+                        16825588.165311657,
+                        -4015562.9366903822
+                    ],
+                    [
+                        16825579.622653935,
+                        -4015562.2285636226
+                    ],
+                    [
+                        16825575.403645232,
+                        -4015611.2179004624
+                    ],
+                    [
+                        16825584.583050441,
+                        -4015611.952478833
+                    ],
+                    [
+                        16825588.165311657,
+                        -4015562.9366903822
+                    ]
+                ]
+            ],
+            "spatialReference": {
+                "wkid": 3857,
+                "latestWkid": null,
+                "vcsWkid": null,
+                "latestVcsWkid": null,
+                "wkt": null
+            }
+        },
+        "attributes": {
+            "CADID": 102872639,
+            "LotDescription": "2/-/DP235795"
+        }
+    }
+]

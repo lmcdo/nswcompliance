@@ -1,0 +1,444 @@
+{
+    "pdf_info": [
+        {
+            "preproc_blocks": [
+                {
+                    "type": "title",
+                    "bbox": [
+                        69,
+                        40,
+                        547,
+                        106
+                    ],
+                    "lines": [
+                        {
+                            "bbox": [
+                                62,
+                                36,
+                                552,
+                                111
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        62,
+                                        36,
+                                        300,
+                                        110
+                                    ],
+                                    "score": 0.0,
+                                    "content": "",
+                                    "type": "text"
+                                },
+                                {
+                                    "bbox": [
+                                        311,
+                                        36,
+                                        552,
+                                        111
+                                    ],
+                                    "score": 0.0,
+                                    "content": "",
+                                    "type": "text"
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 1,
+                    "virtual_lines": [
+                        {
+                            "bbox": [
+                                69,
+                                40,
+                                547,
+                                62.0
+                            ],
+                            "spans": [],
+                            "index": 0
+                        },
+                        {
+                            "bbox": [
+                                69,
+                                62.0,
+                                547,
+                                84.0
+                            ],
+                            "spans": [],
+                            "index": 1
+                        },
+                        {
+                            "bbox": [
+                                69,
+                                84.0,
+                                547,
+                                106.0
+                            ],
+                            "spans": [],
+                            "index": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "text",
+                    "bbox": [
+                        71,
+                        128,
+                        494,
+                        179
+                    ],
+                    "lines": [
+                        {
+                            "bbox": [
+                                68,
+                                127,
+                                495,
+                                155
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        68,
+                                        127,
+                                        495,
+                                        155
+                                    ],
+                                    "score": 1.0,
+                                    "content": "Leichhardt Development Control Plan 2013",
+                                    "type": "text"
+                                }
+                            ],
+                            "index": 3
+                        },
+                        {
+                            "bbox": [
+                                68,
+                                152,
+                                281,
+                                182
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        68,
+                                        152,
+                                        281,
+                                        182
+                                    ],
+                                    "score": 1.0,
+                                    "content": "(Amendment No. 18)",
+                                    "type": "text"
+                                }
+                            ],
+                            "index": 4
+                        }
+                    ],
+                    "index": 3.5
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        69,
+                        183,
+                        559,
+                        717
+                    ],
+                    "blocks": [
+                        {
+                            "type": "image_body",
+                            "bbox": [
+                                69,
+                                183,
+                                559,
+                                717
+                            ],
+                            "group_id": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        69,
+                                        183,
+                                        559,
+                                        717
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                69,
+                                                183,
+                                                559,
+                                                717
+                                            ],
+                                            "score": 0.937,
+                                            "type": "image",
+                                            "image_path": "e1683cb0079fd4d36d8075eeeda45da5228100c25ffc04dbfe06475e4625c542.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 6,
+                            "virtual_lines": [
+                                {
+                                    "bbox": [
+                                        69,
+                                        183,
+                                        559,
+                                        361.0
+                                    ],
+                                    "spans": [],
+                                    "index": 5
+                                },
+                                {
+                                    "bbox": [
+                                        69,
+                                        361.0,
+                                        559,
+                                        539.0
+                                    ],
+                                    "spans": [],
+                                    "index": 6
+                                },
+                                {
+                                    "bbox": [
+                                        69,
+                                        539.0,
+                                        559,
+                                        717.0
+                                    ],
+                                    "spans": [],
+                                    "index": 7
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 6
+                }
+            ],
+            "page_idx": 0,
+            "page_size": [
+                595,
+                842
+            ],
+            "discarded_blocks": [],
+            "para_blocks": [
+                {
+                    "type": "title",
+                    "bbox": [
+                        69,
+                        40,
+                        547,
+                        106
+                    ],
+                    "lines": [
+                        {
+                            "bbox": [
+                                62,
+                                36,
+                                552,
+                                111
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        62,
+                                        36,
+                                        300,
+                                        110
+                                    ],
+                                    "score": 0.0,
+                                    "content": "",
+                                    "type": "text"
+                                },
+                                {
+                                    "bbox": [
+                                        311,
+                                        36,
+                                        552,
+                                        111
+                                    ],
+                                    "score": 0.0,
+                                    "content": "",
+                                    "type": "text"
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 1,
+                    "virtual_lines": [
+                        {
+                            "bbox": [
+                                69,
+                                40,
+                                547,
+                                62.0
+                            ],
+                            "spans": [],
+                            "index": 0
+                        },
+                        {
+                            "bbox": [
+                                69,
+                                62.0,
+                                547,
+                                84.0
+                            ],
+                            "spans": [],
+                            "index": 1
+                        },
+                        {
+                            "bbox": [
+                                69,
+                                84.0,
+                                547,
+                                106.0
+                            ],
+                            "spans": [],
+                            "index": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "text",
+                    "bbox": [
+                        71,
+                        128,
+                        494,
+                        179
+                    ],
+                    "lines": [
+                        {
+                            "bbox": [
+                                68,
+                                127,
+                                495,
+                                155
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        68,
+                                        127,
+                                        495,
+                                        155
+                                    ],
+                                    "score": 1.0,
+                                    "content": "Leichhardt Development Control Plan 2013",
+                                    "type": "text"
+                                }
+                            ],
+                            "index": 3
+                        },
+                        {
+                            "bbox": [
+                                68,
+                                152,
+                                281,
+                                182
+                            ],
+                            "spans": [
+                                {
+                                    "bbox": [
+                                        68,
+                                        152,
+                                        281,
+                                        182
+                                    ],
+                                    "score": 1.0,
+                                    "content": "(Amendment No. 18)",
+                                    "type": "text"
+                                }
+                            ],
+                            "index": 4
+                        }
+                    ],
+                    "index": 3.5,
+                    "bbox_fs": [
+                        68,
+                        127,
+                        495,
+                        182
+                    ]
+                },
+                {
+                    "type": "image",
+                    "bbox": [
+                        69,
+                        183,
+                        559,
+                        717
+                    ],
+                    "blocks": [
+                        {
+                            "type": "image_body",
+                            "bbox": [
+                                69,
+                                183,
+                                559,
+                                717
+                            ],
+                            "group_id": 0,
+                            "lines": [
+                                {
+                                    "bbox": [
+                                        69,
+                                        183,
+                                        559,
+                                        717
+                                    ],
+                                    "spans": [
+                                        {
+                                            "bbox": [
+                                                69,
+                                                183,
+                                                559,
+                                                717
+                                            ],
+                                            "score": 0.937,
+                                            "type": "image",
+                                            "image_path": "e1683cb0079fd4d36d8075eeeda45da5228100c25ffc04dbfe06475e4625c542.jpg"
+                                        }
+                                    ]
+                                }
+                            ],
+                            "index": 6,
+                            "virtual_lines": [
+                                {
+                                    "bbox": [
+                                        69,
+                                        183,
+                                        559,
+                                        361.0
+                                    ],
+                                    "spans": [],
+                                    "index": 5
+                                },
+                                {
+                                    "bbox": [
+                                        69,
+                                        361.0,
+                                        559,
+                                        539.0
+                                    ],
+                                    "spans": [],
+                                    "index": 6
+                                },
+                                {
+                                    "bbox": [
+                                        69,
+                                        539.0,
+                                        559,
+                                        717.0
+                                    ],
+                                    "spans": [],
+                                    "index": 7
+                                }
+                            ]
+                        }
+                    ],
+                    "index": 6
+                }
+            ]
+        }
+    ],
+    "_backend": "pipeline",
+    "_version_name": "2.1.11"
+}

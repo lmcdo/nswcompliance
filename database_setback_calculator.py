@@ -4,7 +4,7 @@ Direct Database Setback Calculator
 Queries the enhanced nsw_planning.db directly for real setback values
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import logging
 from typing import Dict, Optional, Any
 
@@ -13,14 +13,14 @@ logger = logging.getLogger(__name__)
 class DatabaseSetbackCalculator:
     """Calculate setbacks directly from enhanced database"""
     
-    def __init__(self, db_path='nsw_planning.db'):
+    def __init__(self, get_connection()):
         self.db_path = db_path
     
     def get_setbacks_for_property(self, property_data) -> Dict[str, Any]:
         """Get real setbacks from database for a property"""
         
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = get_connection()
             cur = conn.cursor()
             
             # Get zone from property data - default to R2 if not available

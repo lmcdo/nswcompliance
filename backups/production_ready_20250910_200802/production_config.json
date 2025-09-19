@@ -1,0 +1,9 @@
+{
+  "migration_timestamp": "20250910_200802",
+  "cutover_timestamp": "20250910_200802",
+  "total_documents": 274,
+  "total_provisions": 22106,
+  "total_standards": 832,
+  "zone_assignments": 193,
+  "system_status": "PRODUCTION_READY"
+}

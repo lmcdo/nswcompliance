@@ -1,0 +1,162 @@
+{
+  "timestamp": "2025-09-08T00:20:14.930Z",
+  "tests": {
+    "zone_coverage": {
+      "test": "zone_coverage",
+      "passed": true,
+      "zones": {
+        "B1": {
+          "provision_count": 50,
+          "dev_type_count": 2,
+          "development_types": [
+            "commercial_premises",
+            "complying_development"
+          ]
+        },
+        "B2": {
+          "provision_count": 58,
+          "dev_type_count": 0,
+          "development_types": []
+        },
+        "B3": {
+          "provision_count": 8,
+          "dev_type_count": 1,
+          "development_types": [
+            "commercial_premises"
+          ]
+        },
+        "B4": {
+          "provision_count": 12,
+          "dev_type_count": 2,
+          "development_types": [
+            "mixed_use",
+            "shop_top_housing"
+          ]
+        },
+        "IN1": {
+          "provision_count": 20,
+          "dev_type_count": 1,
+          "development_types": [
+            "light_industries"
+          ]
+        },
+        "IN2": {
+          "provision_count": 22,
+          "dev_type_count": 1,
+          "development_types": [
+            "light_industries"
+          ]
+        },
+        "R1": {
+          "provision_count": 92,
+          "dev_type_count": 2,
+          "development_types": [
+            "dual_occupancy",
+            "multi_dwelling"
+          ]
+        },
+        "R2": {
+          "provision_count": 44,
+          "dev_type_count": 4,
+          "development_types": [
+            "development_application",
+            "dual_occupancy",
+            "dwelling_house",
+            "residential_flat_building"
+          ]
+        },
+        "R3": {
+          "provision_count": 58,
+          "dev_type_count": 3,
+          "development_types": [
+            "multi_dwelling_housing",
+            "residential_flat_building",
+            "townhouse"
+          ]
+        },
+        "R4": {
+          "provision_count": 28,
+          "dev_type_count": 1,
+          "development_types": [
+            "residential_flat_building"
+          ]
+        },
+        "RE1": {
+          "provision_count": 24,
+          "dev_type_count": 1,
+          "development_types": [
+            "public_recreation"
+          ]
+        },
+        "RE2": {
+          "provision_count": 8,
+          "dev_type_count": 0,
+          "development_types": []
+        },
+        "SP1": {
+          "provision_count": 8,
+          "dev_type_count": 0,
+          "development_types": []
+        },
+        "SP2": {
+          "provision_count": 136,
+          "dev_type_count": 1,
+          "development_types": [
+            "infrastructure"
+          ]
+        }
+      }
+    },
+    "quantitative_standards_linkage": {
+      "test": "quantitative_standards_linkage",
+      "passed": false,
+      "linkage_by_zone": {
+        "R3": {
+          "dev_types": 1,
+          "standards_count": 5
+        }
+      },
+      "total_linked_zones": 1
+    },
+    "development_type_distribution": {
+      "test": "development_type_distribution",
+      "passed": true,
+      "distribution": {
+        "development_application": 580,
+        "complying_development": 576,
+        "apartment": 160,
+        "multi_dwelling": 110,
+        "dual_occupancy": 106,
+        "infrastructure": 46,
+        "townhouse": 44,
+        "single_dwelling": 44,
+        "light_industries": 42,
+        "public_recreation": 24,
+        "residential_flat_building": 16,
+        "commercial_premises": 10,
+        "shop_top_housing": 4,
+        "mixed_use": 4,
+        "multi_dwelling_housing": 2,
+        "dwelling_house": 2
+      },
+      "total_types": 16
+    },
+    "entity_relationships": {
+      "test": "entity_relationships",
+      "passed": false,
+      "relationship_count": 0
+    },
+    "api_compatibility": {
+      "test": "api_compatibility",
+      "passed": true,
+      "has_grouped_response": true,
+      "has_development_type_logic": true
+    }
+  },
+  "summary": {
+    "total_tests": 5,
+    "passed_tests": 3,
+    "success_rate": 60,
+    "implementation_status": "PARTIAL"
+  }
+}

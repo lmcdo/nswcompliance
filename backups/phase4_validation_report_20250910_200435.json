@@ -1,0 +1,158 @@
+{
+  "timestamp": "20250910_200435",
+  "phase4_results": {
+    "step_16": {
+      "documents": {
+        "sqlite": 274,
+        "postgresql": 274,
+        "match": true
+      },
+      "provisions": {
+        "sqlite": 22105,
+        "postgresql": 22106,
+        "match": false
+      },
+      "standards": {
+        "sqlite": 832,
+        "postgresql": 832,
+        "match": true
+      },
+      "zone_assignments": {
+        "sqlite_old": 4272,
+        "postgresql_explicit": 193,
+        "improvement": "-95.5%"
+      }
+    },
+    "step_17": {
+      "document_names": {
+        "sqlite_hash": "679308cdcbcec09a3f529241ab5680f3",
+        "postgresql_hash": "c57426b2b4764831c6ed78f70650d027",
+        "match": false
+      },
+      "provision_texts": {
+        "sqlite_hash": "c205588daec714294257cd5918204905",
+        "postgresql_hash": "051852eccbf4f6696e9e4a375d722df6",
+        "match": false
+      },
+      "numeric_values": {
+        "sqlite_hash": "8e086ff82a833798f08aeed430af69dc",
+        "postgresql_hash": "8e086ff82a833798f08aeed430af69dc",
+        "match": true
+      }
+    },
+    "step_18": {
+      "zone_distribution": {
+        "E1": 35,
+        "E3": 34,
+        "R1": 31,
+        "R3": 14,
+        "R2": 13,
+        "R4": 12,
+        "R5": 11,
+        "E2": 9,
+        "RE1": 8,
+        "E4": 6,
+        "B2": 4,
+        "E5": 4,
+        "B4": 3,
+        "C2": 2,
+        "C1": 2,
+        "B3": 2,
+        "IN1": 1,
+        "RE2": 1,
+        "IN2": 1
+      },
+      "verification_results": {
+        "R1": {
+          "count": 31,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        },
+        "R2": {
+          "count": 13,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        },
+        "R3": {
+          "count": 14,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        },
+        "R4": {
+          "count": 12,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        },
+        "E1": {
+          "count": 35,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        },
+        "E3": {
+          "count": 34,
+          "samples_checked": 5,
+          "accurate_samples": 5,
+          "accuracy": 100.0
+        }
+      },
+      "overall_accuracy": 100.0
+    },
+    "step_19": {
+      "fulltext_search": {
+        "time": 0.0037908554077148438,
+        "results": 592,
+        "status": "PASS"
+      },
+      "zone_filter": {
+        "time": 0.0009980201721191406,
+        "results": 13,
+        "status": "PASS"
+      },
+      "document_join": {
+        "time": 0.0027527809143066406,
+        "results": 7248,
+        "status": "PASS"
+      },
+      "standards_query": {
+        "time": 0.0005738735198974609,
+        "results": 200,
+        "status": "PASS"
+      },
+      "complex_query": {
+        "time": 0.0011301040649414062,
+        "results": 0,
+        "status": "PASS"
+      }
+    }
+  },
+  "acceptance_criteria": {
+    "data_completeness": {
+      "documents": 274,
+      "provisions": 22106,
+      "standards": 832,
+      "pass": true
+    },
+    "zone_accuracy": {
+      "accuracy": 100.0,
+      "pass": true
+    },
+    "search_functionality": {
+      "results": 1483,
+      "pass": true
+    },
+    "performance": {
+      "avg_time": 0.002513885498046875,
+      "pass": true
+    },
+    "planning_api_ready": {
+      "cache_table_exists": true,
+      "pass": true
+    }
+  },
+  "overall_pass": true
+}

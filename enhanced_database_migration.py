@@ -18,7 +18,7 @@ Enhanced structure:
 - clause_relationships: LangExtract hierarchy
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 import time
 import re
@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 class EnhancedDatabaseMigration:
     """Working migration that fixes the setback query system"""
     
-    def __init__(self, db_path='nsw_planning.db'):
+    def __init__(self, get_connection()):
         self.db_path = db_path
         self.backup_path = f"{db_path}.enhanced_backup_{int(time.time())}"
         
@@ -42,21 +42,21 @@ class EnhancedDatabaseMigration:
         logger.info(f"Backup created: {self.backup_path}")
         
         # Verify backup
-        conn = sqlite3.connect(self.backup_path)
+        conn = get_connection()
         count = conn.execute("SELECT COUNT(*) FROM regulatory_refs").fetchone()[0]
         conn.close()
         logger.info(f"Backup verified: {count:,} entries preserved")
     
     def create_enhanced_schema(self):
         """Create enhanced normalized schema"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Enhanced schema designed for the setback query system
         enhanced_tables = {
             'regulatory_provisions': '''
                 CREATE TABLE IF NOT EXISTS regulatory_provisions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     document_id TEXT NOT NULL,     -- Match regulatory_refs.document_id
                     provision_type TEXT NOT NULL,  -- 'clause', 'section', 'definition'
                     ref_number TEXT,               -- Original ref_number
@@ -73,7 +73,7 @@ class EnhancedDatabaseMigration:
             
             'development_controls': '''
                 CREATE TABLE IF NOT EXISTS development_controls (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     provision_id INTEGER NOT NULL,
                     control_type TEXT NOT NULL,    -- 'setback', 'height', 'density', etc.
                     control_subtype TEXT,          -- 'front', 'side', 'rear' for setbacks
@@ -89,7 +89,7 @@ class EnhancedDatabaseMigration:
             
             'visual_elements': '''
                 CREATE TABLE IF NOT EXISTS visual_elements (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     provision_id INTEGER,
                     visual_type TEXT NOT NULL,     -- 'diagram', 'table', 'figure', 'image'
                     visual_path TEXT,              -- Path to visual file
@@ -102,7 +102,7 @@ class EnhancedDatabaseMigration:
             
             'clause_relationships': '''
                 CREATE TABLE IF NOT EXISTS clause_relationships (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     parent_provision_id INTEGER NOT NULL,
                     child_provision_id INTEGER NOT NULL,
                     relationship_type TEXT NOT NULL,  -- 'hierarchy', 'reference', 'exception'
@@ -114,7 +114,7 @@ class EnhancedDatabaseMigration:
             
             'query_cache': '''
                 CREATE TABLE IF NOT EXISTS query_cache (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     query_text TEXT NOT NULL UNIQUE,
                     query_hash TEXT NOT NULL,
                     result_json TEXT NOT NULL,
@@ -137,7 +137,7 @@ class EnhancedDatabaseMigration:
     
     def migrate_regulatory_provisions(self):
         """Migrate regulatory_refs to regulatory_provisions with enhancement"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         logger.info("Migrating regulatory_refs to regulatory_provisions...")
@@ -189,7 +189,7 @@ class EnhancedDatabaseMigration:
     
     def extract_development_controls(self):
         """Extract specific development controls (setbacks, heights, etc.)"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         logger.info("Extracting development controls...")
@@ -356,7 +356,7 @@ class EnhancedDatabaseMigration:
     
     def create_indexes(self):
         """Create indexes for efficient querying"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         indexes = [
@@ -378,7 +378,7 @@ class EnhancedDatabaseMigration:
     
     def verify_migration(self):
         """Verify migration success"""
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         logger.info("Verifying migration results...")

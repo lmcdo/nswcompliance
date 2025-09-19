@@ -7,7 +7,7 @@ Combines database-driven AutoSchema with RAG-Anything multimodal data
 import json
 import os
 from typing import Dict, List, Optional
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 from .database_autoschema_query import DatabaseAutoSchemaQuery
 
 class IntegratedMultimodalQuery:

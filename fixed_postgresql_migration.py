@@ -5,7 +5,7 @@ PRP-K1: Fixed PostgreSQL Migration Script
 Corrected version that handles the actual SQLite schema properly
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import psycopg2
 import psycopg2.extras
 import logging
@@ -177,7 +177,7 @@ class PostgreSQLMigration:
         """Migrate data from SQLite to PostgreSQL"""
         try:
             # Connect to SQLite
-            sqlite_conn = sqlite3.connect(self.sqlite_path)
+            sqlite_conn = get_connection()
             sqlite_conn.row_factory = sqlite3.Row
             sqlite_cursor = sqlite_conn.cursor()
             
@@ -288,7 +288,7 @@ class PostgreSQLMigration:
             pg_count = pg_cursor.fetchone()[0]
             
             # Connect to SQLite to compare
-            sqlite_conn = sqlite3.connect(self.sqlite_path)
+            sqlite_conn = get_connection()
             sqlite_cursor = sqlite_conn.cursor()
             sqlite_cursor.execute("SELECT COUNT(*) FROM regulatory_provisions")
             sqlite_count = sqlite_cursor.fetchone()[0]

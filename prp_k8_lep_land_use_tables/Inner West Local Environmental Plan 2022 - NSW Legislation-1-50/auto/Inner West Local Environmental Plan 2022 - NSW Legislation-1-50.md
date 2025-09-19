@@ -1,0 +1,1345 @@
+# Inner West Local Environmental Plan 2022
+
+[2022-457]
+
+# Status Information
+
+# Currency of version
+
+Current version for 24 April 2025 to date (accessed 25 August 2025 at 21:38)
+
+Legislation on this site is usually updated within 3 working days after a change to the legislation.
+
+# Provisions in force
+
+The provisions displayed in this version of the legislation have all commenced.
+
+# About this plan
+
+This Plan is a standard instrument local environmental plan under the Environmental Planning and Assessment Act 1979.
+
+# Notes—
+
+• Does not include amendments by Cl 7.6(1) of this Plan (cl 7.6(1) repeals Part 7 of this Plan at the end of 30.9.2027)
+
+# Authorisation
+
+This version of the legislation is compiled and maintained in a database of legislation by the Parliamentary Counsel's Office and published on the NSW legislation website, and is certified as the form of that legislation that is correct under section 45C of the Interpretation Act 1987.
+
+File last modified 24 April 2025
+
+# Inner West Local Environmental Plan 2022
+
+# Contents
+
+Part 1 Preliminary.   
+1.1 Name of Plan .   
+1.1AA Commencement.. 7   
+1.2 Aims of Plan. 7   
+1.3 Land to which Plan applies . . 8   
+1.4 Definitions .. . 8   
+1.5 Notes ... . 8   
+1.6 Consent authority. . 8   
+1.7 Maps... .. 8   
+1.8 Repeal of planning instruments applying to land . . 9   
+1.8A Savings provision relating to development applications . .9   
+1.9 Application of SEPPs . .. 9   
+1.9A Suspension of covenants, agreements and instruments . . 10   
+Part 2 Permitted or prohibited development . .11   
+2.1 Land use zones.... .11   
+2.2 Zoning of land to which Plan applies . 11   
+2.3 Zone objectives and Land Use Table. . 12   
+2.4 Unzoned land.. . 12   
+2.5 Additional permitted uses for particular land . . 13   
+2.6 Subdivision—consent requirements . 13   
+2.7 Demolition requires development consent . . 13   
+2.8 Temporary use of land . . 13   
+2.9 Canal estate development prohibited .14
+
+# Land Use Table. 15
+
+# Note. 15
+
+# Part 3 Exempt and complying development. 32
+
+# Part 4 Principal development standards. . 34
+
+4.4A Exception to maximum floor space ratio for active street frontages. .40   
+4.5 Calculation of floor space ratio and site area . . 40   
+4.6 Exceptions to development standards ..... 42   
+Part 5 Miscellaneous provisions. . 43   
+5.1 Relevant acquisition authority.. .... 43   
+5.1A Development on land intended to be acquired for public purposes .44   
+5.2 Classification and reclassification of public land. .... 45   
+5.3 Development near zone boundaries.. ... 46   
+5.4 Controls relating to miscellaneous permissible uses . .... 47   
+5.5 Controls relating to secondary dwellings on land in a rural zone . ... 48   
+5.6 Architectural roof features.... ..... 48   
+5.7 Development below mean high water mark. .... 48   
+5.8 Conversion of fire alarms.. ... 48   
+5.9 Dwelling house or secondary dwelling affected by natural disaster . ...49   
+5.9AA (Repealed). .. 50   
+5.10 Heritage conservation . .. 50   
+5.11 Bush fire hazard reduction.. .. 53   
+5.12 Infrastructure development and use of existing buildings of the Crown.. ...53   
+5.13 Eco-tourist facilities ... .... 53   
+5.14 Siding Spring Observatory—maintaining dark sky... .... 53   
+5.15 Defence communications facility... .. 54   
+5.16 Subdivision of, or dwellings on, land in certain rural, residential or conservation zones ..............54   
+5.17 Artificial waterbodies in environmentally sensitive areas in areas of operation of irrigation   
+corporations   
+... 54   
+5.18 Intensive livestock agriculture...... ..... 54   
+5.19 Pond-based, tank-based and oyster aquaculture.... ..... 54   
+5.20 Standards that cannot be used to refuse consent—playing and performing music.. ....56   
+5.21 Flood planning... ... 57   
+5.22 Special flood considerations . .. 58   
+5.23 Public bushland . ... 60   
+5.24 Farm stay accommodation . 60   
+5.25 Farm gate premises .. ... 60   
+Part 6 Additional local provisions.. ..... 60   
+6.1 Acid sulfate soils. .. 60   
+6.2 Earthworks . .. 62   
+6.3 Stormwater management...... ..... 62   
+6.4 Terrestrial biodiversity . .. 63   
+6.5 Limited development on foreshore area. .. 64   
+6.6 Development on the foreshore must ensure access.... .... 65   
+6.7 Airspace operations.. ... 65   
+6.8 Development in areas subject to aircraft noise . .. 66   
+6.9 Design excellence...... .... 67   
+6.10 Location of restricted premises and sex services premises. .. 69   
+6.11 Use of existing non-residential buildings in residential zones. . 69   
+6.12 Adaptive reuse of existing buildings for dwellings in residential zones ..... ....70   
+6.13 Residential accommodation in Zones E1, E2 and MU1 . ... 71   
+6.14 Diverse housing.. . 72   
+6.15 Development control plans for certain development..... .. 72   
+6.16 Development of land at 141 and 159 Allen Street, Leichhardt . .74   
+6.17 Development of land at 168 Norton Street, Leichhardt . . 75   
+6.18 Development of land at 101–103 Lilyfield Road, Lilyfield . .. 76   
+6.19 Development of land at 17 Marion Street, Leichhardt ..... ... 76   
+6.20 Development on land in Haberfield Heritage Conservation Area . 77   
+6.21 Business and office premises in Zones E3 and E4 .. .... 78   
+6.22 Dwellings and residential flat buildings in Zone E3 .... ... 78   
+6.23 Residential accommodation as part of mixed use development in Zone E3. .79   
+6.24 Development of land at 1–5 Chester Street, Annandale.... .... 80   
+6.25 Development of land at 469–483 Balmain Road, Lilyfield.. ... 81   
+6.26 Development at 287–309 Trafalgar Street, Petersham . .. 83   
+6.27 50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters . ..83   
+6.28, 6.29 (Repealed) .. .... 85   
+6.30 Development of land at 36 Lonsdale Street and 64–70 Brenan Street, Lilyfield . .....85   
+6.31 Development on certain land at Victoria Road, Marrickville .. .... 86   
+6.32 Special entertainment precinct . ... 87   
+6.33 Affordable housing . ....... 87   
+6.34 Development of certain land at Alma Avenue and Stanmore Road, Stanmore and Tupper Street,   
+Enmore   
+. 88   
+Part 7 Dulwich Grove land . 89   
+7.1 Definitions .. .. 89   
+7.2 Height of buildings on Dulwich Grove land. . 89   
+7.3 Floor space ratio on Dulwich Grove land . . 90   
+7.4 Additional permitted uses for Dulwich Grove land. . 91   
+7.5 Development control plan for Dulwich Grove land . . 92   
+7.6 Repeal and savings. .93
+
+# Part 8 206 Parramatta Road and 122–128 and 130 Pyrmont Bridge Road, Camperdown
+
+. 93   
+8.1 Land to which part applies . . 93   
+8.2 Objective . . 93   
+8.3 Development controls ... . 93   
+8.4 Development involving tourist and visitor accommodation and retail premises . .94   
+8.5 Development control plan . . 94   
+8.6 (Repealed) .. . 95   
+Schedule 1 Additional permitted uses.. .95   
+Schedule 2 Exempt development . .111   
+Schedule 3 Complying development.. .114   
+Schedule 4 Classification and reclassification of public land.. .115   
+Schedule 5 Environmental heritage. .116   
+Schedule 6 Pond-based and tank-based aquaculture . ..239   
+Dictionary . . 241
+
+# Inner West Local Environmental Plan 2022
+
+# Part 1 Preliminary
+
+# 1.1 Name of Plan
+
+This Plan is Inner West Local Environmental Plan 2022.
+
+# 1.1AA Commencement
+
+This Plan commences on the day on which it is published on the NSW legislation website.
+
+# 1.2 Aims of Plan
+
+(1) This Plan aims to make local environmental planning provisions for land in Inner West in accordance with the relevant standard environmental planning instrument under section 3.20 of the Act.
+
+(2) The particular aims of this Plan are as follows—
+
+(aa) to protect and promote the use and development of land for arts and cultural activity, including music and other performance arts,   
+(a) to encourage development that demonstrates efficient and sustainable use of energy and resources in accordance with ecologically sustainable development principles,   
+(b) to conserve and maintain the natural, built and cultural heritage of Inner West,   
+(c) to reduce community risk from and improve resilience to urban and natural hazards,   
+(d) to encourage walking, cycling and use of public transport through appropriate intensification of development densities surrounding transport nodes,   
+(e) to facilitate economic growth and employment opportunities within Inner West,   
+(f) to encourage diversity in housing to meet the needs of, and enhance amenity for, Inner West residents,   
+(g) to create a high quality urban place through the application of design excellence in all elements of the built environment and public domain,   
+(h) to prevent adverse social, economic and environmental impacts on the local character of Inner West,   
+(i) to prevent adverse social, economic and environmental impacts, including cumulative impacts.
+
+# 1.3 Land to which Plan applies
+
+(1) This Plan applies to the land identified on the Land Application Map.
+
+(1A) Despite subclause (1), this Plan does not apply to the land identified as “Deferred matter” on the Land Application Map.
+
+(1B) This Plan, other than clause 6.33, does not apply to land to which State Environmental Planning Policy (Precincts—Eastern Harbour City) 2021, Appendix 8 applies.
+
+# 1.4 Definitions
+
+The Dictionary at the end of this Plan defines words and expressions for the purposes of this Plan.
+
+# 1.5 Notes
+
+Notes in this Plan are provided for guidance and do not form part of this Plan.
+
+# 1.6 Consent authority
+
+The consent authority for the purposes of this Plan is (subject to the Act) the Council.
+
+# 1.7 Maps
+
+(1) A reference in this Plan to a named map adopted by this Plan is a reference to a map by that name— (a) approved by the local plan-making authority when the map is adopted, and (b) as amended or replaced from time to time by maps declared by environmental planning instruments to amend or replace that map, and approved by the local plan-making authority when the instruments are made.   
+(1AA) (Repealed)   
+(2) Any 2 or more named maps may be combined into a single map. In that case, a reference in this Plan to any such named map is a reference to the relevant part or aspect of the single map.   
+(3) Any such maps are to be kept and made available for public access in accordance
+
+with arrangements approved by the Minister.
+
+(4) For the purposes of this Plan, a map may be in, and may be kept and made available in, electronic or paper form, or both.
+
+# Note—
+
+The maps adopted by this Plan are to be made available on the NSW Planning Portal. Requirements relating to the maps are set out in the documents entitled Standard technical requirements for LEP maps and Standard requirements for LEP GIS data which are available on the website of the Department of Planning and Environment.
+
+# 1.8 Repeal of planning instruments applying to land
+
+(1) All local environmental plans and deemed environmental planning instruments applying only to the land to which this Plan applies are repealed.
+
+# Note–
+
+The following local environmental plans are repealed under this provision— Ashfield Environmental Plan 2013 Leichhardt Local Environmental Plan 2013 Marrickville Local Environmental Plan 2011
+
+(2) All local environmental plans and deemed environmental planning instruments applying to the land to which this Plan applies and to other land cease to apply to the land to which this Plan applies.
+
+# Note–
+
+However, the following local environmental plans continue to apply to the land identified as “Deferred matter” under clause 1.3(1A)—
+
+Leichhardt Local Environmental Plan 2000
+
+# 1.8A Savings provision relating to development applications
+
+(1) If a development application has been made before the commencement of this Plan in relation to land to which this Plan applies and the application has not been finally determined before that commencement, the application must be determined as if this Plan had not commenced.
+
+(2) A development application made, but not finally determined, before the commencement of State Environmental Planning Policy Amendment (Flood Planning) 2023 must be determined as if that policy had not commenced.
+
+# 1.9 Application of SEPPs
+
+(1) This Plan is subject to the provisions of any State environmental planning policy that prevails over this Plan as provided by section 3.28 of the Act.
+
+(2) [Not applicable]
+
+# 1.9A Suspension of covenants, agreements and instruments
+
+(1) For the purpose of enabling development on land in any zone to be carried out in accordance with this Plan or with a consent granted under the Act, any agreement, covenant or other similar instrument that restricts the carrying out of that development does not apply to the extent necessary to serve that purpose.
+
+(2) This clause does not apply—
+
+(a) to a covenant imposed by the Council or that the Council requires to be imposed, or (b) to a biodiversity certification conferred under the Biodiversity Conservation Act 2016, Part 8, or (c) to a private land conservation agreement within the meaning of the Biodiversity Conservation Act 2016, or (d) to relevant instrument within the meaning of the Crown Land Management Act 2016, section 13.4, or (e) to the relevant provisions of a land management (native vegetation) code, and the necessary mandatory code compliant certificate, with respect to a set aside area under the Local Land Services Act 2013, Part 5A, or (f) to a conservation agreement within the meaning of the National Parks and Wildlife Act 1974, or (g) to a property vegetation plan within the meaning of the Native Vegetation Act 2003 that is continued in force by the Biodiversity Conservation (Savings and Transitional) Regulation 2017, or (h) to a Trust agreement within the meaning of the Nature Conservation Trust Act 2001 that is continued in force by the Biodiversity Conservation (Savings and Transitional) Regulation 2017, or (i) to a planning agreement within the meaning of the Act, Division 7.1.   
+(3) This clause does not affect the rights or interests of any public authority under any registered instrument.   
+(4) Under the Act, section 3.16, the Governor, before the making of this clause, approved of subclauses (1)–(3).
+
+# Part 2 Permitted or prohibited development
+
+# 2.1 Land use zones
+
+The land use zones under this Plan are as follows— Residential Zones R1 General Residential R2 Low Density Residential R3 Medium Density Residential R4 High Density Residential
+
+# Employment Zones
+
+E1 Local Centre E2 Commercial Centre E3 Productivity Support E4 General Industrial
+
+# Mixed Use Zones
+
+MU1 Mixed Use
+
+# Special Purpose Zones
+
+SP1 Special Activities
+
+SP2 Infrastructure
+
+# Recreation Zones
+
+RE1 Public Recreation RE2 Private Recreation
+
+# Waterway Zones
+
+W1 Natural Waterways W2 Recreational Waterways W4 Working Waterfront
+
+# 2.2 Zoning of land to which Plan applies
+
+For the purposes of this Plan, land is within the zones shown on the Land Zoning Map.
+
+# 2.3 Zone objectives and Land Use Table
+
+(1) The Land Use Table at the end of this Part specifies for each zone—
+
+(a) the objectives for development, and   
+(b) development that may be carried out without development consent, and (c) development that may be carried out only with development consent, and (d) development that is prohibited.
+
+(2) The consent authority must have regard to the objectives for development in a zone when determining a development application in respect of land within the zone.
+
+(3) In the Land Use Table at the end of this Part—
+
+(a) a reference to a type of building or other thing is a reference to development for the purposes of that type of building or other thing, and   
+(b) a reference to a type of building or other thing does not include (despite any definition in this Plan) a reference to a type of building or other thing referred to separately in the Land Use Table in relation to the same zone.
+
+(4) This clause is subject to the other provisions of this Plan.
+
+# Notes—
+
+1 Schedule 1 sets out additional permitted uses for particular land.   
+2 Schedule 2 sets out exempt development (which is generally exempt from both Parts 4 and 5 of the Act). Development in the land use table that may be carried out without consent is nevertheless subject to the environmental assessment and approval requirements of Part 5 of the Act.   
+3 Schedule 3 sets out complying development (for which a complying development certificate may be issued as an alternative to obtaining development consent).   
+4 Clause 2.6 requires consent for subdivision of land.   
+5 Part 5 contains other provisions which require consent for particular development.
+
+# 2.4 Unzoned land
+
+(1) Development may be carried out on unzoned land only with development consent.
+
+(2) In deciding whether to grant development consent, the consent authority—
+
+(a) must consider whether the development will impact on adjoining zoned land and, if so, consider the objectives for development in the zones of the adjoining land, and   
+(b) must be satisfied that the development is appropriate and is compatible with permissible land uses in any such adjoining land.
+
+# 2.5 Additional permitted uses for particular land
+
+(1) Development on particular land that is described or referred to in Schedule 1 may be carried out—
+
+(a) with development consent, or (b) if the Schedule so provides—without development consent,
+
+in accordance with the conditions (if any) specified in that Schedule in relation to that development.
+
+(2) This clause has effect despite anything to the contrary in the Land Use Table or other provision of this Plan.
+
+# 2.6 Subdivision—consent requirements
+
+(1) Land to which this Plan applies may be subdivided, but only with development consent.
+
+# Notes—
+
+1 If a subdivision is specified as exempt development in an applicable environmental planning instrument, such as this Plan or State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, the Act enables it to be carried out without development consent. 2 Part 6 of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 provides that the strata subdivision of a building in certain circumstances is complying development.
+
+(2) Development consent must not be granted for the subdivision of land on which a secondary dwelling is situated if the subdivision would result in the principal dwelling and the secondary dwelling being situated on separate lots, unless the resulting lots are not less than the minimum size shown on the Lot Size Map in relation to that land.
+
+# Note—
+
+The definition of secondary dwelling in the Dictionary requires the dwelling to be on the same lot of land as the principal dwelling.
+
+# 2.7 Demolition requires development consent
+
+The demolition of a building or work may be carried out only with development consent. Note—
+
+If the demolition of a building or work is identified in an applicable environmental planning instrument, such as this Plan or State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, as exempt development, the Act enables it to be carried out without development consent.
+
+# 2.8 Temporary use of land
+
+(1) The objective of this clause is to provide for the temporary use of land if the use does not compromise future development of the land, or have detrimental economic, social, amenity or environmental effects on the land.
+
+(2) Despite any other provision of this Plan, development consent may be granted for development on land in any zone for a temporary use for a maximum period of 52 days (whether or not consecutive days) in any period of 12 months.   
+(3) Development consent must not be granted unless the consent authority is satisfied that— (a) the temporary use will not prejudice the subsequent carrying out of development on the land in accordance with this Plan and any other applicable environmental planning instrument, and (b) the temporary use will not adversely impact on any adjoining land or the amenity of the neighbourhood, and (c) the temporary use and location of any structures related to the use will not adversely impact on environmental attributes or features of the land, or increase the risk of natural hazards that may affect the land, and (d) at the end of the temporary use period the land will, as far as is practicable, be restored to the condition in which it was before the commencement of the use.   
+(4) Despite subclause (2), the temporary use of a dwelling as a sales office for a new release area or a new housing estate may exceed the maximum number of days specified in that subclause.   
+(5) Subclause (3)(d) does not apply to the temporary use of a dwelling as a sales office mentioned in subclause (4).
+
+# 2.9 Canal estate development prohibited
+
+(1) Canal estate development is prohibited on land to which this Plan applies.
+
+(2) In this Plan, canal estate development means development that involves— (a) a constructed canal, or other waterway or waterbody, that— (i) is inundated by surface water or groundwater movement, or (ii) drains to a waterway or waterbody by surface water or groundwater movement, and (b) the erection of a dwelling, and (c) one or both of the following— (i) the use of fill material to raise the level of all or part of the land on which the dwelling will be erected to comply with requirements for residential development in the flood planning area,
+
+(ii) excavation to create a waterway.
+
+(3) Canal estate development does not include development for the purposes of drainage or the supply or treatment of water if the development is— (a) carried out by or with the authority of a person or body responsible for the drainage, supply or treatment, and (b) limited to the minimum reasonable size and capacity.
+
+(4) In this clause—
+
+flood planning area has the same meaning as in clause 5.21.
+
+# Land Use Table
+
+# Note—
+
+State environmental planning policies, including the following, may be relevant to development on land to which this Plan applies—
+
+State Environmental Planning Policy (Housing) 2021
+
+State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 2—relating to infrastructure facilities, including air transport, correction, education, electricity generating works and solar energy systems, health services, ports, railways, roads, waste management and water supply systems
+
+State Environmental Planning Policy (Resources and Energy) 2021, Chapter 2   
+State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 3   
+State Environmental Planning Policy (Industry and Employment) 2021, Chapter 3   
+State Environmental Planning Policy (Primary Production) 2021, Chapter 2
+
+# Zone R1 General Residential
+
+# 1 Objectives of zone
+
+• To provide for the housing needs of the community.   
+• To provide for a variety of housing types and densities.   
+• To enable other land uses that provide facilities or services to meet the day to day needs of residents.   
+• To provide residential development that maintains the character of built and natural features in the surrounding area.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Attached dwellings; Bed and breakfast accommodation; Boarding houses; Centre-based child care facilities; Community facilities; Dwelling houses; Group homes; Home industries; Hostels; Multi dwelling housing; Neighbourhood shops; Oyster aquaculture; Places of public worship; Pond-based aquaculture; Residential flat buildings; Respite day care centres; Roads; Semi-detached dwellings; Seniors housing; Shop top housing; Tank-based aquaculture; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Advertising structures; Agriculture; Air transport facilities; Airstrips; Amusement centres; Animal boarding or training establishments; Biosolids treatment facilities; Boat building and repair facilities; Boat launching ramps; Camping grounds; Car parks; Caravan parks; Cemeteries; Charter and tourism boating facilities; Commercial premises; Correctional centres; Crematoria; Depots; Dual occupancies; Eco-tourist facilities; Emergency services facilities; Entertainment facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Function centres; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial retail outlets; Industrial training facilities; Industries; Information and education facilities; Marinas; Mooring pens; Moorings; Mortuaries; Open cut mining; Passenger transport facilities; Port facilities; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Research stations; Restricted premises; Rural industries; Rural workers’ dwellings; Service stations; Sewage treatment plants; Sex services premises; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Vehicle repair stations; Veterinary hospitals; Warehouse or distribution centres; Waste or resource management facilities; Water recreation structures; Water supply systems; Wharf or boating facilities; Wholesale supplies
+
+# Zone R2 Low Density Residential
+
+# 1 Objectives of zone
+
+• To provide for the housing needs of the community within a low density residential environment.
+
+• To enable other land uses that provide facilities or services to meet the day
+
+to day needs of residents.
+
+• To provide residential development that maintains the character of built and natural features in the surrounding area.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Bed and breakfast accommodation; Centre-based child care facilities; Dwelling houses; Group homes; Home businesses; Home industries; Hostels; Neighbourhood shops; Oyster aquaculture; Pond-based aquaculture; Respite day care centres; Roads; Secondary dwellings; Semi-detached dwellings; Seniors housing; Tank-based aquaculture; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Advertising structures; Agriculture; Air transport facilities; Airstrips; Amusement centres; Animal boarding or training establishments; Biosolids treatment facilities; Boarding houses; Boat building and repair facilities; Boat launching ramps; Boat sheds; Camping grounds; Car parks; Caravan parks; Cemeteries; Charter and tourism boating facilities; Commercial premises; Correctional centres; Crematoria; Depots; Eco-tourist facilities; Emergency services facilities; Entertainment facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Function centres; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial retail outlets; Industrial training facilities; Industries; Information and education facilities; Jetties; Marinas; Mooring pens; Moorings; Mortuaries; Open cut mining; Passenger transport facilities; Port facilities; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Research stations; Residential accommodation; Restricted premises; Rural industries; Service stations; Sewage treatment plants; Sex services premises; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Vehicle repair stations; Veterinary hospitals; Warehouse or distribution centres; Waste or resource management facilities; Water recreation structures; Water supply systems; Wharf or boating facilities; Wholesale supplies
+
+# Zone R3 Medium Density Residential
+
+# 1 Objectives of zone
+
+• To provide for the housing needs of the community within a medium density residential environment.   
+• To provide a variety of housing types within a medium density residential environment.   
+• To enable other land uses that provide facilities or services to meet the day to day needs of residents.   
+• To encourage residential development that results in appropriate amenity for a medium density residential area.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Attached dwellings; Bed and breakfast accommodation; Boarding houses; Centre-based child care facilities; Community facilities; Dwelling houses; Group homes; Home industries; Hostels; Multi dwelling housing; Neighbourhood shops; Oyster aquaculture; Places of public worship; Respite day care centres; Roads; Secondary dwellings; Semi-detached dwellings; Seniors housing; Shop top housing; Tank-based aquaculture; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Advertising structures; Agriculture; Air transport facilities; Airstrips; Amusement centres; Animal boarding or training establishments; Biosolids treatment facilities; Boat building and repair facilities; Boat launching ramps; Boat sheds; Camping grounds; Car parks; Caravan parks; Cemeteries; Charter and tourism boating facilities; Commercial premises; Correctional centres; Crematoria; Depots; Eco-tourist facilities; Emergency services facilities; Entertainment facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Function centres; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial retail outlets; Industrial training facilities; Industries; Information and education facilities; Jetties; Marinas; Mooring pens; Moorings; Mortuaries; Open cut mining; Passenger transport facilities; Port facilities; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs;
+
+Research stations; Residential accommodation; Restricted premises; Rural industries; Service stations; Sewage treatment plants; Sex services premises; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Vehicle repair stations; Veterinary hospitals; Warehouse or distribution centres; Waste or resource management facilities; Water recreation structures; Water recycling facilities; Water supply systems; Wharf or boating facilities; Wholesale supplies
+
+# Zone R4 High Density Residential
+
+# 1 Objectives of zone
+
+• To provide for the housing needs of the community within a high density residential environment.   
+• To provide a variety of housing types within a high density residential environment.   
+• To enable other land uses that provide facilities or services to meet the day to day needs of residents.   
+• To encourage residential development that results in appropriate amenity for a high density residential area.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Bed and breakfast accommodation; Boarding houses; Centre-based child care facilities; Community facilities; Dwelling houses; Group homes; Home industries; Hostels; Kiosks; Neighbourhood shops; Oyster aquaculture; Places of public worship; Residential flat buildings; Respite day care centres; Roads; Secondary dwellings; Seniors housing; Shop top housing; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Advertising structures; Agriculture; Air transport facilities; Airstrips; Amusement centres; Animal boarding or training establishments; Boat building and repair facilities; Boat launching ramps; Boat sheds; Camping grounds; Car parks; Caravan parks; Cemeteries; Charter and tourism boating facilities; Commercial premises; Correctional centres; Crematoria; Depots; Eco-tourist facilities; Emergency services facilities; Entertainment facilities; Environmental facilities;
+
+Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Function centres; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial retail outlets; Industrial training facilities; Industries; Information and education facilities; Jetties; Marinas; Mooring pens; Moorings; Mortuaries; Open cut mining; Passenger transport facilities; Port facilities; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Research stations; Residential accommodation; Restricted premises; Rural industries; Service stations; Sewerage systems; Sex services premises; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Vehicle repair stations; Veterinary hospitals; Warehouse or distribution centres; Waste or resource management facilities; Water recreation structures; Water supply systems; Wharf or boating facilities; Wholesale supplies
+
+# Zone E1 Local Centre
+
+# 1 Objectives of zone
+
+• To provide a range of retail, business and community uses that serve the needs of people who live in, work in or visit the area.   
+• To encourage investment in local commercial development that generates employment opportunities and economic growth.   
+• To enable residential development that contributes to a vibrant and active local centre and is consistent with the Council’s strategic planning for residential development in the area.   
+• To encourage business, retail, community and other non-residential land uses on the ground floor of buildings.   
+• To provide employment opportunities and services in locations accessible by active transport.   
+• To provide retail facilities and business services for the local community commensurate with the centre’s role in the local centres hierarchy.   
+• To ensure Inner West local centres are the primary location for commercial and retail activities.   
+• To ensure that new development provides diverse and active street frontages to attract pedestrian traffic and to contribute to vibrant, diverse and
+
+functional streets and public spaces.
+
+• To enhance the unique sense of place offered by Inner West local centres by ensuring buildings display architectural and urban design quality and contributes to the desired character and cultural heritage of the locality.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Amusement centres; Boarding houses; Building identification signs; Business identification signs; Centre-based child care facilities; Commercial premises; Community facilities; Entertainment facilities; Function centres; Hostels; Hotel or motel accommodation; Information and education facilities; Light industries; Local distribution premises; Medical centres; Oyster aquaculture; Places of public worship; Public administration buildings; Recreation facilities (indoor); Respite day care centres; Service stations; Shop top housing; Tank-based aquaculture; Veterinary hospitals; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Animal boarding or training establishments; Biosolids treatment facilities; Camping grounds; Caravan parks; Cemeteries; Correctional centres; Crematoria; Depots; Eco-tourist facilities; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial training facilities; Industries; Marinas; Mortuaries; Open cut mining; Recreation facilities (major); Registered clubs; Residential accommodation; Restricted premises; Rural industries; Sewage treatment plants; Sex services premises; Signage; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Warehouse or distribution centres; Waste disposal facilities; Waste or resource transfer stations; Water storage facilities; Water treatment facilities; Wholesale supplies
+
+# Zone E2 Commercial Centre
+
+# 1 Objectives of zone
+
+• To strengthen the role of the commercial centre as the centre of business, retail, community and cultural activity.
+
+• To encourage investment in commercial development that generates employment opportunities and economic growth.   
+• To encourage development that has a high level of accessibility and amenity, particularly for pedestrians.   
+• To enable residential development only if it is consistent with the Council’s strategic planning for residential development in the area.   
+• To ensure that new development provides diverse and active street frontages to attract pedestrian traffic and to contribute to vibrant, diverse and functional streets and public spaces.   
+• To accommodate residential development that complements and promotes the role of the Ashfield town centre as the primary location for investment, employment, cultural and civic activity.   
+• To ensure that new development displays high architectural and urban design qualities and contributes to the desired future character of the Ashfield town centre.
+
+# 2 Permitted without consent
+
+Home-based child care; Home occupations
+
+# 3 Permitted with consent
+
+Amusement centres; Artisan food and drink industries; Backpackers’ accommodation; Boarding houses; Centre-based child care facilities; Commercial premises; Community facilities; Entertainment facilities; Function centres; Hostels; Hotel or motel accommodation; Information and education facilities; Light industries; Local distribution premises; Medical centres; Mortuaries; Oyster aquaculture; Passenger transport facilities; Places of public worship; Recreation areas; Recreation facilities (indoor); Recreation facilities (outdoor); Registered clubs; Resource recovery facilities; Respite day care centres; Restricted premises; Shop top housing; Tank-based aquaculture; Vehicle repair stations; Veterinary hospitals; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Animal boarding or training establishments; Biosolids treatment facilities; Boat building and repair facilities; Camping grounds; Caravan parks; Cemeteries; Correctional centres;
+
+Crematoria; Depots; Eco-tourist facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industrial training facilities; Industries; Open cut mining; Port facilities; Recreation facilities (major); Residential accommodation; Rural industries; Sewage treatment plants; Storage premises; Transport depots; Truck depots; Vehicle body repair workshops; Warehouse or distribution centres; Waste or resource management facilities; Water storage facilities; Water treatment facilities; Wholesale supplies
+
+# Zone E3 Productivity Support
+
+# 1 Objectives of zone
+
+• To provide a range of facilities and services, light industries, warehouses and offices.   
+• To provide for land uses that are compatible with, but do not compete with, land uses in surrounding local and commercial centres.   
+• To maintain the economic viability of local and commercial centres by limiting certain retail and commercial activity.   
+• To provide for land uses that meet the needs of the community, businesses and industries but that are not suited to locations in other employment zones.   
+• To provide opportunities for new and emerging light industries.   
+• To enable other land uses that provide facilities and services to meet the day to day needs of workers, to sell goods of a large size, weight or quantity or to sell goods manufactured on-site.   
+• To enhance the visual appearance of the area by ensuring development achieves high architectural, urban design and landscape standards.   
+• To facilitate development that has suitable floorplates, internal height and flexible spaces that accommodate a mix of medium to large format businesses.
+
+# 2 Permitted without consent
+
+# 3 Permitted with consent
+
+Animal boarding or training establishments; Boat building and repair facilities; Business premises; Centre-based child care facilities; Community facilities; Depots; Function centres; Garden centres; Hardware and building supplies; Hotel or motel accommodation; Industrial retail outlets; Industrial training facilities; Information and education facilities; Kiosks; Landscaping material supplies; Light industries; Local distribution premises; Markets; Mortuaries; Neighbourhood shops; Office premises; Oyster aquaculture; Passenger transport facilities; Places of public worship; Plant nurseries; Recreation areas; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Research stations; Respite day care centres; Rural supplies; Service stations; Specialised retail premises; Storage premises; Take away food and drink premises; Tank-based aquaculture; Timber yards; Vehicle body repair workshops; Vehicle repair stations; Vehicle sales or hire premises; Veterinary hospitals; Warehouse or distribution centres; Wholesale supplies; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Amusement centres; Biosolids treatment facilities; Camping grounds; Caravan parks; Cemeteries; Charter and tourism boating facilities; Commercial premises; Correctional centres; Crematoria; Eco-tourist facilities; Electricity generating works; Entertainment facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; General industries; Heavy industrial storage establishments; Heavy industries; Helipads; Highway service centres; Home occupations (sex services); Marinas; Mooring pens; Moorings; Open cut mining; Port facilities; Registered clubs; Residential accommodation; Resource recovery facilities; Restricted premises; Rural industries; Sewage treatment plants; Sex services premises; Tourist and visitor accommodation; Transport depots; Truck depots; Waste or resource management facilities; Water recreation structures; Water supply systems; Wharf or boating facilities
+
+# Zone E4 General Industrial
+
+# 1 Objectives of zone
+
+• To provide a range of industrial, warehouse, logistics and related land uses.   
+• To ensure the efficient and viable use of land for industrial uses.   
+• To minimise any adverse effect of industry on other land uses.   
+• To encourage employment opportunities.   
+• To enable limited non-industrial land uses that provide facilities and services to meet the needs of businesses and workers.   
+• To protect industrial land in proximity to Sydney Airport and Port Botany and the Eastern Economic Corridor.   
+• To retain existing and encourage new industrial uses to meet the needs of the community.
+
+# 2 Permitted without consent
+
+Nil
+
+# 3 Permitted with consent
+
+Agricultural produce industries; Depots; Freight transport facilities; Garden centres; General industries; Goods repair and reuse premises; Hardware and building supplies; Industrial retail outlets; Industrial training facilities; Intensive plant agriculture; Kiosks; Landscaping material supplies; Light industries; Local distribution premises; Markets; Neighbourhood shops; Oyster aquaculture; Take away food and drink premises; Tank-based aquaculture; Timber yards; Warehouse or distribution centres; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Amusement centres; Camping grounds; Caravan parks; Cemeteries; Commercial premises; Community facilities; Correctional centres; Crematoria; Early education and care facilities; Eco-tourist facilities; Educational establishments; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Function centres; Health services facilities; Heavy industrial storage establishments; Heavy industries; Helipads; Highway service centres; Home businesses; Home occupations; Home occupations (sex services); Information and education facilities; Marinas; Open cut mining; Port facilities; Public administration buildings; Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Research stations; Residential accommodation; Respite day care centres; Restricted premises; Rural industries; Tourist and visitor accommodation; Vehicle body repair workshops; Water recreation
+
+structures; Water supply systems
+
+# Zone MU1 Mixed Use
+
+# 1 Objectives of zone
+
+• To encourage a diversity of business, retail, office and light industrial land uses that generate employment opportunities.   
+• To ensure that new development provides diverse and active street frontages to attract pedestrian traffic and to contribute to vibrant, diverse and functional streets and public spaces.   
+• To minimise conflict between land uses within this zone and land uses within adjoining zones.   
+• To encourage business, retail, community and other non-residential land uses on the ground floor of buildings.   
+• To enable land uses that do not impact on the role or viability of nearby centres.   
+• To enhance the visual appearance and accessibility of the area by ensuring development achieves high architectural, urban design and landscape standards that caters for the needs of all ages and abilities.
+
+# 2 Permitted without consent
+
+Home occupations
+
+# 3 Permitted with consent
+
+Amusement centres; Boarding houses; Car parks; Centre-based child care facilities; Commercial premises; Community facilities; Entertainment facilities; Function centres; Hostels; Information and education facilities; Light industries; Local distribution premises; Medical centres; Oyster aquaculture; Passenger transport facilities; Places of public worship; Recreation areas; Recreation facilities (indoor); Registered clubs; Respite day care centres; Restricted premises; Shop top housing; Tank-based aquaculture; Tourist and visitor accommodation; Vehicle repair stations; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Animal boarding or training establishments; Biosolids treatment facilities; Boat building and repair facilities; Boat launching ramps; Boat sheds; Camping grounds; Caravan parks; Cemeteries; Charter and tourism boating facilities; Correctional centres; Crematoria; Depots; Eco-tourist facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Heavy industrial storage establishments; Helipads; Highway service centres; Home occupations (sex services); Industries; Jetties; Marinas; Moorings; Mooring pens; Mortuaries; Open cut mining; Port facilities; Recreation facilities (major); Residential accommodation; Rural industries; Sewage treatment plants; Sex services premises; Transport depots; Truck depots; Vehicle body repair workshops; Warehouse or distribution centres; Waste or resource management facilities; Water recreation structures; Water supply systems; Wharf or boating facilities
+
+# Zone SP1 Special Activities
+
+# 1 Objectives of zone
+
+• To provide for special land uses that are not provided for in other zones.   
+• To provide for sites with special natural characteristics that are not provided for in other zones.   
+• To facilitate development that is in keeping with the special characteristics of the site or its existing or intended special use, and that minimises any adverse impacts on surrounding land.
+
+# 2 Permitted without consent
+
+Nil
+
+# 3 Permitted with consent
+
+Aquaculture; Roads; The purpose shown on the Land Zoning Map, including any development that is ordinarily incidental or ancillary to development for that purpose
+
+# 4 Prohibited
+
+Any development not specified in item 2 or 3
+
+# Zone SP2 Infrastructure
+
+# 1 Objectives of zone
+
+• To provide for infrastructure and related uses.
+
+• To prevent development that is not compatible with or that may detract from the provision of infrastructure. • To protect and provide for land used for community purposes. • To provide for public, community and social infrastructure.
+
+# 2 Permitted without consent
+
+Nil
+
+# 3 Permitted with consent
+
+Aquaculture; Environmental protection works; Recreation areas; Roads; The purpose shown on the Land Zoning Map, including any development that is ordinarily incidental or ancillary to development for that purpose
+
+# 4 Prohibited
+
+Any development not specified in item 2 or 3
+
+# Zone RE1 Public Recreation
+
+# 1 Objectives of zone
+
+• To enable land to be used for public open space or recreational purposes. • To provide a range of recreational settings and activities and compatible land uses. • To protect and enhance the natural environment for recreational purposes. • To conserve, maintain and enhance biodiversity and the natural environment, including terrestrial, aquatic and riparian habitats and natural land forms.
+
+# 2 Permitted without consent
+
+Environmental protection works
+
+# 3 Permitted with consent
+
+Aquaculture; Boat launching ramps; Boat sheds; Building identification signs; Centre-based child care facilities; Community facilities; Electricity generating works; Emergency services facilities; Environmental facilities; Flood mitigation works; Food and drink premises; Information and education facilities; Jetties; Kiosks; Marinas; Markets; Recreation areas; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Research stations;
+
+Respite day care centres; Roads; Water recreation structures; Water recycling facilities; Water supply systems; Wharf or boating facilities
+
+# 4 Prohibited
+
+Pubs; Any development not specified in item 2 or 3
+
+# Zone RE2 Private Recreation
+
+# 1 Objectives of zone
+
+• To enable land to be used for private open space or recreational purposes.   
+• To provide a range of recreational settings and activities and compatible land uses.   
+• To protect and enhance the natural environment for recreational purposes.   
+• To provide a range of community facilities and services and compatible land uses.
+
+# 2 Permitted without consent
+
+Environmental protection works
+
+# 3 Permitted with consent
+
+Aquaculture; Boat launching ramps; Boat sheds; Building identification signs; Business identification signs; Centre-based child care facilities; Community facilities; Entertainment facilities; Environmental facilities; Flood mitigation works; Food and drink premises; Information and education facilities; Jetties; Kiosks; Marinas; Markets; Places of public worship; Recreation areas; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Respite day care centres; Roads; Water recreation structures; Water recycling facilities; Water storage facilities; Wharf or boating facilities
+
+# 4 Prohibited
+
+Pubs; Small bars; Any other development not specified in item 2 or 3
+
+# Zone W1 Natural Waterways
+
+# 1 Objectives of zone
+
+• To protect the ecological and scenic values of natural waterways. • To prevent development that would have an adverse effect on the natural
+
+values of waterways in this zone.
+
+• To provide for sustainable fishing industries and recreational fishing.   
+• To enable scientific study of the natural environment.
+
+# 2 Permitted without consent
+
+Environmental protection works
+
+# 3 Permitted with consent
+
+Aquaculture; Boat launching ramps; Boat sheds; Environmental facilities; Flood mitigation works; Jetties; Marinas; Mooring pens; Moorings; Water recreation structures
+
+# 4 Prohibited
+
+Business premises; Hotel or motel accommodation; Industries; Local distribution premises; Multi dwelling housing; Recreation facilities (major); Residential flat buildings; Restricted premises; Retail premises; Seniors housing; Service stations; Warehouse or distribution centres; Any other development not specified in item 2 or 3
+
+# Zone W2 Recreational Waterways
+
+# 1 Objectives of zone
+
+• To protect the ecological, scenic and recreation values of recreational waterways.   
+• To allow for water-based recreation and related uses.   
+• To provide for sustainable fishing industries and recreational fishing.   
+• To provide for development that supports or does not undermine the restoration of the waterways and its foreshores.
+
+# 2 Permitted without consent
+
+Environmental protection works
+
+# 3 Permitted with consent
+
+Aquaculture; Boat building and repair facilities; Boat launching ramps; Boat sheds; Building identification signs; Environmental facilities; Flood mitigation works; Jetties; Kiosks; Marinas; Recreation areas; Water recreation structures
+
+# 4 Prohibited
+
+Industries; Local distribution premises; Multi dwelling housing; Residential flat buildings; Seniors housing; Warehouse or distribution centres; Any other development not specified in item 2 or 3
+
+# Zone W4 Working Waterfront
+
+# 1 Objectives of zone
+
+• To retain and encourage industrial and maritime activities on foreshores.   
+• To identify sites for maritime purposes and for activities requiring direct foreshore access.   
+• To ensure that development does not have an adverse impact on the environment and visual qualities of the foreshore.   
+• To encourage employment opportunities.   
+• To minimise any adverse effect of development on land uses in other zones.
+
+# 2 Permitted without consent
+
+Nil
+
+# 3 Permitted with consent
+
+Aquaculture; Boat building and repair facilities; Boat launching ramps; Building identification signs; Business identification signs; Jetties; Kiosks; Light industries; Any other development not specified in item 2 or 4
+
+# 4 Prohibited
+
+Agriculture; Air transport facilities; Airstrips; Amusement centres; Animal boarding or training establishments; Camping grounds; Car parks; Caravan parks; Cemeteries; Commercial premises; Crematoria; Early education and care facilities; Eco-tourist facilities; Educational establishments; Entertainment facilities; Environmental facilities; Exhibition homes; Exhibition villages; Extractive industries; Farm buildings; Forestry; Freight transport facilities; Function centres; Health services facilities; Helipads; Highway service centres; Home businesses; Home occupations; Home occupations (sex services); Industrial retail outlets; Industries; Marinas; Mortuaries; Open cut mining; Port facilities; Recreation areas; Recreation facilities (indoor); Recreation facilities (major); Recreation facilities (outdoor); Registered clubs; Residential
+
+accommodation; Restricted premises; Rural industries; Service stations; Sewerage systems; Sex services premises; Signage; Storage premises; Tourist and visitor accommodation; Transport depots; Truck depots; Vehicle body repair workshops; Vehicle repair stations; Veterinary hospitals; Waste or resource management facilities; Water recreation structures; Water supply systems; Wholesale supplies
+
+# Part 3 Exempt and complying development
+
+# 3.1 Exempt development
+
+(1) The objective of this clause is to identify development of minimal environmental impact as exempt development.
+
+(2) Development specified in Schedule 2 that meets the standards for the development contained in that Schedule and that complies with the requirements of this Part is exempt development.
+
+(3) To be exempt development, the development—
+
+(a) must meet the relevant deemed-to-satisfy provisions of the Building Code of Australia or, if there are no such relevant provisions, must be structurally adequate, and
+
+(b) must not, if it relates to an existing building, cause the building to contravene the Building Code of Australia, and
+
+(c) must not be designated development, and
+
+(d) must not be carried out on land that comprises, or on which there is, an item that is listed on the State Heritage Register under the Heritage Act 1977 or that is subject to an interim heritage order under the Heritage Act 1977.
+
+(e) (Repealed)
+
+(4) Development that relates to an existing building that is classified under the Building Code of Australia as class 1b or class 2–9 is exempt development only if—
+
+(a) the building has a current fire safety certificate or fire safety statement, or (b) no fire safety measures are currently implemented, required or proposed for the building.
+
+(5) To be exempt development, the development must—
+
+(a) be installed in accordance with the manufacturer’s specifications, if applicable, and
+
+(b) not involve the removal, pruning or other clearing of vegetation that requires a permit, development consent or other approval unless it is undertaken in accordance with a permit, development consent or other approval.
+
+# Note—
+
+See State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 2 and the Local Land Services Act 2013, Part 5A.
+
+(6) A heading to an item in Schedule 2 is part of that Schedule.
+
+# 3.2 Complying development
+
+(1) The objective of this clause is to identify development as complying development.
+
+(2) Development specified in Part 1 of Schedule 3 that is carried out in compliance with—
+
+(a) the development standards specified in relation to that development, and
+
+(b) the requirements of this Part,
+
+is complying development.
+
+# Note—
+
+See also clause 5.8(3) which provides that the conversion of fire alarms is complying development in certain circumstances.
+
+(3) To be complying development, the development must—
+
+(a) be permissible, with development consent, in the zone in which it is carried out, and   
+(b) meet the relevant deemed-to-satisfy provisions of the Building Code of Australia, and   
+(c) have an approval, if required by the Local Government Act 1993, from the Council for an on-site effluent disposal system if the development is undertaken on unsewered land.
+
+(4) A complying development certificate for development specified in Part 1 of Schedule 3 is subject to the conditions (if any) set out or referred to in Part 2 of that Schedule.
+
+(5) A heading to an item in Schedule 3 is part of that Schedule.
+
+# 3.3 Environmentally sensitive areas excluded
+
+(1) Exempt or complying development must not be carried out on any environmentally sensitive area for exempt or complying development.
+
+(2) For the purposes of this clause—
+
+environmentally sensitive area for exempt or complying development means
+
+any of the following—
+
+(a) the coastal waters of the State,   
+(b) a coastal lake,   
+(c) land within the coastal wetlands and littoral rainforests area (within the meaning of the Coastal Management Act 2016),   
+(d) land reserved as an aquatic reserve under the Fisheries Management Act 1994 or as a marine park under the Marine Parks Act 1997,   
+(e) land within a wetland of international significance declared under the Ramsar Convention on Wetlands or within a World heritage area declared under the World Heritage Convention,   
+(f) land within 100 metres of land to which paragraph (c), (d) or (e) applies,   
+(g) land identified in this or any other environmental planning instrument as being of high Aboriginal cultural significance or high biodiversity significance,   
+(h) land reserved under the National Parks and Wildlife Act 1974 or land acquired under Part 11 of that Act,   
+(i) land reserved or dedicated under the Crown Land Management Act 2016 for the preservation of flora, fauna, geological formations or for other environmental protection purposes,   
+(j) land that is a declared area of outstanding biodiversity value under the Biodiversity Conservation Act 2016 or declared critical habitat under Part 7A of the Fisheries Management Act 1994.
+
+# Part 4 Principal development standards
+
+# 4.1 Minimum subdivision lot size
+
+(1) The objectives of this clause are as follows—
+
+(a) to ensure lot sizes cater for a variety of development,   
+(b) to ensure lot sizes do not result in adverse amenity impacts,   
+(c) to ensure lot sizes deliver high quality architectural, urban and landscape design,   
+(d) to provide a pattern of subdivision that is consistent with the desired future character,   
+(e) to ensure lot sizes allow development to be sited to protect and enhance riparian and environmentally sensitive land.
+
+(2) This clause applies to a subdivision of any land shown on the Lot Size Map that requires development consent and that is carried out after the commencement of this Plan.
+
+(3) The size of any lot resulting from a subdivision of land to which this clause applies is not to be less than the minimum size shown on the Lot Size Map in relation to that land.
+
+(4) This clause does not apply in relation to the subdivision of any land— (a) by the registration of a strata plan or strata plan of subdivision under the Strata Schemes Development Act 2015, or
+
+(b) by any kind of subdivision under the Community Land Development Act 2021.
+
+4.1AA Minimum subdivision lot size for community title schemes [Not adopted]
+
+4.1A Exceptions to minimum subdivision lot size for certain residential development (1) The objectives of this clause are as follows— (a) to encourage housing diversity without adversely affecting residential amenity, (b) to achieve planned residential density in certain areas.
+
+(2) The minimum lot size for subdivision of land identified as “Area 1” on the Lot Size Map that is not land on which a heritage item is located or in a heritage conservation area is $2 0 0 \mathsf { m } ^ { 2 }$ if—
+
+(a) a semi-detached dwelling is or will be located on each lot, and (b) each lot will have a minimum street frontage of $7 \mathsf { m }$ .
+
+(3) The minimum lot size shown on the Lot Size Map does not apply to subdivision of land identified as “Area $2 "$ on the Lot Size Map if—
+
+(a) each lot resulting from the subdivision will be used for the purposes of a dwelling house, and   
+(b) each lot resulting from the subdivision will be at least $\scriptstyle 1 7 4 \mathsf { m } ^ { 2 }$ , but will not exceed $4 5 0 \mathsf m ^ { 2 }$ , and   
+(c) the total number of lots on all land identified as “Area $2 "$ on the Lot Size Map will not exceed 11.
+
+# 4.2 Rural subdivision
+
+[Not applicable]
+
+# 4.3 Height of buildings
+
+(1) The objectives of this clause are as follows— (a) to ensure the height of buildings is compatible with the character of the locality, (b) to minimise adverse impacts on local amenity, (c) to provide an appropriate transition between buildings of different heights.
+
+(2) The height of a building on any land is not to exceed the maximum height shown for the land on the Height of Buildings Map.
+
+(2A) A building on land identified as “Area 1”, “Area $2 "$ or “Area $3 ^ { \prime \prime }$ on the Height of Buildings Map must not contain, or be reasonably capable of being modified to contain, an area forming part of the building’s gross floor area within 3m of the maximum height shown for the land on the Height of Buildings Map.
+
+(2B) Subclause (2A) does not apply to development on land identified as “Area $3 ^ { \prime \prime }$ on the Height of Buildings Map if the consent authority is satisfied the development achieves the objectives of this clause.
+
+# 4.3A Exception to maximum height of buildings in Ashfield town centre
+
+(1) The objective of this clause is to increase the supply of affordable housing by providing height incentives for the development of certain types of affordable housing.
+
+(2) This clause applies to development for the following purposes on land identified as “Area 1” or “Area $3 ^ { \prime \prime }$ on the Height of Buildings Map.
+
+(a) residential flat buildings, (b) shop top housing that forms part of mixed use development.
+
+(3) A building may exceed the maximum height shown for the land on the Height of Buildings Map by up to $7 \mathsf { m }$ (the additional height) if—
+
+(a) the building will be used for the purposes of a residential flat building or shop top housing, and   
+(b) the building will contain at least 1 dwelling used for the purposes of affordable housing, and   
+(c) at least $2 5 \%$ of the floor space area resulting from the additional height will be used for the purposes of affordable housing.
+
+# 4.3B Maximum height for street frontages on certain land in Ashfield town centre
+
+(1) The objective of this clause is to apply a maximum height for primary street frontages on certain land in Ashfield town centre.
+
+(2) This clause applies to land identified as “Area 1” or “Area $3 ^ { \prime \prime }$ on the Height of Buildings Map.   
+(3) The maximum height of that part of a building that has an entrance or lobby on the ground floor facing Liverpool Road, Norton or Hercules Streets or Markham Place, Ashfield (a primary street frontage) is $^ { 1 2 \mathsf { m } }$ for a distance of $_ { 1 2 \mathsf { m } }$ from the primary street frontage away from the road.   
+(4) Subclause (3) does not apply if the consent authority is satisfied that the development results in a building of a high quality design, having regard to the surrounding buildings.
+
+# 4.3C Landscaped areas for residential accommodation in Zone R1
+
+(1) The objectives of this clause are as follows—
+
+(a) to provide landscaped areas for substantial tree planting and for the use and enjoyment of residents,   
+(b) to maintain and encourage a landscaped corridor between adjoining properties, (c) to ensure that development promotes the desired character of the neighbourhood, (d) to encourage ecologically sustainable development,   
+(e) to control site density,   
+(f) to provide for landscaped areas and private open space.   
+(2) This clause applies to development for the purposes of residential accommodation on land in Zone R1 General Residential and identified as “Area ${ \tt T ^ { \prime } }$ on the Key Sites Map.   
+(3) Development consent must not be granted to development to which this clause applies unless— (a) the development will result in a landscaped area comprising at least— (i) if the lot size is $2 3 5 \mathsf { m } ^ { 2 }$ or less— $. 1 5 \%$ of the site area, or (ii) otherwise— $20 \%$ of the site area, and (b) the site coverage does not exceed $60 \%$ of the site area.
+
+(4) For subclause (3)—
+
+(a) the site area must be calculated in the way set out in clause 4.5, and (b) the following areas must not be included as landscaped areas— (i) a landscaped area with a length or width of less than 1m,
+
+(ii) a landscaped area located more than 500mm above ground level (existing), and
+
+(c) a deck, balcony or similar structure, whether enclosed or unenclosed, must not be included in calculating the site coverage if—
+
+(i) the underside of the deck, balcony or structure is at least $2 . 4 \mathsf { m }$ above ground level (existing), and the area below the structure is able to be landscaped or used for recreational purposes, or
+
+(ii) the finished floor level is $5 0 0 \mathsf { m m }$ or less above ground level (existing).
+
+# 4.4 Floor space ratio
+
+(1) The objectives of this clause are as follows—
+
+(a) to establish a maximum floor space ratio to enable appropriate development density,   
+(b) to ensure development density reflects its locality,   
+(c) to provide an appropriate transition between development of different densities,   
+(d) to minimise adverse impacts on local amenity,   
+(e) to increase the tree canopy and to protect the use and enjoyment of private properties and the public domain.
+
+(2) The maximum floor space ratio for a building on any land is not to exceed the floor space ratio shown for the land on the Floor Space Ratio Map.
+
+(2A) The maximum floor space ratio for development for a purpose other than residential accommodation on land in Zone R1 General Residential identified as “Area 1” on the Key Sites Map is 1:1.
+
+(2B) The maximum floor space ratio for development for the purposes of residential accommodation is as follows—
+
+(a) on land identified as “Area ${ 2 ^ { \prime \prime } }$ or “Area $6 ^ { \prime \prime }$ on the Floor Space Ratio Map— (b) on land identified as “Area $3 ^ { \prime \prime }$ or “Area $4 ^ { \prime \prime }$ on the Floor Space Ratio Map is—
+
+<table><tr><td> Site area</td><td>Maximum floor space ratio</td></tr><tr><td>&lt; 150m²</td><td>0.9:1</td></tr><tr><td>≥ 150&lt;300m²</td><td>0.8:1</td></tr><tr><td>≥ 300m²&lt;450m²</td><td>0.7:1</td></tr><tr><td>≥ 450m²</td><td>0.6:1</td></tr></table>
+
+# Site area
+
+# Maximum floor space ratio
+
+$$
+\begin{array} { l } { { < 1 5 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 1 5 0 < 3 0 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 3 0 0 \mathsf { m } ^ { 2 } < 4 5 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 4 5 0 \mathsf { m } ^ { 2 } } } \end{array}
+$$
+
+1.0:1   
+0.9:1   
+0.8:1   
+0.7:1
+
+(c) on land identified as “Area $5 ^ { \prime \prime }$ on the Floor Space Ratio Map is—
+
+# Site area
+
+Maximum floor space ratio
+
+$$
+\begin{array} { l } { { < 1 5 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 1 5 0 < 3 0 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 3 0 0 \mathsf { m } ^ { 2 } < 4 5 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 4 5 0 \mathsf { m } ^ { 2 } } } \end{array}
+$$
+
+0.8:1   
+0.7:1   
+0.6:1   
+0.5:1
+
+(d) on land identified as “Area $7 ^ { \prime \prime }$ on the Floor Space Ratio Map is—
+
+# Site area
+
+# Maximum floor space ratio
+
+$$
+\begin{array} { l } { { < 1 5 0 \mathsf { m } ^ { 2 } } } \\ { { \ } } \\ { { \geq 1 5 0 < 3 0 0 \mathsf { m } ^ { 2 } } } \\ { { \ \geq 3 0 0 \mathsf { m } ^ { 2 } } } \end{array}
+$$
+
+(2C) The maximum floor space ratio for development for the purposes of attached dwellings, bed and breakfast accommodation, dwelling houses and semi-detached dwellings on land identified as “Clause 4.4 2C” on the Floor Space Ratio Map is specified in the Table to this subclause.
+
+# Site area
+
+# Maximum floor space ratio
+
+$$
+\begin{array} { r l } & { \leq 1 5 0 \mathsf { m } ^ { 2 } } \\ & { > 1 5 0 \leq 2 0 0 \mathsf { m } ^ { 2 } } \\ & { > 2 0 0 \leq 2 5 0 \mathsf { m } ^ { 2 } } \\ & { > 2 5 0 \leq 3 0 0 \mathsf { m } ^ { 2 } } \\ & { > 3 0 0 \leq 3 5 0 \mathsf { m } ^ { 2 } } \\ & { > 3 5 0 \mathsf { m } ^ { 2 } } \end{array}
+$$
+
+1.1:1   
+1:1   
+0.9:1   
+0.8:1   
+0.7:1   
+0.6:1
+
+(2D) The maximum floor space ratio for development for the purposes of residential flat buildings on land identified as “Clause 4.4 2D” on the Floor Space Ratio Map may be greater than the maximum floor space ratio shown for the land on the Floor Space Ratio Map by up to 0.25:1.
+
+(2E) In calculating the floor space ratio in relation to land dedicated to the Council for the purposes of a proposed road on the Land Reservation Acquisition Map, land marked “Local Road (SP2)” must be included in the site area.
+
+# 4.4A Exception to maximum floor space ratio for active street frontages
+
+(1) The objective of this clause is to provide floor space incentives for mixed use development incorporating active street frontages in Zone E1 Local Centre.
+
+(2) This clause applies to land identified as “Area 1” on the Floor Space Ratio Map.
+
+(3) The maximum floor space ratio for a building on land to which this clause applies is 1.5:1 if the consent authority is satisfied the building— (a) will have an active street frontage, and (b) is mixed use development that includes residential accommodation, and (c) is compatible with the desired character of the area in relation to its bulk, form, uses and scale.
+
+(4) An active street frontage is not required for part of a building used for the following— (a) entrances and lobbies, including as part of mixed use development, (b) access for fire services, (c) vehicular access.
+
+4.5 Calculation of floor space ratio and site area (1) Objectives The objectives of this clause are as follows—
+
+(a) to define floor space ratio,   
+(b) to set out rules for the calculation of the site area of development for the purpose of applying permitted floor space ratios, including rules to— (i) prevent the inclusion in the site area of an area that has no significant development being carried out on it, and (ii) prevent the inclusion in the site area of an area that has already been included as part of a site area to maximise floor space area in another building, and (iii) require community land and public places to be dealt with separately.
+
+(2) Definition of “floor space ratio” The floor space ratio of buildings on a site is the ratio of the gross floor area of all buildings within the site to the site area.
+
+(3) Site area In determining the site area of proposed development for the purpose of applying a floor space ratio, the site area is taken to be—
+
+(a) if the proposed development is to be carried out on only one lot, the area of that lot, or   
+(b) if the proposed development is to be carried out on 2 or more lots, the area of any lot on which the development is proposed to be carried out that has at least one common boundary with another lot on which the development is being carried out.
+
+In addition, subclauses (4)–(7) apply to the calculation of site area for the purposes of applying a floor space ratio to proposed development.
+
+(4) Exclusions from site area The following land must be excluded from the site area— (a) land on which the proposed development is prohibited, whether under this Plan or any other law, (b) community land or a public place (except as provided by subclause (7)).
+
+(5) Strata subdivisions The area of a lot that is wholly or partly on top of another or others in a strata subdivision is to be included in the calculation of the site area only to the extent that it does not overlap with another lot already included in the site area calculation.
+
+(6) Only significant development to be included The site area for proposed development must not include a lot additional to a lot or lots on which the development is being carried out unless the proposed development includes significant development on that additional lot.
+
+(7) Certain public land to be separately considered For the purpose of applying a floor space ratio to any proposed development on, above or below community land or a public place, the site area must only include an area that is on, above or below that community land or public place, and is occupied or physically affected by the proposed development, and may not include any other area on which the proposed development is to be carried out.
+
+(8) Existing buildings The gross floor area of any existing or proposed buildings within the vertical projection (above or below ground) of the boundaries of a site is to be included in the calculation of the total floor space for the purposes of applying a floor space ratio, whether or not the proposed development relates to all of the buildings.
+
+(9) Covenants to prevent “double dipping” When development consent is granted to development on a site comprised of 2 or more lots, a condition of the consent may require a covenant to be registered that prevents the creation of floor area on a lot (the restricted lot) if the consent authority is satisfied that an equivalent quantity of floor area will be created on another lot only because the site included the restricted
+
+lot.
+
+# (10) Covenants affect consolidated sites If—
+
+(a) a covenant of the kind referred to in subclause (9) applies to any land (affected land), and   
+(b) proposed development relates to the affected land and other land that together comprise the site of the proposed development,
+
+the maximum amount of floor area allowed on the other land by the floor space ratio fixed for the site by this Plan is reduced by the quantity of floor space area the covenant prevents being created on the affected land.
+
+(11) Definition In this clause, public place has the same meaning as it has in the Local Government Act 1993.
+
+# 4.6 Exceptions to development standards
+
+(1) The objectives of this clause are as follows—
+
+(a) to provide an appropriate degree of flexibility in applying certain development standards to particular development,   
+(b) to achieve better outcomes for and from development by allowing flexibility in particular circumstances.
+
+(2) Development consent may, subject to this clause, be granted for development even though the development would contravene a development standard imposed by this or any other environmental planning instrument. However, this clause does not apply to a development standard that is expressly excluded from the operation of this clause.
+
+(3) Development consent must not be granted to development that contravenes a development standard unless the consent authority is satisfied the applicant has demonstrated that—
+
+(a) compliance with the development standard is unreasonable or unnecessary in the circumstances, and   
+(b) there are sufficient environmental planning grounds to justify the contravention of the development standard.
+
+# Note—
+
+The Environmental Planning and Assessment Regulation 2021 requires a development application for development that proposes to contravene a development standard to be accompanied by a document setting out the grounds on which the applicant seeks to demonstrate the matters in paragraphs (a) and (b).
+
+(4) The consent authority must keep a record of its assessment carried out under
+
+subclause (3).
+
+(5) (Repealed)
+
+(6) Development consent must not be granted under this clause for a subdivision of land in Zone RU1 Primary Production, Zone RU2 Rural Landscape, Zone RU3 Forestry, Zone RU4 Primary Production Small Lots, Zone RU6 Transition, Zone R5 Large Lot Residential, Zone C2 Environmental Conservation, Zone C3 Environmental Management or Zone C4 Environmental Living if—
+
+(a) the subdivision will result in 2 or more lots of less than the minimum area specified for such lots by a development standard, or
+
+(b) the subdivision will result in at least one lot that is less than $90 \%$ of the minimum area specified for such a lot by a development standard.
+
+(7) (Repealed)
+
+(8) This clause does not allow development consent to be granted for development that would contravene any of the following—
+
+(a) a development standard for complying development,
+
+(b) a development standard that arises, under the regulations under the Act, in connection with a commitment set out in a BASIX certificate for a building to which State Environmental Planning Policy (Building Sustainability Index: BASIX) 2004 applies or for the land on which such a building is situated,   
+(c) clause 5.4,   
+(caa) clause 5.5,   
+(ca) clause 6.27(4),   
+(cb), (cc) (Repealed)   
+(cd) clause 6.31.
+
+# Part 5 Miscellaneous provisions
+
+# 5.1 Relevant acquisition authority
+
+(1) The objective of this clause is to identify, for the purposes of section 3.15 of the Act, the authority of the State that will be the relevant authority to acquire land reserved for certain public purposes if the land is required to be acquired under Division 3 of Part 2 of the Land Acquisition (Just Terms Compensation) Act 1991 (the ownerinitiated acquisition provisions).   
+Note—
+
+If the landholder will suffer hardship if there is any delay in the land being acquired by the relevant authority, section 23 of the Land Acquisition (Just Terms Compensation) Act 1991 requires the authority to acquire the land.
+
+(2) The authority of the State that will be the relevant authority to acquire land, if the land is required to be acquired under the owner-initiated acquisition provisions, is the authority of the State specified below in relation to the land shown on the Land Reservation Acquisition Map (or, if an authority of the State is not specified in relation to land required to be so acquired, the authority designated or determined under those provisions).
+
+# Type of land shown on Map
+
+# Authority of the State
+
+Zone RE1 Public Recreation and marked “Local open space”
+
+Council
+
+Zone RE1 Public Recreation and marked “Regional open space”
+
+The corporation constituted under section 2.5 of the Act
+
+Zone SP2 Infrastructure and marked “Classified road”
+
+Transport for NSW
+
+Zone C1 National Parks and Nature Reserves and marked “National Park”
+
+Minister administering the National Parks and Wildlife Act 1974
+
+Zone SP2 Infrastructure and marked “Local road”
+
+Council
+
+Zone SP2 Infrastructure and marked “Carpark”
+
+Council
+
+Zone SP2 Infrastructure and marked “Drainage”
+
+Sydney Water Corporation
+
+(3) Development on land acquired by an authority of the State under the owner-initiated acquisition provisions may, before it is used for the purpose for which it is reserved, be carried out, with development consent, for any purpose.
+
+# 5.1A Development on land intended to be acquired for public purposes
+
+(1) The objective of this clause is to limit development on certain land intended to be acquired for a public purpose.
+
+(2) This clause applies to land—
+
+(a) identified on the Land Reservation Acquisition Map, and   
+(b) specified in the table to this clause, and   
+(c) not acquired by the relevant authority of the State specified for the land in clause 5.1.
+
+(3) Development consent must not be granted to development on land to which this clause applies other than development for a purpose specified opposite the land in the table to this clause.
+
+# Column 1
+
+# Column 2
+
+# Land
+
+# Development
+
+Zone SP2 Infrastructure and marked “Classified road”
+
+Zone SP2 Infrastructure and marked “Local road”
+
+Zone SP2 Infrastructure and marked “Carpark”
+
+Zone SP2 Infrastructure and marked “Drainage” Drainage
+
+Zone RE1 Public Recreation and marked “Local open Recreation areas   
+space”
+
+Zone RE1 Public Recreation and marked “Regional openspace” Recreation areas
+
+# 5.2 Classification and reclassification of public land
+
+(1) The objective of this clause is to enable the Council to classify or reclassify public land as “operational land” or “community land” in accordance with Part 2 of Chapter 6 of the Local Government Act 1993.
+
+# Note—
+
+Under the Local Government Act 1993, “public land” is generally land vested in or under the control of a council (other than roads and certain Crown land). The classification or reclassification of public land may also be made by a resolution of the Council under section 31, 32 or 33 of the Local Government Act 1993. Section 30 of that Act enables this Plan to discharge trusts on which public reserves are held if the land is reclassified under this Plan as operational land.
+
+(2) The public land described in Part 1 or Part 2 of Schedule 4 is classified, or reclassified, as operational land for the purposes of the Local Government Act 1993.
+
+(3) The public land described in Part 3 of Schedule 4 is classified, or reclassified, as community land for the purposes of the Local Government Act 1993.
+
+(4) The public land described in Part 1 of Schedule 4—
+
+(a) does not cease to be a public reserve to the extent (if any) that it is a public reserve, and   
+(b) continues to be affected by any trusts, estates, interests, dedications, conditions, restrictions or covenants that affected the land before its classification, or reclassification, as operational land.
+
+(5) The public land described in Part 2 of Schedule 4, to the extent (if any) that it is a public reserve, ceases to be a public reserve when the description of the land is inserted into that Part and is discharged from all trusts, estates, interests, dedications, conditions, restrictions and covenants affecting the land or any part of the land, except—
+
+(a) those (if any) specified for the land in Column 3 of Part 2 of Schedule 4, and (b) any reservations that except land out of the Crown grant relating to the land, and (c) reservations of minerals (within the meaning of the Crown Land Management Act 2016).
+
+# Note—
+
+In accordance with section 30(2) of the Local Government Act 1993, the approval of the Governor to subclause (5) applying to the public land concerned is required before the description of the land is inserted in Part 2 of Schedule 4.
+
+# 5.3 Development near zone boundaries
+
+(1) The objective of this clause is to provide flexibility where the investigation of a site and its surroundings reveals that a use allowed on the other side of a zone boundary would enable a more logical and appropriate development of the site and be compatible with the planning objectives and land uses for the adjoining zone.
+
+(2) This clause applies to so much of any land that is within the relevant distance of a boundary between any 2 zones. The relevant distance is $^ { 2 5 \mathsf { m } }$ .
+
+(3) This clause does not apply to—
+
+(a) land in Zone RE1 Public Recreation, Zone C1 National Parks and Nature Reserves, Zone C2 Environmental Conservation, Zone C3 Environmental Management or Zone W1 Natural Waterways, or   
+(b) land within the coastal zone, or   
+(c) land proposed to be developed for the purpose of sex services or restricted premises.
+
+(4) Despite the provisions of this Plan relating to the purposes for which development may be carried out, development consent may be granted to development of land to which this clause applies for any purpose that may be carried out in the adjoining zone, but only if the consent authority is satisfied that—
+
+(a) the development is not inconsistent with the objectives for development in both zones, and   
+(b) the carrying out of the development is desirable due to compatible land use planning, infrastructure capacity and other planning principles relating to the
+
+efficient and timely development of land.
+
+(5) This clause does not prescribe a development standard that may be varied under this Plan.
+
+# 5.4 Controls relating to miscellaneous permissible uses
+
+(1) Bed and breakfast accommodation If development for the purposes of bed and breakfast accommodation is permitted under this Plan, the accommodation that is provided to guests must consist of no more than 3 bedrooms.
+
+# Note—
+
+Any such development that provides for a certain number of guests or rooms may involve a change in the class of building under the Building Code of Australia.
+
+(2) Home businesses If development for the purposes of a home business is permitted under this Plan, the carrying on of the business must not involve the use of more than 50 square metres of floor area.
+
+(3) Home industries If development for the purposes of a home industry is permitted under this Plan, the carrying on of the home industry must not involve the use of more than 50 square metres of floor area.
+
+(4) Industrial retail outlets If development for the purposes of an industrial retail outlet is permitted under this Plan, the retail floor area must not exceed—
+
+(a) $20 \%$ of the gross floor area of the industry or rural industry located on the same land as the retail outlet, or   
+(b) 100 square metres,   
+whichever is the lesser.
+
+(5) Farm stay accommodation If development for the purposes of farm stay accommodation is permitted under this Plan, the accommodation that is provided to guests must consist of no more than 3 bedrooms in buildings.
+
+(6) Kiosks If development for the purposes of a kiosk is permitted under this Plan, the gross floor area must not exceed 30 square metres.
+
+(7) Neighbourhood shops If development for the purposes of a neighbourhood shop is permitted under this Plan, the retail floor area must not exceed 100 square metres.
+
+(7AA) Neighbourhood supermarkets If development for the purposes of a neighbourhood supermarket is permitted under this Plan, the gross floor area must not exceed 1,000 square metres.
+
+(8) Roadside stalls If development for the purposes of a roadside stall is permitted under this Plan, the gross floor area must not exceed 10 square metres.
+
+(9) Secondary dwellings on land other than land on a rural zone If development for the purposes of a secondary dwelling is permitted under this Plan on land other than in a rural zone, the total floor area of the dwelling, excluding any area used for parking, must not exceed whichever of the following is the greater—
+
+(a) 60 square metres, (b) $3 5 \%$ of the total floor area of the principal dwelling.
+
+(10) Artisan food and drink industry exclusion If development for the purposes of an artisan food and drink industry is permitted under this Plan in Zone E3 Productivity Support, Zone E4 General Industrial, Zone E5 Heavy Industrial, Zone W4 Working Waterfront or a rural zone, the floor area used for retail sales (not including any cafe or restaurant area) must not exceed—
+
+(a) $20 \%$ of the gross floor area of the industry, or (b) 100 square metres,   
+whichever is the lesser.
+
+5.5 Controls relating to secondary dwellings on land in a rural zone [Not adopted]
+
+5.6 Architectural roof features [Not adopted]
+
+# 5.7 Development below mean high water mark
+
+(1) The objective of this clause is to ensure appropriate environmental assessment for development carried out on land covered by tidal waters.   
+(2) Development consent is required to carry out development on any land below the mean high water mark of any body of water subject to tidal influence (including the bed of any such water).
+
+# 5.8 Conversion of fire alarms
+
+(1) This clause applies to a fire alarm system that can be monitored by Fire and Rescue NSW or by a private service provider.
+
+(2) The following development may be carried out, but only with development consent—
+
+(a) converting a fire alarm system from connection with the alarm monitoring system of Fire and Rescue NSW to connection with the alarm monitoring system of a private service provider,   
+(b) converting a fire alarm system from connection with the alarm monitoring system
+
+of a private service provider to connection with the alarm monitoring system of another private service provider,
+
+(c) converting a fire alarm system from connection with the alarm monitoring system of a private service provider to connection with a different alarm monitoring system of the same private service provider.
+
+(3) Development to which subclause (2) applies is complying development if it consists only of—
+
+(a) internal alterations to a building, or   
+(b) internal alterations to a building together with the mounting of an antenna, and any support structure, on an external wall or roof of a building so as to occupy a space of not more than $4 5 0 \mathrm { { m m } \times 1 0 0 \mathrm { { m m } \times 1 0 0 \mathrm { { m m } } } }$ .
+
+(4) A complying development certificate for any such complying development is subject to a condition that any building work may only be carried out between 7.00 am and 6.00 pm on Monday to Friday and between 7.00 am and 5.00 pm on Saturday, and must not be carried out on a Sunday or a public holiday.
+
+(5) In this clause—
+
+private service provider means a person or body that has entered into an agreement that is in force with Fire and Rescue NSW to monitor fire alarm systems.
+
+# 5.9 Dwelling house or secondary dwelling affected by natural disaster
+
+(1) The objective of this clause is to enable the repair or replacement of lawfully erected dwelling houses and secondary dwellings that have been damaged or destroyed by a natural disaster.
+
+(2) This clause applies to land in the following zones— (a) Zone R1 General Residential, (b) Zone R2 Low Density Residential, (c) Zone R3 Medium Density Residential.
+
+(3) Despite the other provisions of this Plan, development consent may be granted to development on land to which this clause applies to enable a dwelling house or secondary dwelling that has been damaged or destroyed by a natural disaster to be repaired or replaced if—
+
+(a) the dwelling house or secondary dwelling was lawfully erected, and (b) the development application seeking the development consent is made to the consent authority no later than 5 years after the day on which the natural disaster
+
+caused the damage or destruction.
+
+# 5.9AA (Repealed)
+
+# 5.10 Heritage conservation
+
+# Note—
+
+Heritage items (if any) are listed and described in Schedule 5. Heritage conservation areas (if any) are shown on the Heritage Map as well as being described in Schedule 5.
+
+(1) Objectives The objectives of this clause are as follows—
+
+(a) to conserve the environmental heritage of Inner West,   
+(b) to conserve the heritage significance of heritage items and heritage conservation areas, including associated fabric, settings and views,   
+(c) to conserve archaeological sites,   
+(d) to conserve Aboriginal objects and Aboriginal places of heritage significance.
+
+(2) Requirement for consent Development consent is required for any of the following— (a) demolishing or moving any of the following or altering the exterior of any of the following (including, in the case of a building, making changes to its detail, fabric, finish or appearance)—
+
+(i) a heritage item,   
+(ii) an Aboriginal object,   
+(iii) a building, work, relic or tree within a heritage conservation area,
+
+(b) altering a heritage item that is a building by making structural changes to its interior or by making changes to anything inside the item that is specified in Schedule 5 in relation to the item,
+
+(c) disturbing or excavating an archaeological site while knowing, or having reasonable cause to suspect, that the disturbance or excavation will or is likely to result in a relic being discovered, exposed, moved, damaged or destroyed,
+
+(d) disturbing or excavating an Aboriginal place of heritage significance,
+
+(e) erecting a building on land—
+
+(i) on which a heritage item is located or that is within a heritage conservation area, or   
+(ii) on which an Aboriginal object is located or that is within an Aboriginal place of heritage significance,

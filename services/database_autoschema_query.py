@@ -4,7 +4,7 @@ Database-driven AutoSchema Query Interface
 Query regulatory relationships directly from the nsw_planning.db database
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import re
 from typing import Dict, List, Optional
 

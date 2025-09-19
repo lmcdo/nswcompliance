@@ -20,7 +20,7 @@ APPROACH:
 
 """
 
-import sqlite3
+from db_config import get_connection  # Unified PostgreSQL connection
 import json
 import os
 import shutil
@@ -43,7 +43,7 @@ logger = logging.getLogger(__name__)
 class SafeDatabaseMigration:
     """Safe migration from flat regulatory_refs to normalized schema"""
     
-    def __init__(self, db_path='nsw_planning.db', dry_run=True):
+    def __init__(self, get_connection(), dry_run=True):
         self.db_path = db_path
         self.dry_run = dry_run
         self.backup_path = f"{db_path}.backup_{int(time.time())}"
@@ -63,7 +63,7 @@ class SafeDatabaseMigration:
                 'description': 'Core regulatory requirements and provisions',
                 'schema': '''
                     CREATE TABLE regulatory_provisions (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         document_id TEXT NOT NULL,
                         provision_type TEXT NOT NULL,
                         clause_number TEXT,
@@ -83,7 +83,7 @@ class SafeDatabaseMigration:
                 'description': 'Specific development controls for compliance calculations',
                 'schema': '''
                     CREATE TABLE development_controls (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         provision_id INTEGER,
                         control_type TEXT NOT NULL,
                         control_value TEXT,
@@ -103,7 +103,7 @@ class SafeDatabaseMigration:
                 'description': 'Non-binding guidance and contextual information',
                 'schema': '''
                     CREATE TABLE contextual_guidance (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         document_id TEXT NOT NULL,
                         guidance_type TEXT NOT NULL,
                         guidance_text TEXT,
@@ -120,7 +120,7 @@ class SafeDatabaseMigration:
                 'description': 'Relationships between provisions, SEPPs, LEPs, DCPs',
                 'schema': '''
                     CREATE TABLE cross_references (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         from_provision TEXT NOT NULL,
                         to_provision TEXT,
                         relationship_type TEXT NOT NULL,
@@ -137,7 +137,7 @@ class SafeDatabaseMigration:
                 'description': 'Images, diagrams, tables with regulatory context',
                 'schema': '''
                     CREATE TABLE visual_elements (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         document_id TEXT NOT NULL,
                         element_type TEXT NOT NULL,
                         file_path TEXT,
@@ -156,7 +156,7 @@ class SafeDatabaseMigration:
                 'description': 'Land use zones and permitted development',
                 'schema': '''
                     CREATE TABLE zoning_information (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        id SERIAL PRIMARY KEY SERIAL,
                         zone_code TEXT,
                         zone_name TEXT,
                         permitted_uses TEXT,
@@ -191,7 +191,7 @@ class SafeDatabaseMigration:
         """Analyze current data to plan migration"""
         logger.info("Analyzing current data structure...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get ref_type distribution
@@ -266,7 +266,7 @@ class SafeDatabaseMigration:
                 logger.info(f"  - {table_name}: {config['description']}")
             return True
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         try:
@@ -282,7 +282,7 @@ class SafeDatabaseMigration:
             # Create mapping table to track migration
             cur.execute('''
                 CREATE TABLE migration_tracking (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY SERIAL,
                     original_id INTEGER NOT NULL,
                     original_ref_type TEXT NOT NULL,
                     target_table TEXT NOT NULL,
@@ -306,7 +306,7 @@ class SafeDatabaseMigration:
         """Migrate data for one table in batches"""
         logger.info(f"Migrating data to {table_name}...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Get total count
@@ -445,7 +445,7 @@ class SafeDatabaseMigration:
         """Verify migration integrity and completeness"""
         logger.info("Verifying migration integrity...")
         
-        conn = sqlite3.connect(self.db_path)
+        conn = get_connection()
         cur = conn.cursor()
         
         # Check table counts

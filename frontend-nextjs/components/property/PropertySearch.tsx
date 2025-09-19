@@ -12,15 +12,16 @@ interface PropertySearchProps {
 }
 
 export function PropertySearch({ onAddressSelect, loading, selectedAddress }: PropertySearchProps) {
-  const [inputValue, setInputValue] = useState(selectedAddress || '');
+  const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
-  useEffect(() => {
-    if (selectedAddress && selectedAddress !== inputValue) {
-      setInputValue(selectedAddress);
-    }
-  }, [selectedAddress, inputValue]);
+  // Don't auto-fill from selectedAddress - let user control the input
+  // useEffect(() => {
+  //   if (selectedAddress && selectedAddress !== inputValue) {
+  //     setInputValue(selectedAddress);
+  //   }
+  // }, [selectedAddress, inputValue]);
 
   useEffect(() => {
     // No custom styles - let Google Maps use default styling
@@ -69,7 +70,9 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
             if (isNSW) {
               onAddressSelect(address, coordinates);
             } else {
-              alert('Please select an address in NSW');
+              // Still allow the selection but warn the user
+              onAddressSelect(address, coordinates);
+              console.warn('Address may not be in NSW');
             }
           }
         });
@@ -119,6 +122,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (inputValue.trim()) {
+      // Allow manual entry - just pass the address through
       onAddressSelect(inputValue.trim());
     }
   };
@@ -149,7 +153,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           Property Address
         </h2>
         <p className="text-gray-600 text-sm">
-          Enter a NSW property address to begin compliance analysis
+          Type any NSW address or select from suggestions
         </p>
       </div>
 
@@ -160,7 +164,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
             type="text"
             value={inputValue}
             onChange={handleInputChange}
-            placeholder="30 Denison Rd, Lewisham NSW 2049, Australia"
+            placeholder="Start typing an address..."
             className="w-full h-10 px-3 pr-16 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
             disabled={loading}
           />
@@ -194,9 +198,9 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
       </form>
 
       <div className="text-xs text-gray-500 text-center space-x-4">
-        <span>✓ NSW addresses only</span>
+        <span>✓ Manual entry allowed</span>
         <span>•</span>
-        <span>✓ Google Places integration</span>
+        <span>✓ Google suggestions optional</span>
         <span>•</span>
         <span>✓ Real-time property lookup</span>
       </div>
