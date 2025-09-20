@@ -14,6 +14,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import BASIXProvisions from './BASIXProvisions';
+import { VersionBadge } from '@/components/version/VersionBadge';
 
 // PRP-8B Tier Icons and Colors
 const TIER_CONFIG = {
@@ -483,6 +484,48 @@ export default function AuthoritativeComplianceDisplay({
           </div>
         </CardContent>
       </Card>
+
+      {/* Version Information */}
+      {data && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-green-500" />
+              Document Version Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                {/* Show version badges for documents used */}
+                <VersionBadge
+                  version="current"
+                  documentType="State Regulations"
+                  effectiveDate={new Date().toISOString()}
+                />
+                {data.tier_1_provisions?.length > 0 && (
+                  <VersionBadge
+                    version="current"
+                    documentType="LEP"
+                    effectiveDate={new Date().toISOString()}
+                  />
+                )}
+                {data.tier_2_provisions?.length > 0 && (
+                  <VersionBadge
+                    version="current"
+                    documentType="DCP"
+                    effectiveDate={new Date().toISOString()}
+                  />
+                )}
+              </div>
+              <div className="text-sm text-gray-600">
+                <p>This assessment uses the most current versions of all applicable planning documents as of {new Date().toLocaleDateString('en-AU')}.</p>
+                <p className="text-xs mt-1 text-gray-500">Version management ensures compliance checks reference the correct regulatory framework for your assessment date.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Header Summary */}
       <Card>

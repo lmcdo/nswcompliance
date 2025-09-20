@@ -8,13 +8,18 @@ import { Button } from '@/components/ui/button';
 
 export default function AuthoritativePage() {
   const [address, setAddress] = useState('');
-  const [developmentType, setDevelopmentType] = useState('dwelling_house');
+  const [developmentType, setDevelopmentType] = useState('');
   const [propertyData, setPropertyData] = useState<any>(null);
   const [basixProvisions, setBasixProvisions] = useState<any>(null);
   const [specialProvisions, setSpecialProvisions] = useState<any[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [isLookingUp, setIsLookingUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Show results only when both property and development type are available
+  React.useEffect(() => {
+    setShowResults(Boolean(propertyData && developmentType));
+  }, [propertyData, developmentType]);
 
   const lookupPropertyData = async (addressToLookup: string) => {
     if (!addressToLookup.trim()) return;
@@ -49,8 +54,8 @@ export default function AuthoritativePage() {
             }
           }
 
-          // Automatically show compliance results when property is found
-          setShowResults(true);
+          // Only show compliance results when both property and development type are selected
+          // setShowResults will be handled by useEffect when developmentType changes
         } else {
           setError('Property not found in NSW Planning Portal. Please check the address.');
           setPropertyData(null);
@@ -83,28 +88,58 @@ export default function AuthoritativePage() {
   }, []);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
-          PRP-8B Authoritative Compliance System
-        </h1>
-        <p className="text-xl text-gray-600">
-          5-Tier Hierarchy Resolution with SEPP → LEP → DCP Authority Precedence
-        </p>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              NSW Planning Compliance Analysis
+            </h1>
+            <p className="text-lg text-gray-600">
+              Professional regulatory compliance assessment for NSW development applications
+            </p>
+          </div>
 
-      {/* Property Address Input */}
-      <Card>
+          <div className="space-y-8">
+            {/* Property Analysis Input */}
+            <Card>
         <CardHeader>
-          <CardTitle>Property Address</CardTitle>
+          <CardTitle>Property & Development Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <PropertySearch 
+            <PropertySearch
               onAddressSelect={handleAddressSelect}
               loading={isLookingUp}
               selectedAddress={address}
             />
+
+            {/* Development Type Selector */}
+            <div>
+              <label htmlFor="development-type" className="block text-sm font-medium text-gray-700 mb-2">
+                Proposed Development Type <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="development-type"
+                value={developmentType}
+                onChange={(e) => setDevelopmentType(e.target.value)}
+                className="w-full px-3 py-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
+                required
+              >
+                <option value="">Select development type...</option>
+                <option value="dwelling_house">Single Dwelling House</option>
+                <option value="dual_occupancy">Dual Occupancy</option>
+                <option value="multi_dwelling_housing">Multi Dwelling Housing</option>
+                <option value="residential_flat_building">Residential Flat Building</option>
+                <option value="commercial_premises">Commercial Premises</option>
+                <option value="retail_premises">Retail Premises</option>
+                <option value="office_premises">Office Premises</option>
+                <option value="industrial">Industrial Development</option>
+                <option value="warehouse">Warehouse or Storage</option>
+                <option value="mixed_use">Mixed Use Development</option>
+              </select>
+              <p className="mt-1 text-sm text-gray-500">Select the type of development you want to assess for compliance</p>
+            </div>
 
             {/* Error Display */}
             {error && (
@@ -117,7 +152,10 @@ export default function AuthoritativePage() {
             {/* Property Information Display */}
             {propertyData && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <h3 className="font-semibold text-green-800 mb-2">✅ Property Found - Analyzing Compliance...</h3>
+                <h3 className="font-semibold text-green-800 mb-2">
+                  ✅ Property Found
+                  {developmentType ? ' - Analyzing Compliance...' : ' - Select development type to continue'}
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="font-medium">Zone:</span> {propertyData.constraints?.zone || 'Unknown'}
@@ -158,56 +196,9 @@ export default function AuthoritativePage() {
           }}
         />
       )}
-
-      {/* Feature Documentation */}
-      <Card>
-        <CardHeader>
-          <CardTitle>PRP-8B Implementation Features</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-3">Authority Hierarchy</h3>
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-green-500 rounded"></div>
-                  <span>Tier 1: SEPP/LEP Fully Authoritative</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                  <span>Tier 2: DCP High Authority</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-orange-500 rounded"></div>
-                  <span>Tier 3: Moderate Authority</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-                  <span>Tier 4: Framework Guidance</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-red-500 rounded"></div>
-                  <span>Tier 5: Specialist Required</span>
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-lg font-semibold mb-3">System Capabilities</h3>
-              <ul className="space-y-1 text-sm text-gray-600">
-                <li>• SEPP > LEP > DCP precedence resolution</li>
-                <li>• Primary authority identification by context</li>
-                <li>• Confidence scoring and complexity assessment</li>
-                <li>• Legal disclaimer generation by tier</li>
-                <li>• Response caching for performance</li>
-                <li>• Full text provision display</li>
-                <li>• Authority override tracking</li>
-                <li>• Professional guidance referrals</li>
-              </ul>
-            </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

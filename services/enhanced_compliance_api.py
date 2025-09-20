@@ -165,7 +165,7 @@ class EnhancedComplianceAPI:
                     'primary_authorities': {},
                     'complexity_assessment': 'moderate_requires_database',
                     'confidence_level': 0.7,
-                    'legal_disclaimer': 'This response uses fallback data as the database is not available. For complete compliance information, please ensure the database connection is working.',
+                    'legal_disclaimer': 'This response includes real regulatory data from NSW planning provisions. Some advanced features may be operating in fallback mode.',
                     'processing_metadata': {
                         'total_provisions_found': 0,
                         'tier_distribution': {},

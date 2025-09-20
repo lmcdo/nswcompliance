@@ -232,11 +232,8 @@ class PRPK7PostgreSQLImplementer {
 
     // Section-based classification for setback provisions
     if (sectionHeader && sectionHeader.toLowerCase().includes('setback')) {
-      // For setback provisions in residential zones, default to most common type
-      if (['R1', 'R2'].includes(zone)) return 'dwelling_house';
-      if (['R3', 'R4'].includes(zone)) return 'residential_flat_building';
-      if (zone.startsWith('B')) return 'commercial_premises';
-      if (zone.startsWith('IN')) return 'light_industries';
+      // Removed automatic defaults - require explicit development type specification
+      return null;
     }
 
     return null;

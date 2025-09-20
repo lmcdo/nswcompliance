@@ -8,6 +8,7 @@ from db_config import get_connection  # Unified PostgreSQL connection
 import json
 from typing import Dict, List, Optional, Tuple
 import os
+import psycopg2
 
 class DevelopmentPermissionsDB:
     def __init__(self, db_path: Optional[str] = None):
@@ -27,10 +28,11 @@ class DevelopmentPermissionsDB:
         try:
             # Get all permissions for the zone, grouped by status
             cursor.execute("""
-            SELECT development_type, permission_status, source_type, confidence_score
-            FROM development_permissions
-            WHERE zone = ? AND development_type IS NOT NULL
-            ORDER BY permission_status, development_type
+            SELECT DISTINCT development_type, provision_type, 'regulatory_provisions' as source_type, zone_confidence
+            FROM regulatory_provisions
+            WHERE zone = %s AND development_type IS NOT NULL AND is_current = true
+            ORDER BY zone_confidence DESC, development_type
+            LIMIT 50
             """, (zone,))
 
             results = cursor.fetchall()
@@ -47,28 +49,28 @@ class DevelopmentPermissionsDB:
 
             source_counts = {}
 
-            for dev_type, status, source_type, confidence in results:
-                # Clean up development type names (remove JSON artifacts)
-                clean_dev_type = dev_type.strip('[]"')
+            for dev_type, provision_type, source_type, confidence in results:
+                # Clean up development type names
+                clean_dev_type = dev_type.strip() if dev_type else 'general'
+                confidence = confidence or 0.5
 
-                if status == 'permitted':
-                    permissions['permitted_without_consent'].append({
-                        'development_type': clean_dev_type,
-                        'source': source_type,
-                        'confidence': confidence
-                    })
-                elif status == 'consent':
-                    permissions['permitted_with_consent'].append({
-                        'development_type': clean_dev_type,
-                        'source': source_type,
-                        'confidence': confidence
-                    })
-                elif status == 'prohibited':
-                    permissions['prohibited'].append({
-                        'development_type': clean_dev_type,
-                        'source': source_type,
-                        'confidence': confidence
-                    })
+                # Infer permission status from provision type
+                if provision_type and 'permitted' in provision_type.lower():
+                    category = 'permitted_without_consent'
+                elif provision_type and ('consent' in provision_type.lower() or 'approval' in provision_type.lower()):
+                    category = 'permitted_with_consent'
+                elif provision_type and 'prohibited' in provision_type.lower():
+                    category = 'prohibited'
+                else:
+                    # Default to consent required for unknown provisions
+                    category = 'permitted_with_consent'
+
+                permissions[category].append({
+                    'development_type': clean_dev_type,
+                    'source': source_type,
+                    'confidence': confidence,
+                    'provision_type': provision_type
+                })
 
                 # Track source distribution
                 source_counts[source_type] = source_counts.get(source_type, 0) + 1
@@ -85,7 +87,7 @@ class DevelopmentPermissionsDB:
 
             return permissions
 
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             return {
                 'error': f'Database error: {str(e)}',
                 'permitted_without_consent': [],
@@ -107,15 +109,17 @@ class DevelopmentPermissionsDB:
             clean_dev_type = development_type.strip().lower()
 
             cursor.execute("""
-            SELECT permission_status, source_type, confidence_score, conditions
-            FROM development_permissions
-            WHERE zone = ? AND (
-                LOWER(development_type) = ? OR
-                LOWER(development_type) LIKE ? OR
-                LOWER(development_type) LIKE ?
+            SELECT provision_text, 'regulatory_provisions' as source_type,
+                   zone_confidence, provision_type
+            FROM regulatory_provisions
+            WHERE zone = %s AND (
+                LOWER(development_type) = %s OR
+                LOWER(development_type) LIKE %s OR
+                LOWER(development_type) LIKE %s
             )
-            ORDER BY confidence_score DESC
-            LIMIT 3
+            AND is_current = true
+            ORDER BY zone_confidence DESC
+            LIMIT 5
             """, (zone, clean_dev_type, f'%{clean_dev_type}%', f'{clean_dev_type}%'))
 
             results = cursor.fetchall()
@@ -133,29 +137,42 @@ class DevelopmentPermissionsDB:
 
             # Return the highest confidence result
             best_result = results[0]
-            permission_status, source_type, confidence_score, conditions = best_result
+            provision_text, source_type, zone_confidence, provision_type = best_result
 
-            # Determine confidence level
-            if confidence_score >= 0.9:
+            # Determine confidence level based on zone_confidence
+            zone_confidence = zone_confidence or 0.5
+            if zone_confidence >= 0.9:
                 confidence_level = 'high'
-            elif confidence_score >= 0.7:
+            elif zone_confidence >= 0.7:
                 confidence_level = 'medium'
             else:
                 confidence_level = 'low'
+
+            # Infer permission status from provision text
+            provision_lower = provision_text.lower()
+            if 'permitted' in provision_lower and 'not permitted' not in provision_lower:
+                permission_status = 'permitted'
+            elif 'prohibited' in provision_lower or 'not permitted' in provision_lower:
+                permission_status = 'prohibited'
+            elif 'consent' in provision_lower:
+                permission_status = 'consent_required'
+            else:
+                permission_status = 'assessment_required'
 
             return {
                 'development_type': development_type,
                 'zone': zone,
                 'permission_status': permission_status,
                 'confidence': confidence_level,
-                'confidence_score': confidence_score,
+                'confidence_score': zone_confidence,
                 'source_type': source_type,
-                'conditions': conditions,
-                'message': f'{development_type} in {zone} is {permission_status}',
-                'alternatives': [r[0] for r in results[1:]] if len(results) > 1 else []
+                'provision_text': provision_text[:200] + '...' if len(provision_text) > 200 else provision_text,
+                'provision_type': provision_type,
+                'message': f'{development_type} in {zone} zone: {permission_status}',
+                'total_provisions_found': len(results)
             }
 
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             return {
                 'development_type': development_type,
                 'zone': zone,
@@ -181,7 +198,7 @@ class DevelopmentPermissionsDB:
             results = cursor.fetchall()
             return [row[0].strip('[]"') for row in results]
 
-        except sqlite3.Error:
+        except psycopg2.Error:
             return []
 
     def get_basic_conditions(self, zone: str, dev_type: str) -> List[str]:
@@ -202,7 +219,7 @@ class DevelopmentPermissionsDB:
 
             return conditions[:3]  # Return up to 3 conditions
 
-        except sqlite3.Error:
+        except psycopg2.Error:
             return []
         finally:
             conn.close()
@@ -246,7 +263,7 @@ class DevelopmentPermissionsDB:
 
             return stats
 
-        except sqlite3.Error as e:
+        except psycopg2.Error as e:
             return {'error': f'Database error: {str(e)}'}
         finally:
             conn.close()
