@@ -251,6 +251,10 @@ export class NSWPlanningPortalService {
             if (result['Zone']) {
               constraints.zone = result['Zone'];
             }
+            // Extract LGA from Land Zoning Map
+            if (result['LGA Name']) {
+              constraints.lga = result['LGA Name'];
+            }
             break;
             
           case 'Lot Size Map':
@@ -277,6 +281,17 @@ export class NSWPlanningPortalService {
             
           case 'Acid Sulfate Soils Map':
             constraints.acidSulfateSoils = result['Class'];
+            // Extract LGA from Acid Sulfate Soils Map
+            if (result['LGA Name']) {
+              constraints.lga = result['LGA Name'];
+            }
+            break;
+
+          case 'Land Application Map':
+            // Extract LGA from Land Application Map
+            if (result['LGA Name']) {
+              constraints.lga = result['LGA Name'];
+            }
             break;
             
           case 'Greater Sydney Tree Canopy Cover 2019':
