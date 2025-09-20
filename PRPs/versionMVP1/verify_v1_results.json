@@ -1,0 +1,49 @@
+{
+  "timestamp": "2025-09-20T10:51:43.922960",
+  "prp": "V1_DATABASE_FOUNDATION",
+  "checks": {
+    "schema_exists": true,
+    "tables": {
+      "versions.document_versions": true,
+      "versions.version_audit_log": true
+    },
+    "columns": {
+      "regulatory_provisions.version_id": true,
+      "regulatory_provisions.is_current": true,
+      "regulatory_provisions.version_effective_date": true,
+      "development_controls.version_id": true,
+      "development_controls.is_current": true,
+      "quantitative_standards.version_id": true,
+      "quantitative_standards.is_current": true
+    },
+    "indexes": {
+      "idx_version_lookup": true,
+      "idx_version_dates": true,
+      "idx_version_current": true,
+      "idx_provisions_version": true,
+      "idx_controls_version": true,
+      "idx_standards_version": true
+    },
+    "functions": {
+      "versions.get_current_version": true,
+      "versions.get_version_at_date": true,
+      "versions.log_version_change": true
+    },
+    "constraints": {
+      "unique_version": true,
+      "foreign_keys": true
+    },
+    "test_operations": {
+      "insert_version": true,
+      "function_call": true
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "success": true,
+  "summary": {
+    "total_errors": 0,
+    "total_warnings": 0,
+    "passed": true
+  }
+}
