@@ -80,7 +80,7 @@ export function PropertyPanel({ property, loading, error }: PropertyPanelProps) 
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">FSR Limit:</span>
               <span className="font-medium text-sm">
-                {property.fsr_limit ? `${property.fsr_limit}:1` : '0.6:1'}
+                {property.fsr_limit ? `${property.fsr_limit}:1 sq m` : '0.6:1 sq m'}
               </span>
             </div>
             {property.heritage_status && (
