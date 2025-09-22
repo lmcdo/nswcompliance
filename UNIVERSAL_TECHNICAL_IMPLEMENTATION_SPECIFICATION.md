@@ -33,6 +33,14 @@ NO COMMENTED-OUT FUNCTIONALITY: Remove or implement, never leave hanging
 VERIFICATION: Manual testing required for all code paths
 ```
 
+### **4. PROFESSIONAL CODE STANDARDS**
+```
+NO EMOJIS IN CODE: Absolutely no emojis in source code, comments, or documentation
+NO CASUAL LANGUAGE: Use professional, technical language only
+NO DECORATIVE CHARACTERS: No Unicode decorative symbols or special characters
+EXCEPTIONS: None - maintain professional standards throughout codebase
+```
+
 ---
 
 ## **SYSTEM ARCHITECTURE REQUIREMENTS**
