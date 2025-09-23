@@ -16,8 +16,10 @@ __pycache__/
 /coverage
 
 # next.js
-/.next/
-/out/
+.next/
+out/
+*/.next/
+frontend-nextjs/.next/
 
 # production
 /build
@@ -67,6 +69,7 @@ images/
 frontend-nextjs/node_modules/
 frontend-nextjs/.next/
 frontend-nextjs/.env.local
+nsw-assessment/
 
 # Build and cache files
 *.pack.gz
@@ -97,3 +100,19 @@ autoschema_multimodal_*.json
 *.pyc
 *.pyo
 .ruff_cache/
+
+# Backup and migration directories
+migratePRPs/
+PRPs/migratePRPs/
+backup/
+**/backup/
+results/
+
+# Long filename directories (Windows issue)
+prp_k9_complete_dcp_extraction/
+prp_k9_complete_lep_extraction/
+
+# Test and verification outputs
+verify_*.json
+*_results.json
+test_*.json

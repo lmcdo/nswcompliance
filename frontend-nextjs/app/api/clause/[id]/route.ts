@@ -51,7 +51,7 @@ export async function GET(
  const getAuthorityLevel = (docId: string): string => {
  const docIdUpper = docId?.toUpperCase() || '';
  if (docIdUpper.includes('SEPP')) return 'SEPP';
- if (docIdUpper.includes('LEP')) return 'LEP'; 
+ if (docIdUpper.includes('LEP') || docIdUpper.includes('LOCAL_ENVIRONMENTAL_PLAN')) return 'LEP'; 
  if (docIdUpper.includes('DCP')) return 'DCP';
  return 'DCP'; // Default assumption for most provisions
  };
