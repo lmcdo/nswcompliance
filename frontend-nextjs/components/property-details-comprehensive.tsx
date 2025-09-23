@@ -84,6 +84,26 @@ export function PropertyDetailsComprehensive() {
 
  const formatValue = (key: string, value: any) => {
  if (value === null || value === undefined) return 'N/A'
+
+ // Handle Regional Plan Website links
+ if (key === 'Regional Plan Website' && typeof value === 'string' && value.includes('&lt;a href=')) {
+ const decoded = value.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+ const linkMatch = decoded.match(/<a href="([^"]+)">([^<]+)<\/a>/)
+ if (linkMatch) {
+ const [, url, text] = linkMatch
+ return (
+ <a
+ href={url}
+ target="_blank"
+ rel="noopener noreferrer"
+ className="text-blue-600 hover:text-blue-800 underline font-medium"
+ >
+ {text}
+ </a>
+ )
+ }
+ }
+
  if (typeof value === 'string' && value.includes('&lt;')) {
  return value.replace(/&lt;/g, '<').replace(/&gt;/g, '>')
  }
@@ -159,13 +179,13 @@ export function PropertyDetailsComprehensive() {
  </Button>
 
  {expandedLayers.has(layer.id) && (
- <div className="border-t p-3 space-y-3">
+ <div className="border-t p-4 space-y-4">
  {layer.results.map((result, idx) => (
- <div key={idx} className="bg-gray-50 rounded p-3">
+ <div key={idx} className="bg-white border rounded-lg p-4 shadow-sm">
  {/* Important fields prominently displayed */}
- <div className="flex flex-wrap gap-2 mb-2">
+ <div className="flex flex-wrap gap-2 mb-3">
  {getImportantFields(result).map(({ key, value }) => (
- <Badge key={key} variant="default" className="text-xs">
+ <Badge key={key} variant="default" className="text-xs font-medium">
  {key}: {value}
  </Badge>
  ))}
@@ -173,15 +193,17 @@ export function PropertyDetailsComprehensive() {
 
  {/* Title if available and not redundant with important fields */}
  {result.title && result.title !== 'Canopy %' && (
- <div className="font-medium text-sm mb-2">{result.title}</div>
+ <h4 className="font-semibold text-base mb-3 text-gray-900">{result.title}</h4>
  )}
 
- {/* All other metadata in compact grid */}
- <div className="grid grid-cols-2 gap-1 text-xs">
+ {/* All other metadata in clean vertical layout */}
+ <div className="space-y-2">
  {getSecondaryFields(result).map(([key, value]) => (
- <div key={key} className="flex justify-between">
- <span className="text-gray-600 font-medium">{key}:</span>
- <span className="text-gray-900">{formatValue(key, value)}</span>
+ <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-100 pb-1">
+ <span className="text-gray-600 font-medium text-sm">{key}:</span>
+ <span className="text-gray-900 text-sm sm:text-right max-w-xs break-words">
+ {typeof formatValue(key, value) === 'object' ? formatValue(key, value) : formatValue(key, value)}
+ </span>
  </div>
  ))}
  </div>

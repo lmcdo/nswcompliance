@@ -145,7 +145,7 @@ export function PropertyCard() {
  <span className="text-xs font-medium text-purple-900">Max Height</span>
  </div>
  <div className="text-sm font-semibold text-purple-900">
- {property.maxHeight ? `${property.maxHeight}m` : 'N/A'}
+ {property.maxHeight !== null && property.maxHeight !== undefined ? `${property.maxHeight}m` : 'N/A'}
  </div>
  </div>
 
@@ -156,7 +156,7 @@ export function PropertyCard() {
  <span className="text-xs font-medium text-indigo-900">Max FSR</span>
  </div>
  <div className="text-sm font-semibold text-indigo-900">
- {property.maxFsr ? `${property.maxFsr}:1` : 'N/A'}
+ {property.maxFsr !== null && property.maxFsr !== undefined ? `${property.maxFsr}:1 sq m` : 'N/A'}
  </div>
  </div>
 
