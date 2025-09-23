@@ -1,0 +1,138 @@
+{
+  "timestamp": "2025-09-20T17:41:20.846268",
+  "prp": "F4",
+  "objective": "Provision Linking Completion",
+  "success": false,
+  "actions_taken": [
+    "Analyzed unlinked provisions",
+    "Created document identifier normalization function",
+    "Enabled similarity extension",
+    "Found 0 document matches"
+  ],
+  "errors": [],
+  "warnings": [],
+  "statistics": {
+    "initial": {
+      "total_provisions": 44210,
+      "linked_provisions": 34290,
+      "unlinked_provisions": 9920,
+      "link_percentage": 77.56163763854332,
+      "unlinked_samples": [
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Planning_Systems)_2021___NSW_Legislation",
+          "provision_count": 720,
+          "sample": "State_Environmental_Planning_Policy_(Planning_Syst"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Industry_and_Employment)_2021___NSW_Legislation",
+          "provision_count": 710,
+          "sample": "State_Environmental_Planning_Policy_(Industry_and_"
+        },
+        {
+          "document_id": "unknown",
+          "provision_count": 702,
+          "sample": "unknown"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Primary_Production)_2021___NSW_Legislation",
+          "provision_count": 406,
+          "sample": "State_Environmental_Planning_Policy_(Primary_Produ"
+        },
+        {
+          "document_id": "Chapter_E2_Haberfield_Neighbourhood",
+          "provision_count": 368,
+          "sample": "Chapter_E2_Haberfield_Neighbourhood"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Resilience_and_Hazards)_2021___NSW_Legislation",
+          "provision_count": 300,
+          "sample": "State_Environmental_Planning_Policy_(Resilience_an"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_6",
+          "provision_count": 282,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Sustainable_Buildings)_2022___NSW_Legislation",
+          "provision_count": 260,
+          "sample": "State_Environmental_Planning_Policy_(Sustainable_B"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_2",
+          "provision_count": 190,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_5",
+          "provision_count": 190,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_12",
+          "provision_count": 184,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_1",
+          "provision_count": 146,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Housing)_2021___NSW_Legislation_section_27",
+          "provision_count": 144,
+          "sample": "State_Environmental_Planning_Policy_(Housing)_2021"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_9",
+          "provision_count": 144,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "LE9962_1",
+          "provision_count": 124,
+          "sample": "LE9962_1"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_21",
+          "provision_count": 118,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_32",
+          "provision_count": 112,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_19",
+          "provision_count": 108,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_25",
+          "provision_count": 104,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        },
+        {
+          "document_id": "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_41",
+          "provision_count": 102,
+          "sample": "State_Environmental_Planning_Policy_(Exempt_and_Co"
+        }
+      ]
+    },
+    "matches": {
+      "count": 0,
+      "matches": []
+    },
+    "final": {
+      "total_provisions": 44210,
+      "linked_provisions": 34290,
+      "unlinked_provisions": 9920,
+      "link_percentage": 77.56163763854332,
+      "total_versions": 104,
+      "linked_documents": 249,
+      "unlinked_documents": 208,
+      "success_criteria_met": false
+    }
+  }
+}

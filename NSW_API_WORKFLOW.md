@@ -8,7 +8,7 @@ https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/address?a=34%20Pi
 ```
 **Returns:** `propId` and `GURASID`
 
-### 2. Lot Details  
+### 2. Lot Details 
 ```
 https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot?propId=1922183
 ```
@@ -26,17 +26,17 @@ This endpoint returns **11 planning layers** including:
 
 ### SEPPs (State Environmental Planning Policies)
 - **SEPP (Sustainable Buildings) 2022** - Climate Zones for BASIX Buildings Map
-- **SEPP (Sustainable Buildings) 2022** - Climate Zones for BASIX Alterations Map  
+- **SEPP (Sustainable Buildings) 2022** - Climate Zones for BASIX Alterations Map 
 - **SEPP (Sustainable Buildings) 2022** - Water Use Map
 - **SEPP (Transport and Infrastructure) 2021** - Thermal Energy from Waste Prohibition
 
 ### LEP Controls (Local Environmental Plan)
 - **Inner West Local Environmental Plan 2022**
-  - Land Zoning Map: R1 General Residential
-  - Floor Space Ratio Map: 0.5:1 + Area 5 controls
-  - Key Sites Map: Area 1 (Clauses 4.3C, 4.4, 6.14, 6.15)
-  - Lot Size Map: 200 m²
-  - Acid Sulfate Soils Map: Class 5
+ - Land Zoning Map: R1 General Residential
+ - Floor Space Ratio Map: 0.5:1 + Area 5 controls
+ - Key Sites Map: Area 1 (Clauses 4.3C, 4.4, 6.14, 6.15)
+ - Lot Size Map: 200 m²
+ - Acid Sulfate Soils Map: Class 5
 
 ### Environmental Data
 - Greater Sydney Tree Canopy Cover (2019 & 2022)

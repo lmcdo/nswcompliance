@@ -1,15 +1,15 @@
-# 🚀 Full Guide to Using Claude Code
+# Full Guide to Using Claude Code
 
 Everything you need to know to crush building anything with Claude Code! This guide takes you from installation through advanced context engineering, subagents, hooks, and parallel agent workflows.
 
-## 📋 Prerequisites
+## Prerequisites
 
 - Terminal/Command line access
 - Node.js installed (for Claude Code installation)
 - GitHub account (for GitHub CLI integration)
 - Text editor (VS Code recommended)
 
-## 🔧 Installation
+## Installation
 
 **macOS/Linux:**
 ```bash
@@ -26,7 +26,7 @@ claude --version
 
 ---
 
-## ✅ TIP 1: CREATE AND OPTIMIZE CLAUDE.md FILES
+## TIP 1: CREATE AND OPTIMIZE CLAUDE.md FILES
 
 Set up context files that Claude automatically pulls into every conversation, containing project-specific information, commands, and guidelines.
 
@@ -67,13 +67,13 @@ Claude automatically reads CLAUDE.md files from multiple locations:
 
 ```bash
 # Root of repository (most common)
-./CLAUDE.md              # Checked into git, shared with team
-./CLAUDE.local.md        # Local only, add to .gitignore
+./CLAUDE.md # Checked into git, shared with team
+./CLAUDE.local.md # Local only, add to .gitignore
 
 # Parent directories (for monorepos)
-root/CLAUDE.md           # General project info
-root/frontend/CLAUDE.md  # Frontend-specific context
-root/backend/CLAUDE.md   # Backend-specific context
+root/CLAUDE.md # General project info
+root/frontend/CLAUDE.md # Frontend-specific context
+root/backend/CLAUDE.md # Backend-specific context
 
 # Reference external files for flexibility
 echo "Follow best practices in: ~/company/engineering-standards.md" > CLAUDE.md
@@ -88,7 +88,7 @@ echo "Follow best practices in: ~/company/engineering-standards.md" > CLAUDE.md
 
 ---
 
-## ✅ TIP 2: SET UP PERMISSION MANAGEMENT
+## TIP 2: SET UP PERMISSION MANAGEMENT
 
 Configure tool allowlists to streamline development while maintaining security for file operations and system commands.
 
@@ -110,16 +110,16 @@ Then add:
 Create `.claude/settings.local.json`:
 ```json
 {
-  "allowedTools": [
-    "Edit",
-    "Read",
-    "Write",
-    "Bash(git add:*)",
-    "Bash(git commit:*)",
-    "Bash(npm:*)",
-    "Bash(python:*)",
-    "Bash(pytest:*)"
-  ]
+ "allowedTools": [
+ "Edit",
+ "Read",
+ "Write",
+ "Bash(git add:*)",
+ "Bash(git commit:*)",
+ "Bash(npm:*)",
+ "Bash(python:*)",
+ "Bash(pytest:*)"
+ ]
 }
 ```
 
@@ -133,7 +133,7 @@ Create `.claude/settings.local.json`:
 
 ---
 
-## ✅ TIP 3: MASTER CUSTOM SLASH COMMANDS
+## TIP 3: MASTER CUSTOM SLASH COMMANDS
 
 Slash commands are the key to adding your own workflows into Claude Code. They live in `.claude/commands/` and enable you to create reusable, parameterized workflows.
 
@@ -178,7 +178,7 @@ Commands can use `$ARGUMENTS` to receive parameters and can invoke any of Claude
 
 ---
 
-## ✅ TIP 4: INTEGRATE MCP SERVERS
+## TIP 4: INTEGRATE MCP SERVERS
 
 Connect Claude Code to Model Context Protocol (MCP) servers for enhanced functionality. Learn more in the [MCP documentation](https://docs.anthropic.com/en/docs/claude-code/mcp).
 
@@ -219,7 +219,7 @@ claude mcp remove serena
 
 ---
 
-## ✅ TIP 5: CONTEXT ENGINEERING WITH EXAMPLES
+## TIP 5: CONTEXT ENGINEERING WITH EXAMPLES
 
 Transform your development workflow from simple prompting to comprehensive context engineering - providing AI with all the information needed for end-to-end implementation.
 
@@ -276,7 +276,7 @@ The more specific examples you provide, the better Claude can match your existin
 
 ---
 
-## ✅ TIP 6: LEVERAGE SUBAGENTS FOR SPECIALIZED TASKS
+## TIP 6: LEVERAGE SUBAGENTS FOR SPECIALIZED TASKS
 
 Subagents are specialized AI assistants that operate in separate context windows with focused expertise. They enable Claude to delegate specific tasks to experts, improving quality and efficiency.
 
@@ -334,7 +334,7 @@ description: "Code reviewer. Proactively reviews all code changes for quality."
 
 **3. Tool Limitations**: Only give subagents the tools they need:
 ```yaml
-tools: Read, Grep  # No write access for review-only agents
+tools: Read, Grep # No write access for review-only agents
 ```
 
 **4. Information Flow Design**: Understand how information flows from primary agent → subagent → primary agent. The subagent description is crucial because it tells your primary Claude Code agent when and how to use it. Include clear instructions in the description for how the primary agent should prompt this subagent.
@@ -347,7 +347,7 @@ Learn more in the [Subagents documentation](https://docs.anthropic.com/en/docs/c
 
 ---
 
-## ✅ TIP 7: AUTOMATE WITH HOOKS
+## TIP 7: AUTOMATE WITH HOOKS
 
 Hooks provide deterministic control over Claude Code's behavior through user-defined shell commands that execute at predefined lifecycle events.
 
@@ -355,7 +355,7 @@ Hooks provide deterministic control over Claude Code's behavior through user-def
 
 Claude Code provides several predefined actions you can hook into:
 - **PreToolUse**: Before tool execution (can block operations)
-- **PostToolUse**: After successful tool completion  
+- **PostToolUse**: After successful tool completion 
 - **UserPromptSubmit**: When user submits a prompt
 - **SubagentStop**: When a subagent completes its task
 - **Stop**: When the main agent finishes responding
@@ -385,19 +385,19 @@ This repository includes a simple hook example in `.claude/hooks/`:
 
 ```json
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": ".*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/log-tool-usage.sh"
-          }
-        ]
-      }
-    ]
-  }
+ "hooks": {
+ "PostToolUse": [
+ {
+ "matcher": ".*",
+ "hooks": [
+ {
+ "type": "command",
+ "command": ".claude/hooks/log-tool-usage.sh"
+ }
+ ]
+ }
+ ]
+ }
 }
 ```
 
@@ -407,7 +407,7 @@ Hooks ensure certain actions always happen, rather than relying on the AI to rem
 
 ---
 
-## ✅ TIP 8: GITHUB CLI INTEGRATION
+## TIP 8: GITHUB CLI INTEGRATION
 
 Set up the GitHub CLI to enable Claude to interact with GitHub for issues, pull requests, and repository management.
 
@@ -442,7 +442,7 @@ This will:
 
 ---
 
-## ✅ TIP 9: SAFE YOLO MODE WITH DEV CONTAINERS
+## TIP 9: SAFE YOLO MODE WITH DEV CONTAINERS
 
 Allow Claude Code to perform any action while maintaining safety through containerization. This enables rapid development without destructive behavior on your host machine.
 
@@ -464,9 +464,9 @@ Allow Claude Code to perform any action while maintaining safety through contain
 4. **Open terminal** (`Ctrl+J`)
 5. **Authenticate** Claude Code in container
 6. **Run in YOLO mode**:
-   ```bash
-   claude --dangerously-skip-permissions
-   ```
+ ```bash
+ claude --dangerously-skip-permissions
+ ```
 
 **Why Use Dev Containers?**
 - Test dangerous operations safely
@@ -477,7 +477,7 @@ Allow Claude Code to perform any action while maintaining safety through contain
 
 ---
 
-## ✅ TIP 10: PARALLEL DEVELOPMENT WITH GIT WORKTREES
+## TIP 10: PARALLEL DEVELOPMENT WITH GIT WORKTREES
 
 Use Git worktrees to enable multiple Claude instances working on independent tasks simultaneously, or automate parallel implementations of the same feature.
 
@@ -489,8 +489,8 @@ git worktree add ../project-auth feature/auth
 git worktree add ../project-api feature/api
 
 # Launch Claude in each worktree
-cd ../project-auth && claude  # Terminal 1
-cd ../project-api && claude   # Terminal 2
+cd ../project-auth && claude # Terminal 1
+cd ../project-api && claude # Terminal 2
 ```
 
 ### Automated Parallel Agents
@@ -532,7 +532,7 @@ git merge user-system-2
 
 ---
 
-## 🎯 Quick Command Reference
+## Quick Command Reference
 
 | Command | Purpose |
 |---------|---------|
@@ -553,7 +553,7 @@ git merge user-system-2
 
 ---
 
-## 📚 Additional Resources
+## Additional Resources
 
 - [Claude Code Documentation](https://docs.anthropic.com/en/docs/claude-code)
 - [Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
@@ -561,7 +561,7 @@ git merge user-system-2
 
 ---
 
-## 🚀 Next Steps
+## Next Steps
 
 1. **Start Simple**: Set up CLAUDE.md and basic permissions
 2. **Add Slash Commands**: Create custom commands for your workflow
@@ -570,4 +570,4 @@ git merge user-system-2
 5. **Configure Hooks**: Automate repetitive tasks
 6. **Try Parallel Development**: Experiment with multiple approaches
 
-Remember: Claude Code is most powerful when you provide clear context, specific examples, and comprehensive validation. Happy coding! 🎉
+Remember: Claude Code is most powerful when you provide clear context, specific examples, and comprehensive validation. Happy coding! 

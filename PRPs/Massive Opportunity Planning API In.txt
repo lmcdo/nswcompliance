@@ -1,164 +1,164 @@
 Massive Opportunity: Planning API Integration Changes Everything
 
-  With the Planning API providing zone, FSR, height, and other key
-  data, your app becomes significantly more valuable:
+ With the Planning API providing zone, FSR, height, and other key
+ data, your app becomes significantly more valuable:
 
-  What Planning API Provides (Already Solved):
+ What Planning API Provides (Already Solved):
 
-  // From Planning API for property 1972074:
-  {
-    zone: "R2",
-    height_limit: "9.5m",
-    fsr: "0.6:1",
-    lep: "Inner West LEP 2022",
-    sepp_overlays: ["Sustainable Buildings", "Transport &
-  Infrastructure"],
-    tree_canopy: "13.23%",
-    geometry: [polygon coordinates]
-  }
+ // From Planning API for property 1972074:
+ {
+ zone: "R2",
+ height_limit: "9.5m",
+ fsr: "0.6:1",
+ lep: "Inner West LEP 2022",
+ sepp_overlays: ["Sustainable Buildings", "Transport &
+ Infrastructure"],
+ tree_canopy: "13.23%",
+ geometry: [polygon coordinates]
+ }
 
-  Your Database + Planning API = Complete Solution
+ Your Database + Planning API = Complete Solution
 
-  New Architecture:
-  def get_property_compliance(property_id):
-      # 1. Get zone/height/FSR from Planning API
-      api_data = planning_api.get_property(property_id)  # R2, 9.5m,
-  0.6:1
+ New Architecture:
+ def get_property_compliance(property_id):
+ # 1. Get zone/height/FSR from Planning API
+ api_data = planning_api.get_property(property_id) # R2, 9.5m,
+ 0.6:1
 
-      # 2. Query your database for provisions
-      provisions = db.query(f"""
-          SELECT * FROM regulatory_provisions
-          WHERE provision_text LIKE '%{api_data.zone}%'
-          OR provision_text LIKE '%residential%'
-          OR document_area = '{api_data.lga}'
-      """)
+ # 2. Query your database for provisions
+ provisions = db.query(f"""
+ SELECT * FROM regulatory_provisions
+ WHERE provision_text LIKE '%{api_data.zone}%'
+ OR provision_text LIKE '%residential%'
+ OR document_area = '{api_data.lga}'
+ """)
 
-      # 3. Get quantitative standards
-      standards = db.query(f"""
-          SELECT * FROM quantitative_standards
-          WHERE numeric_value <= {api_data.height_limit}
-      """)
+ # 3. Get quantitative standards
+ standards = db.query(f"""
+ SELECT * FROM quantitative_standards
+ WHERE numeric_value <= {api_data.height_limit}
+ """)
 
-      return combine_results(api_data, provisions, standards)
+ return combine_results(api_data, provisions, standards)
 
-  Viable Use Cases Now:
+ Viable Use Cases Now:
 
-  1. Compliance Pre-Check ✅
-  user_input = "123 Smith St, Marrickville"
-  result = {
-      "zone": "R2 (from API)",
-      "max_height": "9.5m (from API)",
-      "fsr": "0.6:1 (from API)",
-      "additional_requirements": [
-          "Marrickville DCP setbacks apply (from your DB)",
-          "SEPP Sustainable Buildings water efficiency 40% (from API)",
-          "Heritage considerations may apply (from your DB)"
-      ],
-      "confidence": "HIGH - official data + local provisions"
-  }
+ 1. Compliance Pre-Check 
+ user_input = "123 Smith St, Marrickville"
+ result = {
+ "zone": "R2 (from API)",
+ "max_height": "9.5m (from API)",
+ "fsr": "0.6:1 (from API)",
+ "additional_requirements": [
+ "Marrickville DCP setbacks apply (from your DB)",
+ "SEPP Sustainable Buildings water efficiency 40% (from API)",
+ "Heritage considerations may apply (from your DB)"
+ ],
+ "confidence": "HIGH - official data + local provisions"
+ }
 
-  2. Development Feasibility Calculator ✅
-  # Combine API geometry with your provisions
-  lot_area = calculate_from_api_geometry()  # 450sqm
-  max_gfa = lot_area * api_fsr  # 270sqm
-  height_limit = api_height  # 9.5m
-  setbacks = your_db_provisions  # 6m front, 1.5m side
+ 2. Development Feasibility Calculator 
+ # Combine API geometry with your provisions
+ lot_area = calculate_from_api_geometry() # 450sqm
+ max_gfa = lot_area * api_fsr # 270sqm
+ height_limit = api_height # 9.5m
+ setbacks = your_db_provisions # 6m front, 1.5m side
 
-  feasibility = {
-      "max_floor_area": "270sqm",
-      "max_height": "9.5m (approx 2-3 storeys)",
-      "buildable_area": "315sqm after setbacks",
-      "development_potential": "Dual occupancy feasible"
-  }
+ feasibility = {
+ "max_floor_area": "270sqm",
+ "max_height": "9.5m (approx 2-3 storeys)",
+ "buildable_area": "315sqm after setbacks",
+ "development_potential": "Dual occupancy feasible"
+ }
 
-  3. Intelligent Document Routing ✅
-  # API tells you zone/overlays, you provide relevant docs
-  property_context = planning_api.get_context(property_id)
-  relevant_docs = match_documents_to_context(property_context)
+ 3. Intelligent Document Routing 
+ # API tells you zone/overlays, you provide relevant docs
+ property_context = planning_api.get_context(property_id)
+ relevant_docs = match_documents_to_context(property_context)
 
-  return {
-      "must_read": [
-          "Inner West LEP 2022 Clause 4.3 & 4.4 (your height/FSR)",
-          "Marrickville DCP Section 2.10 (R2 controls)"
-      ],
-      "may_apply": [
-          "SEPP Housing (if subdividing)",
-          "SEPP Sustainable Buildings (water/energy)"
-      ]
-  }
+ return {
+ "must_read": [
+ "Inner West LEP 2022 Clause 4.3 & 4.4 (your height/FSR)",
+ "Marrickville DCP Section 2.10 (R2 controls)"
+ ],
+ "may_apply": [
+ "SEPP Housing (if subdividing)",
+ "SEPP Sustainable Buildings (water/energy)"
+ ]
+ }
 
-  4. Compliance Gap Analysis ✅
-  # Compare API limits with your extracted standards
-  api_height = 9.5  # from API
-  dcp_heights = query_your_standards("height", "Marrickville")
+ 4. Compliance Gap Analysis 
+ # Compare API limits with your extracted standards
+ api_height = 9.5 # from API
+ dcp_heights = query_your_standards("height", "Marrickville")
 
-  gaps = {
-      "LEP_height": "9.5m",
-      "DCP_guidance": "8.5m preferred, 9.5m maximum",
-      "recommendation": "Design to 8.5m for smoother approval"
-  }
+ gaps = {
+ "LEP_height": "9.5m",
+ "DCP_guidance": "8.5m preferred, 9.5m maximum",
+ "recommendation": "Design to 8.5m for smoother approval"
+ }
 
-  Revolutionary Hybrid Approach:
+ Revolutionary Hybrid Approach:
 
-  Your Unique Value = API Data + Local Knowledge
+ Your Unique Value = API Data + Local Knowledge
 
-  class ComplianceEngine:
-      def analyze_property(self, address):
-          # 1. Get official data from API
-          official = planning_api.get_all(address)
+ class ComplianceEngine:
+ def analyze_property(self, address):
+ # 1. Get official data from API
+ official = planning_api.get_all(address)
 
-          # 2. Enhance with your database
-          local_provisions = self.get_area_provisions(official['lga'])
-          dcp_requirements = self.get_dcp_controls(official['zone'])
-          similar_das = self.find_similar_approvals(official)
+ # 2. Enhance with your database
+ local_provisions = self.get_area_provisions(official['lga'])
+ dcp_requirements = self.get_dcp_controls(official['zone'])
+ similar_das = self.find_similar_approvals(official)
 
-          # 3. Combine for comprehensive view
-          return {
-              "official_limits": official,  # What you CAN do
-              "local_guidance": dcp_requirements,  # What council WANTS
-              "precedents": similar_das,  # What others HAVE done
-              "risk_factors": self.identify_risks(official,
-  local_provisions)
-          }
+ # 3. Combine for comprehensive view
+ return {
+ "official_limits": official, # What you CAN do
+ "local_guidance": dcp_requirements, # What council WANTS
+ "precedents": similar_das, # What others HAVE done
+ "risk_factors": self.identify_risks(official,
+ local_provisions)
+ }
 
-  Business Model Transformation:
+ Business Model Transformation:
 
-  Before: Research tool ($50-200/month)
-  Now: Professional compliance platform ($500-2000/month)
+ Before: Research tool ($50-200/month)
+ Now: Professional compliance platform ($500-2000/month)
 
-  Value Proposition:
-  "Official planning data enhanced with local interpretations and
-  precedents"
+ Value Proposition:
+ "Official planning data enhanced with local interpretations and
+ precedents"
 
-  Implementation Priority:
+ Implementation Priority:
 
-  1. Immediate Win: Zone-based provision matching
-  # Since API gives you zone, you can now use your 22,105 provisions
-  api_zone = "R2"  # from API
-  relevant = search_provisions_by_keywords(["R2", "residential",
-  "dwelling"])
+ 1. Immediate Win: Zone-based provision matching
+ # Since API gives you zone, you can now use your 22,105 provisions
+ api_zone = "R2" # from API
+ relevant = search_provisions_by_keywords(["R2", "residential",
+ "dwelling"])
 
-  2. Quick Value: Setback calculator using API geometry
-  lot_geometry = api.get_geometry(property_id)
-  setback_requirements = your_db.get_setbacks(zone="R2")
-  buildable_area = calculate_buildable_envelope(lot_geometry,
-  setback_requirements)
+ 2. Quick Value: Setback calculator using API geometry
+ lot_geometry = api.get_geometry(property_id)
+ setback_requirements = your_db.get_setbacks(zone="R2")
+ buildable_area = calculate_buildable_envelope(lot_geometry,
+ setback_requirements)
 
-  3. Game Changer: Automated compliance reports
-  def generate_report(property_id):
-      api_data = planning_api.get_all(property_id)
-      local_data = your_database.get_relevant(api_data)
-      return professional_report(api_data + local_data)
+ 3. Game Changer: Automated compliance reports
+ def generate_report(property_id):
+ api_data = planning_api.get_all(property_id)
+ local_data = your_database.get_relevant(api_data)
+ return professional_report(api_data + local_data)
 
-  The Bottom Line:
+ The Bottom Line:
 
-  Planning API + Your Database = 80% Automated Compliance
+ Planning API + Your Database = 80% Automated Compliance
 
-  The 0.9% zone extraction doesn't matter anymore because:
-  - Planning API provides the zone
-  - You use zone to filter provisions
-  - You provide context API doesn't have
-  - Together = comprehensive compliance tool
+ The 0.9% zone extraction doesn't matter anymore because:
+ - Planning API provides the zone
+ - You use zone to filter provisions
+ - You provide context API doesn't have
+ - Together = comprehensive compliance tool
 
-  This changes everything from "search tool" to "compliance platform"
-  with real commercial value.
+ This changes everything from "search tool" to "compliance platform"
+ with real commercial value.

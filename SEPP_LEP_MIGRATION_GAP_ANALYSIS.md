@@ -1,8 +1,8 @@
 # SEPP/LEP Migration Gap Analysis Report
 
-**Date:** 2025-09-08  
-**Analysis:** Document type distribution and authority hierarchy gaps  
-**Status:** 🚨 CRITICAL MIGRATION GAP IDENTIFIED  
+**Date:** 2025-09-08 
+**Analysis:** Document type distribution and authority hierarchy gaps 
+**Status:** CRITICAL MIGRATION GAP IDENTIFIED 
 
 ## Executive Summary
 
@@ -44,10 +44,10 @@ The analysis of your SQLite source database reveals a **critical authority hiera
 
 The missing SEPP/LEP provisions mean your compliance engine currently:
 
-❌ **Cannot enforce SEPP overrides** (highest legal precedence)  
-❌ **Cannot enforce LEP overrides** (second precedence)  
-❌ **Only uses DCP provisions** (lowest precedence)  
-❌ **May provide legally incorrect compliance advice**  
+ **Cannot enforce SEPP overrides** (highest legal precedence) 
+ **Cannot enforce LEP overrides** (second precedence) 
+ **Only uses DCP provisions** (lowest precedence) 
+ **May provide legally incorrect compliance advice** 
 
 ## Specific SEPP Examples That Should Override DCP Rules
 
@@ -70,7 +70,7 @@ The missing SEPP/LEP provisions mean your compliance engine currently:
 
 The 414 zone-targeted SEPP provisions affect these zones:
 - **Residential:** R1, R2, R3, R4, R5, RE1, RE2
-- **Business:** B1, B2, B3, B4  
+- **Business:** B1, B2, B3, B4 
 - **Commercial:** C1
 - **Employment:** IN1, IN2
 - **Environmental:** E1, E2, E3, E5
@@ -81,7 +81,7 @@ The 414 zone-targeted SEPP provisions affect these zones:
 
 The 379 development type-targeted SEPP provisions affect:
 - Single dwelling
-- Dual occupancy  
+- Dual occupancy 
 - Multi dwelling housing
 - Residential flat building
 - Apartment
@@ -92,34 +92,34 @@ The 379 development type-targeted SEPP provisions affect:
 
 ### Immediate Actions Required
 
-1. **🚨 Halt Production Deployment** - The compliance engine is legally incomplete without SEPP/LEP hierarchy
+1. ** Halt Production Deployment** - The compliance engine is legally incomplete without SEPP/LEP hierarchy
 
 2. **Implement Authority Hierarchy Schema:**
-   ```sql
-   ALTER TABLE regulatory_provisions ADD COLUMN authority_level INTEGER;
-   -- 1 = SEPP (highest precedence)
-   -- 2 = LEP (medium precedence) 
-   -- 3 = DCP (lowest precedence)
-   ```
+ ```sql
+ ALTER TABLE regulatory_provisions ADD COLUMN authority_level INTEGER;
+ -- 1 = SEPP (highest precedence)
+ -- 2 = LEP (medium precedence) 
+ -- 3 = DCP (lowest precedence)
+ ```
 
 3. **Fix Migration Pipeline:**
-   - Debug why 4,438 provisions failed to migrate
-   - Implement SEPP-specific migration logic
-   - Add LEP migration with proper authority classification
+ - Debug why 4,438 provisions failed to migrate
+ - Implement SEPP-specific migration logic
+ - Add LEP migration with proper authority classification
 
 4. **Implement Override Resolution Logic:**
-   ```sql
-   -- Example: Get highest authority rule for a zone/development type
-   SELECT * FROM regulatory_provisions 
-   WHERE zone = ? AND development_type = ?
-   ORDER BY authority_level ASC  -- SEPP (1) wins over LEP (2) wins over DCP (3)
-   LIMIT 1;
-   ```
+ ```sql
+ -- Example: Get highest authority rule for a zone/development type
+ SELECT * FROM regulatory_provisions 
+ WHERE zone = ? AND development_type = ?
+ ORDER BY authority_level ASC -- SEPP (1) wins over LEP (2) wins over DCP (3)
+ LIMIT 1;
+ ```
 
 ### Migration Priority Order
 
 1. **Phase 1:** Migrate all 4,237 SEPP provisions with authority_level = 1
-2. **Phase 2:** Migrate LEP provisions with authority_level = 2  
+2. **Phase 2:** Migrate LEP provisions with authority_level = 2 
 3. **Phase 3:** Ensure existing DCP provisions have authority_level = 3
 4. **Phase 4:** Implement compliance engine override logic
 

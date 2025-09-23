@@ -16,7 +16,7 @@ Diagrams in planning documents have varying applicability scope - some apply to 
 **Applicability**: Properties within C54 Haberfield Heritage Conservation Area only
 **Justification Method**: Property address → zoning lookup → heritage overlay check
 
-### 2. **Zone-Wide Diagrams** (Medium Confidence)  
+### 2. **Zone-Wide Diagrams** (Medium Confidence) 
 **General Development Controls:**
 - Map 1: "Extent of Land where this DCP applies"
 - Generic setback diagrams not specific to heritage areas
@@ -55,7 +55,7 @@ Property Address Input → Spatial Query → Returns:
 ### Step 2: Diagram Prioritization
 ```
 1. Site-Specific (Exact address match)
-2. Heritage Area-Specific (Heritage overlay match)  
+2. Heritage Area-Specific (Heritage overlay match) 
 3. Zone-Specific (Zoning classification match)
 4. Universal/Generic (Default fallback)
 ```
@@ -63,7 +63,7 @@ Property Address Input → Spatial Query → Returns:
 ### Step 3: Confidence Scoring
 ```
 - Exact Address Match: 95% confidence
-- Heritage Overlay Match: 85% confidence  
+- Heritage Overlay Match: 85% confidence 
 - Zone Classification Match: 70% confidence
 - Generic Application: 40% confidence
 ```
@@ -73,16 +73,16 @@ Property Address Input → Spatial Query → Returns:
 ### Data Structure Needed
 ```json
 {
-  "diagram_id": "figure_3_haberfield_structures",
-  "source_document": "Chapter E2 Haberfield Neighbourhood",
-  "applicability": {
-    "type": "heritage_area",
-    "area_code": "C54",
-    "area_name": "Haberfield Heritage Conservation Area",
-    "confidence": 85
-  },
-  "extracted_measurements": ["6m setback", "single storey", "nil side setbacks not permitted"],
-  "regulatory_context": "new structure placement controls"
+ "diagram_id": "figure_3_haberfield_structures",
+ "source_document": "Chapter E2 Haberfield Neighbourhood",
+ "applicability": {
+ "type": "heritage_area",
+ "area_code": "C54",
+ "area_name": "Haberfield Heritage Conservation Area",
+ "confidence": 85
+ },
+ "extracted_measurements": ["6m setback", "single storey", "nil side setbacks not permitted"],
+ "regulatory_context": "new structure placement controls"
 }
 ```
 
@@ -94,16 +94,16 @@ Property Address Input → Spatial Query → Returns:
 ## Quality Assurance Rules
 
 ### High Confidence Use Cases
-✅ **Haberfield property + Figure 3** = Strong match (heritage area specific)
-✅ **140A Hawthorne Parade + Figure 13** = Perfect match (exact address)
+ **Haberfield property + Figure 3** = Strong match (heritage area specific)
+ **140A Hawthorne Parade + Figure 13** = Perfect match (exact address)
 
 ### Medium Confidence Use Cases
-⚠️ **Generic R2 property + General setback diagram** = Reasonable match
-⚠️ **Commercial zone + Commercial building diagram** = Applicable
+ **Generic R2 property + General setback diagram** = Reasonable match
+ **Commercial zone + Commercial building diagram** = Applicable
 
 ### Low Confidence/Warning Cases
-❌ **Non-heritage property + Heritage-specific diagram** = Mismatch
-❌ **Residential property + Commercial diagram** = Invalid application
+ **Non-heritage property + Heritage-specific diagram** = Mismatch
+ **Residential property + Commercial diagram** = Invalid application
 
 ## User Interface Implications
 - Always show confidence score: "This diagram applies with 85% confidence"

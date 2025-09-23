@@ -1,6 +1,6 @@
 # 4-Stack RAG System - Quick Reference
 
-## Current Status: 95% COMPLETE ✅
+## Current Status: 95% COMPLETE 
 **Last Updated:** 2025-08-30
 **CRITICAL UPDATE:** Integration files found! Gap reduced from 20% to 5%!
 
@@ -8,10 +8,10 @@
 
 | Stack | Package | Status | Location | Action Needed |
 |-------|---------|--------|----------|---------------|
-| **LightRAG** | `lightrag-hku==1.4.7` | ✅ WORKING | `./validated_nsw_processor_*/` | None |
-| **AutoSchemaKG** | Data only (no package) | ✅ DATA READY | `./autoschemakg_output/` | Load CSVs |
-| **RAG-Anything** | `raganything==1.2.5` | ✅ INSTALLED | `venv_linux/Lib/site-packages/` | Integrate |
-| **LangExtract** | `langextract==1.0.8` | ✅ INSTALLED | pip package | Integrate |
+| **LightRAG** | `lightrag-hku==1.4.7` | WORKING | `./validated_nsw_processor_*/` | None |
+| **AutoSchemaKG** | Data only (no package) | DATA READY | `./autoschemakg_output/` | Load CSVs |
+| **RAG-Anything** | `raganything==1.2.5` | INSTALLED | `venv_linux/Lib/site-packages/` | Integrate |
+| **LangExtract** | `langextract==1.0.8` | INSTALLED | pip package | Integrate |
 
 ## Quick Commands
 
@@ -49,17 +49,17 @@ import langextract
 
 # Test AutoSchemaKG data
 edges_df = pd.read_csv("autoschemakg_output/triples_csv/triple_edges_*.csv")
-assert len(edges_df) > 2900  # Should have ~2,955 edges
+assert len(edges_df) > 2900 # Should have ~2,955 edges
 ```
 
 ## What's Already Built vs Missing
 
-### ✅ FOUND: Existing Integration Files
+### FOUND: Existing Integration Files
 ```python
 # RAG-Anything integration (WORKING)
 from prp_a2_ext_raganything_complete import process_all_marrickville_with_raganything
 
-# LangExtract integration (WORKING)  
+# LangExtract integration (WORKING) 
 from apply_langextract_to_a3_5 import apply_langextract_to_a3_5_results
 
 # AutoSchemaKG (COMPLETED)
@@ -69,13 +69,13 @@ from apply_langextract_to_a3_5 import apply_langextract_to_a3_5_results
 from scripts.test_lightrag_integration import test_lightrag_output_format
 ```
 
-### ❌ Missing: Unified Query Interface (5% gap)
+### Missing: Unified Query Interface (5% gap)
 ```python
 # services/unified_four_stack.py - THIS is all that's missing
 class UnifiedFourStack:
-    async def unified_query(self, address, query_type):
-        # Connect the existing implementations
-        pass
+ async def unified_query(self, address, query_type):
+ # Connect the existing implementations
+ pass
 ```
 
 ## File Locations Reference
@@ -94,21 +94,21 @@ validated_nsw_processor_20250829_193537/
 ```
 autoschemakg_output/
 ├── concepts/
-│   └── concept_shard_0.csv
+│ └── concept_shard_0.csv
 ├── kg_extraction/
-│   └── 8 JSON files with extractions
+│ └── 8 JSON files with extractions
 ├── kg_graphml/
-│   └── nsw_planning_docs_without_concept.pkl
+│ └── nsw_planning_docs_without_concept.pkl
 └── triples_csv/
-    ├── triple_edges_*.csv (2,955 lines)
-    └── triple_nodes_*.csv (1,505 lines)
+ ├── triple_edges_*.csv (2,955 lines)
+ └── triple_nodes_*.csv (1,505 lines)
 ```
 
 ### Document Sources
 ```
 docs/dcps/INNERWEST/
 ├── Marrickville/ (67 DCP files)
-├── Ashfield/ (9 DCP files)  
+├── Ashfield/ (9 DCP files) 
 └── Heritage PDFs (split into parts)
 ```
 
@@ -135,16 +135,16 @@ docs/dcps/INNERWEST/
 - Production deployment
 
 ## DO NOT:
-- ❌ Reprocess documents (already done)
-- ❌ Reinstall packages (already installed)
-- ❌ Rebuild knowledge graphs (already built)
-- ❌ Create new AutoSchemaKG extractions (2,955 exist)
+- Reprocess documents (already done)
+- Reinstall packages (already installed)
+- Rebuild knowledge graphs (already built)
+- Create new AutoSchemaKG extractions (2,955 exist)
 
 ## DO:
-- ✅ Load existing CSV data
-- ✅ Import installed packages
-- ✅ Build integration layer only
-- ✅ Connect to existing frontend
+- Load existing CSV data
+- Import installed packages
+- Build integration layer only
+- Connect to existing frontend
 
 ## Expected Result After Integration
 
@@ -156,16 +156,16 @@ docs/dcps/INNERWEST/
 **After 4-Stack Integration:**
 ```
 {
-  "provision": "Building height 9.5m",
-  "knowledge_graph": ["height→affects→setbacks"],
-  "structured": {"value": 9.5, "units": "metres"},
-  "diagrams": ["height_diagram.png"]
+ "provision": "Building height 9.5m",
+ "knowledge_graph": ["height→affects→setbacks"],
+ "structured": {"value": 9.5, "units": "metres"},
+ "diagrams": ["height_diagram.png"]
 }
 ```
 
 ## Session Startup Checklist
-1. ✅ Read `PRP-C_FOUR_STACK_INTEGRATION_STATUS.md`
-2. ✅ Check this quick reference
-3. ✅ Verify packages: `pip list | grep -E "(langextract|lightrag|raganything)"`
-4. ✅ Check data: `ls autoschemakg_output/triples_csv/`
-5. ✅ Start with integration, not reinstallation
+1. Read `PRP-C_FOUR_STACK_INTEGRATION_STATUS.md`
+2. Check this quick reference
+3. Verify packages: `pip list | grep -E "(langextract|lightrag|raganything)"`
+4. Check data: `ls autoschemakg_output/triples_csv/`
+5. Start with integration, not reinstallation

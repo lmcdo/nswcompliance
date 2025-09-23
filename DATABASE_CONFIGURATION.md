@@ -1,6 +1,6 @@
 # PostgreSQL Database Configuration
 
-## ⚠️ CRITICAL: Port Configuration
+## CRITICAL: Port Configuration
 
 **PostgreSQL MUST run on port 5432 (standard port) for this codebase to work.**
 
@@ -14,9 +14,9 @@
 
 ### Configuration Files
 - **postgresql.conf**: `C:\Program Files\PostgreSQL\17\data\postgresql.conf`
-  - `port = 5432` (line 64)
+ - `port = 5432` (line 64)
 - **pg_hba.conf**: `C:\Program Files\PostgreSQL\17\data\pg_hba.conf`
-  - Authentication method: `scram-sha-256`
+ - Authentication method: `scram-sha-256`
 
 ### Why Port 5432 is Required
 The entire codebase (100+ files) expects PostgreSQL on port 5432:
@@ -30,12 +30,12 @@ The entire codebase (100+ files) expects PostgreSQL on port 5432:
 1. If port 5432 is occupied, stop the conflicting service
 2. If using multiple PostgreSQL versions, uninstall older versions
 3. If absolutely necessary to use a different port, update ALL these locations:
-   - `.env` file (PGPORT variable)
-   - All Python scripts with psycopg2.connect() calls
-   - All JavaScript scripts with pg.Pool() connections
-   - All shell scripts with psql commands
-   - All Docker configurations
-   - All environment variable defaults in code
+ - `.env` file (PGPORT variable)
+ - All Python scripts with psycopg2.connect() calls
+ - All JavaScript scripts with pg.Pool() connections
+ - All shell scripts with psql commands
+ - All Docker configurations
+ - All environment variable defaults in code
 
 ### Common Issues and Solutions
 
@@ -85,4 +85,4 @@ PGPASSWORD=postgres
 ```
 
 ---
-**⚠️ REMEMBER: Any deviation from port 5432 will break the entire application!**
+** REMEMBER: Any deviation from port 5432 will break the entire application!**

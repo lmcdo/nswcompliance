@@ -1,19 +1,19 @@
 # MIGRATION EXECUTION MANDATE - CRITICAL ENFORCEMENT
-**Created**: 2025-09-08 12:58 UTC  
-**Priority**: NUCLEAR CRITICAL  
+**Created**: 2025-09-08 12:58 UTC 
+**Priority**: NUCLEAR CRITICAL 
 **Status**: MANDATORY EXECUTION REQUIRED
 
-## 🚨 MIGRATION FAILURE ANALYSIS: 3x POSTGRESQL FAILURES
+## MIGRATION FAILURE ANALYSIS: 3x POSTGRESQL FAILURES
 
 ### **EXPLICIT POSTGRESQL SPECIFICATIONS IGNORED:**
 - **166 explicit PostgreSQL mentions** in PRPs
-- **Frontend configured for PostgreSQL** (DATABASE_NAME=nsw_planning)  
+- **Frontend configured for PostgreSQL** (DATABASE_NAME=nsw_planning) 
 - **PRP-8D explicitly creates PostgreSQL schema** (authoritative.*)
 - **All verification scripts should test PostgreSQL**
 
 ### **YET SYSTEM DEFAULTS TO SQLITE EVERY FUCKING TIME**
 
-## 🎯 MANDATORY EXECUTION PROTOCOL
+## MANDATORY EXECUTION PROTOCOL
 
 ### **PHASE 1: EXECUTE BULLETPROOF MIGRATION ENGINE**
 ```bash
@@ -44,24 +44,24 @@ mv nsw_planning.db nsw_planning_BACKUP_DO_NOT_USE.db
 # Change sqlite3.connect('nsw_planning.db') to PostgreSQL connections
 ```
 
-## 🔒 BULLETPROOF SAFEGUARDS
+## BULLETPROOF SAFEGUARDS
 
 ### **1. Migration Completion Verification**
 - **MANDATORY**: migration_state.json shows migrated_entries > 22,000
 - **MANDATORY**: PostgreSQL tables contain actual data
 - **MANDATORY**: Frontend API returns provision data
 
-### **2. Database Target Enforcement**  
+### **2. Database Target Enforcement** 
 - **ALL scripts MUST use PostgreSQL connections**
 - **NO SQLite connections allowed in verification**
 - **Frontend MUST connect to PostgreSQL only**
 
 ### **3. Completion Criteria**
-- ✅ `curl localhost:3007/api/setbacks/calculate` with R2 returns data
-- ✅ PostgreSQL query returns provisions: `SELECT COUNT(*) FROM authoritative.planning_provisions`
-- ✅ Migration state shows: `"migrated_entries": 22000+`
+- `curl localhost:3007/api/setbacks/calculate` with R2 returns data
+- PostgreSQL query returns provisions: `SELECT COUNT(*) FROM authoritative.planning_provisions`
+- Migration state shows: `"migrated_entries": 22000+`
 
-## 🚨 ENFORCEMENT MEASURES
+## ENFORCEMENT MEASURES
 
 ### **IF MIGRATION FAILS AGAIN:**
 1. **MANUAL VERIFICATION**: Check each step individually
@@ -75,7 +75,7 @@ mv nsw_planning.db nsw_planning_BACKUP_DO_NOT_USE.db
 - **VERIFY TARGET DATABASE** not source database
 - **TEST PRODUCTION CONNECTIONS** not development connections
 
-## 💎 THE BULLETPROOF GUARANTEE
+## THE BULLETPROOF GUARANTEE
 
 **EXECUTE THIS EXACT SEQUENCE:**
 ```bash

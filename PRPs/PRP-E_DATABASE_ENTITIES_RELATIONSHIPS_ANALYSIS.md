@@ -1,14 +1,14 @@
 # PRP-E: Database Entities, Relationships & Reliability Analysis
 ## Complete Analysis of Knowledge Graph Structure and Compliance Application
 
-**Date**: 2025-09-03  
-**Status**: ✅ COMPLETED - COMPREHENSIVE ANALYSIS  
-**Priority**: HIGH - DOCUMENTS COMPLIANCE SYSTEM CAPABILITIES  
+**Date**: 2025-09-03 
+**Status**: COMPLETED - COMPREHENSIVE ANALYSIS 
+**Priority**: HIGH - DOCUMENTS COMPLIANCE SYSTEM CAPABILITIES 
 **Duration**: 1 hour analysis + documentation
 
 ---
 
-## 📊 **DATABASE STRUCTURE & ORGANIZATION**
+## **DATABASE STRUCTURE & ORGANIZATION**
 
 ### **21 Tables Total - Key Compliance Tables**
 - **`regulatory_provisions_clean`**: 9,364 records (source regulatory text)
@@ -22,30 +22,30 @@
 
 ### **Performance Infrastructure**
 - **46 Performance Indexes** optimizing queries on:
-  - Control types, zones, provision IDs
-  - Predicates, entities, documents
-  - Confidence scores, extraction methods
+ - Control types, zones, provision IDs
+ - Predicates, entities, documents
+ - Confidence scores, extraction methods
 - **Foreign Key Relationships** ensuring data integrity:
-  - `development_controls` → `regulatory_provisions` (provision_id)
-  - `sepp_lep_overrides` → `regulatory_provisions_clean` (sepp_provision_id)
-  - `kg_relationships` → `kg_entities` (subject/object_entity_id)
-  - `quantitative_standards` → `regulatory_provisions_clean` (provision_id)
+ - `development_controls` → `regulatory_provisions` (provision_id)
+ - `sepp_lep_overrides` → `regulatory_provisions_clean` (sepp_provision_id)
+ - `kg_relationships` → `kg_entities` (subject/object_entity_id)
+ - `quantitative_standards` → `regulatory_provisions_clean` (provision_id)
 
 ### **Data Properties & Characteristics**
 - **Provision text statistics:**
-  - Average length: 141 characters
-  - Range: 3-500 characters
-  - Total provisions: 9,364
+ - Average length: 141 characters
+ - Range: 3-500 characters
+ - Total provisions: 9,364
 - **Confidence score distribution:**
-  - Average: 0.844
-  - Range: 0.70 - 0.90
+ - Average: 0.844
+ - Range: 0.70 - 0.90
 - **Data quality indicators:**
-  - 0% null values in critical fields
-  - Complete referential integrity maintained
+ - 0% null values in critical fields
+ - Complete referential integrity maintained
 
 ---
 
-## 🔍 **THE "PROTECT" PREDICATE & KNOWLEDGE GRAPH ANALYSIS**
+## **THE "PROTECT" PREDICATE & KNOWLEDGE GRAPH ANALYSIS**
 
 ### **Origin of "PROTECT" (144 relationships)**
 - **Source**: Extracted by AutoSchemaKG from regulatory documents
@@ -107,7 +107,7 @@ LOW COUNT but CRITICAL (<20 relationships):
 
 ---
 
-## ✅ **RELIABILITY ASSESSMENT FOR COMPLIANCE USE**
+## **RELIABILITY ASSESSMENT FOR COMPLIANCE USE**
 
 ### **High Confidence Applications**
 
@@ -157,7 +157,7 @@ LOW COUNT but CRITICAL (<20 relationships):
 
 ---
 
-## 🎯 **PRACTICAL APPLICATION IN PLANNING ASSESSMENT**
+## **PRACTICAL APPLICATION IN PLANNING ASSESSMENT**
 
 ### **Example 1: Heritage Development Assessment**
 
@@ -182,8 +182,8 @@ WHERE control_type = 'heritage' AND zone_applicable IN ('R2', 'general')
 -- Step 4: Check quantitative standards
 SELECT * FROM quantitative_standards 
 WHERE context = 'setback' AND provision_id IN (
-    SELECT provision_id FROM regulatory_provisions_clean 
-    WHERE provision_text LIKE '%heritage%'
+ SELECT provision_id FROM regulatory_provisions_clean 
+ WHERE provision_text LIKE '%heritage%'
 )
 → Heritage-specific setback requirements
 ```
@@ -215,44 +215,44 @@ AND (zone_applicable = 'R2' OR zone_applicable = 'general')
 
 ---
 
-## 📈 **DATABASE STATISTICS & QUALITY METRICS**
+## **DATABASE STATISTICS & QUALITY METRICS**
 
 ### **Extraction Method Distribution**
 ```
-Method                              | Records | Avg Confidence
+Method | Records | Avg Confidence
 ------------------------------------|---------|---------------
-comprehensive_recovery_2025-09-03   |  3,648  | 85.0%
-factorization_script                |    624  | 80.0%
-enhanced_extraction_2025-09-03      |    167  | 90.0%
-regex_enhanced                      |     87  | 78.9%
+comprehensive_recovery_2025-09-03 | 3,648 | 85.0%
+factorization_script | 624 | 80.0%
+enhanced_extraction_2025-09-03 | 167 | 90.0%
+regex_enhanced | 87 | 78.9%
 ```
 
 ### **Zone Coverage Analysis**
 ```
-Zone                    | Controls | Control Types
+Zone | Controls | Control Types
 ------------------------|----------|---------------
-general                 |   3,686  | 11
-heritage_conservation   |     481  | 1
-landscaping            |     217  | 1
-street_tree            |      51  | 1
-R3                     |      33  | 2
-R2                     |      18  | 1
-R4                     |      13  | 1
-B2                     |       7  | 1
-R1                     |       5  | 2
-B7                     |       1  | 1
+general | 3,686 | 11
+heritage_conservation | 481 | 1
+landscaping | 217 | 1
+street_tree | 51 | 1
+R3 | 33 | 2
+R2 | 18 | 1
+R4 | 13 | 1
+B2 | 7 | 1
+R1 | 5 | 2
+B7 | 1 | 1
 ```
 
 ### **Document Source Distribution**
 ```
-Document Type           | Provisions
+Document Type | Provisions
 ------------------------|------------
-Marrickville DCP        | 3,223
-State Environmental     | 2,816
-Leichhardt DCP          | 1,284
-Inner West LEP          |   968
-Inner West Ashfield DCP |   930
-Other DCPs/SEPPs        |   143
+Marrickville DCP | 3,223
+State Environmental | 2,816
+Leichhardt DCP | 1,284
+Inner West LEP | 968
+Inner West Ashfield DCP | 930
+Other DCPs/SEPPs | 143
 ```
 
 ### **Knowledge Graph Connectivity**
@@ -264,17 +264,17 @@ Other DCPs/SEPPs        |   143
 
 ---
 
-## 🚀 **AUTOMATED COMPLIANCE CHECKING POTENTIAL**
+## **AUTOMATED COMPLIANCE CHECKING POTENTIAL**
 
 ### **Immediately Actionable (1,084 relationships)**
 ```
-Relationship Type                | Count | Application
+Relationship Type | Count | Application
 ---------------------------------|-------|----------------------------------
-Causal explanations (because)    |  514  | Requirement justification
-Protection requirements (protect)|  144  | Heritage/environmental compliance
-Temporal sequences (before/after)|  298  | Process workflow automation
-Preservation rules (maintain)    |  120  | Conservation assessment
-Explicit requirements (requires) |    8  | Mandatory compliance checking
+Causal explanations (because) | 514 | Requirement justification
+Protection requirements (protect)| 144 | Heritage/environmental compliance
+Temporal sequences (before/after)| 298 | Process workflow automation
+Preservation rules (maintain) | 120 | Conservation assessment
+Explicit requirements (requires) | 8 | Mandatory compliance checking
 ```
 
 ### **Query Performance Optimization**
@@ -291,7 +291,7 @@ Explicit requirements (requires) |    8  | Mandatory compliance checking
 
 ---
 
-## 💡 **KEY INSIGHTS & RECOMMENDATIONS**
+## **KEY INSIGHTS & RECOMMENDATIONS**
 
 ### **Strengths**
 1. **Comprehensive causal reasoning** - 514 "because" relationships
@@ -314,32 +314,32 @@ Explicit requirements (requires) |    8  | Mandatory compliance checking
 
 ---
 
-## 📋 **PRACTICAL USAGE GUIDELINES**
+## **PRACTICAL USAGE GUIDELINES**
 
 ### **For Developers**
 ```python
 # High confidence query pattern
 def get_requirement_with_reasoning(requirement_type):
-    # Get requirement
-    requirement = query_development_controls(requirement_type)
-    
-    # Get reasoning
-    reasoning = query_kg_relationships(
-        predicate='because',
-        subject_contains=requirement_type
-    )
-    
-    # Get what it protects
-    protection = query_kg_relationships(
-        predicate='protect',
-        subject_contains=requirement_type
-    )
-    
-    return {
-        'requirement': requirement,
-        'reason': reasoning,
-        'protects': protection
-    }
+ # Get requirement
+ requirement = query_development_controls(requirement_type)
+ 
+ # Get reasoning
+ reasoning = query_kg_relationships(
+ predicate='because',
+ subject_contains=requirement_type
+ )
+ 
+ # Get what it protects
+ protection = query_kg_relationships(
+ predicate='protect',
+ subject_contains=requirement_type
+ )
+ 
+ return {
+ 'requirement': requirement,
+ 'reason': reasoning,
+ 'protects': protection
+ }
 ```
 
 ### **For Council Staff**
@@ -358,6 +358,6 @@ def get_requirement_with_reasoning(requirement_type):
 
 **This PRP documents the complete knowledge graph structure, reliability assessment, and practical application patterns for the NSW Planning Compliance Engine. The analysis reveals a robust semantic network with 2,734 relationships across 638 predicates, enabling sophisticated compliance reasoning despite some gaps in explicit requirements and permissions.**
 
-**Analysis completion time: 1 hour**  
-**Documentation time: 30 minutes**  
+**Analysis completion time: 1 hour** 
+**Documentation time: 30 minutes** 
 **Impact: CRITICAL - Defines system capabilities and limitations for compliance automation**

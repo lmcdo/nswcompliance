@@ -1,13 +1,13 @@
 # Obsolete Files to Delete
 ## Generated: 2025-08-26
 
-### ❌ OBSOLETE Python Scripts (Windows native approach - FAILED)
+### OBSOLETE Python Scripts (Windows native approach - FAILED)
 These scripts attempted Windows-native LightRAG which has async issues:
 
 ```bash
 # Delete these failed Windows Python scripts
 rm scripts/direct_dcp_access.py
-rm scripts/direct_lep_access.py  
+rm scripts/direct_lep_access.py 
 rm scripts/process_dcp_real_lightrag.py
 rm scripts/process_lep_real_lightrag.py
 rm scripts/test_integration.js
@@ -15,7 +15,7 @@ rm test_regulatory_retriever.js
 rm test_all_regulatory_text.js
 ```
 
-### ❌ OBSOLETE LightRAG Storage Directories (Windows native - INCOMPLETE)
+### OBSOLETE LightRAG Storage Directories (Windows native - INCOMPLETE)
 These contain incomplete/broken LightRAG processing from Windows attempts:
 
 ```bash
@@ -29,7 +29,7 @@ rm -rf lightrag_marrickville_storage/
 rm -rf lightrag_lep_storage/
 ```
 
-### ❌ OBSOLETE Temporary Extraction Directories
+### OBSOLETE Temporary Extraction Directories
 These contain chunked documents from failed processing attempts:
 
 ```bash
@@ -41,7 +41,7 @@ rm -rf temp_extraction_LEP/
 rm -rf temp_extraction_SEPP_Housing/
 ```
 
-### ❌ OBSOLETE Enhanced Setback JSON Files (Fake data)
+### OBSOLETE Enhanced Setback JSON Files (Fake data)
 These contain processed data with incorrect values:
 
 ```bash
@@ -51,14 +51,14 @@ rm public/regulatory-data/leichhardt_enhanced_setbacks.json
 rm public/regulatory-data/marrickville_enhanced_setbacks.json
 ```
 
-### ⚠️ KEEP BUT MARK AS OBSOLETE (May need for reference)
+### KEEP BUT MARK AS OBSOLETE (May need for reference)
 ```bash
 # Rename to indicate obsolete status
 mv PRP_REGULATORY_TEXT_EXTRACTION.md OBSOLETE_PRP_REGULATORY_TEXT_EXTRACTION.md
 mv lib/regulatory-text-retriever.ts.backup OBSOLETE_regulatory-text-retriever.ts.backup
 ```
 
-### ✅ KEEP - Still Needed
+### KEEP - Still Needed
 ```bash
 # Active PRPs and status tracking
 PRP_WSL2_LIGHTRAG_IMPLEMENTATION.md
@@ -122,11 +122,11 @@ rm public/regulatory-data/*_enhanced_setbacks.json
 ## Post-Cleanup Verification
 
 After cleanup, verify:
-1. ✅ Dev server still runs: `npm run dev -- --port 3000`
-2. ✅ No broken imports in TypeScript files
-3. ✅ PRP_STATUS.md and active PRPs remain
-4. ✅ Original documents in docs/ remain
-5. ✅ .claude/instructions.md remains
+1. Dev server still runs: `npm run dev -- --port 3000`
+2. No broken imports in TypeScript files
+3. PRP_STATUS.md and active PRPs remain
+4. Original documents in docs/ remain
+5. .claude/instructions.md remains
 
 ---
 

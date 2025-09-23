@@ -1,11 +1,11 @@
 # LEGACY PRPs - ARCHIVED LEARNING PHASE
 
-**Date Archived**: 2025-09-01  
+**Date Archived**: 2025-09-01 
 **Status**: DO NOT USE - REFERENCE ONLY
 
 ---
 
-## ⚠️ **WARNING**
+## **WARNING**
 
 These PRPs represent the **learning phase** of the NSW Planning Compliance Engine development. They contain **outdated approaches, incomplete implementations, and superseded methodologies**.
 
@@ -13,7 +13,7 @@ These PRPs represent the **learning phase** of the NSW Planning Compliance Engin
 
 ---
 
-## 📚 **Archived Files**
+## **Archived Files**
 
 ### **Learning Phase PRPs (Aug 27 - Sep 1):**
 - **UPDATED_PRP_SEQUENCE.md** - Early A1-A7 sequential approach (SUPERSEDED)
@@ -22,13 +22,13 @@ These PRPs represent the **learning phase** of the NSW Planning Compliance Engin
 
 ### **Development Checkpoints:**
 - **A5_*.txt** - LightRAG integration experiments (ABANDONED)
-- **A6_*.txt** - Query interface attempts (SUPERSEDED)  
+- **A6_*.txt** - Query interface attempts (SUPERSEDED) 
 - **A7_*.txt** - Frontend integration experiments (SUPERSEDED)
 - **RE2_*.md** - LangExtract verification analysis (COMPLETED/INTEGRATED)
 
 ---
 
-## 🎯 **Why These Were Superseded**
+## **Why These Were Superseded**
 
 ### **Original A1-A7 Approach Issues:**
 - **API Rate Limits**: Hit Gemini quotas too early
@@ -44,7 +44,7 @@ These PRPs represent the **learning phase** of the NSW Planning Compliance Engin
 
 ---
 
-## 📊 **Historical Results (For Reference)**
+## **Historical Results (For Reference)**
 
 ### **Learning Phase Performance:**
 - **A1-A3**: Basic extraction (limited success)
@@ -59,4 +59,4 @@ These PRPs represent the **learning phase** of the NSW Planning Compliance Engin
 
 ---
 
-**📋 USE ONLY**: `../PRP-ULTIMATE_MULTIMODAL_EXTRACTION.md` for all future projects
+** USE ONLY**: `../PRP-ULTIMATE_MULTIMODAL_EXTRACTION.md` for all future projects

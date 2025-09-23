@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-09-20T18:27:26.698995",
+  "prp": "V5_FRONTEND_INTEGRATION",
+  "checks": {
+    "files": {
+      "components/compliance/AuthoritativeComplianceDisplay.tsx": true,
+      "components/property/PropertySearch.tsx": true,
+      "components/dashboard/AnalysisTabs.tsx": true,
+      "hooks/usePropertyData.ts": true,
+      "app/authoritative/page.tsx": true,
+      "components/version/VersionBadge.tsx": true,
+      "components/version/VersionSelector.tsx": false,
+      "hooks/useVersion.ts": true
+    },
+    "syntax": {
+      "components/version/VersionBadge.tsx_structure": true,
+      "components/version/VersionBadge.tsx_types": true,
+      "components/version/VersionSelector.tsx_exists": false,
+      "hooks/useVersion.ts_structure": true,
+      "hooks/useVersion.ts_types": true
+    },
+    "api": {
+      "api_accessible": true,
+      "endpoint_property?address=15 Norton Street, Leichhardt NSW 2040": true,
+      "endpoint_compliance-check": false
+    },
+    "pages": {
+      "app/authoritative/page.tsx_readable": false
+    },
+    "dependencies": {
+      "has_react": true,
+      "has_next": true,
+      "has_typescript": true,
+      "has_types_react": true,
+      "has_diff": false,
+      "has_date-fns": false
+    },
+    "build": {
+      "has_tsconfig": true,
+      "has_nextconfig": true
+    }
+  },
+  "errors": [],
+  "warnings": [
+    "Could not read app/authoritative/page.tsx: 'charmap' codec can't decode byte 0x9d in position 4230: character maps to <undefined>"
+  ],
+  "success": true
+}

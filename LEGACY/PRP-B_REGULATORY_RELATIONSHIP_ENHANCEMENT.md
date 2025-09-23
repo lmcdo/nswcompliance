@@ -9,7 +9,7 @@ This PRP addresses the identified limitations in the current NSW Planning Compli
 
 **Current System Ranking: 8.5/10** - Production-ready with clear enhancement paths
 
-### ✅ ACHIEVEMENTS TO DATE (Updated 2025-09-01)
+### ACHIEVEMENTS TO DATE (Updated 2025-09-01)
 1. **Enhanced Relationship Extraction**: Increased from 1 to 4+ relationships per query
 2. **Database Structure Clarified**: Corrected documentation - AutoSchemaKG uses SQLite, not CSV files
 3. **Improved Pattern Matching**: Added "refer to", "in accordance with", and "under" patterns
@@ -22,34 +22,34 @@ This PRP addresses the identified limitations in the current NSW Planning Compli
 
 ### Strengths (Innovation Score: 8/10)
 1. **Multi-Layer Knowledge Integration**
-   - Successfully bridges 4 AI/ML approaches (LightRAG, AutoSchemaKG, RAG-Anything, LangExtract)
-   - Each layer serves specific regulatory analysis purposes
-   - Sophisticated architectural thinking demonstrated
+ - Successfully bridges 4 AI/ML approaches (LightRAG, AutoSchemaKG, RAG-Anything, LangExtract)
+ - Each layer serves specific regulatory analysis purposes
+ - Sophisticated architectural thinking demonstrated
 
 2. **Real Regulatory Traceability**
-   - Full citation extraction with context
-   - Document-to-clause mapping with confidence scoring
-   - Addresses real compliance verification pain points
+ - Full citation extraction with context
+ - Document-to-clause mapping with confidence scoring
+ - Addresses real compliance verification pain points
 
 3. **Practical Government Integration**
-   - Direct NSW Planning Portal API integration
-   - Council-specific DCP handling
-   - Zone-based filtering matching actual workflows
+ - Direct NSW Planning Portal API integration
+ - Council-specific DCP handling
+ - Zone-based filtering matching actual workflows
 
 ### Challenges Addressed (Complexity Score: 9/10)
 1. **Heterogeneous Data Sources**
-   - PDFs with varying structures
-   - Hierarchical clause numbering (parts/sections/subsections)
-   - Mixed conceptual and literal references
+ - PDFs with varying structures
+ - Hierarchical clause numbering (parts/sections/subsections)
+ - Mixed conceptual and literal references
 
 2. **Semantic vs Structural Matching**
-   - Handles both exact clause references AND conceptual relationships
-   - The "building_setback" issue exemplifies this challenge
+ - Handles both exact clause references AND conceptual relationships
+ - The "building_setback" issue exemplifies this challenge
 
 3. **Professional Validation Requirements**
-   - Council-ready output format
-   - Expandable citation views
-   - Confidence assessment meeting professional standards
+ - Council-ready output format
+ - Expandable citation views
+ - Confidence assessment meeting professional standards
 
 ---
 
@@ -66,37 +66,37 @@ This PRP addresses the identified limitations in the current NSW Planning Compli
 
 #### 1.1 Expand Regulatory Pattern Matching (IMPLEMENTED)
 
-**STATUS: ✅ COMPLETED** - Enhanced patterns implemented in `database_autoschema_query.py`
+**STATUS: COMPLETED** - Enhanced patterns implemented in `database_autoschema_query.py`
 
 ```python
 # IMPLEMENTED PATTERNS - Enhanced relationship extraction
 # Pattern 1: "in accordance with" - enhanced patterns
 accordance_patterns = [
-    r'in accordance with\s+part\s+(\d+(?:\.\d+)*)',
-    r'in accordance with\s+section\s+(\d+(?:\.\d+)*)',
-    r'in accordance with\s+clause\s+(\d+(?:\.\d+)*)', 
-    r'in accordance with\s+part\s+(\d+)\s*\(([^)]+)\)',  # "Part 8 (Heritage)"
-    r'in accordance with\s+([a-z\s]+standards)',  # "relevant Australian Standards"
-    r'in accordance with\s+([a-z\s]+council[^\.]+)',  # Council guidelines
+ r'in accordance with\s+part\s+(\d+(?:\.\d+)*)',
+ r'in accordance with\s+section\s+(\d+(?:\.\d+)*)',
+ r'in accordance with\s+clause\s+(\d+(?:\.\d+)*)', 
+ r'in accordance with\s+part\s+(\d+)\s*\(([^)]+)\)', # "Part 8 (Heritage)"
+ r'in accordance with\s+([a-z\s]+standards)', # "relevant Australian Standards"
+ r'in accordance with\s+([a-z\s]+council[^\.]+)', # Council guidelines
 ]
 
 # Pattern 5: "Refer to" references - VERY COMMON (35 documents)
 refer_patterns = [
-    r'refer to\s+part\s+(\d+(?:\.\d+)*)',
-    r'refer to\s+section\s+(\d+(?:\.\d+)*)',
-    r'refer to\s+clause\s+(\d+(?:\.\d+)*)',
-    r'refer to\s+part\s+(\d+)\s*\(([^)]+)\)',  # "Part 8 (Heritage)"
-    r'refer to\s+schedule\s+(\d+)',
-    r'see\s+part\s+(\d+(?:\.\d+)*)',
-    r'see\s+section\s+(\d+(?:\.\d+)*)',
+ r'refer to\s+part\s+(\d+(?:\.\d+)*)',
+ r'refer to\s+section\s+(\d+(?:\.\d+)*)',
+ r'refer to\s+clause\s+(\d+(?:\.\d+)*)',
+ r'refer to\s+part\s+(\d+)\s*\(([^)]+)\)', # "Part 8 (Heritage)"
+ r'refer to\s+schedule\s+(\d+)',
+ r'see\s+part\s+(\d+(?:\.\d+)*)',
+ r'see\s+section\s+(\d+(?:\.\d+)*)',
 ]
 
 # Pattern 6: "under" references - Legislative dependencies
 under_patterns = [
-    r'under\s+part\s+(\d+(?:\.\d+)*)',
-    r'under\s+section\s+(\d+(?:\.\d+)*)',
-    r'under\s+clause\s+(\d+(?:\.\d+)*)',
-    r'pursuant to\s+(part|section|clause)\s+(\d+(?:\.\d+)*)',
+ r'under\s+part\s+(\d+(?:\.\d+)*)',
+ r'under\s+section\s+(\d+(?:\.\d+)*)',
+ r'under\s+clause\s+(\d+(?:\.\d+)*)',
+ r'pursuant to\s+(part|section|clause)\s+(\d+(?:\.\d+)*)',
 ]
 ```
 
@@ -110,32 +110,32 @@ under_patterns = [
 
 ```python
 def extract_hierarchical_relationships(self):
-    """Extract relationships respecting NSW planning hierarchy"""
-    relationships = []
-    
-    # 1. Find LEP overrides first (highest precedence)
-    lep_clauses = self.find_lep_clauses()
-    for clause in lep_clauses:
-        clause['precedence_level'] = 1
-        clause['binding'] = True
-        relationships.append(clause)
-    
-    # 2. Then SEPP modifications
-    sepp_overrides = self.find_sepp_overrides()
-    for override in sepp_overrides:
-        override['precedence_level'] = 2
-        override['can_override_dcp'] = True
-        relationships.append(override)
-    
-    # 3. Finally DCP guidelines (lowest precedence)
-    dcp_guidelines = self.find_dcp_guidelines()
-    for guideline in dcp_guidelines:
-        guideline['precedence_level'] = 3
-        guideline['subject_to_lep'] = True
-        guideline['council_discretion'] = self.check_discretion_language(guideline['text'])
-        relationships.append(guideline)
-    
-    return self.resolve_conflicts(relationships)
+ """Extract relationships respecting NSW planning hierarchy"""
+ relationships = []
+ 
+ # 1. Find LEP overrides first (highest precedence)
+ lep_clauses = self.find_lep_clauses()
+ for clause in lep_clauses:
+ clause['precedence_level'] = 1
+ clause['binding'] = True
+ relationships.append(clause)
+ 
+ # 2. Then SEPP modifications
+ sepp_overrides = self.find_sepp_overrides()
+ for override in sepp_overrides:
+ override['precedence_level'] = 2
+ override['can_override_dcp'] = True
+ relationships.append(override)
+ 
+ # 3. Finally DCP guidelines (lowest precedence)
+ dcp_guidelines = self.find_dcp_guidelines()
+ for guideline in dcp_guidelines:
+ guideline['precedence_level'] = 3
+ guideline['subject_to_lep'] = True
+ guideline['council_discretion'] = self.check_discretion_language(guideline['text'])
+ relationships.append(guideline)
+ 
+ return self.resolve_conflicts(relationships)
 ```
 
 ### Conceptual Constraints
@@ -167,62 +167,62 @@ def extract_hierarchical_relationships(self):
 ```python
 # Practical concept-to-clause mapping
 CONCEPT_TO_CLAUSE_MAP = {
-    'building_setback': {
-        'R2_zone': {
-            'front': {
-                'clause': 'DCP Section 4.2.4.3(1)',
-                'value': '6m or prevailing',
-                'exceptions': ['corner lots', 'heritage items'],
-                'measurement': 'from property boundary'
-            },
-            'side': {
-                'clause': 'DCP Section 4.2.4.3(2)',
-                'value': '900mm',
-                'exceptions': ['attached dwellings'],
-                'measurement': 'from side boundary'
-            },
-            'rear': {
-                'clause': 'DCP Section 4.2.4.3(3)',
-                'value': '3m',
-                'exceptions': ['lane access'],
-                'measurement': 'from rear boundary'
-            },
-            'corner': {
-                'clause': 'DCP Section 4.2.4.3(4)',
-                'value': '3m secondary street',
-                'exceptions': [],
-                'measurement': 'from secondary street boundary'
-            }
-        },
-        'R3_zone': {
-            'front': 'DCP Section 4.3.3.1',  # Different for medium density
-            'side': 'DCP Section 4.3.3.2',
-            'rear': 'DCP Section 4.3.3.3'
-        },
-        'R4_zone': {
-            'podium': 'DCP Section 4.4.2.1',
-            'tower': 'DCP Section 4.4.2.2',
-            'street_wall': 'DCP Section 4.4.2.3'
-        }
-    },
-    'height_limit': {
-        'source': 'LEP Height of Buildings Map',  # Map-based, not text!
-        'text_reference': 'LEP Clause 4.3',
-        'measurement_method': 'DCP Section 2.10.8',  # How to measure
-        'exceptions': {
-            'lift_overrun': 'LEP Clause 5.6',
-            'architectural_roof': 'DCP Section 2.10.8.3'
-        }
-    },
-    'floor_space_ratio': {
-        'source': 'LEP Floor Space Ratio Map',
-        'text_reference': 'LEP Clause 4.4',
-        'calculation': 'DCP Section 2.10.9',
-        'exclusions': {
-            'balconies': 'SEPP 65 Design Quality',
-            'car_parking': 'LEP Clause 4.4(3)'
-        }
-    }
+ 'building_setback': {
+ 'R2_zone': {
+ 'front': {
+ 'clause': 'DCP Section 4.2.4.3(1)',
+ 'value': '6m or prevailing',
+ 'exceptions': ['corner lots', 'heritage items'],
+ 'measurement': 'from property boundary'
+ },
+ 'side': {
+ 'clause': 'DCP Section 4.2.4.3(2)',
+ 'value': '900mm',
+ 'exceptions': ['attached dwellings'],
+ 'measurement': 'from side boundary'
+ },
+ 'rear': {
+ 'clause': 'DCP Section 4.2.4.3(3)',
+ 'value': '3m',
+ 'exceptions': ['lane access'],
+ 'measurement': 'from rear boundary'
+ },
+ 'corner': {
+ 'clause': 'DCP Section 4.2.4.3(4)',
+ 'value': '3m secondary street',
+ 'exceptions': [],
+ 'measurement': 'from secondary street boundary'
+ }
+ },
+ 'R3_zone': {
+ 'front': 'DCP Section 4.3.3.1', # Different for medium density
+ 'side': 'DCP Section 4.3.3.2',
+ 'rear': 'DCP Section 4.3.3.3'
+ },
+ 'R4_zone': {
+ 'podium': 'DCP Section 4.4.2.1',
+ 'tower': 'DCP Section 4.4.2.2',
+ 'street_wall': 'DCP Section 4.4.2.3'
+ }
+ },
+ 'height_limit': {
+ 'source': 'LEP Height of Buildings Map', # Map-based, not text!
+ 'text_reference': 'LEP Clause 4.3',
+ 'measurement_method': 'DCP Section 2.10.8', # How to measure
+ 'exceptions': {
+ 'lift_overrun': 'LEP Clause 5.6',
+ 'architectural_roof': 'DCP Section 2.10.8.3'
+ }
+ },
+ 'floor_space_ratio': {
+ 'source': 'LEP Floor Space Ratio Map',
+ 'text_reference': 'LEP Clause 4.4',
+ 'calculation': 'DCP Section 2.10.9',
+ 'exclusions': {
+ 'balconies': 'SEPP 65 Design Quality',
+ 'car_parking': 'LEP Clause 4.4(3)'
+ }
+ }
 }
 ```
 
@@ -230,58 +230,58 @@ CONCEPT_TO_CLAUSE_MAP = {
 
 ```python
 class ConceptGrounder:
-    def __init__(self):
-        # Use ACTUAL structure of NSW planning
-        self.concept_hierarchy = {
-            'development_standards': {
-                'principal': ['height', 'fsr', 'lot_size'],  # LEP Clause 4
-                'ancillary': ['landscaping', 'parking'],      # DCP
-            },
-            'assessment_matters': {
-                'mandatory': ['SEPP_65', 'BASIX'],           # Must comply
-                'performance': ['solar_access', 'privacy'],   # Objectives-based
-                'discretionary': ['streetscape', 'character'] # Council judgment
-            }
-        }
-        
-        self.zone_specific_rules = {
-            'R2': 'Low Density Residential',
-            'R3': 'Medium Density Residential', 
-            'R4': 'High Density Residential',
-            'B1': 'Neighbourhood Centre',
-            'B2': 'Local Centre',
-            'IN1': 'General Industrial',
-            'IN2': 'Light Industrial'
-        }
-    
-    def ground_concept(self, concept, zone, property_context):
-        """Map concept to actual applicable clauses"""
-        
-        # 1. Check if it's a mapped control (from LEP/DCP)
-        if self.is_mapped_control(concept):
-            return self.get_map_reference(concept, property_context)
-        
-        # 2. Check zone-specific sections
-        zone_section = self.get_zone_section(zone)
-        if zone_section:
-            return self.search_in_section(concept, zone_section)
-        
-        # 3. Check for site-specific provisions
-        if property_context.get('heritage'):
-            return self.get_heritage_provisions(concept)
-        
-        # 4. Fall back to general provisions
-        return self.get_generic_provision(concept)
-    
-    def get_calculation_method(self, concept):
-        """Get how to calculate/measure the concept"""
-        methods = {
-            'height': 'Measured from existing ground level to highest point',
-            'setback': 'Measured perpendicular from boundary',
-            'fsr': 'Gross floor area divided by site area',
-            'site_coverage': 'Building footprint divided by site area'
-        }
-        return methods.get(concept, 'Refer to DCP definitions')
+ def __init__(self):
+ # Use ACTUAL structure of NSW planning
+ self.concept_hierarchy = {
+ 'development_standards': {
+ 'principal': ['height', 'fsr', 'lot_size'], # LEP Clause 4
+ 'ancillary': ['landscaping', 'parking'], # DCP
+ },
+ 'assessment_matters': {
+ 'mandatory': ['SEPP_65', 'BASIX'], # Must comply
+ 'performance': ['solar_access', 'privacy'], # Objectives-based
+ 'discretionary': ['streetscape', 'character'] # Council judgment
+ }
+ }
+ 
+ self.zone_specific_rules = {
+ 'R2': 'Low Density Residential',
+ 'R3': 'Medium Density Residential', 
+ 'R4': 'High Density Residential',
+ 'B1': 'Neighbourhood Centre',
+ 'B2': 'Local Centre',
+ 'IN1': 'General Industrial',
+ 'IN2': 'Light Industrial'
+ }
+ 
+ def ground_concept(self, concept, zone, property_context):
+ """Map concept to actual applicable clauses"""
+ 
+ # 1. Check if it's a mapped control (from LEP/DCP)
+ if self.is_mapped_control(concept):
+ return self.get_map_reference(concept, property_context)
+ 
+ # 2. Check zone-specific sections
+ zone_section = self.get_zone_section(zone)
+ if zone_section:
+ return self.search_in_section(concept, zone_section)
+ 
+ # 3. Check for site-specific provisions
+ if property_context.get('heritage'):
+ return self.get_heritage_provisions(concept)
+ 
+ # 4. Fall back to general provisions
+ return self.get_generic_provision(concept)
+ 
+ def get_calculation_method(self, concept):
+ """Get how to calculate/measure the concept"""
+ methods = {
+ 'height': 'Measured from existing ground level to highest point',
+ 'setback': 'Measured perpendicular from boundary',
+ 'fsr': 'Gross floor area divided by site area',
+ 'site_coverage': 'Building footprint divided by site area'
+ }
+ return methods.get(concept, 'Refer to DCP definitions')
 ```
 
 ### Conceptual Constraints
@@ -303,12 +303,12 @@ class ConceptGrounder:
 ### Data Quality Issues
 ```python
 COMMON_DCP_PROBLEMS = {
-    'ocr_errors': 'Scanned PDFs with recognition errors',
-    'table_extraction': 'Tables that dont extract properly',
-    'diagram_references': 'Diagrams referenced but not readable',
-    'unconsolidated_amendments': 'Amendments not integrated into main document',
-    'version_control': 'Multiple versions in circulation',
-    'map_dependencies': 'Text refers to maps not in database'
+ 'ocr_errors': 'Scanned PDFs with recognition errors',
+ 'table_extraction': 'Tables that dont extract properly',
+ 'diagram_references': 'Diagrams referenced but not readable',
+ 'unconsolidated_amendments': 'Amendments not integrated into main document',
+ 'version_control': 'Multiple versions in circulation',
+ 'map_dependencies': 'Text refers to maps not in database'
 }
 ```
 
@@ -346,64 +346,64 @@ in unreasonable overshadowing of the adjoining property."
 ### Phase 3: Professional Tools Focus (2 weeks)
 ```python
 class PracticalComplianceChecker:
-    """What actually helps professionals"""
-    
-    def generate_da_checklist(self, property):
-        """Generate specific checklist for this property"""
-        checklist = []
-        
-        # These are the REAL questions councils ask
-        checklist.append({
-            'category': 'Statutory',
-            'items': [
-                'Is the use permissible in the zone?',
-                'Does it exceed height limit? (Check LEP Map)',
-                'Does it comply with FSR? (Check calculations)',
-                'Which SEPPs apply? (Check SEPP register)',
-                'Any critical overlays? (Heritage, flooding, bushfire)'
-            ]
-        })
-        
-        # Site-specific triggers
-        if property.near_heritage:
-            checklist.append({
-                'category': 'Heritage',
-                'items': [
-                    'Heritage Impact Statement required',
-                    'Notify heritage advisor',
-                    'Check heritage inventory sheet',
-                    'Consider conservation incentives'
-                ]
-            })
-        
-        # Zone-specific requirements
-        if property.zone == 'R2':
-            checklist.append({
-                'category': 'R2 Specific',
-                'items': [
-                    'Check if secondary dwelling permitted',
-                    'Verify private open space requirement (35%)',
-                    'Confirm landscaping requirement (45%)',
-                    'Check solar access to living areas'
-                ]
-            })
-        
-        return checklist
-    
-    def identify_red_flags(self, property):
-        """Identify issues that commonly cause delays/refusals"""
-        red_flags = []
-        
-        if property.lot_width < 12:
-            red_flags.append('Narrow lot - may trigger additional controls')
-        
-        if property.slope > 15:
-            red_flags.append('Steep site - geotechnical report required')
-        
-        if property.near_creek:
-            red_flags.append('Riparian corridor - additional setbacks apply')
-        
-        return red_flags
+ """What actually helps professionals"""
+ 
+ def generate_da_checklist(self, property):
+ """Generate specific checklist for this property"""
+ checklist = []
+ 
+ # These are the REAL questions councils ask
+ checklist.append({
+ 'category': 'Statutory',
+ 'items': [
+ 'Is the use permissible in the zone?',
+ 'Does it exceed height limit? (Check LEP Map)',
+ 'Does it comply with FSR? (Check calculations)',
+ 'Which SEPPs apply? (Check SEPP register)',
+ 'Any critical overlays? (Heritage, flooding, bushfire)'
+ ]
+ })
+ 
+ # Site-specific triggers
+ if property.near_heritage:
+ checklist.append({
+ 'category': 'Heritage',
+ 'items': [
+ 'Heritage Impact Statement required',
+ 'Notify heritage advisor',
+ 'Check heritage inventory sheet',
+ 'Consider conservation incentives'
+ ]
+ })
+ 
+ # Zone-specific requirements
+ if property.zone == 'R2':
+ checklist.append({
+ 'category': 'R2 Specific',
+ 'items': [
+ 'Check if secondary dwelling permitted',
+ 'Verify private open space requirement (35%)',
+ 'Confirm landscaping requirement (45%)',
+ 'Check solar access to living areas'
+ ]
+ })
+ 
+ return checklist
+ 
+ def identify_red_flags(self, property):
+ """Identify issues that commonly cause delays/refusals"""
+ red_flags = []
+ 
+ if property.lot_width < 12:
+ red_flags.append('Narrow lot - may trigger additional controls')
+ 
+ if property.slope > 15:
+ red_flags.append('Steep site - geotechnical report required')
+ 
+ if property.near_creek:
+ red_flags.append('Riparian corridor - additional setbacks apply')
+ 
+ return red_flags
 ```
 
 ---
@@ -457,26 +457,26 @@ The system's value lies in systematizing the 80% of standard cases, not solving 
 ```sql
 -- EXISTING: Main documents table
 CREATE TABLE documents (
-    id TEXT PRIMARY KEY,  -- Document identifier
-    pdf_name TEXT,        -- "Marrickville DCP 2011 - 2 1 Urban Design.pdf"
-    document_type TEXT,   -- "DCP", "LEP", "SEPP"
-    document_area TEXT,   -- "marrickville", "ashfield", etc.
-    pdf_path TEXT,        -- File system path
-    char_count INTEGER,   -- Document size metrics
-    word_count INTEGER,
-    total_regulatory_refs INTEGER,
-    extraction_timestamp REAL,
-    full_text TEXT        -- Complete document text for analysis
+ id TEXT PRIMARY KEY, -- Document identifier
+ pdf_name TEXT, -- "Marrickville DCP 2011 - 2 1 Urban Design.pdf"
+ document_type TEXT, -- "DCP", "LEP", "SEPP"
+ document_area TEXT, -- "marrickville", "ashfield", etc.
+ pdf_path TEXT, -- File system path
+ char_count INTEGER, -- Document size metrics
+ word_count INTEGER,
+ total_regulatory_refs INTEGER,
+ extraction_timestamp REAL,
+ full_text TEXT -- Complete document text for analysis
 );
 
 -- EXISTING: Regulatory references extracted from documents
 CREATE TABLE regulatory_refs (
-    id INTEGER PRIMARY KEY,
-    document_id TEXT,     -- Links to documents.id
-    ref_type TEXT,        -- "sections", "subsections", "parts", "clauses"
-    ref_number TEXT,      -- "2.11", "4.2.4.3", etc.
-    ref_context TEXT,     -- Context around the reference
-    FOREIGN KEY (document_id) REFERENCES documents(id)
+ id INTEGER PRIMARY KEY,
+ document_id TEXT, -- Links to documents.id
+ ref_type TEXT, -- "sections", "subsections", "parts", "clauses"
+ ref_number TEXT, -- "2.11", "4.2.4.3", etc.
+ ref_context TEXT, -- Context around the reference
+ FOREIGN KEY (document_id) REFERENCES documents(id)
 );
 
 -- Current statistics:
@@ -490,40 +490,40 @@ CREATE TABLE regulatory_refs (
 ```sql
 -- PROPOSED: Enhanced relationship tracking
 CREATE TABLE relationship_patterns (
-    id INTEGER PRIMARY KEY,
-    pattern_name TEXT,        -- "refer_to", "in_accordance_with"
-    pattern_regex TEXT,       -- Actual regex pattern
-    relationship_type TEXT,   -- "refers_to", "subject_to"
-    precedence_level INTEGER, -- 1=LEP, 2=SEPP, 3=DCP
-    confidence_score FLOAT,   -- Pattern reliability
-    documents_matched INTEGER, -- How many docs use this pattern
-    example_text TEXT,        -- Sample match
-    implemented_date DATE     -- When pattern was added
+ id INTEGER PRIMARY KEY,
+ pattern_name TEXT, -- "refer_to", "in_accordance_with"
+ pattern_regex TEXT, -- Actual regex pattern
+ relationship_type TEXT, -- "refers_to", "subject_to"
+ precedence_level INTEGER, -- 1=LEP, 2=SEPP, 3=DCP
+ confidence_score FLOAT, -- Pattern reliability
+ documents_matched INTEGER, -- How many docs use this pattern
+ example_text TEXT, -- Sample match
+ implemented_date DATE -- When pattern was added
 );
 
 -- PROPOSED: Concept grounding enhancement
 CREATE TABLE concept_clause_mapping (
-    id INTEGER PRIMARY KEY,
-    concept_name TEXT,      -- "building_setback", "height_limit"
-    zone TEXT,             -- "R2", "R3", "B1"
-    clause_reference TEXT, -- "DCP Section 4.2.4.3"
-    clause_value TEXT,     -- "6m or prevailing"
-    measurement_method TEXT, -- "from property boundary"
-    exceptions TEXT,       -- "corner lots, heritage items"
-    authority TEXT,        -- "Inner West Council DCP"
-    last_updated DATE
+ id INTEGER PRIMARY KEY,
+ concept_name TEXT, -- "building_setback", "height_limit"
+ zone TEXT, -- "R2", "R3", "B1"
+ clause_reference TEXT, -- "DCP Section 4.2.4.3"
+ clause_value TEXT, -- "6m or prevailing"
+ measurement_method TEXT, -- "from property boundary"
+ exceptions TEXT, -- "corner lots, heritage items"
+ authority TEXT, -- "Inner West Council DCP"
+ last_updated DATE
 );
 
 -- PROPOSED: Performance tracking
 CREATE TABLE validation_results (
-    id INTEGER PRIMARY KEY,
-    property_address TEXT,
-    validation_date TIMESTAMP,
-    relationships_found INTEGER,  -- Before: 1, After: 4+
-    concepts_grounded INTEGER,
-    confidence_score FLOAT,
-    processing_time_ms INTEGER,
-    council_feedback TEXT
+ id INTEGER PRIMARY KEY,
+ property_address TEXT,
+ validation_date TIMESTAMP,
+ relationships_found INTEGER, -- Before: 1, After: 4+
+ concepts_grounded INTEGER,
+ confidence_score FLOAT,
+ processing_time_ms INTEGER,
+ council_feedback TEXT
 );
 ```
 

@@ -2,7 +2,7 @@
 
 An enhanced development compliance checking system for NSW Inner West Council areas, featuring dual semantic processing with LangExtract and AutoSchemaKG for sophisticated regulatory rule understanding.
 
-## 🚀 Features
+## Features
 
 ### Enhanced Semantic Processing
 - **Dual Semantic Pipeline**: Combines LangExtract + AutoSchemaKG for complex rule understanding
@@ -23,27 +23,27 @@ An enhanced development compliance checking system for NSW Inner West Council ar
 - **Confidence Scoring**: HIGH/MEDIUM/LOW reliability indicators
 - **Responsive Design**: Works on mobile, tablet, and desktop
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 compliance-engine/
 ├── app/
-│   ├── api/compliance/          # Enhanced APIs with semantic processing
-│   ├── property/enhanced/       # Advanced frontend with source citations
-│   └── globals.css             # Enhanced styling
+│ ├── api/compliance/ # Enhanced APIs with semantic processing
+│ ├── property/enhanced/ # Advanced frontend with source citations
+│ └── globals.css # Enhanced styling
 ├── lib/
-│   ├── enhanced-compliance-engine.ts    # Core semantic compliance logic
-│   ├── semantic-compliance-bridge.ts   # Bridge between semantic and API layers
-│   ├── enhanced-setback-processor.ts   # Semantic rule processor
-│   └── property-data.ts               # NSW Planning Portal integration
+│ ├── enhanced-compliance-engine.ts # Core semantic compliance logic
+│ ├── semantic-compliance-bridge.ts # Bridge between semantic and API layers
+│ ├── enhanced-setback-processor.ts # Semantic rule processor
+│ └── property-data.ts # NSW Planning Portal integration
 ├── examples/regulatory-engine/
-│   ├── dual_semantic_processor.py     # Main semantic processing engine
-│   ├── langextract_config.py         # LangExtract configuration
-│   └── compare_extraction_methods.py  # Regex vs Semantic comparison
-└── public/regulatory-data/         # Processed DCP data and caches
+│ ├── dual_semantic_processor.py # Main semantic processing engine
+│ ├── langextract_config.py # LangExtract configuration
+│ └── compare_extraction_methods.py # Regex vs Semantic comparison
+└── public/regulatory-data/ # Processed DCP data and caches
 ```
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Development Setup
 
@@ -57,8 +57,8 @@ npm install
 
 # Set up Python virtual environment
 python -m venv venv_linux
-source venv_linux/bin/activate  # Linux/Mac
-# or venv_linux\Scripts\activate  # Windows
+source venv_linux/bin/activate # Linux/Mac
+# or venv_linux\Scripts\activate # Windows
 
 # Install Python dependencies
 pip install -r requirements.txt
@@ -98,16 +98,16 @@ curl "http://localhost:3000/api/compliance/setbacks?address=123%20Main%20St%20As
 
 # Check development compliance
 curl -X POST "http://localhost:3000/api/compliance/check" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "propertyData": {...},
-    "proposal": {...},
-    "formerCouncilArea": "Ashfield",
-    "useSemanticRules": true
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+ "propertyData": {...},
+ "proposal": {...},
+ "formerCouncilArea": "Ashfield",
+ "useSemanticRules": true
+ }'
 ```
 
-## 🔧 Technical Details
+## Technical Details
 
 ### Semantic Processing Pipeline
 
@@ -119,7 +119,7 @@ curl -X POST "http://localhost:3000/api/compliance/check" \
 ### Supported Areas
 
 - **Ashfield**: Former Ashfield Council area
-- **Leichhardt**: Former Leichhardt Council area  
+- **Leichhardt**: Former Leichhardt Council area 
 - **Marrickville**: Former Marrickville Council area
 
 ### Rule Types
@@ -128,14 +128,14 @@ curl -X POST "http://localhost:3000/api/compliance/check" \
 - **DCP Setbacks**: Semantic extraction from council documents (MEDIUM confidence)
 - **Complex Conditions**: Conditional logic like "minimum OR calculated, whichever is greater"
 
-## 📊 Performance
+## Performance
 
 - **Semantic Processing**: ~2-3 seconds for initial extraction, <1 second for cached
 - **API Response Time**: <500ms for cached data, <2 seconds for live processing
 - **Accuracy**: 93% confidence for complex conditional rules vs 40% for regex
 - **Coverage**: Handles 15+ different setback rule patterns vs 3 for basic regex
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Run Python tests
@@ -145,10 +145,10 @@ pytest examples/regulatory-engine/
 python examples/regulatory-engine/compare_extraction_methods.py
 
 # Test API endpoints
-npm run test  # (if test suite exists)
+npm run test # (if test suite exists)
 ```
 
-## 🚀 Deployment
+## Deployment
 
 The system is designed for production deployment with:
 
@@ -157,13 +157,13 @@ The system is designed for production deployment with:
 - **Error Handling**: Comprehensive error catching with user-friendly messages
 - **Performance Monitoring**: Processing time tracking and confidence scoring
 
-## 📚 Documentation
+## Documentation
 
 - **Integration Plan**: See `AUTOSCHEMAKG_INTEGRATION_PLAN.md`
 - **API Documentation**: Swagger/OpenAPI specs available at `/api/docs`
 - **Processing Comparison**: See `public/regulatory-data/extraction_method_comparison.json`
 
-## 🤝 Contributing
+## Contributing
 
 This project uses Context Engineering principles with Claude Code:
 
@@ -172,7 +172,7 @@ This project uses Context Engineering principles with Claude Code:
 3. Follow the three-tier rule classification system
 4. Ensure all regulatory extractions include source grounding
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
@@ -184,6 +184,6 @@ For issues and feature requests:
 
 ---
 
-**Built with Context Engineering and Claude Code** 🤖
+**Built with Context Engineering and Claude Code** 
 
 *Features dual semantic processing for legally defensible development compliance checking with source authority citations.*

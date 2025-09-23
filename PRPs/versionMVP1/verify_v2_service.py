@@ -22,14 +22,14 @@ def verify_imports() -> Dict[str, bool]:
         results['version_manager'] = True
     except ImportError as e:
         results['version_manager'] = False
-        print(f"❌ Failed to import version_manager: {e}")
+        print(f"FAILED to import version_manager: {e}")
 
     try:
         from services.version_aware_query import VersionAwareQuery
         results['version_aware_query'] = True
     except ImportError as e:
         results['version_aware_query'] = False
-        print(f"❌ Failed to import version_aware_query: {e}")
+        print(f"FAILED to import version_aware_query: {e}")
 
     return results
 
@@ -57,7 +57,7 @@ def verify_version_manager_operations() -> Dict[str, bool]:
         results['close_connection'] = True
 
     except Exception as e:
-        print(f"❌ Version manager test failed: {e}")
+        print(f"FAILED Version manager test: {e}")
         results['version_manager_ops'] = False
 
     return results
@@ -83,7 +83,7 @@ def verify_version_aware_query() -> Dict[str, bool]:
         results['date_filter'] = isinstance(provisions_dated, list)
 
     except Exception as e:
-        print(f"❌ Version aware query test failed: {e}")
+        print(f"FAILED Version aware query test: {e}")
         results['query_ops'] = False
 
     return results
@@ -119,14 +119,14 @@ def verify_service_integration() -> Dict[str, bool]:
         conn.close()
 
     except Exception as e:
-        print(f"⚠️ Service integration test warning: {e}")
+        print(f"WARNING Service integration test: {e}")
         results['integration'] = False
 
     return results
 
 def main():
     """Run all verifications for PRP-V2"""
-    print("🔍 Verifying PRP-V2: Version Service Layer...")
+    print("Verifying PRP-V2: Version Service Layer...")
 
     verification_results = {
         "timestamp": datetime.now().isoformat(),
@@ -138,22 +138,22 @@ def main():
     }
 
     # Run all checks
-    print("\n📦 Checking imports...")
+    print("\nChecking imports...")
     import_results = verify_imports()
     verification_results["checks"]["imports"] = import_results
 
     if all(import_results.values()):
-        print("✅ All imports successful")
+        print("All imports successful")
 
-        print("\n🔧 Testing VersionManager operations...")
+        print("\nTesting VersionManager operations...")
         vm_results = verify_version_manager_operations()
         verification_results["checks"]["version_manager"] = vm_results
 
-        print("\n🔍 Testing VersionAwareQuery operations...")
+        print("\nTesting VersionAwareQuery operations...")
         query_results = verify_version_aware_query()
         verification_results["checks"]["version_query"] = query_results
 
-        print("\n🔌 Testing service integration...")
+        print("\nTesting service integration...")
         integration_results = verify_service_integration()
         verification_results["checks"]["integration"] = integration_results
 
@@ -164,7 +164,7 @@ def main():
             integration_results.get('schema_accessible', False)
         )
     else:
-        print("❌ Import failures detected")
+        print("FAILED Import failures detected")
         verification_results["errors"].append("Required service modules not found")
         all_passed = False
 
@@ -176,19 +176,19 @@ def main():
 
     # Print summary
     print("\n" + "=" * 50)
-    print("📊 Verification Summary:")
-    print(f"  Module imports: {'✅' if all(import_results.values()) else '❌'}")
+    print("Verification Summary:")
+    print(f"  Module imports: {'PASS' if all(import_results.values()) else 'FAIL'}")
 
     if 'version_manager' in verification_results["checks"]:
-        print(f"  Version Manager: {'✅' if all(verification_results['checks']['version_manager'].values()) else '❌'}")
+        print(f"  Version Manager: {'PASS' if all(verification_results['checks']['version_manager'].values()) else 'FAIL'}")
 
     if 'version_query' in verification_results["checks"]:
-        print(f"  Version Queries: {'✅' if all(verification_results['checks']['version_query'].values()) else '❌'}")
+        print(f"  Version Queries: {'PASS' if all(verification_results['checks']['version_query'].values()) else 'FAIL'}")
 
     if 'integration' in verification_results["checks"]:
-        print(f"  Database Integration: {'✅' if verification_results['checks']['integration'].get('schema_accessible', False) else '❌'}")
+        print(f"  Database Integration: {'PASS' if verification_results['checks']['integration'].get('schema_accessible', False) else 'FAIL'}")
 
-    print(f"\n{'✅ PRP-V2 VERIFICATION PASSED' if all_passed else '❌ PRP-V2 VERIFICATION FAILED'}")
+    print(f"\n{'PRP-V2 VERIFICATION PASSED' if all_passed else 'PRP-V2 VERIFICATION FAILED'}")
 
     return 0 if all_passed else 1
 

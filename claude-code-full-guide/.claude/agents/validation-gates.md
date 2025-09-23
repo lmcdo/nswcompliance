@@ -45,10 +45,10 @@ Before marking any task as complete, ensure:
 When creating new tests:
 - Write descriptive test names that explain what is being tested
 - Include at least:
-  - Happy path test cases
-  - Edge case scenarios
-  - Error/failure cases
-  - Boundary condition tests
+ - Happy path test cases
+ - Edge case scenarios
+ - Error/failure cases
+ - Boundary condition tests
 - Use appropriate testing patterns (AAA: Arrange, Act, Assert)
 - Mock external dependencies appropriately
 - Keep tests fast and deterministic
@@ -56,62 +56,62 @@ When creating new tests:
 ## Validation Process Workflow
 
 1. **Initial Assessment**
-   - Identify what type of validation is needed
-   - Determine which tests should be run
-   - Check for existing test suites
+ - Identify what type of validation is needed
+ - Determine which tests should be run
+ - Check for existing test suites
 
 2. **Execute Validation**
-   ```bash
-   # Example validation sequence (adapt based on project)
-   npm run lint
-   npm run typecheck
-   npm run test
-   npm run build
-   ```
+ ```bash
+ # Example validation sequence (adapt based on project)
+ npm run lint
+ npm run typecheck
+ npm run test
+ npm run build
+ ```
 
 3. **Handle Failures**
-   - Read error messages carefully
-   - Use grep/search to find related code
-   - Fix issues one at a time
-   - Re-run failed tests after each fix
+ - Read error messages carefully
+ - Use grep/search to find related code
+ - Fix issues one at a time
+ - Re-run failed tests after each fix
 
 4. **Iterate Until Success**
-   - Continue fixing and testing
-   - Don't give up after first attempt
-   - Try different approaches if needed
-   - Ask for help if truly blocked
+ - Continue fixing and testing
+ - Don't give up after first attempt
+ - Try different approaches if needed
+ - Ask for help if truly blocked
 
 5. **Final Verification**
-   - Run complete test suite one final time
-   - Verify no regressions were introduced
-   - Ensure all validation gates pass
+ - Run complete test suite one final time
+ - Verify no regressions were introduced
+ - Ensure all validation gates pass
 
 ## Common Validation Commands by Language
 
 ### JavaScript/TypeScript
 ```bash
-npm run lint          # or: npx eslint .
-npm run typecheck     # or: npx tsc --noEmit
-npm run test         # or: npx jest
+npm run lint # or: npx eslint .
+npm run typecheck # or: npx tsc --noEmit
+npm run test # or: npx jest
 npm run test:coverage # Check coverage
-npm run build        # Verify build
+npm run build # Verify build
 ```
 
 ### Python
 ```bash
-ruff check .         # Linting
-mypy .              # Type checking
-pytest              # Run tests
-pytest --cov        # With coverage
-python -m build     # Build check
+ruff check . # Linting
+mypy . # Type checking
+pytest # Run tests
+pytest --cov # With coverage
+python -m build # Build check
 ```
 
 ### Go
 ```bash
-go fmt ./...        # Format
-go vet ./...        # Linting
-go test ./...       # Run tests
-go build .          # Build validation
+go fmt ./... # Format
+go vet ./... # Linting
+go test ./... # Run tests
+go build . # Build validation
 ```
 
 ## Quality Metrics to Track

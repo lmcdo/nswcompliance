@@ -19,8 +19,8 @@ exempt_docs = cursor.fetchall()
 print(f'EXEMPT DEVELOPMENT DOCUMENTS ({len(exempt_docs)} documents):')
 total_exempt = 0
 for doc_id, count in exempt_docs:
-    print(f'  {doc_id}: {count:,} provisions')
-    total_exempt += count
+ print(f' {doc_id}: {count:,} provisions')
+ total_exempt += count
 
 print(f'Total Exempt provisions: {total_exempt:,}')
 print()
@@ -38,8 +38,8 @@ housing_docs = cursor.fetchall()
 print(f'HOUSING SEPP DOCUMENTS ({len(housing_docs)} documents):')
 total_housing = 0
 for doc_id, count in housing_docs:
-    print(f'  {doc_id}: {count:,} provisions')
-    total_housing += count
+ print(f' {doc_id}: {count:,} provisions')
+ total_housing += count
 
 print(f'Total Housing provisions: {total_housing:,}')
 print()
@@ -57,7 +57,7 @@ ORDER BY count DESC
 exempt_zones = cursor.fetchall()
 print(f'EXEMPT PROVISIONS BY ZONE ({len(exempt_zones)} zones):')
 for zone, count in exempt_zones:
-    print(f'  {zone}: {count:,} provisions')
+ print(f' {zone}: {count:,} provisions')
 print()
 
 # Development type relationships
@@ -74,21 +74,21 @@ LIMIT 10
 exempt_dev_types = cursor.fetchall()
 print(f'EXEMPT PROVISIONS BY DEVELOPMENT TYPE (top 10):')
 for dev_type, count in exempt_dev_types:
-    print(f'  {dev_type}: {count:,} provisions')
+ print(f' {dev_type}: {count:,} provisions')
 print()
 
 print('=== FINAL PROOF SUMMARY ===')
 print(f'SEPP Provisions in Database: {total_exempt + total_housing:,}')
-print(f'  - SEPP (Exempt & Complying): {total_exempt:,} provisions')
-print(f'  - SEPP (Housing): {total_housing:,} provisions')
-print(f'  - Total SEPP Documents: {len(exempt_docs) + len(housing_docs)}')
-print(f'  - Zone Relationships: {len(exempt_zones)} zones linked to SEPP provisions')
-print(f'  - Development Type Relationships: Multiple dev types linked to provisions')
+print(f' - SEPP (Exempt & Complying): {total_exempt:,} provisions')
+print(f' - SEPP (Housing): {total_housing:,} provisions')
+print(f' - Total SEPP Documents: {len(exempt_docs) + len(housing_docs)}')
+print(f' - Zone Relationships: {len(exempt_zones)} zones linked to SEPP provisions')
+print(f' - Development Type Relationships: Multiple dev types linked to provisions')
 print()
 print('ENTITY-RELATIONSHIP STRUCTURE CONFIRMED:')
-print('  [PROVEN] SEPP documents exist as entities')
-print('  [PROVEN] Zone relationships established')
-print('  [PROVEN] Development type relationships established')
-print('  [PROVEN] Hierarchical structure: SEPP -> Zone -> Dev Type')
+print(' [PROVEN] SEPP documents exist as entities')
+print(' [PROVEN] Zone relationships established')
+print(' [PROVEN] Development type relationships established')
+print(' [PROVEN] Hierarchical structure: SEPP -> Zone -> Dev Type')
 
 conn.close()

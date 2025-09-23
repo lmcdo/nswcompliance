@@ -8,6 +8,6 @@ types = cursor.fetchall()
 
 print('Special provision types in registry:')
 for t in types:
-    print(f'  - {t[0]}')
+ print(f' - {t[0]}')
 
 conn.close()

@@ -5,17 +5,17 @@ cursor = conn.cursor()
 
 # Check what the verification script is actually looking for
 cursor.execute('''
-    SELECT provision_type, COUNT(*) as count
-    FROM special_provisions_registry
-    WHERE active = TRUE
-    GROUP BY provision_type
-    ORDER BY count DESC
+ SELECT provision_type, COUNT(*) as count
+ FROM special_provisions_registry
+ WHERE active = TRUE
+ GROUP BY provision_type
+ ORDER BY count DESC
 ''')
 provision_types = cursor.fetchall()
 
 print('Provision types with counts:')
 for ptype, count in provision_types:
-    print(f'  {ptype}: {count}')
+ print(f' {ptype}: {count}')
 
 print('\nTotal count:')
 cursor.execute('SELECT COUNT(*) FROM special_provisions_registry')
@@ -24,10 +24,10 @@ print(f'Total registry provisions: {total}')
 
 # Check what critical types are being looked for
 critical_types = [
-    'Climate Zones',
-    'Flood Planning',
-    'Bushfire Prone Land',
-    'State Environmental Planning Policy'
+ 'Climate Zones',
+ 'Flood Planning',
+ 'Bushfire Prone Land',
+ 'State Environmental Planning Policy'
 ]
 
 existing_types = {ptype for ptype, _ in provision_types}

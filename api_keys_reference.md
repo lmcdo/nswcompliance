@@ -25,22 +25,22 @@ https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/layerintersect?ty
 ### Test Response Sample (Confirmed Working):
 ```json
 {
-    "layerName": "Height of Buildings Map",
-    "results": [{
-        "Maximum Building Height": "8.5",
-        "Units": "m", 
-        "Legislative Clause": "Clause 4.3",
-        "EPI Name": "North Sydney Local Environmental Plan 2013",
-        "LGA Name": "NORTH SYDNEY"
-    }]
+ "layerName": "Height of Buildings Map",
+ "results": [{
+ "Maximum Building Height": "8.5",
+ "Units": "m", 
+ "Legislative Clause": "Clause 4.3",
+ "EPI Name": "North Sydney Local Environmental Plan 2013",
+ "LGA Name": "NORTH SYDNEY"
+ }]
 }
 ```
 
 ## Integration Status:
-- ❌ NSW Planning APIs not yet integrated into our system
-- ✅ APIs are publicly accessible (no auth required)
-- ✅ APIs return exact data we need (height limits, zoning, LEP names)
-- 🎯 Ready for integration to solve location-aware filtering
+- NSW Planning APIs not yet integrated into our system
+- APIs are publicly accessible (no auth required)
+- APIs return exact data we need (height limits, zoning, LEP names)
+- Ready for integration to solve location-aware filtering
 
 ## Next Steps:
 1. Test NSW APIs with Ashfield address to confirm data availability

@@ -43,17 +43,17 @@ Unlike simple PDF extractors, RAG-Anything maintains **semantic document structu
 **Example Output Structure**:
 ```json
 {
-  "document_id": "marrickville_dcp_2011",
-  "sections": [
-    {
-      "section_id": "2.7",
-      "title": "Solar Access and Overshadowing",
-      "content": "Development must not...",
-      "subsections": [...],
-      "tables": [...],
-      "cross_references": ["Clause 2.6", "Section 4.1"]
-    }
-  ]
+ "document_id": "marrickville_dcp_2011",
+ "sections": [
+ {
+ "section_id": "2.7",
+ "title": "Solar Access and Overshadowing",
+ "content": "Development must not...",
+ "subsections": [...],
+ "tables": [...],
+ "cross_references": ["Clause 2.6", "Section 4.1"]
+ }
+ ]
 }
 ```
 
@@ -84,7 +84,7 @@ Unlike simple PDF extractors, RAG-Anything maintains **semantic document structu
 ### Document Types Supported
 **Planning Documents**:
 - Development Control Plans (DCPs)
-- Local Environmental Plans (LEPs)  
+- Local Environmental Plans (LEPs) 
 - State Environmental Planning Policies (SEPPs)
 - Heritage Conservation Guidelines
 
@@ -137,13 +137,13 @@ Prepares content for conversational AI systems:
 **Output Sample**:
 ```json
 {
-  "clause_id": "2.7.5.2",
-  "title": "Solar Access Requirements",
-  "content": "Buildings must provide a minimum of 3 hours solar access...",
-  "regulatory_category": "development_control",
-  "applies_to": ["residential", "mixed_use"],
-  "cross_references": ["2.6", "4.1.3"],
-  "source_page": 87
+ "clause_id": "2.7.5.2",
+ "title": "Solar Access Requirements",
+ "content": "Buildings must provide a minimum of 3 hours solar access...",
+ "regulatory_category": "development_control",
+ "applies_to": ["residential", "mixed_use"],
+ "cross_references": ["2.6", "4.1.3"],
+ "source_page": 87
 }
 ```
 

@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""
+FastAPI HTTP Server for Enhanced Compliance API
+Wraps the existing enhanced_compliance_api.py for reliable Node.js access
+"""
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, List, Dict, Any
+import json
+from enhanced_compliance_api import EnhancedComplianceAPI
+
+app = FastAPI(title="NSW Compliance API", version="1.0.0")
+
+# Enable CORS for frontend access
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3007", "http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize the compliance API
+compliance_api = EnhancedComplianceAPI()
+
+class ComplianceRequest(BaseModel):
+    zone_code: str
+    property_id: Optional[int] = None
+    development_type: Optional[str] = None
+    include_development_permissions: Optional[bool] = False
+    climate_zone: Optional[str] = None
+    water_zone: Optional[str] = None
+    special_provisions: Optional[List[Dict[str, Any]]] = None
+
+class ComplianceResponse(BaseModel):
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    processing_time_ms: int
+
+@app.post("/compliance", response_model=ComplianceResponse)
+async def get_compliance(request: ComplianceRequest):
+    """Get compliance data for a zone and development type"""
+    try:
+        import time
+        start_time = time.time()
+
+        print(f"[Compliance API] Request: zone={request.zone_code}, dev_type={request.development_type}")
+
+        # Call the existing enhanced compliance API
+        result = compliance_api.get_enhanced_compliance(
+            zone_code=request.zone_code,
+            property_id=request.property_id,
+            development_type=request.development_type,
+            include_development_permissions=request.include_development_permissions,
+            climate_zone=request.climate_zone,
+            water_zone=request.water_zone,
+            special_provisions=request.special_provisions
+        )
+
+        processing_time = int((time.time() - start_time) * 1000)
+
+        print(f"[Compliance API] Success: {processing_time}ms")
+
+        return ComplianceResponse(
+            success=True,
+            data=result,
+            processing_time_ms=processing_time
+        )
+
+    except Exception as e:
+        processing_time = int((time.time() - start_time) * 1000)
+        error_msg = f"Compliance API error: {str(e)}"
+        print(f"[Compliance API] Error: {error_msg}")
+
+        return ComplianceResponse(
+            success=False,
+            error=error_msg,
+            processing_time_ms=processing_time
+        )
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "NSW Compliance API"}
+
+@app.get("/")
+async def root():
+    """Root endpoint with API info"""
+    return {
+        "service": "NSW Planning Compliance API",
+        "version": "1.0.0",
+        "endpoints": {
+            "POST /compliance": "Get compliance data for zone and development type",
+            "GET /health": "Health check",
+            "GET /docs": "API documentation"
+        }
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    print("Starting NSW Compliance API Server...")
+    print("API Documentation: http://localhost:8000/docs")
+    print("Health Check: http://localhost:8000/health")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -18,9 +18,9 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
   // Don't auto-fill from selectedAddress - let user control the input
   // useEffect(() => {
-  //   if (selectedAddress && selectedAddress !== inputValue) {
-  //     setInputValue(selectedAddress);
-  //   }
+  // if (selectedAddress && selectedAddress !== inputValue) {
+  // setInputValue(selectedAddress);
+  // }
   // }, [selectedAddress, inputValue]);
 
   useEffect(() => {
@@ -32,7 +32,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
         window.google?.maps.event.clearInstanceListeners(autocompleteRef.current);
         autocompleteRef.current = null;
       }
-      
+
       if (window.google && window.google.maps && window.google.maps.places && inputRef.current) {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           inputRef.current,
@@ -42,15 +42,15 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
             fields: ['formatted_address', 'geometry', 'address_components'],
             bounds: new window.google.maps.LatLngBounds(
               new window.google.maps.LatLng(-37.5, 140.9), // SW corner - NSW bounds like original
-              new window.google.maps.LatLng(-28.1, 153.6)  // NE corner - NSW bounds like original  
+              new window.google.maps.LatLng(-28.1, 153.6) // NE corner - NSW bounds like original
             )
           }
         );
 
-        
+
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
-          
+
           if (place?.formatted_address) {
             const address = place.formatted_address;
             const coordinates = place.geometry?.location ? {
@@ -59,13 +59,13 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
             } : undefined;
 
             setInputValue(address);
-            
+
             // Check if address is in NSW (simple validation like original)
-            const isNSW = address.includes('NSW') || 
-                         place.address_components?.some(component =>
-                           component.types.includes('administrative_area_level_1') &&
-                           component.short_name === 'NSW'
-                         );
+            const isNSW = address.includes('NSW') ||
+              place.address_components?.some(component =>
+                component.types.includes('administrative_area_level_1') &&
+                component.short_name === 'NSW'
+              );
 
             if (isNSW) {
               onAddressSelect(address, coordinates);
@@ -87,13 +87,13 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
       }
       return false;
     };
-    
+
     // Try immediately first
     if (!checkGoogleMaps()) {
       // If not available, keep checking with a timeout
       let attempts = 0;
       const maxAttempts = 50; // 5 seconds max wait
-      
+
       const interval = setInterval(() => {
         attempts++;
         if (checkGoogleMaps()) {
@@ -134,7 +134,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
   const handleClearInput = (e?: React.MouseEvent) => {
     e?.preventDefault(); // Prevent form submission
     e?.stopPropagation(); // Stop event bubbling
-    
+
     setInputValue('');
     if (inputRef.current) {
       inputRef.current.value = ''; // Also clear the actual input element value
@@ -157,52 +157,54 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="relative">
-          <input
-            ref={inputRef}
-            type="text"
-            value={inputValue}
-            onChange={handleInputChange}
-            placeholder="Start typing an address..."
-            className="w-full h-10 px-3 pr-16 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
-            disabled={loading}
-          />
-          {inputValue && (
-            <button
-              type="button"
-              onClick={handleClearInput}
-              className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
-              title="Clear search"
-            >
-              <X className="h-3 w-3 text-gray-400 hover:text-gray-600" />
-            </button>
-          )}
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+      <form onSubmit={handleSubmit}>
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              placeholder="Start typing an address..."
+              className="w-full h-10 px-3 pr-16 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
+              disabled={loading}
+            />
+            {inputValue && (
+              <button
+                type="button"
+                onClick={handleClearInput}
+                className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                title="Clear search"
+              >
+                <X className="h-3 w-3 text-gray-400 hover:text-gray-600" />
+              </button>
+            )}
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading || !inputValue.trim()}
+            className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analyzing...
+              </>
+            ) : (
+              'Analyze Property'
+            )}
+          </button>
         </div>
-        
-        <button 
-          type="submit" 
-          disabled={loading || !inputValue.trim()}
-          className="w-full h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Analyzing...
-            </>
-          ) : (
-            'Analyze Property'
-          )}
-        </button>
       </form>
 
       <div className="text-xs text-gray-500 text-center space-x-4">
-        <span>✓ Manual entry allowed</span>
+        <span> Manual entry allowed</span>
         <span>•</span>
-        <span>✓ Google suggestions optional</span>
+        <span> Google suggestions optional</span>
         <span>•</span>
-        <span>✓ Real-time property lookup</span>
+        <span> Real-time property lookup</span>
       </div>
     </div>
   );

@@ -47,20 +47,20 @@ Real Database Content:
 
 **IMMEDIATE PRIORITY ACTIONS** (< 100ms response):
 1. **[HIGH] Check Heritage Controls**
-   - "Found 1,173 heritage provisions - may affect your setbacks and design"
-   - Button: "Check Heritage Requirements"
+ - "Found 1,173 heritage provisions - may affect your setbacks and design"
+ - Button: "Check Heritage Requirements"
 
 2. **[HIGH] Calculate Parking Requirements**
-   - "Found 336 parking provisions - required for DA submission"
-   - Button: "Calculate Parking Spaces"
+ - "Found 336 parking provisions - required for DA submission"
+ - Button: "Calculate Parking Spaces"
 
 3. **[MEDIUM] Review Height Limits**
-   - "Height affects side/rear setbacks - check upper floor requirements"
-   - Button: "Check Height Controls"
+ - "Height affects side/rear setbacks - check upper floor requirements"
+ - Button: "Check Height Controls"
 
 **COMPLETE COMPLIANCE CHECKLIST**:
 ```
-✓ Building setbacks (COMPLETED)
+ Building setbacks (COMPLETED)
 □ Height limits
 □ Floor space ratio (FSR)
 □ Parking provision
@@ -153,27 +153,27 @@ CREATE INDEX idx_cross_references ON regulatory_provisions (provision_text) WHER
 ### **Configuration-Driven Flexibility**
 ```python
 RequirementConfig = {
-    "heritage": {
-        "priority": "HIGH", 
-        "weight": 0.9, 
-        "zones": ["R1", "R2"],
-        "description": "Heritage controls may override standard setbacks",
-        "provision_count": 1173
-    },
-    "parking": {
-        "priority": "HIGH", 
-        "weight": 0.8, 
-        "dev_types": ["residential"],
-        "description": "Parking provision required for DA submission",
-        "provision_count": 336
-    },
-    "height": {
-        "priority": "MEDIUM", 
-        "weight": 0.6, 
-        "linked_controls": ["setback"],
-        "description": "Height limits affect setback calculations",
-        "provision_count": 73
-    }
+ "heritage": {
+ "priority": "HIGH", 
+ "weight": 0.9, 
+ "zones": ["R1", "R2"],
+ "description": "Heritage controls may override standard setbacks",
+ "provision_count": 1173
+ },
+ "parking": {
+ "priority": "HIGH", 
+ "weight": 0.8, 
+ "dev_types": ["residential"],
+ "description": "Parking provision required for DA submission",
+ "provision_count": 336
+ },
+ "height": {
+ "priority": "MEDIUM", 
+ "weight": 0.6, 
+ "linked_controls": ["setback"],
+ "description": "Height limits affect setback calculations",
+ "provision_count": 73
+ }
 }
 ```
 
@@ -197,10 +197,10 @@ RequirementConfig = {
 ### **Connection Scoring Algorithm**
 ```python
 connection_score = (
-    document_proximity * 0.4 +    # Same document/section
-    regulatory_hierarchy * 0.3 +   # LEP→DCP relationship
-    zone_relevance * 0.2 +        # Zone applicability
-    development_context * 0.1      # Dev type relevance
+ document_proximity * 0.4 + # Same document/section
+ regulatory_hierarchy * 0.3 + # LEP→DCP relationship
+ zone_relevance * 0.2 + # Zone applicability
+ development_context * 0.1 # Dev type relevance
 )
 
 # Priority threshold: score > 0.7 = HIGH, > 0.5 = MEDIUM, > 0.3 = LOW
@@ -210,24 +210,24 @@ connection_score = (
 ```python
 # Efficient bulk connection query
 WITH setback_documents AS (
-    SELECT DISTINCT rp.document_id, rp.section_header
-    FROM regulatory_provisions rp
-    JOIN development_controls dc ON rp.id = dc.provision_id
-    WHERE dc.control_type = 'setback'
+ SELECT DISTINCT rp.document_id, rp.section_header
+ FROM regulatory_provisions rp
+ JOIN development_controls dc ON rp.id = dc.provision_id
+ WHERE dc.control_type = 'setback'
 ),
 related_requirements AS (
-    SELECT rp.provision_text, rp.ref_number, rp.page_number,
-           dc.control_type, dc.value_text,
-           CASE 
-             WHEN rp.provision_text LIKE '%heritage%' THEN 0.9
-             WHEN rp.provision_text LIKE '%parking%' THEN 0.8
-             WHEN dc.control_type = 'height' THEN 0.6
-             ELSE 0.3
-           END as priority_score
-    FROM regulatory_provisions rp
-    LEFT JOIN development_controls dc ON rp.id = dc.provision_id
-    WHERE rp.document_id IN (SELECT document_id FROM setback_documents)
-      AND dc.control_type != 'setback'
+ SELECT rp.provision_text, rp.ref_number, rp.page_number,
+ dc.control_type, dc.value_text,
+ CASE 
+ WHEN rp.provision_text LIKE '%heritage%' THEN 0.9
+ WHEN rp.provision_text LIKE '%parking%' THEN 0.8
+ WHEN dc.control_type = 'height' THEN 0.6
+ ELSE 0.3
+ END as priority_score
+ FROM regulatory_provisions rp
+ LEFT JOIN development_controls dc ON rp.id = dc.provision_id
+ WHERE rp.document_id IN (SELECT document_id FROM setback_documents)
+ AND dc.control_type != 'setback'
 )
 SELECT * FROM related_requirements 
 WHERE priority_score > 0.5 
@@ -266,48 +266,48 @@ LIMIT 20;
 // Basic HTML response (works without JS)
 POST /connected-requirements → HTML fragment
 
-// Enhanced JSON API (for SPA/mobile)  
+// Enhanced JSON API (for SPA/mobile) 
 GET /api/connected-requirements?property_id=123 → JSON
 ```
 
 ### **Response Structure**
 ```json
 {
-  "success": true,
-  "property": {
-    "address": "123 Smith Street, Marrickville",
-    "zone": "R2",
-    "primary_results": {"front": "6.0m", "side": "1.4m", "rear": "6.0m"}
-  },
-  "connected_requirements": {
-    "immediate_actions": [
-      {
-        "priority": "HIGH",
-        "type": "heritage", 
-        "title": "Check Heritage Controls",
-        "description": "Found 1,173 heritage provisions - may affect your setbacks and design",
-        "action_button": "Check Heritage Requirements",
-        "provision_count": 1173,
-        "estimated_impact": "May override standard setbacks"
-      }
-    ],
-    "compliance_checklist": [
-      {
-        "category": "Building Envelope",
-        "items": [
-          {"requirement": "Setbacks", "status": "completed", "result": "6.0m/1.4m/6.0m"},
-          {"requirement": "Height limits", "status": "pending", "action": "check_height"},
-          {"requirement": "Floor space ratio", "status": "pending", "action": "calculate_fsr"}
-        ]
-      }
-    ],
-    "detailed_connections": [],  // Lazy loaded
-    "performance_metrics": {
-      "query_time_ms": 145,
-      "connections_found": 12,
-      "cache_hit": true
-    }
-  }
+ "success": true,
+ "property": {
+ "address": "123 Smith Street, Marrickville",
+ "zone": "R2",
+ "primary_results": {"front": "6.0m", "side": "1.4m", "rear": "6.0m"}
+ },
+ "connected_requirements": {
+ "immediate_actions": [
+ {
+ "priority": "HIGH",
+ "type": "heritage", 
+ "title": "Check Heritage Controls",
+ "description": "Found 1,173 heritage provisions - may affect your setbacks and design",
+ "action_button": "Check Heritage Requirements",
+ "provision_count": 1173,
+ "estimated_impact": "May override standard setbacks"
+ }
+ ],
+ "compliance_checklist": [
+ {
+ "category": "Building Envelope",
+ "items": [
+ {"requirement": "Setbacks", "status": "completed", "result": "6.0m/1.4m/6.0m"},
+ {"requirement": "Height limits", "status": "pending", "action": "check_height"},
+ {"requirement": "Floor space ratio", "status": "pending", "action": "calculate_fsr"}
+ ]
+ }
+ ],
+ "detailed_connections": [], // Lazy loaded
+ "performance_metrics": {
+ "query_time_ms": 145,
+ "connections_found": 12,
+ "cache_hit": true
+ }
+ }
 }
 ```
 
@@ -341,55 +341,55 @@ GET /api/connected-requirements?property_id=123 → JSON
 ```sql
 -- Pre-computed connection relationships
 CREATE TABLE requirement_connections (
-    id SERIAL PRIMARY KEY,
-    source_provision_id INTEGER REFERENCES regulatory_provisions(id),
-    target_provision_id INTEGER REFERENCES regulatory_provisions(id),
-    connection_type VARCHAR(50), -- 'same_document', 'cross_reference', 'zone_related'
-    confidence_score REAL,
-    created_at TIMESTAMP DEFAULT NOW()
+ id SERIAL PRIMARY KEY,
+ source_provision_id INTEGER REFERENCES regulatory_provisions(id),
+ target_provision_id INTEGER REFERENCES regulatory_provisions(id),
+ connection_type VARCHAR(50), -- 'same_document', 'cross_reference', 'zone_related'
+ confidence_score REAL,
+ created_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Requirement classification cache
 CREATE TABLE requirement_classifications (
-    id SERIAL PRIMARY KEY,
-    requirement_type VARCHAR(50), -- 'heritage', 'parking', 'height'
-    zone VARCHAR(10),
-    council VARCHAR(50),
-    provision_count INTEGER,
-    priority_level VARCHAR(10),
-    cache_expires_at TIMESTAMP
+ id SERIAL PRIMARY KEY,
+ requirement_type VARCHAR(50), -- 'heritage', 'parking', 'height'
+ zone VARCHAR(10),
+ council VARCHAR(50),
+ provision_count INTEGER,
+ priority_level VARCHAR(10),
+ cache_expires_at TIMESTAMP
 );
 ```
 
 ### **Core Service Classes**
 ```python
 class ConnectedRequirementsOrchestrator:
-    def __init__(self):
-        self.discovery_engine = ConnectionDiscoveryEngine()
-        self.classification_service = RequirementClassificationService()
-        self.formatting_service = ResponseFormattingService()
-        self.cache_service = CachingService()
-    
-    async def find_connected_requirements(self, property_data, primary_results):
-        # Check cache first
-        cache_key = f"connected_reqs:{property_data.zone}:{property_data.lga_name}"
-        cached = await self.cache_service.get(cache_key)
-        if cached:
-            return cached
-            
-        # Discover connections using multiple strategies
-        connections = await self.discovery_engine.discover_all_connections(property_data)
-        
-        # Classify and prioritize
-        classified = self.classification_service.classify_requirements(connections)
-        
-        # Format for UI
-        response = self.formatting_service.format_for_ui(classified)
-        
-        # Cache result
-        await self.cache_service.set(cache_key, response, ttl=3600)
-        
-        return response
+ def __init__(self):
+ self.discovery_engine = ConnectionDiscoveryEngine()
+ self.classification_service = RequirementClassificationService()
+ self.formatting_service = ResponseFormattingService()
+ self.cache_service = CachingService()
+ 
+ async def find_connected_requirements(self, property_data, primary_results):
+ # Check cache first
+ cache_key = f"connected_reqs:{property_data.zone}:{property_data.lga_name}"
+ cached = await self.cache_service.get(cache_key)
+ if cached:
+ return cached
+ 
+ # Discover connections using multiple strategies
+ connections = await self.discovery_engine.discover_all_connections(property_data)
+ 
+ # Classify and prioritize
+ classified = self.classification_service.classify_requirements(connections)
+ 
+ # Format for UI
+ response = self.formatting_service.format_for_ui(classified)
+ 
+ # Cache result
+ await self.cache_service.set(cache_key, response, ttl=3600)
+ 
+ return response
 ```
 
 ---

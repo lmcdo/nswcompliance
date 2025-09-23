@@ -1,9 +1,9 @@
 # Real NSW Planning API Data vs Current System Comparison
 
-## ✅ Real NSW Planning Data Successfully Extracted
+## Real NSW Planning Data Successfully Extracted
 
 ### Real Property Details from `nsw_api_sample_response.json`:
-- **Zone:** R1 General Residential  
+- **Zone:** R1 General Residential 
 - **LEP:** Inner West Local Environmental Plan 2022
 - **Minimum Lot Size:** 200 m²
 - **Floor Space Ratio:** 0.5:1
@@ -44,7 +44,7 @@ The real NSW API response shows **LEP clauses 4.3C, 4.4, 6.14, 6.15** apply to t
 
 ### Problem Identified:
 The authority detection system correctly identifies document sources **after** the `getRealDocumentId()` fix, but:
-- KG relationships use generic IDs (`nsw_planning_doc_074`)  
+- KG relationships use generic IDs (`nsw_planning_doc_074`) 
 - These don't contain LEP identifiers like `"Inner_West_LEP_2022"`
 - Authority defaults to DCP instead of recognizing LEP provisions
 
@@ -53,16 +53,16 @@ Added `getRealDocumentId()` method to resolve generic document IDs to actual doc
 
 ## Testing Outcome
 
-✅ **Data Extraction:** Successfully parsed all 11 planning layers from real NSW API  
-✅ **Authority Analysis:** Identified 4 SEPP + LEP clauses that should control setbacks  
-✅ **Legislative Mapping:** Found specific clauses (4.3C, 4.4, 6.14, 6.15) with precedence  
-❌ **Live Testing:** Server timeout prevented full end-to-end validation
+ **Data Extraction:** Successfully parsed all 11 planning layers from real NSW API 
+ **Authority Analysis:** Identified 4 SEPP + LEP clauses that should control setbacks 
+ **Legislative Mapping:** Found specific clauses (4.3C, 4.4, 6.14, 6.15) with precedence 
+ **Live Testing:** Server timeout prevented full end-to-end validation
 
 ## Recommendation
 
 The real NSW Planning API response provides **authentic legislative data** with:
 - Specific clause references
-- Direct legislation URLs  
+- Direct legislation URLs 
 - Proper authority hierarchy (SEPP > LEP > DCP)
 - Real zone classifications
 

@@ -1,8 +1,8 @@
 # PRP-K5: SEPP/LEP Hierarchy Engine Activation
 
-**Status**: READY FOR IMPLEMENTATION  
-**Priority**: HIGH - Completes Legal Hierarchy  
-**Dependencies**: PRP-K4 (Database Migration Complete)  
+**Status**: READY FOR IMPLEMENTATION 
+**Priority**: HIGH - Completes Legal Hierarchy 
+**Dependencies**: PRP-K4 (Database Migration Complete) 
 **Date**: 2025-09-07
 
 ## Executive Summary
@@ -11,12 +11,12 @@ PRP-K4 successfully imported all SEPP/LEP hierarchy data, but the rules engine r
 
 ## Current State Analysis
 
-### ✅ **What PRP-K4 Delivered:**
+### **What PRP-K4 Delivered:**
 - **91 SEPP/LEP overrides** imported to PostgreSQL
 - **sepp_lep_overrides table** fully operational
 - **Hierarchy data relationships** available for processing
 
-### ❌ **Critical Gap Identified:**
+### **Critical Gap Identified:**
 - **Rules engine deactivated** (`sepp-lep-processor.ts.bak`)
 - **All zone rules are DCP level** (0 SEPP rules, 0 LEP rules)
 - **Hierarchy logic not integrated** into API calculation flow
@@ -24,28 +24,28 @@ PRP-K4 successfully imported all SEPP/LEP hierarchy data, but the rules engine r
 ## Active Files Requiring Updates
 
 ### **Database Tables (PostgreSQL):**
-1. **`sepp_lep_overrides`** ✅ Active (91 records)
-   - Contains SEPP provision → LEP clause relationships
-   - Override types: modifies (67), exempts_from (13), replaces (6), adds_to (5)
+1. **`sepp_lep_overrides`** Active (91 records)
+ - Contains SEPP provision → LEP clause relationships
+ - Override types: modifies (67), exempts_from (13), replaces (6), adds_to (5)
 
-2. **`zone_setback_rules`** ⚠️ Needs Authority Upgrade
-   - Current: 48 rules, all authority_type = "DCP" 
-   - Required: Upgrade matching rules to SEPP/LEP authority levels
+2. **`zone_setback_rules`** Needs Authority Upgrade
+ - Current: 48 rules, all authority_type = "DCP" 
+ - Required: Upgrade matching rules to SEPP/LEP authority levels
 
 ### **Frontend Components Requiring Activation:**
-1. **`frontend-nextjs/lib/compliance/sepp-lep-processor.ts`** ❌ Currently .bak
-   - Complete hierarchical rules engine
-   - Authority resolution logic (SEPP > LEP > DCP)
-   - Conflict resolution methods
-   - Legal audit trail generation
+1. **`frontend-nextjs/lib/compliance/sepp-lep-processor.ts`** Currently .bak
+ - Complete hierarchical rules engine
+ - Authority resolution logic (SEPP > LEP > DCP)
+ - Conflict resolution methods
+ - Legal audit trail generation
 
-2. **`frontend-nextjs/lib/database/client.ts`** ✅ Active
-   - getHierarchicalSetbackControls() function ready
-   - SEPP/LEP precedence query logic implemented
+2. **`frontend-nextjs/lib/database/client.ts`** Active
+ - getHierarchicalSetbackControls() function ready
+ - SEPP/LEP precedence query logic implemented
 
-3. **`frontend-nextjs/app/api/setbacks/calculate/route.ts`** ⚠️ Needs Integration
-   - Current: Uses basic zone rules only
-   - Required: Integrate hierarchical processor
+3. **`frontend-nextjs/app/api/setbacks/calculate/route.ts`** Needs Integration
+ - Current: Uses basic zone rules only
+ - Required: Integrate hierarchical processor
 
 ## Implementation Tasks
 
@@ -61,18 +61,18 @@ mv sepp-lep-processor.ts.bak sepp-lep-processor.ts
 UPDATE zone_setback_rules 
 SET authority_type = 'SEPP', precedence_level = 1
 WHERE rule_id IN (
-    SELECT DISTINCT sepp_provision_id::text 
-    FROM sepp_lep_overrides
-    WHERE override_type IN ('replaces', 'modifies')
+ SELECT DISTINCT sepp_provision_id::text 
+ FROM sepp_lep_overrides
+ WHERE override_type IN ('replaces', 'modifies')
 );
 
--- Upgrade rules that match LEP clauses  
+-- Upgrade rules that match LEP clauses 
 UPDATE zone_setback_rules 
 SET authority_type = 'LEP', precedence_level = 2
 WHERE rule_id IN (
-    SELECT DISTINCT lep_clause_reference 
-    FROM sepp_lep_overrides 
-    WHERE override_type = 'modifies'
+ SELECT DISTINCT lep_clause_reference 
+ FROM sepp_lep_overrides 
+ WHERE override_type = 'modifies'
 );
 ```
 
@@ -84,9 +84,9 @@ import { SEPPLEPProcessor } from '@/lib/compliance/sepp-lep-processor';
 // In calculation logic:
 const hierarchyProcessor = new SEPPLEPProcessor();
 const hierarchicalResult = await hierarchyProcessor.processHierarchicalCompliance(
-  nswApiLayers,
-  property_zone,
-  'setback'
+ nswApiLayers,
+ property_zone,
+ 'setback'
 );
 ```
 
@@ -109,17 +109,17 @@ const hierarchicalResult = await hierarchyProcessor.processHierarchicalComplianc
 ```bash
 # Query should return SEPP rule if available, then LEP, then DCP
 curl -X POST http://localhost:3007/api/setbacks/calculate \
-  -d '{"property_zone": "R2", "property_id": 1962876}' \
-  | grep "authority"
+ -d '{"property_zone": "R2", "property_id": 1962876}' \
+ | grep "authority"
 ```
 
 ### **Test 2: Legal Audit Trail**
 Response should include:
 ```json
 {
-  "controlling_authority": "SEPP|LEP|DCP",
-  "legal_justification": "Authority explanation...", 
-  "audit_trail": ["Step 1: ...", "Step 2: ..."]
+ "controlling_authority": "SEPP|LEP|DCP",
+ "legal_justification": "Authority explanation...", 
+ "audit_trail": ["Step 1: ...", "Step 2: ..."]
 }
 ```
 

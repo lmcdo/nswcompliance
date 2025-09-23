@@ -12,96 +12,96 @@ Complete the PRP-K1 integration by replacing SQLite frontend with bulletproof Po
 
 ### Phase 0: CRITICAL PREREQUISITES (MISSING FROM ORIGINAL PRP)
 1. **Install PostgreSQL Server**
-   ```bash
-   # Windows: Download and install PostgreSQL 15+
-   # https://www.postgresql.org/download/windows/
-   # Set password: postgres
-   # Port: 5432
-   # Verify: psql --version
-   ```
+ ```bash
+ # Windows: Download and install PostgreSQL 15+
+ # https://www.postgresql.org/download/windows/
+ # Set password: postgres
+ # Port: 5432
+ # Verify: psql --version
+ ```
 
 2. **Execute Zone Data Import Scripts (NEVER RUN)**
-   ```bash
-   # Import AutoSchemaKG zone relationships to SQLite first
-   venv_linux/Scripts/python.exe integrate_autoschema_data.py
-   
-   # Verify zone data imported
-   venv_linux/Scripts/python.exe -c "import sqlite3; conn = sqlite3.connect('nsw_planning.db'); cursor = conn.cursor(); results = cursor.execute('SELECT COUNT(*) FROM regulatory_provisions WHERE zone IS NOT NULL AND zone != \"\"').fetchone(); print(f'Records with zones: {results[0]}')"
-   ```
+ ```bash
+ # Import AutoSchemaKG zone relationships to SQLite first
+ venv_linux/Scripts/python.exe integrate_autoschema_data.py
+ 
+ # Verify zone data imported
+ venv_linux/Scripts/python.exe -c "import sqlite3; conn = sqlite3.connect('nsw_planning.db'); cursor = conn.cursor(); results = cursor.execute('SELECT COUNT(*) FROM regulatory_provisions WHERE zone IS NOT NULL AND zone != \"\"').fetchone(); print(f'Records with zones: {results[0]}')"
+ ```
 
 3. **Execute PostgreSQL Migration (NEVER RUN)**
-   ```bash
-   # Migrate SQLite with zones to PostgreSQL
-   venv_linux/Scripts/python.exe fixed_postgresql_migration.py
-   
-   # Verify PostgreSQL database created
-   psql -U postgres -d nsw_planning -c "SELECT COUNT(*) FROM regulatory_provisions;"
-   ```
+ ```bash
+ # Migrate SQLite with zones to PostgreSQL
+ venv_linux/Scripts/python.exe fixed_postgresql_migration.py
+ 
+ # Verify PostgreSQL database created
+ psql -U postgres -d nsw_planning -c "SELECT COUNT(*) FROM regulatory_provisions;"
+ ```
 
 ### Phase 1: PostgreSQL Client Integration
-1. **Install PostgreSQL client for NextJS** ✅ DONE
-   - Remove `better-sqlite3` dependency
-   - Add `pg` and `@types/pg` for TypeScript support
-   - Configure connection pooling for production
+1. **Install PostgreSQL client for NextJS** DONE
+ - Remove `better-sqlite3` dependency
+ - Add `pg` and `@types/pg` for TypeScript support
+ - Configure connection pooling for production
 
-2. **Create PostgreSQL Database Client** ✅ DONE
-   - Replace `lib/database/client.ts` with PostgreSQL implementation
-   - Implement connection pooling and error handling
-   - Add domain-aware query methods
+2. **Create PostgreSQL Database Client** DONE
+ - Replace `lib/database/client.ts` with PostgreSQL implementation
+ - Implement connection pooling and error handling
+ - Add domain-aware query methods
 
 ### Phase 2: Domain Classification Integration
 1. **Update Core Query Methods**
-   - Add `domain_classification` filters to all setback queries
-   - Implement `RESIDENTIAL_BUILDINGS` vs `SIGNAGE_ADVERTISING` separation
-   - Ensure cross-contamination prevention is active
+ - Add `domain_classification` filters to all setback queries
+ - Implement `RESIDENTIAL_BUILDINGS` vs `SIGNAGE_ADVERTISING` separation
+ - Ensure cross-contamination prevention is active
 
 2. **Legal Authority Hierarchy**
-   - Implement SEPP > LEP > DCP precedence in queries
-   - Add authority level display in UI components
-   - Show legal references as requested
+ - Implement SEPP > LEP > DCP precedence in queries
+ - Add authority level display in UI components
+ - Show legal references as requested
 
 ### Phase 3: API Route Integration (CRITICAL - NEVER DONE)
 1. **Update API Routes to Use PostgreSQL Instead of Python/SQLite**
-   ```typescript
-   // CURRENT (BROKEN): app/api/setbacks/calculate/route.ts calls Python script
-   const pythonOutput = execSync(`"${pythonPath}" "${scriptPath}" ${zone} ${propId}`);
-   
-   // REQUIRED (FIX): Use PostgreSQL client directly  
-   const dbClient = new DatabaseClient();
-   const setbacks = await dbClient.getHierarchicalSetbackControls(zone, location, 'RESIDENTIAL_BUILDINGS');
-   ```
+ ```typescript
+ // CURRENT (BROKEN): app/api/setbacks/calculate/route.ts calls Python script
+ const pythonOutput = execSync(`"${pythonPath}" "${scriptPath}" ${zone} ${propId}`);
+ 
+ // REQUIRED (FIX): Use PostgreSQL client directly 
+ const dbClient = new DatabaseClient();
+ const setbacks = await dbClient.getHierarchicalSetbackControls(zone, location, 'RESIDENTIAL_BUILDINGS');
+ ```
 
 2. **Zone Data Validation Scripts (ADD TO PRP)**
-   ```bash
-   # Create zone validation script
-   echo '#!/bin/bash
-   echo "=== PRP-K2 VALIDATION CHECKLIST ==="
-   echo "1. PostgreSQL Server Status:"
-   pg_ctl status -D /usr/local/var/postgres || echo "❌ PostgreSQL NOT RUNNING"
-   
-   echo "2. Zone Data Import Status:"
-   python -c "import sqlite3; conn = sqlite3.connect(\"nsw_planning.db\"); cursor = conn.cursor(); results = cursor.execute(\"SELECT COUNT(*) FROM regulatory_provisions WHERE zone IS NOT NULL AND zone != \"\"\").fetchone(); print(f\"✅ Zone records: {results[0]}/22092 ({results[0]/22092*100:.1f}%)\")"
-   
-   echo "3. AutoSchemaKG Integration Status:"
-   python -c "import sqlite3; conn = sqlite3.connect(\"nsw_planning.db\"); cursor = conn.cursor(); results = cursor.execute(\"SELECT COUNT(*) FROM regulatory_refs WHERE ref_context LIKE \"%autoschema%\"\").fetchone(); print(f\"✅ AutoSchemaKG records: {results[0]}\")"
-   
-   echo "4. API Route Database Usage:"
-   echo "Current API uses: Python → SQLite (BROKEN)"
-   echo "Required API uses: TypeScript → PostgreSQL (TODO)"
-   ' > validate_prp_k2.sh
-   chmod +x validate_prp_k2.sh
-   ```
+ ```bash
+ # Create zone validation script
+ echo '#!/bin/bash
+ echo "=== PRP-K2 VALIDATION CHECKLIST ==="
+ echo "1. PostgreSQL Server Status:"
+ pg_ctl status -D /usr/local/var/postgres || echo " PostgreSQL NOT RUNNING"
+ 
+ echo "2. Zone Data Import Status:"
+ python -c "import sqlite3; conn = sqlite3.connect(\"nsw_planning.db\"); cursor = conn.cursor(); results = cursor.execute(\"SELECT COUNT(*) FROM regulatory_provisions WHERE zone IS NOT NULL AND zone != \"\"\").fetchone(); print(f\" Zone records: {results[0]}/22092 ({results[0]/22092*100:.1f}%)\")"
+ 
+ echo "3. AutoSchemaKG Integration Status:"
+ python -c "import sqlite3; conn = sqlite3.connect(\"nsw_planning.db\"); cursor = conn.cursor(); results = cursor.execute(\"SELECT COUNT(*) FROM regulatory_refs WHERE ref_context LIKE \"%autoschema%\"\").fetchone(); print(f\" AutoSchemaKG records: {results[0]}\")"
+ 
+ echo "4. API Route Database Usage:"
+ echo "Current API uses: Python → SQLite (BROKEN)"
+ echo "Required API uses: TypeScript → PostgreSQL (TODO)"
+ ' > validate_prp_k2.sh
+ chmod +x validate_prp_k2.sh
+ ```
 
 ### Phase 4: Frontend Component Updates
-1. **Update Database Calls** ✅ DONE
-   - Modify all components to use new PostgreSQL client
-   - Add domain classification parameters
-   - Implement authority hierarchy display
+1. **Update Database Calls** DONE
+ - Modify all components to use new PostgreSQL client
+ - Add domain classification parameters
+ - Implement authority hierarchy display
 
 2. **Cross-Contamination Prevention Testing**
-   - Verify residential queries only return residential setbacks
-   - Confirm signage controls don't contaminate residential results
-   - Test legal authority precedence
+ - Verify residential queries only return residential setbacks
+ - Confirm signage controls don't contaminate residential results
+ - Test legal authority precedence
 
 ## UPDATED Acceptance Criteria (With Missing Steps)
 - [ ] **PostgreSQL Server Installed and Running** (MISSING)
@@ -122,18 +122,18 @@ Complete the PRP-K1 integration by replacing SQLite frontend with bulletproof Po
 4. **Integration Scripts Exist But Never Executed** - All code written, zero execution
 
 **Data Locations:**
-- ✅ Zone relationships: `autoschemakg_output_ollama_final\kg_extraction\*.json`
-- ✅ Integration scripts: `integrate_autoschema_data.py`, `fixed_postgresql_migration.py`  
-- ✅ Database import: **EXECUTED SUCCESSFULLY**
-- ✅ PostgreSQL server: **INSTALLED AND OPERATIONAL**
+- Zone relationships: `autoschemakg_output_ollama_final\kg_extraction\*.json`
+- Integration scripts: `integrate_autoschema_data.py`, `fixed_postgresql_migration.py` 
+- Database import: **EXECUTED SUCCESSFULLY**
+- PostgreSQL server: **INSTALLED AND OPERATIONAL**
 
-## 📁 **ZONE DATA JSON FILES PROCESSED (4,649+ FILES TOTAL)**
+## **ZONE DATA JSON FILES PROCESSED (4,649+ FILES TOTAL)**
 
 ### **Primary Zone Data Sources:**
 ```
 langextract_verified_output/
 ├── Marrickville DCP 2011 - 4 1 Low Density Residential Development - with IWLEP 2022 amendments_verified.json
-├── Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments_verified.json  
+├── Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments_verified.json 
 ├── Marrickville DCP 2011 - 5 0 Commercial and Mixed Use Development - with IWLEP 2022 amendments_verified.json
 ├── Leichhardt DCP 2013 - 5 - Part C Place Section 1 - with IWLEP 2022 amendments_verified.json
 ├── Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments_verified.json
@@ -184,22 +184,22 @@ output/ (Nested JSON structures)
 ### **Critical R2 Setback Data Sources (VERIFIED):**
 ```
 public/regulatory-data/
-├── inner-west-compliance-rules.json           # ⭐ PRIMARY R2 SETBACK SOURCE
+├── inner-west-compliance-rules.json # PRIMARY R2 SETBACK SOURCE
 ├── test-outputs/mock_lightrag_extraction.json
 └── leichhardt_semantic_extraction.json
 
-compliance_result.json                          # R2 compliance analysis results
+compliance_result.json # R2 compliance analysis results
 
 rag_storage/ and rag_fixed_storage/
-├── vdb_relationships.json                      # R2 setback relationships
-├── vdb_entities.json                          # Zone entity definitions
-├── vdb_chunks.json                            # Text chunks with R2 references
-├── kv_store_text_chunks.json                  # Key-value text storage
-├── kv_store_llm_response_cache.json           # LLM response cache
-└── kv_store_full_docs.json                    # Full document storage
+├── vdb_relationships.json # R2 setback relationships
+├── vdb_entities.json # Zone entity definitions
+├── vdb_chunks.json # Text chunks with R2 references
+├── kv_store_text_chunks.json # Key-value text storage
+├── kv_store_llm_response_cache.json # LLM response cache
+└── kv_store_full_docs.json # Full document storage
 
 validated_outputs/
-├── large_files_split.json                     # Contains R2 zone table data
+├── large_files_split.json # Contains R2 zone table data
 ├── A2_EXT_marrickville_raganything_format.json
 ├── A2_EXT_marrickville_complete.json
 ├── A2_ALL_DCP_complete_extracted_content.json
@@ -212,7 +212,7 @@ validated_outputs/
 ### **AutoSchemaKG Zone Taxonomy Sources:**
 ```
 autoschemakg_data_ollama_final/
-├── nsw_planning_docs_015.json                  # Boarding house R2 zone rules
+├── nsw_planning_docs_015.json # Boarding house R2 zone rules
 └── Various other nsw_planning_docs_*.json files
 
 autoschemakg_output_ollama_final/kg_extraction/
@@ -231,11 +231,11 @@ autoschemakg_output_ollama_final/kg_extraction/
 ### **JSON Files Accessed During Investigation:**
 ```
 Files Examined for Zone Data:
-├── compliance_result.json                         # R2 compliance analysis
+├── compliance_result.json # R2 compliance analysis
 ├── autoschemakg_data_ollama_final/nsw_planning_docs_015.json
 ├── rag_storage/vdb_relationships.json
 ├── multimodal_relationships_complete.json
-├── rag_storage/vdb_entities.json  
+├── rag_storage/vdb_entities.json 
 ├── rag_storage/vdb_chunks.json
 ├── rag_storage/kv_store_text_chunks.json
 ├── rag_storage/kv_store_llm_response_cache.json
@@ -248,7 +248,7 @@ Files Examined for Zone Data:
 ├── rag_fixed_storage/kv_store_llm_response_cache.json
 ├── rag_fixed_storage/kv_store_full_docs.json
 ├── validated_outputs/A2_EXT_marrickville_raganything_format.json
-├── public/regulatory-data/inner-west-compliance-rules.json  # ⭐ PRIMARY SOURCE
+├── public/regulatory-data/inner-west-compliance-rules.json # PRIMARY SOURCE
 ├── public/regulatory-data/test-outputs/mock_lightrag_extraction.json
 └── validated_outputs/A2_EXT_marrickville_complete.json
 
@@ -268,7 +268,7 @@ C10-C13 zones: 3-11m setbacks (Specific site requirements)
 O1 zones: 1m setbacks (Pioneers Memorial areas)
 ```
 
-## 📋 **VERIFIED R2 SETBACK DATA FROM LEGISLATION PDFs**
+## **VERIFIED R2 SETBACK DATA FROM LEGISLATION PDFs**
 
 ### **Source File:**
 ```
@@ -285,42 +285,42 @@ public/regulatory-data/inner-west-compliance-rules.json
 
 #### **Ashfield Council (Former Ashfield LGA):**
 - **Front Setback**: 6.0 metres minimum
-  - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
-  - Clause: Front Setback Requirements
-  - Rule ID: `ASHFIELD_FRONT_SETBACK_R2`
+ - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
+ - Clause: Front Setback Requirements
+ - Rule ID: `ASHFIELD_FRONT_SETBACK_R2`
 
-- **Side Setback**: 0.9 metres minimum  
-  - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
-  - Clause: Side Setback Requirements
-  - Rule ID: `ASHFIELD_SIDE_SETBACK_R2`
+- **Side Setback**: 0.9 metres minimum 
+ - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
+ - Clause: Side Setback Requirements
+ - Rule ID: `ASHFIELD_SIDE_SETBACK_R2`
 
 - **Rear Setback**: 1.2 metres minimum
-  - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
-  - Clause: Rear Setback Requirements
-  - Rule ID: `ASHFIELD_REAR_SETBACK_R2`
+ - Source PDF: `Chapter E2 Haberfield Neighbourhood.pdf`
+ - Clause: Rear Setback Requirements
+ - Rule ID: `ASHFIELD_REAR_SETBACK_R2`
 
 #### **Leichhardt Council (Former Leichhardt LGA):**
 - **Front Setback**: 3.0 metres minimum
-  - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
-  - Clause: Front Setback Requirements
-  - Rule ID: `LEICHHARDT_FRONT_SETBACK_R2`
+ - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
+ - Clause: Front Setback Requirements
+ - Rule ID: `LEICHHARDT_FRONT_SETBACK_R2`
 
 - **Side Setback**: 1.5 metres minimum
-  - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
-  - Clause: Side Setback Requirements  
-  - Rule ID: `LEICHHARDT_SIDE_SETBACK_R2`
+ - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
+ - Clause: Side Setback Requirements 
+ - Rule ID: `LEICHHARDT_SIDE_SETBACK_R2`
 
 - **Rear Setback**: 1.1 metres minimum
-  - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
-  - Clause: Rear Setback Requirements
-  - Rule ID: `LEICHHARDT_REAR_SETBACK_R2`
+ - Source PDF: `Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023.pdf`
+ - Clause: Rear Setback Requirements
+ - Rule ID: `LEICHHARDT_REAR_SETBACK_R2`
 
 ### **Database Import Status:**
-- ✅ **6 R2 setback rules imported** to `verified_compliance_rules` table
-- ✅ **All rules extracted from actual legislation PDFs** (not synthetic)
-- ✅ **Quality score 0.95** (verified confidence)
-- ✅ **Zone-specific targeting**: `"zones": ["R2"]`
-- ✅ **Full metadata preserved**: Authority, effective dates, source clauses
+- **6 R2 setback rules imported** to `verified_compliance_rules` table
+- **All rules extracted from actual legislation PDFs** (not synthetic)
+- **Quality score 0.95** (verified confidence)
+- **Zone-specific targeting**: `"zones": ["R2"]`
+- **Full metadata preserved**: Authority, effective dates, source clauses
 
 ## Risk Mitigation
 - Backup existing SQLite client before replacement

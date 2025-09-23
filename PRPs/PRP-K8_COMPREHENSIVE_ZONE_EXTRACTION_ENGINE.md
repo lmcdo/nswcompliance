@@ -28,29 +28,29 @@ wsl export PYTHONIOENCODING=utf-8
 
 #### Existing RAG-Anything Data to PRESERVE:
 ```
-✅ KEEP IN FINAL DATABASE:
-- autoschemakg_data_ollama_final/*.json     # Images, diagrams, tables, captions
-- langextract_verified_output/*.json       # Verified provisions with relationships  
-- output_structured/                        # Document structure and metadata
+ KEEP IN FINAL DATABASE:
+- autoschemakg_data_ollama_final/*.json # Images, diagrams, tables, captions
+- langextract_verified_output/*.json # Verified provisions with relationships 
+- output_structured/ # Document structure and metadata
 ```
 
 #### How PRP-K8 Zone Data INTEGRATES with Existing Data:
 
 **Current Database Schema (22,105 provisions):**
-- ✅ **Existing provision text** (from RAG-Anything)
-- ✅ **Images/diagrams/tables** (from RAG-Anything) 
-- ✅ **Document relationships** (from RAG-Anything)
-- ❌ **Zone field**: 91.3% missing (PRP-K8 fixes this)
+- **Existing provision text** (from RAG-Anything)
+- **Images/diagrams/tables** (from RAG-Anything) 
+- **Document relationships** (from RAG-Anything)
+- **Zone field**: 91.3% missing (PRP-K8 fixes this)
 
 **PRP-K8 ADDS zone data to existing provisions:**
 ```sql
 -- PRP-K8 updates existing records, doesn't replace them
 UPDATE regulatory_provisions 
 SET 
-    zone = 'R2',                           -- NEW: from zone inference
-    zone_confidence = 0.85,                -- NEW: confidence score  
-    zone_inference_method = 'document_structure', -- NEW: how zone was inferred
-    zone_validation_status = 'validated'    -- NEW: Planning API validation
+ zone = 'R2', -- NEW: from zone inference
+ zone_confidence = 0.85, -- NEW: confidence score 
+ zone_inference_method = 'document_structure', -- NEW: how zone was inferred
+ zone_validation_status = 'validated' -- NEW: Planning API validation
 WHERE provision_id = existing_provision_id;
 
 -- Existing RAG-Anything data stays unchanged:
@@ -59,7 +59,7 @@ WHERE provision_id = existing_provision_id;
 
 #### Integration Workflow:
 1. **Keep all existing data** (images, tables, relationships from RAG-Anything)
-2. **Add new zone fields** to existing regulatory_provisions records  
+2. **Add new zone fields** to existing regulatory_provisions records 
 3. **Link zone data** to existing images/diagrams where relevant
 4. **Enhance search** - now provisions can be filtered by zone AND include existing images/tables
 
@@ -76,57 +76,57 @@ wsl export PYTHONIOENCODING=utf-8
 # CRITICAL EXTRACTION 1: LEP Land Use Tables (Zone → Development Type Mapping)
 wsl ./venv_linux/Scripts/mineru.exe parse "docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf" --output prp_k8_lep_land_use_tables --method auto
 
-# CRITICAL EXTRACTION 2: Complete DCP Structure Mapping (Section → Zone Context)  
+# CRITICAL EXTRACTION 2: Complete DCP Structure Mapping (Section → Zone Context) 
 # Extract complete DCP documents to understand section hierarchy and zone applicability
 wsl find "docs/dcps/INNERWEST" -name "*.pdf" -exec ./venv_linux/Scripts/mineru.exe parse {} --output prp_k8_dcp_structure --method auto --preserve-hierarchy \;
 
 # INTEGRATION: Merge with existing RAG-Anything data
 wsl ./venv_linux/Scripts/python.exe scripts/build_comprehensive_zone_mapping.py \
-  --existing-raganything "autoschemakg_data_ollama_final" \
-  --lep-tables "prp_k8_lep_land_use_tables" \
-  --dcp-structure "prp_k8_dcp_structure" \
-  --planning-api-validation \
-  --output "prp_k8_complete_zone_system"
+ --existing-raganything "autoschemakg_data_ollama_final" \
+ --lep-tables "prp_k8_lep_land_use_tables" \
+ --dcp-structure "prp_k8_dcp_structure" \
+ --planning-api-validation \
+ --output "prp_k8_complete_zone_system"
 ```
 
-**⚠️ CRITICAL: 2 Missing Pieces That MinerU MUST Extract:**
+** CRITICAL: 2 Missing Pieces That MinerU MUST Extract:**
 
 ```
 CRITICAL MISSING 1: LEP Land Use Tables (Zone → Development Type Mapping)
-📍 Location: "docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf" 
-🎯 Purpose: Map development types like "Commercial Mixed Use" → B1/B2/B4 zones
-📊 Content: Zone permission matrices, land use definitions
+ Location: "docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf" 
+ Purpose: Map development types like "Commercial Mixed Use" → B1/B2/B4 zones
+ Content: Zone permission matrices, land use definitions
 → Output: prp_k8_lep_land_use_tables/
 
-CRITICAL MISSING 2: Complete DCP Section → Zone Context Mapping  
-📍 Location: "docs/dcps/INNERWEST" (complete structure analysis)
-🎯 Purpose: Understand which DCP sections apply to which zones
-📊 Content: Document hierarchy, section-to-zone relationships
+CRITICAL MISSING 2: Complete DCP Section → Zone Context Mapping 
+ Location: "docs/dcps/INNERWEST" (complete structure analysis)
+ Purpose: Understand which DCP sections apply to which zones
+ Content: Document hierarchy, section-to-zone relationships
 → Output: prp_k8_dcp_structure/
 ```
 
 **What RAG-Anything Already Provides (KEEP):**
-- ✅ 1,247+ regulatory clauses with content
-- ✅ 156 regulatory tables (parking, setbacks, heights)
-- ✅ Images, diagrams, complex layouts
-- ✅ Cross-references and relationships
+- 1,247+ regulatory clauses with content
+- 156 regulatory tables (parking, setbacks, heights)
+- Images, diagrams, complex layouts
+- Cross-references and relationships
 
 **What Planning API Provides:**
-- ✅ Property → zone mappings (validation)
-- ✅ Current zone boundaries and status  
-- ✅ Development controls (height, FSR)
+- Property → zone mappings (validation)
+- Current zone boundaries and status 
+- Development controls (height, FSR)
 
 **Target Documents:**
 
 #### LEP Documents (Primary Zone Sources):
 ```
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf      # MISSING SECTIONS
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-51-100.pdf    # ✅ EXTRACTED
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-101-150.pdf   # ✅ EXTRACTED  
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-151-200.pdf   # ⚠️  PARTIAL
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-201-250.pdf   # ⚠️  PARTIAL
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-251-288.pdf   # ⚠️  PARTIAL
-docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation.pdf           # ✅ COMPLETE DOC
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf # MISSING SECTIONS
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-51-100.pdf # EXTRACTED
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-101-150.pdf # EXTRACTED 
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-151-200.pdf # PARTIAL
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-201-250.pdf # PARTIAL
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-251-288.pdf # PARTIAL
+docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation.pdf # COMPLETE DOC
 ```
 
 #### DCP Documents (Zone-Specific Controls):
@@ -144,43 +144,43 @@ docs/sepps/State Environmental Planning Policy (Biodiversity and Conservation) 2
 ```
 
 #### 1.2 Structured Data Extraction
-- **Table extraction**: LEP zone/use matrices  
+- **Table extraction**: LEP zone/use matrices 
 - **Section hierarchy**: Map document sections to zones
 - **Geographic references**: Extract suburb/street zone mentions
 - **Cross-references**: Link provisions to zone-specific clauses
 
-### Phase 2: Multi-Layer Zone Inference Engine  
+### Phase 2: Multi-Layer Zone Inference Engine 
 **Goal**: 100% zone assignment for regulatory provisions
 
 #### 2.1 Document Structure Mapping
 ```python
 # Primary zone inference method
 def infer_zone_from_document_structure(provision):
-    - Extract parent section headers
-    - Match against zone patterns: "R2 Residential", "Commercial B1"  
-    - Inherit zone from document context
-    - Confidence: HIGH (80-95%)
+ - Extract parent section headers
+ - Match against zone patterns: "R2 Residential", "Commercial B1" 
+ - Inherit zone from document context
+ - Confidence: HIGH (80-95%)
 ```
 
 #### 2.2 Development Type Cross-Reference
-```python  
+```python 
 # Secondary inference using existing development_type field
 def infer_zone_from_development_type(provision):
-    - "Low Density Residential" → R2
-    - "Commercial Mixed Use" → B1/B2/B4
-    - "Industrial Development" → IN1/IN2
-    - Cross-reference with LEP zone objectives
-    - Confidence: MEDIUM (60-80%)
+ - "Low Density Residential" → R2
+ - "Commercial Mixed Use" → B1/B2/B4
+ - "Industrial Development" → IN1/IN2
+ - Cross-reference with LEP zone objectives
+ - Confidence: MEDIUM (60-80%)
 ```
 
 #### 2.3 Text Pattern Analysis
 ```python
 # Tertiary inference from provision text
 def infer_zone_from_text_patterns(provision):
-    - Direct mentions: "in R2 zones", "B1 zoned land"  
-    - Street/address references → GIS lookup
-    - Spatial keywords: "residential areas", "commercial centres"
-    - Confidence: LOW-MEDIUM (40-70%)
+ - Direct mentions: "in R2 zones", "B1 zoned land" 
+ - Street/address references → GIS lookup
+ - Spatial keywords: "residential areas", "commercial centres"
+ - Confidence: LOW-MEDIUM (40-70%)
 ```
 
 ### Phase 3: Planning API Validation Integration
@@ -189,12 +189,12 @@ def infer_zone_from_text_patterns(provision):
 #### 3.1 Ground Truth Validation Service
 ```python
 class PlanningAPIValidator:
-    def validate_zone_assignment(self, address_sample, inferred_zone):
-        # Use existing API calls:
-        # 1. Get propId from address
-        # 2. Get zone data from layerintersect API  
-        # 3. Compare with our inference
-        # 4. Update confidence scores
+ def validate_zone_assignment(self, address_sample, inferred_zone):
+ # Use existing API calls:
+ # 1. Get propId from address
+ # 2. Get zone data from layerintersect API 
+ # 3. Compare with our inference
+ # 4. Update confidence scores
 ```
 
 **API Integration Points:**
@@ -205,10 +205,10 @@ class PlanningAPIValidator:
 #### 3.2 Confidence Scoring System
 ```python
 CONFIDENCE_LEVELS = {
-    'HIGH': 0.85-1.0,    # Direct zone mention, validated against API
-    'MEDIUM': 0.60-0.84, # Document structure inference, partial validation  
-    'LOW': 0.40-0.59,    # Pattern matching only
-    'REJECT': 0.0-0.39   # Conflicting signals, needs manual review
+ 'HIGH': 0.85-1.0, # Direct zone mention, validated against API
+ 'MEDIUM': 0.60-0.84, # Document structure inference, partial validation 
+ 'LOW': 0.40-0.59, # Pattern matching only
+ 'REJECT': 0.0-0.39 # Conflicting signals, needs manual review
 }
 ```
 
@@ -218,21 +218,21 @@ CONFIDENCE_LEVELS = {
 ```python
 # scripts/verify_zone_assignments.py
 def run_verification_suite():
-    1. Sample 100 provisions with inferred zones
-    2. Validate against Planning API where possible
-    3. Generate accuracy report by inference method
-    4. Identify systematic errors for correction
+ 1. Sample 100 provisions with inferred zones
+ 2. Validate against Planning API where possible
+ 3. Generate accuracy report by inference method
+ 4. Identify systematic errors for correction
 ```
 
 #### 4.2 Completion Tracking
-```python  
+```python 
 # Automatic progress markers
 class ZoneMappingProgress:
-    def track_completion(self):
-        - Total provisions processed
-        - Zone assignment success rate by method
-        - Validation accuracy against API
-        - Remaining gaps and recommended actions
+ def track_completion(self):
+ - Total provisions processed
+ - Zone assignment success rate by method
+ - Validation accuracy against API
+ - Remaining gaps and recommended actions
 ```
 
 ## Implementation Phases
@@ -252,15 +252,15 @@ wsl find "docs/dcps/INNERWEST" -name "*.pdf" -exec ./venv_linux/Scripts/mineru.e
 
 # Step 3: Build comprehensive zone mapping using ALL data sources
 wsl ./venv_linux/Scripts/python.exe scripts/build_comprehensive_zone_mapping.py \
-  --existing-raganything "autoschemakg_data_ollama_final" \
-  --lep-tables "prp_k8_lep_land_use_tables" \
-  --dcp-structure "prp_k8_dcp_structure" \
-  --planning-api-validation
+ --existing-raganything "autoschemakg_data_ollama_final" \
+ --lep-tables "prp_k8_lep_land_use_tables" \
+ --dcp-structure "prp_k8_dcp_structure" \
+ --planning-api-validation
 ```
 
 **Tasks:**
-- [ ] Extract LEP sections 1-50 (Land Use Tables) ✅ **Path**: `docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf`
-- [ ] Extract complete DCP structure for zone context ✅ **Path**: `docs/dcps/INNERWEST/`
+- [ ] Extract LEP sections 1-50 (Land Use Tables) **Path**: `docs/lep/Inner West Local Environmental Plan 2022 - NSW Legislation-1-50.pdf`
+- [ ] Extract complete DCP structure for zone context **Path**: `docs/dcps/INNERWEST/`
 - [ ] Build zone mapping matrix using RAG-Anything + new extractions + Planning API
 - [ ] **Verification**: Validate against Planning API (100 sample properties)
 
@@ -270,7 +270,7 @@ wsl ./venv_linux/Scripts/python.exe scripts/build_comprehensive_zone_mapping.py 
 - [ ] Implement text pattern analysis (tertiary)
 - [ ] **Verification**: Test on 500 provision sample, target 80% accuracy
 
-### **Phase 3: Planning API Integration (Week 2-3)**  
+### **Phase 3: Planning API Integration (Week 2-3)** 
 - [ ] Build Planning API validation service
 - [ ] Implement confidence scoring system
 - [ ] Validate inference accuracy against API data
@@ -284,11 +284,11 @@ wsl ./venv_linux/Scripts/python.exe scripts/zone_verification_suite.py --sample-
 # Step 2: Run completion tracking
 wsl ./venv_linux/Scripts/python.exe scripts/prp_k8_completion_tracker.py
 
-# Step 3: Generate final validation report  
+# Step 3: Generate final validation report 
 wsl ./venv_linux/Scripts/python.exe scripts/generate_zone_coverage_report.py --output "PRP_K8_COMPLETION_REPORT.md"
 ```
-- [ ] Build automated verification scripts ✅ **Created**: `scripts/zone_verification_suite.py`
-- [ ] Implement completion tracking dashboard ✅ **Created**: `scripts/prp_k8_completion_tracker.py`
+- [ ] Build automated verification scripts **Created**: `scripts/zone_verification_suite.py`
+- [ ] Implement completion tracking dashboard **Created**: `scripts/prp_k8_completion_tracker.py`
 - [ ] Run full database zone assignment using extracted documents from **Phase 1**
 - [ ] **Target**: 100% zone coverage for height/setback/FSR provisions
 
@@ -312,7 +312,7 @@ wsl ./venv_linux/Scripts/python.exe scripts/generate_zone_coverage_report.py --o
 - **API rate limiting**: Implement caching and batch processing
 - **Zone boundary edge cases**: Flag for manual review with LOW confidence
 
-### **Data Quality Risks:**  
+### **Data Quality Risks:** 
 - **Outdated zoning**: Use API currency dates for validation
 - **Multiple zone overlays**: Capture all applicable zones/constraints
 - **Document amendments**: Track LEP/DCP amendment dates

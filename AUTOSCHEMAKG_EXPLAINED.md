@@ -15,13 +15,13 @@ Analyzes regulatory text and extracts structured relationships between entities.
 
 ### Process
 1. **Entity-Relation Extraction**: Identifies specific entities and their relationships
-   - Example: `{"Head": "development applications", "Relation": "must comply with", "Tail": "height limits"}`
+ - Example: `{"Head": "development applications", "Relation": "must comply with", "Tail": "height limits"}`
 
 2. **Event-Entity Extraction**: Identifies events and participating entities
-   - Example: `{"Event": "Development applications must be assessed", "Entity": ["applications", "assessment", "council"]}`
+ - Example: `{"Event": "Development applications must be assessed", "Entity": ["applications", "assessment", "council"]}`
 
 3. **Event-Relation Extraction**: Identifies temporal/causal relationships between events
-   - Example: `{"Head": "application submitted", "Relation": "before", "Tail": "assessment begins"}`
+ - Example: `{"Head": "application submitted", "Relation": "before", "Tail": "assessment begins"}`
 
 ### Output
 - JSON files containing structured relationship triplets
@@ -42,7 +42,7 @@ Converts JSON relationship data into CSV format and creates temporary knowledge 
 
 ### Output Files
 - `triple_nodes_*.csv` - All unique entities/events/relations
-- `triple_edges_*.csv` - All relationships between nodes  
+- `triple_edges_*.csv` - All relationships between nodes 
 - `missing_concepts_*.csv` - Nodes requiring semantic concept mapping
 - `*_without_concept.pkl` - Temporary graph for Step 3 context
 
@@ -64,7 +64,7 @@ Your answer: assessment, evaluation, review, regulation, approval
 
 #### For Entities (Regulatory Terms):
 **Prompt Template:**
-```  
+``` 
 ENTITY: residential development
 CONTEXT: controlled by height limits, regulated by zoning
 Your answer: housing, construction, zoning, development, planning
@@ -83,7 +83,7 @@ Your answer: regulation, governance, restriction, management, oversight
 
 ### Real NSW Planning Examples Generated:
 - `"heritage conservation" → "preservation, conservation, protection, restoration, heritage"`
-- `"building setbacks" → "setbacks, heritage, zoning, development, accessibility"`  
+- `"building setbacks" → "setbacks, heritage, zoning, development, accessibility"` 
 - `"environmental protection" → "conservation, regulation, compliance, sustainability, responsibility"`
 
 ### Output

@@ -1,21 +1,21 @@
 # LightRAG Deployment Strategy - Layer 4 Integration
-**Date**: 2025-09-01  
-**Status**: PRODUCTION DEPLOYMENT PLAN  
+**Date**: 2025-09-01 
+**Status**: PRODUCTION DEPLOYMENT PLAN 
 **Current Pipeline**: 10,180 regulatory references (90.5% complete)
 
 ---
 
-## 🎯 **LightRAG's Role: Conversational Query Intelligence**
+## **LightRAG's Role: Conversational Query Intelligence**
 
 ### **Current 4-Layer Architecture Status:**
-1. **RAG-Anything** ✅ 24,162 items with page numbers, TOC, tables
-2. **LangExtract** ✅ 10,180 regulatory references extracted  
-3. **AutoSchemaKG** ✅ 1,473 images + 351 visual mappings
-4. **LightRAG** ⚠️ Previously integrated with old data (2,028 provisions)
+1. **RAG-Anything** 24,162 items with page numbers, TOC, tables
+2. **LangExtract** 10,180 regulatory references extracted 
+3. **AutoSchemaKG** 1,473 images + 351 visual mappings
+4. **LightRAG** Previously integrated with old data (2,028 provisions)
 
 ---
 
-## 📊 **Current vs Previous Data Comparison**
+## **Current vs Previous Data Comparison**
 
 ### **Old LightRAG Integration (August):**
 - **Documents**: 227 (A3 + A3.5 processing)
@@ -33,7 +33,7 @@
 
 ---
 
-## 🚀 **Optimal LightRAG Deployment Strategy**
+## **Optimal LightRAG Deployment Strategy**
 
 ### **Option 1: Direct Database Integration (RECOMMENDED)**
 Instead of re-processing through LightRAG's ingestion, connect LightRAG directly to our comprehensive database.
@@ -41,56 +41,56 @@ Instead of re-processing through LightRAG's ingestion, connect LightRAG directly
 ```python
 # lightrag_database_connector.py
 class LightRAGDatabaseConnector:
-    def __init__(self):
-        self.db_path = 'nsw_planning.db'
-        self.lightrag = LightRAG(
-            working_dir='./lightrag_production/',
-            llm_model_name='gpt-4-turbo-preview',
-            embedding_model_name='text-embedding-3-small'
-        )
-    
-    def query_with_context(self, user_query):
-        """Enhanced query with database context"""
-        # 1. Get relevant entries from database
-        db_results = self.search_database(user_query)
-        
-        # 2. Include page numbers and sections
-        context = self.build_context_with_pages(db_results)
-        
-        # 3. Use LightRAG for conversational response
-        response = self.lightrag.query(
-            query=user_query,
-            mode='hybrid',  # Uses both vector and graph search
-            context=context
-        )
-        
-        # 4. Enhance with source citations
-        return self.add_source_citations(response, db_results)
-    
-    def search_database(self, query):
-        """Search our 10,180 entries"""
-        conn = sqlite3.connect(self.db_path)
-        # Search logic using FTS or similarity
-        results = conn.execute("""
-            SELECT ref_context, page_number, section_header, document_id
-            FROM regulatory_refs
-            WHERE ref_context LIKE ?
-            LIMIT 20
-        """, (f'%{query}%',))
-        return results.fetchall()
-    
-    def build_context_with_pages(self, db_results):
-        """Build rich context with page references"""
-        context = []
-        for content, page, section, doc in db_results:
-            context.append({
-                'content': content,
-                'page': page,
-                'section': section,
-                'document': doc,
-                'source': f"{doc} - Page {page} - {section}"
-            })
-        return context
+ def __init__(self):
+ self.db_path = 'nsw_planning.db'
+ self.lightrag = LightRAG(
+ working_dir='./lightrag_production/',
+ llm_model_name='gpt-4-turbo-preview',
+ embedding_model_name='text-embedding-3-small'
+ )
+ 
+ def query_with_context(self, user_query):
+ """Enhanced query with database context"""
+ # 1. Get relevant entries from database
+ db_results = self.search_database(user_query)
+ 
+ # 2. Include page numbers and sections
+ context = self.build_context_with_pages(db_results)
+ 
+ # 3. Use LightRAG for conversational response
+ response = self.lightrag.query(
+ query=user_query,
+ mode='hybrid', # Uses both vector and graph search
+ context=context
+ )
+ 
+ # 4. Enhance with source citations
+ return self.add_source_citations(response, db_results)
+ 
+ def search_database(self, query):
+ """Search our 10,180 entries"""
+ conn = sqlite3.connect(self.db_path)
+ # Search logic using FTS or similarity
+ results = conn.execute("""
+ SELECT ref_context, page_number, section_header, document_id
+ FROM regulatory_refs
+ WHERE ref_context LIKE ?
+ LIMIT 20
+ """, (f'%{query}%',))
+ return results.fetchall()
+ 
+ def build_context_with_pages(self, db_results):
+ """Build rich context with page references"""
+ context = []
+ for content, page, section, doc in db_results:
+ context.append({
+ 'content': content,
+ 'page': page,
+ 'section': section,
+ 'document': doc,
+ 'source': f"{doc} - Page {page} - {section}"
+ })
+ return context
 ```
 
 ### **Option 2: Hybrid Knowledge Graph Construction**
@@ -99,53 +99,53 @@ Build a new LightRAG knowledge graph from our enhanced data.
 ```python
 # lightrag_knowledge_builder.py
 def build_enhanced_lightrag():
-    """Build LightRAG from ultimate pipeline data"""
-    
-    # Initialize LightRAG
-    rag = LightRAG(
-        working_dir='./lightrag_enhanced/',
-        llm_model_name='gpt-4-turbo-preview',
-        embedding_model_name='text-embedding-3-small'
-    )
-    
-    # Connect to our database
-    conn = sqlite3.connect('nsw_planning.db')
-    
-    # Process in intelligent batches
-    cursor = conn.execute("""
-        SELECT DISTINCT document_id, ref_context, page_number, section_header
-        FROM regulatory_refs
-        WHERE ref_context IS NOT NULL
-        ORDER BY document_id, page_number
-    """)
-    
-    current_doc = None
-    doc_content = []
-    
-    for doc_id, content, page, section in cursor:
-        if current_doc != doc_id and doc_content:
-            # Insert complete document with structure
-            enhanced_content = format_with_structure(doc_content)
-            rag.insert(enhanced_content)
-            doc_content = []
-        
-        current_doc = doc_id
-        doc_content.append({
-            'text': content,
-            'page': page,
-            'section': section
-        })
-    
-    # Insert last document
-    if doc_content:
-        rag.insert(format_with_structure(doc_content))
-    
-    return rag
+ """Build LightRAG from ultimate pipeline data"""
+ 
+ # Initialize LightRAG
+ rag = LightRAG(
+ working_dir='./lightrag_enhanced/',
+ llm_model_name='gpt-4-turbo-preview',
+ embedding_model_name='text-embedding-3-small'
+ )
+ 
+ # Connect to our database
+ conn = sqlite3.connect('nsw_planning.db')
+ 
+ # Process in intelligent batches
+ cursor = conn.execute("""
+ SELECT DISTINCT document_id, ref_context, page_number, section_header
+ FROM regulatory_refs
+ WHERE ref_context IS NOT NULL
+ ORDER BY document_id, page_number
+ """)
+ 
+ current_doc = None
+ doc_content = []
+ 
+ for doc_id, content, page, section in cursor:
+ if current_doc != doc_id and doc_content:
+ # Insert complete document with structure
+ enhanced_content = format_with_structure(doc_content)
+ rag.insert(enhanced_content)
+ doc_content = []
+ 
+ current_doc = doc_id
+ doc_content.append({
+ 'text': content,
+ 'page': page,
+ 'section': section
+ })
+ 
+ # Insert last document
+ if doc_content:
+ rag.insert(format_with_structure(doc_content))
+ 
+ return rag
 ```
 
 ---
 
-## 🎯 **Recommended Implementation Path**
+## **Recommended Implementation Path**
 
 ### **Phase 1: Database Connector (Immediate)**
 1. **Build LightRAGDatabaseConnector** class
@@ -167,7 +167,7 @@ def build_enhanced_lightrag():
 
 ---
 
-## 💡 **Key Advantages of This Approach**
+## **Key Advantages of This Approach**
 
 ### **Why Not Re-ingest Everything:**
 - **Already processed**: 10,180 entries in database
@@ -183,7 +183,7 @@ def build_enhanced_lightrag():
 
 ---
 
-## 📊 **Expected Query Performance**
+## **Expected Query Performance**
 
 ### **Example Query Flow:**
 ```
@@ -202,7 +202,7 @@ requirements apply:
 
 • Front setback: 6m minimum (Marrickville DCP 2011, Section 4.2, Page 7)
 • Side setbacks: 900mm for single storey, 1.5m for two storey 
-  (Section 4.2.3, Page 12)
+ (Section 4.2.3, Page 12)
 • Rear setback: 3m minimum (Section 4.2.4, Page 13)
 
 Note: Heritage conservation areas may have additional requirements 
@@ -212,23 +212,23 @@ heritage overlays?"
 
 ---
 
-## 🚀 **Implementation Priority**
+## **Implementation Priority**
 
 ### **Immediate Actions (This Week):**
-1. ✅ Complete ultimate pipeline (12 documents remaining)
-2. 🔧 Build LightRAGDatabaseConnector
-3. 🧪 Test with real queries
-4. 📊 Measure response quality
+1. Complete ultimate pipeline (12 documents remaining)
+2. Build LightRAGDatabaseConnector
+3. Test with real queries
+4. Measure response quality
 
 ### **Next Sprint:**
-1. 🏗️ Build enhanced knowledge graph
-2. 🔗 Connect visual elements
-3. 🚀 Deploy API endpoint
-4. 📱 Frontend integration
+1. Build enhanced knowledge graph
+2. Connect visual elements
+3. Deploy API endpoint
+4. Frontend integration
 
 ---
 
-## ✅ **Success Metrics**
+## **Success Metrics**
 
 - **Query Response Time**: <2 seconds
 - **Citation Accuracy**: 100% (page numbers from database)

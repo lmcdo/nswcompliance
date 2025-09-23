@@ -1,4 +1,4 @@
-# NSW PLANNING DOCUMENTS - NOT COMMITTED  
+# NSW PLANNING DOCUMENTS - NOT COMMITTED 
 # Contains 100MB+ of PDF documents from Inner West Council
 # These are source documents for regulatory processing
 # Too large for git repository - store locally only

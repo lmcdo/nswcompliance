@@ -1,0 +1,28 @@
+{
+  "timestamp": "2025-09-20T17:55:08.769385",
+  "prp": "V2_VERSION_SERVICE",
+  "checks": {
+    "imports": {
+      "version_manager": true,
+      "version_aware_query": true
+    },
+    "version_manager": {
+      "connection": true,
+      "get_current": true,
+      "get_statistics": true,
+      "close_connection": true
+    },
+    "version_query": {
+      "get_provisions": true,
+      "version_filter": true,
+      "date_filter": true
+    },
+    "integration": {
+      "schema_accessible": true,
+      "functions_callable": true
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "success": true
+}

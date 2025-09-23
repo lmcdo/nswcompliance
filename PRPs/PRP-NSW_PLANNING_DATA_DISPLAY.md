@@ -33,7 +33,7 @@ See: `nsw_api_sample_response.json` - Contains exact structure with:
 
 **Frontend Ready:**
 - Already handles `data.planning_controls` array
-- Already parses Special Provisions layer  
+- Already parses Special Provisions layer 
 - Already displays SEPP names when data is present
 
 ## Files

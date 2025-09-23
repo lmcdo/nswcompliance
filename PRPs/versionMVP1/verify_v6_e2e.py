@@ -320,25 +320,25 @@ class EndToEndVerification:
 
     def run_verification(self) -> bool:
         """Run comprehensive end-to-end verification"""
-        print("🔍 Running PRP-V6: End-to-End Validation...")
+        print(" Running PRP-V6: End-to-End Validation...")
         print("This comprehensive test validates the complete version management system.\n")
 
         # Test 1: Version Creation Workflow
-        print("📝 Testing version creation workflow...")
+        print(" Testing version creation workflow...")
         workflow_results = self.test_version_creation_workflow()
         self.results["test_scenarios"]["version_workflow"] = workflow_results
         workflow_passed = all(v for k, v in workflow_results.items() if k != 'error')
-        print(f"  Workflow tests: {'✅' if workflow_passed else '❌'} ({sum(workflow_results.values())}/{len(workflow_results)})")
+        print(f"  Workflow tests: {'' if workflow_passed else ''} ({sum(workflow_results.values())}/{len(workflow_results)})")
 
         # Test 2: API Version Queries
-        print("\n🌐 Testing API version queries...")
+        print("\n Testing API version queries...")
         api_results = self.test_api_version_queries()
         self.results["test_scenarios"]["api_queries"] = api_results
         api_passed = sum(1 for v in api_results.values() if v is True) >= len(api_results) * 0.8
-        print(f"  API tests: {'✅' if api_passed else '❌'} ({sum(1 for v in api_results.values() if v is True)}/{len(api_results)})")
+        print(f"  API tests: {'' if api_passed else ''} ({sum(1 for v in api_results.values() if v is True)}/{len(api_results)})")
 
         # Test 3: Performance Benchmarks
-        print("\n⚡ Testing performance benchmarks...")
+        print("\n Testing performance benchmarks...")
         perf_results = self.test_performance_benchmarks()
         self.results["performance_metrics"] = perf_results
 
@@ -346,31 +346,31 @@ class EndToEndVerification:
         perf_passed = all(
             ms < 2000 for ms in perf_results.values() if isinstance(ms, (int, float))
         )
-        print(f"  Performance tests: {'✅' if perf_passed else '❌'}")
+        print(f"  Performance tests: {'' if perf_passed else ''}")
         for metric, value in perf_results.items():
             if isinstance(value, (int, float)):
                 print(f"    {metric}: {value:.1f}ms")
 
         # Test 4: Data Consistency
-        print("\n🔒 Testing data consistency...")
+        print("\n Testing data consistency...")
         consistency_results = self.test_data_consistency()
         self.results["test_scenarios"]["data_consistency"] = consistency_results
         consistency_passed = all(consistency_results.values())
-        print(f"  Consistency tests: {'✅' if consistency_passed else '❌'} ({sum(consistency_results.values())}/{len(consistency_results)})")
+        print(f"  Consistency tests: {'' if consistency_passed else ''} ({sum(consistency_results.values())}/{len(consistency_results)})")
 
         # Test 5: Edge Cases
-        print("\n🎯 Testing edge cases...")
+        print("\n Testing edge cases...")
         edge_results = self.test_edge_cases()
         self.results["test_scenarios"]["edge_cases"] = edge_results
         edge_passed = sum(1 for v in edge_results.values() if v is True) >= len(edge_results) * 0.7
-        print(f"  Edge case tests: {'✅' if edge_passed else '❌'} ({sum(1 for v in edge_results.values() if v is True)}/{len(edge_results)})")
+        print(f"  Edge case tests: {'' if edge_passed else ''} ({sum(1 for v in edge_results.values() if v is True)}/{len(edge_results)})")
 
         # Test 6: Integration Scenarios
-        print("\n🔄 Testing integration scenarios...")
+        print("\n Testing integration scenarios...")
         integration_results = self.test_integration_scenarios()
         self.results["test_scenarios"]["integration"] = integration_results
         integration_passed = sum(1 for v in integration_results.values() if v is True) >= len(integration_results) * 0.7
-        print(f"  Integration tests: {'✅' if integration_passed else '❌'} ({sum(1 for v in integration_results.values() if v is True)}/{len(integration_results)})")
+        print(f"  Integration tests: {'' if integration_passed else ''} ({sum(1 for v in integration_results.values() if v is True)}/{len(integration_results)})")
 
         # Overall success criteria
         critical_tests_passed = (
@@ -388,32 +388,32 @@ class EndToEndVerification:
 
         # Print comprehensive summary
         print("\n" + "=" * 60)
-        print("📊 COMPREHENSIVE VALIDATION SUMMARY")
+        print(" COMPREHENSIVE VALIDATION SUMMARY")
         print("=" * 60)
-        print(f"Version Workflow: {'✅ PASS' if workflow_passed else '❌ FAIL'}")
-        print(f"API Functionality: {'✅ PASS' if api_passed else '❌ FAIL'}")
-        print(f"Performance: {'✅ PASS' if perf_passed else '❌ FAIL'}")
-        print(f"Data Consistency: {'✅ PASS' if consistency_passed else '❌ FAIL'}")
-        print(f"Edge Cases: {'✅ PASS' if edge_passed else '⚠️ PARTIAL'}")
-        print(f"Integration: {'✅ PASS' if integration_passed else '⚠️ PARTIAL'}")
+        print(f"Version Workflow: {' PASS' if workflow_passed else ' FAIL'}")
+        print(f"API Functionality: {' PASS' if api_passed else ' FAIL'}")
+        print(f"Performance: {' PASS' if perf_passed else ' FAIL'}")
+        print(f"Data Consistency: {' PASS' if consistency_passed else ' FAIL'}")
+        print(f"Edge Cases: {' PASS' if edge_passed else ' PARTIAL'}")
+        print(f"Integration: {' PASS' if integration_passed else ' PARTIAL'}")
 
         if self.results["errors"]:
-            print("\n❌ Critical Errors:")
+            print("\n Critical Errors:")
             for error in self.results["errors"]:
                 print(f"  - {error}")
 
         if self.results["warnings"]:
-            print("\n⚠️ Warnings:")
+            print("\n Warnings:")
             for warning in self.results["warnings"]:
                 print(f"  - {warning}")
 
-        print(f"\n{'🎉 END-TO-END VALIDATION PASSED' if critical_tests_passed else '💥 END-TO-END VALIDATION FAILED'}")
+        print(f"\n{' END-TO-END VALIDATION PASSED' if critical_tests_passed else ' END-TO-END VALIDATION FAILED'}")
 
         if critical_tests_passed:
-            print("\n✨ Version Management MVP is ready for production!")
+            print("\n Version Management MVP is ready for production!")
             print("   All critical systems are operational.")
         else:
-            print("\n🔧 System requires attention before production deployment.")
+            print("\n System requires attention before production deployment.")
 
         return critical_tests_passed
 

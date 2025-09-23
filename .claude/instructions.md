@@ -34,19 +34,19 @@ This is a NSW property compliance engine that needs to extract and display REAL 
 ## Implementation Rules
 
 ### ALWAYS DO
-✅ Check PRP_STATUS.md first
-✅ Use WSL2 for all Python RAG processing
-✅ Implement semantic extraction only
-✅ Require source attribution for all text
-✅ Follow the ACTIVE PRP document
+ Check PRP_STATUS.md first
+ Use WSL2 for all Python RAG processing
+ Implement semantic extraction only
+ Require source attribution for all text
+ Follow the ACTIVE PRP document
 
 ### NEVER DO
-❌ Use Windows native Python for LightRAG
-❌ Implement regex-based extraction
-❌ Hardcode compliance rule values
-❌ Add "enrichment" or "enhancement" layers
-❌ Create fallback placeholder text
-❌ Reference obsolete PRPs or code
+ Use Windows native Python for LightRAG
+ Implement regex-based extraction
+ Hardcode compliance rule values
+ Add "enrichment" or "enhancement" layers
+ Create fallback placeholder text
+ Reference obsolete PRPs or code
 
 ---
 
@@ -83,18 +83,18 @@ This is a NSW property compliance engine that needs to extract and display REAL 
 
 ```
 compliance-engine/
-├── PRP_STATUS.md                           # CHECK THIS FIRST
-├── PRP_WSL2_LIGHTRAG_IMPLEMENTATION.md     # ACTIVE - Current implementation guide
-├── PRP_REGULATORY_TEXT_EXTRACTION.md       # OBSOLETE - DO NOT USE
+├── PRP_STATUS.md # CHECK THIS FIRST
+├── PRP_WSL2_LIGHTRAG_IMPLEMENTATION.md # ACTIVE - Current implementation guide
+├── PRP_REGULATORY_TEXT_EXTRACTION.md # OBSOLETE - DO NOT USE
 ├── .claude/
-│   └── instructions.md                     # This file
+│ └── instructions.md # This file
 ├── scripts/
-│   ├── direct_dcp_access.py               # OBSOLETE - Windows approach
-│   ├── direct_lep_access.py               # OBSOLETE - Windows approach
-│   └── process_*_lightrag.py              # OBSOLETE - Windows approach
+│ ├── direct_dcp_access.py # OBSOLETE - Windows approach
+│ ├── direct_lep_access.py # OBSOLETE - Windows approach
+│ └── process_*_lightrag.py # OBSOLETE - Windows approach
 └── lib/
-    ├── regulatory-text-retriever.ts        # Needs updating for WSL2 API
-    └── enhanced-compliance-engine.ts       # Needs updating for WSL2 API
+ ├── regulatory-text-retriever.ts # Needs updating for WSL2 API
+ └── enhanced-compliance-engine.ts # Needs updating for WSL2 API
 ```
 
 ---

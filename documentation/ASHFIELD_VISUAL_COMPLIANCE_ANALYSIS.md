@@ -25,13 +25,13 @@ Analysis of visual regulatory content available for Ashfield properties in the c
 
 ### 1. Precinct-Specific Diagrams (Chapter D - 136 diagrams)
 - **Map 1-7**: Zoning and precinct boundaries for 12+ areas:
-  - Ashfield Town Centre
-  - Ashfield East/West
-  - Croydon Urban Village
-  - Summer Hill Urban Village
-  - Enterprise Zones (B6)
-  - Industrial Zones
-  - Neighbourhood Centre (B1)
+ - Ashfield Town Centre
+ - Ashfield East/West
+ - Croydon Urban Village
+ - Summer Hill Urban Village
+ - Enterprise Zones (B6)
+ - Industrial Zones
+ - Neighbourhood Centre (B1)
 - **Figure 1**: Maximum number of storeys explanation 
 - Building envelope diagrams for each precinct
 - Height control maps with street wall zones
@@ -88,7 +88,7 @@ Analysis of visual regulatory content available for Ashfield properties in the c
 - Town centre diagrams for properties within defined precincts
 - Area-specific height and setback controls
 
-**Zone-Wide** (Medium Confidence)  
+**Zone-Wide** (Medium Confidence) 
 - General development category diagrams
 - Standard height/setback controls across zones
 

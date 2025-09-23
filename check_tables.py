@@ -8,11 +8,11 @@ cur = conn.cursor()
 print("DOCUMENTS TABLE STRUCTURE:")
 cur.execute("PRAGMA table_info(documents)")
 for col in cur.fetchall():
-    print(f"  {col[1]:<20} {col[2]:<15}")
+ print(f" {col[1]:<20} {col[2]:<15}")
 
 print("\nSAMPLE DOCUMENTS:")
 cur.execute("SELECT * FROM documents LIMIT 3")
 for row in cur.fetchall():
-    print(f"  {row}")
+ print(f" {row}")
 
 conn.close()

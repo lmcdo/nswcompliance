@@ -1,16 +1,16 @@
-# 🚨 CLAUDE PRIMARY DIRECTIVE - READ FIRST
+# CLAUDE PRIMARY DIRECTIVE - READ FIRST
 ## **MANDATORY: Check this file at start of EVERY session**
 
 ---
 
-## 📋 **MAIN REFERENCE DOCUMENT:**
+## **MAIN REFERENCE DOCUMENT:**
 **`documentation/prps/PRP-A_MICRO_PIPELINE_IMPLEMENTATION.md`**
 
 This document contains the **ONLY VALID** implementation instructions for the 4-tool pipeline.
 
 ---
 
-## 🛑 **CRITICAL EXECUTION RULES:**
+## **CRITICAL EXECUTION RULES:**
 
 ### **1. ONE PRP PER SESSION - NO EXCEPTIONS**
 - Execute **ONLY ONE** PRP per conversation
@@ -21,7 +21,7 @@ This document contains the **ONLY VALID** implementation instructions for the 4-
 ### **2. ATOMIC PRP SEQUENCE:**
 ```
 PRP-A1: Package Installation Verification (15 min)
-PRP-A2: PDF Content Extraction (30 min)  
+PRP-A2: PDF Content Extraction (30 min) 
 PRP-A3: Source Grounding (30 min)
 PRP-A4: Knowledge Graph Construction (45 min)
 PRP-A5: LightRAG Integration (30 min)
@@ -42,13 +42,13 @@ PRP-A7: Frontend Integration (20 min)
 
 ### **5. NO WORKAROUNDS ALLOWED:**
 - No "close enough" solutions
-- No manual summaries  
+- No manual summaries 
 - No skipping failed steps
 - No continuing without verification
 
 ---
 
-## 🎯 **CURRENT STATUS CHECK:**
+## **CURRENT STATUS CHECK:**
 
 **Before starting any work:**
 1. Read `documentation/prps/PRP-A_MICRO_PIPELINE_IMPLEMENTATION.md`
@@ -59,7 +59,7 @@ PRP-A7: Frontend Integration (20 min)
 
 ---
 
-## ⚠️ **IF YOU VIOLATE THESE RULES:**
+## **IF YOU VIOLATE THESE RULES:**
 The user will restart the session and you will be reminded of this directive.
 
 **The LLM execution failure pattern MUST be broken with strict session boundaries.**

@@ -1,92 +1,152 @@
-// app/page.tsx
-'use client';
+"use client"
 
-import { useState, useCallback } from 'react';
-import { PropertySearch } from '@/components/property/PropertySearch';
-import { PropertyPanel } from '@/components/property/PropertyPanel';
-import { AnalysisTabs } from '@/components/dashboard/AnalysisTabs';
-import { ErrorBoundary } from '@/components/dashboard/ErrorBoundary';
-import { usePropertyData } from '@/hooks/usePropertyData';
+import { useState, useEffect } from "react"
+import { Header } from "@/components/header"
+import { PropertyPanel } from "@/components/property-panel"
+import { DevelopmentSelector } from "@/components/development-selector"
+import { DevelopmentSelectorEnhanced } from "@/components/development-selector-enhanced"
+import { ComplianceStatus } from "@/components/compliance-status"
+import { ComplianceChecklist } from "@/components/compliance-checklist"
+import { useFeatureFlags } from "@/components/providers/FeatureFlagProvider"
 
-export default function DashboardPage() {
-  const [selectedAddress, setSelectedAddress] = useState<string>('');
-  const { 
-    property, 
-    lotGeometry, 
-    loading, 
-    error, 
-    analyzeProperty 
-  } = usePropertyData();
+export default function AssessmentInterface() {
+ const { flags } = useFeatureFlags()
+ const [selectedProperty, setSelectedProperty] = useState<string | null>(null)
+ const [propertyData, setPropertyData] = useState<any>(null)
+ const [developmentType, setDevelopmentType] = useState("dual_occupancy")
+ const [zoneCode, setZoneCode] = useState<string>("")
 
-  const handleAddressSelect = useCallback(async (
-    address: string, 
-    coordinates?: google.maps.LatLngLiteral
-  ) => {
-    setSelectedAddress(address);
-    await analyzeProperty(address, coordinates);
-  }, [analyzeProperty]);
+ // Listen for address selection to update property data
+ useEffect(() => {
+ const handleAddressSelected = async (event: CustomEvent) => {
+ const address = event.detail
+ console.log('Main page received address:', address)
+ setSelectedProperty(address)
 
-  return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gray-50">
-        {/* Compact Header with integrated search */}
-        <div className="bg-indigo-600 text-white px-4 py-2">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-lg font-bold">NSW Planning Compliance Engine</h1>
-            </div>
-          </div>
-        </div>
+ // Fetch property data
+ try {
+ const response = await fetch(`/api/property?address=${encodeURIComponent(address)}`)
+ if (response.ok) {
+ const apiResponse = await response.json()
+ const data = apiResponse.data
+ setPropertyData(data)
+ setZoneCode(data.constraints?.zone || '')
+ console.log('Property data loaded:', data)
+ }
+ } catch (error) {
+ console.error('Failed to fetch property data:', error)
+ }
+ }
 
-        {/* Search Bar - Full width, minimal padding */}
-        <div className="bg-white border-b px-4 py-3">
-          <PropertySearch 
-            onAddressSelect={handleAddressSelect}
-            loading={loading?.property}
-            selectedAddress={selectedAddress}
-          />
-        </div>
+ window.addEventListener('addressSelected', handleAddressSelected as EventListener)
+ return () => {
+ window.removeEventListener('addressSelected', handleAddressSelected as EventListener)
+ }
+ }, [])
 
-        {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-6">
+ const handleDevelopmentTypeChange = (type: string) => {
+ console.log('🎯 Main page: Development type changing from', developmentType, 'to', type)
+ setDevelopmentType(type)
+ }
 
-          {/* Main Content Grid */}
-          {(property || loading.property) && (
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Property Information Panel */}
-              <div className="lg:col-span-1">
-                <PropertyPanel 
-                  property={property}
-                  loading={loading.property}
-                  error={error.property}
-                />
-              </div>
+ return (
+ <>
+ <Header />
+ {/* Simple two-column layout */}
+ <div style={{
+ display: 'flex',
+ height: 'calc(100vh - 80px)',
+ marginTop: '80px'
+ }}>
+ {/* Left column - 50% width */}
+ <div style={{ width: '50%', minWidth: '400px' }}>
+   <PropertyPanel />
+ </div>
 
-              {/* Analysis Tabs */}
-              <div className="lg:col-span-3">
-                <AnalysisTabs 
-                  property={property}
-                  lotGeometry={lotGeometry}
-                  loading={loading}
-                  error={error}
-                />
-              </div>
-            </div>
-          )}
+ {/* Right column with flex column layout */}
+ <div style={{
+ flex: 1,
+ backgroundColor: '#f9fafb',
+ display: 'flex',
+ flexDirection: 'column'
+ }}>
+ {/* Scrollable content area */}
+ <div style={{
+ flex: 1,
+ overflowY: 'auto',
+ padding: '32px'
+ }}>
+ <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+ {flags.newDevelopmentSelector ? (
+ <DevelopmentSelectorEnhanced
+ value={developmentType}
+ onChange={handleDevelopmentTypeChange}
+ zoneCode={zoneCode}
+ />
+ ) : (
+ <DevelopmentSelector />
+ )}
+ <ComplianceStatus />
+ <ComplianceChecklist
+ propertyData={propertyData}
+ developmentType={developmentType}
+ propertyId={selectedProperty}
+ zoneCode={zoneCode}
+ onComplianceUpdate={(status) => {
+ console.log('Compliance status updated:', status)
+ }}
+ />
+ </div>
+ </div>
 
-          {/* Initial State */}
-          {!property && !loading.property && (
-            <div className="text-center py-16">
-              <div className="text-gray-500 text-lg">
-                Enter a NSW property address above to begin compliance analysis
-              </div>
-              <div className="mt-4 text-sm text-gray-400">
-                Example: "15 Norton Street, Leichhardt NSW 2040"
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </ErrorBoundary>
-  );
+ {/* Buttons fixed at bottom */}
+ <div style={{
+ height: '80px',
+ backgroundColor: 'white',
+ borderTop: '1px solid #e5e7eb',
+ padding: '0 24px',
+ display: 'flex',
+ alignItems: 'center',
+ justifyContent: 'space-between'
+ }}>
+ <button style={{
+ padding: '8px 24px',
+ background: 'linear-gradient(to bottom, #047857, #065f46)',
+ color: 'white',
+ border: 'none',
+ borderRadius: '6px',
+ fontWeight: '500',
+ cursor: 'pointer'
+ }}>
+ Save Draft
+ </button>
+ <div style={{ display: 'flex', gap: '12px' }}>
+ <button style={{
+ padding: '8px 24px',
+ background: 'linear-gradient(to bottom, #059669, #047857)',
+ color: 'white',
+ border: 'none',
+ borderRadius: '6px',
+ fontWeight: '500',
+ cursor: 'pointer'
+ }}>
+ Generate Report
+ </button>
+ <button style={{
+ padding: '8px 24px',
+ background: 'linear-gradient(to bottom, #047857, #065f46)',
+ color: 'white',
+ border: 'none',
+ borderRadius: '6px',
+ fontWeight: '500',
+ cursor: 'pointer'
+ }}>
+ Submit Assessment
+ </button>
+ </div>
+ </div>
+ </div>
+ </div>
+ </>
+ )
 }

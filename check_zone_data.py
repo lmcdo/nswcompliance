@@ -16,12 +16,12 @@ print(f"Total records: {total_count}")
 sample_results = cursor.execute("SELECT id, zone, development_type, document_id FROM regulatory_provisions LIMIT 10").fetchall()
 print("\nSample zone values:")
 for row in sample_results:
-    print(f"ID: {row[0]}, Zone: {row[1]}, DevType: {row[2]}, Doc: {row[3][:30]}...")
+ print(f"ID: {row[0]}, Zone: {row[1]}, DevType: {row[2]}, Doc: {row[3][:30]}...")
 
 # Check what domain classifications exist
 domain_results = cursor.execute("SELECT DISTINCT domain_classification, COUNT(*) FROM regulatory_provisions GROUP BY domain_classification").fetchall()
 print("\nDomain classifications:")
 for row in domain_results:
-    print(f"Domain: {row[0]}, Count: {row[1]}")
+ print(f"Domain: {row[0]}, Count: {row[1]}")
 
 conn.close()

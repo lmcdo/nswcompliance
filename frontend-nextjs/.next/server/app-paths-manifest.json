@@ -1,3 +1,5 @@
 {
-  "/authoritative/page": "app/authoritative/page.js"
+  "/page": "app/page.js",
+  "/api/property/route": "app/api/property/route.js",
+  "/api/compliance/enhanced/route": "app/api/compliance/enhanced/route.js"
 }

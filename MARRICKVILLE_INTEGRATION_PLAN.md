@@ -1,30 +1,30 @@
 # Marrickville DCP Integration Plan
-**Date**: 2025-08-27  
-**Status**: PLANNING  
+**Date**: 2025-08-27 
+**Status**: PLANNING 
 **Priority**: HIGH (85 missing regulatory documents)
 
 ---
 
-## 🚨 **ISSUE IDENTIFIED**
+## **ISSUE IDENTIFIED**
 
 **CRITICAL GAP**: 85 Marrickville DCP files exist on disk but were NOT processed in PRP-A2:
 - **Expected**: ~139 total documents (54 existing + 85 Marrickville)
-- **Current A2 dataset**: Only 54 documents  
+- **Current A2 dataset**: Only 54 documents 
 - **Missing**: 85 Marrickville DCPs with critical regulatory content
 
 ---
 
-## 🎯 **INTEGRATION STRATEGY**
+## **INTEGRATION STRATEGY**
 
 ### **OPTION A: PRP-A2-EXT (Recommended)**
 **Extend PRP-A2 with Marrickville supplement**
 
 ```
 Current PRP Sequence:
-✅ PRP-A1: Package verification
-✅ PRP-A2: 54 documents processed  
-🔄 PRP-A3.5: Large file splitting (in progress)
-❌ PRP-A2-EXT: Process 85 Marrickville DCPs (NEW)
+ PRP-A1: Package verification
+ PRP-A2: 54 documents processed 
+ PRP-A3.5: Large file splitting (in progress)
+ PRP-A2-EXT: Process 85 Marrickville DCPs (NEW)
 ⏳ PRP-A4: Knowledge graph construction
 ⏳ PRP-A5: LightRAG integration
 ⏳ PRP-A6: Query interface
@@ -45,7 +45,7 @@ Add Marrickville files after PRP-A7 completes - **DELAYS COMPREHENSIVE COVERAGE*
 
 ---
 
-## 📋 **PRP-A2-EXT IMPLEMENTATION PLAN**
+## **PRP-A2-EXT IMPLEMENTATION PLAN**
 
 ### **Phase 1: Analysis (5 minutes)**
 ```python
@@ -85,7 +85,7 @@ merge_a2_datasets.py:
 
 ---
 
-## 🔄 **EXECUTION TIMELINE**
+## **EXECUTION TIMELINE**
 
 ### **IMMEDIATE (After PRP-A3.5 completes)**
 1. **Wait for PRP-A3.5 completion** (~10-15 minutes remaining)
@@ -100,20 +100,20 @@ merge_a2_datasets.py:
 
 ---
 
-## 📁 **FILE ORGANIZATION**
+## **FILE ORGANIZATION**
 
 ### **New Files Structure:**
 ```
 validated_outputs/
-├── A2_ALL_DCP_complete_extracted_content.json     # Original 54 docs
-├── A2_EXT_marrickville_small_files.json          # New small Marrickville
-├── A2_EXT_marrickville_large_files_split.json    # New large Marrickville chunks
-├── A2_COMPLETE_with_marrickville.json             # Unified dataset
-├── A3_complete_grounded_content.json             # Small files (110 provisions)
-├── A3_5_split_chunks_processed.json              # Large files provisions
+├── A2_ALL_DCP_complete_extracted_content.json # Original 54 docs
+├── A2_EXT_marrickville_small_files.json # New small Marrickville
+├── A2_EXT_marrickville_large_files_split.json # New large Marrickville chunks
+├── A2_COMPLETE_with_marrickville.json # Unified dataset
+├── A3_complete_grounded_content.json # Small files (110 provisions)
+├── A3_5_split_chunks_processed.json # Large files provisions
 └── prp_checkpoints/
-    ├── A2_EXT_completed.marker                    # New completion marker
-    └── verify_completion.sh                       # Updated to check A2-EXT
+ ├── A2_EXT_completed.marker # New completion marker
+ └── verify_completion.sh # Updated to check A2-EXT
 ```
 
 ### **Naming Convention:**
@@ -123,7 +123,7 @@ validated_outputs/
 
 ---
 
-## ⚠️ **RISK MITIGATION**
+## **RISK MITIGATION**
 
 ### **Avoid These Issues:**
 1. **DON'T mix A2-EXT processing with current PRP-A3.5**
@@ -139,7 +139,7 @@ validated_outputs/
 
 ---
 
-## 🚀 **NEXT ACTIONS**
+## **NEXT ACTIONS**
 
 ### **After PRP-A3.5 Completes:**
 1. **Mark PRP-A3.5 complete**
@@ -153,15 +153,15 @@ validated_outputs/
 
 ---
 
-## ✅ **SUCCESS CRITERIA**
+## **SUCCESS CRITERIA**
 
 **PRP-A2-EXT will be considered complete when:**
-- ✅ All 85 Marrickville DCP files processed with RagAnything
-- ✅ Large Marrickville files chunked and split appropriately  
-- ✅ Unified dataset created (A2_COMPLETE_with_marrickville.json)
-- ✅ Total document count: 139 documents verified
-- ✅ Completion marker created: `A2_EXT_completed.marker`
-- ✅ Ready for PRP-A4 with complete regulatory coverage
+- All 85 Marrickville DCP files processed with RagAnything
+- Large Marrickville files chunked and split appropriately 
+- Unified dataset created (A2_COMPLETE_with_marrickville.json)
+- Total document count: 139 documents verified
+- Completion marker created: `A2_EXT_completed.marker`
+- Ready for PRP-A4 with complete regulatory coverage
 
 ---
 

@@ -10,13 +10,13 @@
 ```sql
 -- Merge tables with confidence scoring
 INSERT INTO zone_setback_rules (
-    rule_id, zone, council, boundary_type, base_value, unit,
-    operator, authority_type, precedence_level, conditions,
-    source_document, source_clause, source_file, confidence
+ rule_id, zone, council, boundary_type, base_value, unit,
+ operator, authority_type, precedence_level, conditions,
+ source_document, source_clause, source_file, confidence
 )
 SELECT * FROM zone_setback_rules_comprehensive
 ON CONFLICT (rule_id) DO UPDATE SET
-    confidence = GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence);
+ confidence = GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence);
 ```
 
 ### Pros
@@ -37,15 +37,15 @@ ON CONFLICT (rule_id) DO UPDATE SET
 ```typescript
 // API queries both tables with fallback
 async function getSetbackRules(zone: string, council: string) {
-  // Try high-confidence first
-  let rules = await db.query('SELECT * FROM zone_setback_rules WHERE zone = $1 AND council = $2', [zone, council]);
-  
-  // Fallback to comprehensive if no results
-  if (rules.length === 0) {
-    rules = await db.query('SELECT * FROM zone_setback_rules_comprehensive WHERE zone = $1 AND council = $2', [zone, council]);
-  }
-  
-  return rules;
+ // Try high-confidence first
+ let rules = await db.query('SELECT * FROM zone_setback_rules WHERE zone = $1 AND council = $2', [zone, council]);
+ 
+ // Fallback to comprehensive if no results
+ if (rules.length === 0) {
+ rules = await db.query('SELECT * FROM zone_setback_rules_comprehensive WHERE zone = $1 AND council = $2', [zone, council]);
+ }
+ 
+ return rules;
 }
 ```
 
@@ -67,42 +67,42 @@ async function getSetbackRules(zone: string, council: string) {
 -- Create materialized view combining both with quality tiers
 CREATE MATERIALIZED VIEW zone_setback_rules_unified AS
 SELECT 
-    rule_id,
-    zone,
-    council,
-    boundary_type,
-    base_value,
-    unit,
-    operator,
-    authority_type,
-    precedence_level,
-    conditions,
-    source_document,
-    source_clause,
-    confidence,
-    CASE 
-        WHEN confidence >= 0.95 THEN 'verified'
-        WHEN confidence >= 0.85 THEN 'high'
-        WHEN confidence >= 0.75 THEN 'medium'
-        ELSE 'low'
-    END as quality_tier,
-    CASE
-        WHEN source_file LIKE '%inner-west-compliance-rules%' THEN 1
-        WHEN source_file LIKE '%langextract_verified%' THEN 2
-        ELSE 3
-    END as source_priority
+ rule_id,
+ zone,
+ council,
+ boundary_type,
+ base_value,
+ unit,
+ operator,
+ authority_type,
+ precedence_level,
+ conditions,
+ source_document,
+ source_clause,
+ confidence,
+ CASE 
+ WHEN confidence >= 0.95 THEN 'verified'
+ WHEN confidence >= 0.85 THEN 'high'
+ WHEN confidence >= 0.75 THEN 'medium'
+ ELSE 'low'
+ END as quality_tier,
+ CASE
+ WHEN source_file LIKE '%inner-west-compliance-rules%' THEN 1
+ WHEN source_file LIKE '%langextract_verified%' THEN 2
+ ELSE 3
+ END as source_priority
 FROM (
-    SELECT * FROM zone_setback_rules
-    UNION ALL
-    SELECT * FROM zone_setback_rules_comprehensive
+ SELECT * FROM zone_setback_rules
+ UNION ALL
+ SELECT * FROM zone_setback_rules_comprehensive
 ) combined
 WHERE NOT EXISTS (
-    -- Remove duplicates, keeping highest confidence
-    SELECT 1 FROM zone_setback_rules_comprehensive c2
-    WHERE c2.zone = combined.zone 
-    AND c2.council = combined.council
-    AND c2.boundary_type = combined.boundary_type
-    AND c2.confidence > combined.confidence
+ -- Remove duplicates, keeping highest confidence
+ SELECT 1 FROM zone_setback_rules_comprehensive c2
+ WHERE c2.zone = combined.zone 
+ AND c2.council = combined.council
+ AND c2.boundary_type = combined.boundary_type
+ AND c2.confidence > combined.confidence
 );
 
 CREATE INDEX idx_unified_lookup ON zone_setback_rules_unified (zone, council, boundary_type);
@@ -130,18 +130,18 @@ ALTER TABLE zone_setback_rules ADD COLUMN quality_tier VARCHAR(20);
 INSERT INTO zone_setback_rules 
 SELECT * FROM zone_setback_rules_comprehensive
 ON CONFLICT (rule_id) DO UPDATE SET
-    confidence = GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence),
-    quality_tier = CASE 
-        WHEN GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence) >= 0.95 THEN 'verified'
-        WHEN GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence) >= 0.85 THEN 'high'
-        ELSE 'medium'
-    END;
+ confidence = GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence),
+ quality_tier = CASE 
+ WHEN GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence) >= 0.95 THEN 'verified'
+ WHEN GREATEST(EXCLUDED.confidence, zone_setback_rules.confidence) >= 0.85 THEN 'high'
+ ELSE 'medium'
+ END;
 
 -- 3. Frontend can optionally filter by quality
 SELECT * FROM zone_setback_rules 
 WHERE zone = 'R2' 
 AND council = 'Marrickville'
-AND quality_tier IN ('verified', 'high')  -- Optional quality filter
+AND quality_tier IN ('verified', 'high') -- Optional quality filter
 ORDER BY confidence DESC, precedence_level ASC;
 ```
 

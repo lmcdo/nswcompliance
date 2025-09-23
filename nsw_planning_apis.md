@@ -17,11 +17,11 @@ https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/address?a=5%20Car
 **Response**:
 ```json
 [
-    {
-        "address": "5 CARLYLE LANE WOLLSTONECRAFT 2065",
-        "propId": 775534,
-        "GURASID": 2119354
-    }
+ {
+ "address": "5 CARLYLE LANE WOLLSTONECRAFT 2065",
+ "propId": 775534,
+ "GURASID": 2119354
+ }
 ]
 ```
 
@@ -56,39 +56,39 @@ https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/layerintersect?ty
 #### Height Limits:
 ```json
 {
-    "layerName": "Height of Buildings Map",
-    "results": [{
-        "Maximum Building Height": "8.5",
-        "Units": "m",
-        "Legislative Clause": "Clause 4.3",
-        "EPI Name": "North Sydney Local Environmental Plan 2013",
-        "LGA Name": "NORTH SYDNEY"
-    }]
+ "layerName": "Height of Buildings Map",
+ "results": [{
+ "Maximum Building Height": "8.5",
+ "Units": "m",
+ "Legislative Clause": "Clause 4.3",
+ "EPI Name": "North Sydney Local Environmental Plan 2013",
+ "LGA Name": "NORTH SYDNEY"
+ }]
 }
 ```
 
 #### Zoning:
 ```json
 {
-    "layerName": "Land Zoning Map", 
-    "results": [{
-        "Zone": "R2",
-        "Land Use": "Low Density Residential",
-        "EPI Name": "North Sydney Local Environmental Plan 2013",
-        "LGA Name": "NORTH SYDNEY"
-    }]
+ "layerName": "Land Zoning Map", 
+ "results": [{
+ "Zone": "R2",
+ "Land Use": "Low Density Residential",
+ "EPI Name": "North Sydney Local Environmental Plan 2013",
+ "LGA Name": "NORTH SYDNEY"
+ }]
 }
 ```
 
 #### Lot Size Requirements:
 ```json
 {
-    "layerName": "Lot Size Map",
-    "results": [{
-        "Lot Size": "450",
-        "Units": "m²",
-        "Legislative Clause": "Clause 4.1"
-    }]
+ "layerName": "Lot Size Map",
+ "results": [{
+ "Lot Size": "450",
+ "Units": "m²",
+ "Legislative Clause": "Clause 4.1"
+ }]
 }
 ```
 

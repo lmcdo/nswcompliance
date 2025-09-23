@@ -80,6 +80,61 @@ body {
 
 /* Clean professional styles */
 
+/* Emerald gradient classes for buttons */
+.bg-gradient-to-b {
+  background-image: linear-gradient(to bottom, var(--tw-gradient-stops)) !important;
+}
+
+.from-emerald-600 {
+  --tw-gradient-from: #059669 !important;
+  --tw-gradient-to: rgb(5 150 105 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.from-emerald-700 {
+  --tw-gradient-from: #047857 !important;
+  --tw-gradient-to: rgb(4 120 87 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.from-emerald-800 {
+  --tw-gradient-from: #065f46 !important;
+  --tw-gradient-to: rgb(6 95 70 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.to-emerald-700 {
+  --tw-gradient-to: #047857 !important;
+}
+
+.to-emerald-800 {
+  --tw-gradient-to: #065f46 !important;
+}
+
+.to-emerald-900 {
+  --tw-gradient-to: #064e3b !important;
+}
+
+.hover\:from-emerald-700:hover {
+  --tw-gradient-from: #047857 !important;
+  --tw-gradient-to: rgb(4 120 87 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.hover\:from-emerald-800:hover {
+  --tw-gradient-from: #065f46 !important;
+  --tw-gradient-to: rgb(6 95 70 / 0) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+.hover\:to-emerald-800:hover {
+  --tw-gradient-to: #065f46 !important;
+}
+
+.hover\:to-emerald-900:hover {
+  --tw-gradient-to: #064e3b !important;
+}
+
 /* Beautiful Professional Styling - Force all classes */
 .bg-gradient-to-br {
   background-image: linear-gradient(to bottom right, var(--tw-gradient-stops)) !important;

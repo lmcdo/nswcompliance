@@ -1,0 +1,670 @@
+{
+  "timestamp": "2025-09-20T17:54:09.635340",
+  "prp": "PRP-V4-ENHANCED_DATA_MIGRATION_BASELINE",
+  "actions_taken": [
+    "No baseline versions needed - already exist",
+    "Linked 0 provisions to baseline versions",
+    "Change tracking table already exists",
+    "Baseline provision changes already exist"
+  ],
+  "checks": {
+    "provision_analysis": {
+      "total_provisions": 44210,
+      "versioning_status": {
+        "total": 44210,
+        "versioned": 41058,
+        "unversioned": 3152
+      },
+      "document_types": [
+        {
+          "type": "DCP",
+          "provisions": 18452,
+          "documents": 74
+        },
+        {
+          "type": "UNKNOWN",
+          "provisions": 13938,
+          "documents": 7
+        },
+        {
+          "type": "LEP",
+          "provisions": 11820,
+          "documents": 28
+        }
+      ],
+      "top_documents": [
+        {
+          "identifier": "Marrickville",
+          "provisions": 16168
+        },
+        {
+          "identifier": "State",
+          "provisions": 8474
+        },
+        {
+          "identifier": "Inner",
+          "provisions": 8138
+        },
+        {
+          "identifier": "Leichhardt",
+          "provisions": 7056
+        },
+        {
+          "identifier": "unknown",
+          "provisions": 702
+        },
+        {
+          "identifier": "Chapter",
+          "provisions": 368
+        },
+        {
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments",
+          "provisions": 270
+        },
+        {
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter D - Precinct Guidelines with IWLEP 2022 amendments Nov 22",
+          "provisions": 264
+        },
+        {
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage",
+          "provisions": 248
+        },
+        {
+          "identifier": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments",
+          "provisions": 226
+        }
+      ]
+    },
+    "existing_versions": {
+      "total_versions": 111,
+      "baseline_versions": 109,
+      "version_breakdown": [
+        {
+          "type": "DCP",
+          "status": "CURRENT",
+          "count": 74
+        },
+        {
+          "type": "LEP",
+          "status": "CURRENT",
+          "count": 30
+        },
+        {
+          "type": "SEPP",
+          "status": "CURRENT",
+          "count": 7
+        }
+      ]
+    },
+    "migration_integrity": {
+      "provision_versioning": {
+        "total": 44210,
+        "versioned": 41058,
+        "unversioned": 3152,
+        "success": false
+      },
+      "document_coverage": [
+        {
+          "type": "DCP",
+          "identifier": "Marrickville",
+          "provisions": 17576
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt",
+          "provisions": 7736
+        },
+        {
+          "type": "DCP",
+          "identifier": "Ashfield",
+          "provisions": 16
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 37 King Street and Enmore Road Commercial Precinct",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 13 Henson Park",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 11 Hoskins Park Precinct 11",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 16 Abergeldie Estate",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 25 St Peters Triangle Precinct 25",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 45 McGill Street Precinct 45",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 12 Marrickville Park and Morton Park",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 14 Camdenville Precinct 14",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023-101-149",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 1 Urban Design",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 - 12 - Part G Section 13 - Amdt 19 - Pyrmont Bridge Road Nov 2023",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage - Part1 (pages 1-62)",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 7 Stanmore South",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 42 Camperdown North",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 20 Marrickville Town Centre North",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 30 The Warren",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 4 Newtown North and Camperdown",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 6 Petersham South Precinct 6",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage - Part4 (pages 187-248)",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 10 Dulwich Hill North",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 24 Marrickville Town Centre South",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 34 Tempe Reserve",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9.43 Sydney Steel Precinct 43",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 18 Landscaping and Open Spaces",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 Part C Section 5",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 5 Lewisham South Precinct 5",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 3 Site Context Analysis",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 8 Enmore North and Newtown Central Precinct 8",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 27 Barwon Park South",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 26 Barwon Park",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 41 Bridge Road",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 35 Parramatta Road",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 9 Community Safety",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 4 3 Boarding Houses",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 47 Victoria Road",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 11 Fencing",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - Reduced Size",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage - Part3 (pages 125-186)",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 1 Lewisham North Precinct 1",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 10 Parking",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 15 Enmore Park",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 39 Marrickville Metro",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 6 Acoustic and Visual Privacy",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 3 Stanmore North Precinct 3",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 4.1 Low Density Residential Development",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 14 Unique Environmental Features",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 9 Newington",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 31 Unwins Bridge Road",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 46 Tempe Lands Precinct",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 32 Cooks River East",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 4 3 boarding houses (1)",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 13 Biodiversity",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 21 Ness Park",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023-51-100",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 18 Dulwich Hill Station North",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 28 Cooks River West",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 23 Marrickville Station West Precinct 23",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 8.0 Heritage - Part2 (pages 63-124)",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 44 Carrington Road",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 7.3 Sex Industry and Adult Business Premises",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 33 Princes Highway",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 5 Equity of Access and Mobility",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Leichhardt DCP 2013 - 12 - Part G Section 1-12 - Amdt 19 - Nov 2023-1-50",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 7 Solar Access and Overshadowing",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 22 Dulwich Hill Station South Precinct 22",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 2 12 Signs and Advertising Structures",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 29 South Western Marrickville",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 17 New Canterbury Road West",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9.48 Mary Robert and Edith Street Nov 22",
+          "provisions": 0
+        },
+        {
+          "type": "DCP",
+          "identifier": "Marrickville DCP 2011 - 9 19 Marrickville Road, Central",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner",
+          "provisions": 8962
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 5 0 Commercial and Mixed Use Development - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter B - Public Domain - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter H - with IWLEP 2022 amendments Apr 24",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 7 - Part C Place Section 3 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 15 -Appendix C Urban Framework Plans - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 9 40 Marrickville Town Centre Comm Precinct 40 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 17 - Appendix E Water Guidelines - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 9 38 Dulwich Hill Commercial Precinct 38 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter E1- Heritage with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 1 - Statutory Information with IWLEP 2022 amendments Nov 22",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter A - Miscellaneous - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 9 36 Petersham Commercial Precinct 36 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016  - Preliminary, Notification and Advertising - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 8 - Part C Place Section 4 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter G - Definitions - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter D - Precinct Guidelines with IWLEP 2022 amendments Nov 22",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 9 2 Petersham North - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 6 0 Industrial Development - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 6 - Part C Place Section 2 - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter F - Development Category with IWLEP 2022 amendment",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Marrickville DCP 2011 - 7 1 childcare centres - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Leichhardt DCP 2013 - 3 - Part A  Introduction - with IWLEP 2022 amendments",
+          "provisions": 0
+        },
+        {
+          "type": "LEP",
+          "identifier": "Inner West Ashfield DCP 2016 - Chapter C - Sustainability IWLEP 2022 amends - 28 Mar 23",
+          "provisions": 0
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008",
+          "provisions": 4372
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Planning Systems) 2021",
+          "provisions": 720
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Industry and Employment) 2021",
+          "provisions": 710
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Primary Production) 2021",
+          "provisions": 406
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Resilience and Hazards) 2021",
+          "provisions": 300
+        },
+        {
+          "type": "SEPP",
+          "identifier": "State Environmental Planning Policy (Sustainable Buildings) 2022",
+          "provisions": 260
+        }
+      ],
+      "change_tracking": {
+        "total_changes": 34290,
+        "new_provisions": 34290,
+        "unique_provisions": 34290
+      },
+      "performance_ready": {
+        "current_provisions": 41058,
+        "query_optimized": true
+      }
+    }
+  },
+  "errors": [],
+  "warnings": [],
+  "success": false,
+  "summary": {
+    "total_errors": 0,
+    "total_warnings": 0,
+    "actions_taken": 4,
+    "provisions_versioned": 41058,
+    "documents_created": 108,
+    "change_tracking_ready": true
+  }
+}

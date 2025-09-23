@@ -6,30 +6,30 @@
 
 ---
 
-## 🚨 Critical Issues
+## Critical Issues
 
 ### Issue #001: PDF Page Number Artifacts in Clause Titles
 
-**Discovered:** 2025-08-30  
-**Severity:** High - affects all DCP clause references  
-**Status:** 🔍 Identified, not fixed  
+**Discovered:** 2025-08-30 
+**Severity:** High - affects all DCP clause references 
+**Status:** Identified, not fixed 
 
 **Problem:**
 MinerU PDF extraction is appending page numbers to clause titles, corrupting regulatory references throughout the system.
 
 **Examples:**
 ```
-❌ Current: "4.2.4.2 Building heights . 5"
-✅ Should be: "4.2.4.2 Building heights"
+ Current: "4.2.4.2 Building heights . 5"
+ Should be: "4.2.4.2 Building heights"
 
-❌ Current: "4.2.4.3 Building setbacks.. 5" 
-✅ Should be: "4.2.4.3 Building setbacks"
+ Current: "4.2.4.3 Building setbacks.. 5" 
+ Should be: "4.2.4.3 Building setbacks"
 
-❌ Current: "4.2.4.1 Floor space ratio and site coverage . /4"
-✅ Should be: "4.2.4.1 Floor space ratio and site coverage"
+ Current: "4.2.4.1 Floor space ratio and site coverage . /4"
+ Should be: "4.2.4.1 Floor space ratio and site coverage"
 
-❌ Current: "Parking and access .... .. 10"
-✅ Should be: "Parking and access"
+ Current: "Parking and access .... .. 10"
+ Should be: "Parking and access"
 ```
 
 **Root Cause:**
@@ -39,11 +39,11 @@ MinerU PDF extraction is appending page numbers to clause titles, corrupting reg
 - **Issue:** Page numbers (5, 10, 13, etc.) are being extracted as part of clause text
 
 **Impact Scope:**
-- ✅ **Identified in:** AutoSchemaKG knowledge graph data
-- ✅ **Identified in:** Triple CSV exports  
-- ✅ **Identified in:** Frontend API responses
-- ✅ **Identified in:** LightRAG processed content
-- ⚠️ **Potentially affects:** All regulatory clause references across system
+- **Identified in:** AutoSchemaKG knowledge graph data
+- **Identified in:** Triple CSV exports 
+- **Identified in:** Frontend API responses
+- **Identified in:** LightRAG processed content
+- **Potentially affects:** All regulatory clause references across system
 
 **Affected Files:**
 ```
@@ -69,7 +69,7 @@ cleaned_text = re.sub(r'\s*\.+\s*/?\d+$', '', original_text)
 
 ---
 
-## 📋 Moderate Issues
+## Moderate Issues
 
 ### Issue #002: [Reserved for next data quality issue]
 
@@ -77,9 +77,9 @@ cleaned_text = re.sub(r'\s*\.+\s*/?\d+$', '', original_text)
 ```markdown
 ### Issue #XXX: [Brief description]
 
-**Discovered:** YYYY-MM-DD  
-**Severity:** [Critical|High|Moderate|Low]  
-**Status:** [🔍 Identified|🔧 In Progress|✅ Fixed|❌ Deferred]
+**Discovered:** YYYY-MM-DD 
+**Severity:** [Critical|High|Moderate|Low] 
+**Status:** [ Identified| In Progress| Fixed| Deferred]
 
 **Problem:**
 [Detailed description]
@@ -101,20 +101,20 @@ cleaned_text = re.sub(r'\s*\.+\s*/?\d+$', '', original_text)
 
 ---
 
-## 📊 Issue Summary
+## Issue Summary
 
 | ID | Description | Severity | Status | Priority |
 |----|-------------|----------|---------|----------|
-| 001 | PDF page number artifacts in clause titles | High | 🔍 Identified | High |
+| 001 | PDF page number artifacts in clause titles | High | Identified | High |
 
 ---
 
-## 🛠️ Cleanup Branch Strategy
+## Cleanup Branch Strategy
 
 **Recommended approach:**
 1. Create dedicated `data-quality-fixes` branch
 2. Implement fixes in order of priority
-3. Run full regression testing on knowledge graph outputs  
+3. Run full regression testing on knowledge graph outputs 
 4. Verify council setback calculator accuracy after cleanup
 5. Update data validation procedures to catch similar issues
 
@@ -126,5 +126,5 @@ cleaned_text = re.sub(r'\s*\.+\s*/?\d+$', '', original_text)
 
 ---
 
-**Last Updated:** 2025-08-30  
+**Last Updated:** 2025-08-30 
 **Next Review:** When ready for data quality sprint

@@ -5,7 +5,7 @@
 ### AutoSchemaKG Data Files (Contains 900mm, 1.5m, 2.5m setbacks)
 ```
 ./autoschemakg_data_ollama_final/nsw_planning_docs_006.json
-./autoschemakg_data_ollama_final/nsw_planning_docs_014.json  
+./autoschemakg_data_ollama_final/nsw_planning_docs_014.json 
 ./autoschemakg_data_ollama_final/nsw_planning_docs_018.json
 ./autoschemakg_data_ollama_final/nsw_planning_docs_019.json
 ./autoschemakg_data_ollama_final/nsw_planning_docs_027.json
@@ -25,7 +25,7 @@
 ./langextract_verified_output/Marrickville DCP 2011 - 9 27 Barwon Park South_verified.json
 ```
 
-### Structured Output Files  
+### Structured Output Files 
 ```
 ./output/Marrickville DCP 2011 - 4.1 Low Density Residential Development/auto/Marrickville DCP 2011 - 4.1 Low Density Residential Development_model.json
 ./output/Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments/auto/Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments_model.json
@@ -35,7 +35,7 @@
 ### RAG Storage Files
 ```
 ./rag_storage/vdb_relationships.json
-./rag_storage/vdb_entities.json  
+./rag_storage/vdb_entities.json 
 ./rag_storage/vdb_chunks.json
 ./rag_fixed_storage/vdb_relationships.json
 ./rag_fixed_storage/vdb_entities.json

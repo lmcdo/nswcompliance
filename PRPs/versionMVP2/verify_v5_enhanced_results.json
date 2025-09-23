@@ -1,0 +1,70 @@
+{
+  "timestamp": "2025-09-20T17:54:28.491344",
+  "prp": "PRP-V5-ENHANCED_PROVISION_CHANGE_TRACKING",
+  "actions_taken": [],
+  "checks": {
+    "database_schema": {
+      "provision_changes_table_exists": true,
+      "column_id_exists": true,
+      "column_document_version_id_exists": true,
+      "column_provision_id_exists": true,
+      "column_change_type_exists": true,
+      "column_old_content_exists": true,
+      "column_new_content_exists": true,
+      "column_change_summary_exists": true,
+      "column_change_metadata_exists": true,
+      "column_effective_date_exists": true,
+      "column_created_at_exists": true,
+      "column_created_by_exists": true,
+      "change_type_constraint_exists": true,
+      "foreign_keys_exist": true,
+      "index_idx_provision_changes_provision_exists": true,
+      "index_idx_provision_changes_document_version_exists": true,
+      "index_idx_provision_changes_type_date_exists": true
+    },
+    "change_detection": {
+      "version_manager_imports": true,
+      "detect_provision_changes_method": false,
+      "generate_change_summary_method": false,
+      "create_with_tracking_method": false,
+      "record_changes_method": false
+    },
+    "summary_generation": {},
+    "change_recording": {
+      "recording_error": "insert or update on table \"provision_changes\" violates foreign key constraint \"provision_changes_document_version_id_fkey\"\nDETAIL:  Key (document_version_id)=(1) is not present in table \"document_versions\".\n"
+    },
+    "change_queries": {
+      "query_performance_acceptable": true
+    },
+    "integration_compatibility": {
+      "existing_get_current_works": true,
+      "existing_statistics_work": true,
+      "enhanced_methods_available": false,
+      "connection_management_works": true
+    },
+    "performance": {
+      "change_query_under_1s": true,
+      "indexes_being_used": true
+    }
+  },
+  "errors": [
+    "Change recording verification failed: insert or update on table \"provision_changes\" violates foreign key constraint \"provision_changes_document_version_id_fkey\"\nDETAIL:  Key (document_version_id)=(1) is not present in table \"document_versions\".\n"
+  ],
+  "warnings": [
+    "Enhanced change tracking methods not implemented"
+  ],
+  "success": false,
+  "summary": {
+    "total_errors": 1,
+    "total_warnings": 1,
+    "total_checks": 30,
+    "passed_checks": 24,
+    "success_rate": 0.8,
+    "critical_components_verified": {
+      "database_schema": true,
+      "change_detection": false,
+      "change_recording": false,
+      "integration": true
+    }
+  }
+}

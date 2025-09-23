@@ -18,14 +18,14 @@ print(f'Total SEPP documents: {sepp_count}')
 print('\nChecking for specific SEPPs:')
 sepps = ['exempt', 'complying', 'housing', 'transport', 'biodiversity', '65', 'design quality']
 for sepp in sepps:
-    cursor.execute("""
-    SELECT COUNT(*)
-    FROM regulatory_provisions
-    WHERE LOWER(source_document) LIKE ?
-    """, (f'%{sepp}%',))
-    count = cursor.fetchone()[0]
-    status = 'FOUND' if count > 0 else 'NOT FOUND'
-    print(f'  {sepp}: {count} provisions - {status}')
+ cursor.execute("""
+ SELECT COUNT(*)
+ FROM regulatory_provisions
+ WHERE LOWER(source_document) LIKE ?
+ """, (f'%{sepp}%',))
+ count = cursor.fetchone()[0]
+ status = 'FOUND' if count > 0 else 'NOT FOUND'
+ print(f' {sepp}: {count} provisions - {status}')
 
 print('\n=== INNER WEST LEP COVERAGE ===')
 cursor.execute("""
@@ -67,6 +67,6 @@ GROUP BY source_type
 """)
 sources = cursor.fetchall()
 for source, count in sources:
-    print(f'  {source}: {count}')
+ print(f' {source}: {count}')
 
 conn.close()

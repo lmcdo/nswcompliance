@@ -19,12 +19,12 @@ The automatic PRP (Phased Rollout Plan) process is designed to prevent LLM execu
 Each PRP creates verification markers:
 ```
 prp_checkpoints/
-├── A1_completed.marker  ✅ (packages verified)
-├── A2_completed.marker  ✅ (PDFs extracted)
-├── A3_completed.marker  ❌ (next to do)
+├── A1_completed.marker (packages verified)
+├── A2_completed.marker (PDFs extracted)
+├── A3_completed.marker (next to do)
 ├── verify_completion.sh (checks status)
 ├── mark_prp_complete.sh (marks completion)
-└── session_control.sh   (determines next PRP)
+└── session_control.sh (determines next PRP)
 ```
 
 ### 4. Why This Works
@@ -35,9 +35,9 @@ prp_checkpoints/
 
 ### 5. The 7-PRP Pipeline
 ```
-PRP-A1: Package Installation (15 min) ✅
-PRP-A2: PDF Extraction (60 min) ✅ 
-PRP-A3: Source Grounding (45 min) ⬅️ NEXT
+PRP-A1: Package Installation (15 min) 
+PRP-A2: PDF Extraction (60 min) 
+PRP-A3: Source Grounding (45 min) ⬅ NEXT
 PRP-A4: Knowledge Graph (45 min)
 PRP-A5: LightRAG Integration (30 min)
 PRP-A6: Query Interface (20 min)
@@ -55,20 +55,20 @@ PRP-A7: Frontend Integration (20 min)
 This script checks the completion status of all PRPs in sequence:
 ```bash
 #!/bin/bash
-echo "🔍 Checking PRP completion status..."
+echo " Checking PRP completion status..."
 
 for prp in A1 A2 A3 A4 A5 A6 A7; do
-    marker_file="prp_checkpoints/${prp}_completed.marker"
-    if [ -f "$marker_file" ]; then
-        echo "✅ PRP-$prp: COMPLETED - $(cat $marker_file)"
-    else
-        echo "❌ PRP-$prp: NOT COMPLETED"
-        echo "🛑 CRITICAL: PRP-$prp must be completed before proceeding"
-        exit 1
-    fi
+ marker_file="prp_checkpoints/${prp}_completed.marker"
+ if [ -f "$marker_file" ]; then
+ echo " PRP-$prp: COMPLETED - $(cat $marker_file)"
+ else
+ echo " PRP-$prp: NOT COMPLETED"
+ echo " CRITICAL: PRP-$prp must be completed before proceeding"
+ exit 1
+ fi
 done
 
-echo "🎯 ALL PRPs COMPLETED - PIPELINE OPERATIONAL"
+echo " ALL PRPs COMPLETED - PIPELINE OPERATIONAL"
 ```
 
 **How it works:**
@@ -88,9 +88,9 @@ TIMESTAMP=$(date +"%Y-%m-%d %H:%M:%S")
 # Create marker file with timestamp and message
 echo "[$TIMESTAMP] $MESSAGE" > "prp_checkpoints/${PRP_ID}_completed.marker"
 
-echo "✅ PRP-${PRP_ID} marked as COMPLETED"
-echo "   Message: $MESSAGE"
-echo "   Marker: prp_checkpoints/${PRP_ID}_completed.marker"
+echo " PRP-${PRP_ID} marked as COMPLETED"
+echo " Message: $MESSAGE"
+echo " Marker: prp_checkpoints/${PRP_ID}_completed.marker"
 
 # Show current status
 ./prp_checkpoints/verify_completion.sh
@@ -105,31 +105,31 @@ echo "   Marker: prp_checkpoints/${PRP_ID}_completed.marker"
 This script determines which PRP to execute next:
 ```bash
 #!/bin/bash
-echo "🔍 SESSION CONTROL CHECK"
+echo " SESSION CONTROL CHECK"
 echo "========================"
 
 # Check each PRP in sequence
 for prp in A1 A2 A3 A4 A5 A6 A7; do
-    if [ ! -f "prp_checkpoints/${prp}_completed.marker" ]; then
-        echo "📋 NEXT PRP TO EXECUTE: PRP-${prp}"
-        
-        # Display PRP details
-        case $prp in
-            A1) echo "📦 PRP-A1: Package Installation Verification" ;;
-            A2) echo "📄 PRP-A2: PDF Content Extraction" ;;
-            A3) echo "🔗 PRP-A3: Source Grounding" ;;
-            A4) echo "🕸️ PRP-A4: Knowledge Graph Construction" ;;
-            A5) echo "🔮 PRP-A5: LightRAG Integration" ;;
-            A6) echo "❓ PRP-A6: Query Interface" ;;
-            A7) echo "🖥️ PRP-A7: Frontend Integration" ;;
-        esac
-        
-        echo "⚠️  EXECUTION RULE: Complete ONLY this PRP in this session"
-        exit 0
-    fi
+ if [ ! -f "prp_checkpoints/${prp}_completed.marker" ]; then
+ echo " NEXT PRP TO EXECUTE: PRP-${prp}"
+ 
+ # Display PRP details
+ case $prp in
+ A1) echo " PRP-A1: Package Installation Verification" ;;
+ A2) echo " PRP-A2: PDF Content Extraction" ;;
+ A3) echo " PRP-A3: Source Grounding" ;;
+ A4) echo " PRP-A4: Knowledge Graph Construction" ;;
+ A5) echo " PRP-A5: LightRAG Integration" ;;
+ A6) echo " PRP-A6: Query Interface" ;;
+ A7) echo " PRP-A7: Frontend Integration" ;;
+ esac
+ 
+ echo " EXECUTION RULE: Complete ONLY this PRP in this session"
+ exit 0
+ fi
 done
 
-echo "✅ ALL PRPs COMPLETED - System ready for production"
+echo " ALL PRPs COMPLETED - System ready for production"
 ```
 
 **How it works:**
@@ -180,8 +180,8 @@ The atomic PRP approach ensures:
 ## Implementation Success Metrics
 
 Current status shows the system working correctly:
-- ✅ PRP-A1: All 4 packages verified
-- ✅ PRP-A2: All 54 PDFs extracted with real content
+- PRP-A1: All 4 packages verified
+- PRP-A2: All 54 PDFs extracted with real content
 - ⏳ PRP-A3: Ready to execute in next session
 - System enforces one-PRP-per-session rule
 - Markers provide audit trail and verification

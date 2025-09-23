@@ -1,0 +1,26 @@
+{
+  "timestamp": "2025-09-20T16:39:50.518373",
+  "prp": "PRP-R3_SCHEMA_MIGRATION",
+  "actions_taken": [
+    "Created PostgreSQL schema",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF",
+    "Created index: IF"
+  ],
+  "checks": {
+    "sqlite_tables": 29,
+    "provisions_migrated": 44210,
+    "validation": "PASSED",
+    "final_row_count": 44210
+  },
+  "errors": [],
+  "tables_migrated": [
+    "regulatory_provisions"
+  ],
+  "success": true
+}

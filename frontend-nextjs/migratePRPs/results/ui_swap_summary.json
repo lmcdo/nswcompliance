@@ -1,0 +1,15 @@
+{
+  "migration": "ui_swap",
+  "timestamp": "2025-09-21T11:36:36.808Z",
+  "backup_location": "migratePRPs/backup/ui_swap_20250921_213550",
+  "components_migrated": "all",
+  "apis_connected": [
+    "/api/property",
+    "/api/compliance/live-check"
+  ],
+  "test_urls": [
+    "http://localhost:3007/ui-test",
+    "http://localhost:3007"
+  ],
+  "status": "completed"
+}

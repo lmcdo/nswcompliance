@@ -37,18 +37,18 @@ In the `examples/regulatory-engine/` folder:
 
 ### 2. Document Processing Pipeline
 - Process Inner West Council documents from `docs/` directory:
-  - InnerWest_Ashfield_DCP_2014.pdf
-  - InnerWest_Leichhardt_DCP_2014.pdf
-  - InnerWest_Marrickville_DCP_2014.pdf
-  - SEPP_Sustainable_Buildings_2022.pdf (one of 9 statewide SEPPs)
+ - InnerWest_Ashfield_DCP_2014.pdf
+ - InnerWest_Leichhardt_DCP_2014.pdf
+ - InnerWest_Marrickville_DCP_2014.pdf
+ - SEPP_Sustainable_Buildings_2022.pdf (one of 9 statewide SEPPs)
 - Extract setback rules with exact clause references
 - Store results in structured JSON format by former council area
 - Target completion: 4 hours
 
 ### 3. AutoSchemaKG Implementation
 - Create schema that captures setback rules by former council area:
-  - Ashfield, Leichhardt, Marrickville
-  - Source clause references
+ - Ashfield, Leichhardt, Marrickville
+ - Source clause references
 - Target completion: 2 hours
 
 ### 4. Next.js Integration
@@ -73,19 +73,19 @@ In the `examples/regulatory-engine/` folder:
 ## SUCCESS CRITERIA
 
 1. When run on Inner West Council documents:
-   - Correctly extracts 85%+ of setback rules
-   - All extracted setback rules include exact clause references
-   - Output JSON is consumable by Next.js frontend
-   - Correctly maps properties to former council areas
+ - Correctly extracts 85%+ of setback rules
+ - All extracted setback rules include exact clause references
+ - Output JSON is consumable by Next.js frontend
+ - Correctly maps properties to former council areas
 
 2. Output JSON includes:
-   - Exact setback constraint values
-   - Direct link to operative document
-   - Former council area applicability
-   - Context conditions (if any)
+ - Exact setback constraint values
+ - Direct link to operative document
+ - Former council area applicability
+ - Context conditions (if any)
 
 3. The system does NOT:
-   - Interpret regulations beyond what's explicitly stated
-   - Provide "advice" that requires professional judgment
-   - Claim to replace formal development assessment
-   - Process PDFs during user requests
+ - Interpret regulations beyond what's explicitly stated
+ - Provide "advice" that requires professional judgment
+ - Claim to replace formal development assessment
+ - Process PDFs during user requests

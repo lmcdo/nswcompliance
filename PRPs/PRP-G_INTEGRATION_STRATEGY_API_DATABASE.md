@@ -1,61 +1,61 @@
 # PRP-G: Integration Strategy - NSW Planning API + Database Intelligence
 ## Best Use Cases and Implementation Strategy for Combining API Data with Database Exploitation
 
-**Date**: 2025-09-03  
-**Status**: ✅ COMPLETED - COMPREHENSIVE STRATEGY ANALYSIS  
-**Priority**: CRITICAL - DEFINES MARKET POSITIONING AND SERVICE STRATEGY  
+**Date**: 2025-09-03 
+**Status**: COMPLETED - COMPREHENSIVE STRATEGY ANALYSIS 
+**Priority**: CRITICAL - DEFINES MARKET POSITIONING AND SERVICE STRATEGY 
 **Duration**: Strategic analysis + implementation roadmap
 
 ---
 
-## 🎯 **INTEGRATION ANALYSIS: NSW PLANNING API + DATABASE**
+## **INTEGRATION ANALYSIS: NSW PLANNING API + DATABASE**
 
 ### **The Core Challenge**
 The provided planning compliance algorithm is **structurally sound** but **missing critical intelligence** that transforms it from a basic checker into a sophisticated advisory system. The NSW Planning API provides **statutory data**, while our database provides **intelligence and reasoning**.
 
 ### **What the Algorithm Currently Provides (API-based):**
-- ✅ Zoning compliance checking (R2, R1, etc.)
-- ✅ FSR/Height limit validation (0.6:1, 9.5m)
-- ✅ SEPP overlay identification 
-- ✅ Tree canopy trend analysis (13.23% vs 8.14%)
-- ✅ Basic pathway classification (Exempt/CDC/DA)
+- Zoning compliance checking (R2, R1, etc.)
+- FSR/Height limit validation (0.6:1, 9.5m)
+- SEPP overlay identification 
+- Tree canopy trend analysis (13.23% vs 8.14%)
+- Basic pathway classification (Exempt/CDC/DA)
 
 ### **Critical Gaps Without Database Integration:**
-- ❌ **NO explanation of WHY requirements exist**
-- ❌ **NO specific setback calculations** (just zone identification)
-- ❌ **NO heritage reasoning** (just overlay identification)
-- ❌ **NO variation precedents** or justification strategies
-- ❌ **NO detailed DCP controls** beyond basic API data
-- ❌ **NO confidence assessment** of compliance decisions
+- **NO explanation of WHY requirements exist**
+- **NO specific setback calculations** (just zone identification)
+- **NO heritage reasoning** (just overlay identification)
+- **NO variation precedents** or justification strategies
+- **NO detailed DCP controls** beyond basic API data
+- **NO confidence assessment** of compliance decisions
 
 ### **What Our Database Uniquely Adds:**
-- ✅ **514 "because" relationships** explaining regulatory reasoning
-- ✅ **286 setback standards** for precise boundary calculations
-- ✅ **788 heritage controls** with specific protection logic
-- ✅ **144 "protect" relationships** defining preservation objectives
-- ✅ **829 quantitative standards** for numeric validation with confidence
-- ✅ **91 SEPP override mappings** for hierarchy resolution
+- **514 "because" relationships** explaining regulatory reasoning
+- **286 setback standards** for precise boundary calculations
+- **788 heritage controls** with specific protection logic
+- **144 "protect" relationships** defining preservation objectives
+- **829 quantitative standards** for numeric validation with confidence
+- **91 SEPP override mappings** for hierarchy resolution
 
-### **🏛️ AUTHORITATIVE NSW PLANNING HIERARCHY IMPLEMENTATION**
+### ** AUTHORITATIVE NSW PLANNING HIERARCHY IMPLEMENTATION**
 
 **Critical Insight**: NSW planning rules follow strict **SEPP > LEP > DCP** hierarchy. The database must implement this authoritative precedence order to ensure legally compliant results.
 
 #### **Planning Authority Hierarchy (Legal Precedence)**
 ```
 1. SEPP (State Environmental Planning Policy) - HIGHEST AUTHORITY
-   ├── Codes SEPP (Exempt/Complying Development)  
-   ├── State policies override all local controls
-   └── 91 override mappings in sepp_lep_overrides table
+ ├── Codes SEPP (Exempt/Complying Development) 
+ ├── State policies override all local controls
+ └── 91 override mappings in sepp_lep_overrides table
 
-2. LEP (Local Environmental Plan) - SECOND AUTHORITY  
-   ├── Inner West LEP (968 provisions for our area)
-   ├── Statutory zoning and numerical standards
-   └── Clause 4.6 variation framework
+2. LEP (Local Environmental Plan) - SECOND AUTHORITY 
+ ├── Inner West LEP (968 provisions for our area)
+ ├── Statutory zoning and numerical standards
+ └── Clause 4.6 variation framework
 
 3. DCP (Development Control Plan) - THIRD AUTHORITY
-   ├── Marrickville DCP (3,223 provisions) 
-   ├── Detailed design guidance only
-   └── Cannot override SEPP/LEP requirements
+ ├── Marrickville DCP (3,223 provisions) 
+ ├── Detailed design guidance only
+ └── Cannot override SEPP/LEP requirements
 ```
 
 #### **Hierarchical Query Strategy (Authoritative Order)**
@@ -63,7 +63,7 @@ The provided planning compliance algorithm is **structurally sound** but **missi
 -- STEP 1: Check SEPP Overrides First (Highest Authority)
 SELECT slo.*, rpc.provision_text, rpc.document_id
 FROM sepp_lep_overrides slo
-JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id  
+JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id 
 WHERE rpc.provision_text LIKE '%setback%'
 AND (rpc.provision_text LIKE '%R2%' OR dc.zone_applicable = 'R2')
 ORDER BY slo.confidence_score DESC;
@@ -81,7 +81,7 @@ LIMIT 5;
 -- STEP 3: Only If No LEP Controls, Use DCP Controls (Third Authority)
 -- But ONLY for guidance, cannot override higher authority
 SELECT dc.*, rpc.provision_text, rpc.document_id
-FROM development_controls dc  
+FROM development_controls dc 
 JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
 WHERE dc.control_type = 'setback'
 AND rpc.document_id IN (SELECT id FROM documents WHERE document_name LIKE '%DCP%')
@@ -91,49 +91,49 @@ LIMIT 5;
 ```
 
 #### **Geographic Relevance Filtering (Knowledge Graph)**
-```sql  
+```sql 
 -- Use kg_relationships to find location-specific applicability
 SELECT kr.subject_text, kr.predicate, kr.object_text
 FROM kg_relationships kr
-WHERE kr.predicate IN ('contains', 'applies_to', 'within', 'covers')  
+WHERE kr.predicate IN ('contains', 'applies_to', 'within', 'covers') 
 AND kr.object_text LIKE '%Dulwich Hill%' 
-   OR kr.object_text LIKE '%Inner West%'
-   OR kr.object_text LIKE '%precinct%'
+ OR kr.object_text LIKE '%Inner West%'
+ OR kr.object_text LIKE '%precinct%'
 ORDER BY kr.confidence_score DESC;
 ```
 
 #### **Implementation Logic (Respects Legal Authority)**
 ```python
 def get_authoritative_setback_controls(property_zone, property_location):
-    # Step 1: SEPP overrides (highest authority)
-    sepp_controls = query_sepp_overrides('setback', property_zone)
-    if sepp_controls:
-        return {
-            'authority_level': 'SEPP - State Policy',
-            'controls': sepp_controls,
-            'can_be_varied': False,  # SEPP cannot be varied locally
-            'legal_precedence': 1
-        }
-    
-    # Step 2: LEP controls (second authority)  
-    lep_controls = query_lep_controls('setback', property_zone, property_location)
-    if lep_controls:
-        return {
-            'authority_level': 'LEP - Local Environmental Plan', 
-            'controls': lep_controls,
-            'can_be_varied': True,  # Via Clause 4.6 process
-            'legal_precedence': 2
-        }
-    
-    # Step 3: DCP controls (guidance only)
-    dcp_controls = query_dcp_controls('setback', property_zone, property_location)
-    return {
-        'authority_level': 'DCP - Development Control Plan',
-        'controls': dcp_controls, 
-        'can_be_varied': True,  # Design flexibility allowed
-        'legal_precedence': 3,
-        'note': 'Guidance only - cannot override SEPP/LEP'
-    }
+ # Step 1: SEPP overrides (highest authority)
+ sepp_controls = query_sepp_overrides('setback', property_zone)
+ if sepp_controls:
+ return {
+ 'authority_level': 'SEPP - State Policy',
+ 'controls': sepp_controls,
+ 'can_be_varied': False, # SEPP cannot be varied locally
+ 'legal_precedence': 1
+ }
+ 
+ # Step 2: LEP controls (second authority) 
+ lep_controls = query_lep_controls('setback', property_zone, property_location)
+ if lep_controls:
+ return {
+ 'authority_level': 'LEP - Local Environmental Plan', 
+ 'controls': lep_controls,
+ 'can_be_varied': True, # Via Clause 4.6 process
+ 'legal_precedence': 2
+ }
+ 
+ # Step 3: DCP controls (guidance only)
+ dcp_controls = query_dcp_controls('setback', property_zone, property_location)
+ return {
+ 'authority_level': 'DCP - Development Control Plan',
+ 'controls': dcp_controls, 
+ 'can_be_varied': True, # Design flexibility allowed
+ 'legal_precedence': 3,
+ 'note': 'Guidance only - cannot override SEPP/LEP'
+ }
 ```
 
 **Key Benefits:**
@@ -142,7 +142,7 @@ def get_authoritative_setback_controls(property_zone, property_location):
 - **Variation Guidance**: Shows what can/cannot be varied
 - **Geographic Relevance**: Filters by actual applicability
 
-### **🚀 EFFICIENT IMPLEMENTATION STRATEGY (PROVISIONAL)**
+### ** EFFICIENT IMPLEMENTATION STRATEGY (PROVISIONAL)**
 
 > **Status**: PROVISIONAL - Requires testing and validation with actual database results
 
@@ -151,7 +151,7 @@ def get_authoritative_setback_controls(property_zone, property_location):
 **Core Foreign Key Relationships:**
 ```sql
 development_controls.provision_id → regulatory_provisions_clean.id
-sepp_lep_overrides.sepp_provision_id → regulatory_provisions_clean.id  
+sepp_lep_overrides.sepp_provision_id → regulatory_provisions_clean.id 
 kg_relationships.subject_entity_id → kg_entities.id
 kg_relationships.object_entity_id → kg_entities.id
 quantitative_standards.provision_id → regulatory_provisions_clean.id
@@ -160,7 +160,7 @@ regulatory_provisions_clean.document_id → documents.id
 
 **Performance Insight**: Start with **smallest tables first** for maximum efficiency:
 - `sepp_lep_overrides`: 91 records (START HERE)
-- `documents` filtered by type: ~20-50 records  
+- `documents` filtered by type: ~20-50 records 
 - `development_controls` with zone filter: ~100-500 records
 - `regulatory_provisions_clean`: 9,364 records (JOIN LAST)
 
@@ -169,77 +169,77 @@ regulatory_provisions_clean.document_id → documents.id
 ```sql
 -- PROVISIONAL IMPLEMENTATION - Needs validation
 WITH sepp_controls AS (
-  -- SEPP (Highest Authority) - START HERE (91 records - smallest!)
-  SELECT slo.*, rpc.provision_text, rpc.document_id, 1 as authority_rank
-  FROM sepp_lep_overrides slo
-  JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id
-  WHERE rpc.provision_text LIKE '%setback%' 
-  AND rpc.provision_text LIKE '%R2%'
+ -- SEPP (Highest Authority) - START HERE (91 records - smallest!)
+ SELECT slo.*, rpc.provision_text, rpc.document_id, 1 as authority_rank
+ FROM sepp_lep_overrides slo
+ JOIN regulatory_provisions_clean rpc ON slo.sepp_provision_id = rpc.id
+ WHERE rpc.provision_text LIKE '%setback%' 
+ AND rpc.provision_text LIKE '%R2%'
 ),
 
 lep_controls AS (
-  -- LEP Controls (Inner West LEP - ~968 records)
-  SELECT dc.*, rpc.provision_text, rpc.document_id, 2 as authority_rank
-  FROM development_controls dc
-  JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
-  JOIN documents d ON rpc.document_id = d.id
-  WHERE dc.control_type = 'setback'
-  AND d.document_type = 'LEP'
-  AND d.document_name LIKE '%Inner West%'
-  AND dc.zone_applicable IN ('R2', 'general')
+ -- LEP Controls (Inner West LEP - ~968 records)
+ SELECT dc.*, rpc.provision_text, rpc.document_id, 2 as authority_rank
+ FROM development_controls dc
+ JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id
+ JOIN documents d ON rpc.document_id = d.id
+ WHERE dc.control_type = 'setback'
+ AND d.document_type = 'LEP'
+ AND d.document_name LIKE '%Inner West%'
+ AND dc.zone_applicable IN ('R2', 'general')
 ),
 
 geographic_relevance AS (
-  -- Knowledge Graph Geographic Filtering
-  SELECT DISTINCT kr.subject_entity_id, kr.object_entity_id, 
-         ke.entity_text as location_name
-  FROM kg_relationships kr
-  JOIN kg_entities ke ON (kr.subject_entity_id = ke.id OR kr.object_entity_id = ke.id)
-  WHERE kr.predicate IN ('contains', 'applies_to', 'within', 'covers', 'located_in')
-  AND (ke.entity_text LIKE '%Dulwich Hill%'
-       OR ke.entity_text LIKE '%Inner West%' 
-       OR ke.entity_text LIKE '%precinct%'
-       OR ke.entity_text LIKE '%conservation area%')
+ -- Knowledge Graph Geographic Filtering
+ SELECT DISTINCT kr.subject_entity_id, kr.object_entity_id, 
+ ke.entity_text as location_name
+ FROM kg_relationships kr
+ JOIN kg_entities ke ON (kr.subject_entity_id = ke.id OR kr.object_entity_id = ke.id)
+ WHERE kr.predicate IN ('contains', 'applies_to', 'within', 'covers', 'located_in')
+ AND (ke.entity_text LIKE '%Dulwich Hill%'
+ OR ke.entity_text LIKE '%Inner West%' 
+ OR ke.entity_text LIKE '%precinct%'
+ OR ke.entity_text LIKE '%conservation area%')
 )
 
 -- Final Combined Query (Authority + Geography)
 SELECT 
-  controls.*,
-  CASE 
-    WHEN authority_rank = 1 THEN 'SEPP - Cannot be varied'
-    WHEN authority_rank = 2 THEN 'LEP - Clause 4.6 variation possible' 
-    WHEN authority_rank = 3 THEN 'DCP - Guidance only'
-  END as legal_status,
-  authority_rank,
-  geographic_score
+ controls.*,
+ CASE 
+ WHEN authority_rank = 1 THEN 'SEPP - Cannot be varied'
+ WHEN authority_rank = 2 THEN 'LEP - Clause 4.6 variation possible' 
+ WHEN authority_rank = 3 THEN 'DCP - Guidance only'
+ END as legal_status,
+ authority_rank,
+ geographic_score
 FROM (
-  -- SEPP overrides (highest priority)
-  SELECT *, 1 as authority_rank, 100 as geographic_score FROM sepp_controls
-  WHERE EXISTS (SELECT 1 FROM sepp_controls)
-  
-  UNION ALL
-  
-  -- LEP controls (if no SEPP overrides)  
-  SELECT *, 2 as authority_rank, 90 as geographic_score FROM lep_controls  
-  WHERE NOT EXISTS (SELECT 1 FROM sepp_controls)
-  
-  UNION ALL
-  
-  -- DCP controls (fallback only)
-  SELECT dc.*, rpc.provision_text, rpc.document_id, 3 as authority_rank,
-    CASE WHEN d.document_name LIKE '%Marrickville%' THEN 80 ELSE 60 END as geographic_score
-  FROM development_controls dc
-  JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id  
-  JOIN documents d ON rpc.document_id = d.id
-  WHERE dc.control_type = 'setback'
-  AND d.document_type = 'DCP'
-  AND d.document_name LIKE '%Marrickville%'  -- Geographic relevance
-  AND dc.zone_applicable IN ('R2', 'general')
-  AND NOT EXISTS (SELECT 1 FROM sepp_controls)
-  AND NOT EXISTS (SELECT 1 FROM lep_controls)
+ -- SEPP overrides (highest priority)
+ SELECT *, 1 as authority_rank, 100 as geographic_score FROM sepp_controls
+ WHERE EXISTS (SELECT 1 FROM sepp_controls)
+ 
+ UNION ALL
+ 
+ -- LEP controls (if no SEPP overrides) 
+ SELECT *, 2 as authority_rank, 90 as geographic_score FROM lep_controls 
+ WHERE NOT EXISTS (SELECT 1 FROM sepp_controls)
+ 
+ UNION ALL
+ 
+ -- DCP controls (fallback only)
+ SELECT dc.*, rpc.provision_text, rpc.document_id, 3 as authority_rank,
+ CASE WHEN d.document_name LIKE '%Marrickville%' THEN 80 ELSE 60 END as geographic_score
+ FROM development_controls dc
+ JOIN regulatory_provisions_clean rpc ON dc.provision_id = rpc.id 
+ JOIN documents d ON rpc.document_id = d.id
+ WHERE dc.control_type = 'setback'
+ AND d.document_type = 'DCP'
+ AND d.document_name LIKE '%Marrickville%' -- Geographic relevance
+ AND dc.zone_applicable IN ('R2', 'general')
+ AND NOT EXISTS (SELECT 1 FROM sepp_controls)
+ AND NOT EXISTS (SELECT 1 FROM lep_controls)
 ) controls
 ORDER BY authority_rank ASC, geographic_score DESC, confidence_score DESC
-LIMIT 3;  -- Only top 3 most authoritative/relevant
+LIMIT 3; -- Only top 3 most authoritative/relevant
 ```
 
 #### **Performance Optimization Strategy**
@@ -258,7 +258,7 @@ CREATE INDEX idx_documents_type_name ON documents(document_type, document_name);
 ```
 1. sepp_lep_overrides (91 rows) ← START HERE
 2. Filter documents by type/name (20-50 rows)
-3. Apply control_type + zone filter (100-500 rows)  
+3. Apply control_type + zone filter (100-500 rows) 
 4. Join KG relationships for geography (selective)
 5. Sort by authority + confidence (final ranking)
 ```
@@ -276,19 +276,19 @@ SELECT entity_text, COUNT(*) as usage_count
 FROM kg_entities ke
 JOIN kg_relationships kr ON (ke.id = kr.subject_entity_id OR ke.id = kr.object_entity_id)
 WHERE ke.entity_text LIKE '%Dulwich Hill%' 
-   OR ke.entity_text LIKE '%Inner West%'
-   OR ke.entity_text LIKE '%precinct%'
-   OR ke.entity_text LIKE '%conservation area%'
+ OR ke.entity_text LIKE '%Inner West%'
+ OR ke.entity_text LIKE '%precinct%'
+ OR ke.entity_text LIKE '%conservation area%'
 GROUP BY entity_text
 ORDER BY usage_count DESC;
 
 -- Planning authority entities
-SELECT entity_text, COUNT(*) as usage_count  
+SELECT entity_text, COUNT(*) as usage_count 
 FROM kg_entities ke
 JOIN kg_relationships kr ON (ke.id = kr.subject_entity_id OR ke.id = kr.object_entity_id)
 WHERE ke.entity_text LIKE '%LEP%'
-   OR ke.entity_text LIKE '%DCP%'
-   OR ke.entity_text LIKE '%SEPP%'
+ OR ke.entity_text LIKE '%DCP%'
+ OR ke.entity_text LIKE '%SEPP%'
 GROUP BY entity_text
 ORDER BY usage_count DESC;
 ```
@@ -301,7 +301,7 @@ ORDER BY usage_count DESC;
 
 ---
 
-## 🚀 **KILLER USE CASES: MEANINGFUL INTEGRATION**
+## **KILLER USE CASES: MEANINGFUL INTEGRATION**
 
 ### **1. INTELLIGENT SETBACK CALCULATOR**
 **Why This Wins**: API provides zone + lot geometry, database provides 286 setback standards with reasoning
@@ -381,10 +381,10 @@ DATABASE ANALYSIS:
 
 PREDICTIVE OUTPUT:
 ├── Critical requirements:
-│   ├── Must retain original cottage proportions
-│   ├── Extension setback minimum 3m from heritage item
-│   ├── Materials must complement original (brick/slate)
-│   └── Two-storey acceptable IF stepped back from street
+│ ├── Must retain original cottage proportions
+│ ├── Extension setback minimum 3m from heritage item
+│ ├── Materials must complement original (brick/slate)
+│ └── Two-storey acceptable IF stepped back from street
 ├── Risk assessment: Medium (precedents exist)
 ├── Required reports: Heritage Impact Statement
 ├── Estimated cost: $3-5K heritage consultant
@@ -413,10 +413,10 @@ DATABASE OPTIMIZATION:
 
 OPTIMIZATION OUTPUT:
 ├── Maximum CDC envelope:
-│   ├── Floor area: 180m² (0.6 FSR × 300m² coverage)
-│   ├── Height: 8.5m (0.5m buffer for certainty)
-│   ├── Setbacks: Front 6m, Side 1.5m, Rear 6m
-│   └── Tree retention: Maintain existing canopy
+│ ├── Floor area: 180m² (0.6 FSR × 300m² coverage)
+│ ├── Height: 8.5m (0.5m buffer for certainty)
+│ ├── Setbacks: Front 6m, Side 1.5m, Rear 6m
+│ └── Tree retention: Maintain existing canopy
 ├── CDC pathway: 20-day approval, $2-3K cost
 ├── Alternative DA pathway: 3-6 months, $10-15K cost
 ├── Value impact: CDC saves $20-50K in holding costs
@@ -448,19 +448,19 @@ INTELLIGENT EXPLANATION:
 "FSR limited to 0.6:1 in R2 zones BECAUSE:
 
 1. NEIGHBOURHOOD CHARACTER (Primary reason)
-   └── Maintains low-density residential character established in 1960s
-   
-2. INFRASTRUCTURE CAPACITY (Supporting reason)  
-   └── Local roads and utilities designed for current density levels
-   
+ └── Maintains low-density residential character established in 1960s
+ 
+2. INFRASTRUCTURE CAPACITY (Supporting reason) 
+ └── Local roads and utilities designed for current density levels
+ 
 3. ENVIRONMENTAL PROTECTION (Contributing reason)
-   └── Ensures adequate private open space for tree canopy retention
-   
+ └── Ensures adequate private open space for tree canopy retention
+ 
 4. SOLAR ACCESS PROTECTION (Amenity reason)
-   └── Prevents overshadowing of adjacent properties
-   
+ └── Prevents overshadowing of adjacent properties
+ 
 5. PARKING ADEQUACY (Practical reason)
-   └── Higher density would exceed on-street parking capacity
+ └── Higher density would exceed on-street parking capacity
 
 VARIATION POTENTIAL: Possible up to 0.65:1 IF design excellence demonstrated
 SOURCE PROVISIONS: Based on 12 regulatory provisions with 85% confidence"
@@ -471,7 +471,7 @@ SOURCE PROVISIONS: Based on 12 regulatory provisions with 85% confidence"
 
 ---
 
-## 📊 **ENHANCED ALGORITHM IMPLEMENTATION**
+## **ENHANCED ALGORITHM IMPLEMENTATION**
 
 ### **Step 4 Enhancement: Development Standards Compliance**
 
@@ -479,61 +479,61 @@ SOURCE PROVISIONS: Based on 12 regulatory provisions with 85% confidence"
 ```python
 # Basic API-only checking
 def check_development_standards(api_data):
-    fsr_limit = api_data['fsr']  # 0.6
-    height_limit = api_data['height']  # 9.5
-    
-    if proposal.fsr <= fsr_limit and proposal.height <= height_limit:
-        return "Compliant"
-    else:
-        return "Non-compliant"
+ fsr_limit = api_data['fsr'] # 0.6
+ height_limit = api_data['height'] # 9.5
+ 
+ if proposal.fsr <= fsr_limit and proposal.height <= height_limit:
+ return "Compliant"
+ else:
+ return "Non-compliant"
 ```
 
 #### **ENHANCED WITH DATABASE INTELLIGENCE:**
 ```python
 def check_development_standards_enhanced(api_data, proposal):
-    # Get limits from API
-    fsr_limit = api_data['fsr']  # 0.6
-    height_limit = api_data['height']  # 9.5
-    zone = api_data['zone']  # R2
-    
-    # ENHANCE with database intelligence
-    fsr_explanation = db.query_relationships(
-        predicate='because',
-        subject_contains='FSR'
-    )
-    # Returns: ["FSR limited because maintain character", 
-    #          "FSR limited because infrastructure capacity"]
-    
-    # Check for variation precedents
-    fsr_variations = db.query_quantitative_standards(
-        context='fsr',
-        qualifier='maximum',
-        zone=zone
-    )
-    
-    # Find similar variation cases
-    precedents = db.query_development_controls(
-        control_type='fsr',
-        zone_applicable=zone,
-        value_text_contains='variation'
-    )
-    
-    # Calculate compliance with confidence
-    is_compliant = proposal.fsr <= fsr_limit
-    confidence = calculate_confidence(fsr_variations, precedents)
-    
-    return {
-        'compliant': is_compliant,
-        'limit': fsr_limit,
-        'proposed': proposal.fsr,
-        'explanation': fsr_explanation,
-        'reasoning': "Protects neighbourhood character and infrastructure",
-        'variation_possible': len(precedents) > 0,
-        'variation_threshold': max([p.numeric_value for p in fsr_variations]) if fsr_variations else fsr_limit,
-        'precedent_cases': precedents[:3],  # Top 3 similar cases
-        'confidence_score': confidence,
-        'recommendation': generate_recommendation(is_compliant, precedents, confidence)
-    }
+ # Get limits from API
+ fsr_limit = api_data['fsr'] # 0.6
+ height_limit = api_data['height'] # 9.5
+ zone = api_data['zone'] # R2
+ 
+ # ENHANCE with database intelligence
+ fsr_explanation = db.query_relationships(
+ predicate='because',
+ subject_contains='FSR'
+ )
+ # Returns: ["FSR limited because maintain character", 
+ # "FSR limited because infrastructure capacity"]
+ 
+ # Check for variation precedents
+ fsr_variations = db.query_quantitative_standards(
+ context='fsr',
+ qualifier='maximum',
+ zone=zone
+ )
+ 
+ # Find similar variation cases
+ precedents = db.query_development_controls(
+ control_type='fsr',
+ zone_applicable=zone,
+ value_text_contains='variation'
+ )
+ 
+ # Calculate compliance with confidence
+ is_compliant = proposal.fsr <= fsr_limit
+ confidence = calculate_confidence(fsr_variations, precedents)
+ 
+ return {
+ 'compliant': is_compliant,
+ 'limit': fsr_limit,
+ 'proposed': proposal.fsr,
+ 'explanation': fsr_explanation,
+ 'reasoning': "Protects neighbourhood character and infrastructure",
+ 'variation_possible': len(precedents) > 0,
+ 'variation_threshold': max([p.numeric_value for p in fsr_variations]) if fsr_variations else fsr_limit,
+ 'precedent_cases': precedents[:3], # Top 3 similar cases
+ 'confidence_score': confidence,
+ 'recommendation': generate_recommendation(is_compliant, precedents, confidence)
+ }
 ```
 
 ### **Step 6 Enhancement: Development Pathway Classification**
@@ -542,116 +542,116 @@ def check_development_standards_enhanced(api_data, proposal):
 ```python
 # Simple binary classification
 def determine_pathway(api_data, proposal):
-    if all_standards_met(api_data, proposal):
-        return "Complying Development"
-    else:
-        return "Development Application Required"
+ if all_standards_met(api_data, proposal):
+ return "Complying Development"
+ else:
+ return "Development Application Required"
 ```
 
 #### **ENHANCED WITH DATABASE INTELLIGENCE:**
 ```python
 def determine_pathway_enhanced(api_data, proposal, db_analysis):
-    zone = api_data['zone']
-    development_type = proposal.type
-    
-    # Check exempt criteria from database
-    exempt_criteria = db.query_development_pathways(
-        development_type=development_type,
-        zone=zone,
-        pathway_type='exempt'
-    )
-    
-    if meets_criteria(proposal, exempt_criteria):
-        return {
-            'pathway': 'EXEMPT DEVELOPMENT',
-            'authority': 'No approval required',
-            'timeframe': 'Immediate',
-            'cost': '$0',
-            'requirements': [],
-            'confidence': 95,
-            'conditions': exempt_criteria.qualification_criteria
-        }
-    
-    # Check CDC criteria with comprehensive database standards
-    cdc_standards = db.query_quantitative_standards(
-        zone=zone,
-        qualifier='maximum'
-    )
-    
-    cdc_controls = db.query_development_controls(
-        zone_applicable=zone,
-        control_type__in=['height', 'fsr', 'setback', 'parking']
-    )
-    
-    cdc_compliance = all(
-        meets_standard(proposal, standard) 
-        for standard in cdc_standards + cdc_controls
-    )
-    
-    if cdc_compliance:
-        return {
-            'pathway': 'COMPLYING DEVELOPMENT CERTIFICATE',
-            'authority': 'Private certifier or council',
-            'timeframe': '20 business days',
-            'cost': '$2,000 - $3,500',
-            'requirements': [s.description for s in cdc_standards],
-            'confidence': 90,
-            'benefits': [
-                'Fast-track approval',
-                'Reduced planning risk',
-                'Lower approval costs'
-            ]
-        }
-    
-    # DA required - provide detailed analysis
-    non_compliance = []
-    variation_strategies = []
-    
-    for standard in cdc_standards + cdc_controls:
-        if not meets_standard(proposal, standard):
-            # Get reasoning for requirement
-            reason = db.query_relationships(
-                predicate='because',
-                subject_contains=standard.context
-            )
-            
-            # Find variation precedents
-            precedents = db.query_similar_variations(standard, zone)
-            
-            non_compliance.append({
-                'standard': standard.description,
-                'required': standard.numeric_value,
-                'proposed': getattr(proposal, standard.context),
-                'reason': reason[0].object_text if reason else "Regulatory requirement",
-                'variation_precedents': len(precedents),
-                'variation_possible': len(precedents) > 0
-            })
-            
-            if precedents:
-                variation_strategies.append(
-                    generate_variation_strategy(standard, precedents, reason)
-                )
-    
-    return {
-        'pathway': 'DEVELOPMENT APPLICATION',
-        'authority': 'Local council or planning panel',
-        'timeframe': '3-6 months (standard), 6-12 months (complex)',
-        'cost': '$5,000 - $15,000 (council) + consultant fees',
-        'non_compliance': non_compliance,
-        'variation_strategies': variation_strategies,
-        'confidence': calculate_da_confidence(non_compliance, variation_strategies),
-        'recommendations': [
-            'Engage planning consultant early',
-            'Consider design modifications to reduce variations',
-            'Prepare strong justification for necessary variations'
-        ],
-        'risk_factors': assess_approval_risks(non_compliance, api_data)
-    }
+ zone = api_data['zone']
+ development_type = proposal.type
+ 
+ # Check exempt criteria from database
+ exempt_criteria = db.query_development_pathways(
+ development_type=development_type,
+ zone=zone,
+ pathway_type='exempt'
+ )
+ 
+ if meets_criteria(proposal, exempt_criteria):
+ return {
+ 'pathway': 'EXEMPT DEVELOPMENT',
+ 'authority': 'No approval required',
+ 'timeframe': 'Immediate',
+ 'cost': '$0',
+ 'requirements': [],
+ 'confidence': 95,
+ 'conditions': exempt_criteria.qualification_criteria
+ }
+ 
+ # Check CDC criteria with comprehensive database standards
+ cdc_standards = db.query_quantitative_standards(
+ zone=zone,
+ qualifier='maximum'
+ )
+ 
+ cdc_controls = db.query_development_controls(
+ zone_applicable=zone,
+ control_type__in=['height', 'fsr', 'setback', 'parking']
+ )
+ 
+ cdc_compliance = all(
+ meets_standard(proposal, standard) 
+ for standard in cdc_standards + cdc_controls
+ )
+ 
+ if cdc_compliance:
+ return {
+ 'pathway': 'COMPLYING DEVELOPMENT CERTIFICATE',
+ 'authority': 'Private certifier or council',
+ 'timeframe': '20 business days',
+ 'cost': '$2,000 - $3,500',
+ 'requirements': [s.description for s in cdc_standards],
+ 'confidence': 90,
+ 'benefits': [
+ 'Fast-track approval',
+ 'Reduced planning risk',
+ 'Lower approval costs'
+ ]
+ }
+ 
+ # DA required - provide detailed analysis
+ non_compliance = []
+ variation_strategies = []
+ 
+ for standard in cdc_standards + cdc_controls:
+ if not meets_standard(proposal, standard):
+ # Get reasoning for requirement
+ reason = db.query_relationships(
+ predicate='because',
+ subject_contains=standard.context
+ )
+ 
+ # Find variation precedents
+ precedents = db.query_similar_variations(standard, zone)
+ 
+ non_compliance.append({
+ 'standard': standard.description,
+ 'required': standard.numeric_value,
+ 'proposed': getattr(proposal, standard.context),
+ 'reason': reason[0].object_text if reason else "Regulatory requirement",
+ 'variation_precedents': len(precedents),
+ 'variation_possible': len(precedents) > 0
+ })
+ 
+ if precedents:
+ variation_strategies.append(
+ generate_variation_strategy(standard, precedents, reason)
+ )
+ 
+ return {
+ 'pathway': 'DEVELOPMENT APPLICATION',
+ 'authority': 'Local council or planning panel',
+ 'timeframe': '3-6 months (standard), 6-12 months (complex)',
+ 'cost': '$5,000 - $15,000 (council) + consultant fees',
+ 'non_compliance': non_compliance,
+ 'variation_strategies': variation_strategies,
+ 'confidence': calculate_da_confidence(non_compliance, variation_strategies),
+ 'recommendations': [
+ 'Engage planning consultant early',
+ 'Consider design modifications to reduce variations',
+ 'Prepare strong justification for necessary variations'
+ ],
+ 'risk_factors': assess_approval_risks(non_compliance, api_data)
+ }
 ```
 
 ---
 
-## 💰 **SERVICE TIER STRATEGY**
+## **SERVICE TIER STRATEGY**
 
 ### **Tier 1: Immediate Value Services (Build First - 4-6 weeks)**
 
@@ -733,7 +733,7 @@ def determine_pathway_enhanced(api_data, proposal, db_analysis):
 
 ---
 
-## ✅ **IMPLEMENTATION ROADMAP**
+## **IMPLEMENTATION ROADMAP**
 
 ### **Phase 1: Core Enhancement (2 weeks)**
 **Objective:** Add database intelligence to existing algorithm structure
@@ -784,23 +784,23 @@ def determine_pathway_enhanced(api_data, proposal, db_analysis):
 
 ---
 
-## 🎯 **COMPETITIVE ADVANTAGE ANALYSIS**
+## **COMPETITIVE ADVANTAGE ANALYSIS**
 
 ### **Why This Integration is NECESSARY (Not Optional):**
 
 #### **Without Database Integration (Commodity Service):**
-- ❌ Just another basic compliance checker
-- ❌ No explanations = frustrated users asking "why?"
-- ❌ No precise calculations = incomplete service
-- ❌ No variation guidance = limited professional value
-- ❌ Easily replicated by competitors
+- Just another basic compliance checker
+- No explanations = frustrated users asking "why?"
+- No precise calculations = incomplete service
+- No variation guidance = limited professional value
+- Easily replicated by competitors
 
 #### **With Database Integration (Unique Value Proposition):**
-- ✅ **Only service with regulatory reasoning** (514 "because" relationships)
-- ✅ **Precise calculations impossible elsewhere** (286 setback standards)
-- ✅ **Variation strategies worth $5-10K** (precedent analysis)
-- ✅ **Heritage intelligence unmatched** (788 controls + protection logic)
-- ✅ **Unmatched competitive moat** (cannot be replicated without equivalent database)
+- **Only service with regulatory reasoning** (514 "because" relationships)
+- **Precise calculations impossible elsewhere** (286 setback standards)
+- **Variation strategies worth $5-10K** (precedent analysis)
+- **Heritage intelligence unmatched** (788 controls + protection logic)
+- **Unmatched competitive moat** (cannot be replicated without equivalent database)
 
 ### **Market Differentiation:**
 1. **Technical Moat:** 9,364 regulatory provisions + 2,734 relationships
@@ -811,7 +811,7 @@ def determine_pathway_enhanced(api_data, proposal, db_analysis):
 
 ---
 
-## 📋 **SUCCESS METRICS & KPIs**
+## **SUCCESS METRICS & KPIs**
 
 ### **Technical Metrics:**
 - Query response time: <2 seconds for complex analysis
@@ -835,7 +835,7 @@ def determine_pathway_enhanced(api_data, proposal, db_analysis):
 
 **This PRP defines the complete integration strategy for combining NSW Planning API data with our unique database intelligence, creating services that provide unprecedented value to the planning and development community. The combination transforms basic compliance checking into intelligent advisory services that explain not just WHAT the rules are, but WHY they exist and HOW to work with them effectively.**
 
-**Strategic analysis time: 2 hours**  
-**Implementation roadmap: 6-month timeline**  
-**Market potential: $2M+ ARR at scale**  
+**Strategic analysis time: 2 hours** 
+**Implementation roadmap: 6-month timeline** 
+**Market potential: $2M+ ARR at scale** 
 **Competitive advantage: Unmatched database intelligence**

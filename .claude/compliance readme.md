@@ -23,11 +23,11 @@
 ### 4. UI Requirements
 - **Google Maps autocomplete address field** for user input
 - **Mandatory input fields** for:
-  - Proposed height (m)
-  - Proposed FSR
-  - Proposed rear setback (m)
-  - Proposed side setback (m)
-  - Proposed front setback (m)
+ - Proposed height (m)
+ - Proposed FSR
+ - Proposed rear setback (m)
+ - Proposed side setback (m)
+ - Proposed front setback (m)
 - **Submit button disabled** until all required fields are completed
 - **Clear compliance results** showing exact gaps and mitigation paths
 - **Regulatory citations** with direct links to operative clauses
@@ -40,10 +40,10 @@
 3. User inputs proposal values in all required fields
 4. System calculates compliance status using pre-processed rules
 5. Results show:
-   - ✅/⚠️/❌ status indicators
-   - Exact gap values (e.g., "0.3m too tall")
-   - Specific mitigation paths (e.g., "Reduce height by 0.3m")
-   - Regulatory citations with direct links
+ - // status indicators
+ - Exact gap values (e.g., "0.3m too tall")
+ - Specific mitigation paths (e.g., "Reduce height by 0.3m")
+ - Regulatory citations with direct links
 
 ### Example Correct Operation
 **Input:**
@@ -55,19 +55,19 @@
 - Front setback: 4.5m
 
 **Output:**
-- ❌ HEIGHT VIOLATION: 9.8m > 8.5m limit (gap: -0.3m)
-  Source: Canada Bay LEP 2013 Clause 4.3
-  Fix: Reduce height by 0.3m
-- ❌ FSR VIOLATION: 0.52 > 0.5 limit (gap: -0.02)
-  Source: Canada Bay LEP 2013 Clause 4.4
-  Fix: Reduce floor area by 14.2m²
-- ❌ REAR SETBACK VIOLATION: 1.2m < 1.5m limit (gap: -0.3m)
-  Source: Canada Bay DCP 2013 Section 5.4.2
-  Fix: Increase rear setback to 1.5m
-- ❌ SIDE SETBACK VIOLATION: 0.8m < 1.0m limit (gap: -0.2m)
-  Source: Canada Bay DCP 2013 Section 5.2.3
-  Fix: Increase side setback to 1.0m
-- ✅ FRONT SETBACK COMPLIES: 4.5m ≥ 5.0m limit (gap: -0.5m)
+- HEIGHT VIOLATION: 9.8m > 8.5m limit (gap: -0.3m)
+ Source: Canada Bay LEP 2013 Clause 4.3
+ Fix: Reduce height by 0.3m
+- FSR VIOLATION: 0.52 > 0.5 limit (gap: -0.02)
+ Source: Canada Bay LEP 2013 Clause 4.4
+ Fix: Reduce floor area by 14.2m²
+- REAR SETBACK VIOLATION: 1.2m < 1.5m limit (gap: -0.3m)
+ Source: Canada Bay DCP 2013 Section 5.4.2
+ Fix: Increase rear setback to 1.5m
+- SIDE SETBACK VIOLATION: 0.8m < 1.0m limit (gap: -0.2m)
+ Source: Canada Bay DCP 2013 Section 5.2.3
+ Fix: Increase side setback to 1.0m
+- FRONT SETBACK COMPLIES: 4.5m ≥ 5.0m limit (gap: -0.5m)
 
 ## Critical Implementation Details
 
@@ -75,59 +75,59 @@
 ```typescript
 // Determine which former council area applies
 function determineFormerCouncilArea(geometry: { x: number; y: number }) {
-  // Simplified spatial check
-  const { x, y } = geometry;
-  if (x > 16820000) return "Ashfield";
-  if (x > 16810000 && y > -4010000) return "Leichhardt";
-  return "Marrickville";
+ // Simplified spatial check
+ const { x, y } = geometry;
+ if (x > 16820000) return "Ashfield";
+ if (x > 16810000 && y > -4010000) return "Leichhardt";
+ return "Marrickville";
 }
 
 // Check compliance using pre-processed rules
 function checkCompliance(propertyData, setbackRules, proposal) {
-  const results = [];
-  
-  // Height check
-  if (proposal.height > propertyData.constraints.maxHeight) {
-    results.push({
-      rule: "Height",
-      compliant: false,
-      value: proposal.height,
-      limit: propertyData.constraints.maxHeight,
-      gap: propertyData.constraints.maxHeight - proposal.height,
-      source: propertyData.heightSource.source,
-      mitigation: `Reduce height by ${Math.abs(gap).toFixed(1)}m`
-    });
-  }
-  
-  // FSR check
-  if (proposal.fsr > propertyData.constraints.maxFsr) {
-    const lotSize = extractLotSize(propertyData.propertyArea);
-    const deficit = (proposal.fsr - propertyData.constraints.maxFsr) * lotSize;
-    results.push({
-      rule: "FSR",
-      compliant: false,
-      value: proposal.fsr,
-      limit: propertyData.constraints.maxFsr,
-      gap: propertyData.constraints.maxFsr - proposal.fsr,
-      source: propertyData.fsrSource.source,
-      mitigation: `Reduce floor area by ${deficit.toFixed(1)}m²`
-    });
-  }
-  
-  // Setback checks (using pre-processed rules)
-  if (setbackRules.rear && proposal.rearSetback < setbackRules.rear.distance) {
-    results.push({
-      rule: "Rear Setback",
-      compliant: false,
-      value: proposal.rearSetback,
-      limit: setbackRules.rear.distance,
-      gap: proposal.rearSetback - setbackRules.rear.distance,
-      source: setbackRules.rear.source,
-      mitigation: `Increase rear setback to ${setbackRules.rear.distance}m`
-    });
-  }
-  
-  return results;
+ const results = [];
+ 
+ // Height check
+ if (proposal.height > propertyData.constraints.maxHeight) {
+ results.push({
+ rule: "Height",
+ compliant: false,
+ value: proposal.height,
+ limit: propertyData.constraints.maxHeight,
+ gap: propertyData.constraints.maxHeight - proposal.height,
+ source: propertyData.heightSource.source,
+ mitigation: `Reduce height by ${Math.abs(gap).toFixed(1)}m`
+ });
+ }
+ 
+ // FSR check
+ if (proposal.fsr > propertyData.constraints.maxFsr) {
+ const lotSize = extractLotSize(propertyData.propertyArea);
+ const deficit = (proposal.fsr - propertyData.constraints.maxFsr) * lotSize;
+ results.push({
+ rule: "FSR",
+ compliant: false,
+ value: proposal.fsr,
+ limit: propertyData.constraints.maxFsr,
+ gap: propertyData.constraints.maxFsr - proposal.fsr,
+ source: propertyData.fsrSource.source,
+ mitigation: `Reduce floor area by ${deficit.toFixed(1)}m²`
+ });
+ }
+ 
+ // Setback checks (using pre-processed rules)
+ if (setbackRules.rear && proposal.rearSetback < setbackRules.rear.distance) {
+ results.push({
+ rule: "Rear Setback",
+ compliant: false,
+ value: proposal.rearSetback,
+ limit: setbackRules.rear.distance,
+ gap: proposal.rearSetback - setbackRules.rear.distance,
+ source: setbackRules.rear.source,
+ mitigation: `Increase rear setback to ${setbackRules.rear.distance}m`
+ });
+ }
+ 
+ return results;
 }
 ```
 
@@ -139,16 +139,16 @@ function checkCompliance(propertyData, setbackRules, proposal) {
 - **Context awareness**: Only apply rules that match the specific context
 
 ### 3. What NOT to Implement
-- ❌ No PDF processing during user requests
-- ❌ No AI interpretation of regulations
-- ❌ No attempt to handle all possible SEPPs/DCPs
-- ❌ No complex spatial analysis
-- ❌ No claims of "prediction" or "analysis"
+- No PDF processing during user requests
+- No AI interpretation of regulations
+- No attempt to handle all possible SEPPs/DCPs
+- No complex spatial analysis
+- No claims of "prediction" or "analysis"
 
 ## Expected Output Format
 
 The compliance results must be displayed with:
-1. **Status indicator** (✅/⚠️/❌)
+1. **Status indicator** (//)
 2. **Rule name** (e.g., "Height", "FSR", "Rear Setback")
 3. **Compliance status** (COMPLIES/VIOLATION)
 4. **Exact values** (Your proposal: X vs Y limit)
@@ -157,7 +157,7 @@ The compliance results must be displayed with:
 
 Example:
 ```
-❌ HEIGHT VIOLATION
+ HEIGHT VIOLATION
 Your proposal: 9.8m
 R2 Max height: 8.5m (Canada Bay LEP 2013 Clause 4.3)
 Deficit: 0.3m too tall

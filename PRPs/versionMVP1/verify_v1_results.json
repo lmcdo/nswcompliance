@@ -1,49 +1,66 @@
 {
-  "timestamp": "2025-09-20T10:51:43.922960",
+  "timestamp": "2025-09-20T16:29:28.633072",
   "prp": "V1_DATABASE_FOUNDATION",
   "checks": {
     "schema_exists": true,
     "tables": {
       "versions.document_versions": true,
-      "versions.version_audit_log": true
+      "versions.version_audit_log": false
     },
     "columns": {
       "regulatory_provisions.version_id": true,
       "regulatory_provisions.is_current": true,
       "regulatory_provisions.version_effective_date": true,
-      "development_controls.version_id": true,
-      "development_controls.is_current": true,
-      "quantitative_standards.version_id": true,
-      "quantitative_standards.is_current": true
+      "development_controls.version_id": false,
+      "development_controls.is_current": false,
+      "quantitative_standards.version_id": false,
+      "quantitative_standards.is_current": false
     },
     "indexes": {
-      "idx_version_lookup": true,
-      "idx_version_dates": true,
-      "idx_version_current": true,
-      "idx_provisions_version": true,
-      "idx_controls_version": true,
-      "idx_standards_version": true
+      "idx_version_lookup": false,
+      "idx_version_dates": false,
+      "idx_version_current": false,
+      "idx_provisions_version": false,
+      "idx_controls_version": false,
+      "idx_standards_version": false
     },
     "functions": {
-      "versions.get_current_version": true,
-      "versions.get_version_at_date": true,
-      "versions.log_version_change": true
+      "versions.get_current_version": false,
+      "versions.get_version_at_date": false,
+      "versions.log_version_change": false
     },
     "constraints": {
-      "unique_version": true,
-      "foreign_keys": true
+      "unique_version": false,
+      "foreign_keys": false
     },
     "test_operations": {
       "insert_version": true,
-      "function_call": true
+      "operations": false
     }
   },
-  "errors": [],
-  "warnings": [],
-  "success": true,
+  "errors": [
+    "Table versions.version_audit_log not found",
+    "Column version_id not found in development_controls",
+    "Column is_current not found in development_controls",
+    "Column version_id not found in quantitative_standards",
+    "Column is_current not found in quantitative_standards",
+    "Function versions.get_current_version not found",
+    "Function versions.get_version_at_date not found",
+    "Function versions.log_version_change not found",
+    "Test operation failed: function versions.get_current_version(unknown, unknown) does not exist\nLINE 2:                     SELECT versions.get_current_version('SEP...\n                                   ^\nHINT:  No function matches the given name and argument types. You might need to add explicit type casts.\n"
+  ],
+  "warnings": [
+    "Index idx_version_lookup not found",
+    "Index idx_version_dates not found",
+    "Index idx_version_current not found",
+    "Index idx_provisions_version not found",
+    "Index idx_controls_version not found",
+    "Index idx_standards_version not found"
+  ],
+  "success": false,
   "summary": {
-    "total_errors": 0,
-    "total_warnings": 0,
-    "passed": true
+    "total_errors": 9,
+    "total_warnings": 6,
+    "passed": false
   }
 }

@@ -4,25 +4,25 @@
 
 ---
 
-## 🏗️ **CORE PROCESSOR COMPONENTS**
+## **CORE PROCESSOR COMPONENTS**
 
 ### **LightRAG Knowledge Base (OPERATIONAL)**
 **Location**: `./ultimate_nsw_processor/`
 ```
 ultimate_nsw_processor/
-├── graph_chunk_entity_relation.graphml  # Knowledge graph structure
-├── kv_store_doc_status.json            # Document processing status  
-├── kv_store_full_docs.json             # Full document storage
-├── kv_store_full_entities.json         # Extracted entities
-├── kv_store_full_relations.json        # Entity relationships
-├── kv_store_llm_response_cache.json    # LLM response cache (48KB)
-├── kv_store_text_chunks.json           # Text chunk storage
-├── vdb_chunks.json                     # Vector database chunks (12KB)
-├── vdb_entities.json                   # Vector database entities (62KB)
-└── vdb_relationships.json              # Vector database relationships (50KB)
+├── graph_chunk_entity_relation.graphml # Knowledge graph structure
+├── kv_store_doc_status.json # Document processing status 
+├── kv_store_full_docs.json # Full document storage
+├── kv_store_full_entities.json # Extracted entities
+├── kv_store_full_relations.json # Entity relationships
+├── kv_store_llm_response_cache.json # LLM response cache (48KB)
+├── kv_store_text_chunks.json # Text chunk storage
+├── vdb_chunks.json # Vector database chunks (12KB)
+├── vdb_entities.json # Vector database entities (62KB)
+└── vdb_relationships.json # Vector database relationships (50KB)
 ```
 
-**Status**: ✅ **CONTAINS PROCESSED NSW LEP DATA**
+**Status**: **CONTAINS PROCESSED NSW LEP DATA**
 - Document processed: Inner West Local Environmental Plan 2022 (1-50 pages)
 - Processing method: RagAnything (MinerU) + LightRAG
 - Created: 2025-08-26 04:21:32 UTC
@@ -30,20 +30,20 @@ ultimate_nsw_processor/
 
 ---
 
-## 🧠 **QUERY PROCESSORS (WORKING SCRIPTS)**
+## **QUERY PROCESSORS (WORKING SCRIPTS)**
 
 ### **Primary Query Interface**
 **File**: `./scripts/query_lep_lightrag_fixed.py`
-**Status**: ✅ **WORKING - Used by frontend**
+**Status**: **WORKING - Used by frontend**
 **Function**: `query_lep_lightrag_sync(query_text)`
 - OpenAI integration (gpt-4o-mini + text-embedding-3-small)
 - Direct LightRAG knowledge base queries
 - Returns actual NSW planning rule text
 - Used by frontend server for real queries
 
-### **Real LightRAG Processor**  
+### **Real LightRAG Processor** 
 **File**: `./scripts/real_lightrag_processor.py`
-**Status**: ✅ **WORKING - Full processor implementation**
+**Status**: **WORKING - Full processor implementation**
 **Class**: `RealLightRAGProcessor`
 - Complete OpenAI integration
 - Async LightRAG setup and processing
@@ -51,7 +51,7 @@ ultimate_nsw_processor/
 
 ### **Unified Document Processor**
 **File**: `./scripts/unified_document_processor.py`
-**Status**: ✅ **WORKING - Orchestrates all components**
+**Status**: **WORKING - Orchestrates all components**
 **Integrates**: LangExtract + AutoSchemaKG + LightRAG
 - Processes documents in /docs/ folder
 - Complete semantic understanding pipeline
@@ -59,7 +59,7 @@ ultimate_nsw_processor/
 
 ---
 
-## 🔍 **SPECIALIZED QUERY SCRIPTS**
+## **SPECIALIZED QUERY SCRIPTS**
 
 ### **LEP-Specific Queries**
 - `./scripts/query_lep_lightrag.py` - LEP document queries
@@ -67,7 +67,7 @@ ultimate_nsw_processor/
 - `./scripts/query_sepp_lightrag.py` - SEPP document queries
 
 ### **Integration & Testing**
-- `./scripts/test_lightrag_integration.py` - Integration tests  
+- `./scripts/test_lightrag_integration.py` - Integration tests 
 - `./scripts/prove_lightrag_integration.py` - Integration proof
 - `./scripts/lightrag_simple_test.py` - Simple functionality tests
 
@@ -77,33 +77,33 @@ ultimate_nsw_processor/
 
 ---
 
-## 🏢 **REGULATORY ENGINE COMPONENTS**
+## **REGULATORY ENGINE COMPONENTS**
 
 ### **Enhanced Processors**
 **Location**: `./examples/regulatory-engine/`
 ```
 regulatory-engine/
-├── dual_semantic_processor.py          # Dual processing pipeline
-├── improved_setback_processor.py       # Enhanced setback processing  
-└── setback_processor.py               # Basic setback processing
+├── dual_semantic_processor.py # Dual processing pipeline
+├── improved_setback_processor.py # Enhanced setback processing 
+└── setback_processor.py # Basic setback processing
 ```
 
-**Status**: ✅ **WORKING PROCESSORS**
+**Status**: **WORKING PROCESSORS**
 - Source grounding capabilities
 - Rule classification (3-tier system)
 - Enhanced setback rule processing
 
 ---
 
-## 🌐 **WSL2 ENVIRONMENT (OPERATIONAL)**
+## **WSL2 ENVIRONMENT (OPERATIONAL)**
 
 ### **Virtual Environment**
 **Location**: `/home/lawre/compliance_rag_env/`
-**Status**: ✅ **FULLY CONFIGURED**
+**Status**: **FULLY CONFIGURED**
 
 **Installed Packages**:
 - `lightrag-hku-1.4.6` - Knowledge graph processing
-- `raganything` - Multimodal document processing  
+- `raganything` - Multimodal document processing 
 - `langextract` - Source text extraction
 - `autoschemakg` - Schema-based knowledge graphs
 - `mineru` - PDF processing backend
@@ -116,16 +116,16 @@ regulatory-engine/
 
 ---
 
-## 🔗 **FRONTEND INTEGRATION (CURRENT)**
+## **FRONTEND INTEGRATION (CURRENT)**
 
 ### **API Server**
 **File**: `./frontend/server.py`
-**Status**: ✅ **OPERATIONAL - Port 8003**
+**Status**: **OPERATIONAL - Port 8003**
 **Integration**: Uses `query_lep_lightrag_fixed.py` via WSL2 calls
 
-### **Web Interface**  
+### **Web Interface** 
 **File**: `./frontend/index.html`
-**Status**: ✅ **OPERATIONAL - http://localhost:8003**
+**Status**: **OPERATIONAL - http://localhost:8003**
 **Features**: 
 - Compact accordion UI
 - Real-time WSL2 connection status
@@ -134,10 +134,10 @@ regulatory-engine/
 
 ---
 
-## 📊 **DATA PROCESSING STATUS**
+## **DATA PROCESSING STATUS**
 
 ### **Processed Documents**
-✅ **Inner West Local Environmental Plan 2022** (Pages 1-50)
+ **Inner West Local Environmental Plan 2022** (Pages 1-50)
 - Document ID: `doc-42131a0bbe165d642a56ea3c7c62f9fb`
 - Processing: RagAnything (MinerU) + LightRAG
 - Status: Fully processed and indexed
@@ -145,14 +145,14 @@ regulatory-engine/
 - Storage: Complete in LightRAG knowledge base
 
 ### **Available for Processing**
-📁 **Pending Documents**: `/docs/` folder contains:
+ **Pending Documents**: `/docs/` folder contains:
 - 7 LEP documents (Inner West planning)
-- 38 DCP documents (Development Control Plans)  
+- 38 DCP documents (Development Control Plans) 
 - 9 SEPP documents (State Environmental Planning Policies)
 
 ---
 
-## ⚠️ **OBSOLETE/BACKUP FILES** 
+## **OBSOLETE/BACKUP FILES** 
 
 ### **Do Not Use - Moved to OBSOLETE_BACKUP/**
 - `process_lep_real_lightrag.py` - Superseded by unified processor
@@ -162,7 +162,7 @@ regulatory-engine/
 
 ---
 
-## 🔧 **OPERATIONAL WORKFLOW**
+## **OPERATIONAL WORKFLOW**
 
 ### **Current Working System**:
 1. **Document Storage**: NSW docs in `/docs/` folder
@@ -180,24 +180,24 @@ Real NSW Planning Rules → Frontend Display
 
 ---
 
-## 🎯 **NEXT PHASE READY**
+## **NEXT PHASE READY**
 
 **All components operational for**:
-- ✅ Real NSW document queries  
-- ✅ Actual regulatory text retrieval
-- ✅ Source citation and attribution
-- ✅ Property-based planning rule lookup
-- ✅ Frontend integration complete
+- Real NSW document queries 
+- Actual regulatory text retrieval
+- Source citation and attribution
+- Property-based planning rule lookup
+- Frontend integration complete
 
 **Ready for**: Production deployment and additional document processing
 
 ---
 
-## 📝 **CRITICAL FILES SUMMARY**
+## **CRITICAL FILES SUMMARY**
 
 ### **Must Have - Core System**:
 1. `./ultimate_nsw_processor/` - LightRAG knowledge base
-2. `./scripts/query_lep_lightrag_fixed.py` - Query processor  
+2. `./scripts/query_lep_lightrag_fixed.py` - Query processor 
 3. `./frontend/server.py` - API bridge
 4. `./frontend/index.html` - Web interface
 

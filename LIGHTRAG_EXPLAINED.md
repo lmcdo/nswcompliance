@@ -192,7 +192,7 @@ Tree Significance Assessment:
 
 You'll need a qualified arborist assessment that considers:
 - Tree health and structural integrity
-- Ecological value and habitat significance  
+- Ecological value and habitat significance 
 - Impact on your development proposal
 - Potential for retention with modified design
 
@@ -267,7 +267,7 @@ Session 3 (next week): User asks about approvals → LightRAG provides complete 
 
 ### Legal Accuracy Metrics
 - **Citation Accuracy**: 99.8% of regulatory claims properly sourced
-- **Legal Review**: Regular validation by qualified planning professionals  
+- **Legal Review**: Regular validation by qualified planning professionals 
 - **Update Currency**: Regulatory knowledge updated within 48 hours of changes
 
 ### User Experience Metrics

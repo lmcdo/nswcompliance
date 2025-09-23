@@ -5,14 +5,14 @@ This guide will help you set up the PostgreSQL database required for the PRP-K3 
 ## Prerequisites
 
 1. **PostgreSQL 15+** installed and running
-   - Windows: Download from https://www.postgresql.org/download/windows/
-   - Default port: 5432
-   - Default user: `postgres` with password `postgres`
+ - Windows: Download from https://www.postgresql.org/download/windows/
+ - Default port: 5432
+ - Default user: `postgres` with password `postgres`
 
 2. **Python 3.8+** with required packages:
-   ```bash
-   pip install psycopg2-binary
-   ```
+ ```bash
+ pip install psycopg2-binary
+ ```
 
 ## Quick Setup
 
@@ -24,11 +24,11 @@ python setup_database.py
 ```
 
 This script will:
-- ✅ Create `nsw_planning` database
-- ✅ Create `zone_setback_rules` table with proper schema
-- ✅ Import 48 setback rules with 95% confidence scores
-- ✅ Create performance indexes
-- ✅ Test the database connection
+- Create `nsw_planning` database
+- Create `zone_setback_rules` table with proper schema
+- Import 48 setback rules with 95% confidence scores
+- Create performance indexes
+- Test the database connection
 
 ### 2. Setup Frontend
 ```bash
@@ -46,10 +46,10 @@ Visit http://localhost:3007 and search for:
 ```
 
 You should see:
-- ✅ Property data from NSW Planning API (propId: 1962875, zone: R2)
-- ✅ 5 setback rules from PostgreSQL database
-- ✅ Side: 0.90m → 1.50m → 2.50m (by height)
-- ✅ Front: 4.50m, Rear: 3.00m
+- Property data from NSW Planning API (propId: 1962875, zone: R2)
+- 5 setback rules from PostgreSQL database
+- Side: 0.90m → 1.50m → 2.50m (by height)
+- Front: 4.50m, Rear: 3.00m
 
 ## Database Contents
 
@@ -64,14 +64,14 @@ The setup creates a `zone_setback_rules` table with:
 ```sql
 SELECT * FROM zone_setback_rules WHERE zone = 'R2' LIMIT 1;
 
-rule_id          | MARRICKVILLE_R2_side_0.9m
-zone             | R2  
-council          | Marrickville
-boundary_type    | side
-base_value       | 0.90
-unit             | metres
-confidence       | 0.95
-source_document  | Marrickville DCP 2011 - 4.1 Low Density Residential Development
+rule_id | MARRICKVILLE_R2_side_0.9m
+zone | R2 
+council | Marrickville
+boundary_type | side
+base_value | 0.90
+unit | metres
+confidence | 0.95
+source_document | Marrickville DCP 2011 - 4.1 Low Density Residential Development
 ```
 
 ## Troubleshooting
@@ -105,16 +105,16 @@ DATABASE_PASSWORD=postgres
 
 ```
 NSW Planning API → Frontend Hook → PostgreSQL Database → Zone-Specific Results
-     ↓                    ↓               ↓                      ↓
-  Property Data      Transforms       Queries Rules        Returns Setbacks
-  (zone, propId)     API Response     (zone + council)     (with confidence)
+ ↓ ↓ ↓ ↓
+ Property Data Transforms Queries Rules Returns Setbacks
+ (zone, propId) API Response (zone + council) (with confidence)
 ```
 
 ## Files Overview
 
 - `setup_database.py` - Database creation and data import script
-- `database_export.json` - Exported schema and setback rules data  
+- `database_export.json` - Exported schema and setback rules data 
 - `frontend-nextjs/lib/database/client.ts` - PostgreSQL client for API
 - `frontend-nextjs/app/api/setbacks/calculate/route.ts` - PRP-K3 calculation API
 
-The system is now ready for zone-specific setback calculations! 🎯
+The system is now ready for zone-specific setback calculations! 

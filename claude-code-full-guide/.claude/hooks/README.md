@@ -42,19 +42,19 @@ chmod +x /your/project/.claude/hooks/format-after-edit.sh
 2. Add to your settings.json:
 ```json
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/format-after-edit.sh"
-          }
-        ]
-      }
-    ]
-  }
+ "hooks": {
+ "PostToolUse": [
+ {
+ "matcher": "Edit|Write|MultiEdit",
+ "hooks": [
+ {
+ "type": "command",
+ "command": ".claude/hooks/format-after-edit.sh"
+ }
+ ]
+ }
+ ]
+ }
 }
 ```
 
@@ -72,10 +72,10 @@ chmod +x /your/project/.claude/hooks/format-after-edit.sh
 ## Creating Your Own Hooks
 
 1. Write a shell script that:
-   - Reads JSON input from stdin
-   - Processes the input
-   - Returns JSON output (empty `{}` for success)
-   - Can return `{"action": "block", "message": "reason"}` to block operations
+ - Reads JSON input from stdin
+ - Processes the input
+ - Returns JSON output (empty `{}` for success)
+ - Can return `{"action": "block", "message": "reason"}` to block operations
 
 2. Make it executable:
 ```bash

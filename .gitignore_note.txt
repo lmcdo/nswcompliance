@@ -2,37 +2,37 @@
 # Created: 2025-08-28 - Session where PRP-A4 Ollama was implemented
 
 ## AutoSchemaKG Output Directories (LARGE - Generated Data)
-autoschemakg_data*/          # Input JSON files for AutoSchemaKG processing
-autoschemakg_output*/        # Generated knowledge graphs, CSV files, GraphML
-autoschemakg_optimal*/       # Test outputs from optimal configuration attempts
-autoschemakg_test*/          # Debug/test outputs from various attempts
+autoschemakg_data*/ # Input JSON files for AutoSchemaKG processing
+autoschemakg_output*/ # Generated knowledge graphs, CSV files, GraphML
+autoschemakg_optimal*/ # Test outputs from optimal configuration attempts
+autoschemakg_test*/ # Debug/test outputs from various attempts
 
 ## Debug/Test Scripts (Development artifacts)
-debug_*.py                   # Debug scripts for API issues investigation
-fix_*.py                     # Attempted fixes for OpenAI API compatibility
-test_*.py                    # Test scripts for various approaches
-*_test/                      # Test output directories
+debug_*.py # Debug scripts for API issues investigation
+fix_*.py # Attempted fixes for OpenAI API compatibility
+test_*.py # Test scripts for various approaches
+*_test/ # Test output directories
 
 ## PRP Script Variants (Multiple implementation attempts)
-prp_a4_*.py                  # Various PRP-A4 implementations:
-  - prp_a4_gpu.py           # GPU-accelerated version
-  - prp_a4_transformers.py  # HuggingFace transformers version  
-  - prp_a4_comprehensive_fix.py # OpenAI API patch attempt
-  - prp_a4_ollama.py        # FINAL Ollama version (COMMITTED)
+prp_a4_*.py # Various PRP-A4 implementations:
+ - prp_a4_gpu.py # GPU-accelerated version
+ - prp_a4_transformers.py # HuggingFace transformers version 
+ - prp_a4_comprehensive_fix.py # OpenAI API patch attempt
+ - prp_a4_ollama.py # FINAL Ollama version (COMMITTED)
 
 ## Large Document Directories
-docs/dcps/INNERWEST/         # NSW planning PDF documents (100MB+)
-validated_outputs/           # Processing outputs, extracted content
-output/                      # General output directory
-rag_storage/                 # RAG vector storage
-lightrag_*/                  # LightRAG processing attempts
+docs/dcps/INNERWEST/ # NSW planning PDF documents (100MB+)
+validated_outputs/ # Processing outputs, extracted content
+output/ # General output directory
+rag_storage/ # RAG vector storage
+lightrag_*/ # LightRAG processing attempts
 
 ## Utility Scripts (Processing tools)
-prp_a2_*.py                  # Document extraction scripts
-prp_a3_*.py                  # Content grounding scripts  
-download_*.py                # Document download scripts
-process_*.py                 # Processing utilities
-*_processor/                 # Processing pipeline directories
+prp_a2_*.py # Document extraction scripts
+prp_a3_*.py # Content grounding scripts 
+download_*.py # Document download scripts
+process_*.py # Processing utilities
+*_processor/ # Processing pipeline directories
 
 ## Note: Only commit essential scripts, not bulky output/data directories
 ## Use .gitignore to exclude these patterns in future sessions

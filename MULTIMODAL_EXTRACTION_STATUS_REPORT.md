@@ -1,5 +1,5 @@
 # Multimodal Extraction Status Report
-**Date:** 2025-08-31  
+**Date:** 2025-08-31 
 **Status:** PARTIAL COMPLETION (6/112 documents)
 
 ## Executive Summary
@@ -43,7 +43,7 @@ RAG-Anything multimodal extraction has been completed for **6 out of 112 council
 3. Inner West Ashfield DCP 2016 - Chapter G - Definitions
 4. Inner West Ashfield DCP 2016 - Chapter H
 
-### Leichhardt Council Area  
+### Leichhardt Council Area 
 **Status**: 0/20 documents completed (0% coverage)
 
 **Missing**: All 20 Leichhardt planning documents
@@ -58,25 +58,25 @@ RAG-Anything multimodal extraction has been completed for **6 out of 112 council
 ### RAG-Anything Output Structure
 ```
 output/[Document Name]/auto/
-├── [Document]_content_list.json    ← Sequential multimodal structure
-├── [Document]_model.json          ← Layout detection data
-├── [Document]_middle.json         ← Processing metadata
-└── images/                        ← Extracted image files (535 total)
-    ├── hash1.jpg
-    ├── hash2.jpg
-    └── ...
+├── [Document]_content_list.json ← Sequential multimodal structure
+├── [Document]_model.json ← Layout detection data
+├── [Document]_middle.json ← Processing metadata
+└── images/ ← Extracted image files (535 total)
+ ├── hash1.jpg
+ ├── hash2.jpg
+ └── ...
 ```
 
 ### Multimodal Relationship Structure
 Each image-text relationship contains:
 ```json
 {
-  "image_path": "images/4b48a50df0bb2256b56b05f26a0a461cc2972ac8c0bfcec407861da6477e126d.jpg",
-  "page_index": 0,
-  "preceding_text": [{"text": "Section General Guidelines", "text_level": 1}],
-  "following_text": [{"text": "Table of Contents", "text_level": 1}],
-  "inferred_clause": "A1",
-  "sequence_position": 5
+ "image_path": "images/4b48a50df0bb2256b56b05f26a0a461cc2972ac8c0bfcec407861da6477e126d.jpg",
+ "page_index": 0,
+ "preceding_text": [{"text": "Section General Guidelines", "text_level": 1}],
+ "following_text": [{"text": "Table of Contents", "text_level": 1}],
+ "inferred_clause": "A1",
+ "sequence_position": 5
 }
 ```
 
@@ -90,31 +90,31 @@ The extraction script infers clause references from surrounding text using patte
 
 ### Generated Files for AutoSchema
 1. **`autoschema_multimodal_input.json`**
-   - 268 entities (documents, images, text sections)
-   - 267 relationships (contains, precedes, follows)
-   - Ready for knowledge graph construction
+ - 268 entities (documents, images, text sections)
+ - 267 relationships (contains, precedes, follows)
+ - Ready for knowledge graph construction
 
 2. **Entity Types:**
-   - `document` - DCP/LEP documents
-   - `image` - Visual assets with context
-   - `text_section` - Regulatory text blocks
+ - `document` - DCP/LEP documents
+ - `image` - Visual assets with context
+ - `text_section` - Regulatory text blocks
 
 3. **Relationship Types:**
-   - `contains` - Document contains images
-   - `precedes` - Text precedes images
-   - `follows` - Text follows images
+ - `contains` - Document contains images
+ - `precedes` - Text precedes images
+ - `follows` - Text follows images
 
 ## Next Steps Required
 
 ### Immediate Priority
 1. **Complete RAG-Anything extraction** on remaining 106 documents:
-   - 4 missing Ashfield documents
-   - 20 Leichhardt documents  
-   - 82 Marrickville documents
+ - 4 missing Ashfield documents
+ - 20 Leichhardt documents 
+ - 82 Marrickville documents
 
 2. **Integration approach options:**
-   - **Clean slate**: Re-run RAG-Anything on all 112 documents
-   - **Incremental**: Process remaining 106 and merge with existing 6
+ - **Clean slate**: Re-run RAG-Anything on all 112 documents
+ - **Incremental**: Process remaining 106 and merge with existing 6
 
 ### AutoSchema Integration
 Once all 112 documents are processed:
@@ -128,7 +128,7 @@ Once all 112 documents are processed:
 ### Council Area Document Counts
 - **Database Total**: 112 council-area documents
 - **Ashfield**: 10 documents (6 completed, 4 missing)
-- **Leichhardt**: 20 documents (0 completed, 20 missing)  
+- **Leichhardt**: 20 documents (0 completed, 20 missing) 
 - **Marrickville**: 82 documents (0 completed, 82 missing)
 
 ### Integration Points
@@ -164,7 +164,7 @@ The multimodal relationships need to connect with:
 
 ---
 
-**Report Status**: PARTIAL COMPLETION  
-**Next Action**: Complete RAG-Anything extraction on remaining 106 documents  
-**Integration Status**: Ready for AutoSchema (partial dataset)  
+**Report Status**: PARTIAL COMPLETION 
+**Next Action**: Complete RAG-Anything extraction on remaining 106 documents 
+**Integration Status**: Ready for AutoSchema (partial dataset) 
 **Completion Target**: 112/112 documents with multimodal relationships

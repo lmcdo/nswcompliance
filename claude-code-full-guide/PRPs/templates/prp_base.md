@@ -33,17 +33,17 @@ Template optimized for AI agents to implement features with sufficient context a
 ```yaml
 # MUST READ - Include these in your context window
 - url: [Official API docs URL]
-  why: [Specific sections/methods you'll need]
-  
+ why: [Specific sections/methods you'll need]
+ 
 - file: [path/to/example.py]
-  why: [Pattern to follow, gotchas to avoid]
-  
+ why: [Pattern to follow, gotchas to avoid]
+ 
 - doc: [Library documentation URL] 
-  section: [Specific section about common pitfalls]
-  critical: [Key insight that prevents common errors]
+ section: [Specific section about common pitfalls]
+ critical: [Key insight that prevents common errors]
 
 - docfile: [PRPs/ai_docs/file.md]
-  why: [docs that the user has pasted in to the project]
+ why: [docs that the user has pasted in to the project]
 
 ```
 
@@ -62,7 +62,7 @@ Template optimized for AI agents to implement features with sufficient context a
 # CRITICAL: [Library name] requires [specific setup]
 # Example: FastAPI requires async functions for endpoints
 # Example: This ORM doesn't support batch inserts over 1000 records
-# Example: We use pydantic v2 and  
+# Example: We use pydantic v2 and 
 ```
 
 ## Implementation Blueprint
@@ -84,14 +84,14 @@ Examples:
 ```yaml
 Task 1:
 MODIFY src/existing_module.py:
-  - FIND pattern: "class OldImplementation"
-  - INJECT after line containing "def __init__"
-  - PRESERVE existing method signatures
+ - FIND pattern: "class OldImplementation"
+ - INJECT after line containing "def __init__"
+ - PRESERVE existing method signatures
 
 CREATE src/new_feature.py:
-  - MIRROR pattern from: src/similar_feature.py
-  - MODIFY class name and core logic
-  - KEEP error handling pattern identical
+ - MIRROR pattern from: src/similar_feature.py
+ - MODIFY class name and core logic
+ - KEEP error handling pattern identical
 
 ...(...)
 
@@ -107,37 +107,37 @@ Task N:
 # Task 1
 # Pseudocode with CRITICAL details dont write entire code
 async def new_feature(param: str) -> Result:
-    # PATTERN: Always validate input first (see src/validators.py)
-    validated = validate_input(param)  # raises ValidationError
-    
-    # GOTCHA: This library requires connection pooling
-    async with get_connection() as conn:  # see src/db/pool.py
-        # PATTERN: Use existing retry decorator
-        @retry(attempts=3, backoff=exponential)
-        async def _inner():
-            # CRITICAL: API returns 429 if >10 req/sec
-            await rate_limiter.acquire()
-            return await external_api.call(validated)
-        
-        result = await _inner()
-    
-    # PATTERN: Standardized response format
-    return format_response(result)  # see src/utils/responses.py
+ # PATTERN: Always validate input first (see src/validators.py)
+ validated = validate_input(param) # raises ValidationError
+ 
+ # GOTCHA: This library requires connection pooling
+ async with get_connection() as conn: # see src/db/pool.py
+ # PATTERN: Use existing retry decorator
+ @retry(attempts=3, backoff=exponential)
+ async def _inner():
+ # CRITICAL: API returns 429 if >10 req/sec
+ await rate_limiter.acquire()
+ return await external_api.call(validated)
+ 
+ result = await _inner()
+ 
+ # PATTERN: Standardized response format
+ return format_response(result) # see src/utils/responses.py
 ```
 
 ### Integration Points
 ```yaml
 DATABASE:
-  - migration: "Add column 'feature_enabled' to users table"
-  - index: "CREATE INDEX idx_feature_lookup ON users(feature_id)"
-  
+ - migration: "Add column 'feature_enabled' to users table"
+ - index: "CREATE INDEX idx_feature_lookup ON users(feature_id)"
+ 
 CONFIG:
-  - add to: config/settings.py
-  - pattern: "FEATURE_TIMEOUT = int(os.getenv('FEATURE_TIMEOUT', '30'))"
-  
+ - add to: config/settings.py
+ - pattern: "FEATURE_TIMEOUT = int(os.getenv('FEATURE_TIMEOUT', '30'))"
+ 
 ROUTES:
-  - add to: src/api/routes.py  
-  - pattern: "router.include_router(feature_router, prefix='/feature')"
+ - add to: src/api/routes.py 
+ - pattern: "router.include_router(feature_router, prefix='/feature')"
 ```
 
 ## Validation Loop
@@ -145,8 +145,8 @@ ROUTES:
 ### Level 1: Syntax & Style
 ```bash
 # Run these FIRST - fix any errors before proceeding
-ruff check src/new_feature.py --fix  # Auto-fix what's possible
-mypy src/new_feature.py              # Type checking
+ruff check src/new_feature.py --fix # Auto-fix what's possible
+mypy src/new_feature.py # Type checking
 
 # Expected: No errors. If errors, READ the error and fix.
 ```
@@ -155,21 +155,21 @@ mypy src/new_feature.py              # Type checking
 ```python
 # CREATE test_new_feature.py with these test cases:
 def test_happy_path():
-    """Basic functionality works"""
-    result = new_feature("valid_input")
-    assert result.status == "success"
+ """Basic functionality works"""
+ result = new_feature("valid_input")
+ assert result.status == "success"
 
 def test_validation_error():
-    """Invalid input raises ValidationError"""
-    with pytest.raises(ValidationError):
-        new_feature("")
+ """Invalid input raises ValidationError"""
+ with pytest.raises(ValidationError):
+ new_feature("")
 
 def test_external_api_timeout():
-    """Handles timeouts gracefully"""
-    with mock.patch('external_api.call', side_effect=TimeoutError):
-        result = new_feature("valid")
-        assert result.status == "error"
-        assert "timeout" in result.message
+ """Handles timeouts gracefully"""
+ with mock.patch('external_api.call', side_effect=TimeoutError):
+ result = new_feature("valid")
+ assert result.status == "error"
+ assert "timeout" in result.message
 ```
 
 ```bash
@@ -185,8 +185,8 @@ uv run python -m src.main --dev
 
 # Test the endpoint
 curl -X POST http://localhost:8000/feature \
-  -H "Content-Type: application/json" \
-  -d '{"param": "test_value"}'
+ -H "Content-Type: application/json" \
+ -d '{"param": "test_value"}'
 
 # Expected: {"status": "success", "data": {...}}
 # If error: Check logs at logs/app.log for stack trace
@@ -204,9 +204,9 @@ curl -X POST http://localhost:8000/feature \
 ---
 
 ## Anti-Patterns to Avoid
-- ❌ Don't create new patterns when existing ones work
-- ❌ Don't skip validation because "it should work"  
-- ❌ Don't ignore failing tests - fix them
-- ❌ Don't use sync functions in async context
-- ❌ Don't hardcode values that should be config
-- ❌ Don't catch all exceptions - be specific
+- Don't create new patterns when existing ones work
+- Don't skip validation because "it should work" 
+- Don't ignore failing tests - fix them
+- Don't use sync functions in async context
+- Don't hardcode values that should be config
+- Don't catch all exceptions - be specific

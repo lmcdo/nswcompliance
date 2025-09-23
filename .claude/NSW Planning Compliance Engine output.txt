@@ -1,18 +1,18 @@
 NSW Planning Compliance Engine
  Connected to Regulatory Radar System
 
-🏠 Property Intelligence
+ Property Intelligence
 Property Address
 34 Pile St, Dulwich Hill NSW 2203, Australia
  Analyze Property
-📍 Location Details
+ Location Details
 Address:
 34 Pile St, Dulwich Hill NSW 2203, Australia
 Property ID:
 3597448
 Local Government:
 CANTERBURY-BANKSTOWN
-🏗️ Planning Controls
+ Planning Controls
 Zone:
 R4 (High Density Residential)
 Height Limit:
@@ -21,7 +21,7 @@ Height Clause:
 Clause 4.3
 Applicable LEP:
 Canterbury-Bankstown Local Environmental Plan 2023
-⚡ Quick Assessment
+ Quick Assessment
 OK
 NSW Portal Data: Available
 OK
@@ -37,13 +37,13 @@ Test Addresses:
 • 15 Norton Street, Leichhardt NSW 2040
 • 45 Liverpool Street, Ashfield NSW 2131
 • 67 Marrickville Road, Marrickville NSW 2204
-🔗 Connected Regulatory Requirements
+ Connected Regulatory Requirements
 property_intelligence (1 rules)
 ▼
 Property Intelligence - 34 Pile St, Dulwich Hill NSW 2203, Australia
 Zone: R4 (High Density Residential) Height Limit: 10 m LEP: Canterbury-Bankstown Local Environmental Plan 2023 LGA: CANTERBURY-BANKSTOWN Property ID: 3597448 Data Quality: High Note: NSW Planning API results may show different locations for same street names. This is a known limitation of the government address geocoding system.
 Source: NSW Planning Portal API
-📄 Full Regulatory Citation - Live Government Data
+ Full Regulatory Citation - Live Government Data
 NSW Planning Portal Property ID: 3597448
 height_limit (1 rules)
 ▼
@@ -56,7 +56,7 @@ Signage on high-rise buildings (in excess of 15 metres)
 
 [Marrickville DCP 2011 - 2 12 Signs and Advertising Structures] Clause C3 (heritage): Where original sign panels have been incorporated int...
 Source: Marrickville DCP 2011 - 2 12 Signs and Advertising Structures
-📄 Full Regulatory Citation - Clause 2.12.4.6
+ Full Regulatory Citation - Clause 2.12.4.6
 Signage on high-rise buildings (in excess of 15 metres)
 
 [Marrickville DCP 2011 - 2 12 Signs and Advertising Structures] Clause 2.12.2 (other): Any underawning sign in excess of 2500mm x 400mm
@@ -78,7 +78,7 @@ Signage on high-rise buildings (in excess of 15 metres)
 [Marrickville DCP 2011 - 2 14 Unique Environmental Features] Clause 2.14.2 (other): Development adjoining public open space must be set back from open space and be of a height and scale appropriate to the unique environmental qualities of the area.
 
 [Marrickville DCP 2011 - 2 14 Unique Environmental Features] Clause 2.14.5 (other): Development within the scenic protection area must be:
-i. Designed and located to minimise potential adverse environmenta impact. This is particularly important where properties are within a foreshore area or where the land is flood affected (see maps in Section 2.22  Flood Management);
+i. Designed and located to minimise potential adverse environmenta impact. This is particularly important where properties are within a foreshore area or where the land is flood affected (see maps in Section 2.22 Flood Management);
 ii. Of a scale compatible with the character, landscape and scenic qualities of the area;
 iii. Of minimal visual impact when viewed from any adjoining public open space; and
 iv. Where adjoining public open space provides a visual transition between open space and avoids abutting public open space with high, blank or solid fences (such as timber paling fences without openings or corrugated fencing).
@@ -87,7 +87,7 @@ iv. Where adjoining public open space provides a visual transition between open 
 
 [Marrickville DCP 2011 - 2 14 Unique Environmental Features] Clause 2.14.5 (other): Any plantings are to enhance fauna habitat and to be local species endemic to the area.
 
-[Marrickville DCP 2011 - 2 17 Water Sensitive Urban Design] Clause 2.17 (other): The WSUD provisions within this chapter apply to new development and redevelopment within the area and aim to:   Reduce potable water use; and Treat stormwater so that the area reaches the relevant stormwater quality targets for stormwater reuse and/or stormwater entering receiving waters.
+[Marrickville DCP 2011 - 2 17 Water Sensitive Urban Design] Clause 2.17 (other): The WSUD provisions within this chapter apply to new development and redevelopment within the area and aim to: Reduce potable water use; and Treat stormwater so that the area reaches the relevant stormwater quality targets for stormwater reuse and/or stormwater entering receiving waters.
 
 [Marrickville DCP 2011 - 2 17 Water Sensitive Urban Design] Clause 2.17.2 (other): Specific developments are required to meet water conservation and stormwater quality targets that have been established for land where this DCP applies.
 
@@ -184,7 +184,7 @@ Less than 100\tMinimum 3,000
 
 [Marrickville DCP 2011 - 2 25 Stormwater management] Clause 2.25.3.3 (other): For other developments excluded by the above, OSR may be used to offset the calculated OSD storage volume at a rate of $1 \\mathsf { m } ^ { 3 }$, for every $2 . 5 \\mathsf { m } ^ { 3 }$ of OSR storage provided (up to a maximum OSD offset of $1 0 \\mathsf { m } ^ { 3 } \\big ]$ ).
 
-[Marrickville DCP 2011 - 2 3 Site Context Analysis] Clause 2.3 (setback): Front setbacks and front projections;  Side setbacks
+[Marrickville DCP 2011 - 2 3 Site Context Analysis] Clause 2.3 (setback): Front setbacks and front projections; Side setbacks
 
 [Marrickville DCP 2011 - 2 3 Site Context Analysis] Clause 2.3 (height_limit): Eaves height
 
@@ -291,9 +291,9 @@ ii. Where less than two hours of sunlight is currently available on 21 June, sol
 
 [Marrickville DCP 2011 - 4 2 Multi Dwelling Housing and RFBs - with IWLEP 2022 amendments] Clause 4.2.2 (setback): Ensure new development maintains the same setback and enhances the streetscape character of the locality
 
-[Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3 (zoning): NB Development applications for boarding houses in the R2  Low Density Residential zone will be assessed in accordance with the relevant controls in Section 4.1 of this DCP relating to low density residential development and the relevant objectives and controls in Section 4.3.
+[Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3 (zoning): NB Development applications for boarding houses in the R2 Low Density Residential zone will be assessed in accordance with the relevant controls in Section 4.1 of this DCP relating to low density residential development and the relevant objectives and controls in Section 4.3.
 
-[Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3 (zoning): NB Development applications for boarding houses in the R1  General Residential, R3  Medium Density Residential and R4  High Density Residential zones will be assessed in accordance with the relevant controls in Section 4.2 of this DCP relating to multi dwelling housing and residential flat buildings and the relevant objectives and controls in Section 4.3.
+[Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3 (zoning): NB Development applications for boarding houses in the R1 General Residential, R3 Medium Density Residential and R4 High Density Residential zones will be assessed in accordance with the relevant controls in Section 4.2 of this DCP relating to multi dwelling housing and residential flat buildings and the relevant objectives and controls in Section 4.3.
 
 [Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3 (zoning): NB Development applications for boarding houses in the B1 - Neighbourhood Centre Zone; B2 - Local Centre Zone and B4 - Mixed Use zones will be assessed in accordance with the relevant controls in Section 5 of this DCP relating to commercial and mixed use development and the relevant objectives and controls in Section 4.3.
 
@@ -309,9 +309,9 @@ ii. Where less than two hours of sunlight is currently available on 21 June, sol
 
 [Marrickville DCP 2011 - 4 3 boarding houses (1)] Clause 4.3.3.4 (parking): 1 off street car parking space is required to be provided for each boarding house manager.
 
-[Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3 (zoning): Development applications for boarding houses in the R2  Low Density Residential zone will be assessed in accordance with the relevant controls in Section 4.1 of this DCP relating to low density residential development and the relevant objectives and controls in Section 4.3.
+[Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3 (zoning): Development applications for boarding houses in the R2 Low Density Residential zone will be assessed in accordance with the relevant controls in Section 4.1 of this DCP relating to low density residential development and the relevant objectives and controls in Section 4.3.
 
-[Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3 (zoning): Development applications for boarding houses in the R1  General Residential, R3  Medium Density Residential and R4  High Density Residential zones will be assessed in accordance with the relevant controls in Section 4.2 of this DCP relating to multi dwelling housing and residential flat buildings and the relevant objectives and controls in Section 4.3.
+[Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3 (zoning): Development applications for boarding houses in the R1 General Residential, R3 Medium Density Residential and R4 High Density Residential zones will be assessed in accordance with the relevant controls in Section 4.2 of this DCP relating to multi dwelling housing and residential flat buildings and the relevant objectives and controls in Section 4.3.
 
 [Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3 (zoning): Development applications for boarding houses in the B1 - Neighbourhood Centre Zone; B2 - Local Centre Zone and B4 - Mixed Use zones will be assessed in accordance with the relevant controls in Section 5 of this DCP relating to commercial and mixed use development and the relevant objectives and controls in Section 4.3.
 
@@ -339,8 +339,8 @@ ii. Where less than two hours of sunlight is currently available on 21 June, sol
 
 [Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3.4 (other): If the boarding house has capacity to accommodate:
 
- 20 lodgers but not more than 39 lodgers, a boarding room or on site dwelling is required to be provided for a boarding house manager,   
-ii. 40 lodgers but not more than 79 lodgers, two boarding rooms or on site dwellings is required to be provided for 2 boarding house managers,   
+ 20 lodgers but not more than 39 lodgers, a boarding room or on site dwelling is required to be provided for a boarding house manager, 
+ii. 40 lodgers but not more than 79 lodgers, two boarding rooms or on site dwellings is required to be provided for 2 boarding house managers, 
 iii. more than 80 lodgers, at least three boarding rooms or on site dwellings is required to be provided for 3 boarding house managers.
 
 [Marrickville DCP 2011 - 4 3 Boarding Houses] Clause 4.3.3.4 (other): An on site dwelling, or a boarding room with a minimum area of $1 6 { \\mathfrak { m } } ^ { 2 }$ is required to be provided for each required on-site manager.
@@ -581,7 +581,7 @@ B7 - Business Park;
 
 [Marrickville DCP 2011 - 9 13 Henson Park] Clause 9.13.3 (heritage): Refer to Part 8 (Heritage) of this DCP for detailed controls and guidelines.
 
-[Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.1 (heritage): The precinct contains three heritage conservation areas (HCAs) being the EnmoreNewtown Heritage  Conservation  Area, part of the Enmore House Estate Heritage Conservation  Area and the Holmwood Estate H eritage  Conservation  Area .
+[Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.1 (heritage): The precinct contains three heritage conservation areas (HCAs) being the EnmoreNewtown Heritage Conservation Area, part of the Enmore House Estate Heritage Conservation Area and the Holmwood Estate H eritage Conservation Area .
 
 [Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.2 (heritage): To protect and preserve the identified period buildings within the precinct and encourage their sympathetic alteration or restoration.
 
@@ -595,7 +595,7 @@ B7 - Business Park;
 
 [Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.2 (parking): To ensure the provision and location of off-street car parking does not adversely impact the amenity of the precinct.
 
-[Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.2 (heritage): To protect the identified values of the Enmore -Newtown Heritage  Conservation Area, Enmore House Estate Heritage Conservation Area and the Holmwood Estate Heritage Conservation Area.
+[Marrickville DCP 2011 - 9 14 Camdenville Precinct 14] Clause 9.14.2 (heritage): To protect the identified values of the Enmore -Newtown Heritage Conservation Area, Enmore House Estate Heritage Conservation Area and the Holmwood Estate Heritage Conservation Area.
 
 [Marrickville DCP 2011 - 9 15 Enmore Park] Clause 9.15.1 (setback): Front setbacks vary throughout the precinct with common setbacks of less than 2 metres for dwellings that are predominantly Victorian and Federation era and 2-4 metre setbacks for Federation and Inter-War period dwellings.
 

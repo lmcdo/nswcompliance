@@ -1,0 +1,109 @@
+
+ Enforcement Strategy for Claude Code:
+
+ 1. Hard-Coded Safety in Every Script
+
+ # MANDATORY: Add to every database script
+ def enforce_db_safety():
+ """NEVER REMOVE - Prevents database corruption"""
+ # Auto-timeout after 30 seconds
+ signal.alarm(30)
+
+ # Check connection health
+ if not test_connection_health():
+ raise Exception("DB_SAFETY: Database unhealthy,
+ aborting")
+
+ # Create backup before ANY operation
+ create_emergency_backup()
+
+ # Limit query complexity
+ if query_is_dangerous(sql):
+ raise Exception("DB_SAFETY: Query too dangerous,
+ use batching")
+
+ # Call at start of EVERY script
+ enforce_db_safety()
+
+ 2. Claude Code Hooks & Settings
+
+ // .claude/settings.local.json
+ {
+ "rules": [
+ "NEVER run database operations without backup",
+ "NEVER execute queries on >1000 records without
+ batching",
+ "ALWAYS timeout database operations at 30 seconds",
+ "ALWAYS check database health before PRPs"
+ ],
+ "pre_database_hook": "./scripts/db_safety_check.sh",
+ "database_timeout": 30
+ }
+
+ 3. Fail-Safe Database Wrapper
+
+ # db_config.py - Force safety on every connection
+ class SafeConnection:
+ def __init__(self):
+ self.timeout = 30 # NEVER CHANGE
+ self.backup_created = False
+
+ def execute(self, sql):
+ if not self.backup_created:
+ create_backup() # MANDATORY
+ self.backup_created = True
+
+ # Auto-kill dangerous queries
+ if "UPDATE" in sql and "WHERE" not in sql:
+ raise Exception("SAFETY: No WHERE clause")
+
+ # Set timeout
+ return execute_with_timeout(sql, 30)
+
+ 4. Mandatory Pre-Commit Checks
+
+ # .git/hooks/pre-commit (enforced)
+ #!/bin/bash
+ # Database safety check before every commit
+ ./scripts/backup_database.sh
+ ./scripts/check_db_health.sh
+ ./scripts/validate_schema_integrity.sh
+
+ if [ $? -ne 0 ]; then
+ echo "BLOCKED: Database issues detected"
+ exit 1
+ fi
+
+ 5. CLAUDE.md Override Instructions
+
+ ### DATABASE SAFETY - READ FIRST 
+ - NEVER connect to database without reading this
+ - ALWAYS run ./scripts/db_safety_check.sh first
+ - ALWAYS create backup before ANY database operation
+ - NEVER run queries without WHERE clauses
+ - ALWAYS use timeouts (30 seconds max)
+ - Database issues = STOP IMMEDIATELY
+
+ ### Memory Aid for Claude:
+ 1. Check CLAUDE.md database section FIRST
+ 2. Run safety script BEFORE any database work
+ 3. Create backup BEFORE any changes
+ 4. Use timeouts on ALL operations
+
+ 6. Automated Monitoring
+
+ # Run continuously in background
+ # scripts/db_guardian.py
+ while True:
+ if detect_long_running_queries():
+ kill_dangerous_queries()
+ if detect_connection_exhaustion():
+ restart_postgres_safely()
+ if detect_disk_space_low():
+ alert_and_cleanup()
+ sleep(30)
+
+ Best Strategy: Make the safety impossible to bypass by
+ building it into every database script, hook, and
+ configuration file. Even with goldfish memory, Claude Code
+ will be forced to follow safety protocols.

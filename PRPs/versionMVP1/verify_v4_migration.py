@@ -264,18 +264,18 @@ class MigrationVerification:
 
     def run_verification(self) -> bool:
         """Run all migration verification checks"""
-        print("🔍 Verifying PRP-V4: Data Migration...")
+        print("VERIFYING PRP-V4: Data Migration...")
 
         # Check version records
-        print("\n📊 Checking version records...")
+        print("\nCHECKING VERSION RECORDS...")
         version_stats = self.check_version_records_created()
         self.results["statistics"]["versions"] = version_stats
         print(f"  Documents: {version_stats['total_documents']}")
         print(f"  Version records: {version_stats['total_versions']}")
-        print(f"  Match: {'✅' if version_stats['documents_match_versions'] else '❌'}")
+        print(f"  Match: {'PASS' if version_stats['documents_match_versions'] else 'FAIL'}")
 
         # Check provision linking
-        print("\n🔗 Checking provision linking...")
+        print("\n Checking provision linking...")
         link_stats = self.check_provisions_linked()
         self.results["statistics"]["linking"] = link_stats
         print(f"  Total provisions: {link_stats['total_provisions']}")
@@ -288,32 +288,32 @@ class MigrationVerification:
             )
 
         # Check data integrity
-        print("\n🔒 Checking data integrity...")
+        print("\n Checking data integrity...")
         integrity = self.check_data_integrity()
         self.results["checks"]["integrity"] = integrity
-        print(f"  No orphaned versions: {'✅' if integrity['no_orphaned_versions'] else '❌'}")
-        print(f"  No duplicate current: {'✅' if integrity['no_duplicate_current'] else '❌'}")
-        print(f"  Valid status values: {'✅' if integrity['valid_status_values'] else '❌'}")
+        print(f"  No orphaned versions: {'PASS' if integrity['no_orphaned_versions'] else 'FAIL'}")
+        print(f"  No duplicate current: {'PASS' if integrity['no_duplicate_current'] else 'FAIL'}")
+        print(f"  Valid status values: {'PASS' if integrity['valid_status_values'] else 'FAIL'}")
 
         # Check related tables
-        print("\n📋 Checking related tables...")
+        print("\n Checking related tables...")
         related = self.check_related_tables()
         self.results["statistics"]["related_tables"] = related
         for table, stats in related.items():
             print(f"  {table}: {stats.get('version_percentage', 0):.1f}% versioned")
 
         # Test version functions
-        print("\n🧪 Testing version functions...")
+        print("\n Testing version functions...")
         functions = self.validate_version_functions()
         self.results["checks"]["functions"] = functions
-        print(f"  Functions operational: {'✅' if all(functions.values()) else '❌'}")
+        print(f"  Functions operational: {'PASS' if all(functions.values()) else 'FAIL'}")
 
         # Check audit log
-        print("\n📝 Checking audit log...")
+        print("\n Checking audit log...")
         audit = self.check_audit_log()
         self.results["statistics"]["audit"] = audit
         print(f"  Audit entries: {audit['total_entries']}")
-        print(f"  Audit enabled: {'✅' if audit['audit_enabled'] else '❌'}")
+        print(f"  Audit enabled: {'PASS' if audit['audit_enabled'] else 'FAIL'}")
 
         # Determine overall success
         critical_checks_passed = (
@@ -331,23 +331,23 @@ class MigrationVerification:
 
         # Print summary
         print("\n" + "=" * 50)
-        print("📊 Migration Verification Summary:")
-        print(f"  Version records created: {'✅' if version_stats['total_versions'] > 0 else '❌'}")
-        print(f"  Provisions linked: {'✅' if link_stats['link_percentage'] >= 95 else '❌'} ({link_stats['link_percentage']:.1f}%)")
-        print(f"  Data integrity: {'✅' if all(integrity.values()) else '❌'}")
-        print(f"  Functions working: {'✅' if all(functions.values()) else '❌'}")
+        print("MIGRATION VERIFICATION SUMMARY:")
+        print(f"  Version records created: {'PASS' if version_stats['total_versions'] > 0 else 'FAIL'}")
+        print(f"  Provisions linked: {'PASS' if link_stats['link_percentage'] >= 95 else 'FAIL'} ({link_stats['link_percentage']:.1f}%)")
+        print(f"  Data integrity: {'PASS' if all(integrity.values()) else 'FAIL'}")
+        print(f"  Functions working: {'PASS' if all(functions.values()) else 'FAIL'}")
 
         if self.results["errors"]:
-            print("\n❌ Errors found:")
+            print("\nERRORS FOUND:")
             for error in self.results["errors"]:
                 print(f"  - {error}")
 
         if self.results["warnings"]:
-            print("\n⚠️ Warnings:")
+            print("\nWARNINGS:")
             for warning in self.results["warnings"]:
                 print(f"  - {warning}")
 
-        print(f"\n{'✅ PRP-V4 VERIFICATION PASSED' if critical_checks_passed else '❌ PRP-V4 VERIFICATION FAILED'}")
+        print(f"\n{'PRP-V4 VERIFICATION PASSED' if critical_checks_passed else 'PRP-V4 VERIFICATION FAILED'}")
 
         return critical_checks_passed
 

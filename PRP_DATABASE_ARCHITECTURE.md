@@ -7,8 +7,8 @@ The NSW Planning Database follows the **PRP (Provisions, Relationships, Pathways
 
 ```
 PROVISIONS ↔ RELATIONSHIPS ↔ PATHWAYS
-     ↓            ↓            ↓
-  ENTITIES ←→ KG_GRAPH ←→ CONTROLS
+ ↓ ↓ ↓
+ ENTITIES ←→ KG_GRAPH ←→ CONTROLS
 ```
 
 ---
@@ -20,35 +20,35 @@ PROVISIONS ↔ RELATIONSHIPS ↔ PATHWAYS
 **Rows**: 9,364
 ```sql
 CREATE TABLE regulatory_provisions_clean (
-  id INT PRIMARY KEY,
-  document_id TEXT,           -- Links to documents table
-  provision_type TEXT,        -- clause|section|schedule
-  ref_number TEXT,           -- 9.34, 4.1.2, etc.
-  provision_text TEXT,       -- Full legal text
-  page_number INT,
-  section_header TEXT,
-  text_level INT,            -- Hierarchy depth
-  category TEXT
+ id INT PRIMARY KEY,
+ document_id TEXT, -- Links to documents table
+ provision_type TEXT, -- clause|section|schedule
+ ref_number TEXT, -- 9.34, 4.1.2, etc.
+ provision_text TEXT, -- Full legal text
+ page_number INT,
+ section_header TEXT,
+ text_level INT, -- Hierarchy depth
+ category TEXT
 );
 ```
 
-### regulatory_provisions  
+### regulatory_provisions 
 **Purpose**: Original unprocessed provisions with metadata
 **Rows**: 22,092
 ```sql
 CREATE TABLE regulatory_provisions (
-  id INTEGER PRIMARY KEY,
-  document_id TEXT NOT NULL,
-  provision_type TEXT NOT NULL,
-  ref_number TEXT,
-  provision_text TEXT NOT NULL,
-  zone TEXT,                 -- R2, B4, etc.
-  development_type TEXT,
-  page_number INTEGER,
-  section_header TEXT,
-  text_level INTEGER,
-  original_id INTEGER,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ document_id TEXT NOT NULL,
+ provision_type TEXT NOT NULL,
+ ref_number TEXT,
+ provision_text TEXT NOT NULL,
+ zone TEXT, -- R2, B4, etc.
+ development_type TEXT,
+ page_number INTEGER,
+ section_header TEXT,
+ text_level INTEGER,
+ original_id INTEGER,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -57,16 +57,16 @@ CREATE TABLE regulatory_provisions (
 **Rows**: 274
 ```sql
 CREATE TABLE documents (
-  id TEXT PRIMARY KEY,       -- Document identifier
-  pdf_name TEXT NOT NULL,    -- Original filename
-  document_type TEXT NOT NULL, -- LEP, DCP, SEPP
-  document_area TEXT,        -- Geographic area
-  pdf_path TEXT NOT NULL,
-  char_count INTEGER,
-  word_count INTEGER,
-  total_regulatory_refs INTEGER,
-  extraction_timestamp REAL,
-  full_text TEXT NOT NULL
+ id TEXT PRIMARY KEY, -- Document identifier
+ pdf_name TEXT NOT NULL, -- Original filename
+ document_type TEXT NOT NULL, -- LEP, DCP, SEPP
+ document_area TEXT, -- Geographic area
+ pdf_path TEXT NOT NULL,
+ char_count INTEGER,
+ word_count INTEGER,
+ total_regulatory_refs INTEGER,
+ extraction_timestamp REAL,
+ full_text TEXT NOT NULL
 );
 ```
 
@@ -79,20 +79,20 @@ CREATE TABLE documents (
 **Rows**: 2,734
 ```sql
 CREATE TABLE kg_relationships (
-  id INTEGER PRIMARY KEY,
-  subject_text TEXT NOT NULL,    -- "R2 zone"
-  predicate TEXT NOT NULL,       -- "requires"
-  object_text TEXT NOT NULL,     -- "6m rear setback"
-  subject_entity_id INTEGER,     -- Links to kg_entities
-  object_entity_id INTEGER,
-  relationship_context TEXT,
-  document_id TEXT NOT NULL,
-  page_number INTEGER,
-  section_header TEXT,
-  confidence_score REAL DEFAULT 1.0,
-  original_ref_type TEXT NOT NULL,
-  original_ref_id INTEGER,
-  extraction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ subject_text TEXT NOT NULL, -- "R2 zone"
+ predicate TEXT NOT NULL, -- "requires"
+ object_text TEXT NOT NULL, -- "6m rear setback"
+ subject_entity_id INTEGER, -- Links to kg_entities
+ object_entity_id INTEGER,
+ relationship_context TEXT,
+ document_id TEXT NOT NULL,
+ page_number INTEGER,
+ section_header TEXT,
+ confidence_score REAL DEFAULT 1.0,
+ original_ref_type TEXT NOT NULL,
+ original_ref_id INTEGER,
+ extraction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -101,17 +101,17 @@ CREATE TABLE kg_relationships (
 **Rows**: 1,394
 ```sql
 CREATE TABLE kg_entities (
-  id INTEGER PRIMARY KEY,
-  entity_type TEXT NOT NULL,     -- zone, setback, height, etc.
-  entity_name TEXT NOT NULL,     -- "R2", "6m", "Inner West LEP"
-  entity_description TEXT,
-  document_id TEXT NOT NULL,
-  page_number INTEGER,
-  section_header TEXT,
-  text_level INTEGER,
-  original_ref_type TEXT NOT NULL,
-  original_ref_id INTEGER,
-  extraction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ entity_type TEXT NOT NULL, -- zone, setback, height, etc.
+ entity_name TEXT NOT NULL, -- "R2", "6m", "Inner West LEP"
+ entity_description TEXT,
+ document_id TEXT NOT NULL,
+ page_number INTEGER,
+ section_header TEXT,
+ text_level INTEGER,
+ original_ref_type TEXT NOT NULL,
+ original_ref_id INTEGER,
+ extraction_timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -120,14 +120,14 @@ CREATE TABLE kg_entities (
 **Rows**: 2,294
 ```sql
 CREATE TABLE kg_relationships_from_refs (
-  id INT PRIMARY KEY,
-  document_id TEXT,
-  relationship_type TEXT,
-  relationship_context TEXT,
-  page_number INT,
-  section_header TEXT,
-  relationship_summary TEXT,
-  category TEXT
+ id INT PRIMARY KEY,
+ document_id TEXT,
+ relationship_type TEXT,
+ relationship_context TEXT,
+ page_number INT,
+ section_header TEXT,
+ relationship_summary TEXT,
+ category TEXT
 );
 ```
 
@@ -140,17 +140,17 @@ CREATE TABLE kg_relationships_from_refs (
 **Rows**: 4,526
 ```sql
 CREATE TABLE development_controls (
-  id INTEGER PRIMARY KEY,
-  provision_id INTEGER NOT NULL,  -- Links to regulatory_provisions
-  control_type TEXT NOT NULL,     -- setback, height, FSR
-  control_subtype TEXT,           -- rear, side, front
-  value_numeric REAL,             -- 6.0
-  value_text TEXT,                -- "6m minimum"
-  unit TEXT,                      -- m, %, storeys
-  zone_applicable TEXT,           -- R2, general
-  conditions TEXT,                -- Special conditions
-  confidence_score REAL DEFAULT 1.0,
-  extraction_method TEXT DEFAULT 'regex'
+ id INTEGER PRIMARY KEY,
+ provision_id INTEGER NOT NULL, -- Links to regulatory_provisions
+ control_type TEXT NOT NULL, -- setback, height, FSR
+ control_subtype TEXT, -- rear, side, front
+ value_numeric REAL, -- 6.0
+ value_text TEXT, -- "6m minimum"
+ unit TEXT, -- m, %, storeys
+ zone_applicable TEXT, -- R2, general
+ conditions TEXT, -- Special conditions
+ confidence_score REAL DEFAULT 1.0,
+ extraction_method TEXT DEFAULT 'regex'
 );
 ```
 
@@ -159,16 +159,16 @@ CREATE TABLE development_controls (
 **Rows**: 829
 ```sql
 CREATE TABLE quantitative_standards (
-  id INTEGER PRIMARY KEY,
-  provision_id INTEGER NOT NULL,
-  numeric_value REAL NOT NULL,    -- 6.0
-  unit TEXT NOT NULL,             -- m, %, storeys
-  qualifier TEXT NOT NULL,        -- minimum, maximum
-  context TEXT NOT NULL,          -- setback, height
-  confidence_score REAL NOT NULL,
-  raw_text TEXT,                  -- Original extracted text
-  manual_verified BOOLEAN DEFAULT FALSE,
-  created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ provision_id INTEGER NOT NULL,
+ numeric_value REAL NOT NULL, -- 6.0
+ unit TEXT NOT NULL, -- m, %, storeys
+ qualifier TEXT NOT NULL, -- minimum, maximum
+ context TEXT NOT NULL, -- setback, height
+ confidence_score REAL NOT NULL,
+ raw_text TEXT, -- Original extracted text
+ manual_verified BOOLEAN DEFAULT FALSE,
+ created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -177,15 +177,15 @@ CREATE TABLE quantitative_standards (
 **Rows**: 1
 ```sql
 CREATE TABLE development_pathways (
-  id INTEGER PRIMARY KEY,
-  development_type TEXT NOT NULL,
-  zone TEXT NOT NULL,
-  qualification_criteria JSON NOT NULL,
-  pathway_type TEXT NOT NULL,     -- complying, merit, prohibited
-  confidence_score REAL NOT NULL,
-  source_provision_ids TEXT,
-  manual_verified BOOLEAN DEFAULT FALSE,
-  created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ development_type TEXT NOT NULL,
+ zone TEXT NOT NULL,
+ qualification_criteria JSON NOT NULL,
+ pathway_type TEXT NOT NULL, -- complying, merit, prohibited
+ confidence_score REAL NOT NULL,
+ source_provision_ids TEXT,
+ manual_verified BOOLEAN DEFAULT FALSE,
+ created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -198,14 +198,14 @@ CREATE TABLE development_pathways (
 **Rows**: 91
 ```sql
 CREATE TABLE sepp_lep_overrides (
-  id INTEGER PRIMARY KEY,
-  sepp_provision_id INTEGER NOT NULL,
-  lep_clause_reference TEXT NOT NULL,
-  override_type TEXT NOT NULL,
-  confidence_score REAL NOT NULL,
-  extracted_text TEXT,
-  manual_verified BOOLEAN DEFAULT FALSE,
-  created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ sepp_provision_id INTEGER NOT NULL,
+ lep_clause_reference TEXT NOT NULL,
+ override_type TEXT NOT NULL,
+ confidence_score REAL NOT NULL,
+ extracted_text TEXT,
+ manual_verified BOOLEAN DEFAULT FALSE,
+ created_timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -218,15 +218,15 @@ CREATE TABLE sepp_lep_overrides (
 **Rows**: 6,655
 ```sql
 CREATE TABLE contextual_guidance_real (
-  id INT PRIMARY KEY,
-  document_id TEXT,
-  guidance_type TEXT,        -- objective, guideline, note
-  guidance_title TEXT,
-  guidance_text TEXT,
-  page_number INT,
-  section_header TEXT,
-  text_level INT,
-  category TEXT
+ id INT PRIMARY KEY,
+ document_id TEXT,
+ guidance_type TEXT, -- objective, guideline, note
+ guidance_title TEXT,
+ guidance_text TEXT,
+ page_number INT,
+ section_header TEXT,
+ text_level INT,
+ category TEXT
 );
 ```
 
@@ -235,14 +235,14 @@ CREATE TABLE contextual_guidance_real (
 **Rows**: 3,017
 ```sql
 CREATE TABLE visual_elements_real (
-  id INT PRIMARY KEY,
-  document_id TEXT,
-  visual_type TEXT,          -- diagram, table, chart
-  visual_description TEXT,
-  page_number INT,
-  section_header TEXT,
-  visual_caption TEXT,
-  category TEXT
+ id INT PRIMARY KEY,
+ document_id TEXT,
+ visual_type TEXT, -- diagram, table, chart
+ visual_description TEXT,
+ page_number INT,
+ section_header TEXT,
+ visual_caption TEXT,
+ category TEXT
 );
 ```
 
@@ -255,14 +255,14 @@ CREATE TABLE visual_elements_real (
 **Rows**: 762
 ```sql
 CREATE TABLE regulatory_refs_core (
-  id INT PRIMARY KEY,
-  document_id TEXT,
-  ref_type TEXT,             -- clause, schedule, external
-  ref_number TEXT,           -- 4.1.2, Schedule 1
-  ref_context TEXT,
-  page_number INT,
-  section_header TEXT,
-  text_level INT
+ id INT PRIMARY KEY,
+ document_id TEXT,
+ ref_type TEXT, -- clause, schedule, external
+ ref_number TEXT, -- 4.1.2, Schedule 1
+ ref_context TEXT,
+ page_number INT,
+ section_header TEXT,
+ text_level INT
 );
 ```
 
@@ -271,12 +271,12 @@ CREATE TABLE regulatory_refs_core (
 **Rows**: 0 (unpopulated)
 ```sql
 CREATE TABLE clause_relationships (
-  id INTEGER PRIMARY KEY,
-  parent_provision_id INTEGER NOT NULL,
-  child_provision_id INTEGER NOT NULL,
-  relationship_type TEXT NOT NULL,
-  confidence_score REAL DEFAULT 1.0,
-  langextract_source BOOLEAN DEFAULT TRUE
+ id INTEGER PRIMARY KEY,
+ parent_provision_id INTEGER NOT NULL,
+ child_provision_id INTEGER NOT NULL,
+ relationship_type TEXT NOT NULL,
+ confidence_score REAL DEFAULT 1.0,
+ langextract_source BOOLEAN DEFAULT TRUE
 );
 ```
 
@@ -289,13 +289,13 @@ CREATE TABLE clause_relationships (
 **Rows**: 0 (runtime populated)
 ```sql
 CREATE TABLE query_cache (
-  id INTEGER PRIMARY KEY,
-  query_text TEXT NOT NULL,
-  query_hash TEXT NOT NULL,
-  result_json TEXT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  access_count INTEGER DEFAULT 1,
-  last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ id INTEGER PRIMARY KEY,
+ query_text TEXT NOT NULL,
+ query_hash TEXT NOT NULL,
+ result_json TEXT NOT NULL,
+ created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+ access_count INTEGER DEFAULT 1,
+ last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
@@ -339,13 +339,13 @@ The following tables exist but are unpopulated (0 rows):
 -- 1. Check SEPP overrides first
 SELECT * FROM sepp_lep_overrides WHERE...
 
--- 2. If none, check LEP controls  
+-- 2. If none, check LEP controls 
 SELECT * FROM development_controls dc
 JOIN documents d ON dc.document_id = d.id
 WHERE d.document_type = 'LEP' AND...
 
 -- 3. Fallback to DCP guidance
-SELECT * FROM development_controls dc  
+SELECT * FROM development_controls dc 
 JOIN documents d ON dc.document_id = d.id
 WHERE d.document_type = 'DCP' AND...
 ```

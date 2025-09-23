@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "test:e2e": "node tests/e2e/test-runner.js",
+    "test:integration": "node tests/e2e/integration-tests.js",
+    "test:performance": "node tests/e2e/performance-tests.js",
+    "test:all": "node tests/e2e/run-all-tests.js",
+    "test:prp-a8": "node tests/e2e/run-all-tests.js"
+  }
+}

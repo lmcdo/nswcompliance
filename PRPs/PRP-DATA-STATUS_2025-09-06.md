@@ -1,6 +1,6 @@
 # PRP-DATA-STATUS: Zone & Setback Data Completeness Report
-**Date:** 2025-09-06  
-**Status:** ACTIVE | **Grade:** C (65%) | **Production Readiness:** RESIDENTIAL ONLY  
+**Date:** 2025-09-06 
+**Status:** ACTIVE | **Grade:** C (65%) | **Production Readiness:** RESIDENTIAL ONLY 
 **Last Updated:** 2025-09-06 (Session: PRP-K3 Completion)
 
 ## Executive Summary
@@ -17,7 +17,7 @@ nsw_planning.zone_setback_rules (unified table)
 ├── Councils: 3 (Ashfield, Leichhardt, Marrickville)
 └── Quality Tiers: 19 verified (95%), 29 medium (75%)
 
-nsw_planning.sepp_lep_overrides (hierarchy table) ✅ NEW - PRP-K4
+nsw_planning.sepp_lep_overrides (hierarchy table) NEW - PRP-K4
 ├── Total Overrides: 91
 ├── Override Types: modifies (67), exempts_from (13), replaces (6), adds_to (5)
 ├── Status: Imported but not integrated with zone rules
@@ -28,22 +28,22 @@ nsw_planning.sepp_lep_overrides (hierarchy table) ✅ NEW - PRP-K4
 
 | Zone | Ashfield | Leichhardt | Marrickville | Status |
 |------|----------|------------|--------------|--------|
-| **R1** | ✅ 3 rules | ✅ 3 rules | ✅ 4 rules | **READY** |
-| **R2** | ✅ 6 rules | ✅ 6 rules | ✅ 5 rules | **READY** |
-| **R3** | ✅ 3 rules | ✅ 3 rules | ✅ 3 rules | **READY** |
-| **R4** | ✅ 3 rules | ✅ 3 rules | ✅ 3 rules | **READY** |
-| B1 | ❌ | ❌ | ⚠️ 1 rule | PARTIAL |
-| B2 | ❌ | ❌ | ⚠️ 1 rule | PARTIAL |
-| B3 | ❌ | ❌ | ❌ | MISSING |
-| B4 | ❌ | ❌ | ⚠️ 1 rule | PARTIAL |
-| B5-B7 | ❌ | ❌ | ❌ | MISSING |
-| IN1-IN2 | ❌ | ❌ | ❌ | MISSING |
-| RE1-RE2 | ❌ | ❌ | ❌ | MISSING |
-| SP1-SP2 | ❌ | ❌ | ❌ | MISSING |
+| **R1** | 3 rules | 3 rules | 4 rules | **READY** |
+| **R2** | 6 rules | 6 rules | 5 rules | **READY** |
+| **R3** | 3 rules | 3 rules | 3 rules | **READY** |
+| **R4** | 3 rules | 3 rules | 3 rules | **READY** |
+| B1 | | | 1 rule | PARTIAL |
+| B2 | | | 1 rule | PARTIAL |
+| B3 | | | | MISSING |
+| B4 | | | 1 rule | PARTIAL |
+| B5-B7 | | | | MISSING |
+| IN1-IN2 | | | | MISSING |
+| RE1-RE2 | | | | MISSING |
+| SP1-SP2 | | | | MISSING |
 
 ### Data Sources Processed
 
-#### Successfully Imported (✅)
+#### Successfully Imported ()
 1. **public/regulatory-data/inner-west-compliance-rules.json** - 6 verified R2 rules
 2. **compliance_result.json** - Compliance analysis results
 3. **autoschemakg_data_ollama_final/** - 8 files with zone references
@@ -51,7 +51,7 @@ nsw_planning.sepp_lep_overrides (hierarchy table) ✅ NEW - PRP-K4
 5. **sepp_lep_overrides table** (PRP-K4) - 91 SEPP/LEP hierarchy records
 6. **11 additional database tables** (PRP-K4) - 28,032 supporting records
 
-#### Identified But Not Imported (⚠️)
+#### Identified But Not Imported ()
 1. **langextract_verified_output/** - 13 Marrickville files (no numeric values)
 2. **output/Marrickville**/auto/*.json - Layout detection data only
 3. **validated_outputs/** - Large files requiring deeper parsing
@@ -62,7 +62,7 @@ nsw_planning.sepp_lep_overrides (hierarchy table) ✅ NEW - PRP-K4
 
 ## Frontend Query Readiness
 
-### ✅ PRODUCTION READY Queries
+### PRODUCTION READY Queries
 ```sql
 -- R2 Residential in Marrickville
 SELECT * FROM zone_setback_rules 
@@ -81,7 +81,7 @@ ORDER BY boundary_type
 -- Result: front (6m), side (0.9m), rear (3m)
 ```
 
-### ❌ NOT READY Queries
+### NOT READY Queries
 ```sql
 -- Business zones (limited data)
 SELECT * FROM zone_setback_rules WHERE zone IN ('B3','B5','B6','B7')
@@ -107,32 +107,32 @@ SELECT * FROM zone_setback_rules WHERE zone IN ('IN1','IN2')
 
 ### Frontend Components Status
 
-#### ✅ **ACTIVE Components (Ready for Production):**
+#### **ACTIVE Components (Ready for Production):**
 1. **`frontend-nextjs/lib/database/client.ts`** - PostgreSQL integration with getHierarchicalSetbackControls()
 2. **`frontend-nextjs/app/api/setbacks/calculate/route.ts`** - Zone-specific calculation API
 3. **`frontend-nextjs/lib/geometry/calculator.ts`** - Precise setback calculations
 4. **`zone_setback_rules` table** - 48 rules with source paragraph text (96% linked)
 
-#### ⚠️ **INACTIVE Components (Needs Activation - PRP-K5):**
+#### **INACTIVE Components (Needs Activation - PRP-K5):**
 1. **`frontend-nextjs/lib/compliance/sepp-lep-processor.ts.bak`** - Complete SEPP > LEP > DCP hierarchy engine
 2. **Zone rule authority levels** - All 48 rules currently DCP-only, needs SEPP/LEP upgrades
 3. **Hierarchical API integration** - Processor not integrated into calculation flow
 
-#### 🎯 **Ready for PRP-K5 Hierarchy Activation:**
-- **SEPP/LEP data imported** ✅ (91 override records)
-- **Hierarchy engine exists** ✅ (currently .bak file)
-- **Database queries ready** ✅ (client.ts implementation complete)
-- **Authority upgrade needed** ⚠️ (zone rules need precedence levels)
+#### **Ready for PRP-K5 Hierarchy Activation:**
+- **SEPP/LEP data imported** (91 override records)
+- **Hierarchy engine exists** (currently .bak file)
+- **Database queries ready** (client.ts implementation complete)
+- **Authority upgrade needed** (zone rules need precedence levels)
 
 ## Performance Metrics
 
 | Metric | Value | Target | Status |
 |--------|-------|--------|--------|
-| Total Rules | 48 | 100+ | ⚠️ |
-| Zone Coverage | 7/15 (47%) | 80% | ❌ |
-| Council Coverage | 3/3 (100%) | 100% | ✅ |
-| Query Readiness | 100% | 100% | ✅ |
-| Data Quality | 65% | 85% | ⚠️ |
+| Total Rules | 48 | 100+ | |
+| Zone Coverage | 7/15 (47%) | 80% | |
+| Council Coverage | 3/3 (100%) | 100% | |
+| Query Readiness | 100% | 100% | |
+| Data Quality | 65% | 85% | |
 
 ## Recommendations
 
@@ -153,7 +153,7 @@ SELECT * FROM zone_setback_rules WHERE zone IN ('IN1','IN2')
 
 ## Success Criteria
 
-### MVP Launch (Current State) ✅
+### MVP Launch (Current State) 
 - [x] Residential zones R1-R4 complete
 - [x] All three councils covered
 - [x] Frontend queries functional
@@ -186,8 +186,8 @@ GROUP BY council"
 
 # Test frontend query
 curl -X POST http://localhost:3000/api/setbacks/calculate \
-  -H "Content-Type: application/json" \
-  -d '{"zone":"R2","council":"Marrickville"}'
+ -H "Content-Type: application/json" \
+ -d '{"zone":"R2","council":"Marrickville"}'
 ```
 
 ## Conclusion
@@ -200,5 +200,5 @@ curl -X POST http://localhost:3000/api/setbacks/calculate \
 - Plan Phase 2 for business zones based on demand
 
 ---
-*Generated: 2025-09-06 | PRP-K3 Implementation Complete*  
+*Generated: 2025-09-06 | PRP-K3 Implementation Complete* 
 *Next Review: After 100 production queries to assess usage patterns*

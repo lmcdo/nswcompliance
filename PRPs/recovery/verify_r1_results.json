@@ -1,0 +1,12 @@
+{
+  "timestamp": "2025-09-20T15:41:03.720889",
+  "prp": "PRP-R1_NUCLEAR_RESET",
+  "actions_taken": [
+    "Processes killed"
+  ],
+  "checks": {},
+  "errors": [
+    "Failed to start service"
+  ],
+  "success": false
+}

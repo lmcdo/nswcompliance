@@ -37,14 +37,14 @@ Navigate to: http://localhost:8000
 
 Try these Inner West addresses:
 - 15 Norton Street, Leichhardt NSW 2040
-- 45 Liverpool Street, Ashfield NSW 2131  
+- 45 Liverpool Street, Ashfield NSW 2131 
 - 67 Marrickville Road, Marrickville NSW 2204
 
 ## Architecture
 
 ```
 Frontend (HTML/JS) ←→ FastAPI Server ←→ Ultimate NSW Processor
-     Port 8000              Python           (RagAnything + LightRAG)
+ Port 8000 Python (RagAnything + LightRAG)
 ```
 
 ## Query Types

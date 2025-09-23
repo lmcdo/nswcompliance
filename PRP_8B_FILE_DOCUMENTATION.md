@@ -4,38 +4,38 @@
 
 ### Database Schema
 - **`scripts/create_authoritative_schema.sql`** - Complete authoritative schema with 7 tables
-  - `authoritative.nsw_properties` - NSW Planning Portal property data
-  - `authoritative.planning_provisions` - Authoritative provisions with hierarchy
-  - `authoritative.provision_authority_tiers` - 5-tier authority classification
-  - `authoritative.property_provision_analysis` - Property-provision matching
-  - `authoritative.hierarchy_resolution_cache` - Performance optimization
-  - `authoritative.professional_guidance` - Professional guidance templates
-  - `authoritative.compliance_visual_aids` - Visual guidance and examples
+ - `authoritative.nsw_properties` - NSW Planning Portal property data
+ - `authoritative.planning_provisions` - Authoritative provisions with hierarchy
+ - `authoritative.provision_authority_tiers` - 5-tier authority classification
+ - `authoritative.property_provision_analysis` - Property-provision matching
+ - `authoritative.hierarchy_resolution_cache` - Performance optimization
+ - `authoritative.professional_guidance` - Professional guidance templates
+ - `authoritative.compliance_visual_aids` - Visual guidance and examples
 
 ### Data Migration
 - **`services/authoritative_migration.py`** - Migrates existing provisions to authoritative schema
-  - Maps regulatory_provisions → authoritative.planning_provisions
-  - Assigns tier classifications based on document type and confidence
-  - Handles JSON serialization of datetime objects
+ - Maps regulatory_provisions → authoritative.planning_provisions
+ - Assigns tier classifications based on document type and confidence
+ - Handles JSON serialization of datetime objects
 
 ### API Integration
 - **`services/authoritative_compliance_api.py`** - Main API for authoritative compliance
-  - `HierarchyResolver` class - Resolves legal hierarchy (SEPP > LEP > DCP)
-  - `AuthoritativeComplianceAPI` class - Main API endpoints
-  - Fixed async/await issues in hierarchy resolution
+ - `HierarchyResolver` class - Resolves legal hierarchy (SEPP > LEP > DCP)
+ - `AuthoritativeComplianceAPI` class - Main API endpoints
+ - Fixed async/await issues in hierarchy resolution
 
 ### Testing & Verification
 - **`tests/test_prp_8b_verification.py`** - Comprehensive test suite
-  - Tests all 5 authority tiers
-  - Integration testing with database
-  - Performance testing
-  - Had Unicode encoding issues with ✅❌ characters
+ - Tests all 5 authority tiers
+ - Integration testing with database
+ - Performance testing
+ - Had Unicode encoding issues with characters
 
 ### Completion Validation
 - **`prp_checkpoints/prp_8b_completion.py`** - Automated completion validation
-  - Validates schema creation, data migration, API functionality
-  - Creates completion markers
-  - Had Unicode encoding issues
+ - Validates schema creation, data migration, API functionality
+ - Creates completion markers
+ - Had Unicode encoding issues
 
 ## Zone Data Sources (Current Issue)
 
@@ -59,8 +59,8 @@
 
 ### Source Data Directories
 - **`langextract_verified_output/`** - LangExtract verified JSON outputs
-  - Contains verified provisions but NO zone assignments
-  - Files like `Inner West Local Environmental Plan 2022 - NSW Legislation-51-100_verified.json`
+ - Contains verified provisions but NO zone assignments
+ - Files like `Inner West Local Environmental Plan 2022 - NSW Legislation-51-100_verified.json`
 - **`autoschemakg_output_ollama_final/kg_extraction/`** - AutoSchemaKG outputs
 - **`validated_outputs/`** - Validated extraction outputs
 - **`monitored_pipeline_output/`** - Pipeline monitoring outputs
@@ -98,7 +98,7 @@ The 44,186 regulatory provisions have zone=NULL because zone assignments were ex
 - **`scripts/update_provision_zones.sql`** - NEW: SQL to update provision zones
 
 ## PostgreSQL Connection Details
-- Host: localhost  
+- Host: localhost 
 - Database: nsw_planning
 - User: postgres
 - Password: postgres

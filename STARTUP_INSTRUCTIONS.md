@@ -1,19 +1,19 @@
-# 🚀 NSW Planning Compliance Engine - Startup Instructions
+# NSW Planning Compliance Engine - Startup Instructions
 
 ## Quick Start Commands
 
 ### **Backend (Python FastAPI)**
 ```bash
 # 1. Activate Python environment
-./venv_linux/Scripts/activate  # Windows
-# OR source venv_linux/bin/activate  # Linux
+./venv_linux/Scripts/activate # Windows
+# OR source venv_linux/bin/activate # Linux
 
 # 2. Start the API server
 python api_server.py
 ```
 **Backend runs on:** `http://localhost:8006`
 
-### **Frontend (Static HTML)**  
+### **Frontend (Static HTML)** 
 ```bash
 # Option 1: Simple HTTP server (recommended)
 npx http-server frontend -p 3000 -c-1
@@ -26,7 +26,7 @@ start "frontend/index.html"
 ```
 **Frontend runs on:** `http://localhost:3000`
 
-## 🔧 Complete Startup Sequence
+## Complete Startup Sequence
 
 ### **First Time Setup (if citations not yet extracted):**
 ```bash
@@ -52,11 +52,11 @@ npx http-server frontend -p 3000 -c-1
 ### **Access Application:**
 Open browser to: `http://localhost:3000`
 
-## 🎯 Expected Startup Output
+## Expected Startup Output
 
 ### **Backend Success:**
 ```
-Starting NSW Planning API  
+Starting NSW Planning API 
 Loaded clause index with 2,955 entries
 Loaded document index with 54 documents
 Validated system: True
@@ -68,12 +68,12 @@ INFO: Uvicorn running on http://0.0.0.0:8006 (Press CTRL+C to quit)
 ```
 Starting up http-server, serving ./frontend
 Available on:
-  http://127.0.0.1:3000
-  http://[your-ip]:3000
+ http://127.0.0.1:3000
+ http://[your-ip]:3000
 Hit CTRL-C to stop the server
 ```
 
-## 📡 API Endpoints Available
+## API Endpoints Available
 
 ### **Main Endpoints:**
 - `POST /query` - Main planning rules query with full citations
@@ -82,7 +82,7 @@ Hit CTRL-C to stop the server
 
 ### **Citation Endpoints:**
 - `GET /citations/search?q={query}` - Search clause citations
-- `GET /citations/clause/{number}` - Get specific clause citation  
+- `GET /citations/clause/{number}` - Get specific clause citation 
 - `GET /citations/stats` - Citation system statistics
 - `POST /clause-citation` - Connected requirements citations
 
@@ -90,15 +90,15 @@ Hit CTRL-C to stop the server
 - `POST /property-dashboard` - NSW Planning Portal integration
 - `GET /debug-route-test` - System health check
 
-## 🏛️ Council MVP Features Ready
+## Council MVP Features Ready
 
-✅ **Complete regulatory citations** with full paragraph text  
-✅ **Property intelligence** with zone/height/FSR data  
-✅ **Connected requirements** showing regulatory relationships  
-✅ **Authoritative setback calculations** with council disclaimers  
-✅ **Professional verification flags** for official use  
+ **Complete regulatory citations** with full paragraph text 
+ **Property intelligence** with zone/height/FSR data 
+ **Connected requirements** showing regulatory relationships 
+ **Authoritative setback calculations** with council disclaimers 
+ **Professional verification flags** for official use 
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### **Backend Issues:**
 - **Port 8006 in use:** Change port in `api_server.py` line 847
@@ -115,7 +115,7 @@ Hit CTRL-C to stop the server
 - **Search not working:** Verify `/citations/stats` shows loaded clauses
 - **Accordion not opening:** Check browser console for JavaScript errors
 
-## 📋 Development Notes
+## Development Notes
 
 - **Virtual Environment:** Uses `venv_linux` (works on Windows via WSL compatibility)
 - **Port Configuration:** Backend 8006, Frontend 3000 (configurable)
@@ -123,11 +123,11 @@ Hit CTRL-C to stop the server
 - **Log Output:** Backend shows detailed citation loading and API requests
 - **Hot Reload:** Backend auto-reloads on code changes (if `reload=True` enabled)
 
-## 🎯 Council Demonstration Ready
+## Council Demonstration Ready
 
 The system provides complete regulatory authority with:
 - Full DCP clause text with legal language
-- NSW Planning Portal integration  
+- NSW Planning Portal integration 
 - Professional verification requirements
 - Authoritative source citations
 - Confidence scoring for reliability

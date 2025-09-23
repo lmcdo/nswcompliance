@@ -1,8 +1,8 @@
 # PRP-A8: Regulatory Radar UI with NSW API Integration
 
 ## Status: IN PROGRESS
-**Started:** 2025-08-29  
-**Previous:** PRP-A7 Frontend Integration (COMPLETED)  
+**Started:** 2025-08-29 
+**Previous:** PRP-A7 Frontend Integration (COMPLETED) 
 **Next:** TBD
 
 ## Objective
@@ -21,23 +21,23 @@ Current system limitations identified in PRP-A7 testing:
 **Data Source:** NSW Planning APIs + Property Analysis
 **Display:**
 ```
-📍 PROPERTY INTELLIGENCE
+ PROPERTY INTELLIGENCE
 Address: 45 Liverpool Street, Ashfield NSW 2131
 PropId: 123456 (NSW Planning Portal)
 
-🏗️ PLANNING CONTROLS
+ PLANNING CONTROLS
 • Zone: R2 Low Density Residential
-• Max Height: 8.5m (Clause 4.3)  
+• Max Height: 8.5m (Clause 4.3) 
 • Min Lot Size: 450m² (Clause 4.1)
 • FSR: 0.5:1 (Clause 4.4)
 
-🏛️ OVERLAYS & CONSTRAINTS  
+ OVERLAYS & CONSTRAINTS 
 • Heritage: Local Item #143
 • Flood Risk: 1:100 year event
 • Bus Route: Major Road Frontage
 
-⚡ QUICK METRICS
-• Compliant Lot Size: ✓ (600m²)
+ QUICK METRICS
+• Compliant Lot Size: (600m²)
 • Available Height: 6.2m remaining
 • Development Potential: Medium
 ```
@@ -46,21 +46,21 @@ PropId: 123456 (NSW Planning Portal)
 **Data Source:** Knowledge Graph Relationships + Targeted Query System
 **Display:**
 ```
-🔗 REGULATORY CONNECTIONS
+ REGULATORY CONNECTIONS
 
-📏 HEIGHT LIMIT (8.5m) connects to:
+ HEIGHT LIMIT (8.5m) connects to:
 ├── Boundary Setbacks → 3m minimum
-├── Roof Features → Additional 1m allowed  
+├── Roof Features → Additional 1m allowed 
 ├── Heritage Requirements → Original roofline preservation
 └── Solar Access → Neighbour protection rules
 
-🏠 R2 ZONE connects to:  
+ R2 ZONE connects to: 
 ├── Permitted Uses → Dwelling houses, dual occupancy
 ├── Parking Requirements → 1 space per dwelling
 ├── Landscaping → 25% site coverage minimum
 └── Privacy → Window placement restrictions
 
-🏛️ HERITAGE OVERLAY connects to:
+ HERITAGE OVERLAY connects to:
 ├── Building Materials → Brick/timber preferred
 ├── Window Design → Double-hung traditional
 ├── Additions → Rear location only
@@ -78,15 +78,15 @@ PropId: 123456 (NSW Planning Portal)
 **Key Functions:**
 ```python
 async def get_property_intelligence(address: str) -> PropertyIntelligence:
-    """Get comprehensive property data from NSW APIs"""
-    prop_id = await lookup_property_id(address)
-    planning_controls = await get_planning_controls(prop_id)
-    return PropertyIntelligence(controls=planning_controls, ...)
+ """Get comprehensive property data from NSW APIs"""
+ prop_id = await lookup_property_id(address)
+ planning_controls = await get_planning_controls(prop_id)
+ return PropertyIntelligence(controls=planning_controls, ...)
 
 async def get_connected_requirements(controls: PlanningControls) -> List[Requirement]:
-    """Use AutoSchemaKG to find connected regulatory requirements"""
-    graph_query = build_autoschema_query(controls)
-    return await query_knowledge_graph(graph_query)
+ """Use AutoSchemaKG to find connected regulatory requirements"""
+ graph_query = build_autoschema_query(controls)
+ return await query_knowledge_graph(graph_query)
 ```
 
 ### Phase 2: Frontend Transformation
@@ -97,7 +97,7 @@ async def get_connected_requirements(controls: PlanningControls) -> List[Require
 
 **UI Components:**
 - Property Intelligence Card (left column)
-- Connected Requirements Tree (right column)  
+- Connected Requirements Tree (right column) 
 - Visual connection indicators (lines/arrows)
 - Expandable requirement details
 
@@ -108,11 +108,11 @@ async def get_connected_requirements(controls: PlanningControls) -> List[Require
 - Filter regulatory content by property-specific constraints
 
 ## Success Criteria
-1. ✅ Address lookup returns correct NSW Planning Portal property ID
-2. ✅ Property intelligence displays accurate height/zone/overlay data
-3. ✅ Connected requirements show AutoSchemaKG relationships
-4. ✅ System returns specific answers instead of document dumps
-5. ✅ Location-aware filtering eliminates wrong jurisdiction results
+1. Address lookup returns correct NSW Planning Portal property ID
+2. Property intelligence displays accurate height/zone/overlay data
+3. Connected requirements show AutoSchemaKG relationships
+4. System returns specific answers instead of document dumps
+5. Location-aware filtering eliminates wrong jurisdiction results
 
 ## Test Cases
 **Primary Test:** 45 Liverpool Street, Ashfield NSW 2131

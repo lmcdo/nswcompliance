@@ -246,20 +246,20 @@ Enhances conversational AI responses with:
 **Real-Time Citation Service**:
 ```json
 {
-  "input": "AI response requiring citations",
-  "output": {
-    "cited_response": "Response with embedded citations",
-    "source_list": [
-      {
-        "citation_id": "1",
-        "document": "Marrickville DCP 2011",
-        "section": "2.7.5.2",
-        "page": 87,
-        "authority": "Inner West Council",
-        "version": "2023 Amendment"
-      }
-    ]
-  }
+ "input": "AI response requiring citations",
+ "output": {
+ "cited_response": "Response with embedded citations",
+ "source_list": [
+ {
+ "citation_id": "1",
+ "document": "Marrickville DCP 2011",
+ "section": "2.7.5.2",
+ "page": 87,
+ "authority": "Inner West Council",
+ "version": "2023 Amendment"
+ }
+ ]
+ }
 }
 ```
 
