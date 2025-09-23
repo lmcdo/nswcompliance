@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Home, Layers, Ruler, Building, DollarSign, BarChart3 } from "lucide-react"
+import { MapPin, Home, Layers, Ruler, Building, DollarSign, BarChart3, Shield, AlertTriangle, Leaf } from "lucide-react"
 
 interface PropertyData {
  propId?: number
@@ -17,6 +17,24 @@ interface PropertyData {
  maxHeight?: number
  maxFsr?: number
  minLotSize?: number
+ heritage?: {
+   isHeritage: boolean
+   heritageType?: string
+   heritageClause?: string
+ }
+ environmental?: {
+   acidSulfateSoils?: string
+   basixClimate?: string
+   basixWater?: string
+   floodProne: boolean
+   bushfireProne: boolean
+ }
+ seppOverlays?: Array<{
+   seppName: string
+   mapType: string
+   value: string
+   type: string
+ }>
 }
 
 export function PropertyCard() {
@@ -25,188 +43,328 @@ export function PropertyCard() {
  const [isLoading, setIsLoading] = useState(false)
 
  const fetchPropertyData = async (addr: string) => {
- if (!addr) return
+   if (!addr) return
 
- setIsLoading(true)
- try {
- const response = await fetch(`/api/property?address=${encodeURIComponent(addr)}`)
- if (response.ok) {
- const apiResponse = await response.json()
- const data = apiResponse.data
+   setIsLoading(true)
+   try {
+     const response = await fetch(`/api/property?address=${encodeURIComponent(addr)}`)
+     if (response.ok) {
+       const apiResponse = await response.json()
+       const data = apiResponse.data
 
- // Map API response to PropertyCard format
- const mappedData = {
- propId: data.propId,
- address: data.address,
- area: data.propertyArea, // Map propertyArea to area (current lot size)
- zone: data.constraints?.zone, // Map from constraints
- lga: data.constraints?.lga, // Map from constraints
- landValue: data.landValue, // Land value
- maxHeight: data.constraints?.maxHeight, // Max height
- maxFsr: data.constraints?.maxFsr, // Floor space ratio
- minLotSize: data.constraints?.minLotSize, // Minimum lot size requirement
- }
+       // Map API response to PropertyCard format - EXTRACT ALL DATA FROM REAL API
+       console.log('🔍 RAW API DATA:', data)
+       console.log('🔍 Planning Layers:', data.planningLayers)
+       console.log('🔍 Constraints:', data.constraints)
 
- setProperty(prev => ({ ...prev, ...mappedData }))
- console.log(' PropertyCard updated with data:', mappedData)
- }
- } catch (error) {
- console.error('Failed to fetch property data:', error)
- }
- setIsLoading(false)
+       // Extract SEPP overlays from Special Provisions layer
+       const specialProvisions = data.planningLayers?.find(layer =>
+         layer.layerName === 'Special Provisions'
+       )
+       const seppOverlays = specialProvisions?.results?.map(result => ({
+         seppName: result['EPI Name'] || result.title || 'Unknown SEPP',
+         mapType: result['Map Type'] || '',
+         value: result['Class'] || result['Type'] || '',
+         type: result['Type'] || ''
+       })) || []
+
+       // Check for heritage in layers
+       const heritageLayer = data.planningLayers?.find(layer =>
+         layer.layerName === 'Heritage Map' || layer.layerName.includes('Heritage')
+       )
+       const hasHeritage = !!heritageLayer?.results?.length || data.constraints?.heritage || data.heritage?.isHeritage
+
+       const mappedData = {
+         propId: data.propId,
+         address: data.address,
+         area: data.propertyArea,
+         zone: data.constraints?.zone,
+         lga: data.constraints?.lga,
+         landValue: data.landValue,
+         maxHeight: data.constraints?.maxHeight,
+         maxFsr: data.constraints?.maxFsr,
+         minLotSize: data.constraints?.minLotSize,
+         heritage: {
+           isHeritage: hasHeritage,
+           heritageType: data.heritage?.heritageType || data.constraints?.heritageType || (hasHeritage ? 'Heritage Conservation Area' : undefined),
+           heritageClause: heritageLayer?.results?.[0]?.['Legislative Clause'] || data.heritage?.heritageClause
+         },
+         environmental: {
+           acidSulfateSoils: data.constraints?.acidSulfateSoils || data.environmental?.acidSulfateSoils,
+           basixClimate: data.constraints?.basixClimate || data.environmental?.basixClimate,
+           basixWater: data.constraints?.basixWater || data.environmental?.basixWater,
+           floodProne: data.constraints?.floodProne || data.environmental?.floodProne || false,
+           bushfireProne: data.constraints?.bushfireProne || data.environmental?.bushfireProne || false
+         },
+         seppOverlays: seppOverlays
+       }
+
+       setProperty(prev => ({ ...prev, ...mappedData }))
+       console.log('PropertyCard updated with ALL data:', mappedData)
+     }
+   } catch (error) {
+     console.error('Failed to fetch property data:', error)
+   }
+   setIsLoading(false)
  }
 
  useEffect(() => {
- if (address) {
- fetchPropertyData(address)
- }
+   if (address) {
+     fetchPropertyData(address)
+   }
  }, [address])
 
  // Listen for address selection from header
  useEffect(() => {
- const handleAddressSelected = (event: CustomEvent) => {
- const newAddress = event.detail
- console.log(' PropertyCard received address event:', newAddress)
- setAddress(newAddress)
- }
+   const handleAddressSelected = (event: CustomEvent) => {
+     const newAddress = event.detail
+     console.log('PropertyCard received address event:', newAddress)
+     setAddress(newAddress)
+     // Emit to dashboard
+     const dashboardEvent = new CustomEvent('addressSelected', { detail: newAddress })
+     document.dispatchEvent(dashboardEvent)
+   }
 
- console.log(' PropertyCard setting up event listener for addressSelected')
- window.addEventListener('addressSelected', handleAddressSelected as EventListener)
- return () => {
- window.removeEventListener('addressSelected', handleAddressSelected as EventListener)
- }
+   document.addEventListener('addressSelected', handleAddressSelected as EventListener)
+   return () => {
+     document.removeEventListener('addressSelected', handleAddressSelected as EventListener)
+   }
  }, [])
 
+ if (isLoading) {
+   return (
+     <Card>
+       <CardContent className="p-6">
+         <div className="animate-pulse space-y-4">
+           <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+           <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+         </div>
+       </CardContent>
+     </Card>
+   )
+ }
 
  return (
- <Card className="shadow-sm border border-gray-200 bg-white">
- <CardContent className="p-6 space-y-4">
- <div>
- <label className="text-sm font-medium text-gray-700 mb-2 block">
- Current Property
- </label>
- <div className="p-3 bg-gray-50 rounded-md border">
- <div className="flex items-center gap-2">
- <MapPin className="h-4 w-4 text-gray-400" />
- <span className="text-sm font-medium text-gray-900">
- {address || 'No property selected'}
- </span>
- </div>
- {isLoading && (
- <div className="text-xs text-gray-500 mt-1">Loading property data...</div>
- )}
- </div>
- <div className="text-xs text-gray-500 mt-2 text-center">
- Use the search bar above to find a property
- </div>
- </div>
+   <div className="space-y-4">
+     {/* Address Search */}
+     <Card>
+       <CardHeader className="pb-3">
+         <CardTitle className="flex items-center gap-2 text-lg">
+           <Home className="h-5 w-5" />
+           Property Address
+         </CardTitle>
+       </CardHeader>
+       <CardContent>
+         <input
+           type="text"
+           value={address}
+           onChange={(e) => setAddress(e.target.value)}
+           placeholder="Enter property address..."
+           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+         />
+         {property.address && (
+           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+             <div className="flex items-center gap-2 text-sm">
+               <MapPin className="h-4 w-4 text-blue-600" />
+               <span className="font-medium">{property.address}</span>
+             </div>
+             {property.propId && (
+               <div className="text-xs text-gray-600 mt-1">
+                 Property ID: {property.propId}
+               </div>
+             )}
+           </div>
+         )}
+       </CardContent>
+     </Card>
 
- {address && property.area && (
- <div className="space-y-4 pt-4 border-t">
- {/* Property data pills in grid */}
- <div className="grid grid-cols-2 gap-3">
- {/* Zone pill */}
- <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <Layers className="h-4 w-4 text-blue-600" />
- <span className="text-xs font-medium text-blue-900">Zone</span>
- </div>
- <div className="text-sm font-semibold text-blue-900">
- {property.zone || 'R2'}
- </div>
- </div>
+     {/* Basic Property Info */}
+     {property.zone && (
+       <Card>
+         <CardHeader className="pb-3">
+           <CardTitle className="flex items-center gap-2 text-lg">
+             <Layers className="h-5 w-5" />
+             Basic Information
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-3">
+           <div className="grid grid-cols-2 gap-4 text-sm">
+             <div>
+               <span className="text-gray-600">Zone:</span>
+               <div className="font-medium">{property.zone}</div>
+             </div>
+             <div>
+               <span className="text-gray-600">LGA:</span>
+               <div className="font-medium">{property.lga}</div>
+             </div>
+             <div>
+               <span className="text-gray-600">Area:</span>
+               <div className="font-medium">{property.area}</div>
+             </div>
+             <div>
+               <span className="text-gray-600">Land Value:</span>
+               <div className="font-medium">{property.landValue}</div>
+             </div>
+           </div>
+         </CardContent>
+       </Card>
+     )}
 
- {/* Lot Size pill */}
- <div className="bg-green-50 border border-green-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <Ruler className="h-4 w-4 text-green-600" />
- <span className="text-xs font-medium text-green-900">Lot Size</span>
- </div>
- <div className="text-sm font-semibold text-green-900">
- {property.area || '650 sqm'}
- </div>
- </div>
+     {/* Development Standards */}
+     {(property.maxHeight || property.maxFsr || property.minLotSize) && (
+       <Card>
+         <CardHeader className="pb-3">
+           <CardTitle className="flex items-center gap-2 text-lg">
+             <Building className="h-5 w-5" />
+             Development Standards
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-3">
+           {property.maxHeight && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">Max Height:</span>
+               <Badge variant="outline">{property.maxHeight}m</Badge>
+             </div>
+           )}
+           {property.maxFsr && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">Max FSR:</span>
+               <Badge variant="outline">{property.maxFsr}:1</Badge>
+             </div>
+           )}
+           {property.minLotSize && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">Min Lot Size:</span>
+               <Badge variant="outline">{property.minLotSize}m²</Badge>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+     )}
 
- {/* Land Value pill */}
- <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <DollarSign className="h-4 w-4 text-yellow-600" />
- <span className="text-xs font-medium text-yellow-900">Land Value</span>
- </div>
- <div className="text-sm font-semibold text-yellow-900">
- {property.landValue || 'N/A'}
- </div>
- </div>
+     {/* Heritage Information - Always show, color coded */}
+     <Card className={`${property.heritage?.isHeritage ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
+       <CardHeader className="pb-3">
+         <CardTitle className={`flex items-center gap-2 text-lg ${property.heritage?.isHeritage ? 'text-orange-800' : 'text-gray-500'}`}>
+           <Shield className="h-5 w-5" />
+           Heritage Area
+         </CardTitle>
+       </CardHeader>
+       <CardContent>
+         {property.heritage?.isHeritage ? (
+           <div className="space-y-2">
+             <Badge className="bg-orange-100 text-orange-800 border-orange-300">
+               Heritage Protected
+             </Badge>
+             {property.heritage.heritageType && (
+               <div className="text-sm">
+                 <span className="text-gray-600">Type:</span>
+                 <div className="font-medium text-orange-800">{property.heritage.heritageType}</div>
+               </div>
+             )}
+             {property.heritage.heritageClause && (
+               <div className="text-sm">
+                 <span className="text-gray-600">Clause:</span>
+                 <div className="font-medium">{property.heritage.heritageClause}</div>
+               </div>
+             )}
+           </div>
+         ) : (
+           <div className="text-sm text-gray-500">
+             This property is not within a heritage area or conservation zone.
+           </div>
+         )}
+       </CardContent>
+     </Card>
 
- {/* Max Height pill */}
- <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <Building className="h-4 w-4 text-purple-600" />
- <span className="text-xs font-medium text-purple-900">Max Height</span>
- </div>
- <div className="text-sm font-semibold text-purple-900">
- {property.maxHeight !== null && property.maxHeight !== undefined ? `${property.maxHeight}m` : 'N/A'}
- </div>
- </div>
+     {/* Environmental Constraints */}
+     {(property.environmental?.acidSulfateSoils || property.environmental?.basixClimate || property.environmental?.basixWater || property.environmental?.floodProne || property.environmental?.bushfireProne) && (
+       <Card className="border-green-200 bg-green-50">
+         <CardHeader className="pb-3">
+           <CardTitle className="flex items-center gap-2 text-lg text-green-800">
+             <Leaf className="h-5 w-5" />
+             Environmental
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-3">
+           {property.environmental.acidSulfateSoils && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">Acid Sulfate Soils:</span>
+               <Badge variant="outline" className="bg-green-100 text-green-800">
+                 {property.environmental.acidSulfateSoils}
+               </Badge>
+             </div>
+           )}
+           {property.environmental.basixClimate && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">BASIX Climate:</span>
+               <Badge variant="outline" className="bg-green-100 text-green-800">
+                 Zone {property.environmental.basixClimate}
+               </Badge>
+             </div>
+           )}
+           {property.environmental.basixWater && (
+             <div className="flex justify-between items-center">
+               <span className="text-gray-600">BASIX Water:</span>
+               <Badge variant="outline" className="bg-green-100 text-green-800">
+                 {property.environmental.basixWater}
+               </Badge>
+             </div>
+           )}
+           {property.environmental.floodProne && (
+             <div className="flex items-center gap-2 text-sm">
+               <AlertTriangle className="h-4 w-4 text-amber-600" />
+               <span className="text-amber-800 font-medium">Flood Prone Area</span>
+             </div>
+           )}
+           {property.environmental.bushfireProne && (
+             <div className="flex items-center gap-2 text-sm">
+               <AlertTriangle className="h-4 w-4 text-red-600" />
+               <span className="text-red-800 font-medium">Bushfire Prone Area</span>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+     )}
 
- {/* Max FSR pill */}
- <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <BarChart3 className="h-4 w-4 text-indigo-600" />
- <span className="text-xs font-medium text-indigo-900">Max FSR</span>
- </div>
- <div className="text-sm font-semibold text-indigo-900">
- {property.maxFsr !== null && property.maxFsr !== undefined ? `${property.maxFsr}:1 sq m` : 'N/A'}
- </div>
- </div>
+     {/* SEPP Overlays */}
+     {property.seppOverlays && property.seppOverlays.length > 0 && (
+       <Card className="border-blue-200 bg-blue-50">
+         <CardHeader className="pb-3">
+           <CardTitle className="flex items-center gap-2 text-lg text-blue-800">
+             <AlertTriangle className="h-5 w-5" />
+             State Policies (SEPPs)
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-3">
+           {property.seppOverlays.map((sepp, index) => (
+             <div key={index} className="p-3 bg-white rounded-lg border border-blue-200">
+               <div className="text-sm">
+                 <div className="font-medium text-blue-800">{sepp.seppName}</div>
+                 <div className="text-gray-600 mt-1">{sepp.type}: {sepp.value}</div>
+                 {sepp.mapType && (
+                   <div className="text-xs text-gray-500 mt-1">Map Type: {sepp.mapType}</div>
+                 )}
+               </div>
+             </div>
+           ))}
+         </CardContent>
+       </Card>
+     )}
 
- {/* LGA pill */}
- <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
- <div className="flex items-center gap-2 mb-1">
- <MapPin className="h-4 w-4 text-gray-600" />
- <span className="text-xs font-medium text-gray-900">LGA</span>
- </div>
- <div className="text-sm font-semibold text-gray-900">
- {property.lga || 'Inner West Council'}
- </div>
- </div>
-
- {/* Minimum Lot Size pill - only show if we have the data */}
- {property.minLotSize && (
- <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 col-span-2">
- <div className="flex items-center gap-2 mb-1">
- <Ruler className="h-4 w-4 text-orange-600" />
- <span className="text-xs font-medium text-orange-900">Minimum Lot Size Required</span>
- </div>
- <div className="text-sm font-semibold text-orange-900">
- {property.minLotSize} sqm
- {property.area && (
- <span className="ml-2 text-xs font-normal">
- {(() => {
- const currentSize = parseFloat(property.area.replace(/[^\d.]/g, ''));
- const minSize = property.minLotSize;
- const isCompliant = currentSize >= minSize;
- return isCompliant
- ? <span className="text-green-700"> Compliant</span>
- : <span className="text-red-700"> Non-compliant</span>;
- })()}
- </span>
- )}
- </div>
- </div>
- )}
- </div>
-
- {/* Property ID if available */}
- {property.propId && (
- <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 mt-3">
- <div className="text-xs font-medium text-slate-900 mb-1">Property ID</div>
- <div className="text-sm font-semibold text-slate-900">#{property.propId}</div>
- </div>
- )}
- </div>
- )}
- </CardContent>
- </Card>
+     {/* No Data State */}
+     {!property.zone && !isLoading && address && (
+       <Card>
+         <CardContent className="p-6 text-center text-gray-500">
+           <Building className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+           <div className="text-lg mb-2">No Property Data Found</div>
+           <div className="text-sm">
+             Unable to retrieve planning data for this address.
+           </div>
+         </CardContent>
+       </Card>
+     )}
+   </div>
  )
 }
