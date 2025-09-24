@@ -1,0 +1,412 @@
+=== CONTEXTUAL_GUIDANCE_REAL (6,655 rows) ===
+
+Record 1:
+  id: 1159
+  document_id: State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation
+  guidance_type: context_policy_intent
+  guidance_title: State Environmental Planning Policy (Transport and Infrastructure) 2021
+  guidance_text: This version of the legislation is compiled and maintained in a database of legislation by the Parli...
+  page_number: None
+
+Record 2:
+  id: 1160
+  document_id: State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation
+  guidance_type: context_assessment_note
+  guidance_title: NSW Legislation website updates
+  guidance_text: Legislation on this site is usually updated within 3 working days after a change to the legislation.
+  page_number: None
+
+=== DEVELOPMENT_CONTROLS (4,526 rows) ===
+
+Record 1:
+  id: 1
+  provision_id: 19
+  control_type: height
+  control_subtype: storeys
+  value_numeric: 6.0
+  value_text: 6 storey
+
+Record 2:
+  id: 2
+  provision_id: 184
+  control_type: height
+  control_subtype: storeys
+  value_numeric: 6.0
+  value_text: 6 storey
+
+=== DEVELOPMENT_PATHWAYS (1 rows) ===
+
+Record 1:
+  id: 1
+  development_type: single_dwelling_house
+  zone: R2
+  qualification_criteria: {"height": {"max": 8.5, "unit": "m"}, "setback": {"front": {"min": 6, "unit": "m"}}, "site_coverage"...
+  pathway_type: exempt
+  confidence_score: 0.8
+
+=== DEVELOPMENT_PERMISSIONS (221 rows) ===
+
+Record 1:
+  id: 1
+  zone: E1
+  development_type: business_premises
+  permission_status: permitted
+  conditions: None
+  source_provision_id: 7658
+
+Record 2:
+  id: 2
+  zone: E1
+  development_type: office_premises
+  permission_status: permitted
+  conditions: None
+  source_provision_id: 7658
+
+=== DOCUMENTS (274 rows) ===
+
+Record 1:
+  id: Chapter_E2_Haberfield_Neighbourhood
+  pdf_name: Chapter E2 Haberfield Neighbourhood.pdf
+  document_type: DCP
+  document_area: None
+  pdf_path: output\Chapter E2 Haberfield Neighbourhood\auto\Chapter E2 Haberfield Neighbourhood.md
+  char_count: 55401
+
+Record 2:
+  id: Inner_West_Ashfield_DCP_2016____Preliminary,_Notification_and_Advertising___with_IWLEP_2022_amendmen...
+  pdf_name: Inner West Ashfield DCP 2016  - Preliminary, Notification and Advertising - with IWLEP 2022 amendmen...
+  document_type: DCP
+  document_area: Ashfield
+  pdf_path: output\Inner West Ashfield DCP 2016  - Preliminary, Notification and Advertising - with IWLEP 2022 a...
+  char_count: 19894
+
+=== KG_ENTITIES (1,394 rows) ===
+
+Record 1:
+  id: 1
+  entity_type: autoschemakg_entity
+  entity_name: Signage
+  entity_description: None
+  document_id: nsw_planning_doc_000
+  page_number: None
+
+Record 2:
+  id: 2
+  entity_type: autoschemakg_entity
+  entity_name: development_control
+  entity_description: None
+  document_id: nsw_planning_doc_000
+  page_number: None
+
+=== KG_RELATIONSHIPS (2,734 rows) ===
+
+Record 1:
+  id: 1
+  subject_text: Signage
+  predicate: is subject to
+  object_text: development_control
+  subject_entity_id: 1
+  object_entity_id: 2
+
+Record 2:
+  id: 2
+  subject_text: high-rise buildings
+  predicate: have signage that is limited by
+  object_text: height_limit
+  subject_entity_id: 3
+  object_entity_id: 4
+
+=== KG_RELATIONSHIPS_FROM_REFS (2,294 rows) ===
+
+Record 1:
+  id: 94
+  document_id: Marrickville_DCP_2011___9_0_Introduction
+  relationship_type: relationship_contains
+  relationship_context: Part 9 of this DCP divides the land where this DCP applies into 47 planning precincts.
+  page_number: 0
+  section_header: Introduction
+
+Record 2:
+  id: 95
+  document_id: Marrickville_DCP_2011___9_0_Introduction
+  relationship_type: relationship_may_contain
+  relationship_context: Heritage conservation areas if located within a precinct are referenced.
+  page_number: None
+  section_header: None
+
+=== PERMISSIBILITY_ANALYSIS (958 rows) ===
+
+Record 1:
+  id: 1
+  provision_id: 15432
+  zone: B1
+  pattern_type: permitted_with_consent
+  extracted_text: development control plan or condition of a development consent that is in force requires the car par...
+  development_types: None
+
+Record 2:
+  id: 2
+  provision_id: 15167
+  zone: B1
+  pattern_type: permitted_with_consent
+  extracted_text: development consent (other than a
+complying development certificate)
+  development_types: None
+
+=== QUALITY_METRICS (6 rows) ===
+
+Record 1:
+  id: 1
+  metric_name: total_combinations
+  metric_value: 221.0
+  target_value: 200.0
+  status: pass
+  details: {"value": 221, "target": 200, "status": "pass"}
+
+Record 2:
+  id: 2
+  metric_name: zone_coverage
+  metric_value: 22.0
+  target_value: 15.0
+  status: pass
+  details: {"value": 22, "target": 15, "status": "pass"}
+
+=== QUANTITATIVE_STANDARDS (832 rows) ===
+
+Record 1:
+  id: 1
+  provision_id: 118
+  numeric_value: 2.0
+  unit: m
+  qualifier: exactly
+  context: setback
+
+Record 2:
+  id: 2
+  provision_id: 118
+  numeric_value: 2.0
+  unit: m
+  qualifier: exactly
+  context: setback
+
+=== REGULATORY_PROVISIONS (22,105 rows) ===
+
+Record 1:
+  id: 1
+  document_id: Marrickville_DCP_2011___9_34_Tempe_Reserve
+  provision_type: clause|section
+  ref_number: 9.34
+  provision_text: 9.34 TEMPERESERVE
+Part 9 Strat
+  zone: B2
+
+Record 2:
+  id: 2
+  document_id: Marrickville_DCP_2011___9_34_Tempe_Reserve
+  provision_type: clause|section
+  ref_number: 9.34.1
+  provision_text: 9.34.1 Existing character...
+  zone: B2
+
+=== REGULATORY_PROVISIONS_CLEAN (9,364 rows) ===
+
+Record 1:
+  id: 1
+  document_id: Marrickville_DCP_2011___9_34_Tempe_Reserve
+  provision_type: clause|section
+  ref_number: 9.34
+  provision_text: 9.34 TEMPERESERVE
+Part 9 Strat
+  page_number: 4
+
+Record 2:
+  id: 2
+  document_id: Marrickville_DCP_2011___9_34_Tempe_Reserve
+  provision_type: clause|section
+  ref_number: 9.34.1
+  provision_text: 9.34.1 Existing character...
+  page_number: 4
+
+=== REGULATORY_REFS (2,698 rows) ===
+
+Record 1:
+  id: 19
+  document_id: Marrickville_DCP_2011___9_42_Camperdown_North
+  ref_type: height
+  ref_number: 9.42.1
+  ref_context: contemporary brick strata titled industrial units which are predominantly two to three storeys in he...
+  page_number: None
+
+Record 2:
+  id: 20
+  document_id: Marrickville_DCP_2011___9_42_Camperdown_North
+  ref_type: setback
+  ref_number: 9.42.1
+  ref_context: Most buildings are built to the street with a nil setback. Some of the industrial units in Hordern P...
+  page_number: 5
+
+=== REGULATORY_REFS_CORE (762 rows) ===
+
+Record 1:
+  id: 19
+  document_id: Marrickville_DCP_2011___9_42_Camperdown_North
+  ref_type: height
+  ref_number: 9.42.1
+  ref_context: contemporary brick strata titled industrial units which are predominantly two to three storeys in he...
+  page_number: None
+
+Record 2:
+  id: 20
+  document_id: Marrickville_DCP_2011___9_42_Camperdown_North
+  ref_type: setback
+  ref_number: 9.42.1
+  ref_context: Most buildings are built to the street with a nil setback. Some of the industrial units in Hordern P...
+  page_number: 5
+
+=== SEPP_LEP_OVERRIDES (91 rows) ===
+
+Record 1:
+  id: 1
+  sepp_provision_id: 12638
+  lep_clause_reference: 4
+  override_type: modifies
+  confidence_score: 0.6
+  extracted_text: In this Chapter�certified coastal management program means the following�(a)��a coastal management p...
+
+Record 2:
+  id: 2
+  sepp_provision_id: 12638
+  lep_clause_reference: 6(1)
+  override_type: modifies
+  confidence_score: 0.6
+  extracted_text: In this Chapter�certified coastal management program means the following�(a)��a coastal management p...
+
+=== SQLITE_SEQUENCE (13 rows) ===
+
+Record 1:
+  name: regulatory_refs
+  seq: 24028
+
+Record 2:
+  name: regulatory_provisions
+  seq: 22105
+
+=== SQLITE_STAT1 (52 rows) ===
+
+Record 1:
+  tbl: development_pathways
+  idx: idx_pathways_type_zone
+  stat: 1 1 1
+
+Record 2:
+  tbl: visual_elements_real
+  idx: None
+  stat: 3017
+
+=== TABLE_PARSING_RESULTS (63 rows) ===
+
+Record 1:
+  id: 1
+  provision_id: 7646
+  zone: E1
+  table_type: unknown
+  permissions_extracted: 0
+  parsing_status: no_permissions
+
+Record 2:
+  id: 2
+  provision_id: 7648
+  zone: E1
+  table_type: objective_list
+  permissions_extracted: 0
+  parsing_status: no_permissions
+
+=== VERIFICATION_TESTS (17 rows) ===
+
+Record 1:
+  id: 1
+  test_type: zone_query
+  test_name: Zone query: R1
+  input_parameters: {"zone": "R1"}
+  expected_result: {"minimum_dev_types": 3}
+  actual_result: {"dev_types_found": 14, "results": [["[\"dwelling_house\"]", "consent", 1], ["home_business", "conse...
+
+Record 2:
+  id: 2
+  test_type: zone_query
+  test_name: Zone query: R2
+  input_parameters: {"zone": "R2"}
+  expected_result: {"minimum_dev_types": 3}
+  actual_result: {"dev_types_found": 26, "results": [["\"retail_premises\"]", "consent", 1], ["[\"commercial_premises...
+
+=== VERIFIED_COMPLIANCE_RULES (6 rows) ===
+
+Record 1:
+  id: 1
+  rule_id: ASHFIELD_REAR_SETBACK_R2
+  jurisdiction: DCP
+  authority: Ashfield Council
+  lga: Inner West
+  zones: ["R2"]
+
+Record 2:
+  id: 2
+  rule_id: ASHFIELD_SIDE_SETBACK_R2
+  jurisdiction: DCP
+  authority: Ashfield Council
+  lga: Inner West
+  zones: ["R2"]
+
+=== VISUAL_ELEMENTS (1,473 rows) ===
+
+Record 1:
+  id: 1
+  provision_id: None
+  visual_type: figure
+  visual_path: images/edc040d35f5ed74a46f45b787053d882acada90b8fe635d1d24cb4df05714635.jpg
+  visual_description: Figure 1. Map of Haberfield Neighbourhood
+  page_number: 0
+
+Record 2:
+  id: 2
+  provision_id: None
+  visual_type: figure
+  visual_path: images/fcd198be5ed0a08e199fa3ee2c42c84599ade7da078b7725f714c39c0deef058.jpg
+  visual_description: Figure 2. Where additions should be located
+  page_number: 2
+
+=== VISUAL_ELEMENTS_REAL (3,017 rows) ===
+
+Record 1:
+  id: 1167
+  document_id: Marrickville_DCP_2011___9_27_Barwon_Park_South
+  visual_type: visual_reference
+  visual_description: Shows the boundaries and layout of Precinct 27.
+  page_number: None
+  section_header: None
+
+Record 2:
+  id: 1177
+  document_id: Marrickville_DCP_2011___9_33_Princes_Highway
+  visual_type: visual_reference
+  visual_description: A map showing the layout of Precinct 33.
+  page_number: None
+  section_header: None
+
+=== ZONE_SETBACK_RULES (6 rows) ===
+
+Record 1:
+  id: 7
+  rule_id: ASHFIELD_REAR_SETBACK_R2_R2_rear
+  zone: R2
+  council: Inner West
+  boundary_type: rear
+  base_value: 1.2
+
+Record 2:
+  id: 8
+  rule_id: ASHFIELD_SIDE_SETBACK_R2_R2_side
+  zone: R2
+  council: Inner West
+  boundary_type: side
+  base_value: 0.9
