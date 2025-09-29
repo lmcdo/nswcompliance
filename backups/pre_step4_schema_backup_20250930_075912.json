@@ -1,0 +1,197 @@
+{
+  "backup_timestamp": "2025-09-30T07:59:18.531858",
+  "backup_purpose": "Pre-Step4 safety backup (SEPP full text import)",
+  "schema": [
+    {
+      "table": "regulatory_provisions",
+      "column": "id",
+      "type": "integer",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "document_id",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "provision_type",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "ref_number",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "provision_text",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "zone",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "development_type",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "page_number",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "section_header",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "text_level",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "original_id",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "created_at",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "domain_classification",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "classification_confidence",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "cross_contamination_checked",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "prp_k1_enhanced",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "migration_id",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "zone_confidence",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "zone_inference_method",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "full_text_length",
+      "type": "integer",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "extraction_method",
+      "type": "text",
+      "max_length": null
+    },
+    {
+      "table": "regulatory_provisions",
+      "column": "last_updated",
+      "type": "timestamp without time zone",
+      "max_length": null
+    }
+  ],
+  "statistics": {
+    "total_provisions": 22105,
+    "autoschema_count": 22105,
+    "pymupdf_count": 0,
+    "avg_length": 143.29305586971273,
+    "min_length": 0,
+    "max_length": 1122
+  },
+  "sample_provisions": [
+    {
+      "id": 6079,
+      "ref_number": "2.1",
+      "full_text_length": 500,
+      "extraction_method": "autoschema",
+      "text_preview": "(1)\u00a0 Schedule 1 sets out the standards that apply to BASIX development referred to in paragraphs (a) and (b) of the\ndefinition of BASIX development in the Environmental Planning and Assessment Regulat"
+    },
+    {
+      "id": 6107,
+      "ref_number": "Section 3(2)",
+      "full_text_length": 285,
+      "extraction_method": "autoschema",
+      "text_preview": "The standard is that the average daily amount of mains-supplied potable water use attributable to an occupant of the development over a year must be less than the baseline, by at least the percentage "
+    },
+    {
+      "id": 6169,
+      "ref_number": "Table 1",
+      "full_text_length": 97,
+      "extraction_method": "autoschema",
+      "text_preview": "Percentage reductions in greenhouse gas emissions for different climate zones and building types."
+    },
+    {
+      "id": 6172,
+      "ref_number": "Table 4",
+      "full_text_length": 111,
+      "extraction_method": "autoschema",
+      "text_preview": "Climate zone standards for heating and cooling of dwellings in residential flat buildings and shop-top housing."
+    },
+    {
+      "id": 18945,
+      "ref_number": "Section 31",
+      "full_text_length": 500,
+      "extraction_method": "autoschema",
+      "text_preview": "(1) Development for the purposes of electricity generating works, industry or waste or resource management facilities\u2014\n(a) involving, or carried out to enable, the thermal treatment of waste involving"
+    },
+    {
+      "id": 19101,
+      "ref_number": "Development involving thermal treatment of waste for energy recovery",
+      "full_text_length": 87,
+      "extraction_method": "autoschema",
+      "text_preview": "Section 31 defines State significant development relating to thermal energy from waste."
+    },
+    {
+      "id": 19195,
+      "ref_number": "Section 31",
+      "full_text_length": 239,
+      "extraction_method": "autoschema",
+      "text_preview": "Development for the purposes of electricity generating works, industry or waste or resource management facilities involving thermal treatment of waste with energy recovery, exceeding specified cost th"
+    }
+  ]
+}
