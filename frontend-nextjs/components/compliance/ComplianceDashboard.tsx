@@ -35,6 +35,10 @@ export interface ComplianceConstraint {
     mapType?: string;
     keywords?: string[];
   };
+  lepMetadata?: {
+    documentId: string;
+    refNumber: string;
+  };
 }
 
 export interface ComplianceData {
@@ -141,6 +145,10 @@ export function ComplianceDashboard({
             clause: result['Legislative Clause'] || 'Clause 4.3',
             document: result['EPI Name'] || 'Local Environmental Plan',
             authority_level: 'LEP'
+          },
+          lepMetadata: {
+            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
+            refNumber: '4.3'
           }
         });
       }
@@ -163,6 +171,10 @@ export function ComplianceDashboard({
             clause: fsrResult['Legislative Clause'] || 'Clause 4.4',
             document: fsrResult['EPI Name'] || 'Local Environmental Plan',
             authority_level: 'LEP'
+          },
+          lepMetadata: {
+            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
+            refNumber: '4.4'
           }
         });
       }
@@ -279,10 +291,44 @@ export function ComplianceDashboard({
           }
         }
       } catch (error) {
-        console.error('[ComplianceDashboard] Failed to fetch provision:', error);
+        console.error('[ComplianceDashboard] Failed to fetch SEPP provision:', error);
+      }
+    }
+    // If LEP with metadata, fetch from database
+    else if (constraint.lepMetadata) {
+      try {
+        const response = await fetch('/api/lep/full-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            documentId: constraint.lepMetadata.documentId,
+            refNumber: constraint.lepMetadata.refNumber
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.provisions) {
+            const provisions = data.data.provisions.map((p: any) => ({
+              id: p.id,
+              ref_number: p.ref_number,
+              section_header: p.section_header || '',
+              provision_text: p.provision_text,
+              document_id: p.document_id
+            }));
+
+            setSelectedProvision({
+              constraint,
+              provisions
+            });
+            setPanelOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Failed to fetch LEP provision:', error);
       }
     } else {
-      // For non-SEPP, show with empty provisions (will display "no details available")
+      // For non-SEPP/LEP, show with empty provisions (will display "no details available")
       setSelectedProvision({
         constraint,
         provisions: []
