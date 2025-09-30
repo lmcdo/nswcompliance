@@ -56,11 +56,37 @@ import type { PropertyData } from '@/lib/property-data';
 
 interface ComplianceDashboardProps {
   propertyData: PropertyData;
+  developmentType?: string;
   className?: string;
+}
+
+// Map development type and zone to Chapter F section
+function getDCPSection(zone: string | null, devType: string): string {
+  if (!zone) return 'F.1'; // Default
+
+  const mapping: Record<string, { zones: string[], section: string }> = {
+    'dwelling_house': { zones: ['R1','R2','R3','R4'], section: 'F.1' },
+    'secondary_dwelling': { zones: ['R1','R2','R3','R4'], section: 'F.2' },
+    'shop_top_housing': { zones: ['R2','B1','B2','B4'], section: 'F.3' },
+    'multi_dwelling': { zones: ['R2','R3','R4'], section: 'F.4' },
+    'residential_flat': { zones: ['R3','R4','B1','B2','B4'], section: 'F.5' },
+    'boarding_house': { zones: ['*'], section: 'F.6' },
+    'residential_care': { zones: ['*'], section: 'F.7' },
+    'child_care': { zones: ['*'], section: 'F.8' },
+    'commercial': { zones: ['B1','B2','B4','IN1','IN2'], section: 'F.9' }
+  };
+
+  const config = mapping[devType];
+  if (config && (config.zones.includes('*') || config.zones.includes(zone))) {
+    return config.section;
+  }
+
+  return 'F.1'; // Default to dwelling house
 }
 
 export function ComplianceDashboard({
   propertyData,
+  developmentType = 'dwelling_house',
   className = ''
 }: ComplianceDashboardProps) {
   const [complianceData, setComplianceData] = useState<ComplianceData | null>(null);
@@ -202,17 +228,35 @@ export function ComplianceDashboard({
     const zone = propertyData.constraints.zone;
     const dcpDocId = 'Inner_West_Ashfield_DCP_2016___Chapter_F___Development_Category_with_IWLEP_2022_amendment';
 
+    // Get the correct Chapter F section based on zone + development type
+    const dcpSection = getDCPSection(zone, developmentType);
+
+    // Map development type to readable name
+    const devTypeNames: Record<string, string> = {
+      'dwelling_house': 'Dwelling Houses',
+      'secondary_dwelling': 'Secondary Dwellings',
+      'shop_top_housing': 'Shop Top Housing',
+      'multi_dwelling': 'Multi Dwelling Housing',
+      'residential_flat': 'Residential Flat Buildings',
+      'boarding_house': 'Boarding Houses',
+      'child_care': 'Child Care Centres',
+      'commercial': 'Commercial Premises'
+    };
+
+    const devTypeName = devTypeNames[developmentType] || 'Development';
+
     // Setback requirements (Priority 1 for certifiers)
     constraints.push({
       type: 'setback',
       value: 'See DCP',
       source: {
-        clause: 'Building Setbacks',
-        document: 'Inner West DCP 2016 - Chapter F',
+        clause: `${dcpSection} - Building Setbacks`,
+        document: `Inner West DCP 2016 - ${devTypeName}`,
         authority_level: 'DCP'
       },
       dcpMetadata: {
         documentId: dcpDocId,
+        controlNumber: dcpSection,
         chapter: 'F',
         category: 'setback'
       }
@@ -223,12 +267,13 @@ export function ComplianceDashboard({
       type: 'special',
       value: 'See DCP',
       source: {
-        clause: 'Car Parking',
-        document: 'Inner West DCP 2016 - Chapter F',
+        clause: `${dcpSection} - Car Parking`,
+        document: `Inner West DCP 2016 - ${devTypeName}`,
         authority_level: 'DCP'
       },
       dcpMetadata: {
         documentId: dcpDocId,
+        controlNumber: dcpSection,
         chapter: 'F',
         category: 'parking'
       }
@@ -239,20 +284,21 @@ export function ComplianceDashboard({
       type: 'environmental',
       value: 'See DCP',
       source: {
-        clause: 'Landscaping',
-        document: 'Inner West DCP 2016 - Chapter F',
+        clause: `${dcpSection} - Landscaping`,
+        document: `Inner West DCP 2016 - ${devTypeName}`,
         authority_level: 'DCP'
       },
       dcpMetadata: {
         documentId: dcpDocId,
+        controlNumber: dcpSection,
         chapter: 'F',
         category: 'landscaping'
       }
     });
 
-    console.log('[ComplianceDashboard] Extracted', constraints.length, 'DCP constraints');
+    console.log('[ComplianceDashboard] Extracted', constraints.length, `DCP constraints for ${dcpSection} (${devTypeName})`);
     return constraints;
-  }, [propertyData]);
+  }, [propertyData, developmentType]);
 
   // Load compliance data from real API
   useEffect(() => {

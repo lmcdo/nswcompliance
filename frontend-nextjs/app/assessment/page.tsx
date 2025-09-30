@@ -23,6 +23,7 @@ export default function AssessmentPage() {
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [developmentType, setDevelopmentType] = useState('dwelling_house');
 
   const handleAddressSelect = async (address: string) => {
     setSelectedAddress(address);
@@ -128,6 +129,28 @@ export default function AssessmentPage() {
                       <p className="font-medium text-sm">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
                     </div>
                   </div>
+
+                  {/* Development Type Selector */}
+                  <div className="border-t pt-3">
+                    <label className="text-sm text-gray-600 block mb-2">Development Type</label>
+                    <select
+                      value={developmentType}
+                      onChange={(e) => setDevelopmentType(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="dwelling_house">Dwelling House</option>
+                      <option value="secondary_dwelling">Secondary Dwelling</option>
+                      <option value="shop_top_housing">Shop Top Housing</option>
+                      <option value="multi_dwelling">Multi Dwelling Housing</option>
+                      <option value="residential_flat">Residential Flat Building</option>
+                      <option value="boarding_house">Boarding House</option>
+                      <option value="child_care">Child Care Centre</option>
+                      <option value="commercial">Commercial Premises</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Determines which DCP controls apply
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -150,6 +173,7 @@ export default function AssessmentPage() {
             {selectedProperty && (
               <ComplianceDashboard
                 propertyData={selectedProperty}
+                developmentType={developmentType}
                 className="transition-all duration-300 ease-in-out"
               />
             )}
