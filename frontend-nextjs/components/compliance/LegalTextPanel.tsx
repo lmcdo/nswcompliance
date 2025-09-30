@@ -58,21 +58,101 @@ export function LegalTextPanel({
 
   const { constraint, provisions } = selectedProvision;
 
-  // Format legal text - simplified approach with clear table sections
+  // Parse table from line-by-line format to HTML table
+  const parseLineByLineTable = (section: string) => {
+    const lines = section.split('\n').map(l => l.trim()).filter(Boolean);
+
+    // Find table name
+    let tableName = '';
+    let startIdx = 0;
+    if (lines[0]?.startsWith('Table ')) {
+      tableName = lines[0];
+      startIdx = 1;
+    }
+
+    // Find where columns start (lines with "Column X")
+    const columnStartIdx = lines.findIndex(l => l.match(/^Column\s+\d+$/));
+    if (columnStartIdx === -1) return null;
+
+    // Header is everything from start to columns
+    const headerParts = lines.slice(startIdx, columnStartIdx);
+    const columnHeaders = [];
+
+    // Collect column headers (Column 1, Column 2, etc.)
+    let i = columnStartIdx;
+    while (i < lines.length && lines[i].match(/^Column\s+\d+$/)) {
+      columnHeaders.push(lines[i]);
+      i++;
+    }
+
+    const numColumns = columnHeaders.length + 1; // +1 for first column (zone/climate)
+
+    // Data starts after column headers
+    const dataLines = lines.slice(i);
+
+    // Group data lines into rows
+    const rows: string[][] = [];
+    for (let j = 0; j < dataLines.length; j += numColumns) {
+      const row = dataLines.slice(j, j + numColumns);
+      if (row.length === numColumns) {
+        rows.push(row);
+      }
+    }
+
+    if (rows.length === 0) return null;
+
+    return (
+      <div className="my-4 overflow-x-auto">
+        {tableName && (
+          <div className="font-semibold text-sm mb-2">{tableName}</div>
+        )}
+        <table className="min-w-full border-collapse border border-gray-300 text-xs bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                {headerParts.join(' ')}
+              </th>
+              {columnHeaders.map((col, idx) => (
+                <th key={idx} className="border border-gray-300 px-3 py-2 text-left font-semibold">
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIdx) => (
+              <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                {row.map((cell, cellIdx) => (
+                  <td key={cellIdx} className="border border-gray-300 px-3 py-2">
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // Format legal text with smart table detection
   const formatLegalText = (text: string) => {
-    // For now, just show with proper spacing and let tables be readable as-is
-    // Split into paragraphs on double newlines or section markers
     const sections = text.split(/\n\n+/);
 
     return sections.map((section, idx) => {
       const trimmed = section.trim();
       if (!trimmed) return null;
 
-      // Check if this looks like a table section (has "Column" or starts with "Table")
+      // Check if this looks like a line-by-line table
       const hasTableData = /Column\s+\d+/.test(trimmed) || /^Table\s+\d+/m.test(trimmed);
 
       if (hasTableData) {
-        // Show as monospace with background
+        // Try to parse as table
+        const tableElement = parseLineByLineTable(trimmed);
+        if (tableElement) {
+          return <div key={`section-${idx}`}>{tableElement}</div>;
+        }
+        // Fallback to monospace if parsing fails
         return (
           <div key={`section-${idx}`} className="my-4 p-4 bg-gray-50 rounded border border-gray-200 overflow-x-auto">
             <pre className="font-mono text-xs whitespace-pre-wrap">{trimmed}</pre>
@@ -159,7 +239,7 @@ export function LegalTextPanel({
         </CardHeader>
 
         {/* Scrollable Content */}
-        <CardContent className="flex-1 overflow-y-auto pt-4">
+        <CardContent className="flex-1 overflow-y-auto pt-4" style={{ maxHeight: 'calc(100% - 200px)' }}>
           {loading && (
             <div className="flex items-center justify-center py-8">
               <div className="text-gray-500">Loading legal text...</div>
