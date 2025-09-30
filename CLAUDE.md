@@ -4,6 +4,13 @@
 - **MAIN REFERENCE**: `documentation/prps/PRP-A_MICRO_PIPELINE_IMPLEMENTATION.md`
 - **SESSION CONTROL**: Run `./prp_checkpoints/session_control.sh` to check next PRP
 
+### PRIMARY UI ROUTES (Quick Reference)
+- **Main Assessment Page**: `/assessment` (`frontend-nextjs/app/assessment/page.tsx`)
+  - 2-column layout: Planning API data (left) + SEPP/LEP/DCP provisions (right)
+  - Right column: ComplianceDashboard shows unfiltered provisions from database
+  - See: `frontend-nextjs/app/assessment/README.md` for details
+- **Dashboard Alternative**: `/assessment/dashboard` (same functionality, different entry point)
+
 ### DATABASE SAFETY - READ FIRST 
 - **NEVER connect to database without reading this section**
 - **ALWAYS run `./scripts/db_safety_check.sh` BEFORE any database work**
