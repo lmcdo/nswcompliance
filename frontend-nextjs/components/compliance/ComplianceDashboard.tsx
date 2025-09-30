@@ -39,6 +39,12 @@ export interface ComplianceConstraint {
     documentId: string;
     refNumber: string;
   };
+  dcpMetadata?: {
+    documentId: string;
+    controlNumber?: string;
+    chapter?: string;
+    category?: string;
+  };
 }
 
 export interface ComplianceData {
@@ -184,6 +190,70 @@ export function ComplianceDashboard({
     return constraints;
   }, [propertyData]);
 
+  // Extract DCP constraints (setbacks, parking, landscaping)
+  const extractDCPConstraints = useCallback((): ComplianceConstraint[] => {
+    const constraints: ComplianceConstraint[] = [];
+
+    // Only add DCP constraints if we have a zone
+    if (!propertyData.constraints?.zone) {
+      return constraints;
+    }
+
+    const zone = propertyData.constraints.zone;
+    const dcpDocId = 'Inner_West_Ashfield_DCP_2016___Chapter_F___Development_Category_with_IWLEP_2022_amendment';
+
+    // Setback requirements (Priority 1 for certifiers)
+    constraints.push({
+      type: 'setback',
+      value: 'See DCP',
+      source: {
+        clause: 'Building Setbacks',
+        document: 'Inner West DCP 2016 - Chapter F',
+        authority_level: 'DCP'
+      },
+      dcpMetadata: {
+        documentId: dcpDocId,
+        chapter: 'F',
+        category: 'setback'
+      }
+    });
+
+    // Car parking requirements (Priority 1 for certifiers)
+    constraints.push({
+      type: 'special',
+      value: 'See DCP',
+      source: {
+        clause: 'Car Parking',
+        document: 'Inner West DCP 2016 - Chapter F',
+        authority_level: 'DCP'
+      },
+      dcpMetadata: {
+        documentId: dcpDocId,
+        chapter: 'F',
+        category: 'parking'
+      }
+    });
+
+    // Landscaping requirements
+    constraints.push({
+      type: 'environmental',
+      value: 'See DCP',
+      source: {
+        clause: 'Landscaping',
+        document: 'Inner West DCP 2016 - Chapter F',
+        authority_level: 'DCP'
+      },
+      dcpMetadata: {
+        documentId: dcpDocId,
+        chapter: 'F',
+        category: 'landscaping'
+      }
+    });
+
+    console.log('[ComplianceDashboard] Extracted', constraints.length, 'DCP constraints');
+    return constraints;
+  }, [propertyData]);
+
   // Load compliance data from real API
   useEffect(() => {
     const loadComplianceData = async () => {
@@ -204,6 +274,9 @@ export function ComplianceDashboard({
 
         // Extract LEP constraints from Planning API (Height, FSR)
         const lepConstraints = extractLEPConstraints();
+
+        // Extract DCP constraints (setbacks, parking, landscaping)
+        const dcpConstraints = extractDCPConstraints();
 
         // Call real API endpoint for database provisions
         const response = await fetch('/api/compliance/constraints', {
@@ -232,14 +305,21 @@ export function ComplianceDashboard({
         console.log('[ComplianceDashboard] Loaded database constraints:', apiResponse.data);
         console.log('[ComplianceDashboard] Metadata:', apiResponse.metadata);
 
-        // Use Planning API provisions + LEP constraints
+        // Use Planning API provisions + LEP constraints + DCP constraints
         setComplianceData({
           building_envelope: [
             ...lepConstraints,  // LEP Height/FSR from Planning API
+            ...dcpConstraints.filter(c => c.type === 'setback'),  // DCP setbacks
             ...(apiResponse.data.building_envelope || [])
           ],
-          environmental: apiResponse.data.environmental || [],
-          special_provisions: planningAPIProvisions  // ONLY Planning API SEPP provisions
+          environmental: [
+            ...dcpConstraints.filter(c => c.type === 'environmental'),  // DCP landscaping
+            ...(apiResponse.data.environmental || [])
+          ],
+          special_provisions: [
+            ...planningAPIProvisions,  // ONLY Planning API SEPP provisions
+            ...dcpConstraints.filter(c => c.type === 'special')  // DCP parking
+          ]
         });
 
       } catch (err) {
@@ -253,7 +333,7 @@ export function ComplianceDashboard({
     if (propertyData) {
       loadComplianceData();
     }
-  }, [propertyData, extractPlanningAPIProvisions, extractLEPConstraints]);
+  }, [propertyData, extractPlanningAPIProvisions, extractLEPConstraints, extractDCPConstraints]);
 
   // Handler for opening slide-out panel
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
@@ -327,8 +407,44 @@ export function ComplianceDashboard({
       } catch (error) {
         console.error('[ComplianceDashboard] Failed to fetch LEP provision:', error);
       }
+    }
+    // If DCP with metadata, fetch from database
+    else if (constraint.dcpMetadata) {
+      try {
+        const response = await fetch('/api/dcp/full-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            documentId: constraint.dcpMetadata.documentId,
+            controlNumber: constraint.dcpMetadata.controlNumber,
+            chapter: constraint.dcpMetadata.chapter,
+            category: constraint.dcpMetadata.category
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.provisions) {
+            const provisions = data.data.provisions.map((p: any) => ({
+              id: p.id,
+              ref_number: p.ref_number,
+              section_header: p.section_header || '',
+              provision_text: p.provision_text,
+              document_id: p.document_id
+            }));
+
+            setSelectedProvision({
+              constraint,
+              provisions
+            });
+            setPanelOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Failed to fetch DCP provision:', error);
+      }
     } else {
-      // For non-SEPP/LEP, show with empty provisions (will display "no details available")
+      // For non-SEPP/LEP/DCP, show with empty provisions (will display "no details available")
       setSelectedProvision({
         constraint,
         provisions: []
