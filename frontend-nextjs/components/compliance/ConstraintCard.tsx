@@ -42,16 +42,25 @@ interface ConstraintCardProps {
   constraint: ComplianceConstraint;
   onViewDetails?: (constraint: ComplianceConstraint) => void;
   className?: string;
+  compact?: boolean;  // Compact mode for single-column list with slide-out panel
 }
 
 export function ConstraintCard({
   constraint,
   onViewDetails,
-  className = ''
+  className = '',
+  compact = false
 }: ConstraintCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [seppProvisions, setSeppProvisions] = useState<ProvisionContent[]>([]);
+
+  // Compact mode: just trigger callback, no inline expansion
+  const handleCompactView = useCallback(() => {
+    if (onViewDetails) {
+      onViewDetails(constraint);
+    }
+  }, [constraint, onViewDetails]);
 
   const handleToggleExpand = useCallback(async () => {
     // If expanding and no provisions loaded yet
@@ -170,6 +179,46 @@ export function ConstraintCard({
     }
   };
 
+  // Compact mode: single-column card with just value and [📄] button
+  if (compact) {
+    return (
+      <Card className={`${colors.border} ${colors.bg} border-l-4 transition-all hover:shadow-md ${className}`}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className={`text-lg ${colors.icon}`}>{getConstraintIcon(constraint.type)}</span>
+                <Badge variant="outline" className={`${colors.badge} text-xs`}>
+                  {constraint.source.authority_level}
+                </Badge>
+              </div>
+              <div className="font-bold text-xl text-gray-900">
+                {constraint.value}
+                {constraint.unit && <span className="text-base ml-1 text-gray-600">{constraint.unit}</span>}
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)} • {constraint.source.clause}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {constraint.source.document}
+              </div>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleCompactView}
+              className={`ml-4 gap-1 ${colors.text}`}
+            >
+              <FileText className="h-4 w-4" />
+              Full Text
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Full mode: original expandable card (fallback)
   return (
     <Card className={`${colors.border} ${colors.bg} border-2 transition-all hover:shadow-lg ${className}`}>
       <CardHeader className={`${colors.header} pb-3`}>

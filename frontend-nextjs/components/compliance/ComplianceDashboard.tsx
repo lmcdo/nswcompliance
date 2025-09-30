@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
+import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -56,6 +57,10 @@ export function ComplianceDashboard({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Slide-out panel state
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [selectedProvision, setSelectedProvision] = useState<SelectedProvision | null>(null);
+
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
     const specialProvisionsLayer = propertyData.planningLayers?.find(
@@ -75,11 +80,25 @@ export function ComplianceDashboard({
       const mapType = result['Map Type'] || '';
       const title = result.title || '';
 
+      // Format the display value
+      let displayValue = classValue || title;
+      let displayUnit = undefined;
+
+      // For percentage values (Water Use), remove % from value since we'll add it as unit
+      if (type.includes('%') && displayValue.includes('%')) {
+        displayValue = displayValue.replace('%', '');
+        displayUnit = '%';
+      }
+      // For Climate Zones, prefix with "Class"
+      else if (type.toLowerCase().includes('climate')) {
+        displayValue = `Class ${classValue}`;
+      }
+
       // Create constraint for each Special Provision with metadata for full text fetching
       provisions.push({
         type: 'special',
-        value: classValue || title,
-        unit: type.includes('%') ? '%' : undefined,
+        value: displayValue,
+        unit: displayUnit,
         source: {
           clause: `${mapType || 'Special'} - ${type}`,
           document: epiName,
@@ -102,6 +121,57 @@ export function ComplianceDashboard({
     return provisions;
   }, [propertyData]);
 
+  // Extract LEP constraints from Planning API (Height, FSR)
+  const extractLEPConstraints = useCallback((): ComplianceConstraint[] => {
+    const constraints: ComplianceConstraint[] = [];
+
+    // Height of Buildings Map
+    const heightLayer = propertyData.planningLayers?.find(
+      layer => layer.layerName === 'Height of Buildings Map'
+    );
+    if (heightLayer?.results?.[0]) {
+      const result = heightLayer.results[0];
+      const height = result['Maximum Building Height'];
+      if (height) {
+        constraints.push({
+          type: 'height',
+          value: parseFloat(height),
+          unit: 'm',
+          source: {
+            clause: result['Legislative Clause'] || 'Clause 4.3',
+            document: result['EPI Name'] || 'Local Environmental Plan',
+            authority_level: 'LEP'
+          }
+        });
+      }
+    }
+
+    // Floor Space Ratio Map
+    const fsrLayer = propertyData.planningLayers?.find(
+      layer => layer.layerName === 'Floor Space Ratio Map'
+    );
+    if (fsrLayer?.results) {
+      // Find the result with actual FSR value (not the amendment-only entry)
+      const fsrResult = fsrLayer.results.find(r => r['Floor Space Ratio']);
+      if (fsrResult) {
+        const fsr = fsrResult['Floor Space Ratio'];
+        constraints.push({
+          type: 'fsr',
+          value: parseFloat(fsr),
+          unit: ':1',
+          source: {
+            clause: fsrResult['Legislative Clause'] || 'Clause 4.4',
+            document: fsrResult['EPI Name'] || 'Local Environmental Plan',
+            authority_level: 'LEP'
+          }
+        });
+      }
+    }
+
+    console.log('[ComplianceDashboard] Extracted', constraints.length, 'LEP constraints');
+    return constraints;
+  }, [propertyData]);
+
   // Load compliance data from real API
   useEffect(() => {
     const loadComplianceData = async () => {
@@ -119,6 +189,9 @@ export function ComplianceDashboard({
 
         // Extract NSW Planning API Special Provisions FIRST (priority display)
         const planningAPIProvisions = extractPlanningAPIProvisions();
+
+        // Extract LEP constraints from Planning API (Height, FSR)
+        const lepConstraints = extractLEPConstraints();
 
         // Call real API endpoint for database provisions
         const response = await fetch('/api/compliance/constraints', {
@@ -147,9 +220,12 @@ export function ComplianceDashboard({
         console.log('[ComplianceDashboard] Loaded database constraints:', apiResponse.data);
         console.log('[ComplianceDashboard] Metadata:', apiResponse.metadata);
 
-        // Use ONLY Planning API Special Provisions (not database unfiltered provisions)
+        // Use Planning API provisions + LEP constraints
         setComplianceData({
-          building_envelope: apiResponse.data.building_envelope || [],
+          building_envelope: [
+            ...lepConstraints,  // LEP Height/FSR from Planning API
+            ...(apiResponse.data.building_envelope || [])
+          ],
           environmental: apiResponse.data.environmental || [],
           special_provisions: planningAPIProvisions  // ONLY Planning API SEPP provisions
         });
@@ -165,7 +241,55 @@ export function ComplianceDashboard({
     if (propertyData) {
       loadComplianceData();
     }
-  }, [propertyData, extractPlanningAPIProvisions]);
+  }, [propertyData, extractPlanningAPIProvisions, extractLEPConstraints]);
+
+  // Handler for opening slide-out panel
+  const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
+    console.log('[ComplianceDashboard] Opening panel for:', constraint);
+
+    // If SEPP with metadata, fetch full text
+    if (constraint.seppMetadata) {
+      try {
+        const response = await fetch('/api/sepp/full-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            epiName: constraint.seppMetadata.epiName,
+            keywords: constraint.seppMetadata.keywords,
+            mapType: constraint.seppMetadata.mapType
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.provisions) {
+            const provisions = data.data.provisions.map((p: any) => ({
+              id: p.id,
+              ref_number: p.clause,
+              section_header: p.sectionHeader || '',
+              provision_text: p.fullText,
+              document_id: p.documentId
+            }));
+
+            setSelectedProvision({
+              constraint,
+              provisions
+            });
+            setPanelOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Failed to fetch provision:', error);
+      }
+    } else {
+      // For non-SEPP, show with empty provisions (will display "no details available")
+      setSelectedProvision({
+        constraint,
+        provisions: []
+      });
+      setPanelOpen(true);
+    }
+  }, []);
 
   // Handle provision detail requests
   const handleViewDetails = useCallback(async (constraint: ComplianceConstraint) => {
@@ -284,6 +408,15 @@ export function ComplianceDashboard({
         />
       )}
 
+      {/* Flex Layout: Constraints List + Slide-Out Panel */}
+      <div className="flex gap-4" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
+        {/* Left: Constraints List (expands/contracts with panel) */}
+        <div className={`
+          transition-all duration-300 ease-in-out
+          ${panelOpen ? 'w-[40%]' : 'w-full'}
+          space-y-4 overflow-y-auto h-full
+        `}>
+
       {/* SEPP Special Provisions Section - PRIORITY */}
       {complianceData?.special_provisions &&
        complianceData.special_provisions.filter(p => p.source.authority_level === 'SEPP').length > 0 && (
@@ -298,14 +431,15 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {complianceData.special_provisions
                 .filter(p => p.source.authority_level === 'SEPP')
                 .map((constraint, index) => (
                 <ConstraintCard
                   key={`sepp-${index}`}
                   constraint={constraint}
-                  onViewDetails={handleViewDetails}
+                  onViewDetails={handleViewProvision}
+                  compact={true}
                 />
               ))}
             </div>
@@ -327,14 +461,15 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {complianceData.building_envelope
                 .filter(c => c.source.authority_level === 'LEP')
                 .map((constraint, index) => (
                 <ConstraintCard
                   key={`lep-envelope-${index}`}
                   constraint={constraint}
-                  onViewDetails={handleViewDetails}
+                  onViewDetails={handleViewProvision}
+                  compact={true}
                 />
               ))}
             </div>
@@ -356,14 +491,15 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {complianceData.building_envelope
                 .filter(c => c.source.authority_level === 'DCP')
                 .map((constraint, index) => (
                 <ConstraintCard
                   key={`dcp-${index}`}
                   constraint={constraint}
-                  onViewDetails={handleViewDetails}
+                  onViewDetails={handleViewProvision}
+                  compact={true}
                 />
               ))}
             </div>
@@ -381,12 +517,13 @@ export function ComplianceDashboard({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="space-y-3">
               {complianceData.environmental.map((constraint, index) => (
                 <ConstraintCard
                   key={`environmental-${index}`}
                   constraint={constraint}
-                  onViewDetails={handleViewDetails}
+                  onViewDetails={handleViewProvision}
+                  compact={true}
                 />
               ))}
             </div>
@@ -394,20 +531,35 @@ export function ComplianceDashboard({
         </Card>
       )}
 
-      {/* Empty State */}
-      {(!complianceData ||
-        (complianceData.building_envelope.length === 0 &&
-         complianceData.environmental.length === 0 &&
-         complianceData.special_provisions.length === 0)) && (
-        <Card>
-          <CardContent className="p-8 text-center text-gray-500">
-            <div className="text-lg mb-2">No Compliance Data Available</div>
-            <div className="text-sm">
-              Compliance constraints could not be loaded for this property.
-            </div>
-          </CardContent>
-        </Card>
-      )}
+          {/* Empty State */}
+          {(!complianceData ||
+            (complianceData.building_envelope.length === 0 &&
+             complianceData.environmental.length === 0 &&
+             complianceData.special_provisions.length === 0)) && (
+            <Card>
+              <CardContent className="p-8 text-center text-gray-500">
+                <div className="text-lg mb-2">No Compliance Data Available</div>
+                <div className="text-sm">
+                  Compliance constraints could not be loaded for this property.
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right: Slide-Out Legal Text Panel */}
+        <div className={`
+          transition-all duration-300 ease-in-out overflow-hidden h-full
+          ${panelOpen ? 'w-[60%] opacity-100' : 'w-0 opacity-0'}
+        `}>
+          {panelOpen && (
+            <LegalTextPanel
+              selectedProvision={selectedProvision}
+              onClose={() => setPanelOpen(false)}
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
