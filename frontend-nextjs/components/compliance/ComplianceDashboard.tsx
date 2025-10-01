@@ -60,29 +60,8 @@ interface ComplianceDashboardProps {
   className?: string;
 }
 
-// Map development type and zone to Chapter F section
-function getDCPSection(zone: string | null, devType: string): string {
-  if (!zone) return 'F.1'; // Default
-
-  const mapping: Record<string, { zones: string[], section: string }> = {
-    'dwelling_house': { zones: ['R1','R2','R3','R4'], section: 'F.1' },
-    'secondary_dwelling': { zones: ['R1','R2','R3','R4'], section: 'F.2' },
-    'shop_top_housing': { zones: ['R2','B1','B2','B4'], section: 'F.3' },
-    'multi_dwelling': { zones: ['R2','R3','R4'], section: 'F.4' },
-    'residential_flat': { zones: ['R3','R4','B1','B2','B4'], section: 'F.5' },
-    'boarding_house': { zones: ['*'], section: 'F.6' },
-    'residential_care': { zones: ['*'], section: 'F.7' },
-    'child_care': { zones: ['*'], section: 'F.8' },
-    'commercial': { zones: ['B1','B2','B4','IN1','IN2'], section: 'F.9' }
-  };
-
-  const config = mapping[devType];
-  if (config && (config.zones.includes('*') || config.zones.includes(zone))) {
-    return config.section;
-  }
-
-  return 'F.1'; // Default to dwelling house
-}
+// ✓ REMOVED: Hard-coded DCP section mapping
+// Now handled dynamically by API based on database content
 
 export function ComplianceDashboard({
   propertyData,
@@ -92,6 +71,7 @@ export function ComplianceDashboard({
   const [complianceData, setComplianceData] = useState<ComplianceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [permissionStatus, setPermissionStatus] = useState<string | null>(null);
 
   // Slide-out panel state
   const [panelOpen, setPanelOpen] = useState(false);
@@ -216,91 +196,8 @@ export function ComplianceDashboard({
     return constraints;
   }, [propertyData]);
 
-  // Extract DCP constraints (setbacks, parking, landscaping)
-  const extractDCPConstraints = useCallback((): ComplianceConstraint[] => {
-    const constraints: ComplianceConstraint[] = [];
-
-    // Only add DCP constraints if we have a zone
-    if (!propertyData.constraints?.zone) {
-      return constraints;
-    }
-
-    const zone = propertyData.constraints.zone;
-    const dcpDocId = 'Inner_West_Ashfield_DCP_2016___Chapter_F___Development_Category_with_IWLEP_2022_amendment';
-
-    // Get the correct Chapter F section based on zone + development type
-    const dcpSection = getDCPSection(zone, developmentType);
-
-    // Map development type to readable name
-    const devTypeNames: Record<string, string> = {
-      'dwelling_house': 'Dwelling Houses',
-      'secondary_dwelling': 'Secondary Dwellings',
-      'shop_top_housing': 'Shop Top Housing',
-      'multi_dwelling': 'Multi Dwelling Housing',
-      'residential_flat': 'Residential Flat Buildings',
-      'boarding_house': 'Boarding Houses',
-      'child_care': 'Child Care Centres',
-      'commercial': 'Commercial Premises'
-    };
-
-    const devTypeName = devTypeNames[developmentType] || 'Development';
-
-    // Setback requirements (Priority 1 for certifiers)
-    constraints.push({
-      type: 'setback',
-      value: 'See DCP',
-      source: {
-        clause: `${dcpSection} - Building Setbacks`,
-        document: `Inner West DCP 2016 - ${devTypeName}`,
-        authority_level: 'DCP'
-      },
-      dcpMetadata: {
-        documentId: dcpDocId,
-        controlNumber: dcpSection,
-        chapter: 'F',
-        category: 'setback'
-      }
-    });
-
-    // Car parking requirements (Priority 1 for certifiers)
-    constraints.push({
-      type: 'special',
-      value: 'See DCP',
-      source: {
-        clause: `${dcpSection} - Car Parking`,
-        document: `Inner West DCP 2016 - ${devTypeName}`,
-        authority_level: 'DCP'
-      },
-      dcpMetadata: {
-        documentId: dcpDocId,
-        controlNumber: dcpSection,
-        chapter: 'F',
-        category: 'parking'
-      }
-    });
-
-    // Landscaping requirements
-    constraints.push({
-      type: 'environmental',
-      value: 'See DCP',
-      source: {
-        clause: `${dcpSection} - Landscaping`,
-        document: `Inner West DCP 2016 - ${devTypeName}`,
-        authority_level: 'DCP'
-      },
-      dcpMetadata: {
-        documentId: dcpDocId,
-        controlNumber: dcpSection,
-        chapter: 'F',
-        category: 'landscaping'
-      }
-    });
-
-    console.log('[ComplianceDashboard] Extracted', constraints.length, `DCP constraints for ${dcpSection} (${devTypeName})`);
-    return constraints;
-  }, [propertyData, developmentType]);
-
   // Load compliance data from real API
+  // Note: DCP constraints now come from database via API (development_controls + zone_setback_rules)
   useEffect(() => {
     const loadComplianceData = async () => {
       try {
@@ -321,8 +218,35 @@ export function ComplianceDashboard({
         // Extract LEP constraints from Planning API (Height, FSR)
         const lepConstraints = extractLEPConstraints();
 
-        // Extract DCP constraints (setbacks, parking, landscaping)
-        const dcpConstraints = extractDCPConstraints();
+        // Note: DCP constraints now come from database API, not frontend extraction
+
+        // Extract clause numbers from Planning API layers (generic per LGA)
+        const planningApiClauses: string[] = [];
+
+        // Extract clauses from all Planning API layers
+        if (propertyData.planningLayers) {
+          for (const layer of propertyData.planningLayers) {
+            if (layer.results) {
+              for (const result of layer.results) {
+                // Look for Legislative Clause field (NSW Planning Portal standard)
+                const clause = result['Legislative Clause'] ||
+                               result['legislative_clause'] ||
+                               result['Clause'] ||
+                               result['clause'];
+
+                if (clause && typeof clause === 'string') {
+                  planningApiClauses.push(clause);
+                  console.log(`[ComplianceDashboard] Extracted clause ${clause} from ${layer.layerName}`);
+                }
+              }
+            }
+          }
+        }
+
+        // Remove duplicates
+        const uniqueClauses = Array.from(new Set(planningApiClauses));
+
+        console.log('[ComplianceDashboard] Planning API clauses for SEPP override matching:', uniqueClauses);
 
         // Call real API endpoint for database provisions
         const response = await fetch('/api/compliance/constraints', {
@@ -333,8 +257,10 @@ export function ComplianceDashboard({
           body: JSON.stringify({
             address: propertyData.address,
             zone: propertyData.constraints.zone,
-            developmentType: propertyData.developmentType || undefined,
-            propId: propertyData.propId
+            lga: propertyData.constraints?.lga,
+            developmentType: developmentType,
+            propId: propertyData.propId,
+            planningApiClauses: uniqueClauses  // Pass extracted clauses (generic per LGA)
           })
         });
 
@@ -351,20 +277,25 @@ export function ComplianceDashboard({
         console.log('[ComplianceDashboard] Loaded database constraints:', apiResponse.data);
         console.log('[ComplianceDashboard] Metadata:', apiResponse.metadata);
 
-        // Use Planning API provisions + LEP constraints + DCP constraints
+        // Set permission status from API response
+        if (apiResponse.data.permission_status) {
+          setPermissionStatus(apiResponse.data.permission_status);
+          console.log('[ComplianceDashboard] Permission status:', apiResponse.data.permission_status);
+        }
+
+        // Use Planning API provisions + LEP constraints + Database DCP constraints
+        // Note: dcpConstraints are just placeholders, real DCP data comes from API
         setComplianceData({
           building_envelope: [
             ...lepConstraints,  // LEP Height/FSR from Planning API
-            ...dcpConstraints.filter(c => c.type === 'setback'),  // DCP setbacks
-            ...(apiResponse.data.building_envelope || [])
+            ...(apiResponse.data.building_envelope || [])  // Database provisions (includes DCP)
           ],
           environmental: [
-            ...dcpConstraints.filter(c => c.type === 'environmental'),  // DCP landscaping
-            ...(apiResponse.data.environmental || [])
+            ...(apiResponse.data.environmental || [])  // Database provisions (includes DCP)
           ],
           special_provisions: [
             ...planningAPIProvisions,  // ONLY Planning API SEPP provisions
-            ...dcpConstraints.filter(c => c.type === 'special')  // DCP parking
+            ...(apiResponse.data.special_provisions || [])  // Database provisions (includes DCP)
           ]
         });
 
@@ -379,11 +310,21 @@ export function ComplianceDashboard({
     if (propertyData) {
       loadComplianceData();
     }
-  }, [propertyData, extractPlanningAPIProvisions, extractLEPConstraints, extractDCPConstraints]);
+  }, [propertyData, developmentType, extractPlanningAPIProvisions, extractLEPConstraints]);
 
   // Handler for opening slide-out panel
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
     console.log('[ComplianceDashboard] Opening panel for:', constraint);
+
+    // If constraint already has provisions, use them directly
+    if (constraint.provisions && constraint.provisions.length > 0) {
+      setSelectedProvision({
+        constraint,
+        provisions: constraint.provisions
+      });
+      setPanelOpen(true);
+      return;
+    }
 
     // If SEPP with metadata, fetch full text
     if (constraint.seppMetadata) {
@@ -418,6 +359,41 @@ export function ComplianceDashboard({
         }
       } catch (error) {
         console.error('[ComplianceDashboard] Failed to fetch SEPP provision:', error);
+      }
+    }
+    // If SEPP override with provision_id, fetch by ID
+    else if (constraint.source.authority_level === 'SEPP' && constraint.provision_id) {
+      try {
+        console.log('[ComplianceDashboard] Fetching SEPP override by provision ID:', constraint.provision_id);
+
+        const response = await fetch('/api/sepp/full-text', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provisionId: constraint.provision_id
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.provisions) {
+            const provisions = data.data.provisions.map((p: any) => ({
+              id: p.id,
+              ref_number: p.clause,
+              section_header: p.sectionHeader || '',
+              provision_text: p.fullText,
+              document_id: p.documentId
+            }));
+
+            setSelectedProvision({
+              constraint,
+              provisions
+            });
+            setPanelOpen(true);
+          }
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Failed to fetch SEPP override provision:', error);
       }
     }
     // If LEP with metadata, fetch from database
@@ -595,6 +571,51 @@ export function ComplianceDashboard({
           </div>
         </CardHeader>
         <CardContent>
+          {/* Permission Status Badge */}
+          {permissionStatus && (
+            <div className="mb-4">
+              {permissionStatus === 'exempt' && (
+                <div className="bg-green-100 border border-green-300 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">✓</span>
+                    <div>
+                      <div className="font-semibold text-green-800">Exempt Development</div>
+                      <div className="text-sm text-green-700">
+                        No Development Application required if standards are met
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {permissionStatus === 'complying' && (
+                <div className="bg-blue-100 border border-blue-300 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">📋</span>
+                    <div>
+                      <div className="font-semibold text-blue-800">Complying Development</div>
+                      <div className="text-sm text-blue-700">
+                        Complying Development Certificate (CDC) pathway available if standards are met
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {permissionStatus === 'consent_required' && (
+                <div className="bg-orange-100 border border-orange-300 rounded-lg px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">⚠</span>
+                    <div>
+                      <div className="font-semibold text-orange-800">Development Approval Required</div>
+                      <div className="text-sm text-orange-700">
+                        Full Development Application (DA) required
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quick Reference Strip */}
           <div className="bg-gray-50 px-4 py-2 rounded-lg text-sm font-mono">
             {getQuickReference()}

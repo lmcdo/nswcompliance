@@ -22,6 +22,39 @@ export interface ProvisionContent {
   document_id: string;
 }
 
+// Truncated text component with "Show more..." button
+function TruncatedFormattedText({
+  text,
+  wordLimit = 200,
+  formatter
+}: {
+  text: string;
+  wordLimit?: number;
+  formatter: (text: string) => React.ReactNode;
+}) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const words = text.split(/\s+/);
+  const shouldTruncate = words.length > wordLimit;
+  const displayText = shouldTruncate && !isExpanded
+    ? words.slice(0, wordLimit).join(' ') + '...'
+    : text;
+
+  return (
+    <div className="text-sm text-gray-800 leading-relaxed">
+      {formatter(displayText)}
+      {shouldTruncate && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-blue-600 hover:text-blue-800 mt-2 font-medium block"
+        >
+          {isExpanded ? 'Show less' : 'Show more...'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export interface SelectedProvision {
   constraint: {
     type: string;
@@ -57,6 +90,75 @@ export function LegalTextPanel({
   }
 
   const { constraint, provisions } = selectedProvision;
+
+  // Parse alternating line table (e.g., Site area / FSR tables in LEP)
+  // Format: Line 1=Header1, Line 2=Header2, Line 3=Data1, Line 4=Data2, etc.
+  const parseAlternatingLineTable = (section: string) => {
+    const lines = section.split('\n').map(l => l.trim()).filter(Boolean);
+
+    if (lines.length < 4) return null; // Need at least 2 headers + 2 data values
+
+    // First two lines MUST be table headers (short, specific keywords)
+    const header1 = lines[0];
+    const header2 = lines[1];
+
+    // Strict header validation
+    const isTableHeader1 = /^(Site area|Minimum lot size|Zone|Climate zone)$/i.test(header1);
+    const isTableHeader2 = /^(Maximum floor space ratio|Maximum building height|Minimum lot size|Column \d+)$/i.test(header2);
+
+    if (!isTableHeader1 || !isTableHeader2) return null;
+
+    // Data lines start at index 2
+    const dataLines = lines.slice(2);
+
+    // Must have even number of data lines (pairs)
+    if (dataLines.length % 2 !== 0) return null;
+
+    // Validate data lines: Should be SHORT (not full sentences)
+    // Table data is typically: "< 150m2", "0.9:1", "≥ 150 < 300m2"
+    // NOT: "(b) on land identified as..." (clause text)
+    const allDataValid = dataLines.every(line => {
+      // Reject clause markers
+      if (/^\([a-z0-9]+\)/i.test(line)) return false;
+
+      // Reject long sentences (table data is concise)
+      if (line.length > 50) return false;
+
+      // Reject lines with common clause words
+      if (/identified|shown|specified|purposes|may be|must be/i.test(line)) return false;
+
+      return true;
+    });
+
+    if (!allDataValid) return null;
+
+    // Group into rows
+    const rows: string[][] = [];
+    for (let i = 0; i < dataLines.length; i += 2) {
+      rows.push([dataLines[i], dataLines[i + 1]]);
+    }
+
+    return (
+      <div className="my-4 overflow-x-auto">
+        <table className="min-w-full border-collapse border border-gray-300 text-xs bg-white">
+          <thead className="bg-gray-100">
+            <tr>
+              <th className="border border-gray-300 px-3 py-2 text-left font-semibold">{header1}</th>
+              <th className="border border-gray-300 px-3 py-2 text-left font-semibold">{header2}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, rowIdx) => (
+              <tr key={rowIdx} className={rowIdx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="border border-gray-300 px-3 py-2">{row[0]}</td>
+                <td className="border border-gray-300 px-3 py-2">{row[1]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   // Parse table from line-by-line format to HTML table
   const parseLineByLineTable = (section: string) => {
@@ -135,38 +237,186 @@ export function LegalTextPanel({
     );
   };
 
-  // Format legal text with smart table detection
+  // Add non-breaking spaces to prevent awkward line breaks in legal text
+  const preventAwkwardBreaks = (text: string): string => {
+    // Common legal measurement patterns: "X m", "X km", "X ha", etc.
+    // Pattern: number + unit (with optional space) - keep together
+    text = text.replace(/(\d+(?:\.\d+)?)\s*(m²|m2|km²|km2|ha|m|km|mm|cm)(?=\s|$|,|\.)/gi, '$1\u00A0$2');
+
+    // Ratio patterns: "X:Y" - keep together with surrounding numbers
+    text = text.replace(/(\d+(?:\.\d+)?)\s*:\s*(\d+)/g, '$1:\u00A0$2');
+
+    // Keep preposition + article + noun together: "of the", "on the", "in the", "to the"
+    text = text.replace(/\b(of|on|in|to|at|by|for|with|from)\s+(the|a|an)\s+/gi, '$1 $2\u00A0');
+
+    // Keep compound proper nouns together: "Height of Buildings Map", "Floor Space Ratio Map"
+    // Pattern: Capitalized word + "of" + Capitalized word (+ optional "Map")
+    text = text.replace(/\b([A-Z][a-z]+)\s+of\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?(?:\s+Map)?)\b/g,
+      (match) => match.replace(/\s+/g, '\u00A0'));
+
+    // Keep "Area X", "Zone X", "Column X", "Clause X" together
+    text = text.replace(/\b(Area|Zone|Column|Clause|Section|Schedule|Part|Division|Chapter)\s+(\d+[A-Z]?)/gi, '$1\u00A0$2');
+
+    // Keep quoted references together: "Area 1", "Area 2"
+    text = text.replace(/[""]([^"""]+)[""]/g, (match) => match.replace(/\s+/g, '\u00A0'));
+
+    return text;
+  };
+
+  // Remove document metadata and footer text (version info, page numbers, etc.)
+  const removeDocumentMetadata = (text: string): string => {
+    // Remove "Current version for [date] to date (accessed [date] at [time])" lines
+    // Pattern: "Current version for" + any date text + "accessed" + any date/time
+    text = text.replace(/Current version for[^\n]*\(accessed[^\n]*\)\s*/gi, '');
+
+    // Remove "Page X of Y" or "Page X" lines
+    // Pattern: "Page" + number + optional "of" + number
+    text = text.replace(/^Page\s+\d+(\s+of\s+\d+)?\s*$/gim, '');
+
+    // Remove standalone document names that might appear as headers/footers
+    // Pattern: Line with document name followed by [NSW] or [NSW Legislation]
+    text = text.replace(/^[^\n]+\[NSW[^\]]*\]\s*$/gim, '');
+
+    // Remove date stamps at end of lines (common in legislation)
+    // Pattern: dates in format "24 April 2025" or "24/04/2025"
+    text = text.replace(/\s*\d{1,2}\s+(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}\s*$/gim, '');
+
+    // Clean up multiple consecutive newlines left by removals
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    return text;
+  };
+
+  // Fix PDF extraction line breaks (remove hyphenation and join broken lines)
+  const fixPdfLineBreaks = (text: string): string => {
+    let originalLength = text.length;
+
+    // Step 1: Fix hyphenated line breaks (word- at end of line)
+    // Pattern: word character + hyphen + optional whitespace + newline + optional whitespace + word character
+    // Replace with: joined word (no hyphen, no newline)
+    text = text.replace(/([a-zA-Z])-\s*[\r\n]+\s*([a-zA-Z])/g, '$1$2');
+
+    // Step 2: Join broken lines within sentences
+    // Pattern: lowercase letter/comma at end of line + newline + lowercase letter at start
+    // But NOT if the next line starts with a clause marker
+    text = text.replace(/([a-z,])\s*[\r\n]+\s*([a-z](?!\)))/g, '$1 $2');
+
+    // Step 3: Clean up any remaining awkward single-word breaks
+    // Pattern: word + newline + single word + newline (often happens with "the", "of", etc.)
+    text = text.replace(/\b(the|of|on|in|to|for|and|or)\s*[\r\n]+\s*/gi, '$1 ');
+
+    console.log('[fixPdfLineBreaks] Processed text, length changed from', originalLength, 'to', text.length);
+
+    return text;
+  };
+
+  // Format legal subsections - ensure (a), (b), (1), (2) etc. are on new lines
+  const formatLegalSubsections = (text: string): string => {
+    // Add newline before subsection markers: (a), (b), (c), (1), (2), (3), etc.
+    // BUT only if it's actually starting a new clause, not a reference
+
+    // Strategy: Add newline if the clause marker is followed by text that looks like
+    // the start of a clause (lowercase words like "to", "the", "for", etc.)
+    // Don't add newline if it's followed by words like "does", "is", "applies" (references)
+
+    // Pattern 1: Clause markers that START a clause (followed by typical clause words)
+    // e.g., "(a) to ensure", "(b) for the purposes", "(1) The following"
+    text = text.replace(/([^\n.,;:])\s+(\([a-z0-9]+\))\s+(to|for|the|a|an|if|where|on|in|with|by|development|building|land)\s/gi, '$1\n$2 $3 ');
+
+    // Pattern 2: Don't break references - if preceded by short context words
+    // e.g., "Subclause (2A) does not", "clause (3) is satisfied", "section (4) applies"
+    // These should stay on same line
+
+    return text;
+  };
+
+  // Format legal text with smart table detection (line-by-line scan for embedded tables)
   const formatLegalText = (text: string) => {
-    const sections = text.split(/\n\n+/);
+    const lines = text.split('\n');
+    const elements: React.ReactNode[] = [];
+    let currentParagraph: string[] = [];
+    let i = 0;
+    let elementKey = 0;
 
-    return sections.map((section, idx) => {
-      const trimmed = section.trim();
-      if (!trimmed) return null;
-
-      // Check if this looks like a line-by-line table
-      const hasTableData = /Column\s+\d+/.test(trimmed) || /^Table\s+\d+/m.test(trimmed);
-
-      if (hasTableData) {
-        // Try to parse as table
-        const tableElement = parseLineByLineTable(trimmed);
-        if (tableElement) {
-          return <div key={`section-${idx}`}>{tableElement}</div>;
+    const flushParagraph = () => {
+      if (currentParagraph.length > 0) {
+        let para = currentParagraph.join('\n').trim();
+        para = formatLegalSubsections(para); // Add newlines for (a), (b), etc.
+        para = preventAwkwardBreaks(para); // Then add non-breaking spaces
+        if (para) {
+          elements.push(
+            <p
+              key={`para-${elementKey++}`}
+              className="mb-3 text-sm leading-relaxed font-serif whitespace-pre-line"
+              style={{
+                textWrap: 'pretty' as any,
+                hyphens: 'auto',
+                overflowWrap: 'break-word'
+              }}
+            >
+              {para}
+            </p>
+          );
         }
-        // Fallback to monospace if parsing fails
-        return (
-          <div key={`section-${idx}`} className="my-4 p-4 bg-gray-50 rounded border border-gray-200 overflow-x-auto">
-            <pre className="font-mono text-xs whitespace-pre-wrap">{trimmed}</pre>
-          </div>
-        );
-      } else {
-        // Regular paragraph
-        return (
-          <p key={`section-${idx}`} className="mb-3 text-sm leading-relaxed font-serif whitespace-pre-wrap">
-            {trimmed}
-          </p>
-        );
+        currentParagraph = [];
       }
-    }).filter(Boolean);
+    };
+
+    while (i < lines.length) {
+      const line = lines[i].trim();
+
+      // Check if this line starts a table (table header patterns)
+      const isTableHeader1 = /^(Site area|Minimum lot size|Zone|Climate zone)$/i.test(line);
+      const nextLine = i + 1 < lines.length ? lines[i + 1].trim() : '';
+      const isTableHeader2 = /^(Maximum floor space ratio|Maximum building height|Minimum lot size|Column \d+)$/i.test(nextLine);
+
+      if (isTableHeader1 && isTableHeader2) {
+        // Found table start! Flush current paragraph
+        flushParagraph();
+
+        // Collect table lines
+        const tableLines = [line, nextLine];
+        i += 2;
+
+        // Collect data lines (short, no clause markers, pairs)
+        while (i < lines.length) {
+          const dataLine = lines[i].trim();
+
+          // Stop if we hit clause marker or long text
+          if (/^\([a-z0-9]+\)/i.test(dataLine) || dataLine.length > 50 || /identified|shown|specified|purposes|may be|must be/i.test(dataLine)) {
+            break;
+          }
+
+          // Stop if empty or looks like next section
+          if (!dataLine || /^\d+\.\d+[A-Z]?$/.test(dataLine)) {
+            break;
+          }
+
+          tableLines.push(dataLine);
+          i++;
+        }
+
+        // Parse collected table
+        const tableText = tableLines.join('\n');
+        const table = parseAlternatingLineTable(tableText);
+
+        if (table) {
+          elements.push(<div key={`table-${elementKey++}`}>{table}</div>);
+        } else {
+          // Failed to parse, treat as paragraph
+          currentParagraph.push(tableText);
+        }
+      } else {
+        // Not a table, add to current paragraph
+        currentParagraph.push(lines[i]);
+        i++;
+      }
+    }
+
+    // Flush remaining paragraph
+    flushParagraph();
+
+    return elements;
   };
 
   // Get color scheme based on authority level
@@ -259,34 +509,63 @@ export function LegalTextPanel({
                 Legal Text ({provisions.length} {provisions.length === 1 ? 'clause' : 'clauses'})
               </h3>
 
-              {provisions.map((provision) => (
-                <div
-                  key={provision.id}
-                  className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
-                >
-                  {/* Clause Header */}
-                  <div className="flex items-start justify-between mb-3 pb-2 border-b border-gray-100">
-                    <div>
-                      <span className="font-semibold text-gray-900">
-                        Clause {provision.ref_number}
-                      </span>
-                      {provision.section_header && (
-                        <div className="text-sm font-medium text-gray-700 mt-1">
-                          {provision.section_header}
+              {provisions.map((provision) => {
+                // Clean provision text - remove document metadata if present
+                let cleanedText = provision.provision_text;
+
+                // Remove document name/path from start (matches pattern: "Document Name.pdf")
+                cleanedText = cleanedText.replace(/^[^\n]+\.(pdf|PDF)\s*\n/, '');
+
+                // Remove standalone clause number if it duplicates the header
+                // Pattern: Line starting with just the clause number (e.g., "4.4\n")
+                const clausePattern = new RegExp(`^${provision.ref_number.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\n`, 'i');
+                cleanedText = cleanedText.replace(clausePattern, '');
+
+                // Fix PDF line breaks FIRST (before other formatting)
+                cleanedText = fixPdfLineBreaks(cleanedText);
+
+                // Remove document metadata (page numbers, version info, etc.)
+                cleanedText = removeDocumentMetadata(cleanedText);
+
+                // Extract document source from document_id if present
+                const docSource = provision.document_id?.includes('.pdf')
+                  ? provision.document_id.split('___')[0]?.replace(/_/g, ' ') || provision.document_id
+                  : null;
+
+                return (
+                  <div
+                    key={provision.id}
+                    className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm"
+                  >
+                    {/* Clause Header */}
+                    <div className="mb-3 pb-2 border-b border-gray-100">
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-semibold text-gray-900">
+                          Clause {provision.ref_number}
+                        </span>
+                        {provision.section_header && (
+                          <span className="text-sm font-medium text-gray-700">
+                            {provision.section_header}
+                          </span>
+                        )}
+                      </div>
+                      {/* Document Source (if available) */}
+                      {docSource && (
+                        <div className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                          <span className="font-mono">{docSource}</span>
                         </div>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
-                      ID: {provision.id}
-                    </span>
-                  </div>
 
-                  {/* Full Legal Text */}
-                  <div className="text-sm text-gray-800 leading-relaxed">
-                    {formatLegalText(provision.provision_text)}
+                    {/* Full Legal Text */}
+                    <TruncatedFormattedText
+                      text={cleanedText}
+                      wordLimit={200}
+                      formatter={formatLegalText}
+                    />
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>
