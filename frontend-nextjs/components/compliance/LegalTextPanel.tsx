@@ -72,6 +72,17 @@ export interface SelectedProvision {
     };
   };
   provisions: ProvisionContent[];
+  // Phase 2 additions
+  crossReferences?: Array<{
+    referenceType: string;
+    referenceNumber: string;
+    referenceText: string;
+    targetProvisionId: number | null;
+    targetReference: string | null;
+    resolutionStatus: string;
+    isMandatory: boolean;
+  }>;
+  controlCodes?: string[];
 }
 
 interface LegalTextPanelProps {
@@ -566,6 +577,60 @@ export function LegalTextPanel({
                   </div>
                 );
               })}
+
+              {/* Phase 2: Cross-References Section */}
+              {selectedProvision.crossReferences && selectedProvision.crossReferences.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h3 className="font-semibold text-sm text-gray-700 mb-3">
+                    Cross-References ({selectedProvision.crossReferences.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {selectedProvision.crossReferences.map((ref, idx) => (
+                      <div
+                        key={idx}
+                        className={`text-xs p-2 rounded border ${
+                          ref.resolutionStatus === 'resolved'
+                            ? 'bg-green-50 border-green-200'
+                            : 'bg-gray-50 border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`font-medium ${ref.isMandatory ? 'text-red-600' : 'text-gray-700'}`}>
+                              {ref.referenceType.toUpperCase()} {ref.referenceNumber}
+                            </span>
+                            {ref.isMandatory && (
+                              <Badge className="bg-red-100 text-red-800 text-xs">Mandatory</Badge>
+                            )}
+                          </div>
+                          {ref.resolutionStatus === 'resolved' && ref.targetReference && (
+                            <span className="text-green-600 text-xs">→ {ref.targetReference}</span>
+                          )}
+                        </div>
+                        {ref.referenceText && (
+                          <div className="text-gray-600 mt-1 italic">"{ref.referenceText}"</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Phase 2: Control Codes Section */}
+              {selectedProvision.controlCodes && selectedProvision.controlCodes.length > 0 && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <h3 className="font-semibold text-sm text-gray-700 mb-3">
+                    Control Codes ({selectedProvision.controlCodes.length})
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedProvision.controlCodes.map((code, idx) => (
+                      <Badge key={idx} className="bg-blue-100 text-blue-800">
+                        {code}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
