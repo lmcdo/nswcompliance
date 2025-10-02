@@ -1,0 +1,1694 @@
+{
+  "total_tables": 29,
+  "tables": [
+    {
+      "name": "regulatory_provisions",
+      "row_count": 22105,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "provision_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_number",
+          "type": "TEXT"
+        },
+        {
+          "name": "provision_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "development_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INTEGER"
+        },
+        {
+          "name": "original_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "domain_classification",
+          "type": "TEXT"
+        },
+        {
+          "name": "classification_confidence",
+          "type": "REAL"
+        },
+        {
+          "name": "cross_contamination_checked",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "prp_k1_enhanced",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "migration_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "zone_confidence",
+          "type": "REAL"
+        },
+        {
+          "name": "zone_inference_method",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "Marrickville_DCP_2011___9_34_Tempe_Reserve",
+          "clause|section",
+          "9.34",
+          "9.34 TEMPERESERVE\nPart 9 Strat",
+          "B2",
+          null,
+          4,
+          "9.34 Tempe Reserve (Precinct 34)",
+          1,
+          1,
+          "2025-09-02 07:12:07",
+          "GENERAL_PROVISIONS",
+          0.95,
+          1,
+          1,
+          "prp_k1_20250905_095826_8c57f0d5",
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "regulatory_provisions_clean",
+      "row_count": 9364,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "provision_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_number",
+          "type": "TEXT"
+        },
+        {
+          "name": "provision_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INT"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INT"
+        },
+        {
+          "name": "category",
+          "type": ""
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "Marrickville_DCP_2011___9_34_Tempe_Reserve",
+          "clause|section",
+          "9.34",
+          "9.34 TEMPERESERVE\nPart 9 Strat",
+          4,
+          "9.34 Tempe Reserve (Precinct 34)",
+          1,
+          "formal_provision"
+        ]
+      ]
+    },
+    {
+      "name": "contextual_guidance_real",
+      "row_count": 6655,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_title",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INT"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INT"
+        },
+        {
+          "name": "category",
+          "type": ""
+        }
+      ],
+      "sample_data": [
+        [
+          1159,
+          "State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation",
+          "context_policy_intent",
+          "State Environmental Planning Policy (Transport and Infrastructure) 2021",
+          "This version of the legislation is compiled and maintained in a database of legislation by the Parliamentary Counsel's Office and published on the NSW legislation website, and is certified as the form of that legislation that is correct under section 45C of the Interpretation Act 1987.",
+          null,
+          null,
+          null,
+          "contextual_guidance"
+        ]
+      ]
+    },
+    {
+      "name": "development_controls",
+      "row_count": 4526,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "control_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "control_subtype",
+          "type": "TEXT"
+        },
+        {
+          "name": "value_numeric",
+          "type": "REAL"
+        },
+        {
+          "name": "value_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "unit",
+          "type": "TEXT"
+        },
+        {
+          "name": "zone_applicable",
+          "type": "TEXT"
+        },
+        {
+          "name": "conditions",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "extraction_method",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          19,
+          "height",
+          "storeys",
+          6.0,
+          "6 storey",
+          "storeys",
+          "general",
+          null,
+          0.8,
+          "regex_enhanced"
+        ]
+      ]
+    },
+    {
+      "name": "visual_elements_real",
+      "row_count": 3017,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "visual_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "visual_description",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INT"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "visual_caption",
+          "type": "TEXT"
+        },
+        {
+          "name": "category",
+          "type": ""
+        }
+      ],
+      "sample_data": [
+        [
+          1167,
+          "Marrickville_DCP_2011___9_27_Barwon_Park_South",
+          "visual_reference",
+          "Shows the boundaries and layout of Precinct 27.",
+          null,
+          null,
+          "Map of precinct",
+          "visual_element"
+        ]
+      ]
+    },
+    {
+      "name": "kg_relationships",
+      "row_count": 2734,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "subject_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "predicate",
+          "type": "TEXT"
+        },
+        {
+          "name": "object_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "subject_entity_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "object_entity_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "relationship_context",
+          "type": "TEXT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "original_ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "original_ref_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "extraction_timestamp",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "Signage",
+          "is subject to",
+          "development_control",
+          1,
+          2,
+          null,
+          "nsw_planning_doc_000",
+          null,
+          null,
+          1.0,
+          "autoschemakg_entity_relation",
+          null,
+          "2025-09-03T11:44:48.590754"
+        ]
+      ]
+    },
+    {
+      "name": "regulatory_refs",
+      "row_count": 2698,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_number",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_context",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INTEGER"
+        }
+      ],
+      "sample_data": [
+        [
+          19,
+          "Marrickville_DCP_2011___9_42_Camperdown_North",
+          "height",
+          "9.42.1",
+          "contemporary brick strata titled industrial units which are predominantly two to three storeys in height, and larger residential lots containing residential flat buildings up to 6 storeys in height.",
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "kg_relationships_from_refs",
+      "row_count": 2294,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "relationship_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "relationship_context",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INT"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "relationship_summary",
+          "type": "TEXT"
+        },
+        {
+          "name": "category",
+          "type": ""
+        }
+      ],
+      "sample_data": [
+        [
+          94,
+          "Marrickville_DCP_2011___9_0_Introduction",
+          "relationship_contains",
+          "Part 9 of this DCP divides the land where this DCP applies into 47 planning precincts.",
+          0,
+          "Introduction",
+          "Part 9 -> Planning Precincts",
+          "regulatory_ref_relationship"
+        ]
+      ]
+    },
+    {
+      "name": "visual_elements",
+      "row_count": 1473,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "visual_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "visual_path",
+          "type": "TEXT"
+        },
+        {
+          "name": "visual_description",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "autoschema_source",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "langextract_source",
+          "type": "BOOLEAN"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          null,
+          "figure",
+          "images/edc040d35f5ed74a46f45b787053d882acada90b8fe635d1d24cb4df05714635.jpg",
+          "Figure 1. Map of Haberfield Neighbourhood  ",
+          0,
+          1,
+          0
+        ]
+      ]
+    },
+    {
+      "name": "kg_entities",
+      "row_count": 1394,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "entity_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "entity_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "entity_description",
+          "type": "TEXT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INTEGER"
+        },
+        {
+          "name": "original_ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "original_ref_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "extraction_timestamp",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "autoschemakg_entity",
+          "Signage",
+          null,
+          "nsw_planning_doc_000",
+          null,
+          null,
+          null,
+          "autoschemakg_import",
+          null,
+          "2025-09-03T11:44:48.575509"
+        ]
+      ]
+    },
+    {
+      "name": "permissibility_analysis",
+      "row_count": 958,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "pattern_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "extracted_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "development_types",
+          "type": "TEXT"
+        },
+        {
+          "name": "permission_status",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          15432,
+          "B1",
+          "permitted_with_consent",
+          "development control plan or condition of a development consent that is in force requires the car park to provide a minimum number of car parking spaces, and (b)",
+          null,
+          "consent",
+          0.8999999999999999,
+          "State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_46",
+          "2025-09-19 06:05:21"
+        ]
+      ]
+    },
+    {
+      "name": "quantitative_standards",
+      "row_count": 832,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "numeric_value",
+          "type": "REAL"
+        },
+        {
+          "name": "unit",
+          "type": "TEXT"
+        },
+        {
+          "name": "qualifier",
+          "type": "TEXT"
+        },
+        {
+          "name": "context",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "raw_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "manual_verified",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "created_timestamp",
+          "type": "DATETIME"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          118,
+          2.0,
+          "m",
+          "exactly",
+          "setback",
+          0.6,
+          "Developments are to be serviced and vehicle access provided from side streets and laneways and openi...",
+          0,
+          "2025-09-03 03:03:30"
+        ]
+      ]
+    },
+    {
+      "name": "regulatory_refs_core",
+      "row_count": 762,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_number",
+          "type": "TEXT"
+        },
+        {
+          "name": "ref_context",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INT"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INT"
+        }
+      ],
+      "sample_data": [
+        [
+          19,
+          "Marrickville_DCP_2011___9_42_Camperdown_North",
+          "height",
+          "9.42.1",
+          "contemporary brick strata titled industrial units which are predominantly two to three storeys in height, and larger residential lots containing residential flat buildings up to 6 storeys in height.",
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    {
+      "name": "documents",
+      "row_count": 274,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT"
+        },
+        {
+          "name": "pdf_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "document_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "document_area",
+          "type": "TEXT"
+        },
+        {
+          "name": "pdf_path",
+          "type": "TEXT"
+        },
+        {
+          "name": "char_count",
+          "type": "INTEGER"
+        },
+        {
+          "name": "word_count",
+          "type": "INTEGER"
+        },
+        {
+          "name": "total_regulatory_refs",
+          "type": "INTEGER"
+        },
+        {
+          "name": "extraction_timestamp",
+          "type": "REAL"
+        },
+        {
+          "name": "full_text",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          "Chapter_E2_Haberfield_Neighbourhood",
+          "Chapter E2 Haberfield Neighbourhood.pdf",
+          "DCP",
+          null,
+          "output\\Chapter E2 Haberfield Neighbourhood\\auto\\Chapter E2 Haberfield Neighbourhood.md",
+          55401,
+          8424,
+          23,
+          1756705305.7899446,
+          "# Chapter E2: Haberfield Neighbourhood\n\n![](images/edc040d35f5ed74a46f45b787053d882acada90b8fe635d1d24cb4df05714635.jpg)  \nFigure 1. Map of Haberfield Neighbourhood\n\n# Application\n\nThis chapter applies to the Haberfield Neighbourhood as shown on Figure 1.\n\nThe controls for:\n\n2.2 Haberfield Heritage Conservation Area apply to the land listed as C54; and \u2022 2.3 140A Hawthorne Parade, Haberfield only apply to the land marked \u2018A\u2019.\n\nNote: Development on land within the area marked \u2018A\u2019 will be assessed against all applicable relevant controls not just the site-specific controls. These include any relevant controls in other parts of this DCP as well as the controls for Haberfield Neighbourhood and Haberfield Heritage Conservation Area. These controls work from the most general to the most specific. In the event of any inconsistency in the application of different controls the more specific control will apply.\n\n# Existing Character\n\nHaberfield development as Australia\u2019s first Garden Suburb is due to the successive purchase and development by R Stanton and W H Nicholls, real estate agents of Summer Hill. Stanton\u2019s Haberfield estate was the first successful Garden Suburb in Australia, predating the first in Britain (Hampstead) by five years.\n\nStanton and Nicholls purchased fifty acres from two Ramsay children in 1901 and laid out the estate on Stanton\u2019s own principles of garden suburb design and management. He set aside land for commercial purposes (there were to be no hotels, no corner shops, and no factories in this model suburb); laid out the roads (named for members of the new Federal Government - Turner, Barton, Forrest, Kingston & O\u2019Connor - and the generous allotments; established an integrated drainage and sewerage system at the back of the lots and planted the street trees. High quality modest houses designed by estate architects, Spencer, Stansfield and Wormald, were built for sale, and title covenants were placed on vacant allotments to ensure a continuation of Stanton\u2019s overall design intentions - single storey cottages, one per allotment, uniform setbacks, and quality materials, brick and stone, slate, or tiles. Gardens were laid out by estate gardeners before owners moved in.\n\nIt is unusual for any subdivision to be fully developed immediately, but the Stanton Estates were remarkable for the short time frame in which most of them were built upon. Where vacant lots remained, these were built on in the 1920s, 1930s and 1940s, and an examination of the period of each house can provide an interesting history lesson in the progressive development of the suburb.\n\nAmongst the single-family dwellings Stanton also included semi-detached pairs of cottages, carefully designed to appear as one house, so that with consistent forms, setbacks and gardens the pattern of development was maintained.\n\nBy the 1960s and 1970s some of the original houses had been demolished for flats or larger houses. Others have changed so extensively, including reskinning of outer walls, that only their original roof shape and footprint remains beneath.\n\nAs a result of Stanton\u2019s commitment to quality construction and design, and to his application of title covenants the residential parts of Haberfield are characterised today by single storey brick houses on generous garden lots with uniform setbacks and a similarity of form and materials. Stanton\u2019s interpretation of Garden Suburb concepts and his consistent development strategy continue to set Haberfield apart.\n\nWithin Stanton\u2019s strong planning concept, the architectural character and detail of its individual houses, including later 1920s and 1930s bungalows, is richly varied but harmonious, of great visual cohesion and consistency \u2013 achieved through the uniformity of materials, scale, and forms. Through the sustained efforts of Councillors, the community and its homeowners, Haberfield has strengthened and maintained its identity and rich heritage values for present and future generations.\n\n# 2.1. Desired Future Character\n\n# Objectives\n\nO1. To facilitate development that is consistent with the Desired Future Character and Controls for the Neighbourhood.   \nO2. To maintain the heritage significance of Haberfield and remove detrimental works where possible.   \nO3. To ensure that where new buildings can be constructed, they are carefully designed to fit in with the heritage significance and character of Haberfield as a whole.\n\n# Controls\n\nC1. Any new development (new building or extension to an existing building) shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb.   \nC2. Extensions shall not conceal, dominate, or otherwise compete with the original shape, height, proportion and scale or architectural character of the existing building.   \nC3. Extensions are only permitted to the rear of the existing dwelling; extensions are not permitted to the side of an existing dwelling. Extensions to the rear of the existing dwelling must not be any wider than the existing dwelling, i.e., the rear extension should not be visible when the dwelling is viewed from the street. Side setback areas and gardens should not be filled in.\n\n![](images/fcd198be5ed0a08e199fa3ee2c42c84599ade7da078b7725f714c39c0deef058.jpg)  \nFigure 2. Where additions should be located\n\n# Heritage Conservation Areas\n\n# 2.2. Haberfield Heritage Conservation Area\n\nNote: Refer to Clause 6.20 of the Inner West Local Environmental Plan 2022 for additional controls on landscaped area and built form that apply to C54 - Haberfield Heritage Conservation Area.\n\n# 2.2.1. Statement of Significance\n\nDeveloped at the turn of the twentieth century, the Garden Suburb of Haberfield is of significance in the history of Australian town planning as a comprehensively planned and designed \u2018model garden suburb\u2019 influenced by the international Garden City movement and the nascent \u2018art and science\u2019 of the modern town planning movement. Marketed as \u2018slumless, laneless, and publess\u2019, as Australia\u2019s first Garden Suburb, it was coherently and pragmatically planned to address the social, physical, aesthetic, and economic planning issues of at the turn of the twentieth century. It predates international exemplars of the Garden City movement, such as Letchworth (1904) and Hampstead Garden Suburb (1907), and Colonial Light Gardens in South Australia. It was influential in shaping the state\u2019s emergent town planning discourse and in the design and planning of subsequent \u2018model suburbs\u2019, including Daceyville and Roseberry.\n\nHaberfield has a strong historical association with auctioneer, real estate entrepreneur, town planning advocate, Richard Stanton (1862\u20131943) who was the visionary behind the suburb\u2019s development. A reformer and staunch advocate for Federation, Haberfield is representative of Stanton\u2019s interest in city \u2018improvement\u2019 and in the planning of healthy social and physical environments for \u2018betterment\u2019 and moral reform in New South Wales. Haberfield demonstrates the commercial, social, aesthetic and broader civic value of Stanton\u2019s approach to town planning through a comprehensive and clever system of land purchase, zoning principles, strict covenants, built form design, landscape controls, and the provision of infrastructure and a labour force. Stanton and his family resided in the generously proportioned, The Bunyas, a grand Federation-period residence displaying Arts and Crafts stylistic influences that was designed by Stanton and Sons\u2019 architect, John Spencer-Stansfield. As the architect to Stanton and Sons, between 1905 and 1914, Spencer-Stansfield designed of hundreds of individually designed and detailed homes in Haberfield.\n\nHaberfield also has an historical association with Dr David Ramsay (1794\u20131860), a medical practitioner and merchant who owned the land prior to Stanton and is associated with the historic property, Yasmar. Much of the suburb known as Haberfield was formerly called \u2018Ramsay\u2019s bush\u2019. Several streets in the area retain names reflecting the historical association with the Ramsay family, including Ramsay Street and Dalhousie Street (reflective of the Ramsay\u2019s historical connections to Scotland). Haberfield has historical associations with other individuals of note in the history of New South Wales, including Joseph Neal Grace, the founder of Grace Brothers department store, and the composer, Peter Dodds McCormick, who wrote the national anthem, Advance Australia Fair.\n\nWithin New South Wales, Haberfield's planned and originally integrated designed landscape is an early and outstanding example of environmental forethought and comprehensiveness in Australian suburban planning\u2014with landscape design given equal priority to the design of built fabric. A collection of interrelated public and private spaces, Haberfield is a formally designed and planned suburban living environment dating from the early twentieth century that is integral to understanding the development of Australian town planning. The landscape significance of Haberfield is encapsulated by four principal elements:\n\n1. the extant street pattern of the suburb\u2019s original layout   \n2. the extant residential allotment proportions developed in Haberfield\u2019s original layout   \n3. remnant hard and soft garden fabric from original residential garden layouts, and historical   \nplantings in those gardens   \n4. street tree plantings from the first phase of the suburb\u2019s development\n\nThrough its overall landscape setting and design, combined with the composition and arrangement of built form, Haberfield is simultaneously cohesive and unique, demonstrating the Garden City principle of \u2018unity but not uniformity\u2019. Setbacks from the street are uniform, with landscaped front gardens and low front fences ensuring long park-like views along street alignments. Detailed design for civic works, including road verges, trees with timber guards, stone kerb and guttering, nature strips with concrete paths and street lighting ensure visual harmony and consistency.\n\nHaberfield is important in demonstrating aesthetic characteristics that define the Garden Suburb, as well as several Federation architectural styles within New South Wales. Overall, the suburb\u2019s residential architecture presents as a collection of well-detailed and crafted period houses that evidence an overarching visual coherence in design, form, materiality and colour. The suburb is characterised by its ability to demonstrate a collection of distinctive Federation period architectural styles within New South Wales in its residential architecture. Houses were designed under covenants which ensured that each was of similar form, materials, and scale. Each is aesthetically distinctive, demonstrating visually pleasing arrangements that have sensory appeal. Federation period houses designed in the Queen Anne and Arts and Crafts style demonstrate the culmination of these styles\u2019 vernacular motifs, including rising sun motifs, waratah, flannel flowers and the first Australian coat of arms. The composition of form and textural arrangement of materiality demonstrates a high degree of mastery.\n\nThe Haberfield HCA has a strong connection to the community through the Haberfield Association, which has advocated for the protection and conservation of the area for over four decades. Haberfield has strong associations with Italian cultural traditions and culinary influence along Ramsay Street, shaped by mass Italian post-war migration to Australia and settlement in the area. Haberfield is representative of the course and pattern of migration to NSW in the mid-twentieth century.\n\nHaberfield is of significance to the state of New South Wales and displays historical, associative, aesthetic, and representative qualities that are rare or unique within the state.\n\n# 2.2.2. General\n\n# Objectives\n\nO4. To provide controls for buildings and their landscape that will ensure that the single storey appearance of each dwelling in the Haberfield Heritage Conservation Area is maintained, and the garden suburb character of Haberfield is conserved.\n\nNote: Give the same careful consideration to changes to the back of houses and shops as you would to those visible from the street or a public place because they could alter the harmonious proportion and scale common to the suburb.\n\nO5. To ensure that necessary change, such as alterations and extensions to existing buildings, will respect the contribution of those buildings to the heritage significance of Haberfield and will have no ill effect on the heritage significance of Haberfield as a whole.\n\nO6. To allow necessary change, but only where it will not remove or detract from the special qualities that contribute to the heritage significance of Haberfield.\n\nNote: Avoid even minor alterations (such as removing finials) or additions (such as enclosing a verandah) and unsympathetic changes to building details can reduce the historical, architectural, and real estate value of the individual building. These will reduce its relationship with neighbouring buildings and diminish the overall heritage value of Haberfield which has such a strong common design theme.\n\nO7. To encourage the removal and reversal of those components which detract from the heritage significance of Haberfield.\n\n# 2.2.3. Pattern of Development\n\nHaberfield differs from the Victorian inner suburbs which preceded it because it comprises generous suburban allotments with dwellings which present the appearance of one house only. It is characterised by a uniform pattern of development: roads are of a regular width with the original tree planting remaining in many of the verges and because a drainage and sewerage system were in place (usually at the back of the lot) before building began there is an absence of night-soil back lanes; lots are of similar width and allowed fresh air to flow between the buildings, length of lots vary where the street pattern diverges in response to the alignment of earlier roads - Parramatta Road, Ramsay Street and other tracks on the Dobroyd Estate.\n\nThere is a uniform front building setback of approximately 6 metres, and a fairly uniform site coverage, reflecting Stanton\u2019s original building covenants and the subsequent extension of their use over the rest of the Dobroyd Estate. Side setbacks created garden areas and views between houses and emphasised the garden suburb character.\n\nThe patten of development demonstrates the Garden Suburb ideals of creating a healthy and pleasant living environment, espoused by Richard Stanton and his professional colleagues in the town planning and real estate institutes. At Haberfield these ideals were designed and developed, protected by covenants, and marketed to create Australia\u2019s first Garden Suburb. This pre-dated the first similar English Garden Suburb and established the principles for Australian suburbia for the next seventy years.\n\n# Controls\n\nC4. Subdivision of existing allotments is not permitted as it would be detrimental to the heritage significance of the Garden Suburb by changing its historic pattern.   \nC5. Any new development (new building or extension to an existing building) shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb. No new structures are to be built forward of the existing building line; new car ports or garages in the front setback are not supported. Side setbacks must reflect those in the area and nil side setbacks are not appropriate.\n\n![](images/8d8f868e95e7de07437e031a55a0162fc4fffec90eeb770c7b8016e2d36ea2ad.jpg)  \nFigure 3.Where new structures should be located in Haberfield\n\n# 2.2.4. Building Form\n\nResidential buildings in Haberfield are uniformly single storey and of a similar bulk. They are built of a restricted range of building materials (bricks, slate, or unglazed tiles) and are of a similar shape but individually designed.\n\nThe style of their architecture is mostly Federation, but it includes many 1920s and 1930s bungalows, through to the pink brick cottage of the 1940s. Some houses have lost their original stylistic character through later changes.\n\nArchitecturally the earlier houses, although of individual design, are strongly related to one another and are collectively significant for the homogeneity of their bulk and single storey built form.\n\nIndividually, the houses are significant for their rich variety of architectural detail and excellence of design. The architectural style of each house identifies the period of its construction and documents the development history of the suburb.\n\n# Controls\n\nC6. Alterations to the original main part of a building (other than a non-conforming building), including front and side facades, verandahs and roof forms, are not permitted.   \nC7. Where a building, other than a non-conforming building has undergone limited change, restoration, and repair of the original front of the building is encouraged.   \nC8. Where a building, other than a non-conforming building has suffered major alteration, careful reinstatement is encouraged. When no surviving physical or documentary evidence of the original can be found, reconstruction similar to the neighbouring or other original Haberfield houses is encouraged.   \nC9. Where extensions are involved, new roofs are to be lower than the main roof form with a maximum height considerably less than the principal ridge point.   \nC10. The overall length of any extension is to be less than, and secondary to, the original house.   \nC11. Attic rooms must be built within the main roof shape. They must not involve alteration of the roof shape or extend outside the existing roof plane.   \nC12. Attic rooms are to be modest in scale and comprise one (1) or at the most two (2) rooms capable of habitation.   \nC13. Skylights are not permitted in the front or side faces of the main roof. Attic windows must be modest timber framed flush \u201cin plane\u201d skylights only \u2013 maximum one skylight per side or rear roof elevation. Dormer windows, Juliet balconies and similar protrusions are not permitted.   \nC14. Rear extensions containing an attic may be considered where the attic does not cause the extension to compete with the scale and shape of the main roof and is not visible from a public place.   \nC15. Where extensions to existing roofs are being undertaken, modestly sized in-plane skylights may be considered in the side and rear planes of the extension and limited to one such window per roof plane.   \nC16. Extensions shall not employ any major or prominent design elements that compete with the architectural features of the existing building.\n\n# 2.2.5. Roof Forms\n\nRoofs of the Federation Period are steeply pitched $( 3 0 ^ { \\circ } \u2013 4 0 ^ { \\circ } )$ and often massive in form. After the First World War roofs were built to a lower pitch $( 2 5 ^ { \\circ } - 3 5 ^ { \\circ } )$ because of changes in style and the need for economy.\n\nThe roofs are complex in design, and this accentuates the single storey scale of the house. The mass and bulk of the roof generally extends only over the main rooms of a house, with skillion roofs or lower hips to the rear. This allows the house to maintain a visual balance and not dominate its garden setting.\n\nTall chimneys help to balance the complex forms of the roof.\n\nRoofs can be characterised by a picturesque arrangement of a variety of gables, gablets, vents, hips, conical turrets, and deep jutting eaves and decorated with terra cotta finials, crests and ridge cappings. Gables are used at the front (and sides on corner lots) with hips and skillions used at the rear. Some roofs are fairly plain, while others are intricately detailed. Architectural details, such as\n\nfinials, ridge cappings and the detailing of exposed eaves, are among the most visible characteristics of Haberfield houses and an important part of their picturesque qualities.\n\nStanton\u2019s covenants restricted roof materials to slates or unglazed terra cotta Marseilles pattern tiles, with unglazed terra cotta finials, crests, and ridge cappings. Corrugated galvanised iron was used at the rear on skillions and lean-to rooms built soon after the brick house was finished. Areas not covered by Stanton\u2019s covenants also had main roofs of corrugated iron, asbestos cement, and shingle tiles.\n\nSome roofs have been altered over time. In many instances the original roof shape can be reinstated where it can be based on documentary or physical evidence.\n\n# Controls\n\nC17. Roof extensions are to relate sympathetically and subordinately to the original roof in shape, pitch, proportion, and materials.   \nC18. New buildings are to have roofs that reflect the size, mass, shape, and pitch of the neighbouring original roofs. Gables to the rear are not supported as hips and skillion roof forms are more typically used at the rear. Fully glazed gables are not supported. Roof materials are to be consistent with C20 of this section of the DCP.   \nC19. Roof extensions are to be considerably lower than the original roof and differentiated between the original and new section. A set down of $5 0 0 \\mathsf { m m }$ is generally acceptable.   \nC20. Replacement roof materials are to match original materials or are to employ approved alternative materials. Suitable roof materials are: a. unglazed terra cotta Marseilles tiles b. unglazed terracotta shingle tiles c. Welsh slate d. corrugated non-reflective galvanised steel sheeting (painted or natural) (at the rear/on skillion roofs)\n\nC21. Roof details such as finials, ridge capping, are to be maintained, repaired, and reinstated as required.\n\n![](images/d8e25d20a3d58f7642ae614aba7c6b3a1cc06b2f1836d75d1586b95290f7cbb3.jpg)  \nFigure 4.Roofs in Haberfield\n\nTHE ROOPS OF HABERFIELD'S COTTRGES ARE AU INDIVIDUM BUTHAVE STRONS FAMIUY RESEMBUANCES.'THEIRHIPS SABUES SUE THEM DISTNT CHARrCTERMTEEAS HEPTOUNIFTHEM\n\n# 2.2.6. Siting, Setbacks and Levels\n\nHaberfield is notable for the uniformity of its building site-coverage and siting. Most houses are free standing with car access down one side, and a traditional tradesmen\u2019s path down the other side.\n\nDevelopment on corner sites is usually sensitive to the pivotal position they occupy in both streetscapes.\n\nHouses are set back approximately six metres from the footpath alignment. This provides for a front garden in which to present the house and allows for privacy.\n\nHaberfield houses are set close to natural ground level. There is usually no substantial difference between the main floor levels of adjacent houses.\n\nSome houses, located on sloping sites, have a sub-floor or basement level located within the foundations. The lower level does not compete with the main level of the house. Basement doors and windows are small, plainly treated, and are not visible from outside the property. The space within the below-floor area was used for laundries, store or workrooms or sometimes garages, but not for extra living areas.\n\nThe uniform pattern of site coverage and setbacks is one of the most significant aspects of Haberfield, demonstrating Stanton\u2019s Garden Suburb ideals and establishing the principles for Australian suburban development. The close relationship between ground floor and natural ground level means that the overall built form of Haberfield reflects the underlying natural topography.\n\n# Controls\n\nC22. The established pattern of front and side setbacks should be kept. Nil side setbacks were rare and depart from Garden Suburb principles.   \nC23. New residential buildings or extensions should not be built forward of existing front building lines.   \nC24. Site coverage should be similar to the traditional pattern of development, leaving generous green garden space to the front and back areas.   \nC25. There should be no substantial or visible difference between the main floor levels of adjacent houses unless natural ground levels require this.   \nC26. Where natural land slope allows, sub-floor and basement development is permitted for use as laundries, storerooms, workrooms or garages. Habitable rooms may be considered but must not change the single storey scale of a building; openings (windows and doors) are only permitted in the rear elevation. A basement level is only permitted if enabled by the site topology; the floor level of the ground floor of the dwelling must be at the same level and significant excavation to provide adequate floor to ceiling heights in the basement level is not permitted.\n\n![](images/6fe537c7ca2105929b439db5105d67f266a2e7d5e99a108b06299b6de2cbc384.jpg)  \nFigure 5.Characteristics of basement levels\n\n# 2.2.7. Walls\n\nStanton\u2019s covenants required that the main walls be built of brick. This uniformity of materials is part of the distinctive character of Haberfield today.\n\nThe houses are built of cavity brick walls, an innovation at that time, with machine-made smoothfaced bricks. The precision of the brickwork is accentuated on the main elevation by the use of tuckpointing, usually in white or black.\n\nThe front elevation commonly makes decorative use of bricks such as shaped and moulded brick profiles, or two-toned brickwork, sometimes roughcast and shingle work is used. Side and rear walls are generally built of common bricks.\n\nThe walls of the houses in Haberfield are often divided horizontally into two or three distinct sections, for example, the base course can be rough cut sandstone or mock ashlar (rendered brickwork) with the main wall of tuck-pointed face brick or commons, and occasionally an upper section of contrasting roughcast finish, often accented with a frieze of brick bands. The front gable ends often feature brick or timber strapwork, and timber ventilating panels of louvres framed by fretwork shapes.\n\n# Controls\n\nC27. The original shape and materials of the front and side walls shall not be altered.   \nC28. The removal of the external skin or rendering of an exterior wall is not permitted unless an essential part of approved reconstruction and authentic restoration works.   \nC29. Unpainted surfaces shall not be painted.   \nC30. Reconstruction of walls previously re-skinned is encouraged using machined smooth faced bricks similar in colour to those on original Haberfield houses. The \u201cCommon\u201d bricks typically used at the rear should be matched.   \nC31. Face brick and commons brick walls shall not be rendered with cement or plaster.\n\n# 2.2.8. Chimneys\n\nFederation houses commonly have three or more tall chimneys, heightened by terra cotta chimney pots. Houses of the 1920s and 1930s have fewer chimneys and they are not as tall. Although many chimneys are no longer used, they remain essential elements in the design of each house and in its architectural decoration. They stand out on the skyline.\n\n# Controls\n\nC32. Chimneys cannot be demolished unless they are structurally or materially unsound and demolition is followed by immediate reconstruction using the original design.   \nC33. All chimneys are to be retained internally and externally. Where necessary chimneys should be repaired even if the fireplace is no longer in use.   \nC34. Reconstruction of original chimneys is encouraged. Note: Archived plans and photographs are held in Council\u2019s library collections.\n\n# 2.2.9. Joinery\n\nInternal and external decorative timber work is an integral part of the distinctive detailed design of Federation house and of houses in the 1920s. Decorative timber work is used on verandahs, gables, vents, bargeboards, windows, doors, screens, and fences. It is used boldly and painted various colours. It was a way of expressing the individuality of houses which were otherwise similar in scale and shape, and in decorative themes.\n\n# Controls\n\nC35. Existing joinery is to be kept, maintained, and repaired as required. C36. Authentic reconstruction or reinstatement of missing joinery is encouraged, based on evidence. C37. Timber detailing on extensions and alterations shall respect the existing detailing but avoid excessive copying and over embellishment. Simpler approaches are best and the typology of the houses in Haberfield Heritage Conservation Area should be followed. Detailing at the rear is usually simpler.\n\n# 2.2.10. Windows and Doors\n\nWindow and doors are an integral part of the design of each building in Haberfield. Their design reflects the relative importance of the room to which they belong.\n\nThe extensive use of coloured and decorative glazing to windows and doors illustrates the architectural detailing of the period, and the aspirations of the original owners. Haberfield is important today because it houses in situ a rich collection of this decorative art.\n\nThe use of bullnose sill bricks and arch-shape header brickwork is characteristic.\n\nThe extensive use of decorative glazing and coloured glass is an important feature. Multi-coloured or textured glass are used in the upper fanlights to doors and windows. Leadlight glazing in Art Nouveau designs is prominent. It was expensive and is generally limited to windows facing the street where it could be admired by passers-by.\n\nWindows and external doors are made of timber and are invariably painted. Doors frequently feature decorative mouldings with the detail painted in contrasting colours. Internally, doors and windows were often \u201cgrained\u201d i.e., painted in simulation of expensive timbers like English Oak.\n\n# Controls\n\nC38. Original doors and windows are to be kept, maintained, and repaired as required. Where this is not possible, authentic reconstruction is encouraged.   \nC39. Original leadlight and coloured glass panes are to be kept and restored, matched, or reconstructed as required.   \nC40. The size and style of new doors and windows should reflect the relative importance of the room to which they belong.   \nC41. New doors and windows are to reflect the proportion, location, size, sill heights, header treatment, materials, detailing and glazing pattern of the original doors and windows on the house to which they belong.   \nC42. If no indication of original treatment is available, new doors or windows should be vertical and be kept simple.   \nC43. The use of box section aluminium doors and windows using pre-finished colours is permitted in extensions and new dwellings, subject to appropriately matching the existing design. It is not permitted in original parts of rooms of existing houses.\n\n![](images/fc21e60cfce4fece9d85e4d1984d1fc9eca9cbb9835d21876a000e4f3f8c1b55.jpg)\n\n![](images/0fbac8a67d83d4f6592f788aca2ba4d1728009a8575b0b9e3f3f1e1c34afb1d9.jpg)  \nFigure 6.Hierarchy of windows and doors in Haberfield\n\n# 2.2.11. Window Sunhoods, Blinds and Awnings\n\nVarious sun screening devices are used in Haberfield. They provide important practical and decorative features. Window awnings or window hoods with timber fretwork frames and various roofing materials are the most noticeable. External timber window pelmets are also common. Verandahs often have wooden venetians or canvas roll-up blinds.\n\n# Controls\n\nC44. Original sunhoods, blinds and awnings are to be retained and repaired as required.   \nC45. Authentic restoration, reinstatement or reproduction is encouraged, based on evidence on the house itself, or on photos.   \nC46. Modern-style security grilles, roll-up metal screens, metal window awnings, and noncharacteristic shade treatments are not acceptable on the exterior of Haberfield cottages.\n\n# 2.2.12. Verandahs\n\nVerandahs are an integral part of the design and use of Haberfield houses. On Federation houses they are marked by a change in roof slope, angle, or gable. In many instances the verandah itself includes a turret, bay, shaped balustrade, or similar effect for visual variety. Back verandahs, under iron skillion roofs, are often enclosed to make extra rooms. This was often done at the time the houses were built or soon after. Bungalow verandahs, where they are small, often have flat roofs; and they are incorporated under the main roof of the house, like an outdoor room.\n\nThe shadow or created by the verandah provides a sharp contrast to the solidity of the single storey roofed brick buildings. Verandahs are uses as an effective way to ameliorate the hot, wet Sydney climate, and provide outdoor \u201crooms\u201d popular in the first decades of this century.\n\nVerandah floors were either tongue and groove timber boarding or tessellated tiles with slate, terrazzo, or marble edging, often incorporating entry steps with risers of patterned glazed tile.\n\n# Controls\n\nC47. Existing original verandahs are to be kept and repaired or reinstated as required.   \nC48. Removal, or infill of verandahs visible from a public place is not permitted.   \nC49. Authentic reconstruction of verandahs is encouraged.   \nC50. Verandah additions are to be simple in design and are not to compete with the importance of the original verandah. New rear verandahs are to be generally simpler than the front main verandahs, and not to challenge the street presentation of the house.\n\nC51. The roof of a verandah should not continue the main roof but should be a skillion roof or similar to minimise bulk.\n\n![](images/7110cb3605d58dc51952286de9184277d3a352e911eb5e3a84d02b6a7419377d.jpg)  \nFigure 7. Design of verandahs in Haberfield\n\n# 2.2.13. Garages and Carports\n\nThe freestanding houses in Haberfield allowed early car owners to drive down the side to the \u201cmotor house\u201d at the back. Some of these older garages dating from the 1920s still survive. They are located at the back of the house away from public view from the street. They were utility buildings, designed to be less important than the house; they often had roofs of a pitch lower than the house.\n\n# Controls\n\nC52. The retention, repair and reconstruction of significant early garages, carports and sheds is encouraged.   \nC53. New garages and carports are to be located at the back or at the side of the house.   \nC54. Where a garage or carport is at the side of the house it must be at least 1 metre back from the main front wall of the house and have a maximum width of 3 metres.   \nC55. Garages and carports are to be free standing.   \nC56. Garages and carports shall be of simple utilitarian design. They shall not challenge the mass or bulk of the individual house.   \nC57. Attached garages which form part of a basement level may be located at the rear of the house if they are not visible from a public place, but only where they would not conflict with other considerations in this Plan.   \nC58. Garages and carports are to be constructed of materials that match those used in the dwelling.   \nC59. Garage doors are to be simple timber or metal cladding in a recessive dark colour.\n\n![](images/023c88b8d47f5ea5f07c44731c7735ca0ff051c4e7e1b8c0810325e4e4662b13.jpg)  \nFigure 8. Design of garages and carports in Haberfield\n\n# 2.2.14. Outbuildings: Studios, Secondary Dwellings and Garden Sheds\n\nOutbuildings are located at the rear of houses away from public view. They were traditionally used to store garden tools, seeds, fertilisers, bicycles, canvas covered garden furniture etc: use of the garden to grow vegetables and prize flowers for exhibition at the Gardening Club was an integral part of suburban life before the 1950s. Often the laundry was in a separate outbuilding in the back garden. When the outbuilding might be visible from the street, a variety of screening devices are used, such as suitably plain fences, lattice work, hedges, or other screen planting.\n\nIn scale and form Haberfield outbuildings are small, functional, and simply built, with gable, hipped or skillion roofs. Materials used were inferior to those in the houses, with timber or fibro being the most common wall cladding. Their scale did not challenge that of the house they served and did not dominate views from neighbouring properties.\n\n# Controls\n\nC60. The retention, repair and reconstruction of significant early garden sheds and outhouses is encouraged.   \nC61. New outbuildings shall be located at the rear of the allotment. The location shall respect boundaries, tree-planting and other site details.   \nC62. New outbuilding shall be sited to minimise visibility from the street and from neighbouring properties.   \nC63. New outbuildings shall be subordinate to the main house. They shall not challenge the shape, size, form, or decoration.   \nC64. The floor plan for new outbuildings shall be simple, not complex.   \nC65. The roof form of new outbuildings shall be simple and practical in scale. The pitch shall be lower than the roof pitch of the house and shall use skillion, hip, or gable forms. Storerooms and outhouses attached to the main house or garage are encouraged where lean-to skillion roofs can shelter them.   \nC66. Construction materials shall be brick, weatherboard, or fibre cement sheeting with cover battens. Roofs shall be of unglazed terra cotta Marseilles tiles or corrugated metal. Kit garden sheds of metal construction are acceptable subject to screening from the street or a public place.   \nC67. Windows to outbuildings shall be of vertical proportions and shall be timber framed.   \nC68. Merging outbuildings into the landscape by use of planting and screen elements is encouraged.\n\n# 2.2.15. Colour Schemes\n\nLarge parts of the house were never painted, such as all brickwork, exposed bricks on chimneys, slate verandah edging and steps.\n\nOn timber and render a comparatively narrow range of exterior paint colours was used to enhance the natural colours of the bricks and stone. Paint technology at the time could not produce a bright white so shades of cream predominated. Authentic colour schemes usually consist of one or two lighter tones, with one much darker colour for contrast. An additional trim colour might also be used.\n\nCareful scraping of protected, difficult-to-paint areas such as behind eaves or under windowsills might reveal the colours originally used. Such evidence might also survive under layers of later paint. Old photographs also can provide valuable evidence of the original paint treatment, particularly the use of contrasting colours for the various elements of the building.\n\nThe use of original or traditional colour schemes enhances the presentation of the house and the HCA and augment the public\u2019s visual appreciation of its Federation and early 20th century domestic architecture.\n\n# Controls\n\nC69. Paint shall not be applied to any brickwork, stonework, exposed bricks on chimneys, terra cotta chimneypots, tessellated or glazed tiling, slate verandah edging and steps that has not already been painted.   \nC70. New exterior brickwork is to remain unpainted.   \nC71. On an existing house Council encourages owners to identify and use the original colour scheme.   \nC72. On an existing house, where the original colour scheme or traditional colour scheme is not to be used, the scheme should be simple, consisting of one or two lighter tones and a darker colour for contrast. A trim colour may be used.   \nC73. New buildings should use colours that harmonise with the traditional colour schemes.\n\n# 2.2.16. Fences and Gates\n\nFences define each individual garden allotment and illustrate the major principle of the Garden Suburb \u2013 one house, one lot.\n\nThe front fence is of modest height (1m to $1 . 2 \\mathsf { m }$ ), with hedges often planted behind. They were designed to match both the house they serve and their streetscape.\n\nThey are not solid but allow the public to see the front garden, and the front of the house \u2013 the status symbol for the suburban resident pre-1950s.\n\nDocumentary evidence and surviving original fences provide clues to the great variety of fence designs: most feature decorative timberwork in beams, shapes, and panels, often with gates to match. Picket fences were not common. Chain mesh within timber frames and fancy woven wire fences were also used.\n\nHaberfield brick fences display brickwork techniques similar to that used in the houses, such as the decorative use of moulded bricks. These are also used in the footings for timber and chain mesh fences. A number of original front brick fences survive in Haberfield. Other early brick fences use galvanised pipe as a railing between brick piers.\n\nDividing fences and side fences on corner allotments traditionally used timber palings (rough or reasonably dressed).\n\nThe use of \u201ccolorbond\u201d fencing, modern metal \u2018spear\u2019 and similar topped pickets, aluminium lacework panels, bagging of masonry and similar effects are relatively new treatments and are not appropriate materials or designs in the Haberfield Conservation Area.\n\n# Controls\n\nC74. Original front fences and gates are to be kept and repaired.   \nC75. Reconstruction of lost fences to their early design and detail is encouraged. It needs to be based on documentary evidence (photographs, descriptions). Demolition should only be permitted where accurate reconstruction is to occur immediately.   \nC76. New front fences which are not reconstructions of an earlier fence should be simple in design and decoration and fit in with the design of traditional fences in Haberfield.   \nC77. New front fences of timber are encouraged. They should be between 1m to 1.2m in height. The timber should be painted in colours historically used in Haberfield.\n\nC78. High brick fences on front alignments are not permitted in Haberfield.\n\nC79. Materials and designs inappropriate to the age of the house or to the character of Haberfield Conservation Area will not be considered.\n\nC80. Brick dividing fences are not permitted unless there are overriding environmental, safety or fire separation reasons for such use.\n\nC81. Swimming pool safety fencing must not be visible from a public place.\n\n![](images/4eddf55d0d295800ec0b72a5a4cb39a3d4cf3718103485a594806c58d205b600.jpg)  \nFigure 9.Appropriate fences in Haberfield\n\n# 2.2.17. Garden Elements including Paving, Driveways, Pergolas, and Pools\n\nRichard Stanton paid great attention to all aspects of this Haberfield\u2019s subdivision including the treatment of gardens: the grounds of each new house built by his company were laid out before the owners moved in. He consistently promoted Haberfield as \u201cThe Garden Suburb\u201d.\n\nOriginal Haberfield gardens are bounded by front fences of timber with handsome joinery gates, or brick fences with wrought iron palisades. Through these fences can be seen ornamental trees and shrubs, typically in tidy beds amid neat buffalo lawn. Specimen plantings were supported on arbours of timber or metal.\n\nA gently curving front path leads from a single, or wicket, gate to the front entry. This path is often made of tessellated tiles in elaborate patterns to match the front verandah, or more economically in coloured concrete with brick borders and garden edging.\n\nDriveways, with double gate in the front fence, usually consist of two sealed strips with a central section of grass or garden in between which allows for onsite drainage.\n\nSide and rear paving is extremely minimal. Frames and lattice-screened fences and gates are often used to close off, disguise and protect access to the back yard.\n\nUncovered pergolas are secondary to the house and fit into the garden setting. Haberfield\u2019s original pergolas were used as a garden element and, along with other more modern elements, are not detrimental to the soft landscaping on the site.\n\nThe percentage of site coverage used by such elements should not dominate or overwhelm the garden of which they are part.\n\nThe light structures which enclose and furnish Haberfield\u2019s gardens are an integral part of the suburb\u2019s garden heritage and character.\n\n# Controls\n\nC82. The surviving original garden elements in Haberfield are to be kept and repaired as required.\n\nC83. Reconstruction of lost garden elements is encouraged where it can be based on documentary evidence (photos, plans).   \nC84. Paving, hard surfacing and secondary outbuildings shall be kept to an absolute minimum on individual sites.   \nC85. Materials for new front paths shall be only tessellated tiles or smooth-textured, red-tinted concrete.   \nC86. Driveways shall consist of two (2) strips of hard surface brick paving or concrete with grass, or garden in between.   \nC87. Concrete paving for driveway strips is to be natural off-white, pale grey or have a red-tinted finish. Bright white concrete is not permitted.   \nC88. Swimming pools shall be at the rear of the property and shall be small enough to retain an adequate garden setting.\n\n![](images/dffc12cfa5a658f2a681c162a457f5d5913bcabf90ba9fb1bb16bd324ee42234.jpg)  \nFigure 10. Appropriate garden elements in Haberfield\n\n# 2.2.18. Modern Technological Developments\n\nStanton\u2019s original concept for Haberfield included up to date services such as sewerage and water on tap. The services were integrated with the development and were most unobtrusive. Solar hot water systems, photo-voltaic systems, telecommunication structures and other modern technologies are more recent inventions. Further, there is community awareness of the need to conserve water, and rainwater storage tanks are becoming more popular. It is important that the placement of such structures be discreet and not intrusive.\n\n# Controls\n\nC89. Hot water tanks should not be located externally on the roof but be within the roof space or within the building envelope. Solar hot water system tanks should not be located externally on the roof but be within the roof space or screened from public view if placed at ground level.   \nC90. Rainwater tanks are to be located behind the building line of any road frontage.\n\n# 2.2.19. Commercial Buildings and Institutions\n\n# Commercial Buildings\n\nHaberfield\u2019s commercial centres demonstrate Stanton\u2019s ideal of separating land uses so that the amenity of residential areas was ensured. In the main Ramsay Street group of shops (many with residences upstairs), the commercial buildings are remarkable for their diversity of design within a harmonious two-storey streetscape. The consistent streetscape comes from the original aboveawning facades which feature recessed balconies, arched verandah openings, bay windows and roof-screening parapets above.\n\nAt ground level the few remaining shopfronts provide evidence of stained glass and leadlight windows, heavy copper or brass mouldings, glazed tiles below the display window, central entryways and porches embellished with tessellated tiles.\n\nThe Haberfield Main Street Heritage Study is a valuable reference indicating the style and significance of original commercial facades.\n\nOther smaller \u201cneighbourhood\u201d centres are also found, such as the corner group at Boomerang and Waratah Streets. Their significance and character must also be carefully managed, with careful design, and conservation planning.\n\n# Institutional Buildings\n\nWithin Haberfield\u2019s primarily residential setting, a small number of institutional buildings are located, such as Council\u2019s library, churches for different religious denominations, schools, and the Yasmar training facility, based around \u201cYasmar\u201d, the Ramsay family home which is State heritage listed. Most of these buildings are important social and urban landmarks and contributory to Haberfield\u2019s heritage significance.\n\n# Controls\n\nC91. The existing siting pattern within the commercial area is to be maintained. The notion of a forecourt or entrance area to a commercial building is not appropriate as these interrupt the continuity and strength of the streetscape siting pattern.\n\nNote: In this control, the commercial area refers to the land outlined in red in Figure 11.\n\n![](images/6497a4ff51bb44f73554f8d2789d51d65e5efebd23691b12f9e6bd92cb620b88.jpg)  \nFigure 11. Commercial area at Ramsay and Dalhousie Street\n\nC92. Removal of or alteration to original facades is not permitted.   \nC93. Retention, repair, and restoration of original above-awning facades is encouraged.   \nC94. Below awning level, new work is to be in sympathy with, and not detract from, the style and character of the building and streetscape. Designs, including materials, colours, signage, etc should reflect the original facades of the commercial buildings of Haberfield.   \nC95. Reinstatement of the original street-level facades is encouraged, including the reinstatement of posted verandahs.   \nC96. The design of any new commercial building may include verandah or awning facades to improve or consolidate streetscape and footpath shelter.\n\n![](images/3e42842b0f90c59de7eee727f56a8cd915b1682faaaeb783d66afc4237936b41.jpg)  \nSHOPs TDE Ur JO TIOn FROUTrE LIN.   \nFigure 12. Commercial buildings in Haberfield\n\n# 2.2.20. Non-Conforming Houses\n\nSome parts of the Haberfield Conservation Area contain houses which are of post Federation and post 1920s construction. Such houses are usually single storey, low set and of brick and tile construction. This scale and use of materials lets them blend in with the character of Haberfield.\n\nA small number of original houses have been demolished and replaced in recent years by two storey houses or by blocks of flats. These are non-conforming buildings and are out of character with the surrounding dwellings, and with the Conservation Area.\n\n# Controls\n\nC97. Any alterations and additions to the shape, scale and materials of non-conforming houses should respond to the form of surrounding original dwellings and must be compatible with the general pattern of development within the conservation area and its distinctive character.\n\n# 2.2.21. New Dwellings\n\nNew dwellings within Haberfield are to be very carefully designed and controlled to protect and complement its unique heritage status as Australia's first garden suburb. The architectural language will need to be compatible with the Haberfield HCAs \u201cQueen Anne\u201d style federation houses with each dwelling being individually designed to suit the specific site. Every dwelling must be placed within a garden suburb setting and exhibit common style elements that result in a streetscape appearance of single storey scale, roof form, bulk, and materials.\n\nThere are some basic traditional architectural canons that can be followed, such as a tripartite composition which has:\n\nThe \u2018base\u2019 is the part of the building from the ground-to-ground floor level, often incorporating a plinth.   \n\u2022 The \u2018body\u2019 comprises the main walling and its window and door opening fenestrations, including shadowed areas such as verandas   \n\u2022 The \u2018top\u2019 is the complex of roof forms including eaves, which forms the \u2018crown\u2019 of the building.\n\nThe front part of the house will be the prominent part and will have a pitched tiled roof. The rear part of the house will be subservient in scale to the front part.\n\n# Controls\n\nC98. Any new development shall produce site coverage similar in pattern and size to the site coverage established by the original development of the suburb. That is, free standing single storey scale brick houses in a garden setting with uniform front setbacks, a 3m wide side setback for driveway access to a garage, a smaller side setback for a traditional tradesmen\u2019s path down the other side, and a generous rear setback. Note: Nil side setbacks were rare, depart from Garden Suburb principles and are not permitted.   \nC99. The shape, scale, form, and materials of new dwellings should respond to the those of surrounding original dwellings.   \nC100. The main front part of houses facing the street are to have pitched roof at minimum of 30 degrees placed over a footprint of a minimum of four rooms. Beyond this the rear part of houses are to be subservient in scale to the front part.   \nC101. Walls must not be painted or rendered and are to be clad with machine made smooth faced bricks similar in colour to those used on original Haberfield houses.   \nC102. Joinery, doors, and windows are to reflect the materials, proportions, location, size, sill heights, header treatment, materials, detailing and glazing patterns of original Haberfield houses.   \nC103. Front fences, and side fences within the front building setback are critical due to their prominence in the streetscape. Accordingly, all dwellings are to contain a front fence; front fences are to comprise traditional style timber joinery fences of simple design, up to 1.2m in height, and painted in traditional colours.\n\nC104. Rear and side fences behind the front building line are to be constructed of timber palings to a maximum height of 1.8m.\n\n# Site Specific Planning Controls\n\n# 2.3. 140A Hawthorne Parade Haberfield\n\nA subdivision/ road layout plan for the land was conditionally approved by Council on 18 December 2001. The subdivision is to be Torrens title for each of the proposed residential lots. An area of public open space is provided as a central focal point to the future development. The roads, public reserve, and provision for drainage easements and infrastructure are to be dedicated from the Commonwealth to Council.\n\nThe approved subdivision lot pattern reflects, as far as possible, the principles of the existing surrounding subdivisions and the garden suburb ideal which dates from Richard Stanton's first Haberfield Estate of 1901 and its 1905 extension.\n\nThe subject site, including house lots and public reserve, is susceptible to stormwater inundation events. Therefore, minimum required elevated ground floor levels are necessary to ensure dwelling-house habitable living areas are above stormwater inundation levels associated with 1 in 100-year ARI events. Also, minimum required levels for all electrical wiring/power points/switches are detailed for all house lots. Building designs are required to be accompanied with a hydraulic engineering report to establish the minimum floor levels of structures.\n\nNote: Future development on the Defence land will be designed in accordance with relevant controls in Part A3 \u2013 Flood Hazard of the Comprehensive DCP 2016 for Ashbury, Ashfield, Croydon, Croydon Park, Haberfield, Hurlstone Park, and Summer Hill. Compliance with this section may require an alternative type of boundary fence.\n\n# Objectives\n\nO8. Ensure new development does not detract from the heritage significance of Haberfield.   \nO9. Ensure vehicles can manoeuvre in accordance with the relevant Australian Standards.   \nO10. Establish appropriate uniform front setback for subdivision to enable garden setting to be established.   \nO11. Ensure that overland flow is maintained and there are no adverse impacts on surrounding properties from overland flow.\n\n# Controls\n\nC105. The dwelling must be set back 4 metres from the front boundary of the lot.   \nC106. Driveways on subdivision lots 16 and 17 must be located on the southern side of the dwelling.   \nC107. Front garden levels within the required building setback are to generally match the levels of the adjacent public footpath to achieve a uniform, cohesive garden setting throughout the development. Note: The lots detailed in Figure 13 must be built on masonry piers.   \nC108. Where dwellings are constructed on piers, the area under the dwelling must not be visible from any public place. Timber lattice or other appropriate material should be used to screen the area under the dwelling.\n\nC109. The masonry walls on lots 10 and 11 required for maintaining overland flows must always remain in situ. Works that remove or alter the walls or reduce the effectiveness of flood control measures will not be supported.\n\n![](images/0315de70e0efc3f78f4b05b1f5c7458308800af85789a7554402b75e5901bff7.jpg)  \nFigure 13. Proposed subdivision for 140A Hawthorne Parade Haberfield"
+        ]
+      ]
+    },
+    {
+      "name": "development_permissions",
+      "row_count": 221,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "development_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "permission_status",
+          "type": "TEXT"
+        },
+        {
+          "name": "conditions",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "lep_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "extraction_method",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "source_type",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "E1",
+          "business_premises",
+          "permitted",
+          null,
+          7658,
+          "Inner West Local Environmental Plan 2022 - NSW Legislation-101-150.pdf",
+          "objective_list_parsing",
+          0.7,
+          "2025-09-19 06:09:48",
+          "existing"
+        ]
+      ]
+    },
+    {
+      "name": "sepp_lep_overrides",
+      "row_count": 91,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "sepp_provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "lep_clause_reference",
+          "type": "TEXT"
+        },
+        {
+          "name": "override_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "extracted_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "manual_verified",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "created_timestamp",
+          "type": "DATETIME"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          12638,
+          "4",
+          "modifies",
+          0.6,
+          "In this Chapter\u2014certified coastal management program means the following\u2014(a)\u00a0\u00a0a coastal management program prepared, adopted and certified under Part 3 of the Coastal Management Act 2016,(b)\u00a0\u00a0a coasta...",
+          0,
+          "2025-09-03 03:03:30"
+        ]
+      ]
+    },
+    {
+      "name": "table_parsing_results",
+      "row_count": 63,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "table_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "permissions_extracted",
+          "type": "INTEGER"
+        },
+        {
+          "name": "parsing_status",
+          "type": "TEXT"
+        },
+        {
+          "name": "error_message",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          7646,
+          "E1",
+          "unknown",
+          0,
+          "no_permissions",
+          null,
+          "2025-09-19 06:09:48"
+        ]
+      ]
+    },
+    {
+      "name": "verification_tests",
+      "row_count": 17,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "test_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "test_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "input_parameters",
+          "type": "TEXT"
+        },
+        {
+          "name": "expected_result",
+          "type": "TEXT"
+        },
+        {
+          "name": "actual_result",
+          "type": "TEXT"
+        },
+        {
+          "name": "test_status",
+          "type": "TEXT"
+        },
+        {
+          "name": "execution_time_ms",
+          "type": "INTEGER"
+        },
+        {
+          "name": "error_message",
+          "type": "TEXT"
+        },
+        {
+          "name": "executed_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "zone_query",
+          "Zone query: R1",
+          "{\"zone\": \"R1\"}",
+          "{\"minimum_dev_types\": 3}",
+          "{\"dev_types_found\": 14, \"results\": [[\"[\\\"dwelling_house\\\"]\", \"consent\", 1], [\"home_business\", \"consent\", 1], [\"[\\\"dual_occupancy\\\"]\", \"permitted\", 1]]}",
+          "pass",
+          1,
+          null,
+          "2025-09-19 08:27:50"
+        ]
+      ]
+    },
+    {
+      "name": "verified_compliance_rules",
+      "row_count": 6,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rule_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "jurisdiction",
+          "type": "TEXT"
+        },
+        {
+          "name": "authority",
+          "type": "TEXT"
+        },
+        {
+          "name": "lga",
+          "type": "TEXT"
+        },
+        {
+          "name": "zones",
+          "type": "TEXT"
+        },
+        {
+          "name": "former_council",
+          "type": "TEXT"
+        },
+        {
+          "name": "requirement_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "requirement_subtype",
+          "type": "TEXT"
+        },
+        {
+          "name": "operator",
+          "type": "TEXT"
+        },
+        {
+          "name": "value_numeric",
+          "type": "REAL"
+        },
+        {
+          "name": "units",
+          "type": "TEXT"
+        },
+        {
+          "name": "context",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_document",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_section",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_clause",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_url",
+          "type": "TEXT"
+        },
+        {
+          "name": "effective_date",
+          "type": "TEXT"
+        },
+        {
+          "name": "priority",
+          "type": "INTEGER"
+        },
+        {
+          "name": "extraction_method",
+          "type": "TEXT"
+        },
+        {
+          "name": "quality_score",
+          "type": "REAL"
+        },
+        {
+          "name": "extracted_at",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_file",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "ASHFIELD_REAR_SETBACK_R2",
+          "DCP",
+          "Ashfield Council",
+          "Inner West",
+          "[\"R2\"]",
+          "Ashfield",
+          "min_setback",
+          "rear",
+          ">=",
+          1.2,
+          "metres",
+          "minimum rear boundary setback for residential development",
+          "VERIFIED",
+          "Ashfield DCP 2016 Chapter E2",
+          "Haberfield Neighbourhood",
+          "Rear Setback Requirements",
+          "https://www.innerwest.nsw.gov.au/development/development-control-plans",
+          "2016-01-01",
+          3,
+          "RAG-Anything + AutoSchemaKG Processing",
+          0.95,
+          "2025-08-25T05:17:00.000Z",
+          "Chapter E2 Haberfield Neighbourhood.pdf",
+          "2025-09-05 22:29:51"
+        ]
+      ]
+    },
+    {
+      "name": "zone_setback_rules",
+      "row_count": 6,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "rule_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "council",
+          "type": "TEXT"
+        },
+        {
+          "name": "boundary_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "base_value",
+          "type": "REAL"
+        },
+        {
+          "name": "unit",
+          "type": "TEXT"
+        },
+        {
+          "name": "operator",
+          "type": "TEXT"
+        },
+        {
+          "name": "authority_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "precedence_level",
+          "type": "INTEGER"
+        },
+        {
+          "name": "conditions",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_document",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_clause",
+          "type": "TEXT"
+        },
+        {
+          "name": "effective_date",
+          "type": "TEXT"
+        },
+        {
+          "name": "quality_score",
+          "type": "REAL"
+        },
+        {
+          "name": "extraction_method",
+          "type": "TEXT"
+        },
+        {
+          "name": "source_file",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence",
+          "type": "REAL"
+        },
+        {
+          "name": "created_at",
+          "type": "TEXT"
+        }
+      ],
+      "sample_data": [
+        [
+          7,
+          "ASHFIELD_REAR_SETBACK_R2_R2_rear",
+          "R2",
+          "Inner West",
+          "rear",
+          1.2,
+          "metres",
+          ">=",
+          "Ashfield Council",
+          3,
+          null,
+          "Ashfield DCP 2016 Chapter E2",
+          "Rear Setback Requirements",
+          null,
+          0.95,
+          "verified_compliance_rules",
+          "database_import",
+          0.95,
+          "2025-09-05 23:27:09"
+        ]
+      ]
+    },
+    {
+      "name": "quality_metrics",
+      "row_count": 6,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "metric_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "metric_value",
+          "type": "REAL"
+        },
+        {
+          "name": "target_value",
+          "type": "REAL"
+        },
+        {
+          "name": "status",
+          "type": "TEXT"
+        },
+        {
+          "name": "details",
+          "type": "TEXT"
+        },
+        {
+          "name": "measured_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "total_combinations",
+          221.0,
+          200.0,
+          "pass",
+          "{\"value\": 221, \"target\": 200, \"status\": \"pass\"}",
+          "2025-09-19 08:27:50"
+        ]
+      ]
+    },
+    {
+      "name": "development_pathways",
+      "row_count": 1,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "development_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "zone",
+          "type": "TEXT"
+        },
+        {
+          "name": "qualification_criteria",
+          "type": "JSON"
+        },
+        {
+          "name": "pathway_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "source_provision_ids",
+          "type": "TEXT"
+        },
+        {
+          "name": "manual_verified",
+          "type": "BOOLEAN"
+        },
+        {
+          "name": "created_timestamp",
+          "type": "DATETIME"
+        }
+      ],
+      "sample_data": [
+        [
+          1,
+          "single_dwelling_house",
+          "R2",
+          "{\"height\": {\"max\": 8.5, \"unit\": \"m\"}, \"setback\": {\"front\": {\"min\": 6, \"unit\": \"m\"}}, \"site_coverage\": {\"max\": 60, \"unit\": \"%\"}, \"additional_requirements\": [\"Must not be on heritage item\", \"Must comply with BASIX\", \"Must not exceed single storey\"]}",
+          "exempt",
+          0.8,
+          "7668,7679,9196,9198,9245",
+          0,
+          "2025-09-03 03:03:30"
+        ]
+      ]
+    },
+    {
+      "name": "contextual_guidance",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_title",
+          "type": "TEXT"
+        },
+        {
+          "name": "guidance_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "section_header",
+          "type": "TEXT"
+        },
+        {
+          "name": "text_level",
+          "type": "INTEGER"
+        },
+        {
+          "name": "original_ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "extraction_timestamp",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "kg_visual_elements",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "element_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "file_path",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "width",
+          "type": "INTEGER"
+        },
+        {
+          "name": "height",
+          "type": "INTEGER"
+        },
+        {
+          "name": "description",
+          "type": "TEXT"
+        },
+        {
+          "name": "document_id",
+          "type": "TEXT"
+        },
+        {
+          "name": "original_ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "original_ref_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "extraction_timestamp",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "kg_visual_clause_links",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "visual_element_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "clause_reference",
+          "type": "TEXT"
+        },
+        {
+          "name": "illustration_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "page_number",
+          "type": "INTEGER"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "original_ref_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "original_ref_id",
+          "type": "INTEGER"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "clause_relationships",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "parent_provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "child_provision_id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "relationship_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "confidence_score",
+          "type": "REAL"
+        },
+        {
+          "name": "langextract_source",
+          "type": "BOOLEAN"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "query_cache",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "query_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "query_hash",
+          "type": "TEXT"
+        },
+        {
+          "name": "result_json",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        },
+        {
+          "name": "access_count",
+          "type": "INTEGER"
+        },
+        {
+          "name": "last_accessed",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "pattern_validation",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "pattern_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "sample_text",
+          "type": "TEXT"
+        },
+        {
+          "name": "expected_result",
+          "type": "TEXT"
+        },
+        {
+          "name": "validation_status",
+          "type": "TEXT"
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": []
+    },
+    {
+      "name": "expert_validation",
+      "row_count": 0,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER"
+        },
+        {
+          "name": "validation_type",
+          "type": "TEXT"
+        },
+        {
+          "name": "item_reference",
+          "type": "TEXT"
+        },
+        {
+          "name": "expert_rating",
+          "type": "INTEGER"
+        },
+        {
+          "name": "comments",
+          "type": "TEXT"
+        },
+        {
+          "name": "validator_name",
+          "type": "TEXT"
+        },
+        {
+          "name": "validated_at",
+          "type": "TIMESTAMP"
+        }
+      ],
+      "sample_data": []
+    }
+  ]
+}

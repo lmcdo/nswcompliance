@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
         ref_number,
         section_header,
         provision_text
-      FROM regulatory_provisions
+      FROM regulatory_provisions_canonical
       WHERE document_id = $1
     `;
 
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           ref_number,
           section_header,
           provision_text
-        FROM regulatory_provisions
+        FROM regulatory_provisions_canonical
         WHERE document_id = $1
         AND provision_text ILIKE $2
         ORDER BY ref_number

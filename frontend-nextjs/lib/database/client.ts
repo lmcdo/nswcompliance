@@ -62,7 +62,7 @@ export class DatabaseClient {
  SELECT dc.*, rp.provision_text, rp.document_id, rp.domain_classification,
  'SEPP - State Policy' as authority_level, 1 as legal_precedence, false as can_be_varied
  FROM development_controls dc
- JOIN regulatory_provisions rp ON dc.provision_id = rp.id
+ JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
  WHERE dc.control_type = 'setback'
  AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
  AND rp.domain_classification = $2
@@ -87,7 +87,7 @@ export class DatabaseClient {
  SELECT dc.*, rp.provision_text, rp.document_id, rp.domain_classification,
  'LEP - Local Environmental Plan' as authority_level, 2 as legal_precedence, true as can_be_varied
  FROM development_controls dc
- JOIN regulatory_provisions rp ON dc.provision_id = rp.id
+ JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
  WHERE dc.control_type = 'setback'
  AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
  AND rp.domain_classification = $2
@@ -113,7 +113,7 @@ export class DatabaseClient {
  SELECT dc.*, rp.provision_text, rp.document_id, rp.domain_classification,
  'DCP - Development Control Plan' as authority_level, 3 as legal_precedence, true as can_be_varied
  FROM development_controls dc
- JOIN regulatory_provisions rp ON dc.provision_id = rp.id
+ JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
  WHERE dc.control_type = 'setback'
  AND (dc.zone_applicable = $1 OR dc.zone_applicable = 'general')
  AND rp.domain_classification = $2
@@ -150,7 +150,7 @@ export class DatabaseClient {
  let query = `
  SELECT qs.*, rp.provision_text, rp.document_id, rp.domain_classification
  FROM quantitative_standards qs
- JOIN regulatory_provisions rp ON qs.provision_id = rp.id
+ JOIN regulatory_provisions_canonical rp ON qs.provision_id = rp.id
  WHERE qs.context = $1
  AND qs.numeric_value IS NOT NULL
  AND rp.domain_classification = $2
@@ -184,7 +184,7 @@ export class DatabaseClient {
  try {
  let query = `
  SELECT *
- FROM regulatory_provisions
+ FROM regulatory_provisions_canonical
  WHERE provision_text ILIKE $1
  `;
  
@@ -347,7 +347,7 @@ export class DatabaseClient {
  'SELECT COUNT(*) as count FROM development_controls',
  'SELECT COUNT(*) as count FROM quantitative_standards',
  'SELECT COUNT(*) as count FROM kg_relationships',
- 'SELECT COUNT(*) as count FROM regulatory_provisions',
+ 'SELECT COUNT(*) as count FROM regulatory_provisions_canonical',
  'SELECT COUNT(*) as count FROM development_pathways'
  ];
  

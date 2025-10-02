@@ -1,0 +1,325 @@
+# PRP-A3: Production Docker Compose
+# Full production stack with database, Redis, and monitoring
+
+version: '3.8'
+
+services:
+  # Main application
+  compliance-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: compliance-engine:latest
+    container_name: compliance-engine-app
+    restart: unless-stopped
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      # Application
+      NODE_ENV: production
+      PORT: 3000
+
+      # PRP-A2 Architecture
+      COMPLIANCE_ARCHITECTURE: direct_database
+      USE_DIRECT_DATABASE: true
+
+      # Database (using service name for internal networking)
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: nsw_planning
+      DB_USER: postgres
+      DB_PASSWORD_FILE: /run/secrets/db_password
+
+      # Connection pooling
+      DB_POOL_MIN: 2
+      DB_POOL_MAX: 20
+      DB_IDLE_TIMEOUT: 30000
+      DB_CONNECTION_TIMEOUT: 2000
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+
+      # Security
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+
+      # Monitoring
+      METRICS_ENABLED: true
+      PROMETHEUS_ENABLED: true
+      ERROR_TRACKING_ENABLED: true
+
+      # Logging
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      AUDIT_LOGGING_ENABLED: true
+
+      # Performance
+      CACHE_ENABLED: true
+      COMPRESSION_ENABLED: true
+      PERFORMANCE_MODE: true
+
+    secrets:
+      - db_password
+      - redis_password
+      - jwt_secret
+      - google_maps_api_key
+      - openai_api_key
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health?type=liveness"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    networks:
+      - app-network
+
+    volumes:
+      - app-logs:/app/logs
+      - app-backups:/app/backups
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: compliance-engine-db
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: nsw_planning
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+      POSTGRES_CHECKPOINT_COMPLETION_TARGET: 0.9
+      POSTGRES_WAL_BUFFERS: 16MB
+      POSTGRES_DEFAULT_STATISTICS_TARGET: 100
+
+    secrets:
+      - db_password
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-backups:/backups
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d nsw_planning"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    networks:
+      - app-network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: compliance-engine-redis
+    restart: unless-stopped
+
+    command: redis-server --requirepass-file /run/secrets/redis_password --maxmemory 256mb --maxmemory-policy allkeys-lru
+
+    secrets:
+      - redis_password
+
+    ports:
+      - "6379:6379"
+
+    volumes:
+      - redis-data:/data
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "--no-auth-warning", "-a", "$(cat /run/secrets/redis_password)", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+    networks:
+      - app-network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Prometheus Monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: compliance-engine-prometheus
+    restart: unless-stopped
+
+    ports:
+      - "9090:9090"
+
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+
+    networks:
+      - app-network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # Grafana Dashboard
+  grafana:
+    image: grafana/grafana:latest
+    container_name: compliance-engine-grafana
+    restart: unless-stopped
+
+    ports:
+      - "3001:3000"
+
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD_FILE: /run/secrets/grafana_password
+      GF_INSTALL_PLUGINS: grafana-piechart-panel
+
+    secrets:
+      - grafana_password
+
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+
+    networks:
+      - app-network
+
+    depends_on:
+      - prometheus
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+  # NGINX Load Balancer
+  nginx:
+    image: nginx:alpine
+    container_name: compliance-engine-nginx
+    restart: unless-stopped
+
+    ports:
+      - "80:80"
+      - "443:443"
+
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx-logs:/var/log/nginx
+
+    depends_on:
+      - compliance-engine
+
+    networks:
+      - app-network
+
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+
+# Docker secrets for sensitive data
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  google_maps_api_key:
+    file: ./secrets/google_maps_api_key.txt
+  openai_api_key:
+    file: ./secrets/openai_api_key.txt
+  grafana_password:
+    file: ./secrets/grafana_password.txt
+
+# Named volumes for data persistence
+volumes:
+  postgres-data:
+    driver: local
+  postgres-backups:
+    driver: local
+  redis-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+  app-logs:
+    driver: local
+  app-backups:
+    driver: local
+  nginx-logs:
+    driver: local
+
+# Internal network
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

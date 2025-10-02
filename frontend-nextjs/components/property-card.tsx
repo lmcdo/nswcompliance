@@ -39,7 +39,14 @@ interface PropertyData {
 
 export function PropertyCard() {
  const [address, setAddress] = useState("")
- const [property, setProperty] = useState<PropertyData>({ address: "" })
+ const [property, setProperty] = useState<PropertyData>({
+   address: "",
+   environmental: {
+     floodProne: false,
+     bushfireProne: false
+   },
+   seppOverlays: []
+ })
  const [isLoading, setIsLoading] = useState(false)
 
  const fetchPropertyData = async (addr: string) => {
@@ -84,6 +91,8 @@ export function PropertyCard() {
          maxHeight: data.constraints?.maxHeight,
          maxFsr: data.constraints?.maxFsr,
          minLotSize: data.constraints?.minLotSize,
+         lot: data.lotDetails?.lot || data.lot,
+         dpNumber: data.lotDetails?.dpNumber || data.dpNumber,
          heritage: {
            isHeritage: hasHeritage,
            heritageType: data.heritage?.heritageType || data.constraints?.heritageType || (hasHeritage ? 'Heritage Conservation Area' : undefined),
@@ -120,13 +129,14 @@ export function PropertyCard() {
      const newAddress = event.detail
      console.log('PropertyCard received address event:', newAddress)
      setAddress(newAddress)
-     // Emit to dashboard
-     const dashboardEvent = new CustomEvent('addressSelected', { detail: newAddress })
-     document.dispatchEvent(dashboardEvent)
+     fetchPropertyData(newAddress)
    }
 
+   // Listen on both window and document for compatibility
+   window.addEventListener('addressSelected', handleAddressSelected as EventListener)
    document.addEventListener('addressSelected', handleAddressSelected as EventListener)
    return () => {
+     window.removeEventListener('addressSelected', handleAddressSelected as EventListener)
      document.removeEventListener('addressSelected', handleAddressSelected as EventListener)
    }
  }, [])
@@ -147,37 +157,41 @@ export function PropertyCard() {
 
  return (
    <div className="space-y-4">
-     {/* Address Search */}
-     <Card>
-       <CardHeader className="pb-3">
-         <CardTitle className="flex items-center gap-2 text-lg">
-           <Home className="h-5 w-5" />
-           Property Address
-         </CardTitle>
-       </CardHeader>
-       <CardContent>
-         <input
-           type="text"
-           value={address}
-           onChange={(e) => setAddress(e.target.value)}
-           placeholder="Enter property address..."
-           className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-         />
-         {property.address && (
-           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-             <div className="flex items-center gap-2 text-sm">
-               <MapPin className="h-4 w-4 text-blue-600" />
-               <span className="font-medium">{property.address}</span>
-             </div>
-             {property.propId && (
-               <div className="text-xs text-gray-600 mt-1">
-                 Property ID: {property.propId}
-               </div>
-             )}
+     {/* Property Address */}
+     {property.address && (
+       <Card>
+         <CardHeader className="pb-3">
+           <CardTitle className="flex items-center gap-2 text-lg">
+             <Home className="h-5 w-5" />
+             Property Address
+           </CardTitle>
+         </CardHeader>
+         <CardContent className="space-y-3">
+           <div className="text-sm">
+             <span className="text-gray-600">Address:</span>
+             <div className="font-medium">{property.address}</div>
            </div>
-         )}
-       </CardContent>
-     </Card>
+           {property.propId && (
+             <div className="text-sm">
+               <span className="text-gray-600">Property ID:</span>
+               <div className="font-medium">#{property.propId}</div>
+             </div>
+           )}
+           {property.lot && (
+             <div className="text-sm">
+               <span className="text-gray-600">Lot:</span>
+               <div className="font-medium">{property.lot}</div>
+             </div>
+           )}
+           {property.dpNumber && (
+             <div className="text-sm">
+               <span className="text-gray-600">DP Number:</span>
+               <div className="font-medium">{property.dpNumber}</div>
+             </div>
+           )}
+         </CardContent>
+       </Card>
+     )}
 
      {/* Basic Property Info */}
      {property.zone && (
@@ -243,40 +257,6 @@ export function PropertyCard() {
        </Card>
      )}
 
-     {/* Heritage Information - Always show, color coded */}
-     <Card className={`${property.heritage?.isHeritage ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-gray-50'}`}>
-       <CardHeader className="pb-3">
-         <CardTitle className={`flex items-center gap-2 text-lg ${property.heritage?.isHeritage ? 'text-orange-800' : 'text-gray-500'}`}>
-           <Shield className="h-5 w-5" />
-           Heritage Area
-         </CardTitle>
-       </CardHeader>
-       <CardContent>
-         {property.heritage?.isHeritage ? (
-           <div className="space-y-2">
-             <Badge className="bg-orange-100 text-orange-800 border-orange-300">
-               Heritage Protected
-             </Badge>
-             {property.heritage.heritageType && (
-               <div className="text-sm">
-                 <span className="text-gray-600">Type:</span>
-                 <div className="font-medium text-orange-800">{property.heritage.heritageType}</div>
-               </div>
-             )}
-             {property.heritage.heritageClause && (
-               <div className="text-sm">
-                 <span className="text-gray-600">Clause:</span>
-                 <div className="font-medium">{property.heritage.heritageClause}</div>
-               </div>
-             )}
-           </div>
-         ) : (
-           <div className="text-sm text-gray-500">
-             This property is not within a heritage area or conservation zone.
-           </div>
-         )}
-       </CardContent>
-     </Card>
 
      {/* Environmental Constraints */}
      {(property.environmental?.acidSulfateSoils || property.environmental?.basixClimate || property.environmental?.basixWater || property.environmental?.floodProne || property.environmental?.bushfireProne) && (
@@ -288,37 +268,37 @@ export function PropertyCard() {
            </CardTitle>
          </CardHeader>
          <CardContent className="space-y-3">
-           {property.environmental.acidSulfateSoils && (
+           {property.environmental?.acidSulfateSoils && (
              <div className="flex justify-between items-center">
                <span className="text-gray-600">Acid Sulfate Soils:</span>
                <Badge variant="outline" className="bg-green-100 text-green-800">
-                 {property.environmental.acidSulfateSoils}
+                 {property.environmental?.acidSulfateSoils}
                </Badge>
              </div>
            )}
-           {property.environmental.basixClimate && (
+           {property.environmental?.basixClimate && (
              <div className="flex justify-between items-center">
                <span className="text-gray-600">BASIX Climate:</span>
                <Badge variant="outline" className="bg-green-100 text-green-800">
-                 Zone {property.environmental.basixClimate}
+                 Zone {property.environmental?.basixClimate}
                </Badge>
              </div>
            )}
-           {property.environmental.basixWater && (
+           {property.environmental?.basixWater && (
              <div className="flex justify-between items-center">
                <span className="text-gray-600">BASIX Water:</span>
                <Badge variant="outline" className="bg-green-100 text-green-800">
-                 {property.environmental.basixWater}
+                 {property.environmental?.basixWater}
                </Badge>
              </div>
            )}
-           {property.environmental.floodProne && (
+           {property.environmental?.floodProne && (
              <div className="flex items-center gap-2 text-sm">
                <AlertTriangle className="h-4 w-4 text-amber-600" />
                <span className="text-amber-800 font-medium">Flood Prone Area</span>
              </div>
            )}
-           {property.environmental.bushfireProne && (
+           {property.environmental?.bushfireProne && (
              <div className="flex items-center gap-2 text-sm">
                <AlertTriangle className="h-4 w-4 text-red-600" />
                <span className="text-red-800 font-medium">Bushfire Prone Area</span>
@@ -338,7 +318,7 @@ export function PropertyCard() {
            </CardTitle>
          </CardHeader>
          <CardContent className="space-y-3">
-           {property.seppOverlays.map((sepp, index) => (
+           {property.seppOverlays?.map((sepp, index) => (
              <div key={index} className="p-3 bg-white rounded-lg border border-blue-200">
                <div className="text-sm">
                  <div className="font-medium text-blue-800">{sepp.seppName}</div>

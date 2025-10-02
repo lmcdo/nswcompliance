@@ -21,6 +21,31 @@ export interface ProvisionContent {
   document_id: string;
 }
 
+// Truncated text component with "Show more..." button
+function TruncatedText({ text, wordLimit = 100 }: { text: string; wordLimit?: number }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  const words = text.split(/\s+/);
+  const shouldTruncate = words.length > wordLimit;
+  const displayText = shouldTruncate && !isExpanded
+    ? words.slice(0, wordLimit).join(' ') + '...'
+    : text;
+
+  return (
+    <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
+      {displayText}
+      {shouldTruncate && (
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-blue-600 hover:text-blue-800 ml-2 font-medium"
+        >
+          {isExpanded ? 'Show less' : 'Show more...'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export interface ComplianceConstraint {
   type: 'height' | 'fsr' | 'setback' | 'heritage' | 'environmental' | 'special';
   value: string | number;
@@ -102,6 +127,41 @@ export function ConstraintCard({
           }
         } catch (error) {
           console.error('[ConstraintCard] Failed to fetch SEPP text:', error);
+        }
+      }
+      // Check if this is a SEPP override with provision_id
+      else if (constraint.source.authority_level === 'SEPP' && constraint.provision_id) {
+        try {
+          console.log('[ConstraintCard] Fetching SEPP override by provision ID:', constraint.provision_id);
+
+          const response = await fetch('/api/sepp/full-text', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              provisionId: constraint.provision_id
+            })
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data.provisions) {
+              // Convert API response to ProvisionContent format
+              const provisions: ProvisionContent[] = data.data.provisions.map((p: any) => ({
+                id: p.id,
+                ref_number: p.clause,
+                section_header: p.sectionHeader || '',
+                provision_text: p.fullText,
+                document_id: p.documentId
+              }));
+
+              setSeppProvisions(provisions);
+              console.log('[ConstraintCard] Loaded', provisions.length, 'SEPP override provisions');
+            }
+          }
+        } catch (error) {
+          console.error('[ConstraintCard] Failed to fetch SEPP override text:', error);
         }
       } else {
         // For non-SEPP provisions, use the callback
@@ -292,9 +352,7 @@ export function ConstraintCard({
                           {provision.section_header}
                         </div>
                       )}
-                      <div className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">
-                        {provision.provision_text}
-                      </div>
+                      <TruncatedText text={provision.provision_text} wordLimit={100} />
                     </div>
                   ))}
                 </div>
@@ -317,10 +375,7 @@ export function ConstraintCard({
                           {provision.section_header}
                         </div>
                       )}
-                      <div className="text-sm text-gray-600">
-                        {provision.provision_text.substring(0, 300)}
-                        {provision.provision_text.length > 300 && '...'}
-                      </div>
+                      <TruncatedText text={provision.provision_text} wordLimit={100} />
                     </div>
                   ))}
                 </div>

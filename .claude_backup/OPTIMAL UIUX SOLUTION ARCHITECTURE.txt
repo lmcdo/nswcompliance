@@ -1,0 +1,218 @@
+ OPTIMAL UI/UX SOLUTION ARCHITECTURE
+
+  1. 📱 PROGRESSIVE DISCLOSURE INTERFACE
+
+  Master-Detail Layout:
+  ┌────────────────────────────────────────────────────────
+  ─────┐
+  │ 🏠 PROPERTY SUMMARY (Collapsed by default)
+      │
+  │ 📍 30 Illawarra Road, Marrickville
+      │
+  │ 🏷️  R2 Low Density • Inner West Council
+     │
+  │ [📋 Quick Actions] [🔍 Research Mode] [📊 Analysis]
+     │
+  └────────────────────────────────────────────────────────
+  ─────┘
+
+  ┌────────────────────────────────────────────────────────
+  ─────┐
+  │ ⚖️  PLANNING CONSTRAINTS (Priority View)
+      │
+  │ ┌─ 🟥 SEPP (1) - Overrides local controls
+      │
+  │ │  • Water efficiency requirements
+     │
+  │ │  [📄 Full Text] [🔗 Related] [⚠️  Flag]
+   │
+  │ ├─ 🟦 LEP (3) - Height/FSR limits
+     │
+  │ │  • 9.5m max building height
+    │
+  │ │  [📄 Full Text] [🔗 Related] [⚠️  Flag]
+   │
+  │ └─ 🟢 DCP (4) - Design guidelines
+     │
+  │    • Setback requirements
+   │
+  │    [📄 Full Text] [🔗 Related] [⚠️  Flag]
+  │
+  └────────────────────────────────────────────────────────
+  ─────┘
+
+  2. 🎛️ CONTEXT-SENSITIVE ACTIONS
+
+  Planner-Centric Action Buttons:
+  - 📄 Full Text: Instant overlay with complete legal
+  clause
+  - 🔗 Related: Show related provisions/conflicts
+  - ⚠️ Flag: Mark for detailed review/compliance check
+  - 📋 Extract: Add to research report/memo
+  - 🧮 Calculate: FSR/height/setback calculations
+  - 📞 Escalate: Send to senior planner/legal
+
+  3. 📚 SMART TEXT INTEGRATION
+
+  On-Demand Legal Text Access:
+  [📄 Full Text] → Slide-out panel shows:
+  ┌─────────────────────────────────┐
+  │ SEPP Sustainable Buildings 2022 │
+  │ Clause 2.2 - Complete Text     │
+  │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+  │ (1) A competing provision of... │
+  │ (a) to reduce consumption of... │
+  │     (i) a building, or         │
+  │     (ii) the land on which...  │
+  │ (b) to improve the thermal...  │
+  │ ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+  │ [🔖 Bookmark] [📤 Share] [❌]  │
+  └─────────────────────────────────┘
+
+  4. 🏃‍♀️ STREAMLINED RESEARCH WORKFLOW
+
+  Research Mode Toggle:
+  - Quick View: Summary cards with key metrics
+  - Research Mode: Expanded details + full legal access
+  - Analysis Mode: Compliance matrix + conflict detection
+
+  Workflow Steps:
+  1. Property Load → Auto-prioritize constraints by legal
+  precedence
+  2. Constraint Review → One-click access to full legal
+  text
+  3. Conflict Detection → Highlight SEPP vs LEP vs DCP
+  conflicts
+  4. Action Items → Flag issues, extract requirements
+  5. Report Generation → Export findings with legal
+  references
+
+  ---
+  📐 SPACE-EFFICIENT DESIGN PATTERNS
+
+  1. 🎯 PRIORITY-BASED CARDS
+
+  ┌─ 🟥 SEPP Override (Critical)     [📄] [⚠️] ─┐
+  │ Water efficiency: 40% reduction required    │
+  │ Overrides: Local water provisions          │
+  └─────────────────────────────────────────────┘
+
+  ┌─ 🟦 LEP Height Limit             [📄] [🧮] ─┐
+  │ 9.5m max • Current: Compliant             │
+  └────────────────────────────────────────────┘
+
+  ┌─ 🟢 DCP Setbacks                 [📄] [🔍] ─┐
+  │ Front: 6m • Side: 1.2m • Rear: 8m        │
+  └────────────────────────────────────────────┘
+
+  2. 🎨 VISUAL HIERARCHY
+
+  - Color coding by legal precedence (SEPP red > LEP blue >
+   DCP green)
+  - Size hierarchy - SEPP provisions larger/more prominent
+  - Icon system for quick constraint type identification
+  - Progressive disclosure - summary → details → full legal
+   text
+
+  3. 📱 RESPONSIVE INFORMATION DENSITY
+
+  - Mobile: Single column, swipe cards, bottom sheet legal
+  text
+  - Tablet: Two column, overlay panels, side-by-side
+  comparison
+  - Desktop: Multi-column, popover legal text, research
+  workspace
+
+  ---
+  🎮 PLANNER USER EXPERIENCE FLOW
+
+  🔍 TYPICAL RESEARCH SESSION:
+
+  1. Land on Property
+  → Auto-load priority constraints (SEPP first)
+  2. Quick Scan
+  → Review constraint cards with key metrics visible
+  3. Deep Dive
+  → Click [📄 Full Text] for complete legal clause
+  4. Flag Issues
+  → Use [⚠️ Flag] for compliance concerns
+  5. Cross-Reference
+  → Click [🔗 Related] to see provision relationships
+  6. Document Findings
+  → Use [📋 Extract] to build research report
+
+  ⚡ POWER USER SHORTCUTS:
+
+  - Keyboard shortcuts: F for full text, R for related, E
+  for extract
+  - Batch actions: Select multiple constraints → bulk
+  extract
+  - Smart filters: "Show only SEPP overrides", "Height
+  conflicts only"
+  - Quick compare: Side-by-side SEPP vs LEP provision
+  comparison
+
+  ---
+  🔧 TECHNICAL INTEGRATION POINTS
+
+  1. 📡 API Data Enhancement
+
+  Current: Planning API returns raw constraint
+  dataEnhanced: Include full_text_available: boolean and
+  provision_id for each constraint
+
+  Example Response:
+  {
+    "constraint": "Building height limit",
+    "value": "9.5m",
+    "source": "LEP 2022",
+    "legal_precedence": 3,
+    "provision_id": 19348,
+    "full_text_available": true,
+    "conflict_risk": "medium"
+  }
+
+  2. 🎯 Legal Text API Integration
+
+  On-demand loading:
+  /api/provisions/{provision_id}/completeCached responses:
+  Store legal text locally after first loadBatch loading:
+  Pre-fetch likely-to-be-accessed provisions
+
+  3. 📊 Planner Analytics
+
+  - Track which legal texts are accessed most
+  - Identify common constraint combinations
+  - Optimize for planner workflow patterns
+
+  ---
+  🎯 KEY UX PRINCIPLES
+
+  1. 🏃‍♀️ SPEED OVER COMPLETENESS
+
+  - Show essentials first, details on demand
+  - Legal text available but not overwhelming initial view
+  - Quick actions prominently placed
+
+  2. 🧭 CONTEXT-AWARE INTERFACE
+
+  - SEPP provisions highlighted (they override everything)
+  - Conflict detection built into layout
+  - Related provisions easily discoverable
+
+  3. 📚 RESEARCH-OPTIMIZED
+
+  - Legal text formatted for readability
+  - Cross-references clearly linked
+  - Extract/export tools for documentation
+
+  4. 💡 PROGRESSIVE EXPERTISE
+
+  - Novice: Simple constraint list with guidance
+  - Intermediate: Full constraint details with legal access
+
+  - Expert: Advanced analysis tools with bulk operations
+
+  This design provides maximum legal text accessibility
+  while minimizing screen clutter and optimizing for actual
+   planner research workflows.

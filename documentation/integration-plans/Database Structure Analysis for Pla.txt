@@ -1,0 +1,183 @@
+Database Structure Analysis for Planner Research
+  Deployment
+
+  High-Value Database Assets for NSW Planning API
+  Integration
+
+  1. PROVISION TEXT (22,105+ records)
+  - regulatory_provisions: Full LEP/DCP clause text
+  - regulatory_provisions_clean: Cleaned provision text
+  - contextual_guidance_real: 6,655 guidance documents
+
+  2. DEVELOPMENT RULES (4,526+ records)
+  - development_controls: Numeric standards (height,
+  setbacks, FSR)
+  - quantitative_standards: 832 extracted numeric values
+  - development_permissions: Zone permissibility matrix
+  (221 rules)
+
+  3. COMPLIANCE LOGIC (91+ records)
+  - sepp_lep_overrides: State vs Local precedence rules
+  - verified_compliance_rules: Tested compliance logic
+
+  4. REFERENCE DATA (274+ documents)
+  - documents: Full DCP/LEP document library
+  - Heritage area provisions (Haberfield, etc.)
+
+  Optimal Data Deployment Strategy
+
+  Per Address Lookup Chain:
+
+  // Step 1: NSW Planning API (Real-time)
+  const nswData = await getNSWPlanningData(address);
+  // Returns: Zone, LGA, Height, FSR, Heritage status, SEPP
+   overlays
+
+  // Step 2: Database Provision Lookup (Address-triggered)
+  const provisions = await getApplicableProvisions({
+    zone: nswData.zone,           // "R2"
+    lga: nswData.lga,            // "INNER WEST"
+    heritage: nswData.heritage,   // "Bourketown
+  Conservation Area"
+    sepps: nswData.seppOverlays  // ["SEPP Sustainable
+  Buildings"]
+  });
+
+  // Step 3: Enhanced Context (Database-enriched)
+  const plannerResearch = await enrichPlannerContext({
+    nswData,
+    provisions,
+    controls: development_controls,
+    guidance: contextual_guidance_real
+  });
+
+● Specific Integration Mappings
+
+  NSW API → Database Lookups:
+
+  1. Zone-Based Provision Retrieval
+  SELECT provision_text, ref_number
+  FROM regulatory_provisions
+  WHERE zone LIKE '%R2%'
+    AND document_id LIKE '%Inner_West%'
+    AND provision_text IS NOT NULL
+
+  2. Heritage Area Provisions
+  SELECT provision_text, control_type, value_text
+  FROM regulatory_provisions rp
+  JOIN development_controls dc ON rp.id = dc.provision_id
+  WHERE rp.provision_text LIKE '%Haberfield%'
+    OR rp.provision_text LIKE '%Conservation Area%'
+
+  3. SEPP Override Logic
+  SELECT sepp_provision_id, lep_clause_reference,
+  override_type
+  FROM sepp_lep_overrides
+  WHERE lep_clause_reference IN ('4.3', '4.4')  --
+  Height/FSR clauses
+
+  4. Development Permissibility
+  SELECT development_type, permission_status, conditions
+  FROM development_permissions
+  WHERE zone = 'R2'
+    AND development_type LIKE '%dual_occupancy%'
+
+  Planner Research Value Deployment
+
+  High-Impact Automations:
+
+  1. Heritage Area Research Assistant
+  - NSW API identifies heritage status → Database returns
+  specific Haberfield DCP provisions
+  - Auto-populate heritage requirement checklists
+
+  2. SEPP Override Calculator
+  - NSW API shows SEPP overlays → Database returns override
+   precedence rules
+  - Show which local controls are superseded
+
+  3. Development Standards Lookup
+  - NSW API provides basic height/FSR → Database returns
+  detailed setback calculations
+  - Zone-specific design requirements
+
+  4. Provision Text Search Engine
+  - Address triggers zone/LGA context → Search 22,105
+  provisions with geographic filters
+  - Copy-paste ready clause text for reports
+
+● Recommended Integration Architecture
+
+  API Enhancement Layer:
+  // Enhanced property API route
+  export async function GET(req: NextRequest) {
+    const address = searchParams.get('address');
+
+    // Step 1: NSW Planning Portal (authoritative)
+    const nswData = await getNSWPlanningData(address);
+
+    // Step 2: Database provisions (context-rich)
+    const provisions = await getDatabaseProvisions({
+      zone: nswData.zone,
+      lga: nswData.lga,
+      heritage: nswData.heritage?.isHeritage
+    });
+
+    // Step 3: Enhanced planner context
+    return {
+      ...nswData,                    // Real NSW Planning
+  data
+      provisions: provisions,        // 22K+ provision
+  database
+      guidance: contextualGuidance,  // 6K+ guidance
+  documents
+      overrides: seppOverrides,      // SEPP precedence
+  rules
+      plannerTools: {
+        heritageChecklist: heritage ?
+  getHeritageChecklist() : null,
+        developmentMatrix: getPermissibilityMatrix(),
+        setbackCalculator: getSetbackRules()
+      }
+    };
+  }
+
+  Deployment Priority:
+
+  Phase 1: Address-Triggered Provision Search
+  - NSW API zone/LGA → Database provision filtering
+  - Immediate planner value: relevant clause lookup
+
+  Phase 2: Heritage Research Assistant
+  - Heritage address → Haberfield DCP provisions
+  auto-display
+  - Eliminates manual DCP navigation
+
+  Phase 3: SEPP Override Intelligence
+  - SEPP overlays → Database precedence calculations
+  - Shows which local rules are superseded
+
+  Result: NSW API provides authoritative data + Database
+  provides research depth = Complete planner research tool
+
+● The database contains 22,105 regulatory provisions and
+  4,526 development controls that can be intelligently
+  deployed alongside NSW Planning API data to create a
+  comprehensive planner research tool.
+
+  Key Integration Opportunities:
+
+  1. Address → Zone → Provisions: NSW API identifies
+  R2/Inner West → Database returns relevant LEP/DCP clauses
+  2. Heritage → Specific Requirements: NSW API detects
+  Haberfield Heritage → Database returns detailed
+  conservation area provisions
+  3. SEPP → Override Logic: NSW API shows BASIX overlays →
+  Database calculates which local controls are superseded
+  4. Development Type → Permissibility: Planner selects
+  dual occupancy → Database returns zone-specific
+  permissions and conditions
+
+  This architecture eliminates planners' most tedious
+  tasks: manual document searching and cross-referencing
+  multiple planning instruments.

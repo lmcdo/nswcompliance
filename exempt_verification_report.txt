@@ -1,0 +1,319 @@
+================================================================================
+EXEMPT & COMPLYING DEVELOPMENT CODES - DATABASE VERIFICATION
+================================================================================
+
+1. PROVISIONS BY DOCUMENT_ID
+--------------------------------------------------------------------------------
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 141
+  Method: autoschema
+  Text length: 141 avg (range: 24-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 95
+  Method: autoschema
+  Text length: 131 avg (range: 4-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 95
+  Method: autoschema
+  Text length: 175 avg (range: 27-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 92
+  Method: autoschema
+  Text length: 89 avg (range: 15-295)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 73
+  Method: autoschema
+  Text length: 152 avg (range: 40-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 72
+  Method: autoschema
+  Text length: 138 avg (range: 31-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 59
+  Method: autoschema
+  Text length: 107 avg (range: 17-328)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 56
+  Method: autoschema
+  Text length: 86 avg (range: 20-257)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 54
+  Method: autoschema
+  Text length: 125 avg (range: 23-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 52
+  Method: autoschema
+  Text length: 136 avg (range: 44-384)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 51
+  Method: autoschema
+  Text length: 107 avg (range: 14-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 49
+  Method: autoschema
+  Text length: 145 avg (range: 18-454)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 44
+  Method: autoschema
+  Text length: 128 avg (range: 32-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 44
+  Method: autoschema
+  Text length: 147 avg (range: 21-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 44
+  Method: autoschema
+  Text length: 231 avg (range: 44-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 39
+  Method: autoschema
+  Text length: 109 avg (range: 8-415)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 39
+  Method: autoschema
+  Text length: 152 avg (range: 20-415)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 38
+  Method: autoschema
+  Text length: 91 avg (range: 7-500)
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Provisions: 37
+  Method: autoschema
+  Text length: 144 avg (range: 23-500)
+
+State Environmental Planning Policy (Exempt and Complying Development ...
+  Provisions: 37
+  Method: mineru
+  Text length: 5207 avg (range: 0-29206)
+
+================================================================================
+TOTAL PROVISIONS: 1,211
+DOCUMENT GROUPS: 2
+
+2. DOCUMENT GROUPING ANALYSIS
+--------------------------------------------------------------------------------
+
+State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_...
+  Total provisions: 1,174
+  Split into: 19 sections
+  Section format: State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_6
+                  State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008___NSW_Legislation_section_2
+                  ...
+
+State Environmental Planning Policy (Exempt and Complying Development ...
+  Total provisions: 37
+  Split into: 1 sections
+
+3. SAMPLE PROVISIONS (Understanding Structure)
+--------------------------------------------------------------------------------
+
+--- Sample 1 ---
+ID: 14496
+Ref: 5A.18(1)(e)
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 119 chars
+Text Preview: any new facade...must have a surface comprised of not more than 50% glazed materials which must be low reflective glass...
+
+--- Sample 2 ---
+ID: 14133
+Ref: 3D.56
+Header: None
+Zone: R1
+Dev Type: NULL
+Text Length: 40 chars
+Text Preview: Maximum height and siting of development...
+
+--- Sample 3 ---
+ID: 17053
+Ref: Detached development
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 43 chars
+Text Preview: Minimum setback from a parallel road of 3m....
+
+--- Sample 4 ---
+ID: 17447
+Ref: Clause 3.12(4) -> Clause 3.12A
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 115 chars
+Text Preview: This clause does not affect development involving the erection of a balcony...that is permitted under clause 3.12A....
+
+--- Sample 5 ---
+ID: 17399
+Ref: Act
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 76 chars
+Text Preview: Environmental planning instrument has the same meaning as it has in the Act....
+
+--- Sample 6 ---
+ID: 14394
+Ref: Complying development on bush fire prone land
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 79 chars
+Text Preview: non-habitable detached development that is more than 6m from any dwelling house...
+
+--- Sample 7 ---
+ID: 14095
+Ref: Roofing material
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 46 chars
+Text Preview: Solar absorptance rating must be 0.64 or less....
+
+--- Sample 8 ---
+ID: 14539
+Ref: Developments near infrastructure
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 254 chars
+Text Preview: If the development is in the proximity of infrastructure (including water, stormwater or sewer mains, electricity power lines and telecommunications f...
+
+--- Sample 9 ---
+ID: 16949
+Ref: significantly contaminated land -> Contaminated Land Management Act 1997
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 101 chars
+Text Preview: significantly contaminated land has the same meaning as in the Contaminated Land Management Act 1997....
+
+--- Sample 10 ---
+ID: 18584
+Ref: Building Code of Australia
+Header: None
+Zone: R2
+Dev Type: NULL
+Text Length: 124 chars
+Text Preview: the new structure must be of the same building classification under the Building Code of Australia as the existing structure...
+
+4. ZONE COVERAGE
+--------------------------------------------------------------------------------
+Zones with provisions:
+  R2         1,452 provisions
+  R1         194 provisions
+  E3         96 provisions
+  R5         90 provisions
+  B1         60 provisions
+  R3         35 provisions
+  E1         30 provisions
+  B4         29 provisions
+  C1         13 provisions
+  E5         3 provisions
+
+5. DEVELOPMENT TYPE COVERAGE
+--------------------------------------------------------------------------------
+Development types with provisions:
+  complying_development          191 provisions
+  dual_occupancy                 42 provisions
+  multi_dwelling                 11 provisions
+  development_application        1 provisions
+  single_dwelling                1 provisions
+
+6. TEXT CONTENT ANALYSIS (Parsing Opportunities)
+--------------------------------------------------------------------------------
+Analyzed 500 provisions:
+  mentions_zone               36 provisions (7.2%)
+  mentions_height             35 provisions (7.0%)
+  mentions_area               76 provisions (15.2%)
+  mentions_setback            34 provisions (6.8%)
+  has_numeric_values          81 provisions (16.2%)
+  mentions_exempt             46 provisions (9.2%)
+  mentions_complying         110 provisions (22.0%)
+  mentions_development        24 provisions (4.8%)
+
+7. DEVELOPMENT_CONTROLS INTEGRATION
+--------------------------------------------------------------------------------
+[OK] Extracted controls exist:
+  vegetation           95 controls
+  parking              72 controls
+  height               67 controls
+  access               62 controls
+  heritage             60 controls
+  setback              56 controls
+  acoustic             20 controls
+  open_space           13 controls
+  fsr                  9 controls
+  density              6 controls
+  signage              4 controls
+
+8. DEVELOPMENT_PERMISSIONS INTEGRATION
+--------------------------------------------------------------------------------
+[NONE] NO PERMISSIONS RECORDED (development_permissions table is empty for exempt codes)
+
+9. EXAMPLE HIGH-VALUE PROVISION
+--------------------------------------------------------------------------------
+Provision ID: 22616
+Reference: 1.5
+Header: Interpretation—general
+Text Length: 29206 chars
+
+Full Text:
+(1)  In this Policy—
+Acid Sulfate Soils Map means a map in an environmental planning instrument that identifies land containing
+acid sulfate soil.
+Advertising and Signage Exempt Development Code means the code for exempt development set out in
+Division 2 of Part 2.
+Agritourism and Farm Stay Accommodation Code means the code for complying development set out in Part
+9.
+Agritourism and Farm Stay Accommodation Exempt and Complying Development Map means the State
+Environmental Planning Policy (Exempt and Complying Development Codes) 2008 Agritourism and Farm Stay
+Accommodation Exempt and Complying Development Map.
+ancillary development, in Parts 1, 2, 3A and 4, means any of the following that are not exempt development
+under this Policy—
+(a)  access ramp,
+(b)  awning, blind or canopy,
+(c)  bal...
+
+[...28406 more characters...]
+
+================================================================================
+SUMMARY & RECOMMENDATIONS
+================================================================================
+
+[OK] Database contains 1,211 Exempt/Complying provisions
+[OK] Extracted using: autoschema method (140 chars avg)
+
+[WARN] CRITICAL: No permission status
+   -> No exempt/complying status in development_permissions table
+   -> Need to determine which provisions are exempt vs complying
+
+NEXT STEPS:
+  1. Extract zone + development_type from provision_text
+  2. Parse numeric standards -> development_controls table
+  3. Determine exempt/complying status -> development_permissions table
+  4. Update API to query structured data
+  5. Update UI to display exempt development options
+
+================================================================================
+VERIFICATION COMPLETE
+================================================================================

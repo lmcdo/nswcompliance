@@ -1,0 +1,116 @@
+{
+  "summary": {
+    "total_tests": 13,
+    "passed": 8,
+    "failed": 5,
+    "success_rate": 61.53846153846154,
+    "verification_time": 5.262066841125488,
+    "timestamp": "2025-09-30T06:01:06.580858"
+  },
+  "tests": [
+    {
+      "test": "Database Connection",
+      "passed": true,
+      "details": "PostgreSQL connection successful",
+      "expected": "",
+      "actual": "",
+      "timestamp": "2025-09-30T06:01:01.348524"
+    },
+    {
+      "test": "Regulatory Provisions Table",
+      "passed": true,
+      "details": "Total: 22105 provisions, Valid: 19668 with zone+type",
+      "expected": "22,105 provisions",
+      "actual": "22105 provisions",
+      "timestamp": "2025-09-30T06:01:01.364302"
+    },
+    {
+      "test": "Zone Coverage",
+      "passed": true,
+      "details": "Found 10 zones with provisions. Top 5: R2(10879), C1(1642), E2(1358), B1(899), C2(749)",
+      "expected": "10+ zones",
+      "actual": "10 zones",
+      "timestamp": "2025-09-30T06:01:01.397911"
+    },
+    {
+      "test": "Provision Types",
+      "passed": false,
+      "details": "Found 15 provision types. Top 5: context_character_description(1653), autoschema_image(1473), relationship_refers_to(1394), informal_should_statement(1340), context_policy_intent(1133)",
+      "expected": "5+ types including height/FSR",
+      "actual": "15 types, key types: False",
+      "timestamp": "2025-09-30T06:01:01.432325"
+    },
+    {
+      "test": "Document Types",
+      "passed": true,
+      "details": "Found document types: DCP, SEPP, LEP",
+      "expected": "LEP, DCP, and/or SEPP documents",
+      "actual": "LEP:True, DCP:True, SEPP:True",
+      "timestamp": "2025-09-30T06:01:01.447349"
+    },
+    {
+      "test": "Development Permissions Table",
+      "passed": true,
+      "details": "Found 221 permissions across 22 zones",
+      "expected": "200+ permissions",
+      "actual": "221 permissions",
+      "timestamp": "2025-09-30T06:01:01.483193"
+    },
+    {
+      "test": "SEPP Overrides Table",
+      "passed": true,
+      "details": "Found 91 SEPP override records",
+      "expected": "50+ overrides",
+      "actual": "91 overrides",
+      "timestamp": "2025-09-30T06:01:01.508505"
+    },
+    {
+      "test": "Database Indexes",
+      "passed": true,
+      "details": "Found indexes: idx_regulatory_provisions_zone, idx_regulatory_provisions_type, idx_regulatory_provisions_zone_type",
+      "expected": "Index on zone column",
+      "actual": "Zone index exists: True",
+      "timestamp": "2025-09-30T06:01:01.538356"
+    },
+    {
+      "test": "Zone Query Performance",
+      "passed": false,
+      "details": "Query failed: column rp.clause_number does not exist\nLINE 6:                     rp.clause_number,\n                            ^\n",
+      "expected": "",
+      "actual": "",
+      "timestamp": "2025-09-30T06:01:01.564722"
+    },
+    {
+      "test": "API Endpoint File",
+      "passed": true,
+      "details": "File exists with POST:True, DB:True, Query:True",
+      "expected": "route.ts with POST handler and DB queries",
+      "actual": "File found",
+      "timestamp": "2025-09-30T06:01:01.564722"
+    },
+    {
+      "test": "TypeScript Compilation",
+      "passed": false,
+      "details": "Compilation check failed: [WinError 2] The system cannot find the file specified",
+      "expected": "",
+      "actual": "",
+      "timestamp": "2025-09-30T06:01:01.569736"
+    },
+    {
+      "test": "Frontend Integration",
+      "passed": false,
+      "details": "File read failed: [Errno 2] No such file or directory: 'frontend-nextjs/components/compliance/ComplianceDashboard.tsx'",
+      "expected": "",
+      "actual": "",
+      "timestamp": "2025-09-30T06:01:01.569736"
+    },
+    {
+      "test": "Dev Server Running",
+      "passed": false,
+      "details": "Server not reachable: HTTPConnectionPool(host='localhost', port=3007): Read timed out. (read timeout=5)",
+      "expected": "Server responding",
+      "actual": "Connection failed",
+      "timestamp": "2025-09-30T06:01:06.578848"
+    }
+  ]
+}

@@ -1,0 +1,2681 @@
+-- Database backup created: 2025-10-01 20:07:01.785429
+-- Phase 2A pre-migration backup
+
+-- Table structure
+-- Column: id (integer)
+-- Column: document_id (text)
+-- Column: provision_type (text)
+-- Column: ref_number (text)
+-- Column: provision_text (text)
+-- Column: zone (text)
+-- Column: development_type (text)
+-- Column: page_number (text)
+-- Column: section_header (text)
+-- Column: text_level (text)
+-- Column: original_id (text)
+-- Column: created_at (text)
+-- Column: domain_classification (text)
+-- Column: classification_confidence (text)
+-- Column: cross_contamination_checked (text)
+-- Column: prp_k1_enhanced (text)
+-- Column: migration_id (text)
+-- Column: zone_confidence (text)
+-- Column: zone_inference_method (text)
+-- Column: full_text_length (integer)
+-- Column: extraction_method (text)
+-- Column: last_updated (timestamp without time zone)
+-- Column: is_canonical (boolean)
+-- Column: canonical_provision_id (integer)
+-- Column: text_hash (text)
+-- Column: migration_phase (text)
+
+-- Provisions with cross-reference arrows
+-- Format: ID | ref_number | is_canonical
+
+-- ID: 94 | ref_number: Part 9 -> Planning Precincts | canonical: True
+-- ID: 95 | ref_number: Planning Precincts -> Heritage conservation areas | canonical: True
+-- ID: 176 | ref_number: Marrickville DCP 2011 -> Tempe Lands Precinct | canonical: True
+-- ID: 177 | ref_number: State Government -> Tempe Lands Precinct | canonical: True
+-- ID: 178 | ref_number: State Government -> industrial land | canonical: True
+-- ID: 179 | ref_number: ANEF contours -> Tempe Lands Precinct | canonical: True
+-- ID: 203 | ref_number: DCP -> Precinct 44 | canonical: True
+-- ID: 204 | ref_number: Precinct 44 -> Heritage Item | canonical: True
+-- ID: 205 | ref_number: Precinct 44 -> Flood affected | canonical: True
+-- ID: 242 | ref_number: Heritage Conservation Areas (HCAs) -> Precinct 39 | canonical: True
+-- ID: 243 | ref_number: Planning Assessment Commission -> Marrickville Metro Shopping Centre expansion | canonical: True
+-- ID: 244 | ref_number: Precinct 39 -> Industrial zoning | canonical: True
+-- ID: 245 | ref_number: Desired future character -> Heritage Items | canonical: True
+-- ID: 246 | ref_number: Desired future character -> Industrial zoned land | canonical: True
+-- ID: 298 | ref_number: HCA 35 -> Part 8 (Heritage) | canonical: True
+-- ID: 316 | ref_number: HCA 32: Collins Street Heritage Conservation Area (C32) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 329 | ref_number: HCA 17: Kingston South Heritage Conservation Area (C17) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 365 | ref_number: HCA 33: Wells Avenue Heritage Conservation Area (C33) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 366 | ref_number: HCA 34: Stanley Street Heritage Conservation Area (C34) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 367 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.3 of this DCP | canonical: True
+-- ID: 368 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.3 of this DCP | canonical: True
+-- ID: 369 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.5.2 of this DCP | canonical: True
+-- ID: 370 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.5.3 of this DCP | canonical: True
+-- ID: 371 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.5.3 of this DCP | canonical: True
+-- ID: 372 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.5.4 of this DCP | canonical: True
+-- ID: 392 | ref_number: Social Impact Assessment (SIA) -> Section 4.15 of the Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: True
+-- ID: 393 | ref_number: Social Impact Assessment (SIA) -> Inner West Local Environmental Plan 2022 (IWLEP 2022) | canonical: True
+-- ID: 394 | ref_number: Council's discretion under the EP&A Act -> Social Impact Comment (SIC) | canonical: True
+-- ID: 395 | ref_number: Council's discretion under the EP&A Act -> Social Impact Statement (SIS) | canonical: True
+-- ID: 412 | ref_number: Heritage Conservation Areas (HCAs) -> Precinct 10 | canonical: True
+-- ID: 413 | ref_number: Front setbacks -> building styles | canonical: True
+-- ID: 414 | ref_number: Off street parking -> building line | canonical: True
+-- ID: 443 | ref_number: Leichhardt DCP 2013 Part C Section 5 -> Sound Category Area | canonical: True
+-- ID: 444 | ref_number: Figure C148 -> Sound Category Areas | canonical: True
+-- ID: 445 | ref_number: Figure C149 -> Sensitive receivers | canonical: True
+-- ID: 446 | ref_number: Figure C148 -> Sensitive receivers (C3) | canonical: True
+-- ID: 447 | ref_number: C9 -> noise impact assessment | canonical: True
+-- ID: 448 | ref_number: C10 -> noise impact assessment | canonical: True
+-- ID: 449 | ref_number: noise impact assessment -> venue external assessment criteria | canonical: True
+-- ID: 450 | ref_number: noise impact assessment -> sensitive receiver internal noise criteria | canonical: True
+-- ID: 472 | ref_number: Part 8 (Heritage) -> HCA 20 | canonical: True
+-- ID: 473 | ref_number: Part 8 (Heritage) -> HCA 19 | canonical: True
+-- ID: 474 | ref_number: HCA 20 Audley Street South -> Section 8.3 of this DCP | canonical: True
+-- ID: 475 | ref_number: HCA 20 Audley Street South -> Section 8.5.2 of this DCP | canonical: True
+-- ID: 476 | ref_number: HCA 19 Norwood Park Estate -> Section 8.3 of this DCP | canonical: True
+-- ID: 477 | ref_number: HCA 19 Norwood Park Estate -> Section 8.4 of this DCP | canonical: True
+-- ID: 478 | ref_number: HCA 19 Norwood Park Estate -> Section 8.5.2 of this DCP | canonical: True
+-- ID: 479 | ref_number: HCA 19 Norwood Park Estate -> Section 8.5.3 of this DCP | canonical: True
+-- ID: 524 | ref_number: Thornley Street scenic protection area -> Cooks River | canonical: True
+-- ID: 525 | ref_number: Section 2.20 (Tree Management) -> Design control (Materials) | canonical: True
+-- ID: 526 | ref_number: Section 2.14.2 -> Fencing guidelines | canonical: True
+-- ID: 527 | ref_number: State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 -> Inner West Local Environmental Plan 2022 | canonical: True
+-- ID: 579 | ref_number: Precinct 17 -> Heritage Conservation Areas (HCAs) | canonical: True
+-- ID: 580 | ref_number: Precinct 17 -> GreenWay | canonical: True
+-- ID: 581 | ref_number: Precinct 17 -> Biodiversity values | canonical: True
+-- ID: 582 | ref_number: Jack Shanahan Reserve -> GreenWay Active Transport Strategy (2012) | canonical: True
+-- ID: 613 | ref_number: Section 8.2.4 -> HCA | canonical: True
+-- ID: 614 | ref_number: Part 8.4.2 -> Contributory and period buildings map | canonical: True
+-- ID: 615 | ref_number: Façade Retention -> New Development | canonical: True
+-- ID: 643 | ref_number: Leichhardt DCP 2013 Part C Section 5 -> Sound Category Area | canonical: False
+-- ID: 644 | ref_number: Figure C148 -> Sound Category Areas | canonical: False
+-- ID: 645 | ref_number: Figure C149 -> Sensitive receivers | canonical: False
+-- ID: 646 | ref_number: Figure C148 -> Sensitive receivers (C3) | canonical: False
+-- ID: 647 | ref_number: C9 -> noise impact assessment | canonical: False
+-- ID: 648 | ref_number: C10 -> noise impact assessment | canonical: False
+-- ID: 649 | ref_number: noise impact assessment -> venue external assessment criteria | canonical: False
+-- ID: 650 | ref_number: noise impact assessment -> sensitive receiver internal noise criteria | canonical: False
+-- ID: 687 | ref_number: Thornley Street scenic protection area -> Cooks River | canonical: False
+-- ID: 688 | ref_number: Section 2.20 (Tree Management) -> Design control (Materials) | canonical: False
+-- ID: 689 | ref_number: Section 2.14.2 -> Fencing guidelines | canonical: False
+-- ID: 690 | ref_number: State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 -> Inner West Local Environmental Plan 2022 | canonical: False
+-- ID: 736 | ref_number: Social Impact Assessment (SIA) -> Section 4.15 of the Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: False
+-- ID: 737 | ref_number: Social Impact Assessment (SIA) -> Inner West Local Environmental Plan 2022 (IWLEP 2022) | canonical: False
+-- ID: 738 | ref_number: Council's discretion under the EP&A Act -> Social Impact Comment (SIC) | canonical: False
+-- ID: 739 | ref_number: Council's discretion under the EP&A Act -> Social Impact Statement (SIS) | canonical: False
+-- ID: 762 | ref_number: Part 9 -> Planning Precincts | canonical: False
+-- ID: 763 | ref_number: Planning Precincts -> Heritage conservation areas | canonical: False
+-- ID: 780 | ref_number: Heritage Conservation Areas (HCAs) -> Precinct 10 | canonical: False
+-- ID: 781 | ref_number: Front setbacks -> building styles | canonical: False
+-- ID: 782 | ref_number: Off street parking -> building line | canonical: False
+-- ID: 807 | ref_number: Part 8 (Heritage) -> HCA 20 | canonical: False
+-- ID: 808 | ref_number: Part 8 (Heritage) -> HCA 19 | canonical: False
+-- ID: 809 | ref_number: HCA 20 Audley Street South -> Section 8.3 of this DCP | canonical: False
+-- ID: 810 | ref_number: HCA 20 Audley Street South -> Section 8.5.2 of this DCP | canonical: False
+-- ID: 811 | ref_number: HCA 19 Norwood Park Estate -> Section 8.3 of this DCP | canonical: False
+-- ID: 812 | ref_number: HCA 19 Norwood Park Estate -> Section 8.4 of this DCP | canonical: False
+-- ID: 813 | ref_number: HCA 19 Norwood Park Estate -> Section 8.5.2 of this DCP | canonical: False
+-- ID: 814 | ref_number: HCA 19 Norwood Park Estate -> Section 8.5.3 of this DCP | canonical: False
+-- ID: 831 | ref_number: Precinct 17 -> Heritage Conservation Areas (HCAs) | canonical: False
+-- ID: 832 | ref_number: Precinct 17 -> GreenWay | canonical: False
+-- ID: 833 | ref_number: Precinct 17 -> Biodiversity values | canonical: False
+-- ID: 834 | ref_number: Jack Shanahan Reserve -> GreenWay Active Transport Strategy (2012) | canonical: False
+-- ID: 855 | ref_number: HCA 35 -> Part 8 (Heritage) | canonical: False
+-- ID: 966 | ref_number: HCA 32: Collins Street Heritage Conservation Area (C32) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 978 | ref_number: HCA 33: Wells Avenue Heritage Conservation Area (C33) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 979 | ref_number: HCA 34: Stanley Street Heritage Conservation Area (C34) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 980 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.3 of this DCP | canonical: False
+-- ID: 981 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.3 of this DCP | canonical: False
+-- ID: 982 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.5.2 of this DCP | canonical: False
+-- ID: 983 | ref_number: HCA 33 Wells Avenue Heritage Conservation Area -> Section 8.5.3 of this DCP | canonical: False
+-- ID: 984 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.5.3 of this DCP | canonical: False
+-- ID: 985 | ref_number: HCA 34 Stanley Street Heritage Conservation Area -> Section 8.5.4 of this DCP | canonical: False
+-- ID: 1050 | ref_number: Section 8.2.4 -> HCA | canonical: False
+-- ID: 1051 | ref_number: Part 8.4.2 -> Contributory and period buildings map | canonical: False
+-- ID: 1052 | ref_number: Façade Retention -> New Development | canonical: False
+-- ID: 1070 | ref_number: Heritage Conservation Areas (HCAs) -> Precinct 39 | canonical: False
+-- ID: 1071 | ref_number: Planning Assessment Commission -> Marrickville Metro Shopping Centre expansion | canonical: False
+-- ID: 1072 | ref_number: Precinct 39 -> Industrial zoning | canonical: False
+-- ID: 1073 | ref_number: Desired future character -> Heritage Items | canonical: False
+-- ID: 1074 | ref_number: Desired future character -> Industrial zoned land | canonical: False
+-- ID: 1109 | ref_number: DCP -> Precinct 44 | canonical: False
+-- ID: 1110 | ref_number: Precinct 44 -> Heritage Item | canonical: False
+-- ID: 1111 | ref_number: Precinct 44 -> Flood affected | canonical: False
+-- ID: 1134 | ref_number: Marrickville DCP 2011 -> Tempe Lands Precinct | canonical: False
+-- ID: 1135 | ref_number: State Government -> Tempe Lands Precinct | canonical: False
+-- ID: 1136 | ref_number: State Government -> industrial land | canonical: False
+-- ID: 1137 | ref_number: ANEF contours -> Tempe Lands Precinct | canonical: False
+-- ID: 1150 | ref_number: HCA 17: Kingston South Heritage Conservation Area (C17) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 1173 | ref_number: Section 2.25 of the Marrickville DCP -> Part 15 - Stormwater Management | canonical: True
+-- ID: 1174 | ref_number: Inner West Local Environmental Plan 2022 -> Inner West DCP 2016 | canonical: True
+-- ID: 1260 | ref_number: Part 15 - Stormwater Management -> Section 2.25 of the Marrickville DCP | canonical: True
+-- ID: 1261 | ref_number: Entire DCP -> Inner West Local Environmental Plan 2022 | canonical: True
+-- ID: 1371 | ref_number: 9.19.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 1391 | ref_number: 9.7.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 1409 | ref_number: 9.23.3 Heritage Conservation Areas (HCAs) -> Section 8.2.32 Heritage | canonical: True
+-- ID: 1410 | ref_number: Figure (23.1b) -> Figure (23.1c) | canonical: True
+-- ID: 1435 | ref_number: 9.32.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: True
+-- ID: 1436 | ref_number: HCA 33 Wells Avenue - Residential streetscapes -> Section 8.3 | canonical: True
+-- ID: 1437 | ref_number: HCA 33 Wells Avenue - Federation styles -> Section 8.5.2 | canonical: True
+-- ID: 1438 | ref_number: HCA 33 Wells Avenue - Inter-War styles -> Section 8.5.3 | canonical: True
+-- ID: 1439 | ref_number: HCA 34 Stanley Street - Residential streetscapes -> Section 8.3 | canonical: True
+-- ID: 1440 | ref_number: HCA 34 Stanley Street - Inter-War styles -> Section 8.5.3 | canonical: True
+-- ID: 1441 | ref_number: HCA 34 Stanley Street - Inter-War Art Deco -> Section 8.5.4 | canonical: True
+-- ID: 1464 | ref_number: Section 2.8.3 Objectives -> Section 4.15 of the Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: True
+-- ID: 1465 | ref_number: Section 2.8.3 Objectives -> Inner West Local Environmental Plan 2022 (IWLEP 2022) | canonical: True
+-- ID: 1529 | ref_number: Section 5 -> Figures C145, C146, C147 | canonical: True
+-- ID: 1530 | ref_number: C2 -> Figure C148 | canonical: True
+-- ID: 1531 | ref_number: C3 -> Figure C148 | canonical: True
+-- ID: 1532 | ref_number: C3 -> Figure C149 | canonical: True
+-- ID: 1533 | ref_number: Figure C146 -> Section 2.26 of the Marrickville DCP 2011 | canonical: True
+-- ID: 1556 | ref_number: 9.13.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: True
+-- ID: 1625 | ref_number: 2.14.2 -> 2.14.2.1 | canonical: True
+-- ID: 1626 | ref_number: 2.14.2 -> 2.20 | canonical: True
+-- ID: 1627 | ref_number: Clause C7 -> Section 2.14.2 | canonical: True
+-- ID: 1628 | ref_number: Development within a foreshore area or on a flood control lot -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 1629 | ref_number: Determining permissible development and process -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 and Inner West Local Environmental Plan 2022 | canonical: True
+-- ID: 1649 | ref_number: Part 2 Generic Provisions -> 2.3 Site and Context Analysis | canonical: True
+-- ID: 1650 | ref_number: 2.3 Site and Context Analysis -> 2.3.1 Purpose of site and context analysis | canonical: True
+-- ID: 1651 | ref_number: 2.3 Site and Context Analysis -> 2.3.2 Process for site and context analysis | canonical: True
+-- ID: 1652 | ref_number: 2.3 Site and Context Analysis -> 2.3.3 Controls for site and context analysis | canonical: True
+-- ID: 1653 | ref_number: 2.3 Site and Context Analysis -> Part 9 (Strategic Context) | canonical: True
+-- ID: 1654 | ref_number: Site and context analysis -> Part 9 (Strategic Context) of this DCP | canonical: True
+-- ID: 1703 | ref_number: Section 9.37.4.1 -> Part 8.4.2 | canonical: True
+-- ID: 1717 | ref_number: Noise attenuation -> Association of Australian Acoustical Consultants document Guideline for Child Care Centre Acoustic Assessment (September 2010) | canonical: True
+-- ID: 1718 | ref_number: Aircraft noise level -> AS2021 | canonical: True
+-- ID: 1764 | ref_number: 9.30.5 Site-specific planning controls -> Sections 2.14.2 and 2.14.5 of MDCP 2011 | canonical: True
+-- ID: 1829 | ref_number: 9.26.4.1 Building height -> MLEP 2011 | canonical: True
+-- ID: 1830 | ref_number: Alterations and additions to residential buildings -> Part 4 Section 4.1 Low Density Residential Development | canonical: True
+-- ID: 1866 | ref_number: Water cycle outcomes -> plans, strategies or policies adopted by relevant agencies | canonical: True
+-- ID: 1867 | ref_number: Planning and design principles -> strategies and plans adopted by relevant agencies | canonical: True
+-- ID: 1894 | ref_number: Section 1 – Food -> Council’s Community Gardens Policy | canonical: True
+-- ID: 1895 | ref_number: F1.1 FOOD PRODUCTION -> Part C1.8 Contamination | canonical: True
+-- ID: 1896 | ref_number: F1.1 FOOD PRODUCTION -> Table F1: Precautionary measures to consider prior to gardening food | canonical: True
+-- ID: 1897 | ref_number: C1 (Guidelines for sustainable food production) -> Part C1.14 – Tree Management | canonical: True
+-- ID: 1898 | ref_number: F1.1.3 Community gardens - Controls C1 -> Community Gardens Policy | canonical: True
+-- ID: 1929 | ref_number: 9.15.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 1930 | ref_number: HCA 14 Llewellyn Estate Heritage Conservation Area -> Section 8.3 | canonical: True
+-- ID: 1931 | ref_number: HCA 14 Llewellyn Estate Heritage Conservation Area -> Section 8.5.1 | canonical: True
+-- ID: 1932 | ref_number: HCA 14 Llewellyn Estate Heritage Conservation Area -> Section 8.5.2 | canonical: True
+-- ID: 1933 | ref_number: HCA 13 Enmore House Estate Heritage Conservation Area -> Section 8.3 | canonical: True
+-- ID: 1934 | ref_number: HCA 13 Enmore House Estate Heritage Conservation Area -> Section 8.5.1 | canonical: True
+-- ID: 1935 | ref_number: HCA 13 Enmore House Estate Heritage Conservation Area -> Section 8.5.2 | canonical: True
+-- ID: 1966 | ref_number: 9.16.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 1967 | ref_number: HCA 1 The Abergeldie Estate Heritage Conservation Area (Type A streetscapes) -> Section 8.3 | canonical: True
+-- ID: 1968 | ref_number: HCA 1 The Abergeldie Estate Heritage Conservation Area (Inter-War styles) -> Section 8.5.3 | canonical: True
+-- ID: 2020 | ref_number: 9.18.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 2021 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Residential streetscapes) -> Section 8.3 | canonical: True
+-- ID: 2022 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Federation styles) -> Section 8.5.2 | canonical: True
+-- ID: 2023 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Inter-War Styles) -> Section 8.5.3 | canonical: True
+-- ID: 2065 | ref_number: Development Application Lodgement Process -> Council’s adopted Pricing Policy and Fees and Charges | canonical: True
+-- ID: 2066 | ref_number: Development Application Lodgement Process -> Inner West LEP 2022 | canonical: True
+-- ID: 2067 | ref_number: A.2.1 Exempt and Complying Development -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 (Codes SEPP) | canonical: True
+-- ID: 2068 | ref_number: Section 8.2 Review Requests -> other applications (Section A.2) | canonical: True
+-- ID: 2069 | ref_number: Development Standard Variation -> Clause 4.6 of IWLEP 2022 | canonical: True
+-- ID: 2104 | ref_number: 2.6.3 C1 i -> AS 2021 | canonical: True
+-- ID: 2105 | ref_number: 2.6.3 C1 i -> other guidelines issued by relevant agencies and authorities | canonical: True
+-- ID: 2106 | ref_number: 2.6.3 C1 i -> AS 3671, AS 2107, SEPP (Infrastructure SEPP) | canonical: True
+-- ID: 2107 | ref_number: C7 -> Part 6.2 (Industrial/Residential Interface) of this DCP | canonical: True
+-- ID: 2108 | ref_number: C7 -> Part 5.2 (Commercial/Light Industrial/Residential Interface) of this DCP | canonical: True
+-- ID: 2109 | ref_number: C5 -> Division 15, Subdivision 2 of Infrastructure SEPP | canonical: True
+-- ID: 2110 | ref_number: C6 -> Division 17, Subdivision 2 of Infrastructure SEPP | canonical: True
+-- ID: 2147 | ref_number: C2 -> Section 8.3 | canonical: True
+-- ID: 2148 | ref_number: C2 -> Section 8.5.2 | canonical: True
+-- ID: 2149 | ref_number: C2 -> Section 8.5.3 | canonical: True
+-- ID: 2163 | ref_number: Use-specific provisions -> General provisions | canonical: True
+-- ID: 2164 | ref_number: This DCP -> Inner West LEP 2022 | canonical: True
+-- ID: 2165 | ref_number: Development Applications -> Council's Community Engagement Framework | canonical: True
+-- ID: 2214 | ref_number: C1 -> 2.7.2 | canonical: True
+-- ID: 2215 | ref_number: C2 -> 2.7.3 | canonical: True
+-- ID: 2216 | ref_number: C5 -> 2.3 | canonical: True
+-- ID: 2258 | ref_number: 2.17.2 -> Table 1 | canonical: True
+-- ID: 2259 | ref_number: 2.17.3 -> State Environmental Planning Policy - Building Sustainability Index (BASIX) | canonical: True
+-- ID: 2260 | ref_number: 2.17.3 -> Water Efficiency Labelling and Standards (WELS) Scheme | canonical: True
+-- ID: 2261 | ref_number: C5 -> Marrickville Council’s WSUD Reference Guideline | canonical: True
+-- ID: 2262 | ref_number: C6 -> C4 | canonical: True
+-- ID: 2263 | ref_number: C6 ii -> BASIX Scheme | canonical: True
+-- ID: 2264 | ref_number: BASIX SEPP -> rainwater tank installation | canonical: True
+-- ID: 2265 | ref_number: C7 -> WSUD Reference Guideline | canonical: True
+-- ID: 2299 | ref_number: 9.9.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: True
+-- ID: 2300 | ref_number: C1 -> Section 8.3 | canonical: True
+-- ID: 2301 | ref_number: C1 -> Section 8.5.1 | canonical: True
+-- ID: 2302 | ref_number: C1 -> Section 8.5.2 | canonical: True
+-- ID: 2303 | ref_number: C2 -> Section 8.3 | canonical: True
+-- ID: 2304 | ref_number: C2 -> Section 8.4 | canonical: True
+-- ID: 2305 | ref_number: C2 -> Section 8.5.2 | canonical: True
+-- ID: 2306 | ref_number: C2 -> Section 8.5.3 | canonical: True
+-- ID: 2307 | ref_number: C4 -> Section 8.3 | canonical: True
+-- ID: 2308 | ref_number: C4 -> Section 8.5.1 | canonical: True
+-- ID: 2309 | ref_number: C4 -> Section 8.5.2 | canonical: True
+-- ID: 2339 | ref_number: 9.21.4 HCA 31 -> Section 8.3 | canonical: True
+-- ID: 2340 | ref_number: 9.21.4 HCA 31 -> Section 8.5.2 | canonical: True
+-- ID: 2341 | ref_number: 9.21.4 HCA 31 -> Section 8.5.3 | canonical: True
+-- ID: 2342 | ref_number: 9.21.4 HCA 35 -> Section 8.3 | canonical: True
+-- ID: 2343 | ref_number: 9.21.4 HCA 35 -> Section 8.5.3 and 8.5.4 | canonical: True
+-- ID: 2344 | ref_number: 9.21.4 HCA 29 -> Section 8.3 | canonical: True
+-- ID: 2345 | ref_number: 9.21.4 HCA 29 -> Section 8.5.2 | canonical: True
+-- ID: 2346 | ref_number: 9.21.4 HCA 29 -> Section 8.5.3 | canonical: True
+-- ID: 2371 | ref_number: C1 -> Section 8.2.8 | canonical: True
+-- ID: 2372 | ref_number: C2a -> Section 8.3 | canonical: True
+-- ID: 2373 | ref_number: C2b -> Section 8.4 | canonical: True
+-- ID: 2374 | ref_number: C2c -> Section 8.5.1 | canonical: True
+-- ID: 2375 | ref_number: C2d -> Section 8.5.2 | canonical: True
+-- ID: 2376 | ref_number: C3a -> Section 8.3 | canonical: True
+-- ID: 2377 | ref_number: C3b -> Section 8.5.1 | canonical: True
+-- ID: 2378 | ref_number: C3c -> Section 8.5.2 | canonical: True
+-- ID: 2379 | ref_number: C4a -> Section 8.3 | canonical: True
+-- ID: 2380 | ref_number: C4b -> Section 8.5.1 | canonical: True
+-- ID: 2413 | ref_number: This DCP -> Inner West LEP 2022 | canonical: True
+-- ID: 2414 | ref_number: Inner West LEP 2022 -> This DCP | canonical: True
+-- ID: 2415 | ref_number: This DCP -> Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: True
+-- ID: 2416 | ref_number: This DCP -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 2417 | ref_number: all development applications -> Inner West LEP 2022 | canonical: True
+-- ID: 2418 | ref_number: DCP controls -> DCP objectives | canonical: True
+-- ID: 2419 | ref_number: site-specific controls (Part 9) -> precinct-specific controls (Part 9) | canonical: True
+-- ID: 2420 | ref_number: 1.2 The Consultation and Notification Process -> Council’s Community Engagement Framework | canonical: True
+-- ID: 2460 | ref_number: 9.4.3 Heritage Conservation Areas -> Part 8 (Heritage) | canonical: True
+-- ID: 2508 | ref_number: C1 -> Appendix 3 | canonical: True
+-- ID: 2509 | ref_number: C2 -> Appendix 3 | canonical: True
+-- ID: 2510 | ref_number: C2 -> 2.18 | canonical: True
+-- ID: 2511 | ref_number: C5 -> Section 2.3 (Site and Context Analysis) | canonical: True
+-- ID: 2512 | ref_number: C6 -> Water Management Act 2000 | canonical: True
+-- ID: 2513 | ref_number: Water Management Act 2000 -> EP&A Act, Sections 4.46 and 4.47 | canonical: True
+-- ID: 2565 | ref_number: 9.22.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 2566 | ref_number: 9.22.4 -> C1, C6 | canonical: True
+-- ID: 2567 | ref_number: HCA 29 -> Section 8.3, Section 8.5.2, Section 8.5.3 | canonical: True
+-- ID: 2568 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 2653 | ref_number: Design Solutions -> Performance Criteria | canonical: True
+-- ID: 2654 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: True
+-- ID: 2655 | ref_number: DS7.4 -> relevant council public domain plan | canonical: True
+-- ID: 2656 | ref_number: DS7.12 -> council's standards for relevant matters such as road design, vehicle access, stormwater drainage and levels | canonical: True
+-- ID: 2657 | ref_number: DS10.1 -> Council's public art policy | canonical: True
+-- ID: 2704 | ref_number: 9.5.5 -> Masterplan | canonical: True
+-- ID: 2705 | ref_number: 9.5.3 -> 9.5.3.1 | canonical: True
+-- ID: 2706 | ref_number: C25 -> Figures (5.2b) and (5.2c) | canonical: True
+-- ID: 2707 | ref_number: C26 -> Figures (5.2b) and (5.2c) | canonical: True
+-- ID: 2708 | ref_number: C27 -> Figures (5.2b) and (5.2c) | canonical: True
+-- ID: 2709 | ref_number: C28 -> Figure (5.2b) | canonical: True
+-- ID: 2710 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 2764 | ref_number: 9.38.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) of this DCP | canonical: True
+-- ID: 2765 | ref_number: C2 -> Clause 4.3(2) of Inner West LEP 2022 | canonical: True
+-- ID: 2766 | ref_number: C4 -> Clause 4.4(2) of Inner West LEP 2022 | canonical: True
+-- ID: 2767 | ref_number: C5 -> Clause 4.4(2) of Inner West LEP 2022 | canonical: True
+-- ID: 2768 | ref_number: C6 -> control diagrams in figures | canonical: True
+-- ID: 2769 | ref_number: C1 -> Section 8.4 | canonical: True
+-- ID: 2770 | ref_number: C1 -> Section 8.4.2 | canonical: True
+-- ID: 2771 | ref_number: 9.38.4.1 -> Inner West LEP 2022, Height of Buildings Map, Floor Space Ratio Map | canonical: True
+-- ID: 2772 | ref_number: C13, C14, C15, C16 -> Figures (38.1b) and (38.1c) | canonical: True
+-- ID: 2773 | ref_number: C17 -> Figure (38.1b) | canonical: True
+-- ID: 2774 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 2835 | ref_number: Draft heritage item -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 2836 | ref_number: Injury -> AS 4373 2007 "Pruning of Amenity Trees" | canonical: True
+-- ID: 2874 | ref_number: 9.14.3 Heritage Conservation Areas -> Part 8 (Heritage) | canonical: True
+-- ID: 2875 | ref_number: C4 -> Section 8.3, Section 8.5.1, Section 8.5.2 | canonical: True
+-- ID: 2876 | ref_number: C5, C6, C7 -> Figures (14.1a) and (14.1b) | canonical: True
+-- ID: 2877 | ref_number: C8 -> Figure (14.1b) | canonical: True
+-- ID: 2937 | ref_number: 2.16.2 -> Table 1 | canonical: True
+-- ID: 2938 | ref_number: 2.16 -> BASIX SEPP | canonical: True
+-- ID: 2939 | ref_number: 2.16 -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 2940 | ref_number: C3 -> Sections 2.16.5 to 2.16.6 | canonical: True
+-- ID: 2941 | ref_number: 2.16.5.4 -> BCA Section J – Part 1 Building Fabric | canonical: True
+-- ID: 2942 | ref_number: 2.16.5.5 -> BCA Section J – Part 1 Building Fabric | canonical: True
+-- ID: 2943 | ref_number: 2.16.5.7 -> BCA Section J – Parts 4 and 5 Air conditioning and Ventilation | canonical: True
+-- ID: 2944 | ref_number: Energy Efficiency Requirements -> BCA Section J – Parts 6 and 7 | canonical: True
+-- ID: 2945 | ref_number: Lighting Requirements -> AS1680 Lighting Standards | canonical: True
+-- ID: 2946 | ref_number: Energy Consumption Limits -> Table 1 | canonical: True
+-- ID: 4536 | ref_number: img_0_20 -> doc_0 | canonical: True
+-- ID: 4537 | ref_number: img_1_14 -> doc_1 | canonical: True
+-- ID: 4538 | ref_number: img_2_43 -> doc_2 | canonical: True
+-- ID: 4539 | ref_number: img_2_151 -> doc_2 | canonical: True
+-- ID: 4540 | ref_number: img_2_167 -> doc_2 | canonical: True
+-- ID: 4541 | ref_number: img_2_310 -> doc_2 | canonical: True
+-- ID: 4542 | ref_number: img_2_314 -> doc_2 | canonical: True
+-- ID: 4543 | ref_number: img_2_315 -> doc_2 | canonical: True
+-- ID: 4544 | ref_number: img_2_336 -> doc_2 | canonical: True
+-- ID: 4545 | ref_number: img_2_337 -> doc_2 | canonical: True
+-- ID: 4546 | ref_number: img_2_338 -> doc_2 | canonical: True
+-- ID: 4547 | ref_number: img_2_342 -> doc_2 | canonical: True
+-- ID: 4548 | ref_number: img_2_343 -> doc_2 | canonical: True
+-- ID: 4549 | ref_number: img_2_360 -> doc_2 | canonical: True
+-- ID: 4550 | ref_number: img_2_363 -> doc_2 | canonical: True
+-- ID: 4551 | ref_number: img_2_366 -> doc_2 | canonical: True
+-- ID: 4552 | ref_number: img_2_368 -> doc_2 | canonical: True
+-- ID: 4553 | ref_number: img_2_370 -> doc_2 | canonical: True
+-- ID: 4554 | ref_number: img_2_371 -> doc_2 | canonical: True
+-- ID: 4555 | ref_number: img_2_372 -> doc_2 | canonical: True
+-- ID: 4556 | ref_number: img_2_471 -> doc_2 | canonical: True
+-- ID: 4557 | ref_number: img_2_539 -> doc_2 | canonical: True
+-- ID: 4558 | ref_number: img_3_0 -> doc_3 | canonical: True
+-- ID: 4559 | ref_number: img_3_2 -> doc_3 | canonical: True
+-- ID: 4560 | ref_number: img_4_5 -> doc_4 | canonical: True
+-- ID: 4561 | ref_number: img_4_65 -> doc_4 | canonical: True
+-- ID: 4562 | ref_number: img_4_91 -> doc_4 | canonical: True
+-- ID: 4563 | ref_number: img_4_106 -> doc_4 | canonical: True
+-- ID: 4564 | ref_number: img_4_125 -> doc_4 | canonical: True
+-- ID: 4565 | ref_number: img_4_136 -> doc_4 | canonical: True
+-- ID: 4566 | ref_number: img_4_159 -> doc_4 | canonical: True
+-- ID: 4567 | ref_number: img_4_160 -> doc_4 | canonical: True
+-- ID: 4568 | ref_number: img_4_195 -> doc_4 | canonical: True
+-- ID: 4569 | ref_number: img_5_25 -> doc_5 | canonical: True
+-- ID: 4570 | ref_number: img_5_26 -> doc_5 | canonical: True
+-- ID: 4571 | ref_number: img_5_29 -> doc_5 | canonical: True
+-- ID: 4572 | ref_number: img_5_31 -> doc_5 | canonical: True
+-- ID: 4573 | ref_number: img_5_37 -> doc_5 | canonical: True
+-- ID: 4574 | ref_number: img_5_56 -> doc_5 | canonical: True
+-- ID: 4575 | ref_number: img_5_57 -> doc_5 | canonical: True
+-- ID: 4576 | ref_number: img_5_172 -> doc_5 | canonical: True
+-- ID: 4577 | ref_number: img_5_173 -> doc_5 | canonical: True
+-- ID: 4578 | ref_number: img_5_179 -> doc_5 | canonical: True
+-- ID: 4579 | ref_number: img_5_180 -> doc_5 | canonical: True
+-- ID: 4580 | ref_number: img_5_193 -> doc_5 | canonical: True
+-- ID: 4581 | ref_number: img_5_199 -> doc_5 | canonical: True
+-- ID: 4582 | ref_number: img_5_200 -> doc_5 | canonical: True
+-- ID: 4583 | ref_number: img_5_234 -> doc_5 | canonical: True
+-- ID: 4584 | ref_number: img_5_239 -> doc_5 | canonical: True
+-- ID: 4585 | ref_number: img_5_243 -> doc_5 | canonical: True
+-- ID: 4586 | ref_number: img_5_244 -> doc_5 | canonical: True
+-- ID: 4587 | ref_number: img_5_250 -> doc_5 | canonical: True
+-- ID: 4588 | ref_number: img_5_276 -> doc_5 | canonical: True
+-- ID: 4589 | ref_number: img_5_322 -> doc_5 | canonical: True
+-- ID: 4590 | ref_number: img_5_323 -> doc_5 | canonical: True
+-- ID: 4591 | ref_number: img_5_329 -> doc_5 | canonical: True
+-- ID: 4592 | ref_number: img_5_330 -> doc_5 | canonical: True
+-- ID: 4593 | ref_number: img_5_331 -> doc_5 | canonical: True
+-- ID: 4594 | ref_number: img_5_337 -> doc_5 | canonical: True
+-- ID: 4595 | ref_number: img_5_338 -> doc_5 | canonical: True
+-- ID: 4596 | ref_number: img_5_344 -> doc_5 | canonical: True
+-- ID: 4597 | ref_number: img_5_345 -> doc_5 | canonical: True
+-- ID: 4598 | ref_number: img_5_353 -> doc_5 | canonical: True
+-- ID: 4599 | ref_number: img_5_358 -> doc_5 | canonical: True
+-- ID: 4600 | ref_number: img_5_359 -> doc_5 | canonical: True
+-- ID: 4601 | ref_number: img_5_413 -> doc_5 | canonical: True
+-- ID: 4602 | ref_number: img_5_414 -> doc_5 | canonical: True
+-- ID: 4603 | ref_number: img_5_416 -> doc_5 | canonical: True
+-- ID: 4604 | ref_number: img_5_509 -> doc_5 | canonical: True
+-- ID: 4605 | ref_number: img_6_170 -> doc_6 | canonical: True
+-- ID: 4606 | ref_number: img_6_284 -> doc_6 | canonical: True
+-- ID: 4607 | ref_number: img_6_327 -> doc_6 | canonical: True
+-- ID: 4608 | ref_number: img_6_328 -> doc_6 | canonical: True
+-- ID: 4609 | ref_number: img_6_333 -> doc_6 | canonical: True
+-- ID: 4610 | ref_number: img_6_419 -> doc_6 | canonical: True
+-- ID: 4611 | ref_number: img_6_540 -> doc_6 | canonical: True
+-- ID: 4612 | ref_number: img_6_541 -> doc_6 | canonical: True
+-- ID: 4613 | ref_number: img_6_748 -> doc_6 | canonical: True
+-- ID: 4614 | ref_number: img_6_870 -> doc_6 | canonical: True
+-- ID: 4615 | ref_number: img_6_872 -> doc_6 | canonical: True
+-- ID: 4616 | ref_number: img_6_1190 -> doc_6 | canonical: True
+-- ID: 4617 | ref_number: img_6_1309 -> doc_6 | canonical: True
+-- ID: 4618 | ref_number: img_6_1310 -> doc_6 | canonical: True
+-- ID: 4619 | ref_number: img_6_1312 -> doc_6 | canonical: True
+-- ID: 4620 | ref_number: img_6_1520 -> doc_6 | canonical: True
+-- ID: 4621 | ref_number: img_6_1551 -> doc_6 | canonical: True
+-- ID: 4622 | ref_number: img_6_1580 -> doc_6 | canonical: True
+-- ID: 4623 | ref_number: img_10_66 -> doc_10 | canonical: True
+-- ID: 4624 | ref_number: img_10_106 -> doc_10 | canonical: True
+-- ID: 4625 | ref_number: img_13_18 -> doc_13 | canonical: True
+-- ID: 4626 | ref_number: img_15_10 -> doc_15 | canonical: True
+-- ID: 4627 | ref_number: img_15_11 -> doc_15 | canonical: True
+-- ID: 4628 | ref_number: img_15_12 -> doc_15 | canonical: True
+-- ID: 4629 | ref_number: img_15_13 -> doc_15 | canonical: True
+-- ID: 4630 | ref_number: img_15_178 -> doc_15 | canonical: True
+-- ID: 4631 | ref_number: img_15_179 -> doc_15 | canonical: True
+-- ID: 4632 | ref_number: img_15_180 -> doc_15 | canonical: True
+-- ID: 4633 | ref_number: img_15_181 -> doc_15 | canonical: True
+-- ID: 4634 | ref_number: img_20_44 -> doc_20 | canonical: True
+-- ID: 4635 | ref_number: img_20_45 -> doc_20 | canonical: True
+-- ID: 4636 | ref_number: img_20_46 -> doc_20 | canonical: True
+-- ID: 4637 | ref_number: img_21_62 -> doc_21 | canonical: True
+-- ID: 4638 | ref_number: img_23_91 -> doc_23 | canonical: True
+-- ID: 4639 | ref_number: img_23_517 -> doc_23 | canonical: True
+-- ID: 4640 | ref_number: img_27_38 -> doc_27 | canonical: True
+-- ID: 4641 | ref_number: img_27_39 -> doc_27 | canonical: True
+-- ID: 4642 | ref_number: img_27_40 -> doc_27 | canonical: True
+-- ID: 4643 | ref_number: img_27_46 -> doc_27 | canonical: True
+-- ID: 4644 | ref_number: img_29_3 -> doc_29 | canonical: True
+-- ID: 4645 | ref_number: img_29_4 -> doc_29 | canonical: True
+-- ID: 4646 | ref_number: img_29_5 -> doc_29 | canonical: True
+-- ID: 4647 | ref_number: img_30_18 -> doc_30 | canonical: True
+-- ID: 4648 | ref_number: img_32_102 -> doc_32 | canonical: True
+-- ID: 4649 | ref_number: img_32_111 -> doc_32 | canonical: True
+-- ID: 4650 | ref_number: img_33_2 -> doc_33 | canonical: True
+-- ID: 4651 | ref_number: img_34_86 -> doc_34 | canonical: True
+-- ID: 4652 | ref_number: img_34_88 -> doc_34 | canonical: True
+-- ID: 4653 | ref_number: img_35_52 -> doc_35 | canonical: True
+-- ID: 4654 | ref_number: img_35_53 -> doc_35 | canonical: True
+-- ID: 4655 | ref_number: img_35_66 -> doc_35 | canonical: True
+-- ID: 4656 | ref_number: img_35_122 -> doc_35 | canonical: True
+-- ID: 4657 | ref_number: img_36_2 -> doc_36 | canonical: True
+-- ID: 4658 | ref_number: img_36_23 -> doc_36 | canonical: True
+-- ID: 4659 | ref_number: img_37_7 -> doc_37 | canonical: True
+-- ID: 4660 | ref_number: img_37_47 -> doc_37 | canonical: True
+-- ID: 4661 | ref_number: img_37_58 -> doc_37 | canonical: True
+-- ID: 4662 | ref_number: img_40_79 -> doc_40 | canonical: True
+-- ID: 4663 | ref_number: img_43_3 -> doc_43 | canonical: True
+-- ID: 4664 | ref_number: img_45_2 -> doc_45 | canonical: True
+-- ID: 4665 | ref_number: img_47_2 -> doc_47 | canonical: True
+-- ID: 4666 | ref_number: img_47_57 -> doc_47 | canonical: True
+-- ID: 4667 | ref_number: img_47_64 -> doc_47 | canonical: True
+-- ID: 4668 | ref_number: img_47_65 -> doc_47 | canonical: True
+-- ID: 4669 | ref_number: img_49_2 -> doc_49 | canonical: True
+-- ID: 4670 | ref_number: img_49_181 -> doc_49 | canonical: True
+-- ID: 4671 | ref_number: img_49_182 -> doc_49 | canonical: True
+-- ID: 4672 | ref_number: img_49_183 -> doc_49 | canonical: True
+-- ID: 4673 | ref_number: img_49_184 -> doc_49 | canonical: True
+-- ID: 4674 | ref_number: img_50_1 -> doc_50 | canonical: True
+-- ID: 4675 | ref_number: img_51_1 -> doc_51 | canonical: True
+-- ID: 4676 | ref_number: img_52_150 -> doc_52 | canonical: True
+-- ID: 4677 | ref_number: img_52_184 -> doc_52 | canonical: True
+-- ID: 4678 | ref_number: img_52_186 -> doc_52 | canonical: True
+-- ID: 4679 | ref_number: img_52_256 -> doc_52 | canonical: True
+-- ID: 4680 | ref_number: img_52_267 -> doc_52 | canonical: True
+-- ID: 4681 | ref_number: img_52_340 -> doc_52 | canonical: True
+-- ID: 4682 | ref_number: img_52_377 -> doc_52 | canonical: True
+-- ID: 4683 | ref_number: img_52_378 -> doc_52 | canonical: True
+-- ID: 4684 | ref_number: img_52_379 -> doc_52 | canonical: True
+-- ID: 4685 | ref_number: img_52_380 -> doc_52 | canonical: True
+-- ID: 4686 | ref_number: img_52_405 -> doc_52 | canonical: True
+-- ID: 4687 | ref_number: img_52_406 -> doc_52 | canonical: True
+-- ID: 4688 | ref_number: img_52_407 -> doc_52 | canonical: True
+-- ID: 4689 | ref_number: img_52_408 -> doc_52 | canonical: True
+-- ID: 4690 | ref_number: img_52_425 -> doc_52 | canonical: True
+-- ID: 4691 | ref_number: img_52_426 -> doc_52 | canonical: True
+-- ID: 4692 | ref_number: img_52_440 -> doc_52 | canonical: True
+-- ID: 4693 | ref_number: img_52_441 -> doc_52 | canonical: True
+-- ID: 4694 | ref_number: img_52_463 -> doc_52 | canonical: True
+-- ID: 4695 | ref_number: img_52_464 -> doc_52 | canonical: True
+-- ID: 4696 | ref_number: img_52_478 -> doc_52 | canonical: True
+-- ID: 4697 | ref_number: img_52_479 -> doc_52 | canonical: True
+-- ID: 4698 | ref_number: img_52_480 -> doc_52 | canonical: True
+-- ID: 4699 | ref_number: img_52_481 -> doc_52 | canonical: True
+-- ID: 4700 | ref_number: img_52_482 -> doc_52 | canonical: True
+-- ID: 4701 | ref_number: img_52_493 -> doc_52 | canonical: True
+-- ID: 4702 | ref_number: img_52_494 -> doc_52 | canonical: True
+-- ID: 4703 | ref_number: img_52_495 -> doc_52 | canonical: True
+-- ID: 4704 | ref_number: img_52_496 -> doc_52 | canonical: True
+-- ID: 4705 | ref_number: img_52_507 -> doc_52 | canonical: True
+-- ID: 4706 | ref_number: img_52_508 -> doc_52 | canonical: True
+-- ID: 4707 | ref_number: img_52_517 -> doc_52 | canonical: True
+-- ID: 4708 | ref_number: img_52_519 -> doc_52 | canonical: True
+-- ID: 4709 | ref_number: img_52_520 -> doc_52 | canonical: True
+-- ID: 4710 | ref_number: img_52_535 -> doc_52 | canonical: True
+-- ID: 4711 | ref_number: img_52_536 -> doc_52 | canonical: True
+-- ID: 4712 | ref_number: img_54_1 -> doc_54 | canonical: True
+-- ID: 4713 | ref_number: img_54_334 -> doc_54 | canonical: True
+-- ID: 4714 | ref_number: img_54_335 -> doc_54 | canonical: True
+-- ID: 4715 | ref_number: img_54_361 -> doc_54 | canonical: True
+-- ID: 4716 | ref_number: img_55_2 -> doc_55 | canonical: True
+-- ID: 4717 | ref_number: img_56_3 -> doc_56 | canonical: True
+-- ID: 4718 | ref_number: img_57_153 -> doc_57 | canonical: True
+-- ID: 4719 | ref_number: img_57_378 -> doc_57 | canonical: True
+-- ID: 4720 | ref_number: img_57_383 -> doc_57 | canonical: True
+-- ID: 4721 | ref_number: img_57_386 -> doc_57 | canonical: True
+-- ID: 4722 | ref_number: img_57_415 -> doc_57 | canonical: True
+-- ID: 4723 | ref_number: img_57_417 -> doc_57 | canonical: True
+-- ID: 4724 | ref_number: img_57_446 -> doc_57 | canonical: True
+-- ID: 4725 | ref_number: img_57_447 -> doc_57 | canonical: True
+-- ID: 4726 | ref_number: img_57_451 -> doc_57 | canonical: True
+-- ID: 4727 | ref_number: img_57_537 -> doc_57 | canonical: True
+-- ID: 4728 | ref_number: img_57_667 -> doc_57 | canonical: True
+-- ID: 4729 | ref_number: img_57_668 -> doc_57 | canonical: True
+-- ID: 4730 | ref_number: img_57_710 -> doc_57 | canonical: True
+-- ID: 4731 | ref_number: img_57_711 -> doc_57 | canonical: True
+-- ID: 4732 | ref_number: img_57_715 -> doc_57 | canonical: True
+-- ID: 4733 | ref_number: img_57_749 -> doc_57 | canonical: True
+-- ID: 4734 | ref_number: img_57_785 -> doc_57 | canonical: True
+-- ID: 4735 | ref_number: img_57_809 -> doc_57 | canonical: True
+-- ID: 4736 | ref_number: img_57_844 -> doc_57 | canonical: True
+-- ID: 4737 | ref_number: img_57_847 -> doc_57 | canonical: True
+-- ID: 4738 | ref_number: img_57_851 -> doc_57 | canonical: True
+-- ID: 4739 | ref_number: img_57_895 -> doc_57 | canonical: True
+-- ID: 4740 | ref_number: img_57_926 -> doc_57 | canonical: True
+-- ID: 4741 | ref_number: img_57_967 -> doc_57 | canonical: True
+-- ID: 4742 | ref_number: img_57_1002 -> doc_57 | canonical: True
+-- ID: 4743 | ref_number: img_57_1041 -> doc_57 | canonical: True
+-- ID: 4744 | ref_number: img_57_1078 -> doc_57 | canonical: True
+-- ID: 4745 | ref_number: img_57_1117 -> doc_57 | canonical: True
+-- ID: 4746 | ref_number: img_57_1160 -> doc_57 | canonical: True
+-- ID: 4747 | ref_number: img_57_1193 -> doc_57 | canonical: True
+-- ID: 4748 | ref_number: img_57_1230 -> doc_57 | canonical: True
+-- ID: 4749 | ref_number: img_57_1265 -> doc_57 | canonical: True
+-- ID: 4750 | ref_number: img_57_1268 -> doc_57 | canonical: True
+-- ID: 4751 | ref_number: img_57_1308 -> doc_57 | canonical: True
+-- ID: 4752 | ref_number: img_57_1342 -> doc_57 | canonical: True
+-- ID: 4753 | ref_number: img_57_1373 -> doc_57 | canonical: True
+-- ID: 4754 | ref_number: img_57_1401 -> doc_57 | canonical: True
+-- ID: 4755 | ref_number: img_57_1435 -> doc_57 | canonical: True
+-- ID: 4756 | ref_number: img_57_1475 -> doc_57 | canonical: True
+-- ID: 4757 | ref_number: img_57_1509 -> doc_57 | canonical: True
+-- ID: 4758 | ref_number: img_57_1542 -> doc_57 | canonical: True
+-- ID: 4759 | ref_number: img_57_1581 -> doc_57 | canonical: True
+-- ID: 4760 | ref_number: img_57_1624 -> doc_57 | canonical: True
+-- ID: 4761 | ref_number: img_57_1658 -> doc_57 | canonical: True
+-- ID: 4762 | ref_number: img_57_1693 -> doc_57 | canonical: True
+-- ID: 4763 | ref_number: img_57_1730 -> doc_57 | canonical: True
+-- ID: 4764 | ref_number: img_57_1764 -> doc_57 | canonical: True
+-- ID: 4765 | ref_number: img_57_1800 -> doc_57 | canonical: True
+-- ID: 4766 | ref_number: img_57_1841 -> doc_57 | canonical: True
+-- ID: 4767 | ref_number: img_57_1878 -> doc_57 | canonical: True
+-- ID: 4768 | ref_number: img_57_1919 -> doc_57 | canonical: True
+-- ID: 4769 | ref_number: img_57_1956 -> doc_57 | canonical: True
+-- ID: 4770 | ref_number: img_57_1986 -> doc_57 | canonical: True
+-- ID: 4771 | ref_number: img_57_2227 -> doc_57 | canonical: True
+-- ID: 4772 | ref_number: img_57_2376 -> doc_57 | canonical: True
+-- ID: 4773 | ref_number: img_57_2379 -> doc_57 | canonical: True
+-- ID: 4774 | ref_number: img_58_153 -> doc_58 | canonical: True
+-- ID: 4775 | ref_number: img_58_378 -> doc_58 | canonical: True
+-- ID: 4776 | ref_number: img_58_383 -> doc_58 | canonical: True
+-- ID: 4777 | ref_number: img_58_386 -> doc_58 | canonical: True
+-- ID: 4778 | ref_number: img_58_415 -> doc_58 | canonical: True
+-- ID: 4779 | ref_number: img_58_417 -> doc_58 | canonical: True
+-- ID: 4780 | ref_number: img_58_446 -> doc_58 | canonical: True
+-- ID: 4781 | ref_number: img_58_447 -> doc_58 | canonical: True
+-- ID: 4782 | ref_number: img_58_451 -> doc_58 | canonical: True
+-- ID: 4783 | ref_number: img_58_537 -> doc_58 | canonical: True
+-- ID: 4784 | ref_number: img_59_4 -> doc_59 | canonical: True
+-- ID: 4785 | ref_number: img_59_5 -> doc_59 | canonical: True
+-- ID: 4786 | ref_number: img_59_47 -> doc_59 | canonical: True
+-- ID: 4787 | ref_number: img_59_48 -> doc_59 | canonical: True
+-- ID: 4788 | ref_number: img_59_52 -> doc_59 | canonical: True
+-- ID: 4789 | ref_number: img_59_86 -> doc_59 | canonical: True
+-- ID: 4790 | ref_number: img_59_122 -> doc_59 | canonical: True
+-- ID: 4791 | ref_number: img_59_146 -> doc_59 | canonical: True
+-- ID: 4792 | ref_number: img_59_181 -> doc_59 | canonical: True
+-- ID: 4793 | ref_number: img_59_184 -> doc_59 | canonical: True
+-- ID: 4794 | ref_number: img_59_188 -> doc_59 | canonical: True
+-- ID: 4795 | ref_number: img_59_232 -> doc_59 | canonical: True
+-- ID: 4796 | ref_number: img_59_263 -> doc_59 | canonical: True
+-- ID: 4797 | ref_number: img_59_304 -> doc_59 | canonical: True
+-- ID: 4798 | ref_number: img_59_339 -> doc_59 | canonical: True
+-- ID: 4799 | ref_number: img_59_378 -> doc_59 | canonical: True
+-- ID: 4800 | ref_number: img_59_415 -> doc_59 | canonical: True
+-- ID: 4801 | ref_number: img_59_454 -> doc_59 | canonical: True
+-- ID: 4802 | ref_number: img_59_497 -> doc_59 | canonical: True
+-- ID: 4803 | ref_number: img_59_530 -> doc_59 | canonical: True
+-- ID: 4804 | ref_number: img_59_567 -> doc_59 | canonical: True
+-- ID: 4805 | ref_number: img_59_602 -> doc_59 | canonical: True
+-- ID: 4806 | ref_number: img_59_605 -> doc_59 | canonical: True
+-- ID: 4807 | ref_number: img_60_2 -> doc_60 | canonical: True
+-- ID: 4808 | ref_number: img_60_36 -> doc_60 | canonical: True
+-- ID: 4809 | ref_number: img_60_67 -> doc_60 | canonical: True
+-- ID: 4810 | ref_number: img_60_95 -> doc_60 | canonical: True
+-- ID: 4811 | ref_number: img_60_129 -> doc_60 | canonical: True
+-- ID: 4812 | ref_number: img_60_169 -> doc_60 | canonical: True
+-- ID: 4813 | ref_number: img_60_203 -> doc_60 | canonical: True
+-- ID: 4814 | ref_number: img_60_236 -> doc_60 | canonical: True
+-- ID: 4815 | ref_number: img_60_275 -> doc_60 | canonical: True
+-- ID: 4816 | ref_number: img_60_318 -> doc_60 | canonical: True
+-- ID: 4817 | ref_number: img_60_352 -> doc_60 | canonical: True
+-- ID: 4818 | ref_number: img_60_387 -> doc_60 | canonical: True
+-- ID: 4819 | ref_number: img_60_424 -> doc_60 | canonical: True
+-- ID: 4820 | ref_number: img_60_458 -> doc_60 | canonical: True
+-- ID: 4821 | ref_number: img_60_494 -> doc_60 | canonical: True
+-- ID: 4822 | ref_number: img_60_535 -> doc_60 | canonical: True
+-- ID: 4823 | ref_number: img_60_572 -> doc_60 | canonical: True
+-- ID: 4824 | ref_number: img_60_613 -> doc_60 | canonical: True
+-- ID: 4825 | ref_number: img_61_2 -> doc_61 | canonical: True
+-- ID: 4826 | ref_number: img_61_32 -> doc_61 | canonical: True
+-- ID: 4827 | ref_number: img_61_273 -> doc_61 | canonical: True
+-- ID: 4828 | ref_number: img_61_422 -> doc_61 | canonical: True
+-- ID: 4829 | ref_number: img_61_425 -> doc_61 | canonical: True
+-- ID: 4830 | ref_number: img_63_60 -> doc_63 | canonical: True
+-- ID: 4831 | ref_number: img_63_61 -> doc_63 | canonical: True
+-- ID: 4832 | ref_number: img_64_5 -> doc_64 | canonical: True
+-- ID: 4833 | ref_number: img_65_2 -> doc_65 | canonical: True
+-- ID: 4834 | ref_number: img_66_3 -> doc_66 | canonical: True
+-- ID: 4835 | ref_number: img_67_2 -> doc_67 | canonical: True
+-- ID: 4836 | ref_number: img_69_5 -> doc_69 | canonical: True
+-- ID: 4837 | ref_number: img_70_2 -> doc_70 | canonical: True
+-- ID: 4838 | ref_number: img_71_5 -> doc_71 | canonical: True
+-- ID: 4839 | ref_number: img_72_5 -> doc_72 | canonical: True
+-- ID: 4840 | ref_number: img_73_2 -> doc_73 | canonical: True
+-- ID: 4841 | ref_number: img_76_2 -> doc_76 | canonical: True
+-- ID: 4842 | ref_number: img_77_5 -> doc_77 | canonical: True
+-- ID: 4843 | ref_number: img_78_2 -> doc_78 | canonical: True
+-- ID: 4844 | ref_number: img_79_2 -> doc_79 | canonical: True
+-- ID: 4845 | ref_number: img_80_2 -> doc_80 | canonical: True
+-- ID: 4846 | ref_number: img_80_57 -> doc_80 | canonical: True
+-- ID: 4847 | ref_number: img_80_107 -> doc_80 | canonical: True
+-- ID: 4848 | ref_number: img_80_123 -> doc_80 | canonical: True
+-- ID: 4849 | ref_number: img_80_144 -> doc_80 | canonical: True
+-- ID: 4850 | ref_number: img_80_145 -> doc_80 | canonical: True
+-- ID: 4851 | ref_number: img_80_147 -> doc_80 | canonical: True
+-- ID: 4852 | ref_number: img_81_43 -> doc_81 | canonical: True
+-- ID: 4853 | ref_number: img_81_44 -> doc_81 | canonical: True
+-- ID: 4854 | ref_number: img_81_46 -> doc_81 | canonical: True
+-- ID: 4855 | ref_number: img_82_2 -> doc_82 | canonical: True
+-- ID: 4856 | ref_number: img_83_5 -> doc_83 | canonical: True
+-- ID: 4857 | ref_number: img_84_3 -> doc_84 | canonical: True
+-- ID: 4858 | ref_number: img_87_5 -> doc_87 | canonical: True
+-- ID: 4859 | ref_number: img_88_5 -> doc_88 | canonical: True
+-- ID: 4860 | ref_number: img_91_2 -> doc_91 | canonical: True
+-- ID: 4861 | ref_number: img_92_96 -> doc_92 | canonical: True
+-- ID: 4862 | ref_number: img_92_97 -> doc_92 | canonical: True
+-- ID: 4863 | ref_number: img_92_98 -> doc_92 | canonical: True
+-- ID: 4864 | ref_number: img_97_184 -> doc_97 | canonical: True
+-- ID: 4865 | ref_number: img_97_185 -> doc_97 | canonical: True
+-- ID: 4866 | ref_number: img_97_186 -> doc_97 | canonical: True
+-- ID: 4867 | ref_number: img_97_318 -> doc_97 | canonical: True
+-- ID: 4868 | ref_number: img_100_5 -> doc_100 | canonical: True
+-- ID: 4869 | ref_number: img_101_2 -> doc_101 | canonical: True
+-- ID: 4870 | ref_number: img_101_42 -> doc_101 | canonical: True
+-- ID: 4871 | ref_number: img_101_48 -> doc_101 | canonical: True
+-- ID: 4872 | ref_number: img_101_82 -> doc_101 | canonical: True
+-- ID: 4873 | ref_number: img_102_5 -> doc_102 | canonical: True
+-- ID: 4874 | ref_number: img_103_121 -> doc_103 | canonical: True
+-- ID: 4875 | ref_number: img_103_236 -> doc_103 | canonical: True
+-- ID: 4876 | ref_number: img_103_255 -> doc_103 | canonical: True
+-- ID: 4877 | ref_number: img_104_2 -> doc_104 | canonical: True
+-- ID: 4878 | ref_number: img_105_89 -> doc_105 | canonical: True
+-- ID: 4879 | ref_number: img_105_90 -> doc_105 | canonical: True
+-- ID: 4880 | ref_number: img_105_168 -> doc_105 | canonical: True
+-- ID: 4881 | ref_number: img_105_169 -> doc_105 | canonical: True
+-- ID: 4882 | ref_number: img_105_256 -> doc_105 | canonical: True
+-- ID: 4883 | ref_number: img_106_5 -> doc_106 | canonical: True
+-- ID: 4884 | ref_number: img_109_5 -> doc_109 | canonical: True
+-- ID: 4885 | ref_number: img_110_36 -> doc_110 | canonical: True
+-- ID: 4886 | ref_number: img_110_162 -> doc_110 | canonical: True
+-- ID: 4926 | ref_number: 9.36.2 Desired future character -> 9.36.4 Precinct-specific planning controls | canonical: True
+-- ID: 4927 | ref_number: 9.36.3 Heritage Conservation Areas (HCAs) -> 9.36.4.6 Contributory buildings map | canonical: True
+-- ID: 4928 | ref_number: 9.36.5 Site-specific planning controls -> Masterplan Areas (MA 36.1, MA 6.2, MA 6.5) | canonical: True
+-- ID: 4929 | ref_number: C2 -> MLEP 2011, Clause 4.3(2) | canonical: True
+-- ID: 4930 | ref_number: C4 -> MLEP 2011, Clause 4.4(2) | canonical: True
+-- ID: 4931 | ref_number: C5 -> MLEP 2011, Clause 4.4(2) | canonical: True
+-- ID: 4932 | ref_number: Section 9.36.4 -> Section 8.4 | canonical: True
+-- ID: 4933 | ref_number: Section 9.36.4 -> Section 8.4.2 | canonical: True
+-- ID: 4934 | ref_number: C6 -> Control diagrams (Figures) | canonical: True
+-- ID: 4935 | ref_number: Inner West LEP 2022 -> Height of Buildings Map | canonical: True
+-- ID: 4936 | ref_number: Inner West LEP 2022 -> Floor Space Ratio Map | canonical: True
+-- ID: 4993 | ref_number: 9.11.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 4994 | ref_number: C17, C18, C19, C20, C21, C22 -> Figures (11.1b) and (11.1c) | canonical: True
+-- ID: 4995 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 5067 | ref_number: 2.11.2 General controls (C1) -> 2.9 (Community Safety) | canonical: True
+-- ID: 5068 | ref_number: 2.11.2 General controls (C2) -> 2.20 (Tree Management) | canonical: True
+-- ID: 5069 | ref_number: 2.11.3 Fencing for heritage and period buildings (C4) -> 2.11.7 Fence styles and Part 8 (Heritage) | canonical: True
+-- ID: 5070 | ref_number: C33 -> Part 8 (Heritage) | canonical: True
+-- ID: 5071 | ref_number: 2.11.7.1 -> 2.11.7.2 | canonical: True
+-- ID: 5105 | ref_number: 2.9.3.1 Surveillance -> Australian Standards | canonical: True
+-- ID: 5106 | ref_number: 2.9 -> Section 4.15 of the Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: True
+-- ID: 5154 | ref_number: Aquifer Definition -> NSW Office of Water | canonical: True
+-- ID: 5210 | ref_number: C4 -> DCP controls | canonical: True
+-- ID: 5211 | ref_number: 3.2.2 Residential Torrens title subdivision and amalgamation controls -> existing subdivision pattern | canonical: True
+-- ID: 5212 | ref_number: C8 -> relevant DCP controls | canonical: True
+-- ID: 5213 | ref_number: C9 -> this DCP | canonical: True
+-- ID: 5214 | ref_number: C12 -> prevailing cadastral pattern | canonical: True
+-- ID: 5215 | ref_number: C22 -> Section 3.2.1 of this DCP | canonical: True
+-- ID: 5216 | ref_number: C17 -> Building Code of Australia (BCA) | canonical: True
+-- ID: 5319 | ref_number: Council's energy minimisation policy -> Inner West LEP 2022 | canonical: True
+-- ID: 5320 | ref_number: C4 -> State Environmental Planning Policy (Infrastructure) 2007 | canonical: True
+-- ID: 5321 | ref_number: C3.b.iv -> Schedule 5 of the Inner West LEP 2022 | canonical: True
+-- ID: 5322 | ref_number: C5 -> Inner West LEP 2022, Schedule 5 | canonical: True
+-- ID: 5323 | ref_number: C1 -> all forms of development | canonical: True
+-- ID: 5324 | ref_number: D2.1 General Requirements -> Waste Avoidance & Resource Recovery Act 2001 | canonical: True
+-- ID: 5325 | ref_number: C13 -> Appendix D (Section 8) “Vehicle access and Turning Circles” and Australian Standard 2890.2 Parking Facilities | canonical: True
+-- ID: 5326 | ref_number: C8 -> Appendix D (Section 9) “Waste chutes” | canonical: True
+-- ID: 5327 | ref_number: C6 -> Appendix D (Section 8) “Vehicle Access and Turning Circles” and Australian Standard 2890.2 Parking Facilities | canonical: True
+-- ID: 5374 | ref_number: SECTION 4 – WASTE/RECYCLING STORAGE ROOMS IN MULTI DWELLING HOUSING / RESIDENTIAL FLAT BUILDINGS -> Building Code of Australia (BCA) | canonical: True
+-- ID: 5375 | ref_number: SECTION 6 – NON RESIDENTIAL DEVELOPMENT WASTE AND RECYCLING STORAGE AREAS -> Building Code of Australia (BCA) | canonical: True
+-- ID: 5376 | ref_number: 6.3 LAYOUT -> WorkCover NSW Work Health and Safety requirements | canonical: True
+-- ID: 5377 | ref_number: 6.4 ACCESS: WASTE/RECYCLING COLLECTION -> NSW Government Work Health and Safety requirements | canonical: True
+-- ID: 5378 | ref_number: 6.10 MANAGEMENT -> The Better Practice Guide for Waste Management in Multi-dwelling housing | canonical: True
+-- ID: 5379 | ref_number: Collection vehicle requirements -> AS 2890.2 | canonical: True
+-- ID: 5380 | ref_number: Waste chute room design -> Part D, 2.3, C20 and C21 | canonical: True
+-- ID: 5440 | ref_number: C4 -> Section 2.7 | canonical: True
+-- ID: 5441 | ref_number: C1 -> Section 2.18.13 | canonical: True
+-- ID: 5442 | ref_number: 2.18.8 -> Section 2.20 | canonical: True
+-- ID: 5443 | ref_number: C30 -> front landscaping | canonical: True
+-- ID: 5444 | ref_number: 2.18.11.11 -> All outdoor parking areas | canonical: True
+-- ID: 5445 | ref_number: Section 2.18.12 -> Section 2.20 | canonical: True
+-- ID: 5530 | ref_number: 2.12.4.1 -> 2.12.4.9 | canonical: True
+-- ID: 5531 | ref_number: 2.12.4.9 -> other provisions in the DCP | canonical: True
+-- ID: 5532 | ref_number: C26 ii -> Figure 5 | canonical: True
+-- ID: 5533 | ref_number: Fin signs -> Figure 5 | canonical: True
+-- ID: 5607 | ref_number: C1 -> Figure 45.1 | canonical: True
+-- ID: 5608 | ref_number: 9.45.6 -> Figure 45.2 | canonical: True
+-- ID: 5609 | ref_number: C6 -> B5 | canonical: True
+-- ID: 5610 | ref_number: 9.45.9 -> O2 | canonical: True
+-- ID: 5611 | ref_number: C7 -> Figure 45.5 | canonical: True
+-- ID: 5612 | ref_number: 9.45.8 -> Figures 45.6-45.8 | canonical: True
+-- ID: 5613 | ref_number: C14 -> MLEP 2011 Floor Space Ratio Map | canonical: True
+-- ID: 5614 | ref_number: 9.45.10.2 -> MLEP 2011 Height of Buildings Map | canonical: True
+-- ID: 5615 | ref_number: 9.45.10.2 -> Figure 45.6 | canonical: True
+-- ID: 5616 | ref_number: 9.45.10.2 -> MLEP 2011 | canonical: True
+-- ID: 5617 | ref_number: 9.45.10.2 -> Section 9.45.11 | canonical: True
+-- ID: 5618 | ref_number: 9.45.10.2 -> MLEP 2011 Height of Buildings Map | canonical: True
+-- ID: 5619 | ref_number: C16 -> Figure 45.6 | canonical: True
+-- ID: 5620 | ref_number: C17 -> Section 9.45.11 | canonical: True
+-- ID: 5682 | ref_number: 9.25.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 5683 | ref_number: C1 -> Section 8.3 | canonical: True
+-- ID: 5684 | ref_number: C1 -> Section 8.5.1 | canonical: True
+-- ID: 5685 | ref_number: C1 -> Section 8.5.2 | canonical: True
+-- ID: 5686 | ref_number: C3 -> Section 8.3 | canonical: True
+-- ID: 5687 | ref_number: C3 -> Section 8.5.1 | canonical: True
+-- ID: 5688 | ref_number: 9.25.5 -> Figure 25.1 | canonical: True
+-- ID: 5689 | ref_number: 9.25.7 -> Figure 25.2 | canonical: True
+-- ID: 5690 | ref_number: 9.25.8 -> Figures 25.1 and 25.2 | canonical: True
+-- ID: 5691 | ref_number: 9.25.8 -> Figures 25.6 | canonical: True
+-- ID: 5692 | ref_number: 9.25.8.1 -> Inner West Council | canonical: True
+-- ID: 5693 | ref_number: C16 -> MLEP 2011 | canonical: True
+-- ID: 5694 | ref_number: C17 -> MLEP 2011 Floor Space Ratio Map | canonical: True
+-- ID: 5695 | ref_number: 9.25.10.2 Building height -> MLEP 2011 Height of Buildings Map | canonical: True
+-- ID: 5696 | ref_number: C19 -> Section 9.25.11 | canonical: True
+-- ID: 5780 | ref_number: Principle 9 -> Section 2.1.2 | canonical: True
+-- ID: 5781 | ref_number: Principle 9 -> Section 2.1.3 | canonical: True
+-- ID: 5782 | ref_number: C1 -> 12 urban design principles | canonical: True
+-- ID: 5783 | ref_number: Section 2.1.2 -> Part 9 (Strategic Context) | canonical: True
+-- ID: 5784 | ref_number: Section 2.1.2 -> Part 8 (Heritage) | canonical: True
+-- ID: 5785 | ref_number: 2.1.2.5 Walls and fences -> Section 2.11 (Fencing) | canonical: True
+-- ID: 5786 | ref_number: 2.1.2.6 Landscaping -> Section 2.18 (Landscaping and Open Spaces) | canonical: True
+-- ID: 5787 | ref_number: 2.1.3 Infill design guidelines -> Section 2.3 (Site and Context Analysis) | canonical: True
+-- ID: 5788 | ref_number: 2.1.3.1 Character -> Part 9 (Strategic Context) | canonical: True
+-- ID: 5789 | ref_number: 2.1.3.1 Character -> Part 4 (Residential Development), Part 5 (Commercial and Mixed Use Development), Part 6 (Industrial Development) | canonical: True
+-- ID: 5822 | ref_number: G13.1 -> DCP | canonical: True
+-- ID: 5823 | ref_number: G13.1 -> G13 | canonical: True
+-- ID: 5824 | ref_number: 4.1 -> PRCUTS and Tech Central | canonical: True
+-- ID: 5909 | ref_number: 4.2.2 Good urban design practice -> Section 2.1 (Urban Design) | canonical: True
+-- ID: 5910 | ref_number: C36 -> suitably qualified traffic consultant | canonical: True
+-- ID: 5911 | ref_number: 4.2.6.1 -> 2.10 (Parking) | canonical: True
+-- ID: 5912 | ref_number: 4.2.9 -> 6.12 (IWLEP 2022) | canonical: True
+-- ID: 5913 | ref_number: 4.2.9 -> 6.4.3 (this DCP) | canonical: True
+-- ID: 5914 | ref_number: 4.2.9 -> 6.7 (this DCP) | canonical: True
+-- ID: 5915 | ref_number: 4.2.10.3 -> 4.1.8 | canonical: True
+-- ID: 6033 | ref_number: 2.5 -> 2.5.1, 2.5.2, 2.5.3, 2.5.4, 2.5.5, 2.5.6, 2.5.7, 2.5.8, 2.5.9, 2.5.10 | canonical: True
+-- ID: 6034 | ref_number: 2.5.4 -> Disability Discrimination Act 1992 (DDA) | canonical: True
+-- ID: 6035 | ref_number: Building Code of Australia (BCA) -> Commonwealth Disability (Access to Premises – Buildings) Standards (Premises Standards) | canonical: True
+-- ID: 6036 | ref_number: Premises Standards -> Disability Discrimination Act 1992 (DDA) | canonical: True
+-- ID: 6037 | ref_number: Access Code for Buildings -> Premises Standards | canonical: True
+-- ID: 6038 | ref_number: Access Code for Buildings -> Building Code of Australia (BCA) | canonical: True
+-- ID: 6039 | ref_number: Premises Standards -> BCA | canonical: True
+-- ID: 6040 | ref_number: Section 2.5.10 -> unjustifiable hardship application | canonical: True
+-- ID: 6041 | ref_number: Premises Standards -> Building Professionals Board’s Access Advisory Committee | canonical: True
+-- ID: 6042 | ref_number: Section 21B and 29A of the DDA -> unjustifiable hardship | canonical: True
+-- ID: 6043 | ref_number: Section 11 of the DDA -> unjustifiable hardship | canonical: True
+-- ID: 6044 | ref_number: C3 -> 2.5.5 | canonical: True
+-- ID: 6045 | ref_number: C3 (n) -> 2.5.4.2 | canonical: True
+-- ID: 6046 | ref_number: C5 -> C3 | canonical: True
+-- ID: 6047 | ref_number: C3 (n) -> 2.5.4.2 | canonical: True
+-- ID: 6048 | ref_number: C7 -> Table 1 in Section 2.5.10 | canonical: True
+-- ID: 6049 | ref_number: C8 -> Table 1 in Section 2.5.10 | canonical: True
+-- ID: 6050 | ref_number: 2.5.9 -> Table 1, Section 2.5.10 | canonical: True
+-- ID: 6051 | ref_number: C9 -> Table 1 | canonical: True
+-- ID: 6052 | ref_number: C10 -> Section 2.5 and Table 1 in Section 2.5.10 | canonical: True
+-- ID: 6053 | ref_number: Adaptable dwelling -> Australian Standard AS4299 | canonical: True
+-- ID: 6054 | ref_number: C11 -> Table 1 | canonical: True
+-- ID: 6055 | ref_number: C11 -> BCA | canonical: True
+-- ID: 6056 | ref_number: Table 1 -> AS4299, AS2890 Part 1, AS1428.2 | canonical: True
+-- ID: 6057 | ref_number: Section 2.5.4.2 -> unjustifiable hardship | canonical: True
+-- ID: 6058 | ref_number: Table 1 (Commercial and Industrial) -> Section 2.10 | canonical: True
+-- ID: 6059 | ref_number: Accessible parking provision -> Section 2.10 (Parking) | canonical: True
+-- ID: 6060 | ref_number: Accessible parking provision -> AS2890 Part 1 | canonical: True
+-- ID: 6061 | ref_number: Sanitary facilities access -> BCA | canonical: True
+-- ID: 6062 | ref_number: Accessibility standards -> AS1428.2 | canonical: True
+-- ID: 6179 | ref_number: Clause 1.5 -> Other environmental planning instruments | canonical: True
+-- ID: 6180 | ref_number: Clause 2.1(1) -> Schedule 1 | canonical: True
+-- ID: 6181 | ref_number: Clause 2.1(2) -> Schedule 2 | canonical: True
+-- ID: 6182 | ref_number: Clause 2.1(1,2) -> Environmental Planning and Assessment Regulation 2021 | canonical: True
+-- ID: 6183 | ref_number: Clause 1.4(3) -> Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 6184 | ref_number: Chapter 3.1 -> Chapter 2 | canonical: True
+-- ID: 6185 | ref_number: Clause 3.3(2) -> Schedule 3 | canonical: True
+-- ID: 6186 | ref_number: Clause 3.4(1) -> State Environmental Planning Policy (Planning Systems) 2021, section 2.6(1) and Schedule 1, sections 13–15 | canonical: True
+-- ID: 6187 | ref_number: Section 1(2) -> Section 1(1)(c) | canonical: True
+-- ID: 6188 | ref_number: Section 2(2) -> Table 1 | canonical: True
+-- ID: 6189 | ref_number: Section 3(2) -> Water Use Map | canonical: True
+-- ID: 6190 | ref_number: Section 5(8) -> Section 5(2-6) | canonical: True
+-- ID: 6191 | ref_number: Section 5(9) -> Section 5(4-6) | canonical: True
+-- ID: 6192 | ref_number: section 2.1, Part 1, 4(7) (Area A and Area B definitions) -> section 2.1, Part 1, 4(1-5) | canonical: True
+-- ID: 6193 | ref_number: section 2.1, Part 1, Note -> section 2.1(3) | canonical: True
+-- ID: 6194 | ref_number: Section 11(2) -> Sections 8(1), 9(1), 9(2), 10(1) | canonical: True
+-- ID: 6195 | ref_number: Section 11(3) -> Section 10(2)(b) | canonical: True
+-- ID: 6196 | ref_number: Section 11(5) -> Section 11(4) | canonical: True
+-- ID: 6197 | ref_number: Schedule 4, definitions -> Environmental Planning and Assessment Regulation 2021 | canonical: True
+-- ID: 6239 | ref_number: G7.1 -> Figure G24 | canonical: True
+-- ID: 6240 | ref_number: Section 8 -> Leichhardt DCP 2013 | canonical: True
+-- ID: 6241 | ref_number: This DCP -> Leichhardt DCP 2013 and any other DCP, policy or code | canonical: True
+-- ID: 6242 | ref_number: Development on 141 and 159 Allen Street -> SEPP 65 | canonical: True
+-- ID: 6243 | ref_number: C3 -> Part D2 – Resource Recovery and Waste Management and Appendix D.1 Site Waste Minimisation and Management Plan Template | canonical: True
+-- ID: 6313 | ref_number: This section of the DCP -> Amendment 17 of Marrickville Local Environmental Plan 2011 | canonical: True
+-- ID: 6314 | ref_number: This section of the DCP -> Marrickville Local Environmental Plan 2011 Amendment 18 | canonical: True
+-- ID: 6315 | ref_number: This section of the DCP -> other sections of the DCP | canonical: True
+-- ID: 6316 | ref_number: C9 -> Figure 3 | canonical: True
+-- ID: 6317 | ref_number: C9 -> Figure 5 | canonical: True
+-- ID: 6318 | ref_number: C7 -> Part 5 of MDCP 2011 | canonical: True
+-- ID: 6319 | ref_number: C8 -> Figure 4 | canonical: True
+-- ID: 6320 | ref_number: C31 (iv) -> Marrickville Street Tree Master Plan Part 6 | canonical: True
+-- ID: 6321 | ref_number: C31 (vii) -> Alexander Canal Flood Study | canonical: True
+-- ID: 6322 | ref_number: O2 (Section 14) -> Part 5 | canonical: True
+-- ID: 6323 | ref_number: C55 -> DCP | canonical: True
+-- ID: 6445 | ref_number: C1 -> SEPP 65 | canonical: True
+-- ID: 6547 | ref_number: Water Management Statement -> Development Control Plan | canonical: True
+-- ID: 6548 | ref_number: BASIX certificate -> Water Management Statement (residential component) | canonical: True
+-- ID: 6549 | ref_number: BASIX certificate -> Integrated Water Cycle Plan (residential component) | canonical: True
+-- ID: 6550 | ref_number: Flood Risk Management Report -> Flood Certificate | canonical: True
+-- ID: 6551 | ref_number: C3 -> OSD | canonical: True
+-- ID: 6552 | ref_number: C5 -> Integrated Water Cycle Plan | canonical: True
+-- ID: 6553 | ref_number: C4 (drainage system construction) -> Sydney Water | canonical: True
+-- ID: 6554 | ref_number: C2 (drainage easement restrictions) -> flood risk management | canonical: True
+-- ID: 6555 | ref_number: C2 (parts d and e) -> Development Control Plan residential controls | canonical: True
+-- ID: 6556 | ref_number: C8 (parts d and e) -> Development Control Plan residential controls | canonical: True
+-- ID: 6661 | ref_number: Leichhardt Development Control Plan 2013 -> Leichhardt Community and Cultural Plan 2011-2021 | canonical: True
+-- ID: 6662 | ref_number: C4 -> Council’s Social Impact Assessment Policy and Guidelines | canonical: True
+-- ID: 6663 | ref_number: B3.2.3 -> Inner West Council Events in Parks Policy | canonical: True
+-- ID: 6664 | ref_number: B3.2.3 -> Inner West Council General Conditions of Hire | canonical: True
+-- ID: 6665 | ref_number: B3.2.4 -> Section 68 of the Local Government Act 1993 | canonical: True
+-- ID: 6666 | ref_number: B3.2.4 -> RTA’s Guide to the Traffic & Transport Management for Special Events Process | canonical: True
+-- ID: 6667 | ref_number: B3.2.5 -> Heritage Act 1977 | canonical: True
+-- ID: 6668 | ref_number: B3.2.5 -> RTA’s Guide to the Traffic & Transport Management for Special Events Process | canonical: True
+-- ID: 6669 | ref_number: B3.2.1 -> Inner West LEP 2022 | canonical: True
+-- ID: 6670 | ref_number: C28 -> Part C1.9 – Safety by Design | canonical: True
+-- ID: 6671 | ref_number: C29 -> Australian Standard AS4282-1997 | canonical: True
+-- ID: 6672 | ref_number: C32 -> Food Act 2003, Food Regulation 2010, Australia & New Zealand Food Standards Code | canonical: True
+-- ID: 6673 | ref_number: C2 -> Public art policies, urban design master plans, streetscape programs, planning, heritage and environmental policies, Plans of Management | canonical: True
+-- ID: 6751 | ref_number: C4 -> Clause 4.3(2) of Inner West LEP 2022 | canonical: True
+-- ID: 6752 | ref_number: C6 -> Clause 4.4(2) of Inner West LEP 2022 | canonical: True
+-- ID: 6753 | ref_number: C1 -> Section 8.4 of this DCP | canonical: True
+-- ID: 6754 | ref_number: C1 -> Section 8.4.2 of this DCP | canonical: True
+-- ID: 6755 | ref_number: 9.40.4.1 -> Part 8.4.2 of this DCP | canonical: True
+-- ID: 6756 | ref_number: C72, C73, C74, C75 -> Figures (40.7b) and (40.7c) | canonical: True
+-- ID: 6757 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 6807 | ref_number: C16 -> Building Location Zone | canonical: True
+-- ID: 6808 | ref_number: C19 -> prevailing roof form in the street | canonical: True
+-- ID: 6809 | ref_number: C1 (within C3.14) -> Table C12: Adaptable Housing Numbers | canonical: True
+-- ID: 6978 | ref_number: Clause 2.2 -> Clause 6.20 | canonical: True
+-- ID: 6979 | ref_number: C18 -> C20 | canonical: True
+-- ID: 7153 | ref_number: Section 7.3 of the DCP -> MLEP 2011 | canonical: True
+-- ID: 7154 | ref_number: Section 7.3 of the DCP -> Restricted Premises Act 1943 | canonical: True
+-- ID: 7155 | ref_number: Section 7.3 of the DCP -> Summary Offences Act 1988 | canonical: True
+-- ID: 7156 | ref_number: Plan of Management -> Appendices 1 and 2 | canonical: True
+-- ID: 7157 | ref_number: C2 -> Appendices 1, 2 and 3 | canonical: True
+-- ID: 7158 | ref_number: 7.3.3.2 -> MLEP 2011 | canonical: True
+-- ID: 7159 | ref_number: C3 -> MLEP 2011 | canonical: True
+-- ID: 7160 | ref_number: C9 -> Section 2.9 (Community Safety) | canonical: True
+-- ID: 7161 | ref_number: 7.3.4 -> Appendix 1 | canonical: True
+-- ID: 7162 | ref_number: 7.3.4 -> Section 2.9 (Community Safety) | canonical: True
+-- ID: 7163 | ref_number: 7.3.4 -> Section 17 of the Restricted Premises Act 1943 | canonical: True
+-- ID: 7164 | ref_number: 7.3.5 -> Renaldo Plus 3 Pty Ltd v Hurstville City Council [2005] and Procopiadis v Marrickville Council [2009] | canonical: True
+-- ID: 7165 | ref_number: Management of waste -> NSW Health and WorkCover NSW Guidelines for Health and Safety for Brothels (Appendix 3) | canonical: True
+-- ID: 7166 | ref_number: Management of waste -> Section 2.21 (Site Facilities and Waste Management) | canonical: True
+-- ID: 7167 | ref_number: 7.3.6 Appendix 2 – Sample Plan of Management -> Appendix 1 | canonical: True
+-- ID: 7168 | ref_number: Waste Disposal (Section 12) -> EPA Guidelines | canonical: True
+-- ID: 7169 | ref_number: Parking (Section 14) -> plans submitted to Council | canonical: True
+-- ID: 7170 | ref_number: Health standards for sex services premises (Appendix 3) -> NSW Health and WorkCover NSW Guidelines | canonical: True
+-- ID: 7171 | ref_number: Waste disposal requirements -> Australian Standard AS 4031 | canonical: True
+-- ID: 7172 | ref_number: Waste disposal requirements -> NSW Health’s Waste Management Guidelines 1998 | canonical: True
+-- ID: 7173 | ref_number: Swimming pool and spa pool requirements -> NSW Health Guidelines | canonical: True
+-- ID: 7174 | ref_number: Swimming pool and spa pool requirements -> Public Swimming Pool and Spa Pool Guidelines 1996 | canonical: True
+-- ID: 7175 | ref_number: Swimming pool and spa pool requirements -> Protocol for Minimising the Risk of Cryptosporidium Contamination in Public Swimming Pools and Spa Pools (1999) | canonical: True
+-- ID: 7176 | ref_number: Bars and food preparation area requirements -> Food Act 1989 | canonical: True
+-- ID: 7177 | ref_number: Bars and food preparation area requirements -> Food Hygiene (General) Regulations 1992 | canonical: True
+-- ID: 7178 | ref_number: Safe work practices -> NSW Health and WorkCover NSW Guidelines | canonical: True
+-- ID: 7179 | ref_number: Lighting requirements -> Australian Standards - AS/NZ 1680.2.5:1997 Interior Lighting | canonical: True
+-- ID: 7180 | ref_number: This DCP -> NSW Health and WorkCover NSW Guidelines | canonical: True
+-- ID: 7364 | ref_number: Part 6 Industrial Development -> Inner West LEP 2022 | canonical: True
+-- ID: 7365 | ref_number: C3 -> Part 3 (Subdivision, Amalgamation and Movement Networks) | canonical: True
+-- ID: 7366 | ref_number: C15 -> surrounding development | canonical: True
+-- ID: 7367 | ref_number: C14 -> Clause 6.6 of MLEP 2011 | canonical: True
+-- ID: 7368 | ref_number: 6.1.2.5 -> Section 6.7 (Period Industrial Buildings) | canonical: True
+-- ID: 7369 | ref_number: C30 -> AS2890.1 | canonical: True
+-- ID: 7370 | ref_number: C31 (Setbacks for creative industries) -> Section 6.5 (Creative Industries), Section 2.1 (Urban Design), Section 2.3 (Site and Context Analysis) | canonical: True
+-- ID: 7371 | ref_number: C73 -> Other sections of this DCP | canonical: True
+-- ID: 7372 | ref_number: 6.5 Creative Industries -> Inner West LEP 2022 | canonical: True
+-- ID: 7373 | ref_number: 6.5.1 Creative industries definition -> Inner West LEP 2022 | canonical: True
+-- ID: 7374 | ref_number: Parking standards -> Council's car parking policy | canonical: True
+-- ID: 7375 | ref_number: Section 6.5.1 -> Other sections of the DCP | canonical: True
+-- ID: 7376 | ref_number: C83 -> Section 2.3 Site and Context Analysis | canonical: True
+-- ID: 7377 | ref_number: C84 -> Section 2.24 Contaminated Land | canonical: True
+-- ID: 7378 | ref_number: C89 -> Inner West LEP 2022 Floor Space Ratio Map | canonical: True
+-- ID: 7379 | ref_number: C93 -> street frontages and streetscape design | canonical: True
+-- ID: 7380 | ref_number: C99 -> warehouses or factories of lower levels of heritage significance | canonical: True
+-- ID: 7381 | ref_number: Clause 5.4 (4) of MLEP 2011 -> Size restrictions for industrial retail outlets | canonical: True
+-- ID: 7382 | ref_number: C101 -> Building Code of Australia | canonical: True
+-- ID: 7383 | ref_number: Adding a new balcony -> Section 149 of the Roads Act | canonical: True
+-- ID: 7471 | ref_number: G8.8.2 Controls C1 -> Part E of this Development Control Plan | canonical: True
+-- ID: 7472 | ref_number: G8.10.1 Controls C1 -> Part D Energy Section 2 Resource Recovery and Waste Management of this Plan | canonical: True
+-- ID: 7473 | ref_number: Section 9 -> this DCP | canonical: True
+-- ID: 7474 | ref_number: Section 9 -> remaining provisions of this DCP | canonical: True
+-- ID: 7475 | ref_number: Section 10 controls -> Leichhardt DCP 2013 | canonical: True
+-- ID: 7476 | ref_number: All development -> controls in this section and the provisions of this plan | canonical: True
+-- ID: 7477 | ref_number: Section 11 -> other provisions of this DCP | canonical: True
+-- ID: 7478 | ref_number: this DCP -> State Environmental Planning Policy (Affordable Rental Housing) 2009 | canonical: True
+-- ID: 7479 | ref_number: Section G11 -> other relevant provisions of this plan | canonical: True
+-- ID: 7608 | ref_number: 9.47 Victoria Road (Precinct 47) -> Marrickville Development Control Plan 2011 | canonical: True
+-- ID: 7609 | ref_number: This section of the DCP -> other sections of the DCP | canonical: True
+-- ID: 7610 | ref_number: C38 -> Figure 15 | canonical: True
+-- ID: 7611 | ref_number: Building height controls -> Marrickville LEP 2011 | canonical: True
+-- ID: 7612 | ref_number: Building separation distances -> NSW Apartment Design Guide | canonical: True
+-- ID: 7613 | ref_number: Maximum LEP floor space ratio -> MLEP11 floor space ratio control | canonical: True
+-- ID: 7614 | ref_number: C66 -> Figure 17 | canonical: True
+-- ID: 7615 | ref_number: C72 -> Marrickville LEP 2011 | canonical: True
+-- ID: 7616 | ref_number: C78 -> Schedule 1: Victoria Road Precinct Noise Policy | canonical: True
+-- ID: 7617 | ref_number: C75 -> LEP maximum heights | canonical: True
+-- ID: 7618 | ref_number: Building Design (9.47.15.1) -> AS 2021 | canonical: True
+-- ID: 7619 | ref_number: Building Materials and Treatments (9.47.15.2) -> AS 2021 | canonical: True
+-- ID: 7620 | ref_number: Tables 1.4-1.6 -> Table 1.3 | canonical: True
+-- ID: 7621 | ref_number: Noise Policy (9.47.15.4) -> SEPP 65 | canonical: True
+-- ID: 7622 | ref_number: Noise Information Pack (NIP) -> approved plans and documents | canonical: True
+-- ID: 7695 | ref_number: Clause 32 -> Clause 33 | canonical: True
+-- ID: 7696 | ref_number: Clause 33 -> Clause 32 | canonical: True
+-- ID: 7697 | ref_number: Clause 43 -> Clause 6.27 | canonical: True
+-- ID: 7698 | ref_number: Schedule 2 Exempt development -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 7699 | ref_number: Change of use (restaurant/cafe to small bar) -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, Part 2, Division 1, Subdivision 20A | canonical: True
+-- ID: 7700 | ref_number: Any development specified in Part 1 -> Schedule 6 to State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 7701 | ref_number: Change of use (restaurant/cafe to small bar or vice versa) -> conditions of development consent applying to the old use | canonical: True
+-- ID: 7922 | ref_number: 8.2.39 -> 8.3 | canonical: True
+-- ID: 7923 | ref_number: 8.2.39 -> 8.5 | canonical: True
+-- ID: 7924 | ref_number: 8.2.40.6 -> 8.3 | canonical: True
+-- ID: 7925 | ref_number: 8.2.40.6 -> 8.5 | canonical: True
+-- ID: 7926 | ref_number: Section 8.3.2.5 -> Sections 4.1.9 - 4.1.22 | canonical: True
+-- ID: 7927 | ref_number: Section 8.3.2.5 -> Sections 4.1.9 - 4.1.22 | canonical: True
+-- ID: 7928 | ref_number: C21 -> specific style sheets | canonical: True
+-- ID: 7929 | ref_number: 8.3.2.6 Roof form -> Section 8.5 of this DCP | canonical: True
+-- ID: 7930 | ref_number: C57 -> Section 2.11 | canonical: True
+-- ID: 7931 | ref_number: 8.3.2.13 Car parking -> Section 8.3.2.3 (Building Setbacks) | canonical: True
+-- ID: 7932 | ref_number: C9 -> Section 8.4.2 | canonical: True
+-- ID: 7933 | ref_number: C16 -> Section 4.1.8 | canonical: True
+-- ID: 7934 | ref_number: Heritage items -> MLEP 2011 and DCP controls | canonical: True
+-- ID: 7935 | ref_number: Section 8.5.1 -> Section 8.2 | canonical: True
+-- ID: 7936 | ref_number: 8.5.1.3 Principles for change and design approach -> Sections 8.2 and 8.3 | canonical: True
+-- ID: 7937 | ref_number: 8.5.2 Federation controls -> streetscape controls | canonical: True
+-- ID: 7938 | ref_number: 8.5.2.3 -> 8.2 | canonical: True
+-- ID: 7939 | ref_number: 8.5.2.3 -> 8.3 | canonical: True
+-- ID: 7940 | ref_number: text -> Section 2.11 | canonical: True
+-- ID: 7941 | ref_number: 8.5.3.3 Principles for change -> Sections 8.2 and 8.3 | canonical: True
+-- ID: 7942 | ref_number: 8.5.4.3 Principles for change -> Sections 8.2 and 8.3 | canonical: True
+-- ID: 7943 | ref_number: 8.5.4.1 Characteristics -> MLEP 2011 | canonical: True
+-- ID: 7944 | ref_number: 8.5.4.1 Characteristics -> Section 2.11 (Fencing) | canonical: True
+-- ID: 8118 | ref_number: home industry definition -> clause 5.4 | canonical: True
+-- ID: 8119 | ref_number: home business definition -> clause 5.4 | canonical: True
+-- ID: 8120 | ref_number: Definition of industrial retail outlet -> Clause 5.4 | canonical: True
+-- ID: 8121 | ref_number: Definition of kiosk -> Clause 5.4 | canonical: True
+-- ID: 8122 | ref_number: Definition of intensive livestock agriculture -> Definition of agriculture | canonical: True
+-- ID: 8123 | ref_number: Definition of intensive plant agriculture -> Definition of agriculture | canonical: True
+-- ID: 8124 | ref_number: Definition of kiosk -> Definition of retail premises | canonical: True
+-- ID: 8125 | ref_number: Definition of landscaping material supplies -> Definition of retail premises | canonical: True
+-- ID: 8126 | ref_number: Definition of light industry -> Definition of industry | canonical: True
+-- ID: 8127 | ref_number: Definition of liquid fuel depot -> Definition of heavy industrial storage establishment | canonical: True
+-- ID: 8128 | ref_number: Definition of livestock processing industry -> Definition of rural industry | canonical: True
+-- ID: 8129 | ref_number: mine subsidence district -> Mine Subsidence Compensation Act 1961 | canonical: True
+-- ID: 8130 | ref_number: mining -> Mining Act 1992 | canonical: True
+-- ID: 8131 | ref_number: mining -> Offshore Minerals Act 1999 | canonical: True
+-- ID: 8132 | ref_number: moveable dwelling -> Local Government Act 1993 | canonical: True
+-- ID: 8133 | ref_number: native flora -> Fisheries Management Act 1994 | canonical: True
+-- ID: 8134 | ref_number: native vegetation -> Local Land Services Act 2013 | canonical: True
+-- ID: 8135 | ref_number: neighbourhood shops -> clause 5.4 | canonical: True
+-- ID: 8136 | ref_number: neighbourhood supermarkets -> clause 5.4 | canonical: True
+-- ID: 8137 | ref_number: Definition of registered club -> Liquor Act 2007 | canonical: True
+-- ID: 8138 | ref_number: Definition of registered community housing provider -> Community Housing Providers (Adoption of National Law) Act 2012, section 13 | canonical: True
+-- ID: 8139 | ref_number: Definition of relic -> Heritage Act 1977 | canonical: True
+-- ID: 8140 | ref_number: Definition of road -> Roads Act 1993 | canonical: True
+-- ID: 8141 | ref_number: Definition of roadside stall -> Clause 5.4 | canonical: True
+-- ID: 8142 | ref_number: Definition of site area -> Clause 4.5 | canonical: True
+-- ID: 8143 | ref_number: Definition of small bar -> Liquor Act 2007 | canonical: True
+-- ID: 8144 | ref_number: Definition of spa pool -> Swimming Pools Act 1992 | canonical: True
+-- ID: 8145 | ref_number: swimming pool -> Swimming Pools Act 1992 | canonical: True
+-- ID: 8146 | ref_number: temporary structure -> the Act | canonical: True
+-- ID: 8147 | ref_number: the Act -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 8351 | ref_number: Section 5.1.1 (Contributory buildings) -> Part 8 (Heritage) | canonical: True
+-- ID: 8352 | ref_number: Section 5.1.1 (Contributory buildings) -> Section 5.4 (Design Guidelines) | canonical: True
+-- ID: 8353 | ref_number: C1 (FSR) -> Inner West LEP 2022 | canonical: True
+-- ID: 8354 | ref_number: C2 (HOB) -> Inner West LEP 2022 | canonical: True
+-- ID: 8355 | ref_number: Inner West LEP 2022 (HOB) -> Height of Buildings Map of Inner West LEP 2022 | canonical: True
+-- ID: 8356 | ref_number: Part 9 (Strategic Context) -> C1, C2 | canonical: True
+-- ID: 8357 | ref_number: C13 i -> C13 ii | canonical: True
+-- ID: 8358 | ref_number: C14 i -> C14 ii | canonical: True
+-- ID: 8359 | ref_number: C28, C29, C30, C31 -> O20 | canonical: True
+-- ID: 8360 | ref_number: C32, C33, C34, C35 -> O21, O22 | canonical: True
+-- ID: 8361 | ref_number: C36 -> O23, O24 | canonical: True
+-- ID: 8362 | ref_number: Section 2.1 (Urban Design), 5.4 (Design Guidelines), Part 8 (Heritage ), Part 9 (Strategic Context) -> Retention, alterations and additions section | canonical: True
+-- ID: 8363 | ref_number: Section 2.1 (Urban Design); Section 2.3 (Site and Context Analysis); Section 5.4 (Design Guidelines); Part 8 (Heritage); Part 9 (Strategic Context) -> C36 | canonical: True
+-- ID: 8364 | ref_number: C51 -> Inner West LEP 2022 | canonical: True
+-- ID: 8365 | ref_number: C71 -> Part 2.8 (Social Impact Assessment) | canonical: True
+-- ID: 8504 | ref_number: Clause 5.19 -> Schedule 6 Pond-based and tank-based aquaculture | canonical: True
+-- ID: 8505 | ref_number: Clause 2 (Division 2) -> Clause 5.19 | canonical: True
+-- ID: 8506 | ref_number: Clause 1 -> Biodiversity Conservation Act 2016 | canonical: True
+-- ID: 8507 | ref_number: Clause 2 -> Marine Estate Management Act 2014 | canonical: True
+-- ID: 8508 | ref_number: Clause 1 -> Ramsar Convention on Wetlands | canonical: True
+-- ID: 8509 | ref_number: advertisement -> Act | canonical: True
+-- ID: 8510 | ref_number: advertising structure -> Act | canonical: True
+-- ID: 8511 | ref_number: affordable housing -> Act | canonical: True
+-- ID: 8512 | ref_number: Aboriginal place of heritage significance -> Aboriginal heritage study | canonical: True
+-- ID: 8513 | ref_number: Aboriginal place of heritage significance -> Heritage Map | canonical: True
+-- ID: 8514 | ref_number: Aboriginal place of heritage significance -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 8515 | ref_number: agricultural produce industry -> rural industry | canonical: True
+-- ID: 8516 | ref_number: exempt farm forestry -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 8517 | ref_number: bush fire hazard reduction work -> Rural Fires Act 1997 | canonical: True
+-- ID: 8518 | ref_number: bush fire prone land -> Act | canonical: True
+-- ID: 8519 | ref_number: bush fire risk management plan -> Rural Fires Act 1997 | canonical: True
+-- ID: 8520 | ref_number: catchment action plan -> Catchment Management Authorities Act 2003 | canonical: True
+-- ID: 8521 | ref_number: centre-based child care facility -> Children (Education and Care Services) National Law (NSW) | canonical: True
+-- ID: 8522 | ref_number: Definition of road, tollway, transitway, State work -> Roads Act 1993 | canonical: True
+-- ID: 8523 | ref_number: Definition of clearing native vegetation -> Part 5A of the Local Land Services Act 2013 | canonical: True
+-- ID: 8524 | ref_number: Definition of clearing vegetation -> State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 2 | canonical: True
+-- ID: 8525 | ref_number: Definition of coastal hazard -> Coastal Management Act 2016 | canonical: True
+-- ID: 8526 | ref_number: Definition of coastal lake -> State Environmental Planning Policy (Resilience and Hazards) 2021, Schedule 1 | canonical: True
+-- ID: 8527 | ref_number: Definition of coastal protection works -> Coastal Management Act 2016 | canonical: True
+-- ID: 8528 | ref_number: Definition of coastal waters of the State -> section 58 of the Interpretation Act 1987 | canonical: True
+-- ID: 8529 | ref_number: Definition of coastal zone -> Coastal Management Act 2016 | canonical: True
+-- ID: 8530 | ref_number: Note on Co-living housing -> Definition of residential accommodation | canonical: True
+-- ID: 8531 | ref_number: Definition of commercial farm -> Local Government Act 1993, section 515 | canonical: True
+-- ID: 8532 | ref_number: Definition of commercial farm -> Income Tax Assessment Act 1997 of the Commonwealth | canonical: True
+-- ID: 8533 | ref_number: Definition of community land -> Local Government Act 1993 | canonical: True
+-- ID: 8534 | ref_number: Definition of correctional centre -> section 225 of the Crimes (Administration of Sentences) Act 1999 | canonical: True
+-- ID: 8535 | ref_number: Definition of correctional centre -> section 5(1) of the Children (Detention Centres) Act 1987 | canonical: True
+-- ID: 8713 | ref_number: Clause 5.21 -> Considering Flooding in Land Use Planning Guideline | canonical: True
+-- ID: 8714 | ref_number: Clause 5.21 -> Flood Risk Management Manual | canonical: True
+-- ID: 8715 | ref_number: Clause 5.22 -> Considering Flooding in Land Use Planning Guideline | canonical: True
+-- ID: 8716 | ref_number: Clause 5.22 -> Flood Risk Management Manual | canonical: True
+-- ID: 8717 | ref_number: Clause 5.22(5) -> Clause 5.21(5) | canonical: True
+-- ID: 8718 | ref_number: Clause 6.1 (3) -> Acid Sulfate Soils Manual | canonical: True
+-- ID: 8719 | ref_number: Clause 6.1 (4) -> Acid Sulfate Soils Manual | canonical: True
+-- ID: 8720 | ref_number: Clause 6.2 (2)(a) -> this Plan, another applicable environmental planning instrument | canonical: True
+-- ID: 8721 | ref_number: Clause 6.2 Note -> National Parks and Wildlife Act 1974, section 86 | canonical: True
+-- ID: 8722 | ref_number: Clause 6.5 -> Foreshore Building Line Map | canonical: True
+-- ID: 8723 | ref_number: Clause 6.7 -> Airports Act 1996 of the Commonwealth, Part 12, Division 4 | canonical: True
+-- ID: 8724 | ref_number: Clause 6.9 -> Inner West Comprehensive Development Control Plan 2016, Leichhardt Development Control Plan 2013, Marrickville Development Control Plan 2011 | canonical: True
+-- ID: 8725 | ref_number: Clause 6.17 (affordable housing definition) -> State Environmental Planning Policy (Housing) 2021, section 13 | canonical: True
+-- ID: 8726 | ref_number: Clause 6.25 (3)(b) -> Development Control Plan | canonical: True
+-- ID: 8727 | ref_number: Clause 6.25 (8) -> State Environmental Planning Policy (Housing) 2021 | canonical: True
+-- ID: 8728 | ref_number: Clause 6.33 (5) -> Bays West Strategy Implementation—Affordable Housing Contribution Program | canonical: True
+-- ID: 8729 | ref_number: Clause 7.2 (2) -> Clause 7.2 (1) | canonical: True
+-- ID: 8730 | ref_number: 7.5(1) -> 7.5(2) | canonical: True
+-- ID: 8731 | ref_number: 7.6(2) -> 7.6(1) | canonical: True
+-- ID: 8983 | ref_number: Secondary dwelling parking -> Section 2.10 (Parking) | canonical: True
+-- ID: 8984 | ref_number: Secondary dwelling heritage assessment -> Part 8 (Heritage) | canonical: True
+-- ID: 8985 | ref_number: Secondary dwelling subdivision assessment -> Part 3 of the DCP | canonical: True
+-- ID: 8986 | ref_number: Good urban design practice -> Section 2.1 (Urban Design) | canonical: True
+-- ID: 8987 | ref_number: Sections 4.1.4 to 4.1.8 -> All low density residential development | canonical: True
+-- ID: 8988 | ref_number: C7 -> MLEP 2011 | canonical: True
+-- ID: 8989 | ref_number: C9 -> MLEP 2011 | canonical: True
+-- ID: 8990 | ref_number: C11 iv a -> C10 iii | canonical: True
+-- ID: 8991 | ref_number: C11 iii a -> C10 ii | canonical: True
+-- ID: 8992 | ref_number: C11 NB -> Section 2.18 | canonical: True
+-- ID: 8993 | ref_number: 4.1.7 Car parking NB -> Section 2.10 | canonical: True
+-- ID: 8994 | ref_number: C31 -> MLEP 2011 | canonical: True
+-- ID: 8995 | ref_number: Dormer window permit -> C33-C40 | canonical: True
+-- ID: 8996 | ref_number: Dormer window assessment -> C37 and C38 | canonical: True
+-- ID: 8997 | ref_number: C48 (full first floor addition) -> DCP objectives and design controls | canonical: True
+-- ID: 8998 | ref_number: 4.1.10 -> 4.1.13 to 4.1.22 | canonical: True
+-- ID: 8999 | ref_number: C80 -> 4.1.12.7 | canonical: True
+-- ID: 9000 | ref_number: 4.1.13.2 -> 2.11 | canonical: True
+-- ID: 9001 | ref_number: 4.1.13.2 -> 4.1.7 | canonical: True
+-- ID: 9002 | ref_number: 4.1.12.7 -> bibliography of useful publications at the end of this DCP | canonical: True
+-- ID: 9003 | ref_number: Design solutions for additions -> Marrickville Council planning controls | canonical: True
+-- ID: 9004 | ref_number: 4.1.16.2 -> 2.11 | canonical: True
+-- ID: 9005 | ref_number: 4.1.17.2 -> 2.11 | canonical: True
+-- ID: 9006 | ref_number: 4.1.18.3 Design guidelines -> Section 4.1.8 of the DCP | canonical: True
+-- ID: 9007 | ref_number: 4.1.19.2 Characteristics -> Section 2.11 (Fencing) | canonical: True
+-- ID: 9008 | ref_number: 4.1.20.3 -> Other Marrickville Council planning controls | canonical: True
+-- ID: 9009 | ref_number: 4.1.21.2 -> Section 2.11 (Fencing) | canonical: True
+-- ID: 9357 | ref_number: Entire Plan -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 9358 | ref_number: Cl 7.6(1) -> Part 7 of this Plan | canonical: True
+-- ID: 9359 | ref_number: This Plan (Inner West LEP 2022) -> State Environmental Planning Policies (SEPPs) | canonical: True
+-- ID: 9360 | ref_number: Clause 1.8 -> Ashfield Environmental Plan 2013, Leichhardt Local Environmental Plan 2013, Marrickville Local Environmental Plan 2011 | canonical: True
+-- ID: 9361 | ref_number: Clause 1.8 -> Leichhardt Local Environmental Plan 2000 | canonical: True
+-- ID: 9362 | ref_number: Clause 2.5 -> Schedule 1 | canonical: True
+-- ID: 9363 | ref_number: Clause 2.5(2) -> Land Use Table | canonical: True
+-- ID: 9364 | ref_number: Clause 2.6 Note 1 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 9365 | ref_number: Clause 2.6 Note 2 -> Part 6 of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 9366 | ref_number: Clause 2.7 Note -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 9367 | ref_number: Clause 2.8(3) -> this Plan and any other applicable environmental planning instrument | canonical: True
+-- ID: 9368 | ref_number: clause 2.9 (4) -> clause 5.21 | canonical: True
+-- ID: 9369 | ref_number: Clause 4.4 (2) -> Floor Space Ratio Map | canonical: True
+-- ID: 9370 | ref_number: Clause 4.4 (2A) -> Key Sites Map | canonical: True
+-- ID: 9371 | ref_number: Clause 4.4 (2B, 2C, 2D) -> Floor Space Ratio Map | canonical: True
+-- ID: 9372 | ref_number: Clause 4.4 (2E) -> Land Reservation Acquisition Map | canonical: True
+-- ID: 9373 | ref_number: Clause 4.4A (2) -> Floor Space Ratio Map | canonical: True
+-- ID: 9374 | ref_number: Clause 4.6 (2) -> other environmental planning instrument | canonical: True
+-- ID: 9375 | ref_number: Clause 4.5 (11) -> Local Government Act 1993 | canonical: True
+-- ID: 9376 | ref_number: Clause 5.1A -> Clause 5.1 | canonical: True
+-- ID: 9377 | ref_number: Clause 5.2 -> Part 2 of Chapter 6 of the Local Government Act 1993 | canonical: True
+-- ID: 9378 | ref_number: Clause 5.2 -> Local Government Act 1993, section 31, 32 or 33 | canonical: True
+-- ID: 9379 | ref_number: Clause 5.2 -> Local Government Act 1993, section 30 | canonical: True
+-- ID: 9380 | ref_number: Clause 5.2, subclause (5) -> Local Government Act 1993, section 30(2) | canonical: True
+-- ID: 9551 | ref_number: Section 8.2.5 -> Petersham North Heritage Conservation Area (HCA 3) | canonical: True
+-- ID: 9552 | ref_number: 8.2.6 -> 8.3 | canonical: True
+-- ID: 9553 | ref_number: 8.2.6 -> 8.5 | canonical: True
+-- ID: 9554 | ref_number: 8.2.7 -> 8.4 | canonical: True
+-- ID: 9555 | ref_number: 8.2.7 -> 8.5 | canonical: True
+-- ID: 9556 | ref_number: Section 8.2.8 -> Annandale Farm Heritage Conservation Area (HCA 6) | canonical: True
+-- ID: 9557 | ref_number: Section 8.2.9 -> Kingston West Heritage Conservation Area (HCA 7) | canonical: True
+-- ID: 9558 | ref_number: Section 8.2.11 of the DCP -> Hopetoun-Roberts-Federation Streets Heritage Conservation Area (HCA 9) | canonical: True
+-- ID: 9559 | ref_number: 8.2.12 -> 8.3 | canonical: True
+-- ID: 9560 | ref_number: 8.2.12 -> 8.5 | canonical: True
+-- ID: 9561 | ref_number: Section 8.2.13 of the DCP -> North Kingston Estate Heritage Conservation Area (HCA 11) | canonical: True
+-- ID: 9562 | ref_number: Section 8.2.14 of the DCP -> Enmore-Newtown Heritage Conservation Area (HCA 12) | canonical: True
+-- ID: 9563 | ref_number: 8.2.14.6 -> 8.3 | canonical: True
+-- ID: 9564 | ref_number: 8.2.14.6 -> 8.5 | canonical: True
+-- ID: 9565 | ref_number: Section 8.2.16 of the DCP -> Llewellyn Estate Heritage Conservation Area (HCA 14) | canonical: True
+-- ID: 9566 | ref_number: Section 8.2.17 -> Figure 1 | canonical: True
+-- ID: 9567 | ref_number: Section 8.2.18 of this DCP -> Goodsell Estate Heritage Conservation Area (HCA 16) | canonical: True
+-- ID: 9568 | ref_number: Section 8.2.19 of the DCP -> Kingston South Heritage Conservation Area (HCA 17) | canonical: True
+-- ID: 9768 | ref_number: 8.2.21 -> 8.3 | canonical: True
+-- ID: 9769 | ref_number: 8.2.21 -> 8.4 | canonical: True
+-- ID: 9770 | ref_number: 8.2.21 -> 8.5 | canonical: True
+-- ID: 9771 | ref_number: 8.2.22 -> 8.3 | canonical: True
+-- ID: 9772 | ref_number: 8.2.22 -> 8.5 | canonical: True
+-- ID: 9773 | ref_number: 8.2.23 -> 8.3 | canonical: True
+-- ID: 9774 | ref_number: 8.2.23 -> 8.5 | canonical: True
+-- ID: 9775 | ref_number: 8.2.24 -> 8.3 | canonical: True
+-- ID: 9776 | ref_number: 8.2.24 -> 8.5 | canonical: True
+-- ID: 9777 | ref_number: 8.2.25 -> 8.3 | canonical: True
+-- ID: 9778 | ref_number: 8.2.25 -> 8.5 | canonical: True
+-- ID: 9779 | ref_number: 8.2.26 -> 8.3 | canonical: True
+-- ID: 9780 | ref_number: 8.2.26 -> 8.5 | canonical: True
+-- ID: 9781 | ref_number: DCP -> HCA 26 | canonical: True
+-- ID: 9782 | ref_number: Section 8.2.29 of the DCP -> Hordern Avenue Heritage Conservation Area (HCA 27) | canonical: True
+-- ID: 9783 | ref_number: 8.2.29.6 -> 8.3 | canonical: True
+-- ID: 9784 | ref_number: 8.2.29.6 -> 8.5 | canonical: True
+-- ID: 9785 | ref_number: Section 8.2.31 of the DCP -> South Dulwich Hill Heritage Conservation Area (HCA 29) | canonical: True
+-- ID: 9786 | ref_number: 8.2.31.6 -> 8.3 | canonical: True
+-- ID: 9787 | ref_number: 8.2.31.6 -> 8.4 | canonical: True
+-- ID: 9788 | ref_number: 8.2.31.6 -> 8.5 | canonical: True
+-- ID: 9789 | ref_number: Section 8.2.33 of the DCP -> David Street Heritage Conservation Area (HCA 31) | canonical: True
+-- ID: 9790 | ref_number: 8.2.34 -> 8.3 | canonical: True
+-- ID: 9791 | ref_number: 8.2.34 -> 8.5 | canonical: True
+-- ID: 9792 | ref_number: Section 8.2.35 of the DCP -> Wells Avenue Heritage Conservation Area (HCA 33) | canonical: True
+-- ID: 9793 | ref_number: DCP -> Hoskins Park & Environs Heritage Conservation Area (HCA 36) | canonical: True
+-- ID: 9794 | ref_number: 8.2.38.6 -> 8.3 | canonical: True
+-- ID: 9795 | ref_number: 8.2.38.6 -> 8.5 | canonical: True
+-- ID: 10071 | ref_number: Chapter 2 -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 10072 | ref_number: Chapter 2 -> Interpretation Act 1987 | canonical: True
+-- ID: 10073 | ref_number: 2.4 Consent authority -> Act | canonical: True
+-- ID: 10074 | ref_number: 2.7(1) -> Act | canonical: True
+-- ID: 10075 | ref_number: 2.7(2)(b) -> Biodiversity Conservation Act 2016, Part 8 | canonical: True
+-- ID: 10076 | ref_number: 2.7(2)(c) -> Biodiversity Conservation Act 2016 | canonical: True
+-- ID: 10077 | ref_number: 2.7(2)(d) -> Crown Land Management Act 2016, section 13.4 | canonical: True
+-- ID: 10078 | ref_number: 2.7(2)(e) -> Local Land Services Act 2013, Part 5A | canonical: True
+-- ID: 10079 | ref_number: 2.7(2)(f) -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 10080 | ref_number: 2.7(2)(g) -> Native Vegetation Act 2003 | canonical: True
+-- ID: 10081 | ref_number: 2.7(2)(g) -> Biodiversity Conservation (Savings and Transitional) Regulation 2017 | canonical: True
+-- ID: 10082 | ref_number: 2.7(2)(h) -> Nature Conservation Trust Act 2001 | canonical: True
+-- ID: 10083 | ref_number: 2.7(2)(h) -> Biodiversity Conservation (Savings and Transitional) Regulation 2017 | canonical: True
+-- ID: 10084 | ref_number: 2.7(2)(i) -> Act, Division 7.1 | canonical: True
+-- ID: 10085 | ref_number: 2.9 -> Land Zoning Map | canonical: True
+-- ID: 10086 | ref_number: 2.10(4) -> other provisions of this Chapter | canonical: True
+-- ID: 10087 | ref_number: 2.11 -> Schedule 1 | canonical: True
+-- ID: 10088 | ref_number: 2.11(2) -> Land Use Table | canonical: True
+-- ID: 10089 | ref_number: 2.12 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 10090 | ref_number: 2.14 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 10091 | ref_number: 2.15(3)(a) -> this Chapter and any other applicable environmental planning instrument | canonical: True
+-- ID: 10092 | ref_number: Clause 2.18 -> SEPP 59—Central Western Sydney Economic and Employment Area | canonical: True
+-- ID: 10093 | ref_number: Clause 2.25 -> Transport and Arterial Road Infrastructure Plan Map | canonical: True
+-- ID: 10094 | ref_number: 2.26 (2) -> other environmental planning instrument | canonical: True
+-- ID: 10095 | ref_number: 2.26 (7) -> development standard for complying development | canonical: True
+-- ID: 10096 | ref_number: 2.26 (7) -> section 2.29 | canonical: True
+-- ID: 10097 | ref_number: 2.27 -> section 3.15 of the Act | canonical: True
+-- ID: 10098 | ref_number: 2.27 -> Division 3 of Part 2 of the Land Acquisition (Just Terms Compensation) Act 1991 | canonical: True
+-- ID: 10099 | ref_number: 2.27 (Note) -> section 23 of the Land Acquisition (Just Terms Compensation) Act 1991 | canonical: True
+-- ID: 10100 | ref_number: 2.29 -> this Chapter | canonical: True
+-- ID: 10101 | ref_number: 2.31 (2) -> development control plan | canonical: True
+-- ID: 10102 | ref_number: 2.31 (3) -> development consent | canonical: True
+-- ID: 10103 | ref_number: 2.31 (3) -> Division 3.6 of the Act | canonical: True
+-- ID: 10104 | ref_number: 2.31 (4) -> Division 3.6 of the Act | canonical: True
+-- ID: 10105 | ref_number: 2.33 (4) -> adjoining zone | canonical: True
+-- ID: 10106 | ref_number: 2.33 (3) -> State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 13 | canonical: True
+-- ID: 10107 | ref_number: 2.34 -> Transport for NSW | canonical: True
+-- ID: 10108 | ref_number: 2.35 -> Transport for NSW | canonical: True
+-- ID: 10109 | ref_number: 2.36 (2A) -> State Environmental Planning Policy (Precincts—Western Parkland City) 2021, Chapter 4 | canonical: True
+-- ID: 10110 | ref_number: 2.37 Airspace operations (5) -> Airports (Protection of Airspace) Regulations 1996 of the Commonwealth | canonical: True
+-- ID: 10111 | ref_number: 2.37 Airspace operations (5) -> Airports (Protection of Airspace) Regulations 1996 of the Commonwealth | canonical: True
+-- ID: 10112 | ref_number: 2.37 Airspace operations (5) -> Airports Act 1996 of the Commonwealth | canonical: True
+-- ID: 10113 | ref_number: 2.40 Earthworks Note 1 -> National Parks and Wildlife Act 1974, section 86 | canonical: True
+-- ID: 10114 | ref_number: 2.40 Earthworks Note 2 -> Sydney Regional Environmental Plan No 20—Hawkesbury-Nepean River (No 2—1997) | canonical: True
+-- ID: 10115 | ref_number: Section 2.42(7) -> Heritage Act 1977 | canonical: True
+-- ID: 10116 | ref_number: Section 2.42(7) -> Heritage Council | canonical: True
+-- ID: 10117 | ref_number: Section 2.42(3) -> exempt development | canonical: True
+-- ID: 10118 | ref_number: Section 2.42(4) -> subsection (5) and (6) | canonical: True
+-- ID: 10119 | ref_number: 2.43 -> Biodiversity Conservation Act 2016 | canonical: True
+-- ID: 10120 | ref_number: 2.43(5) -> State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 13 | canonical: True
+-- ID: 10121 | ref_number: 2.45(2) -> State Environmental Planning Policy (Western Sydney Employment Area) Amendment 2020 | canonical: True
+-- ID: 10122 | ref_number: 2.45(3) -> State Environmental Planning Policy (Western Sydney Employment Area) Amendment 2020 | canonical: True
+-- ID: 10123 | ref_number: advertising structure -> Part 3.3 | canonical: True
+-- ID: 10124 | ref_number: building identification sign -> Standard Instrument | canonical: True
+-- ID: 10125 | ref_number: business identification sign -> Standard Instrument | canonical: True
+-- ID: 10126 | ref_number: Guidelines -> Transport Corridor Outdoor Advertising and Signage Guidelines | canonical: True
+-- ID: 10127 | ref_number: navigable waters -> Marine Safety Act 1998 | canonical: True
+-- ID: 10128 | ref_number: NSW Trains -> Transport Administration Act 1988 | canonical: True
+-- ID: 10129 | ref_number: RailCorp -> Transport Administration Act 1988 | canonical: True
+-- ID: 10130 | ref_number: railway corridor -> environmental planning instrument | canonical: True
+-- ID: 10131 | ref_number: railway corridor -> Schedule 6A to the Act | canonical: True
+-- ID: 10132 | ref_number: road corridor -> environmental planning instrument | canonical: True
+-- ID: 10133 | ref_number: road corridor -> Schedule 6A to the Act | canonical: True
+-- ID: 10134 | ref_number: signage -> Part 3.3 | canonical: True
+-- ID: 10135 | ref_number: Chapter 3 -> State Environmental Planning Policy (Precincts—Regional) 2021, Chapter 4 | canonical: True
+-- ID: 10136 | ref_number: Chapter 3 -> State Environmental Planning Policy (Western Sydney Parklands) 2009 | canonical: True
+-- ID: 10137 | ref_number: Chapter 3 -> other environmental planning instruments | canonical: True
+-- ID: 10138 | ref_number: 3.6 -> Schedule 5 | canonical: True
+-- ID: 10139 | ref_number: 3.7(2) -> Road Transport Act 2013 | canonical: True
+-- ID: 10140 | ref_number: 3.8(1) -> other environmental planning instrument | canonical: True
+-- ID: 10141 | ref_number: 3.12(1) -> section 83 of the Act | canonical: True
+-- ID: 10142 | ref_number: 3.12(2)(c) -> another provision of this Chapter | canonical: True
+-- ID: 10143 | ref_number: 3.13(1) -> an environmental planning instrument | canonical: True
+-- ID: 10144 | ref_number: 3.13(3) -> Guidelines | canonical: True
+-- ID: 10145 | ref_number: 3.14(1) -> section 3.8(1) and the provisions of any other environmental planning instrument | canonical: True
+-- ID: 10146 | ref_number: 3.14(3) -> Guidelines | canonical: True
+-- ID: 10147 | ref_number: 3.14(4) -> Guidelines | canonical: True
+-- ID: 10148 | ref_number: Clause 3.17 -> Development Control Plan | canonical: True
+-- ID: 10149 | ref_number: Clause 3.17 -> Guidelines | canonical: True
+-- ID: 10150 | ref_number: Clause 3.19 -> Section 83 of the Act | canonical: True
+-- ID: 10151 | ref_number: Clause 3.19 -> Development Control Plan | canonical: True
+-- ID: 10152 | ref_number: Clause 3.20 -> Guidelines | canonical: True
+-- ID: 10153 | ref_number: Clause 3.21 -> Section 3.13 | canonical: True
+-- ID: 10154 | ref_number: Clause 3.22 -> Guidelines | canonical: True
+-- ID: 10155 | ref_number: 3.24(2A) -> 3.24(2) | canonical: True
+-- ID: 10156 | ref_number: 3.26(4) -> Road Transport Act 2013 | canonical: True
+-- ID: 10157 | ref_number: 3.28 -> 3.13, 3.17, 3.19 | canonical: True
+-- ID: 10158 | ref_number: 3.29 -> Division 4 of Part 3 of the Act | canonical: True
+-- ID: 10159 | ref_number: 3.31 -> State Environmental Planning Policy No 64—Advertising and Signage (Amendment No 2) | canonical: True
+-- ID: 10160 | ref_number: Schedule 2, section 2.17(2) -> Transport and Arterial Road Infrastructure Plan | canonical: True
+-- ID: 10161 | ref_number: Schedule 5 Assessment criteria -> sections 3.6, 3.11 and 3.15 | canonical: True
+-- ID: 10565 | ref_number: Inner West LEP 2022 -> Inner West Ashfield DCP 2016 - Chapter F | canonical: True
+-- ID: 10566 | ref_number: Chapter E – Heritage Conservation part of the DCP -> Inner West LEP 2022 | canonical: True
+-- ID: 10567 | ref_number: Part E-Heritage of this DCP -> Developmentof a heritage item or within a heritage conservation area | canonical: True
+-- ID: 10568 | ref_number: Codes SEPP -> Dwelling house development application | canonical: True
+-- ID: 10569 | ref_number: DS14.4 -> Part E1 - Heritage | canonical: True
+-- ID: 10570 | ref_number: DS15.2 -> Part C4 - Tree Preservation and Management | canonical: True
+-- ID: 10571 | ref_number: PC1 -> this DCP | canonical: True
+-- ID: 10572 | ref_number: Apartment Design Guide -> this part of the DCP | canonical: True
+-- ID: 10573 | ref_number: Section 1—Preliminary -> this Guideline | canonical: True
+-- ID: 10574 | ref_number: Design Solutions -> Performance Criteria | canonical: True
+-- ID: 10575 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: True
+-- ID: 10576 | ref_number: PC1 -> Part A1- Site and Context Analysis | canonical: True
+-- ID: 10577 | ref_number: DS8 (Maximum FSR) -> Inner West LEP 2022 | canonical: True
+-- ID: 10578 | ref_number: DS14.1 (Maximum building height) -> Inner West LEP 2022 Height Maps | canonical: True
+-- ID: 10579 | ref_number: DS11.1 (Building siting) -> SEPP 65 | canonical: True
+-- ID: 10580 | ref_number: DS13.2 (Side and rear setbacks) -> SEPP 65 | canonical: True
+-- ID: 10581 | ref_number: DS14.1 (Maximum building height) -> DS14.3 | canonical: True
+-- ID: 10582 | ref_number: DS15.1 -> urban character considerations | canonical: True
+-- ID: 10583 | ref_number: This DCP -> SEPP 65 and ADG | canonical: True
+-- ID: 10584 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: True
+-- ID: 10585 | ref_number: DS5.3 -> DS5.1 | canonical: True
+-- ID: 10586 | ref_number: DS10.7 -> C4 Tr Preservation and Management | canonical: True
+-- ID: 10587 | ref_number: DS11.1 -> Part 4 Designing the Building of the ADG | canonical: True
+-- ID: 10588 | ref_number: DS19.5 -> Inner West LEP 2022 | canonical: True
+-- ID: 10589 | ref_number: DS19.6 -> Inner West LEP 2022 | canonical: True
+-- ID: 10590 | ref_number: DS19.8 -> Chapter | canonical: True
+-- ID: 10591 | ref_number: this DCP -> Housing SEPP | canonical: True
+-- ID: 10592 | ref_number: this Guideline -> Section 1—Preliminary | canonical: True
+-- ID: 10593 | ref_number: PC1 -> DS1.1 | canonical: True
+-- ID: 10594 | ref_number: PC2 -> DS2.1 | canonical: True
+-- ID: 10595 | ref_number: PC3 -> Housing SEPP, ‘BASIX’ SEPP and/or the Building Code of Australia | canonical: True
+-- ID: 10596 | ref_number: PC4 -> DS4.1 | canonical: True
+-- ID: 10597 | ref_number: PC9 (Waste Management) -> Part C3- Waste Management of Inner West DCP 2016 | canonical: True
+-- ID: 10598 | ref_number: DS10.5 (Fire Safety) -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 10599 | ref_number: DCP (this document) -> Housing SEPP | canonical: True
+-- ID: 10600 | ref_number: DS2.1 -> Part A1- Site and Context Analysis | canonical: True
+-- ID: 10601 | ref_number: DS2.1 -> Part A2-Good Design | canonical: True
+-- ID: 10602 | ref_number: DS2.3 -> Inner West LEP 2022 | canonical: True
+-- ID: 10603 | ref_number: DS3.1 -> Site Analysis | canonical: True
+-- ID: 10604 | ref_number: Purpose -> Performance Criteria | canonical: True
+-- ID: 10605 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: False
+-- ID: 10606 | ref_number: Development Application -> Purpose and Performance Criteria | canonical: True
+-- ID: 10607 | ref_number: DS4.3 -> Part A8 - Parking | canonical: True
+-- ID: 10608 | ref_number: DS5.2 -> Australian Standards and NSW EPA requirements | canonical: True
+-- ID: 10609 | ref_number: Inner West Council’s "Guidelines for the construction and fit out of food premises" -> Food preparation and storage | canonical: True
+-- ID: 10610 | ref_number: Section 1—Preliminary -> This Guideline | canonical: True
+-- ID: 10611 | ref_number: Development Location -> clause 6.17 | canonical: True
+-- ID: 10612 | ref_number: Carparking -> Part A8 - Parking | canonical: True
+-- ID: 10737 | ref_number: Part 15 - Stormwater Management -> Section 2.25 of the Marrickville DCP | canonical: False
+-- ID: 10738 | ref_number: Entire DCP -> Inner West Local Environmental Plan 2022 | canonical: False
+-- ID: 10883 | ref_number: 9.19.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 10895 | ref_number: 9.31.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: True
+-- ID: 10912 | ref_number: 9.23.3 Heritage Conservation Areas (HCAs) -> Section 8.2.32 Heritage | canonical: False
+-- ID: 10913 | ref_number: Figure (23.1b) -> Figure (23.1c) | canonical: False
+-- ID: 10938 | ref_number: 9.32.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: False
+-- ID: 10939 | ref_number: HCA 33 Wells Avenue - Residential streetscapes -> Section 8.3 | canonical: False
+-- ID: 10940 | ref_number: HCA 33 Wells Avenue - Federation styles -> Section 8.5.2 | canonical: False
+-- ID: 10941 | ref_number: HCA 33 Wells Avenue - Inter-War styles -> Section 8.5.3 | canonical: False
+-- ID: 10942 | ref_number: HCA 34 Stanley Street - Residential streetscapes -> Section 8.3 | canonical: False
+-- ID: 10943 | ref_number: HCA 34 Stanley Street - Inter-War styles -> Section 8.5.3 | canonical: False
+-- ID: 10944 | ref_number: HCA 34 Stanley Street - Inter-War Art Deco -> Section 8.5.4 | canonical: False
+-- ID: 10967 | ref_number: Section 2.8.3 Objectives -> Section 4.15 of the Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: False
+-- ID: 10968 | ref_number: Section 2.8.3 Objectives -> Inner West Local Environmental Plan 2022 (IWLEP 2022) | canonical: False
+-- ID: 11033 | ref_number: Section 5 -> Figures C145, C146, C147 | canonical: False
+-- ID: 11034 | ref_number: C2 -> Figure C148 | canonical: False
+-- ID: 11035 | ref_number: C3 -> Figure C148 | canonical: False
+-- ID: 11036 | ref_number: C3 -> Figure C149 | canonical: False
+-- ID: 11037 | ref_number: Figure C146 -> Section 2.26 of the Marrickville DCP 2011 | canonical: False
+-- ID: 11058 | ref_number: 9.13.3 -> Part 8 (Heritage) | canonical: True
+-- ID: 11128 | ref_number: 2.14.2 -> 2.14.2.1 | canonical: False
+-- ID: 11129 | ref_number: 2.14.2 -> 2.20 | canonical: False
+-- ID: 11130 | ref_number: Clause C7 -> Section 2.14.2 | canonical: False
+-- ID: 11131 | ref_number: Development within a foreshore area or on a flood control lot -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: False
+-- ID: 11132 | ref_number: Determining permissible development and process -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 and Inner West Local Environmental Plan 2022 | canonical: False
+-- ID: 11153 | ref_number: Part 2 Generic Provisions -> Part 9 (Strategic Context) | canonical: True
+-- ID: 11154 | ref_number: Site and context analysis -> Part 9 (Strategic Context) of this DCP | canonical: False
+-- ID: 11203 | ref_number: 9.37.4.1 -> Part 8.4.2 | canonical: True
+-- ID: 11215 | ref_number: Noise attenuation -> Association of Australian Acoustical Consultants document Guideline for Child Care Centre Acoustic Assessment (September 2010) | canonical: False
+-- ID: 11216 | ref_number: Aircraft noise level -> AS2021 | canonical: False
+-- ID: 11259 | ref_number: Development within the scenic protection area -> Sections 2.14.2 and 2.14.5 of MDCP 2011 | canonical: True
+-- ID: 11318 | ref_number: 9.26.4.1 Building height -> MLEP 2011 | canonical: False
+-- ID: 11319 | ref_number: Alterations and additions to residential buildings -> Part 4 Section 4.1 Low Density Residential Development | canonical: False
+-- ID: 11358 | ref_number: Water cycle outcomes -> plans, strategies or policies adopted by relevant agencies | canonical: False
+-- ID: 11359 | ref_number: Planning and design principles -> strategies and plans adopted by relevant agencies | canonical: False
+-- ID: 11386 | ref_number: Section 1 – Food -> Council’s Community Gardens Policy | canonical: False
+-- ID: 11387 | ref_number: F1.1 FOOD PRODUCTION -> Part C1.8 Contamination of this Development Control Plan | canonical: True
+-- ID: 11388 | ref_number: F1.1 FOOD PRODUCTION -> Table F1: Precautionary measures to consider prior to gardening food | canonical: False
+-- ID: 11389 | ref_number: C1 (Guidelines for sustainable food production) -> Part C1.14 – Tree Management | canonical: False
+-- ID: 11390 | ref_number: F1.1.3 Community gardens - Controls C1 -> Community Gardens Policy | canonical: False
+-- ID: 11407 | ref_number: 9.15.3 -> Part 8 (Heritage) | canonical: False
+-- ID: 11436 | ref_number: 9.16.3 -> Part 8 (Heritage) | canonical: False
+-- ID: 11437 | ref_number: HCA 1 The Abergeldie Estate Heritage Conservation Area (Type A streetscapes) -> Section 8.3 | canonical: False
+-- ID: 11438 | ref_number: HCA 1 The Abergeldie Estate Heritage Conservation Area (Inter-War styles) -> Section 8.5.3 | canonical: False
+-- ID: 11490 | ref_number: 9.18.3 -> Part 8 (Heritage) | canonical: False
+-- ID: 11491 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Residential streetscapes) -> Section 8.3 | canonical: False
+-- ID: 11492 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Federation styles) -> Section 8.5.2 | canonical: False
+-- ID: 11493 | ref_number: HCA 29 South Dulwich Hill Heritage Conservation Area (Inter-War Styles) -> Section 8.5.3 | canonical: False
+-- ID: 11533 | ref_number: Development Application Lodgement Process -> Council’s adopted Pricing Policy and Fees and Charges | canonical: False
+-- ID: 11534 | ref_number: Development Application Lodgement Process -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 (Codes SEPP) | canonical: True
+-- ID: 11535 | ref_number: Lodgement of a development application -> Inner West Local Environmental Plan (Inner West LEP 2022) | canonical: True
+-- ID: 11536 | ref_number: Development Standard Variation -> Clause 4.6 of IWLEP 2022 | canonical: True
+-- ID: 11537 | ref_number: Section 8.2 Review Requests -> Section A.2 | canonical: True
+-- ID: 11563 | ref_number: C17 -> Section 2.16 | canonical: True
+-- ID: 11564 | ref_number: C26 -> Section 2.16 – Energy Smart Water Wise | canonical: True
+-- ID: 11565 | ref_number: C27 -> Section 2.18 – Landscaping and Open Spaces | canonical: True
+-- ID: 11607 | ref_number: 2.6.3 C1 i -> AS 2021 | canonical: False
+-- ID: 11608 | ref_number: 2.6.3 C1 i -> other guidelines issued by relevant agencies and authorities | canonical: False
+-- ID: 11609 | ref_number: 2.6.3 C1 i -> AS 3671, AS 2107, SEPP (Infrastructure SEPP) | canonical: True
+-- ID: 11610 | ref_number: C7 -> Part 6.2 (Industrial/Residential Interface) of this DCP | canonical: False
+-- ID: 11611 | ref_number: C7 -> Part 5.2 (Commercial/Light Industrial/Residential Interface) of this DCP | canonical: False
+-- ID: 11612 | ref_number: C5 -> Division 15, Subdivision 2 of Infrastructure SEPP | canonical: False
+-- ID: 11613 | ref_number: C6 -> Division 17, Subdivision 2 of Infrastructure SEPP | canonical: False
+-- ID: 11649 | ref_number: C2 -> Section 8.3 | canonical: False
+-- ID: 11650 | ref_number: C2 -> Section 8.5.2 | canonical: False
+-- ID: 11651 | ref_number: C2 -> Section 8.5.3 | canonical: False
+-- ID: 11663 | ref_number: this Development Control Plan -> Inner West LEP 2022 | canonical: True
+-- ID: 11664 | ref_number: general provisions -> use provisions | canonical: True
+-- ID: 11665 | ref_number: Development -> Objectives (of relevant sections) | canonical: True
+-- ID: 11714 | ref_number: C1 -> 2.7.2 | canonical: True
+-- ID: 11715 | ref_number: C2 -> 2.7.3 | canonical: True
+-- ID: 11716 | ref_number: C5 -> 2.3 | canonical: False
+-- ID: 11758 | ref_number: 2.17.3 Water Conservation Requirements -> State Environmental Planning Policy - Building Sustainability Index (BASIX) | canonical: True
+-- ID: 11759 | ref_number: 2.17.3 Water Conservation Requirements -> Water Efficiency Labelling and Standards (WELS) Scheme | canonical: True
+-- ID: 11760 | ref_number: 2.17.2 Development to which this Chapter Applies -> Table 1 | canonical: True
+-- ID: 11761 | ref_number: C5 -> Marrickville Council’s WSUD Reference Guideline | canonical: False
+-- ID: 11762 | ref_number: C6 ii -> BASIX Scheme | canonical: False
+-- ID: 11763 | ref_number: BASIX SEPP -> rainwater tank for stormwater management | canonical: True
+-- ID: 11764 | ref_number: C7 -> WSUD Reference Guideline | canonical: False
+-- ID: 11799 | ref_number: 9.9.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) | canonical: False
+-- ID: 11800 | ref_number: C1 -> Section 8.3 | canonical: False
+-- ID: 11801 | ref_number: C1 -> Section 8.5.1 | canonical: False
+-- ID: 11802 | ref_number: C1 -> Section 8.5.2 | canonical: False
+-- ID: 11803 | ref_number: C2 -> Section 8.3 | canonical: False
+-- ID: 11804 | ref_number: C2 -> Section 8.4 | canonical: False
+-- ID: 11805 | ref_number: C2 -> Section 8.5.2 | canonical: False
+-- ID: 11806 | ref_number: C2 -> Section 8.5.3 | canonical: False
+-- ID: 11807 | ref_number: C4 -> Section 8.3 | canonical: False
+-- ID: 11808 | ref_number: C4 -> Section 8.5.1 | canonical: False
+-- ID: 11809 | ref_number: C4 -> Section 8.5.2 | canonical: False
+-- ID: 11839 | ref_number: 9.21.4 HCA 31 -> Section 8.3 | canonical: False
+-- ID: 11840 | ref_number: 9.21.4 HCA 31 -> Section 8.5.2 | canonical: False
+-- ID: 11841 | ref_number: 9.21.4 HCA 31 -> Section 8.5.3 | canonical: False
+-- ID: 11842 | ref_number: 9.21.4 HCA 35 -> Section 8.3 | canonical: False
+-- ID: 11843 | ref_number: 9.21.4 HCA 35 -> Section 8.5.3 and 8.5.4 | canonical: False
+-- ID: 11844 | ref_number: 9.21.4 HCA 29 -> Section 8.3 | canonical: False
+-- ID: 11845 | ref_number: 9.21.4 HCA 29 -> Section 8.5.2 | canonical: False
+-- ID: 11846 | ref_number: 9.21.4 HCA 29 -> Section 8.5.3 | canonical: False
+-- ID: 11882 | ref_number: C1 -> Section 8.2.8 | canonical: False
+-- ID: 11883 | ref_number: C2a -> Section 8.3 | canonical: False
+-- ID: 11884 | ref_number: C2b -> Section 8.4 | canonical: False
+-- ID: 11885 | ref_number: C2c -> Section 8.5.1 | canonical: False
+-- ID: 11886 | ref_number: C2d -> Section 8.5.2 | canonical: False
+-- ID: 11887 | ref_number: C3a -> Section 8.3 | canonical: False
+-- ID: 11888 | ref_number: C3b -> Section 8.5.1 | canonical: False
+-- ID: 11889 | ref_number: C3c -> Section 8.5.2 | canonical: False
+-- ID: 11890 | ref_number: C4a -> Section 8.3 | canonical: False
+-- ID: 11891 | ref_number: C4b -> Section 8.5.1 | canonical: False
+-- ID: 11924 | ref_number: This DCP -> Inner West LEP 2022 | canonical: False
+-- ID: 11925 | ref_number: Inner West LEP 2022 -> This DCP | canonical: False
+-- ID: 11926 | ref_number: This DCP -> Environmental Planning and Assessment Act 1979 (EP&A Act) | canonical: False
+-- ID: 11927 | ref_number: This DCP -> Environmental Planning and Assessment Regulation 2000 | canonical: False
+-- ID: 11928 | ref_number: all development applications -> Inner West LEP 2022 | canonical: False
+-- ID: 11929 | ref_number: DCP controls -> DCP objectives | canonical: False
+-- ID: 11930 | ref_number: site-specific controls (Part 9) -> precinct-specific controls (Part 9) | canonical: False
+-- ID: 11931 | ref_number: 1.2 The Consultation and Notification Process -> Council’s Community Engagement Framework | canonical: False
+-- ID: 11970 | ref_number: 9.4.3 Heritage Conservation Areas -> Part 8 (Heritage) | canonical: False
+-- ID: 12019 | ref_number: C1 -> Appendix 3 | canonical: False
+-- ID: 12020 | ref_number: C2 -> Appendix 3 | canonical: False
+-- ID: 12021 | ref_number: C2 -> 2.18 | canonical: True
+-- ID: 12022 | ref_number: C5 -> Section 2.3 (Site and Context Analysis) | canonical: False
+-- ID: 12023 | ref_number: C6 -> Water Management Act 2000 | canonical: False
+-- ID: 12024 | ref_number: Water Management Act 2000 -> Sections 4.46 and 4.47 of the EP&A Act | canonical: True
+-- ID: 12080 | ref_number: 9.22.3 -> Part 8 (Heritage) | canonical: False
+-- ID: 12081 | ref_number: 9.22.4 -> C1, C6 | canonical: False
+-- ID: 12082 | ref_number: HCA 29 -> Section 8.3, Section 8.5.2, Section 8.5.3 | canonical: False
+-- ID: 12083 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: False
+-- ID: 12168 | ref_number: This Guideline -> Section 1—Preliminary | canonical: True
+-- ID: 12169 | ref_number: DS7.4 -> relevant council public domain plan | canonical: False
+-- ID: 12170 | ref_number: DS7.12 -> council's standards for relevant matters such as road design, vehicle access, stormwater drainage and levels | canonical: False
+-- ID: 12171 | ref_number: DS10.1 -> Council's public art policy | canonical: False
+-- ID: 12222 | ref_number: C25 -> Figures (5.2b) and (5.2c) | canonical: False
+-- ID: 12223 | ref_number: C26 -> Figures (5.2b) and (5.2c) | canonical: False
+-- ID: 12224 | ref_number: C27 -> Figures (5.2b) and (5.2c) | canonical: False
+-- ID: 12225 | ref_number: C28 -> Figure (5.2b) | canonical: False
+-- ID: 12226 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: False
+-- ID: 12282 | ref_number: 9.38.3 Heritage Conservation Areas (HCAs) -> Part 8 (Heritage) of this DCP | canonical: False
+-- ID: 12283 | ref_number: C2 -> Clause 4.3(2) of Inner West LEP 2022 | canonical: False
+-- ID: 12284 | ref_number: C4 -> Clause 4.4(2) of Inner West LEP 2022 | canonical: False
+-- ID: 12285 | ref_number: C5 -> Clause 4.4(2) of Inner West LEP 2022 | canonical: False
+-- ID: 12286 | ref_number: C6 -> control diagrams in figures | canonical: False
+-- ID: 12287 | ref_number: C1 -> Section 8.4 | canonical: False
+-- ID: 12288 | ref_number: C1 -> Section 8.4.2 | canonical: False
+-- ID: 12289 | ref_number: C13, C14, C15, C16 -> Figures (38.1b) and (38.1c) | canonical: True
+-- ID: 12290 | ref_number: C17 -> Figure (38.1b) | canonical: True
+-- ID: 12291 | ref_number: Plan Diagram -> Section Diagram(s) | canonical: True
+-- ID: 12345 | ref_number: Draft heritage item -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: False
+-- ID: 12346 | ref_number: Injury -> AS 4373 2007 "Pruning of Amenity Trees" | canonical: False
+-- ID: 12347 | ref_number: Non-conforming Building -> Stanton's original covenants | canonical: True
+-- ID: 12348 | ref_number: NSW coastal policy -> NSW Coastal Policy 1997 | canonical: True
+-- ID: 12349 | ref_number: Universal accessible design -> Australian Network for Universal Housing Design | canonical: True
+-- ID: 12389 | ref_number: 9.14.3 Heritage Conservation Areas -> Part 8 (Heritage) | canonical: False
+-- ID: 12390 | ref_number: Mixed Residential Streetscapes (Type B) -> Section 8.3 | canonical: True
+-- ID: 12391 | ref_number: Victorian Italianate/Victorian Filigree Architectural Style -> Section 8.5.1 | canonical: True
+-- ID: 12392 | ref_number: Federation styles Architectural Style -> Section 8.5.2 | canonical: True
+-- ID: 12393 | ref_number: C5, C6, C7 -> Figures (14.1a) and (14.1b) | canonical: True
+-- ID: 12394 | ref_number: C8 -> Figure (14.1b) | canonical: False
+-- ID: 12436 | ref_number: 2.16.2 -> Table 1 | canonical: False
+-- ID: 12437 | ref_number: 2.16 -> State Environmental Planning Policy (Building Sustainability Index: BASIX) 2004 (BASIX) | canonical: True
+-- ID: 12438 | ref_number: 2.16 -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 12439 | ref_number: C3 -> Sections 2.16.5 to 2.16.6 | canonical: False
+-- ID: 12440 | ref_number: 2.16.5.4 -> BCA Section J – Part 1 Building Fabric | canonical: False
+-- ID: 12441 | ref_number: 2.16.5.5 -> BCA Section J – Part 1 Building Fabric | canonical: False
+-- ID: 12442 | ref_number: 2.16.5.7 -> BCA Section J – Parts 4 and 5 Air conditioning and Ventilation | canonical: False
+-- ID: 12483 | ref_number: C2 -> MLEP 2011, Clause 4.3(2) | canonical: False
+-- ID: 12484 | ref_number: C4 -> MLEP 2011, Clause 4.4(2) | canonical: False
+-- ID: 12485 | ref_number: C5 -> MLEP 2011, Clause 4.4(2) | canonical: False
+-- ID: 12486 | ref_number: Section 9.36.4 -> Section 8.4 | canonical: False
+-- ID: 12487 | ref_number: Section 9.36.4 -> Section 8.4.2 | canonical: False
+-- ID: 12488 | ref_number: C6 -> Control diagrams in Figures | canonical: True
+-- ID: 12489 | ref_number: Inner West LEP 2022 -> Height of Buildings Map, Floor Space Ratio Map | canonical: True
+-- ID: 12521 | ref_number: C17 -> Section 2.16 | canonical: False
+-- ID: 12522 | ref_number: C26 -> Section 2.16 – Energy Smart Water Wise | canonical: True
+-- ID: 12523 | ref_number: C27 -> Section 2.18 – Landscaping and Open Spaces | canonical: True
+-- ID: 12582 | ref_number: this DCP -> State Environment Planning Policy (Housing) 2021 | canonical: True
+-- ID: 12583 | ref_number: Section 4.3 -> SEPP | canonical: True
+-- ID: 12584 | ref_number: boarding house applications -> Section 4.1, Section 4.3 | canonical: True
+-- ID: 12585 | ref_number: C17 -> Section 2.16 | canonical: True
+-- ID: 12586 | ref_number: C26 -> Section 2.16 – Energy Smart Water Wise | canonical: True
+-- ID: 12587 | ref_number: C27 -> Section 2.18 – Landscaping and Open Spaces | canonical: True
+-- ID: 12621 | ref_number: 2.25 Stormwater Management -> Marrickville Inner West Council Stormwater and On-site Detention Guidelines | canonical: True
+-- ID: 12622 | ref_number: 2.25 Stormwater Management -> Sections 2.17 (Water Sensitive Urban Design) and 2.22 (Flood Management) | canonical: True
+-- ID: 12623 | ref_number: 2.25 Stormwater Management -> AS/NZS 3500.3.2:1998 Stormwater drainage – acceptable solutions | canonical: True
+-- ID: 12738 | ref_number: This Policy -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 12739 | ref_number: This Policy -> Interpretation Act 1987 | canonical: True
+-- ID: 12740 | ref_number: This Chapter -> Coastal Management Act 2016 | canonical: True
+-- ID: 12741 | ref_number: This Chapter -> Coastal Protection Act 1979 | canonical: True
+-- ID: 12742 | ref_number: This Chapter -> Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 12743 | ref_number: Clause 2.7 -> Local Land Services Act 2013, Part 5A | canonical: True
+-- ID: 12744 | ref_number: Clause 2.7 -> Fisheries Management Act 1994, Division 4 of Part 7 | canonical: True
+-- ID: 12745 | ref_number: Clause 2.7 (3) -> certified coastal management program | canonical: True
+-- ID: 12746 | ref_number: Clause 2.7 (3) -> Local Government Act 1993, Division 2 of Part 2 of Chapter 6 | canonical: True
+-- ID: 12747 | ref_number: Clause 2.7 (3) -> Crown Land Management Act 2016, Division 3.6 | canonical: True
+-- ID: 12748 | ref_number: Clause 2.7 (5) -> Biosecurity Act 2015, clause 32 of Schedule 7 | canonical: True
+-- ID: 12749 | ref_number: Clause 2.7 (6) -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 12750 | ref_number: Clause 2.10 -> Marine Estate Management Act 2 | canonical: True
+-- ID: 12751 | ref_number: 2.11 -> State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 6 | canonical: True
+-- ID: 12752 | ref_number: 2.16 -> Coastal Management Act 2016, Section 4(1) | canonical: True
+-- ID: 12753 | ref_number: 2.16 -> Coastal Management Act 2016, Section 27 | canonical: True
+-- ID: 12754 | ref_number: 2.16 -> State Environmental Planning Policy (State and Regional Development) 2011, Schedule 7, clause 8A | canonical: True
+-- ID: 12755 | ref_number: 2.14 -> 2.5 | canonical: True
+-- ID: 12756 | ref_number: Chapter 3 -> Part 5 of the Act | canonical: True
+-- ID: 12757 | ref_number: Chapter 3 -> other environmental planning instruments | canonical: True
+-- ID: 12758 | ref_number: Clause 3.9 -> Crown Land Management Act 2016 | canonical: True
+-- ID: 12759 | ref_number: Clause 3.11 -> current circulars or guidelines published by the Department of Planning | canonical: True
+-- ID: 12760 | ref_number: Clause 3.12 -> the Act or in an environmental planning instrument applying to the development | canonical: True
+-- ID: 12761 | ref_number: Clause 3.13 -> section 30(4) of the Act | canonical: True
+-- ID: 12762 | ref_number: Clause 4.3 -> Part 7A of the Act | canonical: True
+-- ID: 12763 | ref_number: Clause 4.3 -> section 145C of the Act | canonical: True
+-- ID: 12764 | ref_number: Clause 4.3 -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 12765 | ref_number: Clause 4.3 -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 12766 | ref_number: Clause 4.3 -> State Environmental Planning Policy No 55—Remediation of Land —Cockle Creek Smelter Land Map | canonical: True
+-- ID: 12767 | ref_number: 4.11 -> 4.8(a)-(f) | canonical: True
+-- ID: 12768 | ref_number: 4.11(b) -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 12769 | ref_number: 4.11(ii) -> 4.16(4) | canonical: True
+-- ID: 12770 | ref_number: 4.11(iii) -> Stock Diseases Act 1923 | canonical: True
+-- ID: 12771 | ref_number: 4.12 -> 4.11 | canonical: True
+-- ID: 12772 | ref_number: 4.13 -> 4.11(b) | canonical: True
+-- ID: 12773 | ref_number: 4.13(d) -> 4.8, 4.11, 4.12(1) | canonical: True
+-- ID: 12774 | ref_number: 4.14 -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 12775 | ref_number: 4.14(2) -> 4.14(4) | canonical: True
+-- ID: 12776 | ref_number: 4.18(4) -> other State environmental planning policy, a regional environmental plan or a local environmental plan | canonical: True
+-- ID: 12777 | ref_number: 4.17(2) -> sections 4.7(4) and 4.14, any other provision of this Chapter | canonical: True
+-- ID: 12778 | ref_number: 4.18(2)(b) -> section 4.14(1) | canonical: True
+-- ID: 12779 | ref_number: clause 4.19(3) -> Planning Secretary | canonical: True
+-- ID: 12780 | ref_number: clause 4.19(6) -> Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 12781 | ref_number: clause 4.19(3)(d) -> Lake Macquarie Local Environmental Plan 2014 | canonical: True
+-- ID: 12922 | ref_number: G11.3 -> Other sections of the Leichhardt DCP | canonical: True
+-- ID: 12923 | ref_number: G12.3 -> Other sections of this DCP | canonical: True
+-- ID: 12924 | ref_number: Tree planting along the surrounding streets -> Council’s requirements | canonical: True
+-- ID: 12925 | ref_number: C2 (Section 3) -> solar access | canonical: True
+-- ID: 12926 | ref_number: Wharf Road development controls -> Inner West LEP 2022 | canonical: True
+-- ID: 12927 | ref_number: C4 -> Clause 5.10(6) of the Inner West LEP 2022 | canonical: True
+-- ID: 12928 | ref_number: C1 (G5.2) -> Part C1.4 – Heritage Conservation Areas and Heritage Items | canonical: True
+-- ID: 12929 | ref_number: C1 (G5.2) -> Part C1.14 – Tree Management | canonical: True
+-- ID: 12930 | ref_number: G6.2 (Variations) -> Development Control Plan | canonical: True
+-- ID: 12931 | ref_number: Desired Future Character Statement -> Rozelle Commercial Distinctive Neighbourhood (section C2.2.5.5) | canonical: True
+-- ID: 12932 | ref_number: Desired Future Character Statement -> Iron Cove Distinctive Neighbourhood (section C2.2.5.4) | canonical: True
+-- ID: 13101 | ref_number: C4.2 Site Layout and Building Design -> Part C Section 2 – Urban Character | canonical: True
+-- ID: 13102 | ref_number: C2 -> Figure C136: Height Transition | canonical: True
+-- ID: 13103 | ref_number: C13 (Specialised Retail Premises) -> Part C1.11 Parking | canonical: True
+-- ID: 13104 | ref_number: C14 -> Building Code of Australia | canonical: True
+-- ID: 13105 | ref_number: C22 -> Australian Standard requirements | canonical: True
+-- ID: 13106 | ref_number: C22 -> Part C1.11 – Parking | canonical: True
+-- ID: 13107 | ref_number: C1 -> Building Code of Australia | canonical: True
+-- ID: 13108 | ref_number: C4 -> Council’s Live Music Venues Good Neighbour Policy | canonical: True
+-- ID: 13109 | ref_number: C5, C6 -> Appendix F – Late night trading maps | canonical: True
+-- ID: 13110 | ref_number: C8 -> Part C3.9 – Solar Access | canonical: True
+-- ID: 13111 | ref_number: C11 -> Part D1.0 – Energy Management | canonical: True
+-- ID: 13112 | ref_number: C8 -> C3.8, C3.9, C3.10, C3.11, C3.12 | canonical: True
+-- ID: 13113 | ref_number: C10 -> C4.2, C4.4, C4.5 | canonical: True
+-- ID: 13114 | ref_number: C4.16 -> Inner West LEP 2022 | canonical: True
+-- ID: 13183 | ref_number: Inner West Comprehensive Development Control Plan 2016 -> Environmental Planning & Assessment Act 1979 (the Act) | canonical: True
+-- ID: 13184 | ref_number: Inner West Comprehensive Development Control Plan 2016 -> LEP | canonical: True
+-- ID: 13185 | ref_number: Development Application (DA) assessment -> LEP | canonical: True
+-- ID: 13186 | ref_number: Development Application (DA) assessment -> Inner West Comprehensive Development Control Plan 2016 | canonical: True
+-- ID: 13187 | ref_number: Development Application (DA) assessment -> Section 4.15 of the Act | canonical: True
+-- ID: 13188 | ref_number: Development Application (DA) assessment -> other relevant policies adopted by Council | canonical: True
+-- ID: 13189 | ref_number: This DCP -> Inner West LEP 2022 | canonical: True
+-- ID: 13190 | ref_number: This DCP -> Environmental Planning and Assessment Act, 1979 | canonical: True
+-- ID: 13191 | ref_number: This DCP -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 13192 | ref_number: This DCP -> Relevant State Environmental Planning Policies (SEPP’s) | canonical: True
+-- ID: 13193 | ref_number: This DCP -> Local Government Act 1993 | canonical: True
+-- ID: 13194 | ref_number: This DCP -> Building Code of Australia (BCA) | canonical: True
+-- ID: 13195 | ref_number: This DCP -> Relevant Australian Standards | canonical: True
+-- ID: 13196 | ref_number: This DCP -> Land and Environment Court Planning Principles | canonical: True
+-- ID: 13197 | ref_number: Inner West LEP 2022 -> This DCP | canonical: True
+-- ID: 13198 | ref_number: DCP variations -> SEPP65 /Apartment Design Guide and Inner West LEP 2022 | canonical: True
+-- ID: 13199 | ref_number: DCP -> Inner West LEP 2022 | canonical: True
+-- ID: 13305 | ref_number: 2.10 -> Part 2 Generic Provisions | canonical: True
+-- ID: 13306 | ref_number: 2.10 -> 2.10.4 | canonical: True
+-- ID: 13307 | ref_number: 2.10.3 -> Metropolitan Strategy (2005) | canonical: True
+-- ID: 13308 | ref_number: 2.10.3 -> RMS Guide to Traffic Generating Developments (2002) | canonical: True
+-- ID: 13309 | ref_number: 2.10.3 -> Integrating Land Use and Transport Planning Policy (2002) | canonical: True
+-- ID: 13310 | ref_number: 2.10.4 Parking Provision Rates -> Marrickville Strategic Plan 2006/11, Marrickville Council Annual Management Plan and Budget 2009/13, IWLEP 2022, Marrickville Urban Strategy 2007, Marrickville Integrated Transport Strategy 2007 | canonical: True
+-- ID: 13311 | ref_number: 2.10.4 Parking Provision Rates -> Recommendation 4.4 of the Marrickville Integrated Transport Strategy | canonical: True
+-- ID: 13312 | ref_number: Car Parking Design -> Australian Standards (AS2890.1-2004, AS2890.6-2009, AS2890.2-2002, AS1668.2-1991) | canonical: True
+-- ID: 13313 | ref_number: Table 1 -> Section 2.5.10 | canonical: True
+-- ID: 13314 | ref_number: Section 4.1 Low Density Residential Development, Part 4.1.7 Car Parking -> parking for low density housing | canonical: True
+-- ID: 13315 | ref_number: RMS Guide to Traffic Generating Developments -> parking provision for unspecified uses | canonical: True
+-- ID: 13316 | ref_number: Transport for NSW publication Draft Interim Guidelines for the Preparation of Transport Management and Accessibility Plans -> TMAP preparation | canonical: True
+-- ID: 13317 | ref_number: C4 Parking areas -> Australian Standards, Austroads and RMS guidelines | canonical: True
+-- ID: 13318 | ref_number: Parking facilities design -> AS 2890.1-2004 | canonical: True
+-- ID: 13319 | ref_number: Parking facilities design -> AS 2890.6-2009 | canonical: True
+-- ID: 13320 | ref_number: Permissible aisle and parking bay width variations -> AS 2890.1-2004 | canonical: True
+-- ID: 13321 | ref_number: Access Driveway Types -> RMS | canonical: True
+-- ID: 13322 | ref_number: C13 -> Section 2.9 (Community Safety) | canonical: True
+-- ID: 13323 | ref_number: 2.10.13 -> NSW Planning Guidelines for Walking and Cycling, Austroads Part 14 Bicycles, RMS Guide to Traffic Generating Developments | canonical: True
+-- ID: 13324 | ref_number: C13 (Access Driveways) -> AS 2890.1-2004 | canonical: True
+-- ID: 13515 | ref_number: Clause 2.2 -> Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 13516 | ref_number: Clause 2.2 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 13517 | ref_number: Clause 2.2 -> Water Management Act 2000 | canonical: True
+-- ID: 13518 | ref_number: Clause 2.2 -> Interpretation Act 1987 | canonical: True
+-- ID: 13519 | ref_number: Clause 2.2 -> Fisheries Management Act 1994 | canonical: True
+-- ID: 13520 | ref_number: Clause 2.2 -> NSW Oyster Industry Sustainable Aquaculture Strategy | canonical: True
+-- ID: 13521 | ref_number: Clause 2.4 -> Other environmental planning instruments | canonical: True
+-- ID: 13522 | ref_number: 2.6(2) -> State Environmental Planning Policy (Exempt and Complying Development Codes) Amendment (Agritourism) 2022 | canonical: True
+-- ID: 13523 | ref_number: Note 2, Part 2.3 -> Part 2 (Planning principles) and Part 3 (Planning requirements and consultation) of Murray Regional Environmental Plan No 2—Riverine Land | canonical: True
+-- ID: 13524 | ref_number: 2.12 -> 2.11 | canonical: True
+-- ID: 13525 | ref_number: 2.14(1) -> 2.11 | canonical: True
+-- ID: 13526 | ref_number: 2.14(2) -> 2.14(1) | canonical: True
+-- ID: 13527 | ref_number: 2.14(3) -> 2.14(1) | canonical: True
+-- ID: 13528 | ref_number: 2.16(2) -> Water NSW Act 2014 | canonical: True
+-- ID: 13529 | ref_number: 2.16(3) -> Water NSW Act 2014 | canonical: True
+-- ID: 13530 | ref_number: 2.17 -> Crown Land Management Act 2016 | canonical: True
+-- ID: 13531 | ref_number: 2.19 -> 2.4(2) | canonical: True
+-- ID: 13532 | ref_number: 2.22 -> aquaculture industry development plan | canonical: True
+-- ID: 13533 | ref_number: Clause 2.25 -> Clause 2.26 | canonical: True
+-- ID: 13534 | ref_number: Clause 2.27 -> Clause 2.28 | canonical: True
+-- ID: 13535 | ref_number: Clause 2.27 -> Department of Industry | canonical: True
+-- ID: 13536 | ref_number: Clause 2.29 -> NSW Oyster Industry Sustainable Aquaculture Strategy | canonical: True
+-- ID: 13537 | ref_number: Clause 3.3 -> Interim Development Order No 122—Gosford | canonical: True
+-- ID: 13538 | ref_number: Clause 3.3 -> Wyong Local Environmental Plan 1991 | canonical: True
+-- ID: 13539 | ref_number: Chapter 3 -> section 74 (1) of the Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 13540 | ref_number: this Chapter -> another environmental planning instrument (other than a State environmental planning policy) | canonical: True
+-- ID: 13541 | ref_number: Schedule 4 -> State Environmental Planning Policy (Exempt and Complying Development Codes 2008) | canonical: True
+-- ID: 13542 | ref_number: 3.7(1) -> Native Vegetation Conservation Act 1997 | canonical: True
+-- ID: 13543 | ref_number: 3.7(4) -> any regional vegetation management plan made under the Native Vegetation Conservation Act 1997 | canonical: True
+-- ID: 13544 | ref_number: Section 3(2) -> Part A of the Table | canonical: True
+-- ID: 13545 | ref_number: Section 3(3) -> Zones RU1-C4 | canonical: True
+-- ID: 13546 | ref_number: Section 4(2) -> Part B of the Table | canonical: True
+-- ID: 13547 | ref_number: Section 4(5) -> other provisions of a relevant EPI | canonical: True
+-- ID: 13548 | ref_number: Clause 14 -> Fisheries Management (Aquaculture) Regulation 2017 | canonical: True
+-- ID: 13549 | ref_number: Part 5 -> Section 8 of this Schedule | canonical: True
+-- ID: 13550 | ref_number: Schedule 5 -> Bega Valley Local Environmental Plan 2002, Bega Valley Local Environmental Plan 2013, Clarence Valley Local Environmental Plan 2011, etc. | canonical: True
+-- ID: 13551 | ref_number: Schedule 5 -> clause 3.3 of the Standard Instrument | canonical: True
+-- ID: 13552 | ref_number: Schedule 5 -> Wilderness Act 1987 | canonical: True
+-- ID: 13553 | ref_number: Schedule 5 -> Forestry Act 2012 | canonical: True
+-- ID: 13554 | ref_number: Schedule 5 -> Hunter Water Act 1991, Sydney Water Act | canonical: True
+-- ID: 13555 | ref_number: Clause 8 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008, clause 2.75 | canonical: True
+-- ID: 13556 | ref_number: Clause 4(2) -> State Environmental Planning Policy No 15—Rural Landsharing Communities | canonical: True
+-- ID: 13903 | ref_number: this Guideline -> Section 1—Preliminary at the front of this DCP | canonical: True
+-- ID: 13904 | ref_number: Residential Development -> BASIX SEPP | canonical: True
+-- ID: 13905 | ref_number: Construction Certificate -> Building Code of Australia (BCA) | canonical: True
+-- ID: 13906 | ref_number: Non-residential Development -> Building Code of Australia (BCA) | canonical: True
+-- ID: 13907 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: True
+-- ID: 13908 | ref_number: Water Sensitive Urban Design Guideline -> Section 1 – Preliminary at the front of this DCP | canonical: True
+-- ID: 13909 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: False
+-- ID: 13910 | ref_number: Waste and Recycling standards -> SEPP 65 Apartment Design Guide | canonical: True
+-- ID: 13911 | ref_number: DS3.3 -> Australian Standard 4123- 2008: Mobile Garbage Containers | canonical: True
+-- ID: 13912 | ref_number: DS1.1 -> Guide 3: Waste Chutes, Compactors, Balers and Crushers | canonical: True
+-- ID: 13913 | ref_number: DS2.2 -> Section 3 DS3.4 to DS3.17 | canonical: True
+-- ID: 13914 | ref_number: Developments of fewer than four storeys -> Section 5: Low-Rise Residential Developments: Specific Provisions | canonical: True
+-- ID: 13915 | ref_number: DS3.3 -> Part D6 of the DCP | canonical: True
+-- ID: 13916 | ref_number: DS3.15 -> AS 2890.1-2004 | canonical: True
+-- ID: 13917 | ref_number: DS3.16 -> Guide 1: Inner West Council Standard Services | canonical: True
+-- ID: 13918 | ref_number: DS3.18 -> Guide 1: Inner West Council Standard Services | canonical: True
+-- ID: 13919 | ref_number: DS3.21 -> Guide 1: Inner West Council Standard Services | canonical: True
+-- ID: 13920 | ref_number: DS2.11 -> Guide 4: Waste and Recycling Capacity Needs | canonical: True
+-- ID: 13921 | ref_number: DS2.14 -> Guide 2: Waste Source Separation and Storage Area | canonical: True
+-- ID: 13922 | ref_number: DS2.2 -> Section 2 DS4.1-DS4.8 | canonical: True
+-- ID: 13923 | ref_number: DS2.3 -> Section 4 DS1.1-DS1.5 | canonical: True
+-- ID: 13924 | ref_number: Separated food waste storage -> AS 4123-2008 Mobile Garbage Containers | canonical: True
+-- ID: 13925 | ref_number: Contaminated sharps containers -> Australian Standard 4031-1992 | canonical: True
+-- ID: 13926 | ref_number: Section 7, 3 -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 13927 | ref_number: 2.1 -> Internal Construction | canonical: True
+-- ID: 13928 | ref_number: 3.2 -> Guide 2: Waste Source Separation and Storage Areas DS1.1 to DS1.6 | canonical: True
+-- ID: 13929 | ref_number: 3.3 -> Section G.1.2 of the National Construction Code | canonical: True
+-- ID: 13930 | ref_number: Waste Chutes -> National Construction Code | canonical: True
+-- ID: 13931 | ref_number: Waste Collection -> Section 2 Clause 4.5 | canonical: True
+-- ID: 13932 | ref_number: Tree Management Development Control Plan -> State Environmental Planning Policy (Biodiversity and Conservation) 2021 | canonical: True
+-- ID: 13933 | ref_number: C8 -> Biodiversity and conservation SEPP 2021 | canonical: True
+-- ID: 13934 | ref_number: C9 -> C13-C17 | canonical: True
+-- ID: 13935 | ref_number: Procedural Review -> Local Government Act 1993 | canonical: True
+-- ID: 13936 | ref_number: Development Application Appeals -> Environmental Planning and Assessment Act 1979, Section 8.7 | canonical: True
+-- ID: 13937 | ref_number: Development Application Reviews -> Environmental Planning and Assessment Act 1979, Section 8.2 | canonical: True
+-- ID: 13938 | ref_number: C15 -> AS4970 Section 4 | canonical: True
+-- ID: 13939 | ref_number: Tree Protection Zone (TPZ) -> AS4970 | canonical: True
+-- ID: 13940 | ref_number: This Guideline -> Section 1 – Preliminary at the front of this DCP | canonical: True
+-- ID: 14032 | ref_number: Clause 164(1)(b) -> State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 2 | canonical: True
+-- ID: 14033 | ref_number: Clause 164(1)(f) -> State Environmental Planning Policy (Biodiversity and Conservation) 2021, Chapter 6 | canonical: True
+-- ID: 14034 | ref_number: Clause 164(1)(i) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.77 | canonical: True
+-- ID: 14035 | ref_number: Clause 164(3) -> State Environmental Planning Policy (Precincts—Western Parkland City) 2021, section 4.17 | canonical: True
+-- ID: 14036 | ref_number: Clause 164(3) -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 14037 | ref_number: Clause 165 -> Act, section 4.15(2) | canonical: True
+-- ID: 14049 | ref_number: Schedule 2 Exempt development -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 14050 | ref_number: Schedule 3 Complying development -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 14071 | ref_number: Clause 14 -> Part 1 | canonical: True
+-- ID: 14072 | ref_number: Clause 21 -> Building Code of Australia, Volume 1, Part E3 | canonical: True
+-- ID: 14073 | ref_number: Clause 19(2)(d) -> AS 4586—2013 | canonical: True
+-- ID: 14118 | ref_number: Clause 17(1)(b) -> Local Government Act 1993, section 68 | canonical: True
+-- ID: 14119 | ref_number: Clause 17(3)(b) -> Local Government Act 1993, section 68 | canonical: True
+-- ID: 14120 | ref_number: Clause 19 -> Public Health Act 2010 | canonical: True
+-- ID: 14121 | ref_number: Clause 19 -> Public Health Regulation 2022 | canonical: True
+-- ID: 14122 | ref_number: Clause 20 -> Food Act 2003 | canonical: True
+-- ID: 14123 | ref_number: Clause 20 -> Food Regulation 2015 | canonical: True
+-- ID: 14124 | ref_number: Clause 25 -> Public Health Act 2010 | canonical: True
+-- ID: 14125 | ref_number: Clause 25 -> Public Health Regulation 2022 | canonical: True
+-- ID: 14126 | ref_number: Clause 26 -> Food Act 2003 | canonical: True
+-- ID: 14127 | ref_number: Clause 26 -> Food Regulation 2015 | canonical: True
+-- ID: 14128 | ref_number: Clause 30 -> Short-term Rental Accommodation Fire Safety Standard | canonical: True
+-- ID: 14142 | ref_number: 3D.59(2) -> another environmental planning instrument or a development control plan | canonical: True
+-- ID: 14143 | ref_number: 3D.59 Note 2 -> 3D.64 | canonical: True
+-- ID: 14168 | ref_number: Clause 6 -> section 4 of the Standard | canonical: True
+-- ID: 14169 | ref_number: Clause 6 -> section 4.2 of the Standard | canonical: True
+-- ID: 14170 | ref_number: Note 2 -> Environmental Planning and Assessment Regulation 2021, Part 6, Division 5 | canonical: True
+-- ID: 14191 | ref_number: 7.2 (2) -> 7.2 (1) | canonical: True
+-- ID: 14192 | ref_number: 7.5 (1) -> 7.5 (2) | canonical: True
+-- ID: 14225 | ref_number: Clause 7(2)(a) -> Interim Construction Noise Guideline | canonical: True
+-- ID: 14226 | ref_number: Clause 9 -> AS 2601—2001, The demolition of structures | canonical: True
+-- ID: 14227 | ref_number: Clause 11(2)(a) -> Protection of the Environment Operations Act 1997, Schedule 1, Part 3 | canonical: True
+-- ID: 14228 | ref_number: Clause 11(2)(b) -> Protection of the Environment Operations (Waste) Regulation 2014 | canonical: True
+-- ID: 14229 | ref_number: Clause 12(2) -> Local Government Act 1993 | canonical: True
+-- ID: 14230 | ref_number: Clause 13 -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 14231 | ref_number: Clause 14 -> Heritage Act 1977 | canonical: True
+-- ID: 14232 | ref_number: Clause 15 -> National Parks and Wildlife Act 1974, section 89A | canonical: True
+-- ID: 14246 | ref_number: 5B.7 -> Schedule 8 | canonical: True
+-- ID: 14247 | ref_number: 6.1 -> Low Rise Housing Diversity Code | canonical: True
+-- ID: 14248 | ref_number: 6.3 -> Low Rise Housing Diversity Code | canonical: True
+-- ID: 14249 | ref_number: 6.4 (1)(d)(i) -> environmental planning instrument | canonical: True
+-- ID: 14264 | ref_number: Section 93(5) -> Point to Point Transport (Taxis and Hire Vehicles) Act 2016, section 7 | canonical: True
+-- ID: 14265 | ref_number: Section 94(2) -> Section 93 | canonical: True
+-- ID: 14266 | ref_number: Section 94(2) -> Point to Point Transport (Taxis and Hire Vehicles) Act 2016 | canonical: True
+-- ID: 14267 | ref_number: Section 96(1) -> Planning for Bushfire Protection | canonical: True
+-- ID: 14285 | ref_number: Complying Development Certificate -> Schedule 8 | canonical: True
+-- ID: 14286 | ref_number: This Policy -> Environmental Planning Instrument | canonical: True
+-- ID: 14287 | ref_number: Clause 5A.4 -> Divisions 1A, 2, 3 | canonical: True
+-- ID: 14288 | ref_number: Divisions 2 and 3 -> Development involving internal alterations only | canonical: True
+-- ID: 14304 | ref_number: Clause 3.30 -> Standard Instrument | canonical: True
+-- ID: 14305 | ref_number: Clause 3.31 -> Standard Instrument | canonical: True
+-- ID: 14306 | ref_number: Clause 3.31 -> section 68 of the Local Government Act 1993 | canonical: True
+-- ID: 14307 | ref_number: Clause 3.32 -> Clause 1.5 | canonical: True
+-- ID: 14308 | ref_number: Clause 3.32 -> Act | canonical: True
+-- ID: 14309 | ref_number: Clause 3.30 -> Clauses 2.29 and 2.30 | canonical: True
+-- ID: 14335 | ref_number: Section 61(2) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, Part 2.2, Division 1 | canonical: True
+-- ID: 14336 | ref_number: Section 63(1) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, Schedule 1 | canonical: True
+-- ID: 14337 | ref_number: Section 63(1)(b) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, section 2.20(2) | canonical: True
+-- ID: 14338 | ref_number: Section 64(1)(b) -> Codes SEPP, clauses 1.18 and 1.19 | canonical: True
+-- ID: 14339 | ref_number: Section 64(3) -> Codes SEPP, Schedule 6 | canonical: True
+-- ID: 14358 | ref_number: Section 43 -> Section 42(1) | canonical: True
+-- ID: 14359 | ref_number: Section 43(2) -> Section 42(2) | canonical: True
+-- ID: 14360 | ref_number: Section 42(3) -> Chapter 2, Part 2, Division 5 | canonical: True
+-- ID: 14361 | ref_number: Section 42(4) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, sections 2.15 and 2.17 | canonical: True
+-- ID: 14362 | ref_number: Section 43C -> Schedule 9 | canonical: True
+-- ID: 14375 | ref_number: Section 111 -> Section 113 | canonical: True
+-- ID: 14376 | ref_number: Section 112 -> Section 113 | canonical: True
+-- ID: 14377 | ref_number: Section 113 -> Environmental Planning and Assessment (Development Certification and Fire Safety) Regulation 2021, section 102C | canonical: True
+-- ID: 14378 | ref_number: Section 113 -> Building Code of Australia | canonical: True
+-- ID: 14379 | ref_number: Section 113 -> Local Government Act 1993 | canonical: True
+-- ID: 14391 | ref_number: Clause 3.4 -> Clause 1.19A | canonical: True
+-- ID: 14392 | ref_number: Clause 3.4 (2)(d)(i) -> AS/NZS 1596:2014 | canonical: True
+-- ID: 14393 | ref_number: Clause 3.5 -> Flood Risk Management Manual | canonical: True
+-- ID: 14434 | ref_number: Schedule 6B -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14435 | ref_number: Schedule 6B -> Division 2A of Part 7 of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14436 | ref_number: Clause 3 -> Real Property Act 1900 | canonical: True
+-- ID: 14437 | ref_number: Clause 2 -> Dividing Fences Act 1991 | canonical: True
+-- ID: 14438 | ref_number: Schedule 7 -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14439 | ref_number: Schedule 7 -> Division 2A of Part 7 of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14440 | ref_number: Clause 1 (Schedule 7) -> Local Government Act 1993 | canonical: True
+-- ID: 14441 | ref_number: Schedule 7 Note 5 -> Environmental Planning and Assessment Act 1979, section 4.29 | canonical: True
+-- ID: 14462 | ref_number: 141O -> 141P | canonical: True
+-- ID: 14463 | ref_number: 141P -> Codes SEPP, Part 8 | canonical: True
+-- ID: 14464 | ref_number: 141P -> Codes SEPP, Part 8, Division 2 | canonical: True
+-- ID: 14465 | ref_number: 141Q -> 141O | canonical: True
+-- ID: 14466 | ref_number: 141R -> 141Q | canonical: True
+-- ID: 14467 | ref_number: 141R -> 141O | canonical: True
+-- ID: 14468 | ref_number: 141R -> Schedule 2A | canonical: True
+-- ID: 14469 | ref_number: 141S -> Codes SEPP, Schedule 10 | canonical: True
+-- ID: 14470 | ref_number: 141O(b)(v) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 3 | canonical: True
+-- ID: 14490 | ref_number: Clause 5.19, Division 2, 6 -> Fisheries Management (Aquaculture) Regulation 2017 | canonical: True
+-- ID: 14517 | ref_number: 5A.20(a) -> Another environmental planning instrument | canonical: True
+-- ID: 14518 | ref_number: 5A.21(1A)(a) -> Another environmental planning instrument | canonical: True
+-- ID: 14519 | ref_number: 5A.20B(8A) -> Business Zone Design Guide (December 2021) | canonical: True
+-- ID: 14542 | ref_number: Complying Development under Fire Safety Code -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 14543 | ref_number: Complying Development under Fire Safety Code -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14544 | ref_number: Part 1 Conditions -> Clauses 2.67 and 2.68 | canonical: True
+-- ID: 14545 | ref_number: Toilet facilities -> Local Government Act 1993 | canonical: True
+-- ID: 14546 | ref_number: Earthworks -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 14547 | ref_number: Earthworks -> Protection of the Environment Operations (Waste) Regulation 2005 | canonical: True
+-- ID: 14548 | ref_number: Demolition -> AS 2601—2001 | canonical: True
+-- ID: 14549 | ref_number: Excavation -> Excavation Work: Code of Practice (ISBN 978-0-642-785442) | canonical: True
+-- ID: 14550 | ref_number: Works -> Plans and Specifications | canonical: True
+-- ID: 14577 | ref_number: Part 8 -> Chapter 5 | canonical: True
+-- ID: 14578 | ref_number: Section 117 -> Section 115(1)(b) | canonical: True
+-- ID: 14579 | ref_number: Part 8 -> Community Land Development Act 1989 | canonical: True
+-- ID: 14580 | ref_number: Part 8 -> Local Government Act 1993 | canonical: True
+-- ID: 14581 | ref_number: Part 8 -> Local Government Act 1919 | canonical: True
+-- ID: 14582 | ref_number: Part 8 -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 14583 | ref_number: Part 8 -> Schedule 5 | canonical: True
+-- ID: 14584 | ref_number: Part 8 -> Schedule 6 | canonical: True
+-- ID: 14585 | ref_number: Part 8 -> Schedule 7 | canonical: True
+-- ID: 14586 | ref_number: Part 8 -> clause 5.14 of the standard local environmental planning instrument prescribed by the Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 14587 | ref_number: Part 8 -> Chapter 3, Part 9 | canonical: True
+-- ID: 14588 | ref_number: this Part -> any other environmental planning instrument | canonical: True
+-- ID: 14623 | ref_number: Part 9 -> 126, 127, 128, 129, 130, 131, 132 | canonical: True
+-- ID: 14624 | ref_number: 128 (1) -> other environmental planning instruments | canonical: True
+-- ID: 14625 | ref_number: 128 (1) -> section 36 of the Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 14626 | ref_number: 128 (2) -> State Environmental Planning Policy No 21—Movable Dwellings | canonical: True
+-- ID: 14627 | ref_number: 128 (3) -> State Environmental Planning Policy No 26—Littoral Rainforests | canonical: True
+-- ID: 14628 | ref_number: 131 (1) -> Council | canonical: True
+-- ID: 14629 | ref_number: 132 (1) -> section 289K of the Local Government Act 1919 | canonical: True
+-- ID: 14630 | ref_number: 132 (1) -> Council | canonical: True
+-- ID: 14631 | ref_number: Clause 133 -> Local Government (Caravan Parks and Camping Grounds) Transitional Regulation 1993 | canonical: True
+-- ID: 14639 | ref_number: Section 48(1)(b) -> Section 48(2) | canonical: True
+-- ID: 14640 | ref_number: Section 48(3)(b) -> Section 48(2) | canonical: True
+-- ID: 14641 | ref_number: Section 48(4) -> Guidelines for the Retention of Existing Affordable Rental Housing | canonical: True
+-- ID: 14666 | ref_number: 141D -> Local Government (Manufactured Home Estates, Caravan Parks, Camping Grounds and Moveable Dwellings) Regulation 2021 | canonical: True
+-- ID: 14667 | ref_number: 141D -> Electricity Infrastructure Investment Act 2020 | canonical: True
+-- ID: 14668 | ref_number: 141F(1)(b) -> Guidelines For Construction Workers Accommodation | canonical: True
+-- ID: 14669 | ref_number: 141G(2) -> Guidelines For Construction Workers Accommodation | canonical: True
+-- ID: 14685 | ref_number: Section 8.2.37 of the DCP -> Inter-War Group Heritage Conservation Area (HCA 35) | canonical: True
+-- ID: 14709 | ref_number: Schedule 1 -> Codes SEPP | canonical: True
+-- ID: 14710 | ref_number: Schedule 1 -> standard instrument | canonical: True
+-- ID: 14711 | ref_number: Section 179, 180 -> Act, s 4.15 | canonical: True
+-- ID: 14751 | ref_number: Complying Development Certificates -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 14752 | ref_number: Complying Development Certificates -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14753 | ref_number: Clause 6 (Tree Protection Measures) -> AS 4970—2009 | canonical: True
+-- ID: 14773 | ref_number: 8.2.29.6 -> 8.3 | canonical: True
+-- ID: 14774 | ref_number: 8.2.29.6 -> 8.5 | canonical: True
+-- ID: 14794 | ref_number: 3D.61 (Excavation) -> AS 1726:2017 | canonical: True
+-- ID: 14795 | ref_number: 3D.61 (Fill and excavation) -> clauses 2.29 and 2.30 | canonical: True
+-- ID: 14796 | ref_number: 3D.62 (Drainage) -> section 68 of the Local Government Act 1993 | canonical: True
+-- ID: 14797 | ref_number: This section -> Clause 1.5 | canonical: True
+-- ID: 14798 | ref_number: This section -> Standard Instrument | canonical: True
+-- ID: 14799 | ref_number: This section -> Act | canonical: True
+-- ID: 14843 | ref_number: Clause 9.14 -> Schedule 11 | canonical: True
+-- ID: 14844 | ref_number: Clause 1.12(1) -> Schedule 2 | canonical: True
+-- ID: 14845 | ref_number: Schedule 2 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 14846 | ref_number: Schedule 3 -> Clause 1.12(2) | canonical: True
+-- ID: 14849 | ref_number: Clause 8.2 -> Section 100B(1) of the Rural Fires Act 1997 | canonical: True
+-- ID: 14864 | ref_number: Section 8.2.16 of the DCP -> Llewellyn Estate Heritage Conservation Area (HCA 14) | canonical: True
+-- ID: 14898 | ref_number: Part 11 definitions -> State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 2 | canonical: True
+-- ID: 14899 | ref_number: Part 11 definitions -> Biodiversity Conservation Act 2016 | canonical: True
+-- ID: 14900 | ref_number: Part 11 definitions -> Flood Risk Management Manual | canonical: True
+-- ID: 14901 | ref_number: Part 11 definitions -> Forestry Act 2012 | canonical: True
+-- ID: 14902 | ref_number: Clause 137 -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 14903 | ref_number: Clause 137 -> Biodiversity Conservation Regulation 2017, clause 7.3 | canonical: True
+-- ID: 14904 | ref_number: Clause 138 -> Clause 139 | canonical: True
+-- ID: 14905 | ref_number: Section 141(3)(a) -> Section 140 | canonical: True
+-- ID: 14906 | ref_number: Section 141(3)(h) -> Planning for Bush Fire Protection | canonical: True
+-- ID: 14922 | ref_number: 3C.33 Note 1 -> Standard Instrument | canonical: True
+-- ID: 14923 | ref_number: 3C.33 Note 2 -> 3C.32 and 3C.33 | canonical: True
+-- ID: 14924 | ref_number: 3C.34 Note 1 -> Standard Instrument | canonical: True
+-- ID: 14925 | ref_number: 3C.34 Note 2 -> section 68 of the Local Government Act 1993 | canonical: True
+-- ID: 14926 | ref_number: 3C.34 Note 2 -> development control plan | canonical: True
+-- ID: 14927 | ref_number: 3C.35 Note 1 -> clause 1.5 | canonical: True
+-- ID: 14928 | ref_number: 3C.35 Note 2 -> Act | canonical: True
+-- ID: 14929 | ref_number: (2) -> section 124 of the Local Government Act | canonical: True
+-- ID: 14952 | ref_number: Complying Development Certificates -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 14953 | ref_number: Clauses 2.67 and 2.68 -> Scaffolding, hoardings, temporary construction site fences | canonical: True
+-- ID: 14997 | ref_number: Section 178 -> Section 180(2) or (3) | canonical: True
+-- ID: 15034 | ref_number: 3C.5 -> 1.19A | canonical: True
+-- ID: 15035 | ref_number: 3C.5 -> Standard Instrument | canonical: True
+-- ID: 15036 | ref_number: 3C.6 -> Flood Risk Management Manual | canonical: True
+-- ID: 15037 | ref_number: 3C.11 (2) -> 3C.11 (4) | canonical: True
+-- ID: 15038 | ref_number: Clause 3C.11 -> Clause 1.5 | canonical: True
+-- ID: 15065 | ref_number: Section 85(1) -> Schedule 4 | canonical: True
+-- ID: 15066 | ref_number: Section 87(1)(a) -> Chapter 5, Chapter 6 | canonical: True
+-- ID: 15067 | ref_number: Section 86(2) -> another environmental planning instrument | canonical: True
+-- ID: 15099 | ref_number: Chapter 4 -> State Environmental Planning Policy (Precincts—Regional) 2021, Chapter 4 | canonical: True
+-- ID: 15100 | ref_number: 145 -> Environmental Planning and Assessment Regulation 2021, section 102(1) | canonical: True
+-- ID: 15101 | ref_number: Section 148 -> Act, s 4.15 | canonical: True
+-- ID: 15102 | ref_number: Section 148(2)(a) -> Part 3J of the Apartment Design Guide | canonical: True
+-- ID: 15103 | ref_number: Section 148(2)(b) -> Part 4D of the Apartment Design Guide | canonical: True
+-- ID: 15104 | ref_number: Section 148(2)(c) -> Part 4C of the Apartment Design Guide | canonical: True
+-- ID: 15105 | ref_number: Section 149 -> development control plan | canonical: True
+-- ID: 15106 | ref_number: Apartment Design Guide -> development control plan | canonical: True
+-- ID: 15149 | ref_number: 3BA.14(1) -> “Terraces 04 by Other Architects x NMBW” | canonical: True
+-- ID: 15150 | ref_number: 3BA.14(2) -> 3BA.14(1) | canonical: True
+-- ID: 15151 | ref_number: 3BA.14(3) -> 3BA.6(a) | canonical: True
+-- ID: 15152 | ref_number: Note -> Clauses 1.17A, 1.18 and 1.19 | canonical: True
+-- ID: 15153 | ref_number: Note 1 -> Clause 1.18(1)(b) | canonical: True
+-- ID: 15154 | ref_number: Clause 1.18(1)(c) -> Building Code of Australia | canonical: True
+-- ID: 15155 | ref_number: Clause 136A (Environmental Planning and Assessment Regulation 2000) -> Building Code of Australia | canonical: True
+-- ID: 15156 | ref_number: 3C.2 -> Standard Instrument | canonical: True
+-- ID: 15157 | ref_number: 3C.2 Note 4 -> Clauses 1.17A, 1.18 and 1.19(1), Schedule 6 | canonical: True
+-- ID: 15174 | ref_number: Clause 23 (1) (a) -> AS/NZS 4282:2019 | canonical: True
+-- ID: 15175 | ref_number: Clause 23 (2) -> AS/NZS 1158.0:2005, AS/NZS 1158.1.1:2005, AS/NZS 1158.1.2:2010, AS/NZS 1158.2:2020, AS/NZS 1158.3.1:2020, AS/NZS 1158.4:2015, AS/NZS 1158.5:2014 | canonical: True
+-- ID: 15176 | ref_number: Clause 24 (2) -> existing development consent | canonical: True
+-- ID: 15217 | ref_number: 5A.8 -> Another environmental planning instrument | canonical: True
+-- ID: 15218 | ref_number: 5A.9 -> Another environmental planning instrument | canonical: True
+-- ID: 15219 | ref_number: 5A.10 -> Another environmental planning instrument | canonical: True
+-- ID: 15220 | ref_number: 5A.10(7) -> Development control plan | canonical: True
+-- ID: 15221 | ref_number: 5A.11(1)(d) -> Another environmental planning instrument | canonical: True
+-- ID: 15222 | ref_number: 5A.16(2) -> 5A.11(1) | canonical: True
+-- ID: 15256 | ref_number: Chapter 5 -> Other environmental planning instruments | canonical: True
+-- ID: 15257 | ref_number: Section 158 -> Other environmental planning instruments | canonical: True
+-- ID: 15258 | ref_number: Section 160(5) -> Other environmental planning instruments | canonical: True
+-- ID: 15286 | ref_number: Clause 14 -> Complying Development Certificate Plans and Specifications | canonical: True
+-- ID: 15287 | ref_number: Clause 16 -> Protection of the Environment Operations Act 1997, Part 3 of Schedule 1 | canonical: True
+-- ID: 15288 | ref_number: Clause 16 -> Protection of the Environment Operations (Waste) Regulation 2014 | canonical: True
+-- ID: 15289 | ref_number: Clause 16 -> Excavation Work: Code of Practice (ISBN 978-0-642-78544-2) | canonical: True
+-- ID: 15290 | ref_number: Clause 17 -> Local Government Act 1993 | canonical: True
+-- ID: 15291 | ref_number: Clause 18 -> Building Code of Australia and AS 1926.1—2012 | canonical: True
+-- ID: 15292 | ref_number: Clause 19 -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 15293 | ref_number: Clause 20 -> Heritage Act 1977 | canonical: True
+-- ID: 15294 | ref_number: Clause 21 -> National Parks and Wildlife Act 1974, section 89A | canonical: True
+-- ID: 15309 | ref_number: Clause 8.8 -> Schedule 10 | canonical: True
+-- ID: 15310 | ref_number: Clause 9.2(5) -> Flood Risk Management Manual | canonical: True
+-- ID: 15311 | ref_number: Clause 9.3A -> environmental planning instrument | canonical: True
+-- ID: 15369 | ref_number: Clause 6.34 -> Development Control Plan | canonical: True
+-- ID: 15382 | ref_number: 3B.60 -> clause 1.5 | canonical: True
+-- ID: 15383 | ref_number: 3B.60 -> Act | canonical: True
+-- ID: 15384 | ref_number: 3B.61 -> clause 1.5 | canonical: True
+-- ID: 15385 | ref_number: 3B.61 -> Standard Instrument | canonical: True
+-- ID: 15386 | ref_number: 3B.61 -> Act | canonical: True
+-- ID: 15408 | ref_number: 8.2.23 -> 8.3 | canonical: True
+-- ID: 15409 | ref_number: 8.2.23 -> 8.5 | canonical: True
+-- ID: 15410 | ref_number: 8.2.24 -> 8.3 | canonical: True
+-- ID: 15411 | ref_number: 8.2.24 -> 8.5 | canonical: True
+-- ID: 15439 | ref_number: Part 5B Container Recycling Facilities Code -> Act, Environmental Planning and Assessment Regulation 2000, various State environmental planning policies, Protection of the Environment Operations Act 1997, the Roads Act 1993 and Acts applying to various infrastructure authorities | canonical: True
+-- ID: 15440 | ref_number: Subclauses (1)-(5) -> Clause 5B.5 | canonical: True
+-- ID: 15486 | ref_number: Section 106 -> Section 97(2) | canonical: True
+-- ID: 15487 | ref_number: Section 107 -> Act, s 4.15 | canonical: True
+-- ID: 15488 | ref_number: Section 107 Note -> Act, section 4.15(3) | canonical: True
+-- ID: 15489 | ref_number: Section 108B(2) -> State Environmental Planning Policy (Transport and Infrastructure) 2021, sections 2.15 and 2.17 | canonical: True
+-- ID: 15519 | ref_number: 9.13(1)(m) -> 3D.61 | canonical: True
+-- ID: 15520 | ref_number: 9.13(1) -> 9.8(c) | canonical: True
+-- ID: 15538 | ref_number: Complying Development Certificate -> Schedule 7 | canonical: True
+-- ID: 15539 | ref_number: This Code -> Act, Environmental Planning and Assessment Regulation 2000, State environmental planning policies, Protection of the Environment Operations Act 1997, Roads Act 1993, Swimming Pools Act 1992, Disability (Access to Premises—Buildings) Standards | canonical: True
+-- ID: 15540 | ref_number: 4A.8 (Development standards) -> AS/NZS 1170.0:2002, AS/NZS 1170.1:2002, AS/NZS 1170.2:2011 | canonical: True
+-- ID: 15541 | ref_number: 4A.9 (Specified development) -> Part 23 | canonical: True
+-- ID: 15564 | ref_number: 8.2.21 -> 8.3 | canonical: True
+-- ID: 15565 | ref_number: 8.2.21 -> 8.4 | canonical: True
+-- ID: 15566 | ref_number: 8.2.21 -> 8.5 | canonical: True
+-- ID: 15567 | ref_number: 8.2.22 -> 8.3 | canonical: True
+-- ID: 15568 | ref_number: 8.2.22 -> 8.5 | canonical: True
+-- ID: 15598 | ref_number: 3B.62 -> Schedule 6A | canonical: True
+-- ID: 15599 | ref_number: 3BA.3 -> State Environmental Planning Policy (Housing) 2021, Chapter 6 | canonical: True
+-- ID: 15600 | ref_number: 3BA.3 (2)-(6) -> specified patterns (e.g., “Semis 01 by Anthony Gill Architects”) | canonical: True
+-- ID: 15629 | ref_number: Clause 6.1 (3) -> Acid Sulfate Soils Manual | canonical: True
+-- ID: 15630 | ref_number: Clause 6.1 (4)(a) -> Acid Sulfate Soils Manual | canonical: True
+-- ID: 15631 | ref_number: Clause 6.2 (2)(a)(ii) -> another applicable environmental planning instrument | canonical: True
+-- ID: 15632 | ref_number: Clause 6.5 -> Foreshore Building Line Map | canonical: True
+-- ID: 15633 | ref_number: Clause 6.7 -> Airports Act 1996 of the Commonwealth, Part 12 | canonical: True
+-- ID: 15659 | ref_number: Complying Development Certificate -> Schedule 6 | canonical: True
+-- ID: 15660 | ref_number: This Code -> Act, Environmental Planning and Assessment Regulation 2000, various State environmental planning policies, Protection of the Environment Operations Act 1997, Roads Act 1993, Swimming Pools Act 1992 and Acts applying to various infrastructure authorities | canonical: True
+-- ID: 15661 | ref_number: Clause 4.1 -> General Exempt Development Code | canonical: True
+-- ID: 15662 | ref_number: 4.4 (d) -> 4.4 (2) | canonical: True
+-- ID: 15663 | ref_number: 4.4B (f) -> environmental planning instrument | canonical: True
+-- ID: 15699 | ref_number: Clause 4(1) -> Schedule 10 | canonical: True
+-- ID: 15700 | ref_number: Clause 4(2) -> standard instrument | canonical: True
+-- ID: 15701 | ref_number: Clause 4(3) -> Zones E1, E2, E3, MU1 and SP5 | canonical: True
+-- ID: 15702 | ref_number: Clause 5 -> Codes SEPP, section 1.6 | canonical: True
+-- ID: 15703 | ref_number: Schedule 8 -> State Environmental Planning Policy No 36—Manufactured Home Estates | canonical: True
+-- ID: 15704 | ref_number: Schedule 8 -> State Environmental Planning Policy No 21—Caravan Parks | canonical: True
+-- ID: 15705 | ref_number: Section 12 -> Interpretation Act 1987, section 30A | canonical: True
+-- ID: 15728 | ref_number: Section 8.2.5 -> Petersham North Heritage Conservation Area (HCA 3) | canonical: True
+-- ID: 15729 | ref_number: 8.2.6 -> 8.3 | canonical: True
+-- ID: 15730 | ref_number: 8.2.6 -> 8.5 | canonical: True
+-- ID: 15812 | ref_number: Complying development under this Policy -> conditions specified in this Policy | canonical: True
+-- ID: 15813 | ref_number: Development -> AS 2021:2015 | canonical: True
+-- ID: 15814 | ref_number: Paragraph (h) -> clause 3.33 | canonical: True
+-- ID: 15815 | ref_number: Clause 1.19A(3) -> Planning for Bush Fire Protection | canonical: True
+-- ID: 15816 | ref_number: Clause 1.19A(5) -> Planning for Bush Fire Protection | canonical: True
+-- ID: 15817 | ref_number: Clause 1.20(1) -> Act | canonical: True
+-- ID: 15847 | ref_number: 1.4(2)(a) -> State Environmental Planning Policy (Precincts—Regional) 2021, Chapter 4 | canonical: True
+-- ID: 15848 | ref_number: 1.4(2)(b) -> State Environmental Planning Policy (Precincts—Western Parkland City) 2021, Chapter 7 | canonical: True
+-- ID: 15849 | ref_number: 1.4A -> State Environmental Planning Policy (Housing) 2021, Chapter 2, Part 3 | canonical: True
+-- ID: 15850 | ref_number: annexe -> Local Government (Manufactured Home Estates, Caravan Parks, Camping Grounds and Moveable Dwellings) Regulation 2021 | canonical: True
+-- ID: 15851 | ref_number: campervan -> Local Government (Manufactured Home Estates, Caravan Parks, Camping Grounds and Moveable Dwellings) Regulation 2021 | canonical: True
+-- ID: 15852 | ref_number: caravan -> Local Government (Manufactured Home Estates, Caravan Parks, Camping Grounds and Moveable Dwellings) Regulation 2021 | canonical: True
+-- ID: 15853 | ref_number: class -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 15854 | ref_number: collection point -> Part 5 of the Waste Avoidance and Resource Recovery Act 2001 | canonical: True
+-- ID: 15881 | ref_number: 8.2.25 -> 8.3 | canonical: True
+-- ID: 15882 | ref_number: 8.2.25 -> 8.5 | canonical: True
+-- ID: 15883 | ref_number: 8.2.26 -> 8.3 | canonical: True
+-- ID: 15884 | ref_number: 8.2.26 -> 8.5 | canonical: True
+-- ID: 15906 | ref_number: complying development certificate -> Schedule 6 | canonical: True
+-- ID: 15907 | ref_number: Clause 3B.5 -> Flood Risk Management Manual | canonical: True
+-- ID: 15908 | ref_number: Clause 3B.5 -> Development Control Plan (DCP) | canonical: True
+-- ID: 15909 | ref_number: Note 2 -> Standard Instrument | canonical: True
+-- ID: 15910 | ref_number: Note 1 -> Clause 1.5 | canonical: True
+-- ID: 15931 | ref_number: Section 122, Clause 1 -> Coastline Management Manual (NSW Government, September 1990) | canonical: True
+-- ID: 15932 | ref_number: Section 122, Clause 2 -> Flood Risk Management Manual | canonical: True
+-- ID: 15933 | ref_number: Section 122, Clause 5 -> Environmental planning instruments and planning strategies | canonical: True
+-- ID: 15934 | ref_number: Section 122, Clause 6 -> Environmental planning instruments | canonical: True
+-- ID: 15935 | ref_number: Section 122, Clause 7 -> Coastal Urban Planning Strategies and Residential Strategies | canonical: True
+-- ID: 15936 | ref_number: Section 122, Clause 8 -> Urban development strategies for the ACT and sub-region | canonical: True
+-- ID: 15937 | ref_number: Section 122, Clause 9 -> Murray Regional Environmental Plan No 2—Riverine Land | canonical: True
+-- ID: 15938 | ref_number: Section 8 -> State Environmental Planning Policy Amendment (Housing) 2023 | canonical: True
+-- ID: 15939 | ref_number: Section 10(1) -> Sections 30, 38(2)(a), 43A, 96(2) and 108C | canonical: True
+-- ID: 15971 | ref_number: Clause 10 (1) -> Protection of the Environment Operations (Waste) Regulation 2005 | canonical: True
+-- ID: 15972 | ref_number: Clause 10 (2) -> Excavation Work: Code of Practice (ISBN 978-0-642-785442) | canonical: True
+-- ID: 15973 | ref_number: Clause 11 (2) -> Local Government Act 1993 | canonical: True
+-- ID: 15974 | ref_number: Clause 11A -> Building Code of Australia and AS 1926.1—2012 | canonical: True
+-- ID: 15975 | ref_number: Clause 11B -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 15976 | ref_number: Clause 12 -> Heritage Act 1977 | canonical: True
+-- ID: 15977 | ref_number: Clause 13 -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 15978 | ref_number: Schedule 6A Note 1 -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 15979 | ref_number: Schedule 6A Note 2 -> Environmental Planning and Assessment Regulation 2000, Division 2A of Part 7 | canonical: True
+-- ID: 15980 | ref_number: Schedule 6A Note 5 -> section 86A of the Act | canonical: True
+-- ID: 15981 | ref_number: Clause 1 -> section 7.11 or 7.12 of the Act | canonical: True
+-- ID: 15982 | ref_number: Clause 3 -> Local Government Act 1993 | canonical: True
+-- ID: 15983 | ref_number: Clause 7 -> AS 4970—2009, Protection of trees on development sites | canonical: True
+-- ID: 15997 | ref_number: Clause 2.128 -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 15998 | ref_number: Clause 2.131 -> Liquor Act 2007 (sections 49, 49A) | canonical: True
+-- ID: 15999 | ref_number: Clause 2.131B -> Liquor Act 2007 (sections 14(2)(b), 18(2)(b), 25(5), 50(2)(b)) | canonical: True
+-- ID: 16000 | ref_number: Clause 2.130 -> Development Consent | canonical: True
+-- ID: 16001 | ref_number: Clause 2.131 -> Development Consent | canonical: True
+-- ID: 16002 | ref_number: Clause 2.131B -> Development Consent | canonical: True
+-- ID: 16003 | ref_number: Note 1 -> Clause 1.18(1)(b) | canonical: True
+-- ID: 16004 | ref_number: Note 3 -> various Acts and Regulations | canonical: True
+-- ID: 16046 | ref_number: Section 29 -> Section 24(2) | canonical: True
+-- ID: 16047 | ref_number: Section 29 -> Section 25(1) | canonical: True
+-- ID: 16048 | ref_number: Section 29 -> Section 25(2) | canonical: True
+-- ID: 16049 | ref_number: Section 29 -> State Environmental Planning Policy (Transport and Infrastructure) 2021, sections 2.15 and 2.17 | canonical: True
+-- ID: 16050 | ref_number: Section 38 -> Section 74(2)(d) and (e) | canonical: True
+-- ID: 16067 | ref_number: Section 8.2.10 -> Cardigan Street Heritage Conservation Area (HCA 8) | canonical: True
+-- ID: 16068 | ref_number: DCP -> HCA 9 | canonical: True
+-- ID: 16096 | ref_number: 8.2.12 -> 8.3 | canonical: True
+-- ID: 16097 | ref_number: 8.2.12 -> 8.5 | canonical: True
+-- ID: 16098 | ref_number: Section 8.2.13 of the DCP -> North Kingston Estate Heritage Conservation Area (HCA 11) | canonical: True
+-- ID: 16133 | ref_number: Section 8.2.17 of the DCP -> Holmwood Estate Heritage Conservation Area (HCA 15) | canonical: True
+-- ID: 16228 | ref_number: Clause 3A.37 -> Clause 1.19A | canonical: True
+-- ID: 16229 | ref_number: Clause 3A.37 -> Building Code of Australia | canonical: True
+-- ID: 16230 | ref_number: Clause 3A.38 -> Flood Risk Management Manual | canonical: True
+-- ID: 16253 | ref_number: Section 17 -> Section 16 | canonical: True
+-- ID: 16254 | ref_number: Section 17(4) -> Section 16(3) | canonical: True
+-- ID: 16255 | ref_number: Section 18 -> Section 16 | canonical: True
+-- ID: 16256 | ref_number: Section 19 -> Act, s 4.15 | canonical: True
+-- ID: 16257 | ref_number: Section 19(2)(g) -> Apartment Design Guide | canonical: True
+-- ID: 16258 | ref_number: Section 19(2)(h) -> Low Rise Housing Diversity Design Guide | canonical: True
+-- ID: 16259 | ref_number: Section 20 -> Low Rise Housing Diversity Design Guide | canonical: True
+-- ID: 16260 | ref_number: Section 21 -> Section 16, 17, 18 | canonical: True
+-- ID: 16290 | ref_number: Clause 53 -> Act, section 4.15 | canonical: True
+-- ID: 16291 | ref_number: Clause 54(2) -> Codes SEPP, clauses 1.17A and 1.18(1) and (2) | canonical: True
+-- ID: 16292 | ref_number: Clause 54(2) -> Codes SEPP, clause 1.19(1) | canonical: True
+-- ID: 16293 | ref_number: Clause 54(3) -> Codes SEPP | canonical: True
+-- ID: 16294 | ref_number: Clause 55 -> Codes SEPP | canonical: True
+-- ID: 16309 | ref_number: 2.74B (g) -> AS 1657:2018 | canonical: True
+-- ID: 16333 | ref_number: DCP -> HCA 26 | canonical: True
+-- ID: 16360 | ref_number: 8.2.34 -> 8.3 | canonical: True
+-- ID: 16361 | ref_number: 8.2.34 -> 8.5 | canonical: True
+-- ID: 16362 | ref_number: DCP -> Wells Avenue Heritage Conservation Area (HCA 33) | canonical: True
+-- ID: 16432 | ref_number: Schedule 2A -> Building Code of Australia | canonical: True
+-- ID: 16433 | ref_number: Schedule 3 -> State Environmental Planning Policy (Resilience and Hazards) 2021, Chapter 2 | canonical: True
+-- ID: 16434 | ref_number: Schedule 3 -> Biodiversity Conservation Act 2016, section 3.1 | canonical: True
+-- ID: 16435 | ref_number: Schedule 3 -> Biodiversity Conservation Regulation 2017, section 7.3 | canonical: True
+-- ID: 16436 | ref_number: Clause 2(3) -> AS 1428.1 | canonical: True
+-- ID: 16437 | ref_number: Clause 4(1) -> Building Code of Australia | canonical: True
+-- ID: 16438 | ref_number: Clause 4(2) -> AS/NZS 2890.6 | canonical: True
+-- ID: 16439 | ref_number: Clause 5(1) -> AS 1428.1 | canonical: True
+-- ID: 16440 | ref_number: Clause 6(1) -> AS 1428.1 | canonical: True
+-- ID: 16441 | ref_number: Clause 6(3) -> AS 1428.1 | canonical: True
+-- ID: 16442 | ref_number: 9 (2)(a)(ii) -> AS 1428.1 | canonical: True
+-- ID: 16443 | ref_number: 9 (2)(c) -> AS 1428.1 | canonical: True
+-- ID: 16444 | ref_number: 9 (2)(d) -> AS 4586—2013 | canonical: True
+-- ID: 16445 | ref_number: 9 (2)(e) -> AS 1428.1 | canonical: True
+-- ID: 16446 | ref_number: 10 -> Building Code of Australia | canonical: True
+-- ID: 16447 | ref_number: 10 -> SA HB 198:2014 | canonical: True
+-- ID: 16448 | ref_number: 11 (1) -> AS 1428.1 | canonical: True
+-- ID: 16449 | ref_number: 12 (1)(a) -> AS 1428.1 | canonical: True
+-- ID: 16450 | ref_number: 12 (1)(b) -> AS 1428.1 | canonical: True
+-- ID: 16451 | ref_number: 13 (2)(c)(i) -> AS 1735.12:2020 | canonical: True
+-- ID: 16452 | ref_number: 13 (2)(c)(ii) -> AS 1735.15:2021 | canonical: True
+-- ID: 16509 | ref_number: Clause 5.1 -> section 3.15 of the Act | canonical: True
+-- ID: 16510 | ref_number: Clause 5.1 -> Land Acquisition (Just Terms Compensation) Act 1991 | canonical: True
+-- ID: 16511 | ref_number: Clause 5.1 -> section 23 of the Land Acquisition (Just Terms Compensation) Act 1991 | canonical: True
+-- ID: 16512 | ref_number: Clause 5.2 -> Part 2 of Chapter 6 of the Local Government Act 1993 | canonical: True
+-- ID: 16513 | ref_number: Clause 5.2 -> section 31, 32 or 33 of the Local Government Act 1993 | canonical: True
+-- ID: 16514 | ref_number: Clause 5.2 -> section 30 of the Local Government Act 1993 | canonical: True
+-- ID: 16515 | ref_number: Clause 5.2 -> Schedule 4 | canonical: True
+-- ID: 16516 | ref_number: Clause 5.1A -> Clause 5.1 | canonical: True
+-- ID: 16517 | ref_number: Clause 5.2(5) -> section 30(2) of the Local Government Act 1993 | canonical: True
+-- ID: 16546 | ref_number: 8.2.15 -> Figure 1 | canonical: True
+-- ID: 16547 | ref_number: 8.2.14.6 -> 8.3 | canonical: True
+-- ID: 16548 | ref_number: 8.2.14.6 -> 8.5 | canonical: True
+-- ID: 16609 | ref_number: This Plan -> relevant standard environmental planning instrument under section 3.20 of the Act | canonical: True
+-- ID: 16610 | ref_number: This Plan -> State environmental planning policy (section 3.28 of the Act) | canonical: True
+-- ID: 16611 | ref_number: Clause 1.3(1B) -> State Environmental Planning Policy (Precincts—Eastern Harbour City) 2021, Appendix 8 | canonical: True
+-- ID: 16646 | ref_number: Section 8.2.3 -> Figure 1 | canonical: True
+-- ID: 16674 | ref_number: DCP -> Hoskins Park & Environs Heritage Conservation Area (HCA 36) | canonical: True
+-- ID: 16675 | ref_number: 8.2.38.6 -> 8.3 | canonical: True
+-- ID: 16676 | ref_number: 8.2.38.6 -> 8.5 | canonical: True
+-- ID: 16704 | ref_number: DCP -> HCA 28 | canonical: True
+-- ID: 16705 | ref_number: Section 8.2.31 of the DCP -> South Dulwich Hill Heritage Conservation Area (HCA 29) | canonical: True
+-- ID: 16706 | ref_number: 8.2.31.6 -> 8.3 | canonical: True
+-- ID: 16707 | ref_number: 8.2.31.6 -> 8.4 | canonical: True
+-- ID: 16708 | ref_number: 8.2.31.6 -> 8.5 | canonical: True
+-- ID: 16729 | ref_number: Clause 3D.34 -> Clause 1.5 | canonical: True
+-- ID: 16730 | ref_number: Clause 3D.34 -> Standard Instrument | canonical: True
+-- ID: 16731 | ref_number: Clause 3D.34 -> Act | canonical: True
+-- ID: 16732 | ref_number: Clause 3D.34 -> Clause 3D.37 | canonical: True
+-- ID: 16733 | ref_number: Clause 3D.35 -> Clause 1.5 | canonical: True
+-- ID: 16734 | ref_number: Clause 3D.35 -> Standard Instrument | canonical: True
+-- ID: 16766 | ref_number: Schedule 6 -> Clause 9 of Schedule 6 | canonical: True
+-- ID: 16767 | ref_number: Tree Planting Condition -> Part 2 of Schedule 6 | canonical: True
+-- ID: 16768 | ref_number: 3D.6 (2)(d)(i) -> AS/NZS 1596:2014 | canonical: True
+-- ID: 16769 | ref_number: 3D.6 -> 1.19A | canonical: True
+-- ID: 16770 | ref_number: 3D.6 -> Standard Instrument | canonical: True
+-- ID: 16771 | ref_number: 3D.5 -> 1.5 | canonical: True
+-- ID: 16820 | ref_number: 8.2.7 -> 8.4 | canonical: True
+-- ID: 16821 | ref_number: 8.2.7 -> 8.5 | canonical: True
+-- ID: 16829 | ref_number: 5A.6M (2)(a) -> Building Code of Australia, Volume 1, B1P1 and B1P2 | canonical: True
+-- ID: 16830 | ref_number: 5A.6N (3)(e) -> Better Practice Guidelines for Waste Management and Recycling in Commercial and Industrial Facilities | canonical: True
+-- ID: 16868 | ref_number: 3B.8(1) -> State Environmental Planning Policy (Housing) 2021, Chapter 6, Part 2, Division 2 | canonical: True
+-- ID: 16869 | ref_number: 3B.8(1A) -> State Environmental Planning Policy (Housing) 2021 | canonical: True
+-- ID: 16870 | ref_number: Clause 3B.12 -> Clause 3B.11 | canonical: True
+-- ID: 16871 | ref_number: Clause 3B.12(1), (2) -> Clause 3B.11(4) and (5) | canonical: True
+-- ID: 16872 | ref_number: Clause 3B.12(3) -> Clause 3B.11(1), (3), (6), (8) and (9) | canonical: True
+-- ID: 16873 | ref_number: Clause 3B.18 -> AS/NZS 2890.1:2004 | canonical: True
+-- ID: 16928 | ref_number: external combustible cladding -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 16929 | ref_number: flame zone (BAL-FZ) -> AS 3959:2018, Construction of buildings in bushfire-prone areas | canonical: True
+-- ID: 16930 | ref_number: environmentally sensitive area -> State Environmental Planning Policy (Resilience and Hazards) 2021 | canonical: True
+-- ID: 16931 | ref_number: environmentally sensitive area -> Coastal Wetlands and Littoral Rainforests Area Map | canonical: True
+-- ID: 16932 | ref_number: environmentally sensitive area -> Fisheries Management Act 1994 | canonical: True
+-- ID: 16933 | ref_number: environmentally sensitive area -> Marine Parks Act 1997 | canonical: True
+-- ID: 16934 | ref_number: environmentally sensitive area -> Ramsar Convention on Wetlands | canonical: True
+-- ID: 16935 | ref_number: environmentally sensitive area -> World Heritage Convention | canonical: True
+-- ID: 16936 | ref_number: environmentally sensitive area -> National Parks and Wildlife Act 1974 | canonical: True
+-- ID: 16937 | ref_number: environmentally sensitive area -> Crown Land Management Act 2016 | canonical: True
+-- ID: 16938 | ref_number: environmentally sensitive area -> Threatened Species Conservation Act 1995 | canonical: True
+-- ID: 16939 | ref_number: dwelling house definition -> this Policy | canonical: True
+-- ID: 16940 | ref_number: gross floor area -> Standard Instrument | canonical: True
+-- ID: 16941 | ref_number: habitable room -> Building Code of Australia | canonical: True
+-- ID: 16942 | ref_number: high hazard area -> Flood Risk Management Manual | canonical: True
+-- ID: 16943 | ref_number: high risk area -> Flood Risk Management Manual | canonical: True
+-- ID: 16944 | ref_number: human waste storage facility -> Local Government Act 1993 | canonical: True
+-- ID: 16945 | ref_number: industry -> Standard Instrument | canonical: True
+-- ID: 16946 | ref_number: outbuilding -> Building Code of Australia | canonical: True
+-- ID: 16947 | ref_number: professional engineer -> Building Code of Australia | canonical: True
+-- ID: 16948 | ref_number: reverse vending machine -> Part 5 of the Waste Avoidance and Resource Recovery Act 2001 | canonical: True
+-- ID: 16949 | ref_number: significantly contaminated land -> Contaminated Land Management Act 1997 | canonical: True
+-- ID: 16950 | ref_number: Standard Instrument -> standard local environmental planning instrument prescribed by the Standard Instrument (Local Environmental Plans) Order 2006 | canonical: True
+-- ID: 16988 | ref_number: Clause (5), (6), (7), (8) -> Clause 1.5 | canonical: True
+-- ID: 16989 | ref_number: 3B.26 -> 3B.29 | canonical: True
+-- ID: 16990 | ref_number: various clauses -> Standard Instrument | canonical: True
+-- ID: 16991 | ref_number: 3B.27(5) -> 3B.27(1),(2),(3),(4) | canonical: True
+-- ID: 16992 | ref_number: Clause 3B.30 (4) -> AS/NZS 2890.1:2004 | canonical: True
+-- ID: 16993 | ref_number: Note 2 -> Standard Instrument | canonical: True
+-- ID: 16994 | ref_number: Note 1 -> clause 1.5 | canonical: True
+-- ID: 17042 | ref_number: Clause 3B.54 -> Clause 3B.52 | canonical: True
+-- ID: 17043 | ref_number: Subclause (3) -> Subclause (2) | canonical: True
+-- ID: 17044 | ref_number: Subclause (6) -> Subclause (5) | canonical: True
+-- ID: 17045 | ref_number: Subclause (4), (6) -> Environmental Planning and Assessment Regulation 2000, clause 126(4) | canonical: True
+-- ID: 17046 | ref_number: Subclause (8) -> table to this subclause | canonical: True
+-- ID: 17047 | ref_number: 3B.56 (2) -> Local Government Act 1993 | canonical: True
+-- ID: 17094 | ref_number: Clause 3B.37 -> Clause 3B.36 | canonical: True
+-- ID: 17095 | ref_number: Clause 3B.37(1-3) -> Clause 3B.36(4) and (5) | canonical: True
+-- ID: 17096 | ref_number: Clause 3B.37(3) -> Clause 3B.36(1), (3), (6), (7) and (8) | canonical: True
+-- ID: 17097 | ref_number: Clause 3B.37(4) -> Clause 3B.36(5) | canonical: True
+-- ID: 17098 | ref_number: Clause 3B.37(5) -> Clause 3B.36 | canonical: True
+-- ID: 17099 | ref_number: Clause 3B.40 -> Clause 1.5 | canonical: True
+-- ID: 17100 | ref_number: Clause 3B.40 -> Standard Instrument | canonical: True
+-- ID: 17101 | ref_number: Clause 3B.41 -> Clause 1.5 | canonical: True
+-- ID: 17131 | ref_number: Clause (4) -> Clause (5) | canonical: True
+-- ID: 17132 | ref_number: Clause (4) -> Clause (6) | canonical: True
+-- ID: 17133 | ref_number: Clause (7) -> Heritage Act 1977 | canonical: True
+-- ID: 17134 | ref_number: Clause (10) -> Heritage Management Document | canonical: True
+-- ID: 17135 | ref_number: Clause 5.21 -> Considering Flooding in Land Use Planning Guideline | canonical: True
+-- ID: 17136 | ref_number: Clause 5.21 -> Flood Risk Management Manual | canonical: True
+-- ID: 17137 | ref_number: Clause 5.22 -> Considering Flooding in Land Use Planning Guideline | canonical: True
+-- ID: 17138 | ref_number: Clause 5.22 -> Flood Risk Management Manual | canonical: True
+-- ID: 17139 | ref_number: Clause 5.22(5) -> Clause 5.21(5) | canonical: True
+-- ID: 17175 | ref_number: Definition of site area -> Clause 4.5 | canonical: True
+-- ID: 17176 | ref_number: Definition of small bar -> Liquor Act 2007 | canonical: True
+-- ID: 17177 | ref_number: Definition of spa pool -> Swimming Pools Act 1992 | canonical: True
+-- ID: 17178 | ref_number: swimming pool -> Swimming Pools Act 1992 | canonical: True
+-- ID: 17179 | ref_number: temporary structure -> the Act | canonical: True
+-- ID: 17180 | ref_number: the Act -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 17181 | ref_number: water recycling facility -> sewerage system | canonical: True
+-- ID: 17182 | ref_number: water reticulation systems -> water supply system | canonical: True
+-- ID: 17183 | ref_number: water storage facilities -> water supply system | canonical: True
+-- ID: 17184 | ref_number: water treatment facilities -> water supply system | canonical: True
+-- ID: 17257 | ref_number: Clause 1.6 -> Section 3.20(2) of the Act | canonical: True
+-- ID: 17258 | ref_number: Clause 1.6(1A) -> Warringah Local Environmental Plan 2011 | canonical: True
+-- ID: 17259 | ref_number: Clause 1.6(1C) -> Clause 4 of Schedule 1 to the Act | canonical: True
+-- ID: 17260 | ref_number: Clause 1.6(1C) -> section 66 of the Act | canonical: True
+-- ID: 17261 | ref_number: Clause 1.6(1C) -> clause 12 of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17262 | ref_number: Clause 1.8 -> State Environmental Planning Policy (Transport and Infrastructure) 2021, Chapter 2 | canonical: True
+-- ID: 17263 | ref_number: Clause 1.8 -> State Environmental Planning Policy (Resources and Energy) 2021, Chapter 2 | canonical: True
+-- ID: 17264 | ref_number: Clause 1.8 -> State Environmental Planning Policy (Housing) 2021 | canonical: True
+-- ID: 17265 | ref_number: Clause 1.8 -> State Environmental Planning Policy (Port Botany and Port Kembla) 2013 | canonical: True
+-- ID: 17266 | ref_number: Clause 1.8 -> State Environmental Planning Policy (Transport and Infrastructure) 2021 | canonical: True
+-- ID: 17267 | ref_number: this Policy -> local environmental plans (LEPs) and development control plans (DCPs) | canonical: True
+-- ID: 17268 | ref_number: this Policy -> section 3.20(2) of the Act | canonical: True
+-- ID: 17269 | ref_number: this Policy -> Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17270 | ref_number: subclause (1) -> Bathurst Regional Local Environmental Plan 2014 | canonical: True
+-- ID: 17271 | ref_number: subclause (4) -> non-standard plans in Kiama or Wyong | canonical: True
+-- ID: 17272 | ref_number: subclause (7) -> non-standard plans in Kiama or Wyong | canonical: True
+-- ID: 17273 | ref_number: (3) -> an environmental planning instrument | canonical: True
+-- ID: 17274 | ref_number: (4) -> State Environmental Planning Policy Amendment (Planning for Bush Fire Protection) 2020 | canonical: True
+-- ID: 17275 | ref_number: (5) -> State Environmental Planning Policy (Exempt and Complying Development Codes) Amendment 2021 | canonical: True
+-- ID: 17276 | ref_number: (6) -> State Environmental Planning Policy (Exempt and Complying Development Codes) Amendment (Agritourism) 2022 | canonical: True
+-- ID: 17277 | ref_number: (7) -> State Environmental Planning Policy Amendment (National Construction Code) 2023 | canonical: True
+-- ID: 17278 | ref_number: (8) -> State Environmental Planning Policy Amendment (Flood Planning) 2023 | canonical: True
+-- ID: 17298 | ref_number: 2.91(g) -> AS/NZS 1170.0:2002, AS/NZS 1170.2:2011 | canonical: True
+-- ID: 17299 | ref_number: 2.91(h)(iii) -> AS/NZS 4282:2019 | canonical: True
+-- ID: 17300 | ref_number: 2.93(g)(iii) -> AS/NZS 4282:2019 | canonical: True
+-- ID: 17301 | ref_number: 2.99(b) -> AS/NZS 1170.0:2002, AS/NZS 1170.2:2011 | canonical: True
+-- ID: 17302 | ref_number: 2.105 (1)(b)(iii) -> AS/NZS 1170.0:2002 and AS/NZS 1170.2:2011 | canonical: True
+-- ID: 17303 | ref_number: 2.107 (d) -> Commonwealth Electoral Act 1918, Electoral Act 2017, Local Government Act 1993 | canonical: True
+-- ID: 17314 | ref_number: Clause 3C.12 -> Clause 3C.3 | canonical: True
+-- ID: 17315 | ref_number: Subclause (3)(a) -> Subclause (2)(a) | canonical: True
+-- ID: 17316 | ref_number: Subclause (3)(b) -> Subclause (2)(b) | canonical: True
+-- ID: 17348 | ref_number: Clause 3D.22 (subclauses) -> other subclauses within Clause 3D.22 | canonical: True
+-- ID: 17349 | ref_number: Clause 3D.22 (subclause 5) -> another environmental planning instrument | canonical: True
+-- ID: 17350 | ref_number: Clause 3D.22 (subclause 6) -> environmental planning instrument or development control plan or section 88B or 195A of the Conveyancing Act 1919 | canonical: True
+-- ID: 17351 | ref_number: Clause 3D.22 (subclause 7) -> Clause 3D.22 (subclause 8) | canonical: True
+-- ID: 17352 | ref_number: Clause 3D.22 (subclause 9, 10) -> Clause 3D.22 (subclause 7) | canonical: True
+-- ID: 17353 | ref_number: Clause 3D.22 (subclause 11) -> adjoining lot | canonical: True
+-- ID: 17354 | ref_number: 3D.21(14) -> 3D.22(5) | canonical: True
+-- ID: 17355 | ref_number: 3D.21(15) -> 3D.22(6) | canonical: True
+-- ID: 17356 | ref_number: 3D.22(1) -> 3D.21(7) and (14) | canonical: True
+-- ID: 17357 | ref_number: 3D.22(2) -> 3D.21(7) and (14) | canonical: True
+-- ID: 17358 | ref_number: 3D.22(3) -> 3D.21(1), (3), (4), (5) and (15) | canonical: True
+-- ID: 17359 | ref_number: 3D.22(4) -> 3D.22(1), (3), (4), (5) and (15) | canonical: True
+-- ID: 17360 | ref_number: 3D.22(5) -> 3D.21(14) | canonical: True
+-- ID: 17361 | ref_number: 3D.22(6) -> 3D.21(15) | canonical: True
+-- ID: 17362 | ref_number: 3D.22(7) -> 3D.21 | canonical: True
+-- ID: 17363 | ref_number: 3D.23(3) -> 3D.26 | canonical: True
+-- ID: 17434 | ref_number: Clause 3.11 -> subclause (4) | canonical: True
+-- ID: 17435 | ref_number: subclause (4) -> subclause (5) | canonical: True
+-- ID: 17436 | ref_number: subclause (4) -> subclause (6) | canonical: True
+-- ID: 17437 | ref_number: subclause (8) -> subclause (9) | canonical: True
+-- ID: 17438 | ref_number: subclause (7) -> clause 126(4) of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17439 | ref_number: subclause (9) -> clause 126(4) of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17440 | ref_number: Note (after subclause 9) -> clause 3.32 | canonical: True
+-- ID: 17441 | ref_number: Note (after subclause 10) -> clause 3.11(5) | canonical: True
+-- ID: 17442 | ref_number: Clause 3.11 -> Clause 3.10(4) and (10) | canonical: True
+-- ID: 17443 | ref_number: Clause 3.11 -> Clause 3.10(1), (3), (11), (12) and (13) | canonical: True
+-- ID: 17444 | ref_number: Clause 3.11(5) -> Clause 3.10(10) | canonical: True
+-- ID: 17445 | ref_number: Clause 3.11(6) -> Clause 3.10(12) | canonical: True
+-- ID: 17446 | ref_number: Clause 3.11(7) -> Clause 3.10 | canonical: True
+-- ID: 17447 | ref_number: Clause 3.12(4) -> Clause 3.12A | canonical: True
+-- ID: 17448 | ref_number: Note 3, Clause 3.12 -> Clause 3.15 | canonical: True
+-- ID: 17449 | ref_number: Clause 3.13 (1) -> Table in Clause 3.13 (1) | canonical: True
+-- ID: 17450 | ref_number: Clause 3.13 (4) -> Table in Clause 3.13 (4) | canonical: True
+-- ID: 17451 | ref_number: Clause 3.13 (1) -> Clause 3.13 (3) | canonical: True
+-- ID: 17452 | ref_number: Clause 3.14 -> Clause 1.5 | canonical: True
+-- ID: 17453 | ref_number: Clause 3.16 (2) -> AS/NZS 2890.1:2004 | canonical: True
+-- ID: 17499 | ref_number: Clause 4.3A -> Clause 4.3 | canonical: True
+-- ID: 17500 | ref_number: Clause 4.3B -> Clause 4.3 | canonical: True
+-- ID: 17501 | ref_number: Clause 4.3C -> Zone R1 | canonical: True
+-- ID: 17502 | ref_number: Clause 4.3(2A) -> Clause 4.3(2B) | canonical: True
+-- ID: 17503 | ref_number: Clause 4.3(3) -> Clause 4.5 | canonical: True
+-- ID: 17504 | ref_number: Clause 4.6 -> Environmental Planning and Assessment Regulation 2021 | canonical: True
+-- ID: 17505 | ref_number: Clause 4.5 (3) -> Clause 4.5 (4-7) | canonical: True
+-- ID: 17506 | ref_number: Clause 4.5 (9) -> Clause 4.5 (10) | canonical: True
+-- ID: 17507 | ref_number: Clause 4.5 (11) -> Local Government Act 1993 | canonical: True
+-- ID: 17536 | ref_number: Clause 3C.29 -> Clause 3C.28 | canonical: True
+-- ID: 17537 | ref_number: Subclause (5) -> Clause 126(4) of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17538 | ref_number: Subclause (7) -> Clause 126(4) of the Environmental Planning and Assessment Regulation 2000 | canonical: True
+-- ID: 17539 | ref_number: Subclause (2) -> Subclause (3) | canonical: True
+-- ID: 17540 | ref_number: Subclause (2) -> Subclause (4) | canonical: True
+-- ID: 17541 | ref_number: Subclause (6) -> Subclause (7) | canonical: True
+-- ID: 17542 | ref_number: Subclause (8) -> Clauses 3C.26, 3C.28 and 3C.29 | canonical: True
+-- ID: 17543 | ref_number: Subclause (7) -> Subclause (6) | canonical: True
+-- ID: 17544 | ref_number: Note after Subclause (7) -> Clause 3C.35 | canonical: True
+-- ID: 17545 | ref_number: Clause 3C.32 -> Clause 1.5 | canonical: True
+-- ID: 17546 | ref_number: Clause 3C.32 -> Standard Instrument | canonical: True
+-- ID: 17547 | ref_number: Clause 3C.32 -> Clause 2.36 | canonical: True
+-- ID: 17579 | ref_number: Clause 3.29 -> Clause 1.5 | canonical: True
+-- ID: 17580 | ref_number: Clause 3.29 -> Standard Instrument | canonical: True
+-- ID: 17581 | ref_number: Clause 3.29 -> Clause 2.36 | canonical: True
+-- ID: 17605 | ref_number: Clause 3A.13 -> Clause 3A.23 | canonical: True
+-- ID: 17606 | ref_number: Clause 3A.15 (5) -> Other environmental planning instrument | canonical: True
+-- ID: 17607 | ref_number: 3A.28(1) -> 3A.27 | canonical: True
+-- ID: 17608 | ref_number: 3A.28(2) -> AS/NZS 2890.1:2004 | canonical: True
+-- ID: 17646 | ref_number: Clause 20(2)(b) -> Clause 20(4) and 20(5) | canonical: True
+-- ID: 17647 | ref_number: Clause 20(4) -> Clause 20(5)(a) | canonical: True
+-- ID: 17648 | ref_number: Note after Clause 20 -> Codes SEPP, clauses 2.29 and 2.30 | canonical: True
+-- ID: 17649 | ref_number: Clause 22(1)(c) -> Local Government Act 1993, section 68 | canonical: True
+-- ID: 17650 | ref_number: Clause 23(5) -> Local Government Act 1993 | canonical: True
+-- ID: 17651 | ref_number: Note after Clause 23 -> Swimming Pools Act 1992 | canonical: True
+-- ID: 17740 | ref_number: Heritage items -> MLEP 2011 and DCP controls | canonical: True
+-- ID: 17741 | ref_number: Section 8.5 (Victorian Italianate/Victorian Filigree) -> Section 8.2 (Heritage Conservation Areas) | canonical: True
+-- ID: 17742 | ref_number: 8.5.1.3 Principles for change and design approach -> Sections 8.2 and 8.3 | canonical: True
+-- ID: 17743 | ref_number: 8.5.1.3 Principles for change and design approach -> Part 4 (Residential Development) | canonical: True
+-- ID: 17744 | ref_number: 8.5.2 Federation -> streetscape controls | canonical: True
+-- ID: 17745 | ref_number: Section 8.5.2.3 -> Sections 8.2 and 8.3 | canonical: True
+-- ID: 17746 | ref_number: Section 8.5.2.3 -> Part 4 (Residential Development) | canonical: True
+-- ID: 17747 | ref_number: Section 8.5.2.2 -> Section 8.5.2.3 | canonical: True
+-- ID: 17748 | ref_number: 8.5.3.3 -> 8.2 and 8.3 | canonical: True
+-- ID: 17749 | ref_number: 8.5.4 -> Streetscape controls | canonical: True
+-- ID: 17750 | ref_number: 8.5.4 -> MLEP 2011 | canonical: True
+-- ID: 17751 | ref_number: 8.5.4.3 -> Part 4 (Residential Development) | canonical: True
+-- ID: 17752 | ref_number: 8.5.4.1 -> Section 2.11 (Fencing) | canonical: True
+-- ID: 17812 | ref_number: 2.108 (f) -> AS/NZS 1170.0:2002, AS/NZS 1170.1:2002, AS/NZS 1170.2:2011 | canonical: True
+-- ID: 17813 | ref_number: 2.110 (b) -> AS 4687—2007 | canonical: True
+-- ID: 17814 | ref_number: 2.122 -> 2.123 | canonical: True
+-- ID: 17815 | ref_number: 2.125 -> Place Management NSW Act 1998 | canonical: True
+-- ID: 17816 | ref_number: 2.125 -> State Environmental Planning Policy (Planning Systems) 2021, Chapter 2 | canonical: True
+-- ID: 17817 | ref_number: 2.125 -> State Environmental Planning Policy (Precincts—Eastern Harbour City) 2021, Chapter 2 | canonical: True
+-- ID: 17926 | ref_number: 8.5(1) -> 8.5(2) | canonical: True
+-- ID: 17927 | ref_number: Schedule 1 -> Clause 2.5 | canonical: True
+-- ID: 17928 | ref_number: Clause 32 -> Clause 33 | canonical: True
+-- ID: 17929 | ref_number: Clause 33 -> Clause 32 | canonical: True
+-- ID: 17964 | ref_number: 4A.13 -> Schedule 7 | canonical: True
+-- ID: 17965 | ref_number: 4A.12(g) -> AS 3962:2020, AS 4997—2005 | canonical: True
+-- ID: 17966 | ref_number: 4A.12(h) -> Fisheries Management Act 1994 | canonical: True
+-- ID: 17967 | ref_number: 4A.12(i) -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 17968 | ref_number: Note 2 -> Schedule 3 | canonical: True
+-- ID: 17969 | ref_number: Note 1 -> Clause 1.18(1)(b) | canonical: True
+-- ID: 18074 | ref_number: Clause 6.8 -> AS 2021:2015 | canonical: True
+-- ID: 18075 | ref_number: Clause 6.9 -> Inner West Comprehensive Development Control Plan 2016, Leichhardt Development Control Plan 2013, Marrickville Development Control Plan | canonical: True
+-- ID: 18076 | ref_number: Clause 6.19 (4) -> State Environmental Planning Policy (Housing) 2021, section 87 | canonical: True
+-- ID: 18077 | ref_number: Clause 6.19 (5) -> State Environmental Planning Policy (Housing) 2021, section 13 | canonical: True
+-- ID: 18078 | ref_number: Clause 6.25 (3) -> Clause 6.25 (4) | canonical: True
+-- ID: 18079 | ref_number: Clause 6.25 (5) -> Zone objectives | canonical: True
+-- ID: 18080 | ref_number: Clause 6.25 (6) -> Conveyancing Act 1919, section 88E | canonical: True
+-- ID: 18226 | ref_number: Clause 2.3 -> Land Use Table | canonical: True
+-- ID: 18227 | ref_number: Clause 2.3 (4) -> Other provisions of this Plan | canonical: True
+-- ID: 18228 | ref_number: Clause 2.5 -> Schedule 1 | canonical: True
+-- ID: 18229 | ref_number: Clause 2.5 (2) -> Land Use Table or other provision of this Plan | canonical: True
+-- ID: 18230 | ref_number: Clause 2.6 Note 1 -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 18231 | ref_number: Clause 2.6 Note 2 -> Part 6 of State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 18232 | ref_number: Clause 2.7 Note -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 18233 | ref_number: clause 2.9 (4) -> clause 5.21 | canonical: True
+-- ID: 18368 | ref_number: Part 8 -> minor work | canonical: True
+-- ID: 18369 | ref_number: HCAs -> Marrickville Review of Potential Heritage Conservation Areas Part 2: Heritage Assessment Reports (August 2009) | canonical: True
+-- ID: 18370 | ref_number: HCAs -> Hoskins Park, Davis Street Dulwich Hill Heritage Assessment (September 2012) | canonical: True
+-- ID: 18371 | ref_number: HCAs -> Heritage Assessment: 89A-89E | canonical: True
+-- ID: 18372 | ref_number: Inventory forms for each HCA -> NSW Office of Environment & Heritage’s State Heritage Inventory | canonical: True
+-- ID: 18373 | ref_number: Section 8.4.2 -> Part 5 | canonical: True
+-- ID: 18374 | ref_number: Section 8.1.5 -> 5.10(2) MLEP 2011 | canonical: True
+-- ID: 18375 | ref_number: Section 8.1.6 -> 5.10(3) MLEP 2011 | canonical: True
+-- ID: 18376 | ref_number: Section 8.1.7 -> Schedule 5 of MLEP 2011 | canonical: True
+-- ID: 18377 | ref_number: Section 8.1.7 -> Heritage Map of MLEP 2011 | canonical: True
+-- ID: 18378 | ref_number: Section 2.20 -> Works related to trees in a heritage conservation area | canonical: True
+-- ID: 18379 | ref_number: 8.1.9 Minor works -> Council’s Heritage and Urban Design Advisor | canonical: True
+-- ID: 18380 | ref_number: 8.1.10 Archaeological sites -> NSW Heritage Act 1977 | canonical: True
+-- ID: 18381 | ref_number: C23, C24 -> Aboriginal heritage protection | canonical: True
+-- ID: 18382 | ref_number: MLEP 2011, Clause 5.10(8) -> Council's responsibilities regarding Aboriginal heritage | canonical: True
+-- ID: 18383 | ref_number: National Parks and Wildlife Act 1974 and the Environmental Planning and Assessment Act 1979 -> Aboriginal heritage protection | canonical: True
+-- ID: 18384 | ref_number: C25 -> Aboriginal sites | canonical: True
+-- ID: 18385 | ref_number: Heritage Act 1977 -> State Heritage Register items | canonical: True
+-- ID: 18386 | ref_number: MLEP 2011 -> Heritage Conservation Incentives | canonical: True
+-- ID: 18387 | ref_number: MDCP 2011 -> 8.2.3 (Abergeldie Estate HCA controls) | canonical: True
+-- ID: 18388 | ref_number: MLEP 2011 -> 8.2.3 (Abergeldie Estate HCA controls) | canonical: True
+-- ID: 18389 | ref_number: Section 8.3 -> HCA Types A and B | canonical: True
+-- ID: 18390 | ref_number: Section 8.4 -> HCA Type C | canonical: True
+-- ID: 18481 | ref_number: Clause 2.34 -> Clause 2.33 | canonical: True
+-- ID: 18482 | ref_number: Clause 2.34(1)(d) -> State Environmental Planning Policy No 44—Koala Habitat Protection | canonical: True
+-- ID: 18483 | ref_number: Clause 2.34B -> Swimming Pools Act 1992 | canonical: True
+-- ID: 18484 | ref_number: 2.38 (1)(d) -> State Environmental Planning Policy No 44—Koala Habitat Protection | canonical: True
+-- ID: 18485 | ref_number: 2.40B -> Roads Act 1993, section 125 | canonical: True
+-- ID: 18486 | ref_number: 2.40B -> Local Government Act 1993, section 68 | canonical: True
+-- ID: 18487 | ref_number: 2.40B -> Building Code of Australia, Volume 1, B1P1 and B1P2 | canonical: True
+-- ID: 18488 | ref_number: 2.40C -> 2.40A | canonical: True
+-- ID: 18489 | ref_number: 2.40D -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 18490 | ref_number: 2.40G -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 18491 | ref_number: 2.40C(4) -> Local Government Act 1993 | canonical: True
+-- ID: 18492 | ref_number: 2.40C(4) -> Crown Land Management Act 2016 | canonical: True
+-- ID: 18493 | ref_number: 2.40F(1)(a) -> Local Government Act 1993 | canonical: True
+-- ID: 18494 | ref_number: 2.42AB (d) -> AS 1940:2017 | canonical: True
+-- ID: 18495 | ref_number: 2.42AB (e) -> AS/NZS 1596:2014 | canonical: True
+-- ID: 18594 | ref_number: 2.2 (Access Ramp Standards) -> AS 1428.1—2009, Design for access and mobility, Part 1: General requirements for access—New building work and the Disability (Access to Premises—Buildings) Standards 2010 under the Disability Discrimination Act 1992 of the Commonwealth | canonical: True
+-- ID: 18595 | ref_number: 2.4 (Aerial, Antenna, Communication Dish Standards) -> AS/NZS 1170.0:2002, AS/NZS 1170.2:2011, AS 3600:2018 | canonical: True
+-- ID: 18596 | ref_number: Note 2 -> Building Code of Australia | canonical: True
+-- ID: 18597 | ref_number: Note 2 -> Environmental Planning and Assessment Regulation 2000, various State environmental planning policies, Protection of the Environment Operations Act 1997, Roads Act 1993, Swimming Pools Act 1992 and Acts applying to various infrastructure authorities | canonical: True
+-- ID: 18598 | ref_number: 2.28 (b) -> AS/NZS 2890.1:2004, AS 2890.2:2018 | canonical: True
+-- ID: 18599 | ref_number: 2.28 (e)(ii) -> relevant road authority’s policy and specifications | canonical: True
+-- ID: 18600 | ref_number: 2.28 (e)(iii) -> section 138 of the Roads Act 1993 | canonical: True
+-- ID: 18601 | ref_number: development -> AS 2601—2001 | canonical: True
+-- ID: 18602 | ref_number: new structure -> Building Code of Australia | canonical: True
+-- ID: 18603 | ref_number: development -> clause 2.32, 2.32B, 2.32D-2.32F | canonical: True
+-- ID: 18808 | ref_number: exempt farm forestry -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 18809 | ref_number: aquaculture -> Fisheries Management Act 1994 | canonical: True
+-- ID: 18810 | ref_number: artisan food and drink industry -> Clause 5.4 | canonical: True
+-- ID: 18811 | ref_number: bed and breakfast accommodation -> Clause 5.4 | canonical: True
+-- ID: 18812 | ref_number: bush fire hazard reduction work -> Rural Fires Act 1997 | canonical: True
+-- ID: 18813 | ref_number: bush fire prone land -> Act | canonical: True
+-- ID: 18814 | ref_number: bush fire risk management plan -> Rural Fires Act 1997 | canonical: True
+-- ID: 18815 | ref_number: catchment action plan -> Catchment Management Authorities Act 2003 | canonical: True
+-- ID: 18816 | ref_number: centre-based child care facility -> Children (Education and Care Services) National Law (NSW) | canonical: True
+-- ID: 18817 | ref_number: eco-tourist facility definition -> clause 5.13 | canonical: True
+-- ID: 18818 | ref_number: permanent group home definition -> State Environmental Planning Policy (Housing) 2021, Chapter 3, Part 5 | canonical: True
+-- ID: 18819 | ref_number: transitional group home definition -> State Environmental Planning Policy (Housing) 2021, Chapter 3, Part 5 | canonical: True
+-- ID: 18820 | ref_number: hardware and building supplies definition -> retail premises definition | canonical: True
+-- ID: 18821 | ref_number: hazardous industry definition -> heavy industry definition | canonical: True
+-- ID: 18822 | ref_number: hazardous storage establishment definition -> heavy industrial storage establishment definition | canonical: True
+-- ID: 18823 | ref_number: health consulting rooms definition -> health services facility definition | canonical: True
+-- ID: 18824 | ref_number: group home definition -> permanent group home definition | canonical: True
+-- ID: 18825 | ref_number: group home definition -> transitional group home definition | canonical: True
+-- ID: 18826 | ref_number: operational land -> Local Government Act 1993 | canonical: True
+-- ID: 18827 | ref_number: port facilities -> section 47 of the Ports and Maritime Administration Act 1995 | canonical: True
+-- ID: 18828 | ref_number: Roadside stalls -> Clause 5.4 | canonical: True
+-- ID: 18829 | ref_number: Secondary dwellings -> Clauses 5.4 and 5.5 | canonical: True
+-- ID: 18830 | ref_number: Seniors housing -> State Environmental Planning Policy (Housing) 2021, Chapter 3 | canonical: True
+-- ID: 18837 | ref_number: Change of use (restaurant/cafe to small bar) -> Schedule 6 of SEPP (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 18838 | ref_number: Change of use (restaurant/cafe to small bar) -> Conditions of development consent for the old use | canonical: True
+-- ID: 19136 | ref_number: 1.3 -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 19137 | ref_number: 1.4 -> Interpretation Act 1987, section 30A | canonical: True
+-- ID: 19138 | ref_number: 2.2 -> State Environmental Planning Policy (Coastal Management) 2018 | canonical: True
+-- ID: 19139 | ref_number: 2.10 -> section 4.37 of the Act | canonical: True
+-- ID: 19140 | ref_number: 2.11 -> Schedule 1 or 2 | canonical: True
+-- ID: 19141 | ref_number: 2.12 -> sections 2.8–2.10 | canonical: True
+-- ID: 19142 | ref_number: 2.12 -> section 4.36(3) of the Act | canonical: True
+-- ID: 19143 | ref_number: 2.13 -> section 5.12(2) of the Act | canonical: True
+-- ID: 19144 | ref_number: 2.13 -> Schedule 3 | canonical: True
+-- ID: 19145 | ref_number: 2.14 -> section 5.12(4) of the Act | canonical: True
+-- ID: 19146 | ref_number: 2.14 -> Schedule 4 | canonical: True
+-- ID: 19147 | ref_number: 2.15 -> Schedule 5 | canonical: True
+-- ID: 19148 | ref_number: 2.17 -> section 6.5(3)(a) of the Act | canonical: True
+-- ID: 19149 | ref_number: 2.18 -> Schedule 3, 4 or 5 | canonical: True
+-- ID: 19150 | ref_number: 2.18 -> Division 5.2 of the Act | canonical: True
+-- ID: 19151 | ref_number: 2.19 -> Schedule 6 | canonical: True
+-- ID: 19152 | ref_number: 2.20 -> Schedule 6 | canonical: True
+-- ID: 19153 | ref_number: Clause 2.22 -> Schedule 6 to State Environmental Planning Policy (Major Development) 2005 | canonical: True
+-- ID: 19154 | ref_number: Clause 2.23 -> Part 3 of the State Environmental Planning Policy (Major Development) 2005 | canonical: True
+-- ID: 19155 | ref_number: Clause 2.24 -> section 2.20 | canonical: True
+-- ID: 19156 | ref_number: Clause 2.24 -> State Environmental Planning Policy (State and Regional Development) Amendment (Regional Panel Development Applications) 2020 | canonical: True
+-- ID: 19157 | ref_number: Clause 2.25 -> State Environmental Planning Policy (Planning Systems) Amendment (State Significant Development) 2024 | canonical: True
+-- ID: 19158 | ref_number: Clause 3.2 -> Aboriginal Land Rights Act 1983 | canonical: True
+-- ID: 19159 | ref_number: Clause 3.2 -> Environmental Planning and Assessment Regulation 2021 | canonical: True
+-- ID: 19160 | ref_number: Clause 3.2 -> Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 19161 | ref_number: Clause 3.4 -> another environmental planning instrument | canonical: True
+-- ID: 19162 | ref_number: 3.8 -> 3.7(2) | canonical: True
+-- ID: 19163 | ref_number: 3.11(3) -> 3.8 | canonical: True
+-- ID: 19164 | ref_number: 4.2 -> other environmental planning instruments | canonical: True
+-- ID: 19165 | ref_number: 3.10 -> section 4.5 (b) of the Act | canonical: True
+-- ID: 19166 | ref_number: Clause 4.4 -> State Environmental Planning Policy No 1—Development Standards and State Environmental Planning Policy (Miscellaneous Consent Provisions) 2007 | canonical: True
+-- ID: 19167 | ref_number: Clause 4.5 -> State Environmental Planning Policy No 1—Development Standards | canonical: True
+-- ID: 19168 | ref_number: Schedule 1, item 2(3) -> clause 19 of State Environmental Planning Policy No 62—Sustainable Aquaculture | canonical: True
+-- ID: 19169 | ref_number: Schedule 1, item 5(5) -> Schedule 1 to State Environmental Planning Policy (Mining, Petroleum Production and Extractive Industries) 2007 | canonical: True
+-- ID: 19170 | ref_number: Schedule 1, item 6(3) -> clause 9A of State Environmental Planning Policy (Mining, Petroleum Production and Extractive Industries) 2007 | canonical: True
+-- ID: 19171 | ref_number: Schedule 1, item 6(4) -> State Environmental Planning Policy (Mining, Petroleum Production and Extractive Industries) 2007 | canonical: True
+-- ID: 19172 | ref_number: Section 10(3) -> Chapter 6B of the Occupational Health and Safety Regulation 2001 | canonical: True
+-- ID: 19173 | ref_number: Section 12(3) -> Act | canonical: True
+-- ID: 19174 | ref_number: Section 15(6) -> State Environmental Planning Policy (Educational Establishments and Child Care Facilities) 2017 | canonical: True
+-- ID: 19175 | ref_number: Clause 24(2) -> State Environmental Planning Policy No 55—Remediation of Land | canonical: True
+-- ID: 19176 | ref_number: Clause 26A(1) -> State Environmental Planning Policy (Housing) 2021, Chapter 2, Part 2, Division 1 | canonical: True
+-- ID: 19177 | ref_number: Clause 27 -> Housing SEPP, Chapter 3, Part 4 | canonical: True
+-- ID: 19178 | ref_number: Clause 27(2A)(i) -> Housing SEPP, section 39 | canonical: True
+-- ID: 19179 | ref_number: Clause 27(2A)(ii) -> State Environmental Planning Policy (Affordable Rental Housing) 2009, clause 37 | canonical: True
+-- ID: 19180 | ref_number: Clause 29 -> State Environmental Planning Policy (Precincts— Western Parkland City) 2021, Chapter 4 | canonical: True
+-- ID: 19181 | ref_number: Clause 30 -> Cemeteries and Crematoria Act 2013 | canonical: True
+-- ID: 19182 | ref_number: Section 31(4) -> Protection of the Environment Operations (General) Regulation 2022, Chapter 9, Part 4 | canonical: True
+-- ID: 19183 | ref_number: Section 31(5) -> Protection of the Environment Operations Act 1997 | canonical: True
+-- ID: 19184 | ref_number: Clause 19 (4) -> State Environmental Planning Policy (Housing) 2021 | canonical: True
+-- ID: 19185 | ref_number: Clause 20 -> State Environmental Planning Policy (Housing) 2021, Chapter 3, Part 4 | canonical: True
+-- ID: 19186 | ref_number: Schedule 3 Note -> Part 4 of the Act, section 5.12(3) of the Act and section 2.13 | canonical: True
+-- ID: 19187 | ref_number: Schedule 3, 5 Note -> Pipelines Act 1967, Part 3 of Schedule 1 to the Pipelines Act 1967, Environmental Planning and Assessment Act 1979 | canonical: True
+-- ID: 19188 | ref_number: Schedule 5 -> Section 2.15 | canonical: True
+-- ID: 19189 | ref_number: Schedule 6, clause 1 -> State Environmental Planning Policy (Infrastructure) 2007 | canonical: True
+-- ID: 19190 | ref_number: Schedule 6, clause 7 -> Environmental Planning and Assessment Regulation 2021, Schedule 3, section 26 | canonical: True
+-- ID: 19191 | ref_number: Schedule 6, clause 7 -> Environmental Planning and Assessment Regulation 2021, Schedule 3, section 32 | canonical: True
+-- ID: 19192 | ref_number: Schedule 6, clause 7 -> Environmental Planning and Assessment Regulation 2021, Schedule 3, section 45 | canonical: True
+-- ID: 19193 | ref_number: Clause 8A(1)(b) -> clause 19(2)(a) of State Environmental Planning Policy (Coastal Management) 2018 | canonical: True
+-- ID: 19194 | ref_number: Clause 8A(2) -> State Environmental Planning Policy (Coastal Management) 2018 | canonical: True
+-- ID: 19745 | ref_number: Site and Context Analysis Guideline -> Section 1—Preliminary | canonical: True
+-- ID: 19746 | ref_number: Design Solutions -> Performance Criteria | canonical: True
+-- ID: 19747 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: True
+-- ID: 19748 | ref_number: Boarding Houses and Residential Care Facilities -> Purpose | canonical: True
+-- ID: 19749 | ref_number: Design Solutions -> Performance Criteria | canonical: False
+-- ID: 19750 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: False
+-- ID: 19751 | ref_number: DS3.2 -> DS2.1, DS2.2, DS2.3 | canonical: True
+-- ID: 19752 | ref_number: This Guideline -> Section 1—Preliminary at the front of this DCP | canonical: True
+-- ID: 19753 | ref_number: Alternative Solution -> Performance Criteria and Purpose | canonical: False
+-- ID: 19754 | ref_number: Design Solutions -> Performance Criteria and Purpose | canonical: True
+-- ID: 19755 | ref_number: Development -> principles of Crime Prevention Through Environmental Design (CPTED) | canonical: True
+-- ID: 19756 | ref_number: Villas and Townhouses in R3 zone -> Section 5 – Design Checklist 1 | canonical: True
+-- ID: 19757 | ref_number: Villas and Townhouses in R3 zone -> DS3.1 | canonical: True
+-- ID: 19758 | ref_number: Residential flat buildings >3 storeys with lifts -> Section 6 – Design Checklist 2 | canonical: True
+-- ID: 19759 | ref_number: DS2.1 (Adaptable Housing) -> Australian Standard 4299-1995 | canonical: True
+-- ID: 19760 | ref_number: Adaptable Housing -> Building Code of Australia and Australian Standards | canonical: True
+-- ID: 19761 | ref_number: General Access Requirements -> Affordable Housing SEPP and Seniors Living SEPP | canonical: True
+-- ID: 19762 | ref_number: Non-residential Development -> BCA | canonical: True
+-- ID: 19763 | ref_number: DS2.4 -> DS2.2, DS2.3 | canonical: True
+-- ID: 19764 | ref_number: DS1.1 -> Building Code of Australia | canonical: True
+-- ID: 19765 | ref_number: DS8.1 -> Building Code of Australia | canonical: True
+-- ID: 19766 | ref_number: Section 1 – General Principles -> Section 2 | canonical: True
+-- ID: 19767 | ref_number: Changes of use and alterations/extensions -> Section 2 | canonical: True
+-- ID: 19768 | ref_number: Redevelopments -> Section 4 | canonical: True
+-- ID: 19769 | ref_number: Section 4 -> Parking for people with disabilities | canonical: True
+-- ID: 19770 | ref_number: Section 5 -> Parking for people with disabilities | canonical: True
+-- ID: 19771 | ref_number: Part A7 -> Parking for people with disabilities | canonical: True
+-- ID: 19772 | ref_number: Part C3 -> Ashfield Town Centre parking contributions | canonical: True
+-- ID: 19773 | ref_number: Section 7.11 and 7.12 -> Car parking contribution amounts | canonical: True
+-- ID: 19774 | ref_number: DS1.3 -> DS1.1, DS1.2 | canonical: True
+-- ID: 19775 | ref_number: PC1 -> Table 3 | canonical: True
+-- ID: 19776 | ref_number: DS2.1 -> Table 2 | canonical: True
+-- ID: 19777 | ref_number: DS3.1 -> Table 3 | canonical: True
+-- ID: 19778 | ref_number: DS2.2 -> Table 3 | canonical: True
+-- ID: 19779 | ref_number: Dwelling House entry in Table 3 -> Part F1 Dwelling Houses of the Inner West DCP 2016 | canonical: True
+-- ID: 19780 | ref_number: Multi-unit housing parking requirements -> Part F5 Residential Flat Buildings of this DCP | canonical: True
+-- ID: 19781 | ref_number: Clubs - Licensed and Non-Licensed -> Part A7 - Access and Mobility | canonical: True
+-- ID: 19782 | ref_number: Commercial Premises -> Part A7 - Access and Mobility | canonical: True
+-- ID: 19783 | ref_number: Drive-In Liquor Outlet -> Section 3 - Design Requirements | canonical: True
+-- ID: 19784 | ref_number: Parking for persons with disabilities -> Part A7 - Access and Mobility | canonical: True
+-- ID: 19785 | ref_number: Table 4 -> AS2890.1 2004 | canonical: True
+-- ID: 19786 | ref_number: Figure 1 -> Parking space dimensions | canonical: True
+-- ID: 19787 | ref_number: DS8.1 -> AS2890.1:2004 | canonical: True
+-- ID: 19788 | ref_number: DS9.4, DS9.5 -> Section 2.5.2 | canonical: True
+-- ID: 19789 | ref_number: DS29.3 -> Appendix 3 | canonical: True
+-- ID: 19790 | ref_number: Landscaping requirements -> Council's development application form | canonical: True
+-- ID: 19791 | ref_number: This Guideline -> Section 1—Preliminary at the front of this DCP | canonical: False
+-- ID: 19792 | ref_number: DS1.1 -> Inner West LEP 2022 | canonical: True
+-- ID: 19793 | ref_number: PC5 -> General provisions for subdivision of this part | canonical: True
+-- ID: 19794 | ref_number: Development Consent -> Inner West LEP 2022 | canonical: True
+-- ID: 19795 | ref_number: Development Consent -> State Environmental Planning Policy (Industry and Employment) 2021 | canonical: True
+-- ID: 19796 | ref_number: Development Consent -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 19797 | ref_number: Construction Certificate -> Building Code of Australia | canonical: True
+-- ID: 19798 | ref_number: Roads Approval -> Roads Act 1993 | canonical: True
+-- ID: 19799 | ref_number: Exempt Development -> Schedule 2, Inner West LEP 2022 | canonical: True
+-- ID: 19800 | ref_number: Exempt Development -> State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 | canonical: True
+-- ID: 19801 | ref_number: DS11.1 -> Table 2 – Requirements for different types of signs | canonical: True
+-- ID: 19802 | ref_number: DS11.1 -> State Environmental Planning Policy No.64 - Advertising and Signage | canonical: True
+-- ID: 19803 | ref_number: Pole/Pylon Sign regulations -> DS16.1 | canonical: True
+-- ID: 19804 | ref_number: Inflatable Sign regulations -> DS5.1 and DS5.2 | canonical: True
+-- ID: 19805 | ref_number: Moving Sign regulations -> DS5.1 and DS5.2 | canonical: True
+-- ID: 19806 | ref_number: This Guideline -> Section 1—Preliminary at the front of this DCP | canonical: False
+-- ID: 19807 | ref_number: PC1 (Telecommunications) -> Telecommunications Act 1997, Telecommunications Code of Practice 1997, Radiocommunications Act 1992, Determination 1997, Telecommunications (Low-impact Facilities) | canonical: True
+-- ID: 19808 | ref_number: DS1.1 -> Development Near Rail Corridors and Busy Roads - Interim Guideline (Department of Planning, 2008) | canonical: True
+-- ID: 19809 | ref_number: This Guideline -> Section 1—Preliminary at the front of this DCP | canonical: True
+-- ID: 19810 | ref_number: Development -> SEPP 55 – Remediation of Land | canonical: True
+-- ID: 19811 | ref_number: PC1 (Contaminated Land) -> SEPP 55-Remediation of Land | canonical: True
+-- ID: 19812 | ref_number: Stormwater Management Guideline -> Section 2.25 of the Marrickville DCP 2011 | canonical: True
+-- ID: 19813 | ref_number: Stormwater Management Guideline -> Section 1—Preliminary | canonical: True
+-- ID: 20800 | ref_number: Section C2.1.1-C2.1.5 Suburb Profile Statements -> Section C2.2 Distinctive Neighbourhood Statements | canonical: True
+-- ID: 20801 | ref_number: Section C2 – Urban Character -> Inner West LEP 2022 | canonical: True
+-- ID: 20802 | ref_number: Section C2 – Urban Character -> R1 General Residential Zone | canonical: True
+-- ID: 20803 | ref_number: Development -> Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 20804 | ref_number: Development -> Young Street Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20805 | ref_number: Kentville Estate Sub Area -> Annandale Street Distinctive Neighbourhood | canonical: True
+-- ID: 20806 | ref_number: Annandale Street Laneways Sub Area -> Annandale Street Distinctive Neighbourhood | canonical: True
+-- ID: 20807 | ref_number: Development within this Distinctive Neighbourhood -> objectives and controls listed below | canonical: True
+-- ID: 20808 | ref_number: Development within this Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 20809 | ref_number: All Development within Nelson Street Distinctive Neighbourhood -> Trafalgar Street Distinctive Neighbourhood | canonical: True
+-- ID: 20810 | ref_number: All Development within the DCP area -> Other relevant sections of this Development Control Plan | canonical: True
+-- ID: 20811 | ref_number: C2.2.1.6(a) Nelson Street Laneways Sub Area -> Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 20812 | ref_number: C2.2.1.6(b) Smith, Hogan and Spindlers Parks Sub Area -> Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 20813 | ref_number: All Developments -> Relevant Sub Area objectives and conditions | canonical: True
+-- ID: 20814 | ref_number: All Developments within Nelson Street Distinctive Neighbourhood -> Objectives and controls within the Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 20815 | ref_number: Development within Parramatta Road Commercial Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 20816 | ref_number: Development within the Nelson Street Distinctive Neighbourhood -> relevant objectives and controls within the Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 20817 | ref_number: Development within this Distinctive Neighbourhood -> objectives and controls listed below | canonical: False
+-- ID: 20818 | ref_number: development -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 20819 | ref_number: C2.2.2.1 -> C2.2.2.1(a), C2.2.2.1(b), C2.2.2.1(c) | canonical: True
+-- ID: 20820 | ref_number: Development -> C2.2.2 objectives and controls, other sections of this Development Control Plan | canonical: True
+-- ID: 20821 | ref_number: C4 -> Darling Street Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20822 | ref_number: Development within Balmain East Distinctive Neighbourhood -> Darling Street Distinctive Neighbourhood | canonical: True
+-- ID: 20823 | ref_number: Gladstone Park Distinctive Neighbourhood -> Sydney Regional Environmental Plan No. 26 – Port and Employment | canonical: True
+-- ID: 20824 | ref_number: C2 -> C1.16 | canonical: True
+-- ID: 20825 | ref_number: O1 -> C2 | canonical: True
+-- ID: 20826 | ref_number: Vincent Street Height Restriction -> Solar Access | canonical: True
+-- ID: 20827 | ref_number: C22 -> Sub Area objectives and conditions | canonical: True
+-- ID: 20828 | ref_number: C1 -> The Mort Bay Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20829 | ref_number: C1 -> Mort Bay Distinctive Neighbourhood | canonical: True
+-- ID: 20830 | ref_number: C1 -> C2.2.3 | canonical: True
+-- ID: 20831 | ref_number: C2.2.3 -> C2.2.3.1 | canonical: True
+-- ID: 20832 | ref_number: C2.2.3.1 -> C2.2.3.1(a), C2.2.3.1(b), C2.2.3.1(c) | canonical: True
+-- ID: 20833 | ref_number: C7 -> Excelsior Estate Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20834 | ref_number: C2.2.3.1(b) Controls -> Part C1.15 Signs and Outdoor Advertising | canonical: True
+-- ID: 20835 | ref_number: Development in West Leichhardt Distinctive Neighbourhood -> Desired Future Character and Controls | canonical: True
+-- ID: 20836 | ref_number: Development -> Excelsior Estate Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20837 | ref_number: Hampton Farm Sub Area -> Albert Street Heritage Conservation Area | canonical: True
+-- ID: 20838 | ref_number: Hampton Farm Sub Area development -> West Leichhardt Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20839 | ref_number: C7 (Whites Creek Lane) -> Piperston Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20840 | ref_number: O1 (Whites Creek Lane & Industrial Sub Area) -> Desired Future Character and Controls for the Distinctive Neighbourhood | canonical: True
+-- ID: 20841 | ref_number: C2 -> Piperston Distinctive Neighbourhood | canonical: True
+-- ID: 20842 | ref_number: C10 -> Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 20843 | ref_number: Helsarmel Distinctive Neighbourhood -> Leichhardt Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 20844 | ref_number: Sub Area controls -> Building wall height | canonical: True
+-- ID: 20845 | ref_number: C16 -> Sub Area objectives and conditions | canonical: True
+-- ID: 20846 | ref_number: O1 -> Desired Future Character and Controls | canonical: True
+-- ID: 20847 | ref_number: C7 -> Leichhardt Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 20848 | ref_number: C1 -> Relevant Heritage Conservation Area | canonical: True
+-- ID: 20849 | ref_number: C2.2.4 Lilyfield Distinctive Neighbourhoods -> Other sections of this Development Control Plan | canonical: True
+-- ID: 20850 | ref_number: Development -> Relevant Sub Area controls | canonical: True
+-- ID: 20851 | ref_number: Development -> Relevant Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 20852 | ref_number: Development -> Objectives and controls within the Catherine Street Distinctive Neighbourhood | canonical: True
+-- ID: 20853 | ref_number: C3 (War Memorial Park) -> O1, O2, O3, C1, C2 | canonical: True
+-- ID: 20854 | ref_number: C5 (Gladstone Street) -> O1, C1, C2, C3, C4 | canonical: True
+-- ID: 20855 | ref_number: C1 (War Memorial Park) -> O3 | canonical: True
+-- ID: 20856 | ref_number: C3 -> Objectives and controls within the Catherine Street Distinctive Neighbourhood | canonical: True
+-- ID: 20857 | ref_number: O1 -> Desired Future Character and Controls for the Distinctive Neighbourhood | canonical: True
+-- ID: 20858 | ref_number: Controls within Whites Creek Valley Park Sub Area -> Council's Open Space Strategy | canonical: True
+-- ID: 20859 | ref_number: C5 -> all other clauses and controls within the Nanny Goat Hill Distinctive Neighbourhood | canonical: True
+-- ID: 20860 | ref_number: C4 -> all other clauses and controls within the Nanny Goat Hill Distinctive Neighbourhood | canonical: True
+-- ID: 20861 | ref_number: Maximum building wall height (3.6m) -> Sub Area controls | canonical: True
+-- ID: 20862 | ref_number: Development -> Sub Area objective(s) and condition(s) | canonical: False
+-- ID: 20863 | ref_number: Development -> relevant objectives and controls within the Leichhardt Park Distinctive Neighbourhood | canonical: True
+-- ID: 20864 | ref_number: Rear lane development -> Pedestrian access | canonical: True
+-- ID: 20865 | ref_number: Development in Iron Cove Backdrop Sub Area -> Views from Iron Cove | canonical: True
+-- ID: 20866 | ref_number: All development -> Leichhardt Park Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 20867 | ref_number: C4 -> Master Planning Process | canonical: True
+-- ID: 20868 | ref_number: Callan Park/Rozelle Hospital site -> Callan Park (Special Provisions) Act 2002 | canonical: True
+-- ID: 20869 | ref_number: Clause 7 (1) of the Callan Park Act -> State Environmental Planning Policy 56, Leichhardt Local Environmental Plan 2000, The Heritage Act 1997 | canonical: True
+-- ID: 20870 | ref_number: Section C2.2.5 -> other sections of this Development Control Plan | canonical: True
+-- ID: 20871 | ref_number: C1 (general neighbourhood controls) -> C1 (Evans Street Sub Area) | canonical: True
+-- ID: 20872 | ref_number: C1 (general neighbourhood controls) -> C1 (Smith Street Hill Sub Area) | canonical: True
+-- ID: 20873 | ref_number: C2 (Evans Street Sub Area) -> The Valley ‘Rozelle’ Distinctive Neighbourhood controls | canonical: True
+-- ID: 20874 | ref_number: C2 Development -> The Valley ‘Rozelle’ Distinctive Neighbourhood | canonical: True
+-- ID: 20875 | ref_number: C2.2.5.3 Callan Park Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 20876 | ref_number: C13 -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 20877 | ref_number: C2.2.5.5(b) -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 20878 | ref_number: C2.2.5.5(c) -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21914 | ref_number: Section C2.1.1 through to Section C2.1.5 -> Section C2.2 Distinctive Neighbourhoods | canonical: True
+-- ID: 21915 | ref_number: Section C2 – Urban Character -> Inner West LEP 2022 | canonical: True
+-- ID: 21916 | ref_number: Section C2 – Urban Character -> R1 General Residential Zone | canonical: True
+-- ID: 21917 | ref_number: Heritage Items -> Inner West LEP 2022 | canonical: True
+-- ID: 21918 | ref_number: Development -> Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 21919 | ref_number: Development -> Young Street Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21920 | ref_number: Kentville Estate Sub Area -> Annandale Street Distinctive Neighbourhood | canonical: True
+-- ID: 21921 | ref_number: Annandale Street Laneways Sub Area -> Annandale Street Distinctive Neighbourhood | canonical: True
+-- ID: 21922 | ref_number: Development within Booth Street Distinctive Neighbourhood -> O1 | canonical: True
+-- ID: 21923 | ref_number: Development within Booth Street Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 21924 | ref_number: Development within Nelson Street Distinctive Neighbourhood -> Trafalgar Street Distinctive Neighbourhood | canonical: True
+-- ID: 21925 | ref_number: Development within Nelson Street Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 21926 | ref_number: Nelson Street Laneways Sub Area -> Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 21927 | ref_number: Smith, Hogan and Spindlers Parks Sub Area -> Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 21928 | ref_number: Development -> Sub Area objective(s) and condition(s) | canonical: False
+-- ID: 21929 | ref_number: Development -> objectives and controls within the Nelson Street Distinctive Neighbourhood | canonical: True
+-- ID: 21930 | ref_number: O1 -> C1 | canonical: True
+-- ID: 21931 | ref_number: Development within this Distinctive Neighbourhood -> objectives and controls listed below | canonical: True
+-- ID: 21932 | ref_number: Development -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 21933 | ref_number: Development -> Desired Future Character objectives and controls within the Distinctive Neighbourhood and any Sub Area | canonical: True
+-- ID: 21934 | ref_number: Section C2.2.2.1(a) -> Residential and Civic Precinct Sub Area | canonical: True
+-- ID: 21935 | ref_number: Section C2.2.2.1(b) -> Balmain Village Sub Area | canonical: True
+-- ID: 21936 | ref_number: Section C2.2.2.1(c) -> Darling Street East Sub Area | canonical: True
+-- ID: 21937 | ref_number: C4 -> Darling Street Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21938 | ref_number: Balmain East Distinctive Neighbourhood -> Darling Street Distinctive Neighbourhood | canonical: True
+-- ID: 21939 | ref_number: Gladstone Park Distinctive Neighbourhood -> Sydney Regional Environmental Plan No. 26 – Port and Employment | canonical: True
+-- ID: 21940 | ref_number: C2 -> C1.16 | canonical: True
+-- ID: 21941 | ref_number: C2.2.2.3(a) -> C2 | canonical: True
+-- ID: 21942 | ref_number: Vincent Street Height Restriction -> Solar Access | canonical: True
+-- ID: 21943 | ref_number: C20 -> Gladstone Park Distinctive Neighbourhood | canonical: True
+-- ID: 21944 | ref_number: C1 -> The Valley ‘Balmain’ Distinctive Neighbourhood | canonical: True
+-- ID: 21945 | ref_number: Development within Mort Bay Distinctive Neighbourhood -> Valley ‘Balmain’ Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21946 | ref_number: C1 -> C2.2.3 | canonical: True
+-- ID: 21947 | ref_number: C2.2.3 -> C2.2.3.1 | canonical: True
+-- ID: 21948 | ref_number: C2.2.3.1 -> C2.2.3.1(a), C2.2.3.1(b), C2.2.3.1(c) | canonical: True
+-- ID: 21949 | ref_number: C7 -> Excelsior Estate Distinctive Neighbourhood | canonical: True
+-- ID: 21950 | ref_number: C2.2.3.1(b) -> Part C1.15 Signs and Outdoor Advertising | canonical: True
+-- ID: 21951 | ref_number: Development within West Leichhardt Distinctive Neighbourhood -> Desired Future Character and Controls | canonical: True
+-- ID: 21952 | ref_number: Development -> Excelsior Estate Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21953 | ref_number: All clauses and controls -> West Leichhardt Distinctive Neighbourhood | canonical: True
+-- ID: 21954 | ref_number: C7 (Whites Creek Lane) -> Piperston Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21955 | ref_number: O1 (Whites Creek Lane & Industrial Sub Area) -> Desired Future Character and Controls for the Distinctive Neighbourhood | canonical: True
+-- ID: 21956 | ref_number: C2 -> Piperston Distinctive Neighbourhood | canonical: True
+-- ID: 21957 | ref_number: C10 -> Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 21958 | ref_number: Helsarmel Distinctive Neighbourhood -> Leichhardt Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21959 | ref_number: Sub Area controls -> Building wall height | canonical: True
+-- ID: 21960 | ref_number: C16 -> O1, Controls | canonical: True
+-- ID: 21961 | ref_number: C7 -> Leichhardt Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21962 | ref_number: C2.2.4.1 Catherine Street Distinctive Neighbourhood -> Ilka Street Sub Area, The Peripheral Sub Area, War Memorial Park Sub Area, Gladstone Street Sub Area, White Street Sub Area, Catherine Street Neighbourhood Centre Sub Area, Whites Creek Valley Park Sub Area | canonical: True
+-- ID: 21963 | ref_number: C2.2.4 Lilyfield Distinctive Neighbourhoods -> C2.2.4.1 Catherine Street Distinctive Neighbourhood | canonical: True
+-- ID: 21964 | ref_number: C1 -> Leichhardt Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21965 | ref_number: C2.2.4.1 Catherine Street Distinctive Neighbourhood -> other sections of this Development Control Plan | canonical: True
+-- ID: 21966 | ref_number: C3 (War Memorial Park) -> O1, O2, O3, C1, C2 (War Memorial Park) | canonical: True
+-- ID: 21967 | ref_number: C5 (Gladstone Street) -> O1, C1, C2, C3, C4 (Gladstone Street) | canonical: True
+-- ID: 21968 | ref_number: C3 -> Objectives and controls within the Catherine Street Distinctive Neighbourhood | canonical: True
+-- ID: 21969 | ref_number: O1 (Catherine Street) -> Desired Future Character and Controls for the Distinctive Neighbourhood | canonical: True
+-- ID: 21970 | ref_number: O1 (Whites Creek) -> Desired Future Character and Controls for the Distinctive Neighbourhood | canonical: True
+-- ID: 21971 | ref_number: Proposals within or near Whites Creek Valley Park -> Council's Open Space Strategy | canonical: True
+-- ID: 21972 | ref_number: Sub Area controls -> Maximum building wall height | canonical: True
+-- ID: 21973 | ref_number: Development -> Relevant Sub Area objective(s) and condition(s) | canonical: True
+-- ID: 21974 | ref_number: Development -> Nanny Goat Hill Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21975 | ref_number: C5 -> all sub-area controls | canonical: True
+-- ID: 21976 | ref_number: C2.2.4.2(c), C2.2.4.2(d), C2.2.4.2(e) -> Nanny Goat Hill Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21977 | ref_number: C2 -> Nanny Goat Hill Distinctive Neighbourhood | canonical: True
+-- ID: 21978 | ref_number: Development -> Sub Area objective(s) and condition(s) | canonical: False
+-- ID: 21979 | ref_number: Development -> objectives and controls within the Leichhardt Park Distinctive Neighbourhood | canonical: True
+-- ID: 21980 | ref_number: Rear lane development controls -> C1.14 Tree Management | canonical: True
+-- ID: 21981 | ref_number: Iron Cove Backdrop Sub Area controls -> Leichhardt Park Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21982 | ref_number: Iron Cove Parklands Distinctive Neighbourhood controls -> Leichhardt Park Distinctive Neighbourhood objectives and controls | canonical: True
+-- ID: 21983 | ref_number: C4 -> Master Planning Process | canonical: True
+-- ID: 21984 | ref_number: Callan Park/Rozelle Hospital site -> Callan Park (Special Provisions) Act 2002 | canonical: True
+-- ID: 21985 | ref_number: Clause 7 (1) of the Callan Park Act -> State Environmental Planning Policy 56, Leichhardt Local Environmental Plan 2000, The Heritage Act 1997 | canonical: True
+-- ID: 21986 | ref_number: C1 (general controls) -> C2.2.5.1(a) and C2.2.5.1(b) (Sub Area Controls) | canonical: True
+-- ID: 21987 | ref_number: C2 (Evans Street Sub Area Controls) -> The Valley ‘Rozelle’ Distinctive Neighbourhood Controls | canonical: True
+-- ID: 21988 | ref_number: C2 Development -> The Valley ‘Rozelle’ Distinctive Neighbourhood | canonical: True
+-- ID: 21989 | ref_number: C2.2.5.3 Callan Park Distinctive Neighbourhood -> other relevant sections of this Development Control Plan | canonical: True
+-- ID: 21990 | ref_number: C13 -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21991 | ref_number: C2.2.5.5(b) -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+-- ID: 21992 | ref_number: C2.2.5.5(c) -> Rozelle Commercial Distinctive Neighbourhood | canonical: True
+
+-- Total provisions with arrows backed up: 2645

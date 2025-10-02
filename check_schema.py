@@ -1,29 +1,33 @@
-import sqlite3
+#!/usr/bin/env python3
+from db_config import get_connection
 
-conn = sqlite3.connect('nsw_planning.db')
-cursor = conn.cursor()
+conn = get_connection()
+cur = conn.cursor()
 
-print('=== EXISTING TABLES ===')
-cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-for table in cursor.fetchall():
- print(f'Table: {table[0]}')
+tables = ['regulatory_provisions', 'development_controls', 'development_permissions']
 
-print('\n=== permissibility_analysis SCHEMA ===')
-cursor.execute('PRAGMA table_info(permissibility_analysis)')
-for column in cursor.fetchall():
- print(f' {column[1]} ({column[2]})')
+for table in tables:
+    cur.execute(f"""
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = '{table}'
+        ORDER BY ordinal_position
+    """)
+    print(f"\n=== {table} ===")
+    for row in cur.fetchall():
+        print(f"  {row[0]:30} {row[1]}")
 
-print('\n=== development_permissions SCHEMA ===')
-try:
- cursor.execute('PRAGMA table_info(development_permissions)')
- for column in cursor.fetchall():
- print(f' {column[1]} ({column[2]})')
-except:
- print(' Table does not exist')
-
-print('\n=== SAMPLE permissibility_analysis DATA ===')
-cursor.execute('SELECT * FROM permissibility_analysis LIMIT 3')
-for row in cursor.fetchall():
- print(f' {row}')
+print("\n=== Sample development_controls ===")
+cur.execute("""
+    SELECT dc.control_type, dc.control_subtype, dc.value_numeric, dc.unit, 
+           rp.development_type, rp.zone, rp.document_id
+    FROM development_controls dc
+    JOIN regulatory_provisions rp ON dc.provision_id::integer = rp.id
+    LIMIT 3
+""")
+for row in cur.fetchall():
+    print(f"\n{row[0]}: {row[2]} {row[3]} ({row[1]})")
+    print(f"  Dev: {row[4]}, Zone: {row[5]}")
+    print(f"  Doc: {row[6][:50]}...")
 
 conn.close()

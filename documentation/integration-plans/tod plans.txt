@@ -1,0 +1,344 @@
+
+● Let me analyze the best strategy for introducing TOD
+  compliance requirements into your existing system.
+  First, let me check what TOD-related data we already
+  have:
+
+● Bash(cd "./services" && python -c "from db_config import
+      get_connection; conn = get_connection(); cursor =
+      conn.cursor(); cursor.execute('SELECT COUNT(*) FROM
+      regula…)
+  ⎿ ENFORCING DATABASE SAFETY PROTOCOLS
+      Timeout enforcement: Windows mode (30s statement t
+    imeout)
+    … +9 lines (ctrl+o to expand)
+
+
+● Excellent! Now let me check the Special Provisions data
+   we're already getting from the planning API:
+
+● Bash(cd "./services" && python -c "from db_config import
+      get_connection; conn = get_connection(); cursor =
+      conn.cursor(); cursor.execute('SELECT provision_text
+      FROM…)
+  ⎿ ENFORCING DATABASE SAFETY PROTOCOLS
+      Timeout enforcement: Windows mode (30s statement t
+    imeout)
+    … +14 lines (ctrl+o to expand)
+
+
+● Perfect! Based on my analysis, here's the optimal
+  strategy for introducing TOD compliance requirements:
+
+  🚊 Strategic TOD Integration Plan
+
+  Phase 1: Leverage Existing Infrastructure (1-2 weeks)
+
+  ✅ You Already Have:
+
+  - 2,026 transport-related provisions in the database
+  - SEPP Transport & Infrastructure 2021 detection in
+  Special Provisions
+  - Property proximity data from NSW Planning Portal
+  - Multi-dwelling housing provisions (R2: 6, R3: 2)
+  - Professional UI framework with version management
+
+  🎯 Quick Wins - Build on Existing:
+
+● 1. Enhanced Development Type Selector (Week 1)
+
+  Add TOD-specific options to your existing selector:
+
+  // Update frontend-nextjs/app/authoritative/page.tsx
+  const TOD_DEVELOPMENT_TYPES = [
+    {
+      id: 'multi_dwelling_housing',
+      name: 'Multi Dwelling Housing (TOD)',
+      icon: '🏘️',
+      description: 'Multi-dwelling near transport hubs',
+      tod_eligible: true
+    },
+    {
+      id: 'residential_flat_building',
+      name: 'Residential Flat Building (TOD)',
+      icon: '🏢',
+      description: 'Apartment buildings near transport',
+      tod_eligible: true
+    },
+    {
+      id: 'mixed_use',
+      name: 'Mixed Use TOD',
+      icon: '🏬',
+      description: 'Combined residential/commercial near
+  transport',
+      tod_eligible: true
+    }
+  ];
+
+  2. TOD Detection Component (Week 1)
+
+  Leverage existing SEPP detection to identify TOD
+  opportunities:
+
+  // New: frontend-nextjs/components/tod/TODDetector.tsx
+  interface TODDetectorProps {
+    specialProvisions: any[];
+    propertyData: any;
+    developmentType: string;
+  }
+
+  export function TODDetector({ specialProvisions,
+  propertyData, developmentType }) {
+    const transportSEPPs = specialProvisions.filter(sp =>
+
+      sp['EPI Name']?.includes('Transport and
+  Infrastructure')
+    );
+
+    const todEligible = ['multi_dwelling_housing',
+  'residential_flat_building', 'mixed_use']
+      .includes(developmentType);
+
+    if (transportSEPPs.length > 0 && todEligible) {
+      return (
+        <Alert className="border-blue-500 bg-blue-50">
+          <Train className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-medium">TOD Opportunity
+  Detected</div>
+            <div className="text-sm">
+              This property may qualify for
+  transport-oriented development concessions
+              under SEPP (Transport and Infrastructure)
+  2021
+            </div>
+          </AlertDescription>
+        </Alert>
+      );
+    }
+    return null;
+  }
+
+  3. Parking Reduction Calculator (Week 2)
+
+  Use existing provision data to calculate parking
+  reductions:
+
+  // New:
+  frontend-nextjs/components/tod/ParkingCalculator.tsx
+  interface ParkingCalculatorProps {
+    developmentType: string;
+    unitCount: number;
+    transportProvisions: any[];
+  }
+
+  export function ParkingCalculator({ developmentType,
+  unitCount, transportProvisions }) {
+    // Base parking requirements from existing provisions
+    const baseParkingRate =
+  getBaseParkingRate(developmentType); // e.g., 1.5 per
+  unit
+    const baseParking = Math.ceil(unitCount *
+  baseParkingRate);
+
+    // SEPP Transport reductions
+    const transportReduction =
+  calculateTransportReduction(transportProvisions);
+    const reducedParking = Math.ceil(baseParking * (1 -
+  transportReduction));
+
+    return (
+      <Card className="border-green-200 bg-green-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Car className="h-5 w-5" />
+            TOD Parking Assessment
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4
+  text-center">
+            <div>
+              <div className="text-2xl font-bold
+  text-gray-700">{baseParking}</div>
+              <div className="text-sm
+  text-gray-600">Standard Requirement</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold
+  text-orange-600">-{Math.round(transportReduction *
+  100)}%</div>
+              <div className="text-sm text-gray-600">SEPP
+   Reduction</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold
+  text-green-600">{reducedParking}</div>
+              <div className="text-sm text-gray-600">TOD
+  Requirement</div>
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-gray-600">
+            Reduction based on
+  {transportProvisions.length} applicable transport
+  provisions
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  4. Enhanced Compliance Display (Week 2)
+
+  Integrate TOD into existing
+  AuthoritativeComplianceDisplay:
+
+  // Update frontend-nextjs/components/compliance/Authori
+  tativeComplianceDisplay.tsx
+  // Add after version information section:
+
+  {/* TOD Assessment */}
+  {data && developmentType && ['multi_dwelling_housing',
+  'residential_flat_building',
+  'mixed_use'].includes(developmentType) && (
+    <div className="space-y-4">
+      <TODDetector
+        specialProvisions={specialProvisions}
+        propertyData={propertyData}
+        developmentType={developmentType}
+      />
+
+      {transportSEPPs.length > 0 && (
+        <ParkingCalculator
+          developmentType={developmentType}
+          unitCount={proposedUnits}
+          transportProvisions={transportSEPPs}
+        />
+      )}
+    </div>
+  )}
+
+  Phase 2: Data Enhancement (Weeks 3-4)
+
+  5. Transport Station Data Integration
+
+  Add to your existing property lookup:
+
+  // Enhance lib/property-data.ts
+  async function getTransportProximity(geometry: { x:
+  number, y: number }) {
+    // Use Transport for NSW API or Google Maps API
+    const nearbyStations = await
+  fetch(`/api/transport/nearby?lat=${lat}&lng=${lng}`);
+    return {
+      nearestStation: station,
+      distanceMeters: distance,
+      serviceType: 'train|bus|light_rail',
+      walkingTime: minutes
+    };
+  }
+
+  6. Enhanced SEPP Processing
+
+  Extend existing Special Provisions processing:
+
+  // Update lib/nsw-planning-portal.ts
+  case 'Special Provisions':
+    // Existing BASIX processing...
+
+    // Add TOD processing
+    if (result['EPI Name']?.includes('Transport and
+  Infrastructure')) {
+      constraints.todEligible = true;
+      constraints.transportSEPP = {
+        mapType: result['Map Type'],
+        class: result['Class'],
+        provisions: result['Legislative Clause']
+      };
+    }
+    break;
+
+  Phase 3: Advanced Features (Weeks 5-8)
+
+  7. TOD Compliance Scoring
+
+  interface TODCompliance {
+    transitScore: number;        // 0-100 based on
+  distance to transport
+    densityBonus: number;        // Additional height/FSR
+   allowances
+    parkingReduction: number;    // Percentage reduction
+  allowed
+    affordabilityRequirement: number; // Affordable
+  housing percentage
+    sustainabilityBonus: number; // BASIX improvements
+  }
+
+  8. Professional Guidance System
+
+  // TOD-specific professional guidance
+  const TOD_RECOMMENDATIONS = {
+    'high_tod_potential': {
+      message: "Excellent TOD opportunity",
+      actions: ["Consider density bonus", "Apply parking
+  reduction", "Engage transport agency"],
+      timeline: "Fast-track approval likely"
+    },
+    'moderate_tod_potential': {
+      message: "Some TOD benefits available",
+      actions: ["Review parking requirements", "Consider
+  affordable housing"],
+      timeline: "Standard DA process"
+    }
+  };
+
+  🚀 Implementation Strategy:
+
+  Immediate (This Week):
+
+  1. Add TOD development types to existing selector
+  2. Create TODDetector component using existing SEPP
+  data
+  3. Display transport provisions in compliance results
+
+  Short Term (2-4 weeks):
+
+  1. Parking calculator using existing provision formulas
+  2. Transport proximity detection via APIs
+  3. Enhanced version badges showing SEPP Transport dates
+
+  Medium Term (1-2 months):
+
+  1. Full TOD scoring algorithm
+  2. Integration with council systems for contributions
+  3. Predictive compliance analysis
+
+  💡 Key Advantages of This Approach:
+
+  ✅ Builds on Existing Strengths:
+
+  - Your 2,026 transport provisions provide regulatory
+  foundation
+  - SEPP detection system already identifies Transport
+  Infrastructure SEPP
+  - Professional UI just needs TOD-specific components
+  - Version management ensures transport regulation
+  currency
+
+  ✅ Professional Value:
+
+  - Instant parking calculations (most requested feature)
+  - SEPP override detection (critical for compliance)
+  - Version tracking for transport regulation changes
+  - Professional presentation for planning consultants
+
+  ✅ Data-Driven:
+
+  - Real NSW provisions not theoretical calculations
+  - Live SEPP detection from planning portal
+  - Audit trail for regulatory decisions
+  - Evidence-based parking reductions
+
+  This approach transforms your existing compliance
+  engine into a TOD-specialized tool without rebuilding -
+   just enhancing what already works! 🎯

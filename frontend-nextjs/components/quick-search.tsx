@@ -268,13 +268,6 @@ export function QuickSearch() {
  </div>
  )}
 
- {suggestions.length === 0 && results.length === 0 && (
- <div className="text-center py-8">
- <div className="text-sm text-gray-500">
- Select a property above to see relevant planning provisions and suggestions
- </div>
- </div>
- )}
  </div>
  </Card>
 

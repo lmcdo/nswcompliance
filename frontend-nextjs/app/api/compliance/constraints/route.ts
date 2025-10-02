@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping';
+import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-service';
 
 // Database connection
 const pool = new Pool({
@@ -89,6 +90,19 @@ export async function POST(request: NextRequest) {
       console.log(`[Constraints API] DCP Section:`, dcpSectionInfo);
     }
 
+    // NEW: Try precinct-based controls first
+    const precinct = await getPrecinctForAddress(address, targetLGA);
+    let precinctControls: any[] = [];
+
+    if (precinct) {
+      console.log(`[Constraints API] Matched precinct:`, precinct);
+      precinctControls = await getPrecinctControls(
+        precinct.documentId,
+        ['height', 'setback', 'parking', 'fsr', 'open_space', 'heritage', 'vegetation']
+      );
+      console.log(`[Constraints API] Found ${precinctControls.length} precinct-specific controls`);
+    }
+
     // Query 1: Get high-confidence extracted controls from development_controls
     const controlsQuery = `
       SELECT
@@ -166,8 +180,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Constraints API] Found ${setbackResult.rows.length} curated setback rules for zone ${zone}`);
 
-    // Combine controls and setbacks
-    const allControls = [...controlsResult.rows, ...setbackResult.rows];
+    // Combine zone-specific controls, setbacks, AND precinct controls
+    const allControls = [
+      ...controlsResult.rows,
+      ...setbackResult.rows,
+      ...precinctControls
+    ];
 
     // Query 3: Get development permissions if developmentType provided
     let permissions: any[] = [];

@@ -1,0 +1,337 @@
+MVP Version Management: Pragmatic
+ Implementation Strategy
+
+ MVP Scope Definition - "Version-Aware,
+ Not Version-Complete"
+
+ Core MVP Principle
+
+ "Track current + one previous version,
+ with hooks for future expansion"
+
+ 1. MVP Database Design - Minimal but
+ Extensible
+
+ Single Version Table (Start Simple)
+
+ document_versions (
+ id SERIAL PRIMARY KEY,
+ document_type TEXT, -- 'SEPP',
+ 'LEP', 'DCP'
+ document_identifier TEXT, --
+ 'SEPP-65', 'Inner-West-LEP-2022'
+ version_status TEXT, -- 'CURRENT',
+ 'PREVIOUS', 'ARCHIVED'
+ effective_date DATE NOT NULL,
+ document_url TEXT, -- Link to
+ source document
+ metadata JSONB -- Flexible field
+ for future attributes
+ )
+
+ -- Add single version_id to existing
+ tables
+ ALTER TABLE regulatory_provisions ADD
+ COLUMN version_id INTEGER;
+ ALTER TABLE regulatory_provisions ADD
+ COLUMN is_current BOOLEAN DEFAULT
+ true;
+
+ Why This Works for MVP
+
+ - Simple foreign key relationship (no
+ complex temporal queries)
+ - JSONB metadata allows adding fields
+ without schema changes
+ - Boolean flag for fast current
+ version queries
+ - Minimal migration of existing data
+
+ 2. MVP Functional Scope
+
+ What's IN Scope
+
+ Version Tracking
+ - Current version of each document
+ - One previous version for comparison
+ - Effective dates for version
+ transitions
+
+ Basic Version Queries
+ - "Get current provisions" (default
+ behavior)
+ - "Get provisions as at application
+ date" (for in-progress applications)
+ - "Show what changed" (simple diff
+ between current and previous)
+
+ Amendment Capture
+ - Manual flag when document updated
+ - Simple "supersedes" relationship
+ - Basic change notes in metadata field
+
+ What's OUT of Scope (But Prepared For)
+
+ Full version history (>2 versions)
+ Granular provision-level versioning
+ Automated change detection
+ Cross-document version dependencies
+ Regional variations within same
+ document
+
+ 3. Implementation Phases - 6 Week MVP
+
+ Week 1-2: Database Foundation
+
+ # Simple version manager class
+ class VersionManager:
+ def
+ get_current_version(document_type,
+ identifier):
+ # Returns active version
+
+ def
+ get_version_at_date(document_type,
+ identifier, date):
+ # Returns version active at
+ date (current or previous only)
+
+ def
+ create_new_version(document_type,
+ identifier, effective_date):
+ # Archives current, creates
+ new current
+
+ Deliverables:
+ - Version table created
+ - Migration script for existing data
+ (all marked as "CURRENT")
+ - Basic version CRUD operations
+
+ Week 3-4: API Integration
+
+ # Minimal API changes
+ @app.get("/api/provisions")
+ def get_provisions(
+ version: str = "current", #
+ "current" or "previous"
+ as_at_date: Optional[date] = None
+ # For in-progress applications
+ ):
+ # Query logic with version
+ awareness
+
+ Deliverables:
+ - Modified existing endpoints with
+ optional version parameter
+ - Version metadata in API responses
+ - Simple version switch in compliance
+ checks
+
+ Week 5-6: Frontend & Testing
+
+ // Simple version indicator
+ <VersionBadge
+ status={provision.version_status}
+ effectiveDate={provision.effective
+ _date}
+ />
+
+ // Basic version toggle
+ <VersionSelector
+ options={["Current", "Previous"]}
+ onChange={handleVersionChange}
+ />
+
+ Deliverables:
+ - Version indicators on provision
+ displays
+ - Basic version selector for power
+ users
+ - Warning when viewing non-current
+ version
+
+ 4. Smart Compromises for MVP
+
+ Compromise 1: Two-Version Limit
+
+ Instead of: Full version history
+ MVP Does: Current + previous only
+ Future Path: Add "ARCHIVED" status,
+ migrate to temporal tables
+
+ Compromise 2: Document-Level
+ Versioning
+
+ Instead of: Provision-level version
+ tracking
+ MVP Does: Entire document versioned as
+ unit
+ Future Path: Add provision_version_id
+ for granular tracking
+
+ Compromise 3: Manual Version
+ Management
+
+ Instead of: Automated gazettal
+ scraping
+ MVP Does: Admin manually creates new
+ versions
+ Future Path: Add scheduled jobs for
+ portal monitoring
+
+ Compromise 4: Simple Effectiveness
+
+ Instead of: Complex temporal queries
+ MVP Does: Single effective_date per
+ version
+ Future Path: Add superseded_date,
+ transition_periods
+
+ Compromise 5: No Cross-Document
+ Dependencies
+
+ Instead of: SEPP→LEP→DCP cascade
+ tracking
+ MVP Does: Independent version per
+ document type
+ Future Path: Add
+ inter_document_relationships table
+
+ 5. Migration Strategy for Existing
+ System
+
+ Step 1: Add Version Infrastructure
+ (Non-Breaking)
+
+ -- Add columns without requiring
+ values
+ ALTER TABLE regulatory_provisions
+ ADD COLUMN version_id INTEGER,
+ ADD COLUMN is_current BOOLEAN
+ DEFAULT true;
+
+ -- Create version records for existing
+ data
+ INSERT INTO document_versions
+ (document_type, document_identifier,
+ version_status)
+ SELECT DISTINCT
+ CASE WHEN document_id LIKE
+ '%SEPP%' THEN 'SEPP'
+ WHEN document_id LIKE '%LEP%'
+ THEN 'LEP'
+ ELSE 'DCP' END,
+ document_id,
+ 'CURRENT'
+ FROM regulatory_provisions;
+
+ Step 2: Gradual Service Migration
+
+ - Week 1: Read from version tables,
+ write to both
+ - Week 2: Add version parameters to
+ APIs (optional)
+ - Week 3: Frontend shows version info
+ (read-only)
+ - Week 4: Enable version switching for
+ beta users
+ - Week 5: Full rollout with previous
+ version support
+
+ 6. Future-Proofing Decisions
+
+ Database Design
+
+ JSONB metadata field - Add fields
+ without migrations
+ Generic document_identifier -
+ Supports any document naming
+ Status enum - Easy to add more
+ states
+ Separate version table - Clean
+ separation of concerns
+
+ API Design
+
+ Optional parameters - Version-aware
+ without breaking changes
+ Response headers - Include version
+ metadata in headers
+ Deprecation warnings - Flag when
+ using old version
+
+ Code Architecture
+
+ Version service layer - Isolate
+ version logic
+ Strategy pattern - Different
+ strategies per document type
+ Feature flags - Roll out version
+ features gradually
+
+ 7. MVP Success Criteria
+
+ Must Have
+
+ - Track when regulations changed
+ (effective date)
+ - Support in-progress applications
+ with old rules
+ - Show users which version they're
+ viewing
+ - Allow comparison between current and
+ previous
+
+ Nice to Have
+
+ - Change summaries in metadata
+ - Version timeline visualization
+ - Bulk version operations for admin
+ - Version-aware caching
+
+ Not in MVP
+
+ - Full audit history
+ - Provision-level versioning
+ - Automated version detection
+ - Complex temporal queries
+
+ 8. Risk Mitigation
+
+ Technical Risks
+
+ Risk: Performance degradation with
+ version checks
+ Mitigation: Index on (document_type,
+ version_status, is_current)
+
+ Risk: Data inconsistency during
+ migration
+ Mitigation: Dual-write period,
+ extensive testing
+
+ Business Risks
+
+ Risk: Users confused by versions
+ Mitigation: Default to current, clear
+ UI indicators
+
+ Risk: Legal challenge on version
+ accuracy
+ Mitigation: Source document URLs,
+ clear effective dates
+
+ 9. 3-Month Roadmap Post-MVP
+
+ Month 1: Add third version (archived),
+ provision-level tracking
+ Month 2: Cross-document dependencies,
+ automated ingestion
+ Month 3: Full temporal queries,
+ version branching
+
+ This MVP approach delivers immediate
+ value while building a foundation for
+ comprehensive version management
+ across all NSW planning documents.

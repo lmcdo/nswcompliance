@@ -41,12 +41,12 @@ export default function RootLayout({
  
  {/* Google Maps API with optimized loading strategy */}
  <Script
- src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
+ src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCi5UBAg6X-k6W8v1vv9XEQaML9aQE-w60&libraries=places"
  strategy="afterInteractive"
  />
 
- {/* Initialize autocomplete after Google Maps loads */}
- <Script id="init-autocomplete" strategy="afterInteractive">
+ {/* Autocomplete handled by PropertySearch component, not globally */}
+ {/* <Script id="init-autocomplete" strategy="afterInteractive">
  {`
  function initAutocomplete() {
  console.log(' Attempting to initialize autocomplete...');
@@ -96,7 +96,7 @@ export default function RootLayout({
  // Start initialization after a short delay
  setTimeout(initAutocomplete, 1000);
  `}
- </Script>
+ </Script> */}
  </body>
  </html>
  );

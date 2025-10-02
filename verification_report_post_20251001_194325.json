@@ -1,0 +1,195 @@
+{
+  "timestamp": "2025-10-01T19:43:25.372430",
+  "phase": "post",
+  "database": "nsw_planning",
+  "metrics": {
+    "total_provisions_post": 22648,
+    "canonical_count": 20331,
+    "duplicate_count": 2317,
+    "benchmark_canonical": 8.580923080444336,
+    "benchmark_view": 8.516550064086914
+  },
+  "summary": {
+    "total_tests": 22,
+    "passed": 19,
+    "failed": 3
+  },
+  "tests": [
+    {
+      "name": "New columns created",
+      "passed": true,
+      "expected": "{'canonical_provision_id', 'text_hash', 'is_canonical', 'migration_phase'}",
+      "actual": "{'canonical_provision_id', 'migration_phase', 'text_hash', 'is_canonical'}",
+      "message": "Found: canonical_provision_id, is_canonical, migration_phase, text_hash",
+      "timestamp": "2025-10-01T19:43:25.080751"
+    },
+    {
+      "name": "Indexes created",
+      "passed": true,
+      "expected": "{'idx_provisions_canonical_id', 'idx_provisions_text_hash', 'idx_provisions_canonical'}",
+      "actual": "{'idx_provisions_canonical_id', 'idx_provisions_text_hash', 'idx_provisions_canonical'}",
+      "message": "Created 3/3 indexes",
+      "timestamp": "2025-10-01T19:43:25.082741"
+    },
+    {
+      "name": "Foreign key constraint created",
+      "passed": true,
+      "expected": "True",
+      "actual": "True",
+      "message": "fk_canonical_provision exists",
+      "timestamp": "2025-10-01T19:43:25.083741"
+    },
+    {
+      "name": "View 'regulatory_provisions_canonical' created",
+      "passed": true,
+      "expected": "True",
+      "actual": "True",
+      "message": "",
+      "timestamp": "2025-10-01T19:43:25.083741"
+    },
+    {
+      "name": "No data loss (count unchanged)",
+      "passed": true,
+      "expected": "Unknown",
+      "actual": "22648",
+      "message": "Post: 22,648",
+      "timestamp": "2025-10-01T19:43:25.094271"
+    },
+    {
+      "name": "Canonical count reasonable (80-95%)",
+      "passed": true,
+      "expected": "80-95%",
+      "actual": "89.8%",
+      "message": "20,331 canonical, 2,317 duplicates",
+      "timestamp": "2025-10-01T19:43:25.097782"
+    },
+    {
+      "name": "Duplicate groups properly marked",
+      "passed": true,
+      "expected": "> 0",
+      "actual": "2317",
+      "message": "2,317 duplicates marked from 2,163 groups",
+      "timestamp": "2025-10-01T19:43:25.134472"
+    },
+    {
+      "name": "All duplicates have canonical_provision_id",
+      "passed": true,
+      "expected": "100%",
+      "actual": "100.0%",
+      "message": "2317/2317 duplicates linked",
+      "timestamp": "2025-10-01T19:43:25.139985"
+    },
+    {
+      "name": "text_hash populated for all provisions",
+      "passed": true,
+      "expected": "100%",
+      "actual": "100.0%",
+      "message": "22,648/22,648 provisions have hash",
+      "timestamp": "2025-10-01T19:43:25.146984"
+    },
+    {
+      "name": "No orphaned duplicates",
+      "passed": true,
+      "expected": "0",
+      "actual": "0",
+      "message": "All duplicates point to valid canonical",
+      "timestamp": "2025-10-01T19:43:25.155146"
+    },
+    {
+      "name": "Each duplicate group has exactly 1 canonical",
+      "passed": false,
+      "expected": "100%",
+      "actual": "100.0%",
+      "message": "2162/2163 groups correct",
+      "timestamp": "2025-10-01T19:43:25.194477"
+    },
+    {
+      "name": "No false positives (unique provisions marked as duplicates)",
+      "passed": true,
+      "expected": "0",
+      "actual": "0",
+      "message": "All unique provisions are canonical",
+      "timestamp": "2025-10-01T19:43:25.242346"
+    },
+    {
+      "name": "Duplicate groups exist for verification",
+      "passed": true,
+      "expected": "> 0",
+      "actual": "5",
+      "message": "5 sample groups available",
+      "timestamp": "2025-10-01T19:43:25.254064"
+    },
+    {
+      "name": "Canonical provisions have NULL canonical_provision_id",
+      "passed": true,
+      "expected": "0",
+      "actual": "0",
+      "message": "All canonical records valid",
+      "timestamp": "2025-10-01T19:43:25.258036"
+    },
+    {
+      "name": "All duplicates have canonical_provision_id",
+      "passed": true,
+      "expected": "0",
+      "actual": "0",
+      "message": "All duplicates linked",
+      "timestamp": "2025-10-01T19:43:25.262583"
+    },
+    {
+      "name": "No circular canonical references",
+      "passed": false,
+      "expected": "0",
+      "actual": "2317",
+      "message": "2317 circular references!",
+      "timestamp": "2025-10-01T19:43:25.275274"
+    },
+    {
+      "name": "NULL provision_text handled",
+      "passed": true,
+      "expected": "All flagged",
+      "actual": "No NULL texts",
+      "message": "All provisions have text",
+      "timestamp": "2025-10-01T19:43:25.278938"
+    },
+    {
+      "name": "Empty text provisions identified",
+      "passed": true,
+      "expected": "Baseline",
+      "actual": "353",
+      "message": "353 provisions with empty text",
+      "timestamp": "2025-10-01T19:43:25.296338"
+    },
+    {
+      "name": "text_hash format valid (MD5)",
+      "passed": true,
+      "expected": "22648",
+      "actual": "22648",
+      "message": "22648/22648 valid MD5 hashes",
+      "timestamp": "2025-10-01T19:43:25.355332"
+    },
+    {
+      "name": "Canonical filter query (1000 rows)",
+      "passed": true,
+      "expected": "Performance",
+      "actual": "8.58ms",
+      "message": "Post-migration with filter",
+      "timestamp": "2025-10-01T19:43:25.363913"
+    },
+    {
+      "name": "View query (1000 rows)",
+      "passed": true,
+      "expected": "Performance",
+      "actual": "8.52ms",
+      "message": "Post-migration using view",
+      "timestamp": "2025-10-01T19:43:25.372430"
+    },
+    {
+      "name": "Performance comparison",
+      "passed": false,
+      "expected": "Comparison",
+      "actual": "No pre-migration data",
+      "message": "Run --pre first for comparison",
+      "timestamp": "2025-10-01T19:43:25.372430"
+    }
+  ]
+}

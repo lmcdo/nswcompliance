@@ -1,0 +1,118 @@
+{
+  "timestamp": "2025-10-01T19:41:33.137777",
+  "phase": "pre",
+  "database": "nsw_planning",
+  "metrics": {
+    "total_provisions_pre": 22648,
+    "duplicate_groups_pre": 2163,
+    "excess_records_pre": 2319.0,
+    "ref_with_arrows_pre": 2645,
+    "unique_documents_pre": 466,
+    "benchmark_select_pre": 8.015632629394531,
+    "benchmark_count_pre": 2.0051002502441406,
+    "benchmark_filtered_pre": 1.5163421630859375
+  },
+  "summary": {
+    "total_tests": 12,
+    "passed": 11,
+    "failed": 1
+  },
+  "tests": [
+    {
+      "name": "Table 'regulatory_provisions' exists",
+      "passed": true,
+      "expected": "True",
+      "actual": "True",
+      "message": "",
+      "timestamp": "2025-10-01T19:41:33.014706"
+    },
+    {
+      "name": "Migration columns do not exist yet",
+      "passed": true,
+      "expected": "0",
+      "actual": "0",
+      "message": "Clean state",
+      "timestamp": "2025-10-01T19:41:33.020430"
+    },
+    {
+      "name": "View 'regulatory_provisions_canonical' does not exist",
+      "passed": true,
+      "expected": "False",
+      "actual": "False",
+      "message": "",
+      "timestamp": "2025-10-01T19:41:33.020430"
+    },
+    {
+      "name": "Baseline provision count recorded",
+      "passed": true,
+      "expected": "> 0",
+      "actual": "22648",
+      "message": "Total: 22,648 provisions",
+      "timestamp": "2025-10-01T19:41:33.025040"
+    },
+    {
+      "name": "Check for NULL critical fields",
+      "passed": false,
+      "expected": "0 nulls",
+      "actual": "10 nulls",
+      "message": "Issues: 10 null ref_number",
+      "timestamp": "2025-10-01T19:41:33.034549"
+    },
+    {
+      "name": "Identify duplicate patterns",
+      "passed": true,
+      "expected": "> 0 duplicates",
+      "actual": "2319 excess records in 2163 groups",
+      "message": "Will mark 2,319 duplicates",
+      "timestamp": "2025-10-01T19:41:33.070104"
+    },
+    {
+      "name": "Provision text coverage",
+      "passed": true,
+      "expected": ">= 98%",
+      "actual": "98.4%",
+      "message": "Avg length: 196 chars, Range: 0-29206",
+      "timestamp": "2025-10-01T19:41:33.100950"
+    },
+    {
+      "name": "Ref_number format analysis",
+      "passed": true,
+      "expected": "Baseline",
+      "actual": "2645 with arrows, 226 >100 chars, 121 numeric-only",
+      "message": "Total: 22,648",
+      "timestamp": "2025-10-01T19:41:33.108648"
+    },
+    {
+      "name": "Document ID diversity",
+      "passed": true,
+      "expected": "> 0",
+      "actual": "466",
+      "message": "466 unique documents",
+      "timestamp": "2025-10-01T19:41:33.126240"
+    },
+    {
+      "name": "Baseline SELECT query (1000 rows)",
+      "passed": true,
+      "expected": "Baseline",
+      "actual": "8.02ms",
+      "message": "Pre-migration benchmark",
+      "timestamp": "2025-10-01T19:41:33.134255"
+    },
+    {
+      "name": "Baseline COUNT query",
+      "passed": true,
+      "expected": "Baseline",
+      "actual": "2.01ms",
+      "message": "Pre-migration benchmark",
+      "timestamp": "2025-10-01T19:41:33.136260"
+    },
+    {
+      "name": "Baseline filtered query",
+      "passed": true,
+      "expected": "Baseline",
+      "actual": "1.52ms",
+      "message": "Pre-migration benchmark",
+      "timestamp": "2025-10-01T19:41:33.137777"
+    }
+  ]
+}

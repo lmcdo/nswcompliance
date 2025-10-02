@@ -1,0 +1,24 @@
+cd "C:\Users\lawre\Downloads\solvyra\projects\compliance engine\compliance-engine"
+
+# Delete the corrupted cache again
+Remove-Item -Recurse -Force .claude -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force ~\.claude -ErrorAction SilentlyContinue
+
+# NOW create .claudeignore to prevent re-corruption
+@"
+# Prevent Claude from scanning these massive directories
+venv_linux/
+venv/
+env/
+node_modules/
+frontend-nextjs/node_modules/
+nsw-assessment/node_modules/
+__pycache__/
+*.exe
+.next/
+dist/
+build/
+"@ | Out-File -FilePath .claudeignore -Encoding utf8
+
+# Now start Claude - it won't cache the huge folders
+claude

@@ -3,7 +3,7 @@ import { Pool } from 'pg';
 
 const pool = new Pool({
   host: 'localhost',
-  database: 'nsw_planning_corrected', // Using corrected database
+  database: 'nsw_planning', // Correct database
   user: 'postgres',
   password: 'postgres',
   port: 5432,
@@ -110,26 +110,19 @@ export async function GET(
     );
   }
 
-  const client = await pool.connect();
-
   try {
-    // Single optimized query using the corrected database relationships
-    const result = await client.query(`
+    // Simple fast query - provision_text IS the full text
+    const result = await pool.query(`
       SELECT
-        rp.id,
-        rp.ref_number,
-        rp.provision_text as excerpt_text,
-        rp.document_id,
-        li.instrument_type,
-        li.legal_precedence,
-        li.title,
-        li.instrument_code,
-        d.full_text as complete_document_text,
-        d.char_count
-      FROM regulatory_provisions rp
-      JOIN legal_instruments li ON rp.instrument_id = li.id
-      JOIN documents d ON d.id = rp.document_id
-      WHERE rp.id = $1
+        id,
+        ref_number,
+        provision_text,
+        document_id,
+        section_header,
+        provision_type,
+        full_text_length
+      FROM regulatory_provisions
+      WHERE id = $1
     `, [provisionId]);
 
     if (result.rows.length === 0) {
@@ -141,22 +134,28 @@ export async function GET(
 
     const provision = result.rows[0];
 
-    // Extract the complete clause text from the full document
-    const fullClauseText = extractClauseFromDocument(
-      provision.complete_document_text,
-      provision.ref_number
-    );
+    // Determine document type from document_id
+    let instrumentType = 'DCP';
+    let precedence = 3;
+
+    if (provision.document_id?.includes('SEPP') || provision.document_id?.includes('State_Environmental')) {
+      instrumentType = 'SEPP';
+      precedence = 1;
+    } else if (provision.document_id?.includes('LEP') || provision.document_id?.includes('Environmental_Plan')) {
+      instrumentType = 'LEP';
+      precedence = 2;
+    }
 
     const response: CompleteProvisionResponse = {
       id: provision.id,
-      reference: provision.ref_number,
-      excerptText: provision.excerpt_text,
-      fullClauseText: fullClauseText,
-      legalPrecedence: provision.legal_precedence,
-      instrumentType: provision.instrument_type,
-      documentTitle: provision.title,
+      reference: provision.ref_number || 'N/A',
+      excerptText: provision.provision_text?.substring(0, 200) || '',
+      fullClauseText: provision.provision_text || null,
+      legalPrecedence: precedence,
+      instrumentType: instrumentType,
+      documentTitle: provision.section_header || provision.document_id,
       documentId: provision.document_id,
-      charCount: provision.char_count
+      charCount: provision.full_text_length || provision.provision_text?.length || 0
     };
 
     return NextResponse.json(response);
@@ -167,7 +166,5 @@ export async function GET(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  } finally {
-    client.release();
   }
 }

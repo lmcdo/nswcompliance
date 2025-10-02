@@ -21,42 +21,12 @@ interface PropertyData {
  heritage?: any;
 }
 
-export function PropertyDetailsComprehensive() {
- const [propertyData, setPropertyData] = useState<PropertyData>({})
+interface PropertyDetailsComprehensiveProps {
+ propertyData: PropertyData;
+}
+
+export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsComprehensiveProps) {
  const [expandedLayers, setExpandedLayers] = useState<Set<string>>(new Set())
- const [currentAddress, setCurrentAddress] = useState<string>("")
-
- // Listen for address selection from header
- useEffect(() => {
- const handleAddressSelected = (event: CustomEvent) => {
- const newAddress = event.detail
- console.log(' PropertyDetailsComprehensive received address event:', newAddress)
- setCurrentAddress(newAddress)
- fetchComprehensivePropertyData(newAddress)
- }
-
- window.addEventListener('addressSelected', handleAddressSelected as EventListener)
- return () => {
- window.removeEventListener('addressSelected', handleAddressSelected as EventListener)
- }
- }, [])
-
- // No initial data loading - only load when address is selected
-
- const fetchComprehensivePropertyData = async (addr: string) => {
- if (!addr) return
-
- try {
- const response = await fetch(`/api/property?address=${encodeURIComponent(addr)}`)
- if (response.ok) {
- const apiResponse = await response.json()
- setPropertyData(apiResponse.data)
- console.log(' PropertyDetailsComprehensive updated with data:', apiResponse.data)
- }
- } catch (error) {
- console.error('Failed to fetch comprehensive property data:', error)
- }
- }
 
  const toggleLayer = (layerId: string) => {
  const newExpanded = new Set(expandedLayers)
@@ -84,6 +54,20 @@ export function PropertyDetailsComprehensive() {
 
  const formatValue = (key: string, value: any) => {
  if (value === null || value === undefined) return 'N/A'
+
+ // Handle legislationUrl and other URL fields
+ if ((key === 'legislationUrl' || key.toLowerCase().includes('url')) && typeof value === 'string' && value.startsWith('http')) {
+ return (
+ <a
+ href={value}
+ target="_blank"
+ rel="noopener noreferrer"
+ className="text-blue-600 hover:text-blue-800 underline font-medium text-sm break-all"
+ >
+ {value}
+ </a>
+ )
+ }
 
  // Handle Regional Plan Website links
  if (key === 'Regional Plan Website' && typeof value === 'string' && value.includes('&lt;a href=')) {
@@ -133,7 +117,7 @@ export function PropertyDetailsComprehensive() {
  return Object.entries(result).filter(([key, value]) => !exclude.includes(key) && value !== null && value !== undefined && value !== '')
  }
 
- if (!propertyData.planningLayers || propertyData.planningLayers.length === 0) {
+ if (!propertyData || !propertyData.planningLayers || propertyData.planningLayers.length === 0) {
  return (
  <Card className="shadow-sm">
  <CardHeader>
@@ -172,75 +156,75 @@ export function PropertyDetailsComprehensive() {
  })
 
  return (
- <Card className="shadow-sm">
- <CardHeader>
- <CardTitle className="text-lg font-semibold flex items-center gap-2">
- <FileText className="h-5 w-5" />
- NSW Planning Layers ({expectedLayers.length})
- </CardTitle>
- </CardHeader>
- <CardContent className="space-y-3">
- {expectedLayers.map((layerName) => {
-   const layer = layerMap.get(layerName)
-   const isPresent = !!layer
-   return (
-   <div key={layerName} className={`border rounded-lg ${isPresent ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
-   <Button
-   variant="ghost"
-   className="w-full justify-between h-auto p-3 font-normal"
-   onClick={() => layer && toggleLayer(layer.id)}
-   disabled={!isPresent}
-   >
-   <div className="flex items-center gap-2">
-   {getLayerIcon(layerName)}
-   <span className={`font-medium text-xs ${isPresent ? 'text-green-800' : 'text-orange-600'}`}>{layerName}</span>
-   <Badge variant="outline" className={`text-xs ${isPresent ? 'border-green-300 text-green-700' : 'border-orange-300 text-orange-600'}`}>
-   {isPresent ? `${layer.results.length} item${layer.results.length !== 1 ? 's' : ''}` : 'Does not apply'}
-   </Badge>
-   </div>
-   {isPresent && (expandedLayers.has(layer.id) ?
-   <ChevronDown className="h-4 w-4" /> :
-   <ChevronRight className="h-4 w-4" />
-   )}
-   </Button>
+   <Card className="shadow-sm">
+     <CardHeader>
+       <CardTitle className="text-lg font-semibold flex items-center gap-2">
+         <FileText className="h-5 w-5" />
+         NSW Planning Layers ({expectedLayers.length})
+       </CardTitle>
+     </CardHeader>
+     <CardContent className="space-y-3">
+       {expectedLayers.map((layerName) => {
+         const layer = layerMap.get(layerName)
+         const isPresent = !!layer
+         return (
+           <div key={layerName} className={`border rounded-lg ${isPresent ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+             <Button
+               variant="ghost"
+               className="w-full justify-between h-auto p-3 font-normal"
+               onClick={() => layer && toggleLayer(layer.id)}
+               disabled={!isPresent}
+             >
+               <div className="flex items-center gap-2">
+                 {getLayerIcon(layerName)}
+                 <span className={`font-medium text-xs ${isPresent ? 'text-green-800' : 'text-orange-600'}`}>{layerName}</span>
+                 <Badge variant="outline" className={`text-xs ${isPresent ? 'border-green-300 text-green-700' : 'border-orange-300 text-orange-600'}`}>
+                   {isPresent ? `${layer.results.length} item${layer.results.length !== 1 ? 's' : ''}` : 'Does not apply'}
+                 </Badge>
+               </div>
+               {isPresent && (expandedLayers.has(layer.id) ?
+                 <ChevronDown className="h-4 w-4" /> :
+                 <ChevronRight className="h-4 w-4" />
+               )}
+             </Button>
 
- {layer && expandedLayers.has(layer.id) && (
- <div className="border-t p-4 space-y-4">
- {layer.results.map((result, idx) => (
- <div key={idx} className="bg-white border rounded-lg p-4 shadow-sm">
- {/* Important fields prominently displayed */}
- <div className="flex flex-wrap gap-2 mb-3">
- {getImportantFields(result).map(({ key, value }) => (
- <Badge key={key} variant="default" className="text-xs font-medium">
- {key}: {value}
- </Badge>
- ))}
- </div>
+             {layer && expandedLayers.has(layer.id) && (
+               <div className="border-t p-4 space-y-4">
+                 {layer.results.map((result, idx) => (
+                   <div key={idx} className="bg-white border rounded-lg p-4 shadow-sm">
+                     {/* Important fields prominently displayed */}
+                     <div className="flex flex-wrap gap-2 mb-3">
+                       {getImportantFields(result).map(({ key, value }) => (
+                         <Badge key={key} variant="default" className="text-xs font-medium">
+                           {key}: {value}
+                         </Badge>
+                       ))}
+                     </div>
 
- {/* Title if available and not redundant with important fields */}
- {result.title && result.title !== 'Canopy %' && (
- <h4 className="font-semibold text-base mb-3 text-gray-900">{result.title}</h4>
- )}
+                     {/* Title if available and not redundant with important fields */}
+                     {result.title && result.title !== 'Canopy %' && (
+                       <h4 className="font-semibold text-base mb-3 text-gray-900">{result.title}</h4>
+                     )}
 
- {/* All other metadata in clean vertical layout */}
- <div className="space-y-2">
- {getSecondaryFields(result).map(([key, value]) => (
- <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-100 pb-1">
- <span className="text-gray-600 font-medium text-sm">{key}:</span>
- <span className="text-gray-900 text-sm sm:text-right max-w-xs break-words">
- {typeof formatValue(key, value) === 'object' ? formatValue(key, value) : formatValue(key, value)}
- </span>
- </div>
- ))}
- </div>
- </div>
- ))}
- </div>
- )}
- </div>
- )
- })}
- </CardContent>
- </Card>
+                     {/* All other metadata in clean vertical layout */}
+                     <div className="space-y-2">
+                       {getSecondaryFields(result).map(([key, value]) => (
+                         <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-100 pb-1">
+                           <span className="text-gray-600 font-medium text-sm">{key}:</span>
+                           <span className="text-gray-900 text-sm sm:text-right max-w-xs break-words">
+                             {typeof formatValue(key, value) === 'object' ? formatValue(key, value) : formatValue(key, value)}
+                           </span>
+                         </div>
+                       ))}
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             )}
+           </div>
+         )
+       })}
+     </CardContent>
+   </Card>
  )
 }

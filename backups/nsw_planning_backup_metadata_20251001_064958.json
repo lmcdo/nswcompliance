@@ -1,0 +1,26 @@
+{
+  "backup_timestamp": "2025-10-01T06:50:04.538265",
+  "backup_type": "full_database",
+  "sql_backup_file": null,
+  "sql_backup_size_bytes": 0,
+  "database": "nsw_planning",
+  "statistics": {
+    "regulatory_provisions": 22648,
+    "documents": 274,
+    "development_permissions": 221,
+    "sepp_lep_overrides": 91
+  },
+  "extraction_methods": [
+    {
+      "method": "autoschema",
+      "count": 21947,
+      "avg_length": 143
+    },
+    {
+      "method": "mineru",
+      "count": 701,
+      "avg_length": 1881
+    }
+  ],
+  "purpose": "Complete database backup before SEPP extraction operations"
+}

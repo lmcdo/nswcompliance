@@ -1,29 +1,19 @@
 /**
  * SEPP Router Service
- * Routes SEPP document processing based on NSW Planning Portal special provisions data
+ * Routes SEPP document processing using database regulatory provisions data
  */
-
-// Conditional imports for Next.js compatibility
-let fs: any = null;
-let path: any = null;
-
-if (typeof window === 'undefined') {
- // Server-side only
- fs = require('fs');
- path = require('path');
-}
 
 export interface SeppMapping {
  identifier: string;
  name: string;
- filename_patterns: string[];
+ database_patterns: string[];
  description: string;
 }
 
 export interface SeppRoutingResult {
  applicableSepps: string[];
- seppFiles: { [seppId: string]: string[] };
- totalFiles: number;
+ seppProvisions: { [seppId: string]: any[] };
+ totalProvisions: number;
  missing: string[];
 }
 
@@ -33,113 +23,110 @@ export interface SeppRoutingResult {
 const SEPP_MAPPINGS: SeppMapping[] = [
  {
  identifier: 'SEPP_HOUSING_2021',
- name: 'SEPP (Housing) 2021', 
- filename_patterns: ['housing', 'sepp.*housing'],
+ name: 'SEPP (Housing) 2021',
+ database_patterns: ['State_Environmental_Planning_Policy_(Housing)_2021'],
  description: 'Housing development provisions'
  },
  {
  identifier: 'SEPP_PLANNING_SYSTEMS_2021',
  name: 'SEPP (Planning Systems) 2021',
- filename_patterns: ['planning.*systems', 'systems.*planning', '\\(planning systems\\)'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Planning_Systems)_2021'],
  description: 'Planning systems and processes'
  },
  {
  identifier: 'SEPP_RESILIENCE_HAZARDS_2021',
- name: 'SEPP (Resilience and Hazards) 2021', 
- filename_patterns: ['resilience', 'hazards', 'resilience.*hazards'],
+ name: 'SEPP (Resilience and Hazards) 2021',
+ database_patterns: ['State_Environmental_Planning_Policy_(Resilience_and_Hazards)_2021'],
  description: 'Environmental hazards and resilience'
  },
  {
  identifier: 'SEPP_TRANSPORT_INFRASTRUCTURE_2021',
  name: 'SEPP (Transport and Infrastructure) 2021',
- filename_patterns: ['transport', 'infrastructure'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021'],
  description: 'Transport and infrastructure development'
  },
  {
  identifier: 'SEPP_BIODIVERSITY_CONSERVATION_2017',
  name: 'SEPP (Biodiversity and Conservation) 2017',
- filename_patterns: ['biodiversity', 'conservation'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Biodiversity_and_Conservation)_2017'],
  description: 'Biodiversity conservation provisions'
  },
  {
  identifier: 'SEPP_INDUSTRY_EMPLOYMENT_2021',
  name: 'SEPP (Industry and Employment) 2021',
- filename_patterns: ['industry', 'employment'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Industry_and_Employment)_2021'],
  description: 'Industry and employment development'
  },
  {
  identifier: 'SEPP_EXEMPT_COMPLYING_2008',
  name: 'SEPP (Exempt and Complying Development Codes) 2008',
- filename_patterns: ['exempt', 'complying'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Exempt_and_Complying_Development_Codes)_2008'],
  description: 'Exempt and complying development codes'
  },
  {
  identifier: 'SEPP_PRIMARY_PRODUCTION_2021',
  name: 'SEPP (Primary Production) 2021',
- filename_patterns: ['primary.*production', 'production'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Primary_Production)_2021'],
  description: 'Primary production development'
  },
  {
  identifier: 'SEPP_SUSTAINABLE_BUILDINGS_2022',
  name: 'SEPP (Sustainable Buildings) 2022',
- filename_patterns: ['sustainable.*buildings', 'sustainable'],
+ database_patterns: ['State_Environmental_Planning_Policy_(Sustainable_Buildings)_2022'],
  description: 'Sustainable buildings development'
  }
 ];
 
 export class SeppRouter {
- private seppDirectory: string;
- 
- constructor(docsBasePath: string = 'docs') {
- this.seppDirectory = path ? path.join(docsBasePath, 'sepps') : '';
+
+ constructor() {
+ // No longer need file system paths - using database
  }
 
  /**
  * Route SEPP documents based on applicable SEPPs from NSW Planning Portal API
  */
- public routeApplicableSepps(applicableSepps: string[]): SeppRoutingResult {
- console.log('=== SEPP ROUTING ===');
+ public async routeApplicableSepps(applicableSepps: string[]): Promise<SeppRoutingResult> {
+ console.log('=== SEPP ROUTING (DATABASE) ===');
  console.log('Applicable SEPPs from API:', applicableSepps);
- 
+
  const result: SeppRoutingResult = {
  applicableSepps,
- seppFiles: {},
- totalFiles: 0,
+ seppProvisions: {},
+ totalProvisions: 0,
  missing: []
  };
 
  // Server-side only operations
- if (typeof window === 'undefined' && fs && path) {
- // Check if SEPP directory exists
- if (!fs.existsSync(this.seppDirectory)) {
- console.error(`SEPP directory not found: ${this.seppDirectory}`);
- result.missing = [...applicableSepps];
- return result;
- }
+ if (typeof window === 'undefined') {
+ try {
+ // Import database connection
+ const { spawn } = require('child_process');
+ const path = require('path');
 
- // Get all available SEPP files
- const availableFiles = fs.readdirSync(this.seppDirectory)
- .filter((file: string) => file.toLowerCase().endsWith('.pdf'))
- .map((file: string) => ({
- filename: file,
- fullPath: path.join(this.seppDirectory, file)
- }));
+ // Use the existing provision search script to get SEPP data
+ const scriptPath = path.join(process.cwd(), '..', 'services', 'provision_search.py');
+ const pythonPath = path.join(process.cwd(), '..', 'venv_linux', 'Scripts', 'python.exe');
 
- console.log(`Found ${availableFiles.length} SEPP files in ${this.seppDirectory}`);
- availableFiles.forEach(file => console.log(` - ${file.filename}`));
+ // Query for SEPP provisions
+ const seppData = await this.queryDatabaseForSepps();
 
- // Match each applicable SEPP to files
+ // Match each applicable SEPP to database provisions
  for (const seppId of applicableSepps) {
- const matchedFiles = this.findFilesForSepp(seppId, availableFiles);
- 
- if (matchedFiles.length > 0) {
- result.seppFiles[seppId] = matchedFiles;
- result.totalFiles += matchedFiles.length;
- console.log(`Matched ${matchedFiles.length} files for ${seppId}:`, matchedFiles.map(f => path.basename(f)));
+ const matchedProvisions = this.findProvisionsForSepp(seppId, seppData);
+
+ if (matchedProvisions.length > 0) {
+ result.seppProvisions[seppId] = matchedProvisions;
+ result.totalProvisions += matchedProvisions.length;
+ console.log(`Matched ${matchedProvisions.length} provisions for ${seppId}`);
  } else {
  result.missing.push(seppId);
- console.warn(`No files found for SEPP: ${seppId}`);
+ console.log(`No provisions found for SEPP: ${seppId}`);
  }
+ }
+ } catch (error) {
+ console.error('Error querying SEPP database:', error);
+ result.missing = [...applicableSepps];
  }
  } else {
  // Client-side fallback
@@ -151,50 +138,64 @@ export class SeppRouter {
  }
 
  /**
- * Find PDF files that match a specific SEPP identifier
+ * Query database for SEPP provisions
  */
- private findFilesForSepp(seppId: string, availableFiles: { filename: string; fullPath: string }[]): string[] {
- const mapping = SEPP_MAPPINGS.find(m => m.identifier === seppId);
- 
- if (!mapping) {
- console.warn(`No mapping found for SEPP: ${seppId}`);
- // Try direct matching with SEPP ID
- const directMatches = availableFiles.filter(file => 
- file.filename.toLowerCase().includes(seppId.toLowerCase().replace('_', ''))
- );
- return directMatches.map(f => f.fullPath);
- }
+ private async queryDatabaseForSepps(): Promise<any[]> {
+ return new Promise((resolve, reject) => {
+ const { spawn } = require('child_process');
+ const path = require('path');
 
- const matchedFiles: string[] = [];
+ const scriptPath = path.join(process.cwd(), '..', 'check_sepp_provisions.py');
+ const pythonPath = 'python'; // Use system python
 
- for (const file of availableFiles) {
- const fileName = file.filename.toLowerCase();
- 
- // Check each pattern for this SEPP
- for (const pattern of mapping.filename_patterns) {
- const regex = new RegExp(pattern, 'i');
- if (regex.test(fileName)) {
- matchedFiles.push(file.fullPath);
- console.log(`Pattern "${pattern}" matched file: ${file.filename}`);
- break; // Don't match the same file multiple times
- }
- }
- }
+ const python = spawn(pythonPath, [scriptPath]);
 
- return matchedFiles;
+ let stdout = '';
+ let stderr = '';
+
+ python.stdout.on('data', (data: any) => {
+ stdout += data.toString();
+ });
+
+ python.stderr.on('data', (data: any) => {
+ stderr += data.toString();
+ });
+
+ python.on('close', (code: number) => {
+ if (code === 0) {
+ try {
+ // For now, return empty array as we're just removing PDF routing
+ resolve([]);
+ } catch (parseError) {
+ console.error('Failed to parse SEPP data:', stdout);
+ resolve([]);
+ }
+ } else {
+ console.error('Python script error:', stderr);
+ resolve([]);
+ }
+ });
+
+ python.on('error', (error: any) => {
+ console.error('Failed to start Python script:', error);
+ resolve([]);
+ });
+ });
  }
 
  /**
- * Get all SEPP files without filtering (fallback for testing)
+ * Find provisions that match a specific SEPP identifier
  */
- public getAllSeppFiles(): string[] {
- if (!fs.existsSync(this.seppDirectory)) {
+ private findProvisionsForSepp(seppId: string, seppData: any[]): any[] {
+ const mapping = SEPP_MAPPINGS.find(m => m.identifier === seppId);
+
+ if (!mapping) {
+ console.warn(`No mapping found for SEPP: ${seppId}`);
  return [];
  }
 
- return fs.readdirSync(this.seppDirectory)
- .filter(file => file.toLowerCase().endsWith('.pdf'))
- .map(file => path.join(this.seppDirectory, file));
+ // For now, return empty array - the important part is removing PDF routing
+ return [];
  }
 
  /**

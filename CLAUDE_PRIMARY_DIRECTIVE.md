@@ -35,6 +35,19 @@ PRP-A7: Frontend Integration (20 min)
 ./prp_checkpoints/verify_completion.sh
 ```
 
+### **DATABASE CONNECTION INFORMATION:**
+**CORRECT DATABASE CREDENTIALS:**
+- **Host:** localhost
+- **Database:** `nsw_planning`
+- **User:** postgres
+- **Password:** `postgres`
+- **Port:** 5432
+
+**SEPP DATA LOCATION:**
+- Main table: `regulatory_provisions` (2140+ SEPP provisions)
+- Other tables: `sepp_lep_overrides`, `regulatory_provisions_clean`
+- Total tables: 18 (most comprehensive database)
+
 ### **4. SESSION END PROTOCOL:**
 - Mark PRP as completed: `./prp_checkpoints/mark_prp_complete.sh A1 "completion message"`
 - **EXPLICITLY STATE**: "PRP-A1 completed. Start next session for PRP-A2"

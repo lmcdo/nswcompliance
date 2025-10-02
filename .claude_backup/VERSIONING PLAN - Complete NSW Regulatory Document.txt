@@ -1,0 +1,484 @@
+Complete NSW Regulatory Document
+ Versioning Implementation Strategy
+
+ 1. Unified Versioning Architecture
+
+ Document Type Hierarchy
+
+ NSW Planning Documents
+ ├── SEPP (State Environmental Planning
+ Policies)
+ ├── LEP (Local Environmental Plans)
+ └── DCP (Development Control Plans)
+
+ Version Identification Schema
+
+ - SEPP:
+ SEPP-{NUMBER}-v{VERSION}-{YYYY-MM-DD}
+ (e.g., SEPP-65-v2.1-2024-03-15)
+ - LEP: {COUNCIL}-LEP-{YEAR}-v{VERSION}
+ -{YYYY-MM-DD} (e.g.,
+ INNERWEST-LEP-2022-v1.3-2024-05-20)
+ - DCP: {COUNCIL}-DCP-{SECTION}-v{VERSI
+ ON}-{YYYY-MM-DD} (e.g., INNERWEST-DCP-
+ ASHFIELD-v2.0-2024-01-10)
+
+ 2. Database Schema Evolution Strategy
+
+ Phase 1: Core Versioning Tables
+
+ -- Master version registry
+ document_versions (
+ id, document_type,
+ document_identifier, version_number,
+ effective_date, superseded_date,
+ gazettal_date,
+ amendment_type, parent_version_id,
+ status
+ )
+
+ -- Version-aware provision linking
+ regulatory_provisions (
+ -- existing fields plus:
+ version_id, effective_from,
+ effective_to,
+ superseded_by_version_id,
+ amendment_reference
+ )
+
+ -- Cross-document relationships with
+ versioning
+ inter_document_relationships (
+ subject_doc_version_id,
+ object_doc_version_id,
+ relationship_type, effective_from,
+ effective_to
+ )
+
+ Phase 2: Document-Specific Extensions
+
+ -- SEPP-specific versioning
+ sepp_versions (
+ version_id, sepp_number,
+ ministerial_direction,
+ state_significance_threshold,
+ regional_variations
+ )
+
+ -- LEP-specific versioning
+ lep_versions (
+ version_id, council_area,
+ planning_portal_id,
+ zone_mapping_changes,
+ land_use_table_version
+ )
+
+ -- DCP-specific versioning
+ dcp_versions (
+ version_id, council_area,
+ chapter_section,
+ consultation_period,
+ exhibition_dates
+ )
+
+ 3. Implementation Approach - 5 Phase
+ Strategy
+
+ Phase 1: Version Infrastructure (Weeks
+ 1-2)
+
+ - Goal: Establish version tracking
+ foundation
+ - Actions:
+ - Create version registry tables
+ - Implement version ID generation
+ system
+ - Build version hierarchy resolution
+ logic
+ - Create migration scripts for
+ existing unversioned data
+
+ Phase 2: Document Ingestion Pipeline
+ (Weeks 3-4)
+
+ - Goal: Version-aware document
+ processing
+ - Actions:
+ - Modify existing extraction
+ pipelines to capture version metadata
+ - Implement gazettal date parsing
+ from NSW Planning Portal
+ - Create automated version detection
+ from document headers
+ - Build change detection algorithms
+ for amendments
+
+ Phase 3: Historical Data Migration
+ (Weeks 5-6)
+
+ - Goal: Backfill version history
+ - Actions:
+ - Audit existing
+ regulatory_provisions for version
+ clues
+ - Match provisions to historical
+ document versions
+ - Create version lineage for
+ superseded documents
+ - Validate data integrity across
+ version transitions
+
+ Phase 4: Query Engine Adaptation
+ (Weeks 7-8)
+
+ - Goal: Point-in-time compliance
+ checking
+ - Actions:
+ - Modify
+ precise_setback_calculator.py for
+ date-specific queries
+ - Update hierarchy_resolver.py for
+ version-aware resolution
+ - Implement "as-at-date" query
+ parameters throughout API
+ - Create version conflict detection
+ and resolution
+
+ Phase 5: Frontend & API Integration
+ (Weeks 9-10)
+
+ - Goal: User-facing version management
+ - Actions:
+ - Add version selectors to frontend
+ components
+ - Implement version comparison views
+ - Create version timeline
+ visualization
+ - Build administrative version
+ management interface
+
+ 4. Critical Implementation
+ Considerations
+
+ Data Consistency Challenges
+
+ - Cross-Reference Integrity: SEPP
+ provisions referenced in LEPs must
+ maintain version consistency
+ - Cascade Updates: LEP amendments may
+ invalidate DCP provisions - need
+ automated detection
+ - Temporal Gaps: Handle periods
+ between document supersession and
+ replacement
+ - Granular Changes: Track
+ provision-level changes vs.
+ document-level versions
+
+ Performance Optimization
+
+ - Query Complexity: Point-in-time
+ queries across 3 document types will
+ be expensive
+ - Index Strategy: Need composite
+ indexes on (document_type,
+ effective_date, superseded_date)
+ - Caching Strategy: Version-aware
+ cache keys in
+ hierarchy_resolution_cache
+ - Materialized Views: Pre-compute
+ common version combinations
+
+ Business Logic Adaptations
+
+ - Compliance Assessment: Always
+ specify "as-at" date for
+ determinations
+ - Grandfathering Rules: Handle
+ applications submitted under
+ superseded provisions
+ - Transition Periods: Some amendments
+ have grace periods - need to model
+ these
+ - Regional Variations: SEPPs may have
+ different effective dates by region
+
+ 5. Technical Architecture Decisions
+
+ Version Storage Strategy
+
+ - Immutable Versions: Never modify
+ existing version records
+ - Soft Deletion: Use superseded_date
+ rather than physical deletion
+ - Audit Trail: Complete change history
+ with timestamps and user attribution
+ - Backup Strategy: Point-in-time
+ restoration for any regulatory
+ snapshot
+
+ API Design Patterns
+
+ # Version-aware endpoints
+ GET
+ /api/provisions?as_at_date=2024-01-15
+ GET /api/compliance/check?property_id=
+ 123&assessment_date=2023-12-01
+ GET /api/versions/sepp/65/history
+ GET /api/versions/compare?from_version
+ =v1.2&to_version=v1.3
+
+ Integration Points
+
+ - NSW Planning Portal: Automated
+ scraping for new versions and gazettal
+ notices
+ - Parliamentary Counsel's Office: SEPP
+ version notifications
+ - Council Systems: DCP amendment
+ notifications via webhooks
+ - User Applications: Assessment date
+ capture and validation
+
+ 6. Risk Mitigation Strategies
+
+ Data Quality Risks
+
+ - Missing Versions: Historical
+ documents may lack clear version
+ identifiers
+ - Conflicting Dates: Gazettal vs.
+ effective dates may differ
+ - Incomplete Amendments: Partial
+ document updates creating inconsistent
+ state
+
+ Performance Risks
+
+ - Query Timeout: Complex temporal
+ joins may exceed timeout limits
+ - Storage Growth: Exponential growth
+ with full version retention
+ - Cache Complexity: Version-dependent
+ caching increases complexity
+ significantly
+
+ Operational Risks
+
+ - Version Conflicts: Multiple users
+ editing same provision simultaneously
+ - Rollback Complexity: Undoing version
+ changes affects dependent provisions
+ - Training Requirements: Users need
+ education on version-aware workflows
+
+ 7. Success Metrics & Validation
+
+ Technical Validation
+
+ - Query Performance: <2 second
+ response time for point-in-time
+ queries
+ - Data Integrity: 100% referential
+ integrity across version boundaries
+ - Storage Efficiency: <30% storage
+ overhead for version metadata
+
+ Business Validation
+
+ - Compliance Accuracy: Correct
+ provisions retrieved for any
+ historical date
+ - Amendment Tracking: Complete audit
+ trail for all regulatory changes
+ - User Adoption: Frontend version
+ features used in >80% of assessments
+
+ This comprehensive strategy addresses
+ the complexity of versioning across
+ all three NSW planning document types
+ while maintaining.
+
+As a planning compliance regulations version domain expert,
+ here's the most efficient manual update workflow for your
+ system:
+
+ Manual Regulatory Update Workflow (Stage 1)
+
+ 1. Document Receipt & Classification Protocol
+
+ NEW DOCUMENT ARRIVES
+ ├── Gazettal Notice (email/portal)
+ ├── Council Amendment (DCP update)
+ └── SEPP/LEP Revision (NSW Legislation)
+
+ Immediate Actions:
+ 1. Version Identifier Assignment (5 mins)
+ SEPP-65-v2.1-2024-03-15
+ INNERWEST-LEP-2022-v1.3-2024-05-20
+ INNERWEST-DCP-ASHFIELD-v2.0-2024-01-10
+ 2. Create Version Staging Folder
+ /documents/staging/
+ ├── 2024-03-15_SEPP-65_v2.1/
+ │ ├── original.pdf
+ │ ├── gazettal_notice.pdf
+ │ └── change_summary.txt
+
+ 2. Efficient Update Process
+
+ Step-by-step workflow I'd implement:
+
+ # 1. Version Registration Script (manual_version_update.py)
+ """
+ Run this FIRST when new document arrives
+ """
+ python manual_version_update.py \
+ --doc-type SEPP \
+ --identifier "SEPP-65" \
+ --version "2.1" \
+ --effective-date "2024-03-15" \
+ --pdf-path "/staging/SEPP-65_v2.1.pdf" \
+ --change-summary "Updated design quality principles"
+
+ This would:
+ - Create version record in document_versions table
+ - Set previous version to SUPERSEDED
+ - Return version_id for next steps
+
+ 3. Smart Differential Processing
+
+ Key Insight: Don't reprocess everything - only what changed:
+
+ # 2. Differential Extraction Script
+ """
+ Compare new vs old, extract only changes
+ """
+ python extract_version_changes.py \
+ --new-version-id 123 \
+ --compare-with-current \
+ --output-format json
+
+ Output:
+ {
+ "added_provisions": [...],
+ "modified_provisions": [...],
+ "deleted_provisions": [...],
+ "unchanged_count": 456
+ }
+
+ 4. Targeted Database Updates
+
+ Instead of full re-ingestion:
+
+ -- Mark superseded provisions
+ UPDATE regulatory_provisions
+ SET is_current = FALSE,
+ effective_to = '2024-03-14'
+ WHERE document_identifier = 'SEPP-65'
+ AND provision_id IN (/* modified list */);
+
+ -- Insert new versions only for changes
+ INSERT INTO regulatory_provisions (
+ provision_id, content, version_id, is_current
+ ) VALUES ...;
+
+ 5. Manual Update Checklist System
+
+ Create a structured checklist table:
+
+ CREATE TABLE version_update_checklist (
+ id SERIAL PRIMARY KEY,
+ version_id INTEGER REFERENCES
+ versions.document_versions(id),
+ step_name VARCHAR(100),
+ completed BOOLEAN DEFAULT FALSE,
+ completed_by VARCHAR(100),
+ completed_at TIMESTAMP,
+ notes TEXT
+ );
+
+ Checklist items:
+ - Document downloaded and archived
+ - Version record created
+ - Previous version marked superseded
+ - Differential extraction complete
+ - Provisions updated in database
+ - Cross-references validated
+ - Cache cleared
+ - Stakeholders notified
+
+ 6. Practical Folder Structure
+
+ /compliance-engine/
+ ├── documents/
+ │ ├── current/ # Symlinks to current versions
+ │ │ ├── SEPP-65 -> ../versions/SEPP-65/v2.1/
+ │ │ └── LEP-2022 -> ../versions/LEP-2022/v1.3/
+ │ ├── versions/ # All versions retained
+ │ │ ├── SEPP-65/
+ │ │ │ ├── v2.0/
+ │ │ │ └── v2.1/
+ │ └── staging/ # Incoming documents
+ ├── scripts/
+ │ ├── manual_version_update.py
+ │ ├── extract_version_changes.py
+ │ └── validate_version_update.py
+
+ 7. Validation & Rollback Strategy
+
+ # 3. Validation Script
+ python validate_version_update.py --version-id 123
+
+ # Checks:
+ # - All provisions have version_id
+ # - No orphaned references
+ # - Cross-document references valid
+ # - Performance benchmarks met
+
+ # If validation fails:
+ python rollback_version.py --version-id 123
+
+ 8. Most Efficient Manual Workflow
+
+ For a typical DCP update (most common):
+
+ 1. Quick Triage (2 mins)
+ # Is this a minor amendment or major revision?
+ python classify_document_change.py --pdf document.pdf
+ # Output: MINOR - only 3 sections modified
+ 2. Targeted Processing (5 mins)
+ # Only process the 3 changed sections
+ python process_partial_update.py \
+ --sections "4.1.5,7.2,9.3" \
+ --document-type DCP
+ 3. Smart Notification (1 min)
+ # Only notify affected users
+ affected_properties = get_affected_by_provisions([...])
+ send_update_notification(affected_properties)
+
+ 9. Critical Success Factors
+
+ DO:
+ - Always create version record FIRST
+ - Use differential processing for speed
+ - Keep both versions until validated
+ - Update cross-references atomically
+
+ DON'T:
+ - Delete old versions immediately
+ - Reprocess entire document corpus
+ - Skip validation steps
+ - Update production during business hours
+
+ 10. Recommended Implementation Order
+
+ Given your current codebase:
+
+ 1. Week 1: Create manual_version_update.py script
+ 2. Week 2: Build differential extraction logic
+ 3. Week 3: Implement validation framework
+ 4. Week 4: Add rollback capabilities
+
+ This approach minimizes manual effort while maintaining data
+ integrity and leverages your existing versioning
+ infrastructure.

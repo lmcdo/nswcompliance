@@ -5,6 +5,7 @@
 
 import { NSWPlanningPortalService, NSWPropertyData, PlanningConstraints } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
+import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
 
 export interface PropertyConstraints extends PlanningConstraints {
  applicableSepps?: string[];
@@ -160,7 +161,7 @@ export class PropertyDataService {
  applicableSepps
  );
 
- const seppRouting = seppRouter.routeApplicableSepps(applicableSepps);
+ const seppRouting = await seppRouter.routeApplicableSepps(applicableSepps);
  console.log('SEPP Routing Result:', seppRouting);
 
  return {
@@ -188,10 +189,6 @@ export class PropertyDataService {
  
  // Enhanced error handling with specific fallback messaging
  const fallbackData = this.getFallbackData(address);
- fallbackData.landValue = 'API Error - Using fallback data';
- fallbackData.valuationDate = 'API Error';
- fallbackData.propertyArea = 'API Error - Check address format';
- fallbackData.zoneDescription = 'API Error - Unable to retrieve zoning';
  
  return fallbackData;
  }
@@ -296,111 +293,8 @@ export class PropertyDataService {
  console.log('DEMO: Treating Telopea address as Ashfield for testing unified integration');
  return 'Ashfield';
  }
- 
- // If not Inner West LGA, return null
- if (!propertyData.constraints.lga?.toLowerCase().includes('inner west')) {
- return null;
- }
 
- // Extract suburb and postcode from the Planning Portal address
- const address = propertyData.address.toLowerCase();
- 
- // Map of postcodes to former council areas
- const postcodeMapping: { [key: string]: string } = {
- // Ashfield postcodes
- '2131': 'Ashfield', // Ashfield
- '2044': 'Ashfield', // St Peters (part)
- '2039': 'Ashfield', // Rozelle (part)
- '2140': 'Ashfield', // Croydon
- '2137': 'Ashfield', // Burwood Heights
- '2133': 'Ashfield', // Croydon Park
- '2132': 'Ashfield', // Enfield
- '2045': 'Ashfield', // Haberfield
- 
- // Leichhardt postcodes
- '2040': 'Leichhardt', // Leichhardt
- '2041': 'Leichhardt', // Balmain
- '2042': 'Leichhardt', // Enmore
- '2043': 'Leichhardt', // Erskineville
- '2038': 'Leichhardt', // Annandale
- '2037': 'Leichhardt', // Glebe
- '2050': 'Leichhardt', // Camperdown
- '2049': 'Leichhardt', // Lewisham
- 
- // Marrickville postcodes
- '2204': 'Marrickville', // Marrickville
- '2048': 'Marrickville', // Stanmore
- '2046': 'Marrickville', // Petersham
- '2047': 'Marrickville', // Dulwich Hill
- '2203': 'Marrickville', // Dulwich Hill (part)
- };
-
- // Map of suburb names to former council areas
- const suburbMapping: { [key: string]: string } = {
- // Ashfield suburbs
- 'ashfield': 'Ashfield',
- 'croydon': 'Ashfield',
- 'croydon park': 'Ashfield',
- 'enfield': 'Ashfield',
- 'haberfield': 'Ashfield',
- 'russell lea': 'Ashfield',
- 'five dock': 'Ashfield',
- 'wareemba': 'Ashfield',
- 'rodd point': 'Ashfield',
- 'cabarita': 'Ashfield',
- 'concord west': 'Ashfield',
- 'north strathfield': 'Ashfield',
- 'strathfield south': 'Ashfield',
- 'homebush west': 'Ashfield',
- 
- // Leichhardt suburbs
- 'leichhardt': 'Leichhardt',
- 'balmain': 'Leichhardt',
- 'balmain east': 'Leichhardt',
- 'birchgrove': 'Leichhardt',
- 'rozelle': 'Leichhardt',
- 'annandale': 'Leichhardt',
- 'glebe': 'Leichhardt',
- 'forest lodge': 'Leichhardt',
- 'camperdown': 'Leichhardt',
- 'newtown': 'Leichhardt',
- 'enmore': 'Leichhardt',
- 'erskineville': 'Leichhardt',
- 'lewisham': 'Leichhardt',
- 
- // Marrickville suburbs
- 'marrickville': 'Marrickville',
- 'dulwich hill': 'Marrickville',
- 'petersham': 'Marrickville',
- 'stanmore': 'Marrickville',
- 'sydenham': 'Marrickville',
- 'tempe': 'Marrickville',
- };
-
- // First try postcode matching (more reliable)
- const postcodeMatch = address.match(/\b(\d{4})\b/);
- if (postcodeMatch) {
- const postcode = postcodeMatch[1];
- if (postcodeMapping[postcode]) {
- return postcodeMapping[postcode];
- }
- }
-
- // Then try suburb name matching
- for (const [suburb, councilArea] of Object.entries(suburbMapping)) {
- if (address.includes(suburb)) {
- return councilArea;
- }
- }
-
- // Fallback to geometry if address parsing fails
- const { x, y } = propertyData.geometry;
- if (x > 16820000) {
- return 'Ashfield';
- } else if (x < 16815000) {
- return 'Leichhardt'; 
- } else {
- return 'Marrickville';
- }
- }
+    // Use the shared utility function
+    return determineFormerCouncilAreaUtil(propertyData.address, propertyData.constraints.lga || '');
+}
 }

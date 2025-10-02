@@ -22,7 +22,7 @@ export async function GET(
  
  // Get full clause details including provision text
  const query = `
- SELECT 
+ SELECT
  rp.id,
  rp.ref_number as clause_reference,
  rp.provision_text as full_text,
@@ -31,7 +31,7 @@ export async function GET(
  rp.domain_classification,
  rp.document_id,
  rp.created_at
- FROM regulatory_provisions rp
+ FROM regulatory_provisions_canonical rp
  WHERE rp.id = $1
  LIMIT 1
  `;

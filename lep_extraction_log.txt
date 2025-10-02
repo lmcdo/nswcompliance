@@ -1,0 +1,44 @@
+Traceback (most recent call last):
+  File "C:\Users\lawre\Downloads\solvyra\projects\compliance engine\compliance-engine\extract_lep_entities_relationships.py", line 154, in <module>
+    extracted_triples = extractor.run_extraction()
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lawre\.pyenv\pyenv-win\versions\3.11.0\Lib\site-packages\atlas_rag\kg_construction\triple_extraction.py", line 331, in run_extraction
+    dataset = self.load_dataset()
+              ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lawre\.pyenv\pyenv-win\versions\3.11.0\Lib\site-packages\atlas_rag\kg_construction\triple_extraction.py", line 259, in load_dataset
+    return load_dataset(self.config.data_directory, data_files=dataset_config["train"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\lawre\.pyenv\pyenv-win\versions\3.11.0\Lib\site-packages\datasets\load.py", line 1373, in load_dataset
+    raise ValueError(f"Empty 'data_files': '{data_files}'. It should be either non-empty or None (default).")
+ValueError: Empty 'data_files': '[]'. It should be either non-empty or None (default).
+================================================================================
+LEP ENTITY/RELATIONSHIP EXTRACTION
+================================================================================
+
+[1/6] Checking prerequisites...
+  ✓ AutoSchemaKG available
+  ✓ OpenAI API key configured (ends with ...-tJk-FsA)
+
+[2/6] Locating LEP file...
+  ✓ Found: Inner West Local Environmental Plan 2022 - NSW Legislation.pdf
+  Size: 1.0 MB
+
+[3/6] Loading document metadata from database...
+  ✓ Found 10 provisions in database (showing first 10)
+    - ID 7634: Clause Clause 17 (Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_101_150)
+    - ID 7635: Clause Clause 18 (Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_101_150)
+    - ID 7636: Clause Clause 19 (Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_101_150)
+
+[4/6] Loading text from database...
+  Using pre-extracted full text from documents table...
+  ✓ Loaded 110,491 characters from database
+
+[5/6] Running AutoSchemaKG entity/relationship extraction...
+  This will use OpenAI API (estimated cost: $2-5)
+  Extracting entities and relationships from LEP text...
+  Using temp directory: C:\Users\lawre\AppData\Local\Temp\lep_extraction_a8ovsge1
+  Created 62 text chunks
+  Processing first 10 chunks for testing...
+  Running AutoSchemaKG extraction...
+Found data files: []
+  ✗ AutoSchemaKG extraction failed: Empty 'data_files': '[]'. It should be either non-empty or None (default).
