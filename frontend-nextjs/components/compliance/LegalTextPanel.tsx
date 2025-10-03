@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { X, Bookmark, Share2, ExternalLink } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export interface ProvisionContent {
   id: number;
@@ -22,27 +24,61 @@ export interface ProvisionContent {
   document_id: string;
 }
 
-// Truncated text component with "Show more..." button
+// Truncated text component with "Show more..." button - using ReactMarkdown
 function TruncatedFormattedText({
   text,
   wordLimit = 200,
-  formatter
+  onImageClick
 }: {
   text: string;
   wordLimit?: number;
-  formatter: (text: string) => React.ReactNode;
+  onImageClick?: (src: string) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Count words to determine if truncation is needed
   const words = text.split(/\s+/);
   const shouldTruncate = words.length > wordLimit;
+
+  // Truncate the TEXT before passing to ReactMarkdown
+  // This preserves markdown syntax (# headings, etc.)
   const displayText = shouldTruncate && !isExpanded
     ? words.slice(0, wordLimit).join(' ') + '...'
     : text;
 
   return (
-    <div className="text-sm text-gray-800 leading-relaxed">
-      {formatter(displayText)}
+    <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          img: ({ node, ...props }) => (
+            <img
+              {...props}
+              className="max-w-full h-auto my-4 rounded border shadow-sm cursor-pointer hover:opacity-80 transition-opacity"
+              alt={props.alt || 'Diagram'}
+              onClick={() => onImageClick?.(props.src || '')}
+              title="Click to enlarge"
+            />
+          ),
+          h1: ({ node, ...props }) => (
+            <h1 className="text-lg font-bold mt-4 mb-2" {...props} />
+          ),
+          h2: ({ node, ...props }) => (
+            <h2 className="text-base font-bold mt-3 mb-2" {...props} />
+          ),
+          p: ({ node, ...props }) => (
+            <p className="mb-2 leading-relaxed" {...props} />
+          ),
+          ul: ({ node, ...props }) => (
+            <ul className="list-disc ml-4 mb-2 space-y-1" {...props} />
+          ),
+          ol: ({ node, ...props }) => (
+            <ol className="list-decimal ml-4 mb-2 space-y-1" {...props} />
+          ),
+        }}
+      >
+        {displayText}
+      </ReactMarkdown>
       {shouldTruncate && (
         <button
           onClick={() => setIsExpanded(!isExpanded)}
@@ -95,12 +131,118 @@ export function LegalTextPanel({
   onClose
 }: LegalTextPanelProps) {
   const [loading, setLoading] = useState(false);
+  const [detectedFigures, setDetectedFigures] = useState<any[]>([]);
+  const [expandedFigures, setExpandedFigures] = useState<string[]>([]);
+  const [figureContent, setFigureContent] = useState<Record<string, any>>({});
+  const [loadingFigures, setLoadingFigures] = useState<Set<string>>(new Set());
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   if (!selectedProvision) {
     return null;
   }
 
   const { constraint, provisions } = selectedProvision;
+
+  // Auto-detect figures AND expand short provisions from provision text
+  // DISABLED: API endpoint not working for all documents, provisions already have full text with embedded images
+  useEffect(() => {
+    const detectFiguresAndExpandShortProvisions = async () => {
+      if (!provisions || provisions.length === 0) return;
+
+      const firstProvision = provisions[0];
+      if (!firstProvision.document_id || !firstProvision.id) return;
+
+      // DISABLED: This API call fails for most documents
+      // The provision_text already contains full text with markdown images
+      // Images are now rendered via ReactMarkdown in TruncatedFormattedText
+      /*
+      try {
+        // Auto-detect figure references
+        const response = await fetch(
+          `/api/documents/${firstProvision.document_id}/extract-section?provision_id=${firstProvision.id}&auto=true`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.sections.length > 0) {
+            setDetectedFigures(data.data.sections);
+          }
+        }
+
+        // If provision text is short or truncated, fetch full document
+        // Most DCP provisions in DB are truncated to 500 chars
+        if (firstProvision.provision_text.length < 600 && firstProvision.document_id) {
+          const docResponse = await fetch(
+            `/api/documents/${firstProvision.document_id}`
+          );
+
+          if (docResponse.ok) {
+            const docData = await docResponse.json();
+            if (docData.success) {
+              // Store full document as expanded content
+              setFigureContent(prev => ({
+                ...prev,
+                [`full_doc_${firstProvision.document_id}`]: {
+                  sectionRef: 'Full Document',
+                  content: docData.data.fullText,
+                  images: [],
+                  imageCount: docData.data.metadata.imageCount,
+                  hasImages: docData.data.metadata.imageCount > 0
+                }
+              }));
+              // Auto-expand
+              setExpandedFigures(prev => [...prev, `full_doc_${firstProvision.document_id}`]);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error detecting figures:', error);
+      }
+      */
+    };
+
+    detectFiguresAndExpandShortProvisions();
+  }, [provisions]);
+
+  // Toggle figure expansion
+  const toggleFigure = async (figureRef: string) => {
+    if (expandedFigures.includes(figureRef)) {
+      // Collapse
+      setExpandedFigures(prev => prev.filter(f => f !== figureRef));
+    } else {
+      // Expand - fetch content if not already loaded
+      if (!figureContent[figureRef]) {
+        setLoadingFigures(prev => new Set(prev).add(figureRef));
+
+        try {
+          const firstProvision = provisions[0];
+          const response = await fetch(
+            `/api/documents/${firstProvision.document_id}/extract-section?figure=${figureRef}`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data.sections.length > 0) {
+              setFigureContent(prev => ({
+                ...prev,
+                [figureRef]: data.data.sections[0]
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('Error loading figure:', error);
+        } finally {
+          setLoadingFigures(prev => {
+            const next = new Set(prev);
+            next.delete(figureRef);
+            return next;
+          });
+        }
+      }
+
+      setExpandedFigures(prev => [...prev, figureRef]);
+    }
+  };
 
   // Parse alternating line table (e.g., Site area / FSR tables in LEP)
   // Format: Line 1=Header1, Line 2=Header2, Line 3=Data1, Line 4=Data2, etc.
@@ -538,6 +680,44 @@ export function LegalTextPanel({
                 // Remove document metadata (page numbers, version info, etc.)
                 cleanedText = removeDocumentMetadata(cleanedText);
 
+                // Clean up LaTeX/MinerU artifacts
+                // Remove LaTeX commands like $\textcircled { 9 }$
+                cleanedText = cleanedText.replace(/\$\\text[a-z]+\s*\{[^}]*\}\s*\$/gi, '');
+
+                // Remove table of contents style lines (e.g., "9.29.1 Existing character... . 1")
+                cleanedText = cleanedText.replace(/^\d+\.\d+(\.\d+)?\s+[A-Za-z][^\n]*\.{3,}.*$/gm, '');
+
+                // Remove "Part X Strategic Context...." lines
+                cleanedText = cleanedText.replace(/^Part\s+\$?\\?[^\n]*Strategic Context[^\n]*$/gm, '');
+
+                // Remove logo images (e.g., Inner West Council logo at start of provisions)
+                cleanedText = cleanedText.replace(/!\[.*?\]\(images\/[a-f0-9]{64}\.jpg\)\s*/gi, '');
+
+                // Remove duplicate markdown headings that repeat the section number/title
+                // Pattern: # 9.29 South Western Marrickville (Precinct 29)
+                // These are redundant with the section_header already displayed
+                cleanedText = cleanedText.replace(/^#+\s*\d+(\.\d+)*[A-Z]?\s+[^\n]+$/gm, '');
+
+                // Remove context/character description sections (not actual regulations)
+                // Strategy: Remove entire sections with character descriptions (heading + content)
+
+                // Remove "Existing character" and "Desired future character" sections
+                // This pattern matches: heading + all content until next heading or end
+                cleanedText = cleanedText.replace(/^#+\s*\d+\.\d+(\.\d+)?\s+(Existing|Desired future)\s+character[^\n]*\n([\s\S]*?)(?=\n#+\s*\d+\.\d+|\n#+\s*[A-Z]|$)/gim, '');
+
+                // Remove any standalone character description headings that remain
+                cleanedText = cleanedText.replace(/^#+\s*\d+\.\d+(\.\d+)?\s+(Existing|Desired future)\s+character[^\n]*$/gm, '');
+
+                // Remove "Map of precinct" headings (the images will remain)
+                cleanedText = cleanedText.replace(/^#+\s*Map of precinct\s*$/gm, '');
+
+                // Remove any standalone heading that looks like "# 9.29.1 Existing character..."
+                // This catches cases where the section regex didn't match
+                cleanedText = cleanedText.replace(/^#+\s*\d+\.\d+(\.\d+)?\s+(?:Existing|Desired future|character)[^\n]*$/gim, '');
+
+                // Clean up multiple consecutive newlines
+                cleanedText = cleanedText.replace(/\n{3,}/g, '\n\n');
+
                 // Extract document source from document_id if present
                 const docSource = provision.document_id?.includes('.pdf')
                   ? provision.document_id.split('___')[0]?.replace(/_/g, ' ') || provision.document_id
@@ -551,9 +731,16 @@ export function LegalTextPanel({
                     {/* Clause Header */}
                     <div className="mb-3 pb-2 border-b border-gray-100">
                       <div className="flex items-baseline gap-2">
-                        <span className="font-semibold text-gray-900">
-                          Clause {provision.ref_number}
-                        </span>
+                        {/* Check if ref_number looks like a proper clause number (e.g., "9.47" or "4.3") */}
+                        {/^\d+(\.\d+)*[A-Z]?$/.test(provision.ref_number) ? (
+                          <span className="font-semibold text-gray-900">
+                            Clause {provision.ref_number}
+                          </span>
+                        ) : (
+                          <span className="font-semibold text-gray-900">
+                            {provision.ref_number}
+                          </span>
+                        )}
                         {provision.section_header && (
                           <span className="text-sm font-medium text-gray-700">
                             {provision.section_header}
@@ -566,14 +753,150 @@ export function LegalTextPanel({
                           <span className="font-mono">{docSource}</span>
                         </div>
                       )}
+                      {/* Extract precinct/section from document_id if ref_number is descriptive */}
+                      {provision.document_id && !/^\d+(\.\d+)*[A-Z]?$/.test(provision.ref_number) && (
+                        <div className="text-xs text-blue-600 mt-1">
+                          Source: {provision.document_id.replace(/___/g, ' - ').replace(/_/g, ' ')}
+                        </div>
+                      )}
                     </div>
 
                     {/* Full Legal Text */}
                     <TruncatedFormattedText
                       text={cleanedText}
                       wordLimit={200}
-                      formatter={formatLegalText}
+                      onImageClick={setZoomedImage}
                     />
+
+                    {/* Auto-Expanded Section Content (for short provisions) */}
+                    {(() => {
+                      const sectionKey = `section_${provision.ref_number}`;
+                      const fullDocKey = `full_doc_${provision.document_id}`;
+                      const expandedSection = figureContent[sectionKey] || figureContent[fullDocKey];
+
+                      if (expandedSection && provision.provision_text.length < 600) {
+                        return (
+                          <Card className="mt-3 bg-green-50 border-green-200">
+                            <CardContent className="pt-4">
+                              <div className="flex justify-between items-start mb-2">
+                                <h4 className="font-semibold text-sm text-green-900">
+                                  📄 Full Section {provision.ref_number}
+                                </h4>
+                              </div>
+                              <div className="text-sm text-gray-800 prose prose-sm max-w-none bg-white p-4 rounded border">
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkGfm]}
+                                  components={{
+                                    img: ({ node, ...props }) => (
+                                      <img
+                                        {...props}
+                                        className="max-w-full h-auto my-4 rounded border shadow-sm"
+                                        alt={props.alt || 'Diagram'}
+                                      />
+                                    ),
+                                    h1: ({ node, ...props }) => (
+                                      <h1 className="text-lg font-bold mt-4 mb-2" {...props} />
+                                    ),
+                                    h2: ({ node, ...props }) => (
+                                      <h2 className="text-base font-bold mt-3 mb-2" {...props} />
+                                    ),
+                                    p: ({ node, ...props }) => (
+                                      <p className="mb-2 leading-relaxed" {...props} />
+                                    ),
+                                    ul: ({ node, ...props }) => (
+                                      <ul className="list-disc ml-4 mb-2 space-y-1" {...props} />
+                                    ),
+                                    ol: ({ node, ...props }) => (
+                                      <ol className="list-decimal ml-4 mb-2 space-y-1" {...props} />
+                                    ),
+                                  }}
+                                >
+                                  {expandedSection.content}
+                                </ReactMarkdown>
+                              </div>
+                              {expandedSection.images.length > 0 && (
+                                <div className="mt-2 text-xs text-gray-600 flex items-center gap-1">
+                                  <span className="font-medium">📊 {expandedSection.imageCount} diagram(s) included above</span>
+                                </div>
+                              )}
+                            </CardContent>
+                          </Card>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    {/* Figure/Diagram References (NEW) */}
+                    {detectedFigures.length > 0 && (
+                      <div className="mt-4 pt-3 border-t border-gray-100">
+                        <div className="text-xs font-semibold text-gray-600 mb-2">Referenced Figures:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {detectedFigures.map((fig) => (
+                            <Button
+                              key={fig.sectionRef}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => toggleFigure(fig.sectionRef)}
+                              disabled={loadingFigures.has(fig.sectionRef)}
+                              className="text-xs"
+                            >
+                              📊 Figure {fig.sectionRef}
+                              {fig.hasImages && ' 🖼️'}
+                              {expandedFigures.includes(fig.sectionRef) ? ' ▼' : ' ▶'}
+                            </Button>
+                          ))}
+                        </div>
+
+                        {/* Expanded Figure Content */}
+                        {expandedFigures.map(figRef => {
+                          const content = figureContent[figRef];
+                          if (!content || figRef.startsWith('section_')) return null;
+
+                          return (
+                            <Card key={figRef} className="mt-3 bg-blue-50 border-blue-200">
+                              <CardContent className="pt-4">
+                                <div className="flex justify-between items-start mb-2">
+                                  <h4 className="font-semibold text-sm text-blue-900">
+                                    📊 Figure {content.sectionRef}
+                                    {content.hasImages && ' (includes diagram)'}
+                                  </h4>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => toggleFigure(figRef)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                                <div className="text-sm text-gray-700 prose prose-sm max-w-none bg-white p-4 rounded border">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    components={{
+                                      img: ({ node, ...props }) => (
+                                        <img
+                                          {...props}
+                                          className="max-w-full h-auto my-4 rounded border shadow-sm"
+                                          alt={props.alt || 'Diagram'}
+                                        />
+                                      ),
+                                      h2: ({ node, ...props }) => (
+                                        <h2 className="text-base font-semibold mt-2 mb-2" {...props} />
+                                      ),
+                                      p: ({ node, ...props }) => (
+                                        <p className="mb-2 leading-relaxed" {...props} />
+                                      ),
+                                    }}
+                                  >
+                                    {content.content}
+                                  </ReactMarkdown>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -647,6 +970,20 @@ export function LegalTextPanel({
                 <Share2 className="h-4 w-4" />
                 Share
               </Button>
+              {/* View Full DCP Document Button (NEW) */}
+              {provisions.length > 0 && provisions[0].document_id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={async () => {
+                    const docId = provisions[0].document_id;
+                    window.open(`/api/documents/${docId}`, '_blank');
+                  }}
+                >
+                  📄 Full Chapter
+                </Button>
+              )}
             </div>
             {constraint.source.document.includes('legislation.nsw.gov.au') && (
               <Button variant="outline" size="sm" className="gap-2">
@@ -657,6 +994,32 @@ export function LegalTextPanel({
           </div>
         </div>
       </Card>
+
+      {/* Image Zoom Modal */}
+      {zoomedImage && (
+        <div
+          className="fixed inset-0 z-50 bg-black bg-opacity-90 flex items-center justify-center p-4"
+          onClick={() => setZoomedImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-full">
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 text-xl font-bold"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            <img
+              src={zoomedImage}
+              alt="Zoomed diagram"
+              className="max-w-full max-h-[90vh] object-contain rounded"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-70 text-white text-sm p-2 text-center">
+              Click outside image to close
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

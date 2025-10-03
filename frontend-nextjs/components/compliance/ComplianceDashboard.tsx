@@ -283,20 +283,38 @@ export function ComplianceDashboard({
           console.log('[ComplianceDashboard] Permission status:', apiResponse.data.permission_status);
         }
 
+        // Helper function to deduplicate constraints by provision_id or clause
+        const deduplicateConstraints = (constraints: ComplianceConstraint[]) => {
+          const seen = new Set<string>();
+          return constraints.filter(c => {
+            // Create unique key from provision_id or clause + document
+            const key = c.provision_id
+              ? `id-${c.provision_id}`
+              : `${c.source.clause}-${c.source.document}`;
+
+            if (seen.has(key)) {
+              console.log('[ComplianceDashboard] Removing duplicate:', c.type, c.source.clause);
+              return false;
+            }
+            seen.add(key);
+            return true;
+          });
+        };
+
         // Use Planning API provisions + LEP constraints + Database DCP constraints
         // Note: dcpConstraints are just placeholders, real DCP data comes from API
         setComplianceData({
-          building_envelope: [
+          building_envelope: deduplicateConstraints([
             ...lepConstraints,  // LEP Height/FSR from Planning API
             ...(apiResponse.data.building_envelope || [])  // Database provisions (includes DCP)
-          ],
-          environmental: [
+          ]),
+          environmental: deduplicateConstraints([
             ...(apiResponse.data.environmental || [])  // Database provisions (includes DCP)
-          ],
-          special_provisions: [
+          ]),
+          special_provisions: deduplicateConstraints([
             ...planningAPIProvisions,  // ONLY Planning API SEPP provisions
             ...(apiResponse.data.special_provisions || [])  // Database provisions (includes DCP)
-          ]
+          ])
         });
 
       } catch (err) {
@@ -466,7 +484,42 @@ export function ComplianceDashboard({
         console.error('[ComplianceDashboard] Failed to fetch DCP provision:', error);
       }
     } else {
-      // For non-SEPP/LEP/DCP, show with empty provisions (will display "no details available")
+      // Fallback: Try to fetch by clause number and document type
+      console.log('[ComplianceDashboard] No metadata found, attempting fallback fetch for:', {
+        clause: constraint.source.clause,
+        document: constraint.source.document,
+        authorityLevel: constraint.source.authority_level
+      });
+
+      try {
+        // Try generic provision fetch by clause
+        const response = await fetch('/api/provisions/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clause: constraint.source.clause,
+            document: constraint.source.document,
+            authorityLevel: constraint.source.authority_level
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.provisions && data.provisions.length > 0) {
+            setSelectedProvision({
+              constraint,
+              provisions: data.provisions
+            });
+            setPanelOpen(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Fallback fetch failed:', error);
+      }
+
+      // If all else fails, show with empty provisions
+      console.warn('[ComplianceDashboard] No provisions found for constraint:', constraint);
       setSelectedProvision({
         constraint,
         provisions: []
@@ -623,19 +676,7 @@ export function ComplianceDashboard({
         </CardContent>
       </Card>
 
-      {/* SEPP Overlay Indicator - Prominent Position */}
-      {complianceData?.special_provisions && complianceData.special_provisions.length > 0 && (
-        <SeppOverlayIndicator
-          seppProvisions={complianceData.special_provisions.filter(p =>
-            p.source.authority_level === 'SEPP'
-          )}
-          affectedConstraints={[
-            ...(complianceData.building_envelope.some(c => c.type === 'height') ? ['Building Height'] : []),
-            ...(complianceData.building_envelope.some(c => c.type === 'fsr') ? ['Floor Space Ratio'] : []),
-            ...(complianceData.environmental.some(c => c.type === 'heritage') ? ['Heritage'] : [])
-          ]}
-        />
-      )}
+      {/* SEPP Overlay Indicator removed - SEPP cards shown inline below */}
 
       {/* Flex Layout: Constraints List + Slide-Out Panel */}
       <div className="flex gap-4" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
@@ -781,8 +822,9 @@ export function ComplianceDashboard({
           transition-all duration-300 ease-in-out overflow-hidden h-full
           ${panelOpen ? 'w-[60%] opacity-100' : 'w-0 opacity-0'}
         `}>
-          {panelOpen && (
+          {panelOpen && selectedProvision && (
             <LegalTextPanel
+              key={`provision-${selectedProvision.constraint.provision_id || selectedProvision.constraint.source.clause}`}
               selectedProvision={selectedProvision}
               onClose={() => setPanelOpen(false)}
             />

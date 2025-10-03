@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield } from "lucide-react"
+import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink } from "lucide-react"
 
 interface PlanningLayer {
  id: string;
@@ -62,9 +62,10 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
  href={value}
  target="_blank"
  rel="noopener noreferrer"
- className="text-blue-600 hover:text-blue-800 underline font-medium text-sm break-all"
+ className="text-blue-600 hover:text-blue-700 underline inline-flex items-center gap-1"
  >
- {value}
+ View Legislation
+ <ExternalLink className="h-3 w-3" />
  </a>
  )
  }
@@ -167,51 +168,56 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
        {expectedLayers.map((layerName) => {
          const layer = layerMap.get(layerName)
          const isPresent = !!layer
+
+         // Determine color scheme based on layer type
+         const isSEPP = layerName === 'Special Provisions'
+
+         // Color scheme: SEPP=Orange, LEP=Blue, N/A=Gray
+         const colors = isPresent
+           ? (isSEPP
+             ? { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', circleBg: 'bg-orange-100', circleText: 'text-orange-700', circleBorder: 'border-orange-300', circleActiveBg: 'bg-orange-600' }
+             : { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', circleBg: 'bg-blue-100', circleText: 'text-blue-700', circleBorder: 'border-blue-300', circleActiveBg: 'bg-blue-600' })
+           : { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-500', circleBg: '', circleText: '', circleBorder: '', circleActiveBg: '' }
+
          return (
-           <div key={layerName} className={`border rounded-lg ${isPresent ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-200'}`}>
+           <div key={layerName} className={`border rounded-lg ${colors.bg} ${colors.border}`}>
              <Button
                variant="ghost"
-               className="w-full justify-between h-auto p-3 font-normal"
+               className="!flex w-full justify-between h-auto p-3 font-normal whitespace-normal text-left"
                onClick={() => layer && toggleLayer(layer.id)}
                disabled={!isPresent}
              >
-               <div className="flex items-center gap-2">
-                 {getLayerIcon(layerName)}
-                 <span className={`font-medium text-xs ${isPresent ? 'text-green-800' : 'text-orange-600'}`}>{layerName}</span>
-                 <Badge variant="outline" className={`text-xs ${isPresent ? 'border-green-300 text-green-700' : 'border-orange-300 text-orange-600'}`}>
-                   {isPresent ? `${layer.results.length} item${layer.results.length !== 1 ? 's' : ''}` : 'Does not apply'}
-                 </Badge>
+               <div className="flex items-start justify-between gap-2 w-full">
+                 <span className={`font-medium text-xs leading-tight flex-1 break-words ${colors.text}`}>{layerName}</span>
+                 {isPresent ? (
+                   <div className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold flex-shrink-0 ${expandedLayers.has(layer.id) ? `${colors.circleActiveBg} text-white` : `${colors.circleBg} ${colors.circleText} border ${colors.circleBorder}`}`}>
+                     {layer.results.length}
+                   </div>
+                 ) : (
+                   <span className="text-xs text-gray-500 flex-shrink-0">N/A</span>
+                 )}
                </div>
-               {isPresent && (expandedLayers.has(layer.id) ?
-                 <ChevronDown className="h-4 w-4" /> :
-                 <ChevronRight className="h-4 w-4" />
-               )}
              </Button>
 
              {layer && expandedLayers.has(layer.id) && (
-               <div className="border-t p-4 space-y-4">
+               <div className="border-t bg-gray-50 p-3 space-y-3">
                  {layer.results.map((result, idx) => (
-                   <div key={idx} className="bg-white border rounded-lg p-4 shadow-sm">
+                   <div key={idx} className="bg-white rounded-lg p-3 shadow-sm">
                      {/* Important fields prominently displayed */}
-                     <div className="flex flex-wrap gap-2 mb-3">
+                     <div className="flex flex-wrap gap-1.5 mb-2">
                        {getImportantFields(result).map(({ key, value }) => (
-                         <Badge key={key} variant="default" className="text-xs font-medium">
+                         <Badge key={key} variant="default" className="text-xs font-semibold px-2 py-0.5">
                            {key}: {value}
                          </Badge>
                        ))}
                      </div>
 
-                     {/* Title if available and not redundant with important fields */}
-                     {result.title && result.title !== 'Canopy %' && (
-                       <h4 className="font-semibold text-base mb-3 text-gray-900">{result.title}</h4>
-                     )}
-
-                     {/* All other metadata in clean vertical layout */}
-                     <div className="space-y-2">
+                     {/* All other metadata - simple list format */}
+                     <div className="space-y-1.5 text-xs">
                        {getSecondaryFields(result).map(([key, value]) => (
-                         <div key={key} className="flex flex-col sm:flex-row sm:justify-between border-b border-gray-100 pb-1">
-                           <span className="text-gray-600 font-medium text-sm">{key}:</span>
-                           <span className="text-gray-900 text-sm sm:text-right max-w-xs break-words">
+                         <div key={key} className="leading-relaxed">
+                           <span className="text-gray-500 font-medium">{key}:</span>{' '}
+                           <span className="text-gray-900 font-semibold">
                              {typeof formatValue(key, value) === 'object' ? formatValue(key, value) : formatValue(key, value)}
                            </span>
                          </div>

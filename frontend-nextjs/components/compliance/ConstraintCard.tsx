@@ -239,35 +239,84 @@ export function ConstraintCard({
     }
   };
 
-  // Compact mode: single-column card with just value and [📄] button
+  // Compact mode: single-column card with value and button at bottom
   if (compact) {
     return (
       <Card className={`${colors.border} ${colors.bg} border-l-4 transition-all hover:shadow-md ${className}`}>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <span className={`text-lg ${colors.icon}`}>{getConstraintIcon(constraint.type)}</span>
-                <Badge variant="outline" className={`${colors.badge} text-xs`}>
-                  {constraint.source.authority_level}
-                </Badge>
-              </div>
-              <div className="font-bold text-xl text-gray-900">
-                {constraint.value}
-                {constraint.unit && <span className="text-base ml-1 text-gray-600">{constraint.unit}</span>}
-              </div>
-              <div className="text-sm text-gray-600 mt-1">
+          <div className="space-y-3">
+            {/* Header with icon and badge */}
+            <div className="flex items-center gap-2">
+              <span className={`text-lg ${colors.icon}`}>{getConstraintIcon(constraint.type)}</span>
+              <Badge variant="outline" className={`${colors.badge} text-xs`}>
+                {constraint.source.authority_level}
+              </Badge>
+            </div>
+
+            {/* Main value/title */}
+            <div className="font-bold text-xl text-gray-900">
+              {/* Format the value - show meaningful title based on content */}
+              {(() => {
+                const val = constraint.value;
+                const clause = constraint.source.clause;
+
+                // Helper to clean up titles
+                const cleanTitle = (title: string) => {
+                  // Fix "7storeys" → "7 Storeys"
+                  title = title.replace(/(\d+)(storeys?|floors?|metres?|meters?)/gi, '$1 $2');
+                  // Capitalize first letter of each word if all lowercase
+                  if (title === title.toLowerCase()) {
+                    title = title.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+                  }
+                  return title;
+                };
+
+                // If "See provision" placeholder, show the clause title/number
+                if (typeof val === 'string' && val.toLowerCase().includes('provision')) {
+                  // Use the first provision's section_header if available, otherwise clause
+                  const title = constraint.provisions?.[0]?.section_header || clause;
+                  return <span className="text-base text-gray-700">{cleanTitle(title)}</span>;
+                }
+
+                // If value looks like a clause number (e.g., "9.29.3"), use section_header instead
+                if (typeof val === 'string' && /^\d+(\.\d+)+[A-Z]?$/.test(val)) {
+                  const title = constraint.provisions?.[0]?.section_header || clause;
+                  return <span className="text-base text-gray-700">{cleanTitle(title)}</span>;
+                }
+
+                // If value is a descriptive title but no units, it's a reference to controls
+                if (typeof val === 'string' && !constraint.unit && val.length > 10) {
+                  return <span className="text-base text-gray-700">{cleanTitle(val)}</span>;
+                }
+
+                // Otherwise show the value with units (e.g., "9.5 m", "0.6:1")
+                // Also clean the value in case it's like "7storeys"
+                const displayVal = typeof val === 'string' ? cleanTitle(val) : val;
+                return (
+                  <>
+                    {displayVal}
+                    {constraint.unit && <span className="text-base ml-1 text-gray-600">{constraint.unit}</span>}
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Metadata */}
+            <div>
+              <div className="text-sm text-gray-600">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)} • {constraint.source.clause}
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
                 {constraint.source.document}
               </div>
             </div>
+
+            {/* Full Text button at bottom - full width */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleCompactView}
-              className={`ml-4 gap-1 ${colors.text}`}
+              className={`w-full gap-1 ${colors.text}`}
             >
               <FileText className="h-4 w-4" />
               Full Text
