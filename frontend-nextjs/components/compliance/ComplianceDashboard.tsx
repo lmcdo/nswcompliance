@@ -353,7 +353,8 @@ export function ComplianceDashboard({
           body: JSON.stringify({
             epiName: constraint.seppMetadata.epiName,
             keywords: constraint.seppMetadata.keywords,
-            mapType: constraint.seppMetadata.mapType
+            mapType: constraint.seppMetadata.mapType,
+            developmentType: developmentType  // ✅ Pass development type for context-aware filtering
           })
         });
 
@@ -526,7 +527,7 @@ export function ComplianceDashboard({
       });
       setPanelOpen(true);
     }
-  }, []);
+  }, [developmentType]);  // ✅ Add developmentType to dependencies
 
   // Handle provision detail requests
   const handleViewDetails = useCallback(async (constraint: ComplianceConstraint) => {
@@ -679,12 +680,12 @@ export function ComplianceDashboard({
       {/* SEPP Overlay Indicator removed - SEPP cards shown inline below */}
 
       {/* Flex Layout: Constraints List + Slide-Out Panel */}
-      <div className="flex gap-4" style={{ height: 'calc(100vh - 400px)', minHeight: '600px' }}>
+      <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 400px)' }}>
         {/* Left: Constraints List (expands/contracts with panel) */}
         <div className={`
           transition-all duration-300 ease-in-out
           ${panelOpen ? 'w-[40%]' : 'w-full'}
-          space-y-4 overflow-y-auto h-full
+          space-y-4
         `}>
 
       {/* SEPP Special Provisions Section - PRIORITY */}
@@ -819,7 +820,7 @@ export function ComplianceDashboard({
 
         {/* Right: Slide-Out Legal Text Panel */}
         <div className={`
-          transition-all duration-300 ease-in-out overflow-hidden h-full
+          transition-all duration-300 ease-in-out overflow-hidden
           ${panelOpen ? 'w-[60%] opacity-100' : 'w-0 opacity-0'}
         `}>
           {panelOpen && selectedProvision && (

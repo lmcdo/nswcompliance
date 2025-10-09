@@ -16,6 +16,7 @@ interface SeppFullTextRequest {
   keywords?: string[];  // e.g. ["BASIX", "climate", "water"]
   mapType?: string;  // e.g. "WAT", "CLM", "BAL"
   provisionId?: number;  // Direct provision ID lookup (alternative to epiName)
+  developmentType?: string;  // e.g. "dwelling_house", "commercial", "shop_top_housing"
 }
 
 /**
@@ -31,7 +32,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: SeppFullTextRequest = await request.json();
-    const { epiName, keywords, mapType, provisionId } = body;
+    const { epiName, keywords, mapType, provisionId, developmentType } = body;
 
     if (!epiName && !provisionId) {
       return NextResponse.json({
@@ -111,6 +112,67 @@ export async function POST(request: NextRequest) {
         keywordConditions = ` AND (${keywordClauses.join(' OR ')})`;
       }
 
+      // Build schedule filter based on development type
+      // This ensures we show only relevant compliance methods for the development type
+      let scheduleFilter = '';
+
+      if (developmentType) {
+        console.log(`[SEPP Full Text API] Filtering for development type: ${developmentType}`);
+
+        // Residential development types → BASIX (Schedules 1 & 2)
+        const residentialTypes = [
+          'dwelling_house',
+          'secondary_dwelling',
+          'multi_dwelling',
+          'residential_flat',
+          'boarding_house',
+          'dual_occupancy',
+          'semi_detached',
+          'attached_dwelling'
+        ];
+
+        // Commercial development types → Large Commercial (Schedule 3)
+        const commercialTypes = [
+          'commercial',
+          'shop_top_housing',
+          'retail',
+          'office',
+          'business_premises',
+          'industrial'
+        ];
+
+        if (residentialTypes.includes(developmentType)) {
+          // Show residential BASIX schedules (Schedule 1: new buildings, Schedule 2: alterations)
+          scheduleFilter = ` AND (
+            ref_number LIKE 'Schedule 1%' OR
+            ref_number LIKE 'Schedule 2%' OR
+            ref_number LIKE '2.1%'
+          )`;
+          console.log('[SEPP Full Text API] Applying residential filter (Schedules 1 & 2)');
+        } else if (commercialTypes.includes(developmentType)) {
+          // Show commercial schedules (Schedule 3: large commercial development)
+          scheduleFilter = ` AND (
+            ref_number LIKE 'Schedule 3%' OR
+            ref_number LIKE '3.3%'
+          )`;
+          console.log('[SEPP Full Text API] Applying commercial filter (Schedule 3)');
+        }
+        // If development type not recognized, show all schedules (no filter)
+      }
+
+      // Exclude generic clauses that don't provide actionable compliance info
+      const excludeGenericClauses = `
+        AND ref_number NOT LIKE '1.1%'
+        AND ref_number NOT LIKE '1.2%'
+        AND ref_number NOT LIKE '1.5%'
+        AND ref_number NOT LIKE '1.6%'
+        AND ref_number NOT LIKE '1.7%'
+        AND section_header NOT ILIKE '%name of policy%'
+        AND section_header NOT ILIKE '%commencement%'
+        AND section_header NOT ILIKE '%maps%'
+        AND section_header NOT ILIKE '%relationship with other%'
+      `;
+
       // Query database for SEPP provisions using new VIEW
       query = `
         SELECT
@@ -121,13 +183,26 @@ export async function POST(request: NextRequest) {
           provision_text,
           provision_type,
           document_category,
-          LENGTH(provision_text) as text_length
+          LENGTH(provision_text) as text_length,
+          CASE
+            WHEN ref_number LIKE 'Schedule%' THEN 100
+            WHEN ref_number LIKE 'Chapter 3%' THEN 80
+            WHEN ref_number LIKE 'Chapter 2%' THEN 70
+            WHEN provision_type ILIKE '%standard%' THEN 60
+            WHEN provision_type ILIKE '%requirement%' THEN 50
+            WHEN ref_number LIKE 'Chapter 1%' THEN 20
+            ELSE 30
+          END as relevance_score
         FROM provisions_with_category
         WHERE document_category = 'SEPP'
         AND document_id LIKE $1
         ${keywordConditions}
-        ORDER BY ref_number
-        LIMIT 20
+        ${scheduleFilter}
+        ${excludeGenericClauses}
+        ORDER BY
+          relevance_score DESC,
+          ref_number
+        LIMIT 10
       `;
     }
 
