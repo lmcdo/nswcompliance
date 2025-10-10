@@ -186,93 +186,21 @@ export class PropertyDataService {
  
  } catch (error) {
  console.error('Failed to get NSW Planning Portal data:', error);
- 
- // Enhanced error handling with specific fallback messaging
- const fallbackData = this.getFallbackData(address);
- 
- return fallbackData;
+
+ // Don't return fallback data - throw error with clear message
+ if (error instanceof Error && error.message.includes('abort')) {
+   throw new Error('NSW Planning Portal API request timed out after 5 seconds. Please try again.');
+ }
+
+ if (error instanceof Error && error.message.includes('Property not found')) {
+   throw new Error('Property not found in NSW Planning Portal. Please check the address.');
+ }
+
+ throw new Error('NSW Planning Portal API not responding. Please try again or check your internet connection.');
  }
  }
 
- /**
- * Enhanced fallback data with proper values for known properties
- */
- private static getFallbackData(address: string): PropertyData {
- // For the Telopea address, use the actual data we know works
- if (address.toLowerCase().includes('telopea') || address.includes('3 wilkinson')) {
- return {
- propId: 855978,
- address: "3 WILKINSON LANE, TELOPEA NSW 2117",
- landValue: "$1,370,000",
- valuationDate: "1 July 2024",
- propertyArea: "645 square metres",
- zoneDescription: "R2 - Low Density Residential",
- urbanity: "U",
- constraints: {
- maxFsr: 0.5,
- maxHeight: 9,
- minLotSize: 550,
- zone: "R2",
- lga: "CITY OF PARRAMATTA",
- heritage: false,
- floodProne: false,
- bushfireProne: false,
- basixClimate: "Class 5",
- basixWater: "40%"
- },
- heritage: { isHeritage: false },
- environmental: {
- floodProne: false,
- bushfireProne: false,
- acidSulfateSoils: "Class 5",
- basixClimate: "Class 5", 
- basixWater: "40%"
- },
- geometry: { x: 334624, y: 6261847 },
- seppRouting: {
- applicableSepps: [],
- seppFiles: {},
- totalFiles: 0,
- missing: []
- }
- };
- }
- 
- // Generic fallback for other addresses
- return {
- propId: Math.floor(Math.random() * 1000000),
- address: address,
- landValue: 'Data not available',
- valuationDate: 'Data not available',
- propertyArea: 'Data not available',
- zoneDescription: 'Data not available',
- urbanity: 'U',
- constraints: {
- maxFsr: null,
- maxHeight: null,
- minLotSize: null,
- zone: null,
- lga: 'Data not available',
- heritage: false,
- floodProne: false,
- bushfireProne: false,
- basixClimate: null,
- basixWater: null
- },
- heritage: { isHeritage: false },
- environmental: {
- floodProne: false,
- bushfireProne: false
- },
- geometry: { x: 0, y: 0 },
- seppRouting: {
- applicableSepps: [],
- seppFiles: {},
- totalFiles: 0,
- missing: []
- }
- };
- }
+ // Fallback data removed - errors now propagate to UI with clear messages
  
  /**
  * Extracts lot size from property area string
