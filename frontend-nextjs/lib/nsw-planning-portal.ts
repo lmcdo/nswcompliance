@@ -25,6 +25,11 @@ export interface PlanningConstraints {
  lga: string | null;
  heritage: boolean;
  heritageType?: string;
+ heritageItemName?: string;
+ heritageItemNumber?: string;
+ heritageLegislativeClause?: string;
+ heritageSignificance?: string;
+ heritageLegislationUrl?: string;
  floodProne: boolean;
  bushfireProne: boolean;
  acidSulfateSoils?: string;
@@ -264,6 +269,11 @@ export class NSWPlanningPortalService {
  case 'Heritage Map':
  constraints.heritage = true;
  constraints.heritageType = result['Heritage Type'];
+ constraints.heritageItemName = result['Item Name'];
+ constraints.heritageItemNumber = result['Item Number'];
+ constraints.heritageLegislativeClause = result['Legislative Clause'];
+ constraints.heritageSignificance = result['Significance'];
+ constraints.heritageLegislationUrl = result['legislationUrl'];
  break;
  
  case 'Special Provisions':

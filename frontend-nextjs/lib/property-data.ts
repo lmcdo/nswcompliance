@@ -40,7 +40,11 @@ export interface PropertyData {
  heritage?: {
  isHeritage: boolean;
  heritageType?: string;
+ heritageItemName?: string;
+ heritageItemNumber?: string;
  heritageClause?: string;
+ heritageSignificance?: string;
+ heritageLegislationUrl?: string;
  };
  environmental?: {
  acidSulfateSoils?: string;
@@ -133,11 +137,15 @@ export class PropertyDataService {
  epiName: lotSizeLayer.results[0]['EPI Name'] || 'Unknown'
  } : undefined;
 
- // Heritage information
+ // Heritage information - extract all available fields
  const heritage = constraints.heritage ? {
  isHeritage: true,
  heritageType: constraints.heritageType,
- heritageClause: heritageLayer?.results?.[0]?.['Legislative Clause']
+ heritageItemName: constraints.heritageItemName,
+ heritageItemNumber: constraints.heritageItemNumber,
+ heritageClause: constraints.heritageLegislativeClause,
+ heritageSignificance: constraints.heritageSignificance,
+ heritageLegislationUrl: constraints.heritageLegislationUrl
  } : { isHeritage: false };
 
  // Environmental constraints - use extracted data or provide defaults

@@ -13,6 +13,7 @@ import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
+import { HeritageDetails } from './HeritageDetails';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -825,6 +826,9 @@ export function ComplianceDashboard({
           </CardContent>
         </Card>
       )}
+
+      {/* Heritage Details (LEP Level - Between ADG and LEP Envelope) */}
+      <HeritageDetails heritage={propertyData.heritage} />
 
       {/* LEP Building Envelope Section */}
       {complianceData?.building_envelope &&
