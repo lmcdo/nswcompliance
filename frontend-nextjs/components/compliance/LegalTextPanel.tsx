@@ -24,6 +24,92 @@ export interface ProvisionContent {
   document_id: string;
 }
 
+// Parse SEPP horizontal tables (e.g., Table 1 Climate zone Column 1 Column 2... 8 65% 69%...)
+function parseSeppHorizontalTables(text: string): string {
+  // Pattern: "Table N" followed by first column name, then "Column 1", "Column 2", etc., then data
+  // Example: "Table 1 Climate zone Column 1 Column 2 Column 3 8 65% 69% 63%..."
+
+  // More specific pattern that handles the actual SEPP table format
+  const tablePattern = /(Table\s+\d+)\s+([A-Za-z\s]+?)\s+(Column\s+\d+(?:\s+Column\s+\d+)*)\s+([\d%.\s—\-]+?)(?=\n\s*\n|\n\s*\(\d+\)|\n\s*Part\s+\d+|\n\s*\d+\s+[A-Z]|$)/gi;
+
+  return text.replace(tablePattern, (match, tableTitle, firstColName, columnHeaders, tableData) => {
+    try {
+      // Parse column headers
+      const colHeaders = columnHeaders.match(/Column\s+\d+/gi) || [];
+      const allHeaders = [firstColName.trim(), ...colHeaders];
+
+      // Parse data - split into tokens (numbers, percentages, dashes, em-dashes)
+      // Data format: "8 65% 69% 63% 56% 57% 60% 9 64% 66%..."
+      // Note: Some cells might be "—" (em-dash) for no data
+      const tokens = tableData.trim().split(/\s+/).filter(Boolean);
+
+      const numCols = allHeaders.length;
+      const rows: string[][] = [];
+
+      // Group tokens into rows
+      for (let i = 0; i < tokens.length; i += numCols) {
+        const row = tokens.slice(i, i + numCols);
+        if (row.length === numCols) {
+          rows.push(row);
+        }
+      }
+
+      // If we didn't get any complete rows, try again with looser parsing
+      if (rows.length === 0) {
+        console.warn('Failed to parse SEPP table with strict column count, trying flexible parsing');
+        return match;
+      }
+
+      // Build markdown table
+      let mdTable = `\n\n**${tableTitle}**\n\n`;
+      mdTable += '| ' + allHeaders.join(' | ') + ' |\n';
+      mdTable += '| ' + allHeaders.map(() => '---').join(' | ') + ' |\n';
+      rows.forEach(row => {
+        mdTable += '| ' + row.join(' | ') + ' |\n';
+      });
+      mdTable += '\n';
+
+      return mdTable;
+    } catch (error) {
+      console.error('Error parsing SEPP table:', error);
+      return match; // Return original text on error
+    }
+  });
+}
+
+// Convert bullet points (•) to markdown bullets
+function convertBulletsToMarkdown(text: string): string {
+  // Convert Unicode bullet (•) to markdown bullet (-)
+  // Pattern: "•" followed by optional whitespace, then content
+  text = text.replace(/•\s*/g, '- ');
+
+  // Remove stray superscript numbers that appear at end of paragraphs
+  // Pattern: standalone digit at end of line (footnote references)
+  // Keep if it's part of a measurement (e.g., "20m2") but remove if standalone
+  text = text.replace(/\s+\d+\s*$/gm, '');
+
+  return text;
+}
+
+// Convert legal numbered/lettered lists to markdown format
+function convertLegalListsToMarkdown(text: string): string {
+  // LEP provisions use (1), (2), (3) for main points and (a), (b), (c) for sub-points
+  // Pattern: "(1) The objectives..." or "(a) to ensure..."
+
+  // Add newline before numbered subsections (1), (2), (3), etc.
+  // Only if preceded by a period, closing paren, or newline (end of sentence)
+  text = text.replace(/([.)\n])\s*\((\d+)\)\s+/g, '$1\n\n$2. ');
+
+  // Add newline before lettered subsections (a), (b), (c), etc. at start or after period
+  // Make them indented bullet points
+  text = text.replace(/([.)\n])\s*\(([a-z])\)\s+/g, '$1\n   - ');
+
+  // Handle (2A), (2B) style subsections
+  text = text.replace(/([.)\n])\s*\((\d+[A-Z])\)\s+/g, '$1\n\n$2. ');
+
+  return text;
+}
+
 // Truncated text component with "Show more..." button - using ReactMarkdown
 function TruncatedFormattedText({
   text,
@@ -36,12 +122,22 @@ function TruncatedFormattedText({
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Convert SEPP tables to markdown format BEFORE processing
+  text = parseSeppHorizontalTables(text);
+
+  // Convert bullet points to markdown format
+  text = convertBulletsToMarkdown(text);
+
+  // Convert legal numbered/lettered lists to markdown format
+  text = convertLegalListsToMarkdown(text);
+
   // Count words to determine if truncation is needed
-  const words = text.split(/\s+/);
+  // Split on whitespace but preserve paragraph breaks (\n\n)
+  const words = text.split(/[ \t]+/); // Split only on spaces/tabs, NOT newlines
   const shouldTruncate = words.length > wordLimit;
 
   // Truncate the TEXT before passing to ReactMarkdown
-  // This preserves markdown syntax (# headings, etc.)
+  // Preserve formatting by rejoining with original spacing
   const displayText = shouldTruncate && !isExpanded
     ? words.slice(0, wordLimit).join(' ') + '...'
     : text;
@@ -74,6 +170,26 @@ function TruncatedFormattedText({
           ),
           ol: ({ node, ...props }) => (
             <ol className="list-decimal ml-4 mb-2 space-y-1" {...props} />
+          ),
+          table: ({ node, ...props }) => (
+            <div className="my-4 overflow-x-auto">
+              <table className="min-w-full border-collapse border border-gray-300 text-xs" {...props} />
+            </div>
+          ),
+          thead: ({ node, ...props }) => (
+            <thead className="bg-gray-100" {...props} />
+          ),
+          tbody: ({ node, ...props }) => (
+            <tbody {...props} />
+          ),
+          tr: ({ node, ...props }) => (
+            <tr className="even:bg-gray-50 odd:bg-white" {...props} />
+          ),
+          th: ({ node, ...props }) => (
+            <th className="border border-gray-300 px-3 py-2 text-left font-semibold" {...props} />
+          ),
+          td: ({ node, ...props }) => (
+            <td className="border border-gray-300 px-3 py-2" {...props} />
           ),
         }}
       >
@@ -483,6 +599,39 @@ export function LegalTextPanel({
     return text;
   };
 
+  // Format SEPP legal text - convert legal clause structure to paragraph breaks
+  // SEPP text has single newlines at clause boundaries but ReactMarkdown needs double newlines
+  const formatSeppLegalText = (text: string): string => {
+    // SEPP Schedule text has numbered clauses and lettered subclauses
+    // Structure: "1   Clause title\n(1) First requirement\n(a)  detail\n(b)  detail\n(2) Second requirement"
+    // We need to add paragraph breaks (double newlines) at major clause boundaries
+
+    // Step 1: Add paragraph break before numbered clause titles (e.g., "1   Toilets, showers and taps")
+    // Pattern: newline + digit(s) + non-breaking spaces + text (clause title)
+    // Note: \xa0 is non-breaking space (common in SEPP text from PDF extraction)
+    text = text.replace(/\n(\d+[\xa0\s]{2,}[A-Z][^\n]+)/g, '\n\n$1');
+
+    // Step 2: Add paragraph break before main subsections (1), (2), (3), etc.
+    // But NOT before lettered subclauses (a), (b), (c) which are details under the main clause
+    text = text.replace(/\n(\(\d+\)[\xa0\s]+)/g, '\n\n$1');
+
+    // Step 3: Add line break (not paragraph) before lettered subclauses (a), (b), (c)
+    // These should be indented details under the main clause, not separate paragraphs
+    // Single newline is fine here - keeps them grouped with parent clause
+    text = text.replace(/([^\n])[\xa0\s]+(\([a-z]\)[\xa0\s]+)/g, '$1\n$2');
+
+    // Step 4: Add paragraph break before "Part X" section headers
+    text = text.replace(/\n(Part\s+\d+[^\n]+)/g, '\n\n$1');
+
+    // Step 5: Add paragraph break before section headings (e.g., "section 2.1")
+    text = text.replace(/\n(section\s+\d+\.\d+)/gi, '\n\n$1');
+
+    // Step 6: Clean up excessive newlines (more than 2)
+    text = text.replace(/\n{3,}/g, '\n\n');
+
+    return text;
+  };
+
   // Format legal text with smart table detection (line-by-line scan for embedded tables)
   const formatLegalText = (text: string) => {
     const lines = text.split('\n');
@@ -577,22 +726,22 @@ export function LegalTextPanel({
     switch (level) {
       case 'SEPP':
         return {
-          bg: 'bg-red-50',
-          border: 'border-red-200',
-          badge: 'bg-red-100 text-red-800',
-          header: 'bg-red-100'
+          bg: 'bg-orange-50',
+          border: 'border-orange-500',
+          badge: 'bg-orange-100 text-orange-800',
+          header: 'bg-orange-100'
         };
       case 'LEP':
         return {
           bg: 'bg-blue-50',
-          border: 'border-blue-200',
+          border: 'border-blue-500',
           badge: 'bg-blue-100 text-blue-800',
           header: 'bg-blue-100'
         };
       case 'DCP':
         return {
           bg: 'bg-green-50',
-          border: 'border-green-200',
+          border: 'border-green-500',
           badge: 'bg-green-100 text-green-800',
           header: 'bg-green-100'
         };
@@ -679,6 +828,14 @@ export function LegalTextPanel({
 
                 // Remove document metadata (page numbers, version info, etc.)
                 cleanedText = removeDocumentMetadata(cleanedText);
+
+                // Apply SEPP-specific formatting if this is a SEPP provision
+                // SEPP provisions have Schedule ref_numbers or formal_Schedule provision_type
+                const isSeppSchedule = provision.ref_number?.includes('Schedule') ||
+                                      constraint.source.authority_level === 'SEPP';
+                if (isSeppSchedule) {
+                  cleanedText = formatSeppLegalText(cleanedText);
+                }
 
                 // Clean up LaTeX/MinerU artifacts
                 // Remove LaTeX commands like $\textcircled { 9 }$

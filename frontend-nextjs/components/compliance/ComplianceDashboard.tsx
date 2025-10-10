@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
+import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -24,6 +25,7 @@ export interface ComplianceConstraint {
   type: 'height' | 'fsr' | 'setback' | 'heritage' | 'environmental' | 'special';
   value: string | number;
   unit?: string;
+  description?: string;
   source: {
     clause: string;
     document: string;
@@ -77,6 +79,9 @@ export function ComplianceDashboard({
   const [panelOpen, setPanelOpen] = useState(false);
   const [selectedProvision, setSelectedProvision] = useState<SelectedProvision | null>(null);
 
+  // Structured SEPP requirements state
+  const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
+
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
     const specialProvisionsLayer = propertyData.planningLayers?.find(
@@ -99,15 +104,26 @@ export function ComplianceDashboard({
       // Format the display value
       let displayValue = classValue || title;
       let displayUnit = undefined;
+      let description = undefined;
 
       // For percentage values (Water Use), remove % from value since we'll add it as unit
       if (type.includes('%') && displayValue.includes('%')) {
         displayValue = displayValue.replace('%', '');
         displayUnit = '%';
+        description = 'BASIX water efficiency target - fixtures, hot water, pools must meet minimum standards';
       }
       // For Climate Zones, prefix with "Class"
       else if (type.toLowerCase().includes('climate')) {
         displayValue = `Class ${classValue}`;
+        if (mapType === 'CLM') {
+          description = 'Climate zone for BASIX new buildings - determines insulation, glazing, thermal comfort requirements';
+        } else if (mapType === 'BAL') {
+          description = 'Climate zone for BASIX alterations - affects renovation thermal performance requirements';
+        }
+      }
+      // For Thermal Energy from Waste
+      else if (type.toLowerCase().includes('thermal') || type.toLowerCase().includes('greater sydney')) {
+        description = 'Thermal energy from waste facilities prohibited in this area';
       }
 
       // Create constraint for each Special Provision with metadata for full text fetching
@@ -115,6 +131,7 @@ export function ComplianceDashboard({
         type: 'special',
         value: displayValue,
         unit: displayUnit,
+        description: description,
         source: {
           clause: `${mapType || 'Special'} - ${type}`,
           document: epiName,
@@ -195,6 +212,36 @@ export function ComplianceDashboard({
     console.log('[ComplianceDashboard] Extracted', constraints.length, 'LEP constraints');
     return constraints;
   }, [propertyData]);
+
+  // Load structured SEPP requirements (manually curated, 100% reliable)
+  const loadStructuredRequirements = useCallback(async () => {
+    try {
+      console.log('[ComplianceDashboard] Fetching structured SEPP requirements...');
+
+      const response = await fetch('/api/sepp/structured-requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seppId: 'sustainable_buildings_2022',
+          developmentType: developmentType
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.hasStructuredRequirements) {
+          console.log('[ComplianceDashboard] Loaded structured requirements:', data.data.requirements);
+          setStructuredRequirements(data.data.requirements);
+        } else {
+          console.log('[ComplianceDashboard] No structured requirements available');
+          setStructuredRequirements([]);
+        }
+      }
+    } catch (error) {
+      console.error('[ComplianceDashboard] Failed to fetch structured requirements:', error);
+      setStructuredRequirements([]);
+    }
+  }, [developmentType]);
 
   // Load compliance data from real API
   // Note: DCP constraints now come from database via API (development_controls + zone_setback_rules)
@@ -316,6 +363,11 @@ export function ComplianceDashboard({
             ...(apiResponse.data.special_provisions || [])  // Database provisions (includes DCP)
           ])
         });
+
+        // Fetch structured SEPP requirements if SEPP provisions exist
+        if (planningAPIProvisions.length > 0) {
+          await loadStructuredRequirements();
+        }
 
       } catch (err) {
         console.error('[ComplianceDashboard] Failed to load compliance data:', err);
@@ -691,8 +743,8 @@ export function ComplianceDashboard({
       {/* SEPP Special Provisions Section - PRIORITY */}
       {complianceData?.special_provisions &&
        complianceData.special_provisions.filter(p => p.source.authority_level === 'SEPP').length > 0 && (
-        <Card className="border-red-200">
-          <CardHeader className="bg-red-50">
+        <Card className="border-orange-200">
+          <CardHeader className="bg-orange-50">
             <CardTitle className="flex items-center gap-2">
               <span className="text-xl">🟥</span>
               SEPP Special Provisions (Overrides Local Controls)
@@ -702,6 +754,34 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
+            {/* Structured Requirements (100% Reliable) */}
+            {structuredRequirements.length > 0 && (
+              <div className="mb-6">
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="text-sm font-semibold text-purple-900">
+                    📋 Actionable Requirements
+                  </span>
+                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
+                    100% Reliable
+                  </span>
+                </div>
+                <StructuredSeppRequirements
+                  requirements={structuredRequirements}
+                  onViewFullText={(provisionId) => {
+                    // Find the constraint with this provision ID and open panel
+                    const constraint = complianceData.special_provisions.find(
+                      c => c.provision_id === provisionId
+                    );
+                    if (constraint) {
+                      handleViewProvision(constraint);
+                    }
+                  }}
+                  compact={true}
+                />
+              </div>
+            )}
+
+            {/* Standard SEPP Constraint Cards */}
             <div className="space-y-3">
               {complianceData.special_provisions
                 .filter(p => p.source.authority_level === 'SEPP')

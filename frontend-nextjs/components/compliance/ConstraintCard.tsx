@@ -50,12 +50,14 @@ export interface ComplianceConstraint {
   type: 'height' | 'fsr' | 'setback' | 'heritage' | 'environmental' | 'special';
   value: string | number;
   unit?: string;
+  description?: string;
   source: {
     clause: string;
     document: string;
     authority_level: 'LEP' | 'DCP' | 'SEPP';
   };
   provisions?: ProvisionContent[];
+  provision_id?: number;
   seppMetadata?: {
     epiName: string;
     mapType?: string;
@@ -300,6 +302,13 @@ export function ConstraintCard({
                 );
               })()}
             </div>
+
+            {/* Description - helpful context about what this constraint means */}
+            {constraint.description && (
+              <div className="text-sm text-gray-600 leading-relaxed">
+                {constraint.description}
+              </div>
+            )}
 
             {/* Metadata */}
             <div>
