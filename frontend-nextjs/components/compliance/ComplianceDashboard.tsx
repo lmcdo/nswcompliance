@@ -12,6 +12,7 @@ import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
+import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -59,6 +60,7 @@ import type { PropertyData } from '@/lib/property-data';
 interface ComplianceDashboardProps {
   propertyData: PropertyData;
   developmentType?: string;
+  buildingHeight?: number | null;
   className?: string;
 }
 
@@ -68,6 +70,7 @@ interface ComplianceDashboardProps {
 export function ComplianceDashboard({
   propertyData,
   developmentType = 'dwelling_house',
+  buildingHeight = null,
   className = ''
 }: ComplianceDashboardProps) {
   const [complianceData, setComplianceData] = useState<ComplianceData | null>(null);
@@ -794,6 +797,31 @@ export function ComplianceDashboard({
                 />
               ))}
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ADG Building Separation Standards (Multi-Dwelling Only) */}
+      {buildingHeight && buildingHeight > 0 && (
+        developmentType === 'multi_dwelling' ||
+        developmentType === 'residential_flat' ||
+        developmentType === 'shop_top_housing'
+      ) && (
+        <Card className="border-red-300">
+          <CardHeader className="bg-red-50">
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-xl">🟥</span>
+              NSW Apartment Design Guide - Building Separation
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Statutory standards under SEPP (Housing) 2021
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <ADGBuildingSeparationTable
+              buildingHeight={buildingHeight}
+              developmentType={developmentType}
+            />
           </CardContent>
         </Card>
       )}
