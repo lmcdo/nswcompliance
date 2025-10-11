@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping';
 import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-service';
+import { getZoneAliases } from '@/lib/zone-translation';
 
 // Database connection
 const pool = new Pool({
@@ -73,15 +74,32 @@ export async function POST(request: NextRequest) {
 
     // For Inner West, determine the specific former council area
     let targetLGA = lgaName;
-    if (lgaName.toLowerCase().includes('inner west') && address) {
-      const formerCouncil = determineFormerCouncilArea(address, lgaName);
-      if (formerCouncil) {
-        targetLGA = formerCouncil; // Use "Marrickville", "Ashfield", or "Leichhardt" instead of "INNER WEST"
-        console.log(`[Constraints API] Mapped Inner West address to former council: ${formerCouncil}`);
+    let lgaSearchPattern = targetLGA;
+
+    if (lgaName.toLowerCase().includes('inner west')) {
+      if (address) {
+        const formerCouncil = determineFormerCouncilArea(address, lgaName);
+        if (formerCouncil) {
+          targetLGA = formerCouncil; // Use "Marrickville", "Ashfield", or "Leichhardt"
+          lgaSearchPattern = formerCouncil;
+          console.log(`[Constraints API] Mapped Inner West address to former council: ${formerCouncil}`);
+        } else {
+          // Address provided but couldn't determine former council - search all three
+          lgaSearchPattern = '.*(Marrickville|Ashfield|Leichhardt).*';
+          console.log(`[Constraints API] Couldn't map address to former council, will search all three`);
+        }
+      } else {
+        // No address provided - search all three former councils
+        lgaSearchPattern = '.*(Marrickville|Ashfield|Leichhardt).*';
+        console.log(`[Constraints API] No address provided, will search all Inner West former councils`);
       }
     }
 
-    console.log(`[Constraints API] Query: lga=${targetLGA}, zone=${zone}, devType=${developmentType}`);
+    console.log(`[Constraints API] Query: lga=${targetLGA}, zone=${zone}, devType=${developmentType}, searchPattern=${lgaSearchPattern}`);
+
+    // Get zone aliases (includes legacy equivalents: E1 → [E1, B1, B2])
+    const zoneAliases = getZoneAliases(zone);
+    console.log(`[Constraints API] Zone translation: ${zone} → [${zoneAliases.join(', ')}]`);
 
     // Get DCP section dynamically (works for ANY LGA)
     let dcpSectionInfo = null;
@@ -104,6 +122,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Query 1: Get high-confidence extracted controls from development_controls
+    // Use zone translation to find both current (E1) and legacy (B1, B2) provisions
+    const zonePlaceholders = zoneAliases.map((_, i) => `$${i + 1}`).join(', ');
     const controlsQuery = `
       SELECT
         dc.control_type,
@@ -118,18 +138,18 @@ export async function POST(request: NextRequest) {
         rp.document_id,
         rp.zone
       FROM development_controls dc
-      JOIN regulatory_provisions_canonical rp ON dc.provision_id::integer = rp.id
-      WHERE rp.zone = $1
+      JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
+      WHERE rp.zone IN (${zonePlaceholders})
         AND dc.control_type IN ('height', 'setback', 'parking', 'fsr', 'open_space')
         AND dc.confidence_score::numeric > 0.75
         AND dc.value_numeric IS NOT NULL
         AND (
-          $2::text IS NULL
-          OR rp.development_type = $2::text
+          $${zoneAliases.length + 1}::text IS NULL
+          OR rp.development_type = $${zoneAliases.length + 1}::text
           OR rp.development_type IS NULL
         )
         AND (
-          rp.document_id ILIKE '%' || $3::text || '%'
+          rp.document_id ~* $${zoneAliases.length + 2}::text
         )
       ORDER BY
         dc.confidence_score::numeric DESC,
@@ -143,11 +163,12 @@ export async function POST(request: NextRequest) {
       LIMIT 15
     `;
 
-    const controlsResult = await pool.query(controlsQuery, [zone, developmentType || null, targetLGA]);
+    const controlsResult = await pool.query(controlsQuery, [...zoneAliases, developmentType || null, lgaSearchPattern]);
 
-    console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zone ${zone}`);
+    console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zones [${zoneAliases.join(', ')}]`);
 
     // Query 2: Get curated setback rules from zone_setback_rules
+    const setbackZonePlaceholders = zoneAliases.map((_, i) => `$${i + 1}`).join(', ');
     const setbackQuery = `
       SELECT
         zone,
@@ -162,10 +183,10 @@ export async function POST(request: NextRequest) {
         'Curated setback rule' as provision_text,
         source_document as section_header
       FROM zone_setback_rules
-      WHERE zone = $1
+      WHERE zone IN (${setbackZonePlaceholders})
         AND confidence::numeric > 0.90
         AND (
-          source_document ILIKE '%' || $2::text || '%'
+          source_document ~* $${zoneAliases.length + 1}::text
         )
       ORDER BY
         CASE boundary_type
@@ -176,9 +197,9 @@ export async function POST(request: NextRequest) {
         END
     `;
 
-    const setbackResult = await pool.query(setbackQuery, [zone, targetLGA]);
+    const setbackResult = await pool.query(setbackQuery, [...zoneAliases, lgaSearchPattern]);
 
-    console.log(`[Constraints API] Found ${setbackResult.rows.length} curated setback rules for zone ${zone}`);
+    console.log(`[Constraints API] Found ${setbackResult.rows.length} curated setback rules for zones [${zoneAliases.join(', ')}]`);
 
     // Combine zone-specific controls, setbacks, AND precinct controls
     const allControls = [
@@ -222,8 +243,8 @@ export async function POST(request: NextRequest) {
           source_type,
           confidence_score
         FROM development_permissions
-        WHERE zone = $1
-        AND development_type = $2
+        WHERE zone IN (${zonePlaceholders})
+        AND development_type = $${zoneAliases.length + 1}
         AND source_type NOT ILIKE '%exempt%'
         ORDER BY
           CASE source_type
@@ -235,7 +256,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
 
-      const baseResult = await pool.query(basePermissionQuery, [zone, normalizedType]);
+      const baseResult = await pool.query(basePermissionQuery, [...zoneAliases, normalizedType]);
 
       if (baseResult.rows.length > 0) {
         const basePermission = baseResult.rows[0].permission_status;
@@ -257,16 +278,16 @@ export async function POST(request: NextRequest) {
               source_type,
               confidence_score
             FROM development_permissions
-            WHERE zone = $1
-            AND (development_type = $2 OR development_type = 'general')
+            WHERE zone IN (${zonePlaceholders})
+            AND (development_type = $${zoneAliases.length + 1} OR development_type = 'general')
             AND source_type ILIKE '%exempt%'
             ORDER BY
-              CASE WHEN development_type = $2 THEN 1 ELSE 2 END,
+              CASE WHEN development_type = $${zoneAliases.length + 1} THEN 1 ELSE 2 END,
               confidence_score DESC
             LIMIT 1
           `;
 
-          const seppResult = await pool.query(seppQuery, [zone, developmentType]);
+          const seppResult = await pool.query(seppQuery, [...zoneAliases, developmentType]);
 
           if (seppResult.rows.length > 0) {
             permissions = seppResult.rows;
@@ -367,8 +388,13 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Constraints API] Found ${seppResult.rows.length} SEPP overrides`);
 
-    // Transform controls into constraints
-    const constraints = transformControlsToConstraints(allControls, seppResult.rows);
+    // Transform controls into constraints with development type filtering
+    const constraints = transformControlsToConstraints(
+      allControls,
+      seppResult.rows,
+      developmentType || '',
+      zone
+    );
 
     const processingTime = Date.now() - startTime;
 
@@ -413,18 +439,71 @@ export async function POST(request: NextRequest) {
 
 /**
  * Transform extracted controls into UI-ready constraints
+ * Filters out irrelevant controls based on development type and zone
  */
 function transformControlsToConstraints(
   controls: any[],
-  seppOverrides: any[]
+  seppOverrides: any[],
+  developmentType: string,
+  zone: string
 ): ComplianceConstraint[] {
   const constraints: ComplianceConstraint[] = [];
+
+  // Development type filtering context
+  const isDwellingHouse = developmentType === 'dwelling_house';
+  const isResidentialZone = ['R1', 'R2', 'R3', 'R4', 'R5'].some(z => zone.toUpperCase().startsWith(z));
+  const isMixedUse = ['B4', 'B8'].some(z => zone.toUpperCase().startsWith(z)) ||
+                     developmentType.includes('shop_top') ||
+                     developmentType.includes('mixed');
+
+  // Commercial keywords to filter for residential development
+  const commercialKeywords = [
+    'showroom',
+    'shop',
+    'retail',
+    'warehouse',
+    'active frontage',
+    'commercial premises',
+    'business premises',
+    'office premises'
+  ];
+
+  let filteredCount = 0;
 
   // Transform each control
   for (const control of controls) {
     // Map control types to UI types
     let uiType: ComplianceConstraint['type'];
-    switch (control.control_type) {
+    const controlType = control.control_type?.toLowerCase() || '';
+    const provisionText = (control.provision_text || '').toLowerCase();
+    const documentId = (control.document_id || '').toLowerCase();
+    const refNumber = (control.ref_number || '').toLowerCase();
+
+    // Development type relevance filtering (DCP controls only)
+    const isDCP = documentId.includes('dcp') || documentId.includes('development_control');
+
+    if (isDCP && (isDwellingHouse || isResidentialZone) && !isMixedUse) {
+      // Filter commercial controls for residential development
+      const hasCommercialKeyword = commercialKeywords.some(kw =>
+        provisionText.includes(kw) || refNumber.includes(kw)
+      );
+
+      if (hasCommercialKeyword) {
+        filteredCount++;
+        console.log('[DCP Filter] Filtered commercial control for residential:', {
+          ref_number: control.ref_number,
+          matched_keyword: commercialKeywords.find(kw =>
+            provisionText.includes(kw) || refNumber.includes(kw)
+          ),
+          development_type: developmentType,
+          zone: zone
+        });
+        continue; // Skip this control
+      }
+    }
+
+    // Structural controls (always categorize correctly)
+    switch (controlType) {
       case 'height':
         uiType = 'height';
         break;
@@ -439,7 +518,34 @@ function transformControlsToConstraints(
         uiType = 'special';
         break;
       default:
-        uiType = 'environmental';
+        // Smart categorization for unknown types
+        // Check document type first
+        if (documentId.includes('sepp_65') || documentId.includes('sepp_no_65')) {
+          uiType = 'special'; // SEPP 65 is design quality, not environmental
+        }
+        // Check for true environmental keywords
+        else if (
+          provisionText.includes('flood') ||
+          provisionText.includes('bushfire') ||
+          provisionText.includes('contamination') ||
+          provisionText.includes('acid sulfate') ||
+          provisionText.includes('heritage') && provisionText.includes('conservation') ||
+          provisionText.includes('biodiversity') ||
+          provisionText.includes('tree preservation') ||
+          provisionText.includes('water quality') ||
+          provisionText.includes('stormwater')
+        ) {
+          uiType = 'environmental';
+        }
+        // Default to special (not environmental) for unknown types
+        else {
+          uiType = 'special';
+          console.log('[Control Categorization] Unknown type defaulted to special:', {
+            control_type: control.control_type,
+            ref_number: control.ref_number,
+            document_id: control.document_id?.substring(0, 50)
+          });
+        }
     }
 
     // Parse numeric value
@@ -501,6 +607,11 @@ function transformControlsToConstraints(
       full_text: overrideText,
       provisions: provisions  // Include full provision with complete text
     });
+  }
+
+  // Log filtering summary
+  if (filteredCount > 0) {
+    console.log(`[DCP Filter] Filtered ${filteredCount} irrelevant DCP controls for ${developmentType} in ${zone}`);
   }
 
   return constraints;
