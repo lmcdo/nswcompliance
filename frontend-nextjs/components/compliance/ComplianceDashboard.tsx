@@ -14,6 +14,11 @@ import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
+import {
+  assessControlRelevance,
+  createFilterContext,
+  type FilterResult
+} from '@/lib/environmental-relevance-filter';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -49,6 +54,10 @@ export interface ComplianceConstraint {
     chapter?: string;
     category?: string;
   };
+  // Relevance filter fields
+  requiresAction?: boolean;
+  category?: 'basix' | 'environmental_overlay' | 'informational' | 'prohibition';
+  provision_id?: number;
 }
 
 export interface ComplianceData {
@@ -96,7 +105,14 @@ export function ComplianceDashboard({
       return [];
     }
 
+    // Create filter context
+    const filterContext = createFilterContext(
+      developmentType,
+      propertyData.constraints?.zone || ''
+    );
+
     const provisions: ComplianceConstraint[] = [];
+    let filteredCount = 0;
 
     specialProvisionsLayer.results.forEach((result) => {
       const epiName = result['EPI Name'] || 'Unknown SEPP';
@@ -105,29 +121,44 @@ export function ComplianceDashboard({
       const mapType = result['Map Type'] || '';
       const title = result.title || '';
 
+      // Apply relevance filter
+      const relevance = assessControlRelevance(result, filterContext);
+
+      if (!relevance.isRelevant) {
+        filteredCount++;
+        console.log('[ComplianceDashboard] Filtered out irrelevant control:', type, '-', relevance.reason);
+        return; // Skip this control
+      }
+
       // Format the display value
       let displayValue = classValue || title;
       let displayUnit = undefined;
-      let description = undefined;
+      let description = relevance.reason || undefined;
 
       // For percentage values (Water Use), remove % from value since we'll add it as unit
       if (type.includes('%') && displayValue.includes('%')) {
         displayValue = displayValue.replace('%', '');
         displayUnit = '%';
-        description = 'BASIX water efficiency target - fixtures, hot water, pools must meet minimum standards';
+        if (!description) {
+          description = 'BASIX water efficiency target - fixtures, hot water, pools must meet minimum standards';
+        }
       }
       // For Climate Zones, prefix with "Class"
       else if (type.toLowerCase().includes('climate')) {
         displayValue = `Class ${classValue}`;
-        if (mapType === 'CLM') {
-          description = 'Climate zone for BASIX new buildings - determines insulation, glazing, thermal comfort requirements';
-        } else if (mapType === 'BAL') {
-          description = 'Climate zone for BASIX alterations - affects renovation thermal performance requirements';
+        if (!description) {
+          if (mapType === 'CLM') {
+            description = 'Climate zone for BASIX new buildings - determines insulation, glazing, thermal comfort requirements';
+          } else if (mapType === 'BAL') {
+            description = 'Climate zone for BASIX alterations - affects renovation thermal performance requirements';
+          }
         }
       }
-      // For Thermal Energy from Waste
+      // For Thermal Energy from Waste (should be filtered for residential, but keep description)
       else if (type.toLowerCase().includes('thermal') || type.toLowerCase().includes('greater sydney')) {
-        description = 'Thermal energy from waste facilities prohibited in this area';
+        if (!description) {
+          description = 'Thermal energy from waste facilities prohibited in this area';
+        }
       }
 
       // Create constraint for each Special Provision with metadata for full text fetching
@@ -150,13 +181,16 @@ export function ComplianceDashboard({
             type.toLowerCase().includes('climate') ? 'climate' : undefined,
             type.toLowerCase().includes('basix') ? 'BASIX' : undefined
           ].filter(Boolean) as string[]
-        }
+        },
+        // Add relevance filter metadata
+        requiresAction: relevance.requiresAction,
+        category: relevance.category
       });
     });
 
-    console.log('[ComplianceDashboard] Extracted', provisions.length, 'Planning API provisions');
+    console.log(`[ComplianceDashboard] Extracted ${provisions.length} Planning API provisions (filtered ${filteredCount} irrelevant)`);
     return provisions;
-  }, [propertyData]);
+  }, [propertyData, developmentType]);
 
   // Extract LEP constraints from Planning API (Height, FSR)
   const extractLEPConstraints = useCallback((): ComplianceConstraint[] => {
@@ -746,12 +780,22 @@ export function ComplianceDashboard({
 
       {/* SEPP Special Provisions Section - PRIORITY */}
       {complianceData?.special_provisions &&
-       complianceData.special_provisions.filter(p => p.source.authority_level === 'SEPP').length > 0 && (
+       complianceData.special_provisions.filter(p => p.source.authority_level === 'SEPP').length > 0 && (() => {
+        const seppProvisions = complianceData.special_provisions.filter(p => p.source.authority_level === 'SEPP');
+        const actionRequired = seppProvisions.filter(p => p.requiresAction !== false);
+        const informational = seppProvisions.filter(p => p.requiresAction === false);
+
+        return (
         <Card className="border-orange-200">
           <CardHeader className="bg-orange-50">
             <CardTitle className="flex items-center gap-2">
               <span className="text-xl">🟥</span>
-              SEPP Special Provisions (Overrides Local Controls)
+              SEPP Special Provisions
+              {informational.length > 0 && (
+                <span className="text-sm font-normal text-gray-600">
+                  ({actionRequired.length} require action, {informational.length} informational)
+                </span>
+              )}
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               State Environmental Planning Policies - Highest legal precedence
@@ -785,22 +829,50 @@ export function ComplianceDashboard({
               </div>
             )}
 
-            {/* Standard SEPP Constraint Cards */}
-            <div className="space-y-3">
-              {complianceData.special_provisions
-                .filter(p => p.source.authority_level === 'SEPP')
-                .map((constraint, index) => (
-                <ConstraintCard
-                  key={`sepp-${index}`}
-                  constraint={constraint}
-                  onViewDetails={handleViewProvision}
-                  compact={true}
-                />
-              ))}
-            </div>
+            {/* Action Required Controls */}
+            {actionRequired.length > 0 && (
+              <div className="mb-6">
+                <div className="mb-2 text-sm font-semibold text-orange-900">
+                  Action Required:
+                </div>
+                <div className="space-y-3">
+                  {actionRequired.map((constraint, index) => (
+                    <ConstraintCard
+                      key={`sepp-action-${index}`}
+                      constraint={constraint}
+                      onViewDetails={handleViewProvision}
+                      compact={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Informational Controls */}
+            {informational.length > 0 && (
+              <div>
+                <div className="mb-2 text-sm font-semibold text-blue-700 flex items-center gap-2">
+                  <span>Informational Only:</span>
+                  <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-normal">
+                    No action required
+                  </span>
+                </div>
+                <div className="space-y-3 opacity-75">
+                  {informational.map((constraint, index) => (
+                    <ConstraintCard
+                      key={`sepp-info-${index}`}
+                      constraint={constraint}
+                      onViewDetails={handleViewProvision}
+                      compact={true}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
-      )}
+        );
+      })()}
 
       {/* ADG Building Separation Standards (Multi-Dwelling Only) */}
       {buildingHeight && buildingHeight > 0 && (
@@ -828,7 +900,11 @@ export function ComplianceDashboard({
       )}
 
       {/* Heritage Details (LEP Level - Between ADG and LEP Envelope) */}
-      <HeritageDetails heritage={propertyData.heritage} />
+      <HeritageDetails
+        heritage={propertyData.heritage}
+        propertyGeometry={propertyData.geometry}
+        lga={propertyData.constraints?.lga}
+      />
 
       {/* LEP Building Envelope Section */}
       {complianceData?.building_envelope &&
@@ -946,4 +1022,4 @@ export function ComplianceDashboard({
       </div>
     </div>
   );
-}
+}// Trigger recompile
