@@ -168,30 +168,30 @@ export async function POST(request: NextRequest) {
     console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zones [${zoneAliases.join(', ')}]`);
 
     // Query 2: Get curated setback rules from zone_setback_rules
-    // Now includes source_provision_id for full text lookup
+    // NOTE: source_provision_id removed - fuzzy matching was unreliable
+    // Use generic descriptive text instead of linking to potentially wrong provisions
     const setbackZonePlaceholders = zoneAliases.map((_, i) => `$${i + 1}`).join(', ');
     const setbackQuery = `
       SELECT
-        zsr.zone,
-        zsr.boundary_type as control_subtype,
-        zsr.base_value as value_numeric,
-        zsr.unit,
-        zsr.confidence,
-        zsr.source_clause as ref_number,
-        zsr.source_document as document_id,
+        zone,
+        boundary_type as control_subtype,
+        base_value as value_numeric,
+        unit,
+        confidence,
+        source_clause as ref_number,
+        source_document as document_id,
         'setback' as control_type,
-        zsr.source_provision_id as provision_id,
-        COALESCE(rp.provision_text, 'Curated setback rule') as provision_text,
-        COALESCE(rp.section_header, zsr.source_document) as section_header
-      FROM zone_setback_rules zsr
-      LEFT JOIN regulatory_provisions_canonical rp ON zsr.source_provision_id = rp.id
-      WHERE zsr.zone IN (${setbackZonePlaceholders})
-        AND zsr.confidence::numeric > 0.90
+        NULL as provision_id,
+        boundary_type || ' setback: minimum ' || base_value || unit || ' from boundary' as provision_text,
+        source_document as section_header
+      FROM zone_setback_rules
+      WHERE zone IN (${setbackZonePlaceholders})
+        AND confidence::numeric > 0.90
         AND (
-          zsr.source_document ~* $${zoneAliases.length + 1}::text
+          source_document ~* $${zoneAliases.length + 1}::text
         )
       ORDER BY
-        CASE zsr.boundary_type
+        CASE boundary_type
           WHEN 'front' THEN 1
           WHEN 'side' THEN 2
           WHEN 'rear' THEN 3
