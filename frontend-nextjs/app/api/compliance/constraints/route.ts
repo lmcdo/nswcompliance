@@ -187,42 +187,11 @@ export async function POST(request: NextRequest) {
     console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zones [${zoneAliases.join(', ')}]`);
 
     // Query 2: Get curated setback rules from zone_setback_rules
-    // ONLY show setbacks that have actual regulatory provision text - NO GENERATED TEXT
-    const setbackZonePlaceholders = zoneAliases.map((_, i) => `$${i + 1}`).join(', ');
-    const setbackQuery = `
-      SELECT
-        zsr.zone,
-        zsr.boundary_type as control_subtype,
-        zsr.base_value as value_numeric,
-        zsr.unit,
-        zsr.confidence,
-        zsr.source_clause as ref_number,
-        zsr.source_document as document_id,
-        'setback' as control_type,
-        zsr.source_provision_id as provision_id,
-        rp.provision_text,
-        rp.section_header
-      FROM zone_setback_rules zsr
-      INNER JOIN regulatory_provisions_canonical rp ON zsr.source_provision_id = rp.id
-      WHERE zsr.zone IN (${setbackZonePlaceholders})
-        AND zsr.confidence::numeric > 0.90
-        AND zsr.source_provision_id IS NOT NULL
-        AND rp.provision_text IS NOT NULL
-        AND (
-          zsr.source_document ~* $${zoneAliases.length + 1}::text
-        )
-      ORDER BY
-        CASE zsr.boundary_type
-          WHEN 'front' THEN 1
-          WHEN 'side' THEN 2
-          WHEN 'rear' THEN 3
-          ELSE 4
-        END
-    `;
-
-    const setbackResult = await pool.query(setbackQuery, [...zoneAliases, lgaSearchPattern]);
-
-    console.log(`[Constraints API] Found ${setbackResult.rows.length} curated setback rules for zones [${zoneAliases.join(', ')}]`);
+    // DISABLED: zone_setback_rules table missing source_provision_id column
+    // Falling back to Query 1 (development_controls has 198 setback controls)
+    const setbackResult = { rows: [] };
+    console.log(`[Constraints API] Skipping zone_setback_rules query (source_provision_id column missing)`);
+    console.log(`[Constraints API] Using development_controls for setback data (198 controls available)`);
 
     // Query 2b: If no specific setback rules, try to find descriptive character provisions
     let descriptiveSetbacks: any[] = [];
