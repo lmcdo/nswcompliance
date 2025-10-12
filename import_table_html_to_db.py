@@ -65,41 +65,82 @@ class TableHTMLImporter:
         return '\n'.join(rows)
 
     def parse_setback_table(self, table_html: str) -> str:
-        """Parse setback table into structured text format"""
+        """Parse setback table into structured text format with rowspan support"""
         soup = BeautifulSoup(table_html, 'html.parser')
         table = soup.find('table')
 
         if not table:
             return table_html
 
-        # Extract headers
         rows = table.find_all('tr')
         if not rows:
             return table_html
 
         # Build structured output
         output_lines = []
-
-        # Check if this is a side setback table
         table_text = table.get_text().lower()
-        if 'side' in table_text and 'setback' in table_text:
-            output_lines.append("Side Setback Requirements:")
+
+        # Check if this is a setback table
+        if 'setback' in table_text:
+            output_lines.append("Setback Requirements:")
             output_lines.append("")
 
-            # Parse each data row
-            for row in rows[1:]:  # Skip header row
-                cells = row.find_all(['td', 'th'])
-                if len(cells) >= 2:
-                    lot_width = cells[0].get_text(strip=True)
+            # Track rowspan cells and current lot width context
+            rowspan_tracker = {}  # {col_index: (value, remaining_rows, is_new)}
+            last_lot_width = None
 
-                    # Check if there are multiple columns (storeys)
-                    if len(cells) == 3:
-                        storey = cells[1].get_text(strip=True)
-                        setback = cells[2].get_text(strip=True)
-                        output_lines.append(f"• {lot_width} lots, {storey}: {setback}")
-                    elif len(cells) == 2:
-                        setback = cells[1].get_text(strip=True)
-                        output_lines.append(f"• {lot_width}: {setback}")
+            for row_idx, row in enumerate(rows[1:], start=1):  # Skip header
+                cells = row.find_all(['td', 'th'])
+
+                # Build current row data accounting for rowspans
+                current_row = []
+                cell_idx = 0
+                col_position = 0
+                is_new_lot_width = False
+
+                while cell_idx < len(cells) or col_position in rowspan_tracker:
+                    # Check if this column position has a rowspan from previous row
+                    if col_position in rowspan_tracker:
+                        value, remaining, was_new = rowspan_tracker[col_position]
+                        current_row.append(value)
+
+                        if remaining > 1:
+                            rowspan_tracker[col_position] = (value, remaining - 1, False)  # No longer new
+                        else:
+                            del rowspan_tracker[col_position]
+
+                        col_position += 1
+                    elif cell_idx < len(cells):
+                        cell = cells[cell_idx]
+                        cell_text = cell.get_text(strip=True)
+                        rowspan = int(cell.get('rowspan', 1))
+
+                        current_row.append(cell_text)
+
+                        if rowspan > 1:
+                            rowspan_tracker[col_position] = (cell_text, rowspan - 1, True)  # Mark as new
+                            if col_position == 0:  # First column (lot width)
+                                is_new_lot_width = True
+
+                        cell_idx += 1
+                        col_position += 1
+                    else:
+                        break
+
+                # Format the row based on number of columns
+                if len(current_row) == 2:
+                    # Two columns: condition | setback
+                    output_lines.append(f"• {current_row[0]}: {current_row[1]}")
+                elif len(current_row) == 3:
+                    # Three columns: lot width | storey | setback
+                    lot_width = current_row[0]
+
+                    # Only print header when lot width changes
+                    if lot_width and (lot_width != last_lot_width or is_new_lot_width):
+                        output_lines.append(f"\nFor lots {lot_width.lower()}:")
+                        last_lot_width = lot_width
+
+                    output_lines.append(f"  • {current_row[1]}: {current_row[2]}")
 
             return '\n'.join(output_lines)
 
