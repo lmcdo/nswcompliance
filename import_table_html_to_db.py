@@ -82,7 +82,18 @@ class TableHTMLImporter:
 
         # Check if this is a setback table
         if 'setback' in table_text:
-            output_lines.append("Setback Requirements:")
+            # Extract header text for table title
+            header_row = rows[0] if rows else None
+            if header_row:
+                header_cells = header_row.find_all(['td', 'th'])
+                header_text = ' '.join([cell.get_text(strip=True) for cell in header_cells])
+                # Use header text if it contains "setback", otherwise use generic title
+                if 'setback' in header_text.lower():
+                    output_lines.append(f"{header_text}:")
+                else:
+                    output_lines.append("Setback Requirements:")
+            else:
+                output_lines.append("Setback Requirements:")
             output_lines.append("")
 
             # Track rowspan cells and current lot width context
