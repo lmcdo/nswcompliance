@@ -38,7 +38,8 @@ class DocumentIDFixer:
         self.cursor = self.conn.cursor()
         self.dry_run = dry_run
         self.fixed_count = 0
-        self.failed_count = 0
+        self.no_match_count = 0
+        self.error_count = 0
         self.changes = []
 
     def normalize_document_id(self, doc_id: str) -> str:
@@ -153,7 +154,7 @@ class DocumentIDFixer:
 
             except Exception as e:
                 print(f"  [ERROR] Failed to update provision {provision_id}: {e}")
-                self.failed_count += 1
+                self.error_count += 1
                 self.conn.rollback()
                 raise
         else:
@@ -194,7 +195,7 @@ class DocumentIDFixer:
                 print(f"  [OK] Fixed {len(provisions)} provisions")
             else:
                 print(f"  [SKIP] No match found - provisions will remain orphaned")
-                self.failed_count += len(provisions)
+                self.no_match_count += len(provisions)
 
     def verify_fixes(self):
         """Verify that all provisions now have valid document references"""
@@ -213,7 +214,8 @@ class DocumentIDFixer:
         remaining_orphaned = self.cursor.fetchone()[0]
 
         print(f"Provisions fixed: {self.fixed_count:,}")
-        print(f"Provisions failed: {self.failed_count:,}")
+        print(f"No match found: {self.no_match_count:,}")
+        print(f"Errors: {self.error_count:,}")
         print(f"Remaining orphaned: {remaining_orphaned:,}")
 
         if remaining_orphaned > 0:
@@ -285,12 +287,12 @@ class DocumentIDFixer:
 
         # Step 3: Commit or rollback
         if not self.dry_run:
-            if self.failed_count > 0:
+            if self.error_count > 0:
                 print("\n[WARNING] Errors occurred - rolling back all changes")
                 self.conn.rollback()
                 return False
             else:
-                print("\n[OK] Committing changes...")
+                print(f"\n[OK] Committing {self.fixed_count} changes...")
                 self.conn.commit()
 
         # Step 4: Verify
@@ -309,7 +311,8 @@ class DocumentIDFixer:
             print("MIGRATION COMPLETE")
             print("="*80)
             print(f"Fixed: {self.fixed_count:,} provisions")
-            print(f"Failed: {self.failed_count:,} provisions")
+            print(f"No match: {self.no_match_count:,} provisions")
+            print(f"Errors: {self.error_count:,} provisions")
 
         return success
 
