@@ -165,7 +165,6 @@ export async function POST(request: NextRequest) {
         AND (
           $${zoneAliases.length + 1}::text IS NULL
           OR rp.development_type = $${zoneAliases.length + 1}::text
-          OR rp.development_type IS NULL
         )
         AND (
           rp.document_id ~* $${zoneAliases.length + 2}::text
@@ -207,22 +206,32 @@ export async function POST(request: NextRequest) {
           rp.document_id,
           rp.zone,
           'setback' as control_type,
-          'character_description' as control_subtype,
+          CASE
+            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 'specific_numeric'
+            ELSE 'character_contextual'
+          END as control_subtype,
           NULL as value_numeric,
           NULL as unit,
-          0.6 as confidence
+          CASE
+            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 0.75
+            ELSE 0.6
+          END as confidence
         FROM regulatory_provisions_canonical rp
         JOIN documents d ON rp.document_id = d.id
         WHERE (
           rp.provision_text ILIKE '%front%setback%'
           OR rp.provision_text ILIKE '%side%setback%'
           OR rp.provision_text ILIKE '%rear%setback%'
+          OR rp.provision_text ILIKE '%building%setback%'
         )
-        AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)'
         AND (d.pdf_name ~* $1::text)
         AND d.document_type = 'DCP'
         AND rp.document_id NOT ILIKE '%_9_%'  -- Exclude Section 9 (precinct-specific)
         AND rp.document_id NOT ILIKE '%precinct%'  -- Exclude anything with "precinct" in name
+        AND rp.provision_text NOT ILIKE '%secondary%dwelling%'  -- Exclude secondary dwelling provisions
+        AND rp.provision_text NOT ILIKE '%residential flat%'  -- Exclude RFB for dwelling_house
+        AND rp.provision_text NOT ILIKE '%high-rise%'  -- Exclude high-rise for dwelling_house
+        AND rp.provision_text NOT ILIKE '%multi dwelling%'  -- Exclude multi-dwelling for dwelling_house
         AND (
           rp.document_id ILIKE '%4.1%'  -- Prioritize Section 4.1 (Low Density Residential)
           OR rp.document_id ILIKE '%4.2%'  -- Or Section 4.2 (Multi Dwelling)
@@ -230,15 +239,25 @@ export async function POST(request: NextRequest) {
         )
         ORDER BY
           CASE
-            WHEN rp.document_id ILIKE '%4.1%' THEN 1  -- Prioritize general sections
-            WHEN rp.document_id ILIKE '%4.2%' THEN 2
-            WHEN rp.provision_text ILIKE '%front%' THEN 3
-            WHEN rp.provision_text ILIKE '%side%' THEN 4
-            WHEN rp.provision_text ILIKE '%rear%' THEN 5
-            ELSE 6
+            -- Highest priority: Table provisions with actual data
+            WHEN rp.ref_number ILIKE '%table%' AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 1
+            -- Second: General section provisions with numeric measurements
+            WHEN rp.document_id ILIKE '%4.1%' AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 2
+            -- Third: Section 4.1 provisions (general residential)
+            WHEN rp.document_id ILIKE '%4.1%' THEN 3
+            -- Fourth: Section 4.2 provisions (multi-dwelling)
+            WHEN rp.document_id ILIKE '%4.2%' THEN 4
+            -- Fifth: Any provision with measurements
+            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 5
+            -- Lower priority: Keyword-only provisions
+            WHEN rp.provision_text ILIKE '%front%' THEN 6
+            WHEN rp.provision_text ILIKE '%side%' THEN 7
+            WHEN rp.provision_text ILIKE '%rear%' THEN 8
+            ELSE 9
           END,
-          LENGTH(rp.provision_text)
-        LIMIT 3
+          -- Prefer longer provisions (more detail) for same priority
+          LENGTH(rp.provision_text) DESC
+        LIMIT 10
       `;
 
       const descriptiveResult = await pool.query(descriptiveSetbackQuery, [lgaSearchPattern]);
