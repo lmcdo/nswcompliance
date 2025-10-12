@@ -125,8 +125,8 @@ export class NSWPlanningPortalService {
  
  if (response.status === 429) {
  if (retryCount < 2) {
- console.log('Rate limited! Waiting 10 seconds before retry...');
- await new Promise(resolve => setTimeout(resolve, 10000));
+ console.log('Rate limited! Waiting 2 seconds before retry...');
+ await new Promise(resolve => setTimeout(resolve, 2000)); // Reduced from 10s to 2s
  return this.getPlanningLayers(propId, retryCount + 1);
  } else {
  console.log('Rate limited after 2 retries, giving up');

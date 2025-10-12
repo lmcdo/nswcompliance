@@ -1,43 +1,49 @@
-import psycopg2
+#!/usr/bin/env python3
+"""Check all tables in the database for DCP full text"""
 
-conn = psycopg2.connect(
-    host='127.0.0.1',
-    database='nsw_planning',
-    user='postgres',
-    port=5432
-)
+from db_safety_wrapper import get_safe_connection
 
-cursor = conn.cursor()
+conn = get_safe_connection()
+cur = conn.cursor()
 
 # Get all tables
-cursor.execute("""
-    SELECT schemaname, tablename
-    FROM pg_tables
-    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-    ORDER BY schemaname, tablename
+cur.execute("""
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+    ORDER BY table_name
 """)
 
-tables = cursor.fetchall()
-print(f"Total tables found: {len(tables)}\n")
+tables = [row[0] for row in cur.fetchall()]
 
-# Group by schema
-schemas = {}
-for schema, table in tables:
-    if schema not in schemas:
-        schemas[schema] = []
-    schemas[schema].append(table)
+print("ALL TABLES IN DATABASE:")
+print("="*80)
+for table in tables:
+    print(f"  {table}")
 
-# Print by schema
-for schema, table_list in schemas.items():
-    print(f"\nSchema: {schema} ({len(table_list)} tables)")
-    print("-" * 40)
-    for table in table_list[:10]:  # First 10 tables per schema
-        # Get row count
-        try:
-            cursor.execute(f"SELECT COUNT(*) FROM {schema}.{table}")
-            count = cursor.fetchone()[0]
-            print(f"  {table}: {count:,} rows")
-        except:
-            print(f"  {table}: (error counting)")
+print("\n\nCHECKING TABLES FOR DCP/DOCUMENT TEXT:")
+print("="*80)
 
+# Check each table for text columns
+for table in tables:
+    if 'doc' in table.lower() or 'text' in table.lower() or 'provision' in table.lower() or 'rag' in table.lower():
+        cur.execute(f"""
+            SELECT column_name, data_type
+            FROM information_schema.columns
+            WHERE table_name = '{table}'
+            AND column_name LIKE '%text%'
+        """)
+
+        text_cols = cur.fetchall()
+        if text_cols:
+            print(f"\n{table}:")
+            for col, dtype in text_cols:
+                print(f"  - {col} ({dtype})")
+
+            # Check row count
+            cur.execute(f"SELECT COUNT(*) FROM {table}")
+            count = cur.fetchone()[0]
+            print(f"  Total rows: {count:,}")
+
+cur.close()
 conn.close()
