@@ -1,0 +1,39 @@
+{
+  "commercial": [
+    "showroom",
+    "shop",
+    "retail",
+    "warehouse",
+    "timber yard",
+    "timber yards",
+    "factory",
+    "industrial",
+    "loading bay",
+    "service vehicle",
+    "active frontage",
+    "commercial premises",
+    "business premises",
+    "office premises",
+    "awning",
+    "signage"
+  ],
+  "residential": [
+    "dwelling",
+    "dwelling house",
+    "residential",
+    "house",
+    "apartment",
+    "flat building"
+  ],
+  "environmental": [
+    "flood",
+    "bushfire",
+    "contamination",
+    "acid sulfate",
+    "heritage conservation",
+    "biodiversity",
+    "tree preservation",
+    "water quality",
+    "stormwater"
+  ]
+}

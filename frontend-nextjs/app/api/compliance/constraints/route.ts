@@ -1,17 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
-import { determineFormerCouncilArea } from '@/lib/inner-west-mapping';
+import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-service';
 import { getZoneAliases } from '@/lib/zone-translation';
+import { normalizeDevType } from '@/lib/dev-type-loader';
+import { getCommercialKeywords } from '@/lib/keyword-loader';
 
-// Database connection
+// Database connection (using environment variables)
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'nsw_planning',
-  user: 'postgres',
-  password: 'postgres'
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'nsw_planning',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres'
 });
 
 interface ConstraintQuery {
@@ -108,17 +110,34 @@ export async function POST(request: NextRequest) {
       console.log(`[Constraints API] DCP Section:`, dcpSectionInfo);
     }
 
-    // NEW: Try precinct-based controls first
-    const precinct = await getPrecinctForAddress(address, targetLGA);
+    // Precinct-based controls with optional feature flag
+    // Feature flag allows safe gradual rollout (set ENABLE_PRECINCT_MATCHING=true to enable)
+    const enablePrecinctMatching = process.env.ENABLE_PRECINCT_MATCHING === 'true';
+
+    const precinct = enablePrecinctMatching && address
+      ? await getPrecinctForAddress(address, targetLGA)
+      : null;
+
     let precinctControls: any[] = [];
 
     if (precinct) {
-      console.log(`[Constraints API] Matched precinct:`, precinct);
-      precinctControls = await getPrecinctControls(
+      console.log(`[Constraints API] ✅ Precinct matching enabled - matched precinct:`, precinct);
+
+      const rawPrecinctControls = await getPrecinctControls(
         precinct.documentId,
         ['height', 'setback', 'parking', 'fsr', 'open_space', 'heritage', 'vegetation']
       );
-      console.log(`[Constraints API] Found ${precinctControls.length} precinct-specific controls`);
+
+      console.log(`[Constraints API] Found ${rawPrecinctControls.length} raw precinct controls (before filtering)`);
+
+      // CRITICAL: The transformControlsToConstraints function (lines 550-717) will automatically
+      // filter out commercial provisions for residential development types using keyword matching.
+      // This prevents the "7 storeys for dwelling house" issue without needing database changes.
+      precinctControls = rawPrecinctControls; // Will be filtered by transformControlsToConstraints
+    } else if (enablePrecinctMatching) {
+      console.log(`[Constraints API] ⚠️ Precinct matching enabled but no precinct found for address`);
+    } else {
+      console.log(`[Constraints API] ℹ️ Precinct matching disabled (set ENABLE_PRECINCT_MATCHING=true to enable)`);
     }
 
     // Query 1: Get high-confidence extracted controls from development_controls
@@ -168,30 +187,32 @@ export async function POST(request: NextRequest) {
     console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zones [${zoneAliases.join(', ')}]`);
 
     // Query 2: Get curated setback rules from zone_setback_rules
-    // NOTE: source_provision_id removed - fuzzy matching was unreliable
-    // Use generic descriptive text instead of linking to potentially wrong provisions
+    // ONLY show setbacks that have actual regulatory provision text - NO GENERATED TEXT
     const setbackZonePlaceholders = zoneAliases.map((_, i) => `$${i + 1}`).join(', ');
     const setbackQuery = `
       SELECT
-        zone,
-        boundary_type as control_subtype,
-        base_value as value_numeric,
-        unit,
-        confidence,
-        source_clause as ref_number,
-        source_document as document_id,
+        zsr.zone,
+        zsr.boundary_type as control_subtype,
+        zsr.base_value as value_numeric,
+        zsr.unit,
+        zsr.confidence,
+        zsr.source_clause as ref_number,
+        zsr.source_document as document_id,
         'setback' as control_type,
-        NULL as provision_id,
-        boundary_type || ' setback: minimum ' || base_value || unit || ' from boundary' as provision_text,
-        source_document as section_header
-      FROM zone_setback_rules
-      WHERE zone IN (${setbackZonePlaceholders})
-        AND confidence::numeric > 0.90
+        zsr.source_provision_id as provision_id,
+        rp.provision_text,
+        rp.section_header
+      FROM zone_setback_rules zsr
+      INNER JOIN regulatory_provisions_canonical rp ON zsr.source_provision_id = rp.id
+      WHERE zsr.zone IN (${setbackZonePlaceholders})
+        AND zsr.confidence::numeric > 0.90
+        AND zsr.source_provision_id IS NOT NULL
+        AND rp.provision_text IS NOT NULL
         AND (
-          source_document ~* $${zoneAliases.length + 1}::text
+          zsr.source_document ~* $${zoneAliases.length + 1}::text
         )
       ORDER BY
-        CASE boundary_type
+        CASE zsr.boundary_type
           WHEN 'front' THEN 1
           WHEN 'side' THEN 2
           WHEN 'rear' THEN 3
@@ -203,10 +224,227 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Constraints API] Found ${setbackResult.rows.length} curated setback rules for zones [${zoneAliases.join(', ')}]`);
 
-    // Combine zone-specific controls, setbacks, AND precinct controls
+    // Query 2b: If no specific setback rules, try to find descriptive character provisions
+    let descriptiveSetbacks: any[] = [];
+    if (setbackResult.rows.length === 0) {
+      console.log(`[Constraints API] No specific setback rules found, searching for descriptive provisions...`);
+
+      const descriptiveSetbackQuery = `
+        SELECT
+          rp.id as provision_id,
+          rp.provision_text,
+          rp.ref_number,
+          rp.section_header,
+          rp.document_id,
+          rp.zone,
+          'setback' as control_type,
+          'character_description' as control_subtype,
+          NULL as value_numeric,
+          NULL as unit,
+          0.6 as confidence
+        FROM regulatory_provisions_canonical rp
+        JOIN documents d ON rp.document_id = d.id
+        WHERE (
+          rp.provision_text ILIKE '%front%setback%'
+          OR rp.provision_text ILIKE '%side%setback%'
+          OR rp.provision_text ILIKE '%rear%setback%'
+        )
+        AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)'
+        AND (d.pdf_name ~* $1::text)
+        AND d.document_type = 'DCP'
+        AND rp.document_id NOT ILIKE '%_9_%'  -- Exclude Section 9 (precinct-specific)
+        AND rp.document_id NOT ILIKE '%precinct%'  -- Exclude anything with "precinct" in name
+        AND (
+          rp.document_id ILIKE '%4.1%'  -- Prioritize Section 4.1 (Low Density Residential)
+          OR rp.document_id ILIKE '%4.2%'  -- Or Section 4.2 (Multi Dwelling)
+          OR rp.document_id ILIKE '%5.0%'  -- Or Section 5.0 (Commercial)
+        )
+        ORDER BY
+          CASE
+            WHEN rp.document_id ILIKE '%4.1%' THEN 1  -- Prioritize general sections
+            WHEN rp.document_id ILIKE '%4.2%' THEN 2
+            WHEN rp.provision_text ILIKE '%front%' THEN 3
+            WHEN rp.provision_text ILIKE '%side%' THEN 4
+            WHEN rp.provision_text ILIKE '%rear%' THEN 5
+            ELSE 6
+          END,
+          LENGTH(rp.provision_text)
+        LIMIT 3
+      `;
+
+      const descriptiveResult = await pool.query(descriptiveSetbackQuery, [lgaSearchPattern]);
+      descriptiveSetbacks = descriptiveResult.rows;
+
+      console.log(`[Constraints API] Found ${descriptiveSetbacks.length} descriptive setback provisions`);
+    }
+
+    // Query 2c: For E1/E2/E3 zones, search for environmental buffers (not just "setback")
+    if (['E1', 'E2', 'E3'].includes(zone)) {
+      console.log(`[Constraints API] Environmental zone detected (${zone}), searching for buffers...`);
+
+      const environmentalBufferQuery = `
+        SELECT
+          rp.id as provision_id,
+          rp.provision_text,
+          rp.ref_number,
+          rp.section_header,
+          rp.document_id,
+          rp.zone,
+          'setback' as control_type,
+          CASE
+            WHEN rp.provision_text ILIKE '%riparian%' THEN 'riparian_buffer'
+            WHEN rp.provision_text ILIKE '%biodiversity%' THEN 'biodiversity_buffer'
+            WHEN rp.provision_text ILIKE '%asset protection%' THEN 'bushfire_buffer'
+            WHEN rp.provision_text ILIKE '%vegetation%' THEN 'vegetation_buffer'
+            WHEN rp.provision_text ILIKE '%creek%' OR rp.provision_text ILIKE '%waterway%' THEN 'waterway_buffer'
+            ELSE 'environmental_buffer'
+          END as control_subtype,
+          NULL as value_numeric,
+          NULL as unit,
+          0.7 as confidence
+        FROM regulatory_provisions_canonical rp
+        JOIN documents d ON rp.document_id = d.id
+        WHERE (
+          rp.provision_text ILIKE '%setback%'
+          OR rp.provision_text ILIKE '%riparian%corridor%'
+          OR rp.provision_text ILIKE '%riparian%buffer%'
+          OR rp.provision_text ILIKE '%biodiversity%buffer%'
+          OR rp.provision_text ILIKE '%asset protection zone%'
+          OR rp.provision_text ILIKE '%vegetation%buffer%'
+          OR rp.provision_text ILIKE '%creek%buffer%'
+          OR rp.provision_text ILIKE '%waterway%setback%'
+          OR rp.provision_text ILIKE '%waterway%buffer%'
+        )
+        AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)'
+        AND (d.pdf_name ~* $1::text)
+        AND d.document_type = 'DCP'
+        ORDER BY
+          CASE
+            WHEN rp.provision_text ILIKE '%riparian%' THEN 1
+            WHEN rp.provision_text ILIKE '%biodiversity%' THEN 2
+            WHEN rp.provision_text ILIKE '%asset%' THEN 3
+            WHEN rp.provision_text ILIKE '%vegetation%' THEN 4
+            ELSE 5
+          END,
+          LENGTH(rp.provision_text)
+        LIMIT 10
+      `;
+
+      const envResult = await pool.query(environmentalBufferQuery, [lgaSearchPattern]);
+      descriptiveSetbacks = [...descriptiveSetbacks, ...envResult.rows];
+
+      console.log(`[Constraints API] Found ${envResult.rows.length} environmental buffer provisions for ${zone}`);
+    }
+
+    // Query 2d: For R5 zones, show SEPP Housing 2021 clause references
+    if (zone === 'R5' && developmentType === 'dwelling_house') {
+      console.log(`[Constraints API] R5 dwelling house detected, searching for SEPP Housing references...`);
+
+      const seppHousingQuery = `
+        SELECT
+          rp.id as provision_id,
+          rp.provision_text,
+          rp.ref_number,
+          rp.section_header,
+          rp.document_id,
+          rp.zone,
+          'setback' as control_type,
+          'sepp_housing_reference' as control_subtype,
+          NULL as value_numeric,
+          NULL as unit,
+          0.8 as confidence
+        FROM regulatory_provisions_canonical rp
+        WHERE rp.zone = 'R5'
+        AND rp.provision_text ILIKE '%setback%'
+        AND rp.provision_text ~* 'clause'
+        ORDER BY
+          CASE
+            WHEN rp.provision_text ILIKE '%front%' THEN 1
+            WHEN rp.provision_text ILIKE '%side%' THEN 2
+            WHEN rp.provision_text ILIKE '%rear%' THEN 3
+            ELSE 4
+          END
+        LIMIT 10
+      `;
+
+      const seppHousingResult = await pool.query(seppHousingQuery);
+      descriptiveSetbacks = [...descriptiveSetbacks, ...seppHousingResult.rows];
+
+      console.log(`[Constraints API] Found ${seppHousingResult.rows.length} SEPP Housing clause references for R5`);
+    }
+
+    // Query 2e: For R3 zones + multi-dwelling, integrate ADG building separation standards
+    if (zone === 'R3' && developmentType && [
+      'multi_dwelling_housing',
+      'residential_flat_building',
+      'shop_top_housing'
+    ].includes(developmentType)) {
+      console.log(`[Constraints API] R3 multi-dwelling detected, integrating ADG standards...`);
+
+      // Determine building height category
+      // TODO: Get actual building height from property data or user input
+      const assumedBuildingHeight = 15; // Default to mid-rise for R3
+      let heightCategory: string;
+
+      if (assumedBuildingHeight <= 12) {
+        heightCategory = 'up_to_12m';
+      } else if (assumedBuildingHeight <= 25) {
+        heightCategory = '12m_to_25m';
+      } else {
+        heightCategory = 'over_25m';
+      }
+
+      // Query ADG standards from setback_rules table
+      const adgQuery = `
+        SELECT
+          sr.boundary_type,
+          sr.storey_level,
+          sr.setback_meters,
+          sr.document_name,
+          sr.ref_number,
+          sr.source_text,
+          sr.provision_id
+        FROM setback_rules sr
+        WHERE sr.document_name ILIKE '%apartment design%'
+        AND sr.zone IS NULL  -- ADG applies to all zones
+        ORDER BY
+          CASE sr.boundary_type
+            WHEN 'building_separation' THEN 1
+            ELSE 2
+          END,
+          sr.storey_level
+      `;
+
+      const adgResult = await pool.query(adgQuery);
+
+      // Transform ADG results into control format
+      const adgControls = adgResult.rows.map(row => ({
+        control_type: 'setback',
+        control_subtype: `adg_${row.storey_level || row.boundary_type}`,
+        value_numeric: row.setback_meters,
+        unit: 'm',
+        confidence: 0.95, // ADG is statutory - high confidence
+        provision_id: row.provision_id,
+        provision_text: row.source_text || `ADG Building Separation: ${row.storey_level || row.boundary_type} - ${row.setback_meters}m`,
+        ref_number: row.ref_number || 'ADG 3F-1',
+        section_header: 'Apartment Design Guide (SEPP 65)',
+        document_id: 'sepp_65_apartment_design_guide',
+        zone: 'R3'
+      }));
+
+      descriptiveSetbacks = [...descriptiveSetbacks, ...adgControls];
+
+      console.log(`[Constraints API] Found ${adgControls.length} ADG standards for R3 multi-dwelling`);
+    }
+
+    // B1 setbacks now loaded from zone_setback_rules table (lines 170-207)
+    // No longer need hardcoded rules - they're in the database!
+
+    // Combine zone-specific controls, setbacks, descriptive setbacks, AND precinct controls
     const allControls = [
       ...controlsResult.rows,
       ...setbackResult.rows,
+      ...descriptiveSetbacks,
       ...precinctControls
     ];
 
@@ -215,18 +453,8 @@ export async function POST(request: NextRequest) {
     let permissionStatus: string | null = null;
 
     if (developmentType) {
-      // Normalize UI development type to database/LEP terminology
-      // UI uses underscores, database uses actual LEP terms
-      const DEV_TYPE_NORMALIZER: Record<string, string> = {
-        'secondary_dwelling': 'dwelling_house',           // Both single residential dwellings
-        'multi_dwelling': 'multi_dwelling_housing',       // Multi-dwelling housing
-        'shop_top_housing': 'business_premises',          // Mixed use commercial/residential
-        'residential_flat': 'residential_flat_building',  // Residential flat building
-        'child_care': 'information_and_education_facility', // Educational/community use
-        'commercial': 'business_premises'                 // Commercial use
-      };
-
-      const normalizedType = DEV_TYPE_NORMALIZER[developmentType] || developmentType;
+      // Normalize UI development type to database/LEP terminology (loaded from config)
+      const normalizedType = normalizeDevType(developmentType);
       console.log(`[Constraints API] Development type: ${developmentType} → normalized: ${normalizedType}`);
 
       // CORRECT LOGIC:
@@ -458,17 +686,8 @@ function transformControlsToConstraints(
                      developmentType.includes('shop_top') ||
                      developmentType.includes('mixed');
 
-  // Commercial keywords to filter for residential development
-  const commercialKeywords = [
-    'showroom',
-    'shop',
-    'retail',
-    'warehouse',
-    'active frontage',
-    'commercial premises',
-    'business premises',
-    'office premises'
-  ];
+  // Commercial keywords to filter for residential development (loaded from config)
+  const commercialKeywords = getCommercialKeywords();
 
   let filteredCount = 0;
 
@@ -550,8 +769,10 @@ function transformControlsToConstraints(
         }
     }
 
-    // Parse numeric value
-    const numericValue = control.value_numeric ? parseFloat(control.value_numeric) : null;
+    // Parse numeric value (handle 0 explicitly since it's falsy but valid)
+    const numericValue = control.value_numeric !== null && control.value_numeric !== undefined
+      ? parseFloat(control.value_numeric)
+      : null;
 
     // Extract readable document name
     const docName = extractDocumentName(control.document_id || '');
@@ -570,7 +791,7 @@ function transformControlsToConstraints(
 
     constraints.push({
       type: uiType,
-      value: numericValue || control.value_numeric || 'See provision',
+      value: numericValue !== null ? numericValue : 'See provision',
       unit: control.unit || undefined,
       source: {
         clause: control.ref_number || 'N/A',
