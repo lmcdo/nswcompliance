@@ -65,7 +65,7 @@ class TableHTMLImporter:
         return '\n'.join(rows)
 
     def parse_setback_table(self, table_html: str) -> str:
-        """Parse setback table into structured text format with rowspan support"""
+        """Parse table into markdown table format for ReactMarkdown rendering"""
         soup = BeautifulSoup(table_html, 'html.parser')
         table = soup.find('table')
 
@@ -76,87 +76,112 @@ class TableHTMLImporter:
         if not rows:
             return table_html
 
-        # Build structured output
-        output_lines = []
-        table_text = table.get_text().lower()
+        # Extract header row for context
+        header_row = rows[0] if rows else None
+        table_title = ""
+        if header_row:
+            header_cells = header_row.find_all(['td', 'th'])
+            header_text = ' '.join([cell.get_text(strip=True) for cell in header_cells])
+            table_title = header_text
 
-        # Check if this is a setback table
-        if 'setback' in table_text:
-            # Extract header text for table title
-            header_row = rows[0] if rows else None
-            if header_row:
-                header_cells = header_row.find_all(['td', 'th'])
-                header_text = ' '.join([cell.get_text(strip=True) for cell in header_cells])
-                # Use header text if it contains "setback", otherwise use generic title
-                if 'setback' in header_text.lower():
-                    output_lines.append(f"{header_text}:")
-                else:
-                    output_lines.append("Setback Requirements:")
-            else:
-                output_lines.append("Setback Requirements:")
-            output_lines.append("")
+        # Build markdown table with rowspan handling
+        # Markdown doesn't support rowspan, so we repeat values
+        markdown_rows = []
+        rowspan_tracker = {}  # {col_index: (value, remaining_rows)}
 
-            # Track rowspan cells and current lot width context
-            rowspan_tracker = {}  # {col_index: (value, remaining_rows, is_new)}
-            last_lot_width = None
+        for row_idx, row in enumerate(rows):
+            cells = row.find_all(['td', 'th'])
 
-            for row_idx, row in enumerate(rows[1:], start=1):  # Skip header
-                cells = row.find_all(['td', 'th'])
+            # Build current row data accounting for rowspans
+            current_row = []
+            cell_idx = 0
+            col_position = 0
 
-                # Build current row data accounting for rowspans
-                current_row = []
-                cell_idx = 0
-                col_position = 0
-                is_new_lot_width = False
+            while cell_idx < len(cells) or col_position in rowspan_tracker:
+                # Check if this column position has a rowspan from previous row
+                if col_position in rowspan_tracker:
+                    value, remaining = rowspan_tracker[col_position]
+                    current_row.append(value)
 
-                while cell_idx < len(cells) or col_position in rowspan_tracker:
-                    # Check if this column position has a rowspan from previous row
-                    if col_position in rowspan_tracker:
-                        value, remaining, was_new = rowspan_tracker[col_position]
-                        current_row.append(value)
-
-                        if remaining > 1:
-                            rowspan_tracker[col_position] = (value, remaining - 1, False)  # No longer new
-                        else:
-                            del rowspan_tracker[col_position]
-
-                        col_position += 1
-                    elif cell_idx < len(cells):
-                        cell = cells[cell_idx]
-                        cell_text = cell.get_text(strip=True)
-                        rowspan = int(cell.get('rowspan', 1))
-
-                        current_row.append(cell_text)
-
-                        if rowspan > 1:
-                            rowspan_tracker[col_position] = (cell_text, rowspan - 1, True)  # Mark as new
-                            if col_position == 0:  # First column (lot width)
-                                is_new_lot_width = True
-
-                        cell_idx += 1
-                        col_position += 1
+                    if remaining > 1:
+                        rowspan_tracker[col_position] = (value, remaining - 1)
                     else:
-                        break
+                        del rowspan_tracker[col_position]
 
-                # Format the row based on number of columns
-                if len(current_row) == 2:
-                    # Two columns: condition | setback
-                    output_lines.append(f"• {current_row[0]}: {current_row[1]}")
-                elif len(current_row) == 3:
-                    # Three columns: lot width | storey | setback
-                    lot_width = current_row[0]
+                    col_position += 1
+                elif cell_idx < len(cells):
+                    cell = cells[cell_idx]
+                    cell_text = cell.get_text(strip=True)
 
-                    # Only print header when lot width changes
-                    if lot_width and (lot_width != last_lot_width or is_new_lot_width):
-                        output_lines.append(f"\nFor lots {lot_width.lower()}:")
-                        last_lot_width = lot_width
+                    # Handle colspan and rowspan
+                    colspan = int(cell.get('colspan', 1))
+                    rowspan = int(cell.get('rowspan', 1))
 
-                    output_lines.append(f"  • {current_row[1]}: {current_row[2]}")
+                    # Add cell value once, then empty cells for remaining colspan
+                    current_row.append(cell_text)
 
-            return '\n'.join(output_lines)
+                    # Track rowspan for THIS column only
+                    if rowspan > 1:
+                        rowspan_tracker[col_position] = (cell_text, rowspan - 1)
 
-        # Default: simple table parsing
-        return self.parse_html_table_to_text(table_html)
+                    col_position += 1
+
+                    # For colspan > 1, add empty cells for remaining columns
+                    for _ in range(colspan - 1):
+                        current_row.append('')
+                        col_position += 1
+
+                    cell_idx += 1
+                else:
+                    break
+
+            markdown_rows.append(current_row)
+
+        if not markdown_rows:
+            return self.parse_html_table_to_text(table_html)
+
+        # Build markdown table output
+        output_lines = []
+
+        # Add table title if available
+        if table_title and 'setback' in table_title.lower():
+            output_lines.append(f"**{table_title}**\n")
+
+        # Get number of columns from first row
+        num_cols = len(markdown_rows[0]) if markdown_rows else 0
+
+        if num_cols == 0:
+            return self.parse_html_table_to_text(table_html)
+
+        # Check if any column is always empty (except header)
+        empty_cols = []
+        for col_idx in range(num_cols):
+            is_empty = True
+            for row_idx in range(1, len(markdown_rows)):  # Skip header
+                if col_idx < len(markdown_rows[row_idx]) and markdown_rows[row_idx][col_idx].strip():
+                    is_empty = False
+                    break
+            if is_empty:
+                empty_cols.append(col_idx)
+
+        # Remove empty columns
+        if empty_cols:
+            for row_idx in range(len(markdown_rows)):
+                markdown_rows[row_idx] = [cell for col_idx, cell in enumerate(markdown_rows[row_idx]) if col_idx not in empty_cols]
+            num_cols = len(markdown_rows[0])
+
+        # Build markdown table header (first row)
+        output_lines.append('| ' + ' | '.join(markdown_rows[0]) + ' |')
+        output_lines.append('| ' + ' | '.join(['---'] * num_cols) + ' |')
+
+        # Build data rows
+        for row in markdown_rows[1:]:
+            # Pad row if needed to match column count
+            while len(row) < num_cols:
+                row.append('')
+            output_lines.append('| ' + ' | '.join(row[:num_cols]) + ' |')
+
+        return '\n'.join(output_lines)
 
     def find_matching_provision(self, document_id: str, table_context: str, page_num: int) -> Optional[int]:
         """Find provision that matches this table content"""
