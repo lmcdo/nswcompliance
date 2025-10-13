@@ -171,7 +171,7 @@ export async function getPrecinctControls(
         rp.document_id,
         d.full_text as document_full_text
       FROM development_controls dc
-      JOIN regulatory_provisions_canonical rp ON dc.provision_id::integer = rp.id
+      JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
       LEFT JOIN documents d ON d.id = rp.document_id
       WHERE rp.document_id LIKE '%' || $1 || '%'
         ${typeFilter}

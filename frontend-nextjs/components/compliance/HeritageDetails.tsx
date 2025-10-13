@@ -1,8 +1,18 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Shield, ExternalLink, AlertTriangle } from "lucide-react"
+
+interface HCAData {
+  id: string;
+  name: string;
+  significance: string;
+  legislativeClause: string;
+  epiName: string;
+  layClass: string;
+}
 
 interface HeritageDetailsProps {
   heritage?: {
@@ -14,11 +24,48 @@ interface HeritageDetailsProps {
     heritageSignificance?: string;
     heritageLegislationUrl?: string;
   };
+  propertyGeometry?: {
+    x: number;
+    y: number;
+  };
+  lga?: string;
 }
 
-export function HeritageDetails({ heritage }: HeritageDetailsProps) {
-  // Don't render if not heritage listed
-  if (!heritage || !heritage.isHeritage) {
+export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDetailsProps) {
+  const [hcaData, setHcaData] = useState<HCAData | null>(null);
+  const [hcaLoading, setHcaLoading] = useState(false);
+
+  // Fetch HCA data if we have property coordinates
+  useEffect(() => {
+    if (propertyGeometry && propertyGeometry.x !== 0 && propertyGeometry.y !== 0 && lga) {
+      setHcaLoading(true);
+
+      fetch('/api/heritage/hca-check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          x: propertyGeometry.x,
+          y: propertyGeometry.y,
+          lga: lga
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.inHCA) {
+          setHcaData(data.data.hca);
+        }
+      })
+      .catch(err => {
+        console.error('[HeritageDetails] Failed to fetch HCA data:', err);
+      })
+      .finally(() => {
+        setHcaLoading(false);
+      });
+    }
+  }, [propertyGeometry, lga]);
+
+  // Don't render if NEITHER heritage item NOR HCA
+  if ((!heritage || !heritage.isHeritage) && !hcaData) {
     return null;
   }
 
@@ -124,6 +171,46 @@ export function HeritageDetails({ heritage }: HeritageDetailsProps) {
             )}
           </div>
         </div>
+
+        {/* Heritage Conservation Area Section (if present) */}
+        {hcaData && (
+          <div className="pt-3 border-t border-blue-200">
+            <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="h-4 w-4 text-amber-700" />
+                <div className="text-sm font-bold text-amber-900">Heritage Conservation Area</div>
+                <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
+                  {hcaData.significance}
+                </Badge>
+              </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-semibold text-amber-900">{hcaData.name}</div>
+
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-amber-700">Heritage ID:</span>
+                    <span className="ml-1 font-semibold text-amber-900">{hcaData.id}</span>
+                  </div>
+                  <div>
+                    <span className="text-amber-700">Type:</span>
+                    <span className="ml-1 font-semibold text-amber-900">{hcaData.layClass}</span>
+                  </div>
+                </div>
+
+                <div className="text-xs">
+                  <span className="text-amber-700">Legislative Control:</span>
+                  <span className="ml-1 font-semibold text-amber-900">{hcaData.legislativeClause}</span>
+                </div>
+
+                <div className="text-xs italic text-amber-800 mt-2 pt-2 border-t border-amber-200">
+                  Development within this Heritage Conservation Area requires assessment against
+                  heritage conservation principles under {hcaData.legislativeClause}.
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

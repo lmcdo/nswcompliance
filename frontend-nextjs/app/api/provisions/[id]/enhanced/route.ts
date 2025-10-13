@@ -96,7 +96,7 @@ export async function GET(
         pa.applies_state_wide,
         pa.applicability_source,
         pa.confidence_score
-      FROM regulatory_provisions rp
+      FROM regulatory_provisions_canonical rp
       LEFT JOIN provision_applicability pa ON rp.id = pa.provision_id
       WHERE rp.id = $1
     `, [provisionId]);
@@ -121,7 +121,7 @@ export async function GET(
         xr.is_mandatory,
         rp_target.ref_number as target_reference
       FROM cross_reference_index xr
-      LEFT JOIN regulatory_provisions rp_target
+      LEFT JOIN regulatory_provisions_canonical rp_target
         ON xr.target_provision_id = rp_target.id
       WHERE xr.source_provision_id = $1
       ORDER BY xr.is_mandatory DESC, xr.resolution_confidence DESC

@@ -121,7 +121,7 @@ export async function GET(
         section_header,
         provision_type,
         full_text_length
-      FROM regulatory_provisions
+      FROM regulatory_provisions_canonical
       WHERE id = $1
     `, [provisionId]);
 

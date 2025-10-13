@@ -36,6 +36,8 @@ class MinerUImporter:
             'provisions_inserted': 0,
             'provisions_updated': 0,
             'provisions_skipped': 0,
+            'images_found': 0,
+            'images_inserted': 0,
             'errors': []
         }
 
@@ -43,7 +45,7 @@ class MinerUImporter:
         """Find all MinerU JSON output files"""
         json_files = []
 
-        # MinerU creates output in subdirectories: source_dir/pdf_name/auto/pdf_name.json
+        # MinerU creates output in subdirectories: source_dir/pdf_name/auto/pdf_name_content_list.json
         for pdf_dir in self.source_dir.iterdir():
             if not pdf_dir.is_dir():
                 continue
@@ -51,11 +53,10 @@ class MinerUImporter:
             # Check for auto/ subdirectory
             auto_dir = pdf_dir / 'auto'
             if auto_dir.exists():
-                # Find JSON file
-                for json_file in auto_dir.glob('*.json'):
-                    if 'content_list' not in json_file.name:  # Skip metadata files
-                        json_files.append(json_file)
-                        break
+                # Find content_list.json file (MinerU's main output)
+                for json_file in auto_dir.glob('*_content_list.json'):
+                    json_files.append(json_file)
+                    break
 
         return json_files
 
@@ -80,21 +81,18 @@ class MinerUImporter:
 
     def extract_provisions_from_json(self, json_path: Path) -> List[Dict[str, Any]]:
         """
-        Extract provisions with page numbers from MinerU JSON
+        Extract provisions with page numbers from MinerU content_list.json
 
-        MinerU JSON structure (simplified):
-        {
-            "pdf_info": { ... },
-            "layout_dets": [
-                {
-                    "layout_no": 0,
-                    "layout_bbox": [...],
-                    "page_no": 1,
-                    "text": "Provision text here..."
-                },
-                ...
-            ]
-        }
+        MinerU content_list.json structure:
+        [
+            {
+                "type": "text",
+                "text": "Provision text here...",
+                "text_level": 1,
+                "page_idx": 0  # 0-indexed, so add 1 for actual page
+            },
+            ...
+        ]
         """
         try:
             with json_path.open('r', encoding='utf-8') as f:
@@ -102,25 +100,29 @@ class MinerUImporter:
 
             provisions = []
 
-            # Extract from layout_dets (MinerU's structured output)
-            if 'layout_dets' in data:
-                for item in data['layout_dets']:
+            # MinerU content_list is a list of items
+            if isinstance(data, list):
+                for i, item in enumerate(data):
+                    # Only process text items
+                    if item.get('type') != 'text':
+                        continue
+
                     text = item.get('text', '').strip()
-                    page_no = item.get('page_no')
+                    page_idx = item.get('page_idx')
 
                     # Skip empty or very short text
                     if not text or len(text) < 50:
                         continue
 
-                    # Skip headers/footers (heuristic: very short lines at top/bottom)
-                    if len(text) < 100 and page_no:
-                        continue
+                    # Convert page_idx (0-indexed) to page_no (1-indexed)
+                    page_no = (page_idx + 1) if page_idx is not None else None
 
                     provisions.append({
                         'text': text,
                         'page_no': page_no,
-                        'layout_no': item.get('layout_no'),
-                        'bbox': item.get('layout_bbox')
+                        'layout_no': i,  # Use list index as layout number
+                        'text_level': item.get('text_level'),
+                        'bbox': None  # Not available in content_list
                     })
 
             return provisions
@@ -129,6 +131,146 @@ class MinerUImporter:
             print(f"Error parsing JSON {json_path}: {e}")
             self.stats['errors'].append(f"Parse error in {json_path.name}: {e}")
             return []
+
+    def extract_images_from_json(self, json_path: Path) -> List[Dict[str, Any]]:
+        """
+        Extract images from MinerU content_list.json
+
+        Images come from:
+        1. Table items with img_path
+        2. Images in the images/ folder
+
+        Returns list of image metadata matching DCP format:
+        {
+            'img_path': 'images/hash.jpg',
+            'page_no': 38,
+            'context': None  # Could be linked to nearby provision ref_number
+        }
+        """
+        try:
+            with json_path.open('r', encoding='utf-8') as f:
+                data = json.load(f)
+
+            images = []
+
+            # Extract table images (they have img_path and page_idx)
+            if isinstance(data, list):
+                for i, item in enumerate(data):
+                    if item.get('type') == 'table' and item.get('img_path'):
+                        page_idx = item.get('page_idx')
+                        page_no = (page_idx + 1) if page_idx is not None else None
+
+                        images.append({
+                            'img_path': item['img_path'],
+                            'page_no': page_no,
+                            'context': None,  # Tables don't have explicit context
+                            'type': 'table',
+                            'table_body': item.get('table_body'),  # HTML table content
+                            'table_caption': item.get('table_caption', []),
+                            'table_footnote': item.get('table_footnote', [])
+                        })
+
+            # Also scan images/ folder for any additional images
+            images_dir = json_path.parent / 'images'
+            if images_dir.exists():
+                existing_paths = {img['img_path'] for img in images}
+
+                for img_file in images_dir.glob('*'):
+                    if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png']:
+                        img_rel_path = f"images/{img_file.name}"
+
+                        # Only add if not already included from tables
+                        if img_rel_path not in existing_paths:
+                            images.append({
+                                'img_path': img_rel_path,
+                                'page_no': None,  # Unknown page for non-table images
+                                'context': None,
+                                'type': 'figure'
+                            })
+
+            return images
+
+        except Exception as e:
+            print(f"Error extracting images from {json_path}: {e}")
+            self.stats['errors'].append(f"Image extract error in {json_path.name}: {e}")
+            return []
+
+    def import_images(self, conn, document_id: str, pdf_name: str, images: List[Dict]) -> int:
+        """
+        Import image provisions with HTML table content
+
+        For tables: Store actual HTML table (like DCPs)
+        For figures: Store image reference
+        """
+        cursor = conn.cursor()
+        imported = 0
+
+        for i, img in enumerate(images):
+            try:
+                # Generate image ref_number
+                if img['type'] == 'table' and img.get('table_body'):
+                    # Use descriptive ref for tables
+                    ref_number = f"table_in_{document_id}_{i}"
+                else:
+                    ref_number = f"img_{document_id.split('_')[0]}_{i}"
+
+                # Format provision text based on type
+                if img['type'] == 'table' and img.get('table_body'):
+                    # Use actual table HTML (like DCPs)
+                    provision_text = img['table_body']
+
+                    # Add caption if present
+                    caption = img.get('table_caption')
+                    if caption and isinstance(caption, list) and caption:
+                        provision_text = f"**{' '.join(caption)}**\n\n{provision_text}"
+
+                    # Add footnote if present
+                    footnote = img.get('table_footnote')
+                    if footnote and isinstance(footnote, list) and footnote:
+                        provision_text += f"\n\n*{' '.join(footnote)}*"
+                else:
+                    # Image reference format for non-table images
+                    page_str = str(img['page_no']) if img['page_no'] else 'Unknown'
+                    context_str = img.get('context', 'None') or 'None'
+                    provision_text = f"Image: {img['img_path']} | Page: {page_str} | Context: {context_str}"
+
+                # Insert image provision
+                cursor.execute("""
+                    INSERT INTO regulatory_provisions (
+                        document_id,
+                        ref_number,
+                        provision_text,
+                        pdf_page,
+                        pdf_source_file,
+                        pdf_extra
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, (
+                    document_id,
+                    ref_number,
+                    provision_text,
+                    img['page_no'],
+                    pdf_name,
+                    json.dumps({
+                        'extraction_method': 'mineru',
+                        'extracted_at': datetime.now().isoformat(),
+                        'content_type': 'image',
+                        'image_type': img.get('type', 'unknown')
+                    })
+                ))
+
+                result = cursor.fetchone()
+                if result:
+                    imported += 1
+
+            except Exception as e:
+                print(f"Error importing image {i}: {e}")
+                self.stats['errors'].append(f"Image import error in {document_id}: {e}")
+                continue
+
+        cursor.close()
+        self.stats['images_inserted'] += imported
+        return imported
 
     def get_or_create_document(self, conn, document_id: str, pdf_name: str) -> bool:
         """Ensure document exists in documents table"""
@@ -146,10 +288,10 @@ class MinerUImporter:
 
             # Create document if doesn't exist
             cursor.execute("""
-                INSERT INTO documents (id, document_type, pdf_name, created_at)
+                INSERT INTO documents (id, document_type, pdf_name, extraction_timestamp)
                 VALUES (%s, %s, %s, %s)
                 ON CONFLICT (id) DO NOTHING
-            """, (document_id, self.document_type, pdf_name, datetime.now()))
+            """, (document_id, self.document_type, pdf_name, datetime.now().isoformat()))
 
             cursor.close()
             return True
@@ -176,7 +318,7 @@ class MinerUImporter:
                 # Generate ref_number (simple: layout_no or sequential)
                 ref_number = f"provision_{prov.get('layout_no', i)}"
 
-                # Execute INSERT with ON CONFLICT
+                # Execute INSERT (simple mode - no conflict resolution)
                 cursor.execute("""
                     INSERT INTO regulatory_provisions (
                         document_id,
@@ -184,15 +326,8 @@ class MinerUImporter:
                         provision_text,
                         pdf_page,
                         pdf_source_file,
-                        pdf_extra,
-                        created_at
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-                    ON CONFLICT (document_id, ref_number) DO UPDATE SET
-                        provision_text = EXCLUDED.provision_text,
-                        pdf_page = EXCLUDED.pdf_page,
-                        pdf_source_file = EXCLUDED.pdf_source_file,
-                        pdf_extra = EXCLUDED.pdf_extra,
-                        updated_at = NOW()
+                        pdf_extra
+                    ) VALUES (%s, %s, %s, %s, %s, %s)
                     RETURNING id
                 """, (
                     document_id,
@@ -204,9 +339,9 @@ class MinerUImporter:
                         'extraction_method': 'mineru',
                         'extracted_at': datetime.now().isoformat(),
                         'layout_no': prov.get('layout_no'),
+                        'text_level': prov.get('text_level'),
                         'bbox': prov.get('bbox')
-                    }),
-                    datetime.now()
+                    })
                 ))
 
                 result = cursor.fetchone()
@@ -270,27 +405,40 @@ class MinerUImporter:
         provisions = self.extract_provisions_from_json(json_path)
         print(f"Found {len(provisions)} provisions with page numbers")
 
-        if not provisions:
-            print("⚠️ No provisions found, skipping")
+        # Extract images
+        print("Extracting images...")
+        images = self.extract_images_from_json(json_path)
+        print(f"Found {len(images)} images ({sum(1 for img in images if img['type']=='table')} tables, {sum(1 for img in images if img['type']=='figure')} figures)")
+
+        if not provisions and not images:
+            print("[WARNING] No provisions or images found, skipping")
             self.stats['provisions_skipped'] += 1
             return
 
         self.stats['provisions_found'] += len(provisions)
+        self.stats['images_found'] += len(images)
 
         # Dry run mode
         if self.dry_run:
-            print(f"[DRY RUN] Would import {len(provisions)} provisions")
+            print(f"[DRY RUN] Would import {len(provisions)} provisions and {len(images)} images")
             return
 
         # Ensure document exists
         if not self.get_or_create_document(conn, document_id, pdf_name):
-            print("❌ Failed to create document, skipping")
+            print("[FAILED] Failed to create document, skipping")
             return
 
         # Import provisions
-        print("Importing provisions to database...")
-        imported = self.import_provisions(conn, document_id, pdf_name, provisions)
-        print(f"✅ Imported {imported} provisions")
+        if provisions:
+            print("Importing provisions to database...")
+            imported = self.import_provisions(conn, document_id, pdf_name, provisions)
+            print(f"[SUCCESS] Imported {imported} provisions")
+
+        # Import images
+        if images:
+            print("Importing images to database...")
+            imported_imgs = self.import_images(conn, document_id, pdf_name, images)
+            print(f"[SUCCESS] Imported {imported_imgs} images")
 
         # Verify
         verification = self.verify_import(conn, document_id)
@@ -317,19 +465,19 @@ class MinerUImporter:
         print(f"\nFound {len(json_files)} JSON files to process")
 
         if not json_files:
-            print("⚠️ No MinerU JSON files found!")
+            print("[WARNING] No MinerU JSON files found!")
             print("\nExpected directory structure:")
             print("  source_dir/")
             print("    pdf_name/")
             print("      auto/")
-            print("        pdf_name.json  ← MinerU output")
+            print("        pdf_name.json   MinerU output")
             return False
 
         # Connect with safety wrapper
         try:
             print("\nConnecting to database (with safety checks)...")
             conn = get_safe_connection()
-            print("✅ Database connection established (safety protocols active)")
+            print("[SUCCESS] Database connection established (safety protocols active)")
 
             # Process each file
             for json_file in json_files:
@@ -341,7 +489,7 @@ class MinerUImporter:
                         conn.commit()
 
                 except Exception as e:
-                    print(f"❌ Error processing {json_file.name}: {e}")
+                    print(f"[FAILED] Error processing {json_file.name}: {e}")
                     self.stats['errors'].append(f"File error {json_file.name}: {e}")
                     conn.rollback()
                     continue
@@ -358,7 +506,7 @@ class MinerUImporter:
             return False
 
         except Exception as e:
-            print(f"\n❌ CRITICAL ERROR: {e}")
+            print(f"\n[FAILED] CRITICAL ERROR: {e}")
             return False
 
         # Print final stats
@@ -375,9 +523,11 @@ class MinerUImporter:
         print(f"Provisions inserted: {self.stats['provisions_inserted']}")
         print(f"Provisions updated: {self.stats['provisions_updated']}")
         print(f"Provisions skipped: {self.stats['provisions_skipped']}")
+        print(f"Images found: {self.stats['images_found']}")
+        print(f"Images inserted: {self.stats['images_inserted']}")
 
         if self.stats['errors']:
-            print(f"\n⚠️ Errors: {len(self.stats['errors'])}")
+            print(f"\n[WARNING] Errors: {len(self.stats['errors'])}")
             for error in self.stats['errors'][:10]:  # Show first 10
                 print(f"  - {error}")
 
@@ -397,7 +547,7 @@ def main():
 
     source_dir = Path(args.source)
     if not source_dir.exists():
-        print(f"❌ Source directory not found: {source_dir}")
+        print(f"[FAILED] Source directory not found: {source_dir}")
         return 1
 
     importer = MinerUImporter(source_dir, args.document_type, args.dry_run)

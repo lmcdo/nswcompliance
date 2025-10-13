@@ -1,0 +1,210 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { Pool } from 'pg';
+
+// Database connection pool
+const pool = new Pool({
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'postgres',
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'nsw_planning',
+});
+
+/**
+ * Convert Web Mercator (EPSG:3857) coordinates to WGS84 (EPSG:4326)
+ * NSW Valuation API returns coordinates in Web Mercator format
+ * HCA GeoJSON uses WGS84 format
+ *
+ * @param x - Web Mercator X coordinate (meters)
+ * @param y - Web Mercator Y coordinate (meters)
+ * @returns [longitude, latitude] in WGS84 degrees
+ */
+function webMercatorToWGS84(x: number, y: number): [number, number] {
+  const earthRadius = 20037508.34; // Earth's radius in Web Mercator
+  const lon = (x / earthRadius) * 180;
+  const lat = (Math.atan(Math.exp((y / earthRadius) * Math.PI)) * 360 / Math.PI) - 90;
+  return [lon, lat];
+}
+
+/**
+ * Detect coordinate system based on magnitude
+ * Web Mercator coordinates for NSW are typically 16-17 million (x) and -4 million (y)
+ * WGS84 coordinates for NSW are typically 150-152 (lon) and -33 to -34 (lat)
+ *
+ * @param x - X coordinate
+ * @param y - Y coordinate
+ * @returns true if coordinates appear to be Web Mercator
+ */
+function isWebMercator(x: number, y: number): boolean {
+  // NSW in Web Mercator: x ~16-17 million, y ~-4 million
+  // NSW in WGS84: x ~150-152, y ~-33 to -34
+  return Math.abs(x) > 1000 || Math.abs(y) > 1000;
+}
+
+/**
+ * Point-in-polygon check using ray casting algorithm
+ * No external dependencies required
+ */
+function pointInPolygon(point: [number, number], polygon: number[][][]): boolean {
+  const [x, y] = point;
+  const ring = polygon[0]; // Use outer ring of polygon
+
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+
+    const intersect = ((yi > y) !== (yj > y)) &&
+      (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+
+    if (intersect) inside = !inside;
+  }
+
+  return inside;
+}
+
+/**
+ * POST /api/heritage/hca-check
+ *
+ * Check if a property point is within a Heritage Conservation Area
+ *
+ * Request body:
+ * {
+ *   "x": 151.159,
+ *   "y": -33.899,
+ *   "lga": "INNER WEST"
+ * }
+ *
+ * Response:
+ * {
+ *   "success": true,
+ *   "data": {
+ *     "inHCA": true,
+ *     "hca": {
+ *       "id": "C86",
+ *       "name": "Lackey Street and Simpson Park Heritage Conservation Area",
+ *       "significance": "Local",
+ *       "legislativeClause": "Clause 5.10",
+ *       "epiName": "Inner West Local Environmental Plan 2022",
+ *       "layClass": "Conservation Area - General"
+ *     }
+ *   }
+ * }
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { x, y, lga } = body;
+
+    // Validate inputs
+    if (!x || !y || !lga) {
+      return NextResponse.json({
+        success: false,
+        error: 'Missing required parameters: x, y, lga'
+      }, { status: 400 });
+    }
+
+    // Parse coordinates
+    let pointX = parseFloat(x);
+    let pointY = parseFloat(y);
+
+    if (isNaN(pointX) || isNaN(pointY)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid coordinates'
+      }, { status: 400 });
+    }
+
+    console.log(`[HCA Check] Input coordinates: (${pointX}, ${pointY}), LGA: ${lga}`);
+
+    // Auto-detect and convert Web Mercator to WGS84 if needed
+    if (isWebMercator(pointX, pointY)) {
+      const [lon, lat] = webMercatorToWGS84(pointX, pointY);
+      console.log(`[HCA Check] Detected Web Mercator, converted to WGS84: (${lon}, ${lat})`);
+      pointX = lon;
+      pointY = lat;
+    } else {
+      console.log(`[HCA Check] Coordinates appear to be WGS84, using as-is`);
+    }
+
+    // Stage 1: Bounding box pre-filter (fast)
+    const client = await pool.connect();
+
+    try {
+      const bboxQuery = `
+        SELECT
+          h_id,
+          h_name,
+          significance,
+          legislative_clause,
+          epi_name,
+          lay_class,
+          geometry_json
+        FROM heritage_conservation_areas
+        WHERE lga_name = $1
+        AND bbox_min_x <= $2
+        AND bbox_max_x >= $2
+        AND bbox_min_y <= $3
+        AND bbox_max_y >= $3;
+      `;
+
+      const bboxResult = await client.query(bboxQuery, [lga, pointX, pointY]);
+
+      console.log(`[HCA Check] Bounding box filter: ${bboxResult.rows.length} candidates`);
+
+      if (bboxResult.rows.length === 0) {
+        return NextResponse.json({
+          success: true,
+          data: { inHCA: false }
+        });
+      }
+
+      // Stage 2: Precise point-in-polygon check
+      for (const row of bboxResult.rows) {
+        const geometry = row.geometry_json;
+
+        if (geometry.type === 'Polygon') {
+          const isInside = pointInPolygon([pointX, pointY], geometry.coordinates);
+
+          if (isInside) {
+            console.log(`[HCA Check] Match found: ${row.h_id} - ${row.h_name}`);
+
+            return NextResponse.json({
+              success: true,
+              data: {
+                inHCA: true,
+                hca: {
+                  id: row.h_id,
+                  name: row.h_name,
+                  significance: row.significance,
+                  legislativeClause: row.legislative_clause,
+                  epiName: row.epi_name,
+                  layClass: row.lay_class
+                }
+              }
+            });
+          }
+        }
+      }
+
+      // No match found after precise check
+      console.log(`[HCA Check] No match found (bbox candidates checked, none contained point)`);
+
+      return NextResponse.json({
+        success: true,
+        data: { inHCA: false }
+      });
+
+    } finally {
+      client.release();
+    }
+
+  } catch (error) {
+    console.error('[HCA Check] Error:', error);
+
+    return NextResponse.json({
+      success: false,
+      error: 'Failed to check HCA status'
+    }, { status: 500 });
+  }
+}

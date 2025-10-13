@@ -18,6 +18,8 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const query = searchParams.get('q') || '';
+    const userZone = searchParams.get('zone'); // NEW: Zone filter for Tier 1 ranking
+    const useTier1 = searchParams.get('ranked') === 'true'; // NEW: Enable Tier 1 ranking
 
     // Parse filters from query parameters
     const documentTypes = searchParams.get('document_types');
@@ -30,24 +32,34 @@ export async function GET(request: NextRequest) {
       categories: categories?.split(','),
       zones: zones?.split(','),
       developmentTypes: developmentTypes?.split(','),
-      limit: parseInt(searchParams.get('limit') || '50')
+      limit: parseInt(searchParams.get('limit') || '50'),
+      userZone: userZone || undefined // NEW: Add zone to filters
     };
 
-    console.log(`[Provision Search] Query: ${query}, Filters: ${JSON.stringify(filters)}`);
+    console.log(`[Provision Search] Query: ${query}, Tier1: ${useTier1}, Zone: ${userZone || 'all'}, Filters: ${JSON.stringify(filters)}`);
 
     // Feature flag: Use PostgreSQL or Python subprocess
     const usePostgreSQL = shouldUsePostgreSQL('provisions', requestId);
 
     let result: any;
-    let implementation: 'postgresql' | 'subprocess';
+    let implementation: 'postgresql' | 'subprocess' | 'tier1';
 
-    if (usePostgreSQL) {
+    if (usePostgreSQL && useTier1) {
+      console.log('[Tier 1 Ranking] Using Tier 1 ranked search');
+      implementation = 'tier1';
+
+      const pgClient = new ProvisionSearchClient();
+      result = await pgClient.searchProvisionsTier1(query, filters);
+      await pgClient.close();
+
+    } else if (usePostgreSQL) {
       console.log('[PostgreSQL Migration] Using direct PostgreSQL client');
       implementation = 'postgresql';
 
       const pgClient = new ProvisionSearchClient();
       result = await pgClient.searchProvisions(query, filters);
       await pgClient.close();
+
     } else {
       console.log('[PostgreSQL Migration] Using legacy Python subprocess');
       implementation = 'subprocess';
@@ -66,7 +78,9 @@ export async function GET(request: NextRequest) {
       meta: {
         implementation,
         response_time_ms: responseTime,
-        migration_status: usePostgreSQL ? 'using_postgresql' : 'using_subprocess'
+        migration_status: useTier1 ? 'using_tier1_ranking' :
+                         usePostgreSQL ? 'using_postgresql' : 'using_subprocess',
+        ranking_enabled: useTier1
       }
     });
 

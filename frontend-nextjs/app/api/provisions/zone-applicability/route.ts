@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
         pa.applies_state_wide,
         pa.applicability_source,
         pa.confidence_score
-      FROM regulatory_provisions rp
+      FROM regulatory_provisions_canonical rp
       JOIN provision_applicability pa ON rp.id = pa.provision_id
       WHERE 1=1
     `;
@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
     const provisions: ProvisionApplicability[] = result.rows.map(row => ({
       provisionId: row.provision_id,
       refNumber: row.ref_number || 'N/A',
-      provisionText: row.provision_text ? row.provision_text.substring(0, 300) : '',
+      provisionText: row.provision_text ? row.provision_text.substring(0, 2000) : '', // Increased from 300 to 2000 chars
       explicitZone: row.explicit_zone,
       appliesToZone: row.applies_to_zone,
       appliesToAllZones: row.applies_to_all_zones,

@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
+import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -27,32 +28,52 @@ export default function AssessmentPage() {
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
 
   const handleAddressSelect = async (address: string) => {
+    console.log('=== handleAddressSelect CALLED ===');
+    console.log('Address:', address);
+
     setSelectedAddress(address);
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/property?address=${encodeURIComponent(address)}`);
+      const url = `/api/property?address=${encodeURIComponent(address)}`;
+      console.log('Fetching:', url);
+
+      const response = await fetch(url);
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (response.ok) {
         const apiResponse = await response.json();
+        console.log('API Response:', apiResponse);
+
         if (apiResponse.success) {
+          console.log('✅ Success! Property data:', apiResponse.data);
           setSelectedProperty(apiResponse.data);
         } else {
+          console.error('❌ API returned error:', apiResponse.error);
           throw new Error(apiResponse.error || 'Failed to load property');
         }
       } else {
+        const errorText = await response.text();
+        console.error('❌ HTTP Error:', response.status, errorText);
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (err) {
+      console.error('❌ Fetch error:', err);
       setError(err instanceof Error ? err.message : 'Failed to load property');
       setSelectedProperty(null);
     } finally {
       setLoading(false);
+      console.log('=== handleAddressSelect COMPLETE ===');
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Regulatory Currency Warning Banner */}
+      <RegulatoryCurrencyBanner />
+
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">

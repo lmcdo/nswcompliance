@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, ExternalLink, AlertCircle, FileText, MapPin } from 'lucide-react';
+import { ProvisionVersionInline } from './ProvisionVersionBadge';
+import type { ProvisionVersionMetadata } from '@/types/provision-search';
 
 // Import types
 export interface ProvisionContent {
@@ -19,6 +21,7 @@ export interface ProvisionContent {
   section_header: string;
   provision_text: string;
   document_id: string;
+  version?: ProvisionVersionMetadata; // Version tracking for certifier compliance
 }
 
 // Truncated text component with "Show more..." button
@@ -315,8 +318,12 @@ export function ConstraintCard({
               <div className="text-sm text-gray-600">
                 {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)} • {constraint.source.clause}
               </div>
-              <div className="text-xs text-gray-500 mt-0.5">
-                {constraint.source.document}
+              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+                <span>{constraint.source.document}</span>
+                {/* Version badge if provision has version metadata */}
+                {constraint.provisions?.[0]?.version && (
+                  <ProvisionVersionInline version={constraint.provisions[0].version} />
+                )}
               </div>
             </div>
 
@@ -368,8 +375,12 @@ export function ConstraintCard({
             {constraint.value}
             {constraint.unit && <span className="text-xl ml-1 text-gray-600">{constraint.unit}</span>}
           </div>
-          <div className="text-sm text-gray-600 mt-1">
-            {constraint.source.document}
+          <div className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+            <span>{constraint.source.document}</span>
+            {/* Version badge if provision has version metadata */}
+            {constraint.provisions?.[0]?.version && (
+              <ProvisionVersionInline version={constraint.provisions[0].version} />
+            )}
           </div>
         </div>
 
