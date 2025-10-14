@@ -371,8 +371,16 @@ export function ConstraintCard({
 
             {/* Metadata */}
             <div>
-              <div className="text-sm text-gray-600">
-                {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}
+              <div className={`text-gray-600 ${
+                // LEP Height and FSR get larger, bold, uppercase labels
+                constraint.source.authority_level === 'LEP' && (constraint.type === 'height' || constraint.type === 'fsr')
+                  ? 'text-xl font-bold'
+                  : 'text-sm'
+              }`}>
+                {constraint.source.authority_level === 'LEP' && (constraint.type === 'height' || constraint.type === 'fsr')
+                  ? constraint.type.toUpperCase()  // "HEIGHT", "FSR"
+                  : constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)  // "Setback", "Special"
+                }
                 {/* Show clause only if it's not a machine-generated ID */}
                 {constraint.provisions?.[0] && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
                   <> • {constraint.source.clause}</>

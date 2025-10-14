@@ -96,6 +96,14 @@ export function ComplianceDashboard({
   // Structured SEPP requirements state
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
 
+  // Parking requirements state
+  const [parkingData, setParkingData] = useState<{
+    fullTable: string;
+    relevantRow: string | null;
+    description: string;
+    provisionId: number;
+  } | null>(null);
+
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
     const specialProvisionsLayer = propertyData.planningLayers?.find(
@@ -443,6 +451,35 @@ export function ComplianceDashboard({
         // Fetch structured SEPP requirements if SEPP provisions exist
         if (planningAPIProvisions.length > 0) {
           await loadStructuredRequirements();
+        }
+
+        // Fetch parking requirements
+        try {
+          const parkingResponse = await fetch('/api/dcp/parking', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              developmentType,
+              zone: propertyData.constraints.zone,
+              lga: propertyData.constraints?.lga
+            })
+          });
+
+          if (parkingResponse.ok) {
+            const parkingResult = await parkingResponse.json();
+            if (parkingResult.success) {
+              console.log('[ComplianceDashboard] Loaded parking requirements:', parkingResult.data);
+              setParkingData({
+                fullTable: parkingResult.data.fullTable,
+                relevantRow: parkingResult.data.relevantRow,
+                description: parkingResult.data.description,
+                provisionId: parkingResult.data.provisionId
+              });
+            }
+          }
+        } catch (parkingErr) {
+          console.error('[ComplianceDashboard] Failed to load parking requirements:', parkingErr);
+          // Don't fail the whole dashboard if parking fails
         }
 
       } catch (err) {
@@ -853,13 +890,36 @@ export function ComplianceDashboard({
                 </div>
                 <StructuredSeppRequirements
                   requirements={structuredRequirements}
-                  onViewFullText={(provisionId) => {
-                    // Find the constraint with this provision ID and open panel
-                    const constraint = complianceData.special_provisions.find(
-                      c => c.provision_id === provisionId
-                    );
-                    if (constraint) {
-                      handleViewProvision(constraint);
+                  onViewFullText={async (provisionId) => {
+                    // Fetch full provision text from database by provision ID
+                    try {
+                      const response = await fetch(`/api/provisions/${provisionId}/complete`);
+                      if (response.ok) {
+                        const data = await response.json();
+                        if (data.success && data.provision) {
+                          setSelectedProvision({
+                            constraint: {
+                              type: 'special',
+                              value: 'SEPP Requirements',
+                              source: {
+                                clause: data.provision.ref_number || 'Schedule 1 & 2',
+                                document: data.provision.document_id || 'SEPP (Sustainable Buildings) 2022',
+                                authority_level: 'SEPP'
+                              }
+                            },
+                            provisions: [{
+                              id: data.provision.id,
+                              ref_number: data.provision.ref_number,
+                              section_header: data.provision.section_header || 'BASIX Requirements',
+                              provision_text: data.provision.provision_text,
+                              document_id: data.provision.document_id
+                            }]
+                          });
+                          setPanelOpen(true);
+                        }
+                      }
+                    } catch (error) {
+                      console.error('[ComplianceDashboard] Failed to fetch structured requirement provision:', error);
                     }
                   }}
                   compact={true}
@@ -867,8 +927,8 @@ export function ComplianceDashboard({
               </div>
             )}
 
-            {/* Action Required Controls */}
-            {actionRequired.length > 0 && (
+            {/* Action Required Controls - Only show if NO structured requirements */}
+            {actionRequired.length > 0 && structuredRequirements.length === 0 && (
               <div className="mb-6">
                 <div className="mb-2 text-sm font-semibold text-orange-900">
                   Action Required:
@@ -886,8 +946,8 @@ export function ComplianceDashboard({
               </div>
             )}
 
-            {/* Informational Controls */}
-            {informational.length > 0 && (
+            {/* Informational Controls - Only show if NO structured requirements */}
+            {informational.length > 0 && structuredRequirements.length === 0 && (
               <div>
                 <div className="mb-2 text-sm font-semibold text-blue-700 flex items-center gap-2">
                   <span>Informational Only:</span>
@@ -999,6 +1059,68 @@ export function ComplianceDashboard({
                   compact={true}
                 />
               ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* DCP Parking Requirements */}
+      {parkingData && (
+        <Card className="border-green-200">
+          <CardHeader className="bg-green-50">
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-xl">🅿️</span>
+              Parking Requirements
+            </CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Marrickville DCP 2011 - Section 2.10
+            </p>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="bg-white border rounded-lg p-4">
+              <div className="text-sm text-gray-700 mb-3">
+                <strong>Development Type:</strong> {developmentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </div>
+              <div className="text-sm text-gray-600 mb-4">
+                {parkingData.description}
+              </div>
+
+              {parkingData.relevantRow && (
+                <div className="bg-gray-50 rounded p-3 mb-3 overflow-x-auto">
+                  <div
+                    className="text-xs"
+                    dangerouslySetInnerHTML={{ __html: parkingData.relevantRow }}
+                  />
+                </div>
+              )}
+
+              <button
+                onClick={() => {
+                  // Open full table in slide-out panel
+                  setSelectedProvision({
+                    constraint: {
+                      type: 'special',
+                      value: 'Parking Requirements',
+                      source: {
+                        clause: 'Table 1',
+                        document: 'Marrickville DCP 2011 - Section 2.10',
+                        authority_level: 'DCP'
+                      }
+                    },
+                    provisions: [{
+                      id: parkingData.provisionId,
+                      ref_number: 'Table 1',
+                      section_header: 'Car Parking Requirements',
+                      provision_text: parkingData.fullTable,
+                      document_id: 'Marrickville_DCP_2011__2_10_Parking'
+                    }]
+                  });
+                  setPanelOpen(true);
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700 underline"
+              >
+                View Full Parking Table
+              </button>
             </div>
           </CardContent>
         </Card>

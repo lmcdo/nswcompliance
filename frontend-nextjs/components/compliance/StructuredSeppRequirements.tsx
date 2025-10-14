@@ -11,13 +11,16 @@ import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface RequirementItem {
-  [key: string]: string;
+  [key: string]: string | boolean;
+  legal_text?: string;
+  legal_citation?: string;
 }
 
 interface RequirementCategory {
   name: string;
   reference: string;
   requirements: RequirementItem[];
+  legal_citation?: string;
 }
 
 interface RequirementData {
@@ -50,7 +53,10 @@ export function StructuredSeppRequirements({
   onViewFullText,
   compact = false
 }: StructuredSeppRequirementsProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  // Auto-expand first category by default for better visibility
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    new Set(['0-0']) // Auto-expand first category
+  );
   const [showFullLegalText, setShowFullLegalText] = useState(false);
 
   if (requirements.length === 0) {
@@ -71,36 +77,46 @@ export function StructuredSeppRequirements({
   };
 
   // Render a single requirement item as bullet point
-  const renderRequirementItem = (item: RequirementItem, index: number) => {
-    // Each item is a key-value pair (e.g. { "fixture": "Toilets", "standard": "max 4L/flush" })
-    const entries = Object.entries(item);
+  const renderRequirementItem = (item: RequirementItem, index: number, categoryLegalCitation?: string) => {
+    // Extract legal_text and legal_citation separately
+    const { legal_text, legal_citation, ...displayProps } = item;
+    const entries = Object.entries(displayProps);
 
-    if (entries.length === 1) {
-      // Single property - simple bullet
-      const [key, value] = entries[0];
-      return (
-        <li key={index} className="flex items-start gap-2 text-sm">
-          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-          <span>{value}</span>
-        </li>
-      );
-    } else {
-      // Multiple properties - format as "key: value"
-      return (
-        <li key={index} className="flex items-start gap-2 text-sm">
-          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
-          <div>
-            {entries.map(([key, value], i) => (
-              <div key={i}>
-                {i > 0 && <span className="mx-2 text-gray-400">|</span>}
-                <span className="font-medium">{key}:</span>{' '}
-                <span>{value}</span>
-              </div>
-            ))}
-          </div>
-        </li>
-      );
-    }
+    return (
+      <li key={index} className="flex items-start gap-2 text-sm mb-3">
+        <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
+        <div className="flex-1">
+          {/* Display properties */}
+          {entries.length === 1 ? (
+            <span>{entries[0][1]?.toString()}</span>
+          ) : (
+            <div>
+              {entries.map(([key, value], i) => (
+                <div key={i} className="inline">
+                  {i > 0 && <span className="mx-2 text-gray-400">|</span>}
+                  <span className="font-medium">{key}:</span>{' '}
+                  <span>{value?.toString()}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Show legal text if available */}
+          {legal_text && (
+            <div className="mt-1 text-xs text-gray-600 italic bg-gray-50 border-l-2 border-gray-300 pl-2 py-1">
+              "{legal_text}"
+            </div>
+          )}
+
+          {/* Show citation (item-specific or category-level) */}
+          {(legal_citation || categoryLegalCitation) && (
+            <div className="mt-1 text-xs text-blue-700">
+              📎 {legal_citation || categoryLegalCitation}
+            </div>
+          )}
+        </div>
+      </li>
+    );
   };
 
   return (
@@ -156,11 +172,19 @@ export function StructuredSeppRequirements({
 
                     {/* Category Requirements (Collapsible) */}
                     {isExpanded && (
-                      <ul className="mt-2 space-y-2 ml-6">
-                        {category.requirements.map((item, itemIndex) =>
-                          renderRequirementItem(item, itemIndex)
+                      <div>
+                        {/* Show category legal citation */}
+                        {category.legal_citation && (
+                          <div className="mt-2 ml-6 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                            📎 {category.legal_citation}
+                          </div>
                         )}
-                      </ul>
+                        <ul className="mt-2 space-y-2 ml-6">
+                          {category.requirements.map((item, itemIndex) =>
+                            renderRequirementItem(item, itemIndex, category.legal_citation)
+                          )}
+                        </ul>
+                      </div>
                     )}
                   </div>
                 );
