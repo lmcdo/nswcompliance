@@ -19,6 +19,7 @@ import {
   createFilterContext,
   type FilterResult
 } from '@/lib/environmental-relevance-filter';
+import { extractVersionFromPlanningAPI } from '@/lib/version-metadata-utils';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -161,6 +162,9 @@ export function ComplianceDashboard({
         }
       }
 
+      // Extract version metadata from Planning API
+      const versionMetadata = extractVersionFromPlanningAPI(result);
+
       // Create constraint for each Special Provision with metadata for full text fetching
       provisions.push({
         type: 'special',
@@ -172,6 +176,15 @@ export function ComplianceDashboard({
           document: epiName,
           authority_level: 'SEPP'
         },
+        // Add provisions array with version metadata for badge display
+        provisions: versionMetadata ? [{
+          id: 0, // Planning API provisions don't have database IDs
+          ref_number: `${mapType || 'Special'} - ${type}`,
+          section_header: type,
+          provision_text: `${type}: ${displayValue}${displayUnit || ''}`,
+          document_id: epiName,
+          version: versionMetadata
+        }] : undefined,
         // Add metadata for fetching full SEPP text from database
         seppMetadata: {
           epiName: epiName,
@@ -204,6 +217,9 @@ export function ComplianceDashboard({
       const result = heightLayer.results[0];
       const height = result['Maximum Building Height'];
       if (height) {
+        // Extract version metadata from Planning API
+        const versionMetadata = extractVersionFromPlanningAPI(result);
+
         constraints.push({
           type: 'height',
           value: parseFloat(height),
@@ -213,6 +229,15 @@ export function ComplianceDashboard({
             document: result['EPI Name'] || 'Local Environmental Plan',
             authority_level: 'LEP'
           },
+          // Add provisions array with version metadata for badge display
+          provisions: versionMetadata ? [{
+            id: 0,
+            ref_number: result['Legislative Clause'] || 'Clause 4.3',
+            section_header: 'Maximum Building Height',
+            provision_text: `Maximum building height: ${height}m`,
+            document_id: result['EPI Name'] || 'Local Environmental Plan',
+            version: versionMetadata
+          }] : undefined,
           lepMetadata: {
             documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
             refNumber: '4.3'
@@ -230,15 +255,28 @@ export function ComplianceDashboard({
       const fsrResult = fsrLayer.results.find(r => r['Floor Space Ratio']);
       if (fsrResult) {
         const fsr = fsrResult['Floor Space Ratio'];
+
+        // Extract version metadata from Planning API
+        const versionMetadata = extractVersionFromPlanningAPI(fsrResult);
+
         constraints.push({
           type: 'fsr',
           value: parseFloat(fsr),
-          unit: ':1',
+          unit: ':1 sq m',
           source: {
             clause: fsrResult['Legislative Clause'] || 'Clause 4.4',
             document: fsrResult['EPI Name'] || 'Local Environmental Plan',
             authority_level: 'LEP'
           },
+          // Add provisions array with version metadata for badge display
+          provisions: versionMetadata ? [{
+            id: 0,
+            ref_number: fsrResult['Legislative Clause'] || 'Clause 4.4',
+            section_header: 'Floor Space Ratio',
+            provision_text: `Maximum floor space ratio: ${fsr}:1`,
+            document_id: fsrResult['EPI Name'] || 'Local Environmental Plan',
+            version: versionMetadata
+          }] : undefined,
           lepMetadata: {
             documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
             refNumber: '4.4'

@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronUp, ExternalLink, AlertCircle, FileText, MapPin } from 'lucide-react';
 import { ProvisionVersionInline } from './ProvisionVersionBadge';
 import type { ProvisionVersionMetadata } from '@/types/provision-search';
+import { getProvisionShortTitle, getProvisionSectionName, formatConstraintValue } from '@/lib/provision-title-utils';
 
 // Import types
 export interface ProvisionContent {
@@ -25,9 +26,53 @@ export interface ProvisionContent {
 }
 
 // Truncated text component with "Show more..." button
+// Handles both plain text and HTML tables
 function TruncatedText({ text, wordLimit = 100 }: { text: string; wordLimit?: number }) {
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Check if text contains HTML tables
+  const containsTable = text.includes('<table');
+
+  if (containsTable) {
+    // Render HTML tables with proper styling
+    // Uses dangerouslySetInnerHTML because database stores tables as HTML (not markdown)
+    return (
+      <div className="text-sm text-gray-800 leading-relaxed my-4">
+        <div
+          className="provision-table overflow-x-auto"
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+        <style jsx>{`
+          .provision-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+            font-size: 0.875rem;
+          }
+          .provision-table td,
+          .provision-table th {
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+          }
+          .provision-table th {
+            background-color: #f3f4f6;
+            font-weight: 600;
+            color: #111827;
+          }
+          .provision-table tr:nth-child(even) {
+            background-color: #f9fafb;
+          }
+          .provision-table tr:hover {
+            background-color: #f3f4f6;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // Plain text rendering with truncation
   const words = text.split(/\s+/);
   const shouldTruncate = words.length > wordLimit;
   const displayText = shouldTruncate && !isExpanded
@@ -260,10 +305,10 @@ export function ConstraintCard({
 
             {/* Main value/title */}
             <div className="font-bold text-xl text-gray-900">
-              {/* Format the value - show meaningful title based on content */}
+              {/* Use provision title if available, otherwise show value */}
               {(() => {
                 const val = constraint.value;
-                const clause = constraint.source.clause;
+                const provision = constraint.provisions?.[0];
 
                 // Helper to clean up titles
                 const cleanTitle = (title: string) => {
@@ -276,27 +321,38 @@ export function ConstraintCard({
                   return title;
                 };
 
-                // If "See provision" placeholder, show the clause title/number
-                if (typeof val === 'string' && val.toLowerCase().includes('provision')) {
-                  // Use the first provision's section_header if available, otherwise clause
-                  const title = constraint.provisions?.[0]?.section_header || clause;
-                  return <span className="text-base text-gray-700">{cleanTitle(title)}</span>;
+                // If we have a REAL provision (not synthetic metadata holder), use its title
+                // Synthetic provisions have id === 0 (created for version metadata only)
+                if (provision && provision.id > 0) {
+                  console.log('[ConstraintCard] Provision data:', {
+                    id: provision.id,
+                    ref_number: provision.ref_number,
+                    section_header: provision.section_header,
+                    has_provision_text: !!provision.provision_text,
+                    provision_text_length: provision.provision_text?.length
+                  });
+                  const provisionTitle = getProvisionShortTitle(provision);
+                  console.log('[ConstraintCard] Generated title:', provisionTitle);
+                  // Use the extracted title - function already handles table-specific extraction
+                  if (provisionTitle) {
+                    return <span className="text-base text-gray-700">{cleanTitle(provisionTitle)}</span>;
+                  }
                 }
 
-                // If value looks like a clause number (e.g., "9.29.3"), use section_header instead
-                if (typeof val === 'string' && /^\d+(\.\d+)+[A-Z]?$/.test(val)) {
-                  const title = constraint.provisions?.[0]?.section_header || clause;
-                  return <span className="text-base text-gray-700">{cleanTitle(title)}</span>;
-                }
+                // Use utility function for smart value formatting
+                const formattedValue = formatConstraintValue(val, provision);
 
-                // If value is a descriptive title but no units, it's a reference to controls
-                if (typeof val === 'string' && !constraint.unit && val.length > 10) {
-                  return <span className="text-base text-gray-700">{cleanTitle(val)}</span>;
+                // If it's a provision reference or descriptive title
+                if (typeof val === 'string' && (
+                  val.toLowerCase().includes('provision') ||
+                  /^\d+(\.\d+)+[A-Z]?$/.test(val) ||
+                  (!constraint.unit && val.length > 10)
+                )) {
+                  return <span className="text-base text-gray-700">{cleanTitle(formattedValue)}</span>;
                 }
 
                 // Otherwise show the value with units (e.g., "9.5 m", "0.6:1")
-                // Also clean the value in case it's like "7storeys"
-                const displayVal = typeof val === 'string' ? cleanTitle(val) : val;
+                const displayVal = typeof formattedValue === 'string' ? cleanTitle(formattedValue) : formattedValue;
                 return (
                   <>
                     {displayVal}
@@ -316,13 +372,27 @@ export function ConstraintCard({
             {/* Metadata */}
             <div>
               <div className="text-sm text-gray-600">
-                {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)} • {constraint.source.clause}
+                {constraint.type.charAt(0).toUpperCase() + constraint.type.slice(1)}
+                {/* Show clause only if it's not a machine-generated ID */}
+                {constraint.provisions?.[0] && !constraint.source.clause.match(/^[Pp]rovision_\d+$/) && (
+                  <> • {constraint.source.clause}</>
+                )}
               </div>
-              <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-2">
+              <div className="text-xs text-gray-500 mt-0.5 flex flex-wrap items-center gap-1">
+                {/* Show section name if available (e.g., "4.1 Low Density Residential Development") */}
+                {constraint.provisions?.[0] && getProvisionSectionName(constraint.provisions[0]) && (
+                  <span className="font-medium">{getProvisionSectionName(constraint.provisions[0])}</span>
+                )}
+                {constraint.provisions?.[0] && getProvisionSectionName(constraint.provisions[0]) && (
+                  <span>•</span>
+                )}
                 <span>{constraint.source.document}</span>
                 {/* Version badge if provision has version metadata */}
                 {constraint.provisions?.[0]?.version && (
-                  <ProvisionVersionInline version={constraint.provisions[0].version} />
+                  <>
+                    <span>•</span>
+                    <ProvisionVersionInline version={constraint.provisions[0].version} />
+                  </>
                 )}
               </div>
             </div>
