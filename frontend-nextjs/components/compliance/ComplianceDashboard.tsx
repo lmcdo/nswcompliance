@@ -247,7 +247,7 @@ export function ComplianceDashboard({
             version: versionMetadata
           }] : undefined,
           lepMetadata: {
-            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
+            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation',
             refNumber: '4.3'
           }
         });
@@ -286,7 +286,7 @@ export function ComplianceDashboard({
             version: versionMetadata
           }] : undefined,
           lepMetadata: {
-            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation_1_50',
+            documentId: 'Inner_West_Local_Environmental_Plan_2022___NSW_Legislation',
             refNumber: '4.4'
           }
         });
@@ -499,8 +499,12 @@ export function ComplianceDashboard({
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
     console.log('[ComplianceDashboard] Opening panel for:', constraint);
 
-    // If constraint already has provisions, use them directly
-    if (constraint.provisions && constraint.provisions.length > 0) {
+    // If constraint has REAL provisions (not synthetic id:0 placeholders), use them directly
+    const hasRealProvisions = constraint.provisions &&
+      constraint.provisions.length > 0 &&
+      constraint.provisions.some(p => p.id > 0);
+
+    if (hasRealProvisions) {
       setSelectedProvision({
         constraint,
         provisions: constraint.provisions
