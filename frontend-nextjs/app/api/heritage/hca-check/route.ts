@@ -1,14 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-// Database connection pool
-const pool = new Pool({
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'nsw_planning',
-});
+import { getClient } from '@/lib/db';
 
 /**
  * Convert Web Mercator (EPSG:3857) coordinates to WGS84 (EPSG:4326)
@@ -128,7 +119,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Stage 1: Bounding box pre-filter (fast)
-    const client = await pool.connect();
+    const client = await getClient();
 
     try {
       const bboxQuery = `

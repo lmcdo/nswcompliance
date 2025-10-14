@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { query } from '@/lib/db';
 import { getDCPSection, extractLGA } from '@/lib/dcp-section-service';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-service';
 import { getZoneAliases } from '@/lib/zone-translation';
 import { normalizeDevType } from '@/lib/dev-type-loader';
 import { getCommercialKeywords } from '@/lib/keyword-loader';
-
-// Database connection (using environment variables)
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'nsw_planning',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres'
-});
 
 interface ConstraintQuery {
   address: string;
@@ -155,9 +146,21 @@ export async function POST(request: NextRequest) {
         rp.ref_number,
         rp.section_header,
         rp.document_id,
-        rp.zone
+        rp.zone,
+        d.regulation_year,
+        d.amendment_reference,
+        d.amendment_date,
+        d.version_status,
+        d.last_verified_date,
+        CURRENT_DATE - d.last_verified_date as days_since_verified,
+        CASE
+          WHEN CURRENT_DATE - d.last_verified_date <= 30 THEN 'current'
+          WHEN CURRENT_DATE - d.last_verified_date <= 60 THEN 'caution'
+          ELSE 'stale'
+        END as staleness_level
       FROM development_controls dc
       JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
+      LEFT JOIN documents d ON rp.document_id = d.id
       WHERE rp.zone IN (${zonePlaceholders})
         AND dc.control_type IN ('height', 'setback', 'parking', 'fsr', 'open_space')
         AND dc.confidence_score::numeric > 0.75
@@ -181,258 +184,47 @@ export async function POST(request: NextRequest) {
       LIMIT 15
     `;
 
-    const controlsResult = await pool.query(controlsQuery, [...zoneAliases, developmentType || null, lgaSearchPattern]);
+    const controlsResult = await query(controlsQuery, [...zoneAliases, developmentType || null, lgaSearchPattern]);
 
     console.log(`[Constraints API] Found ${controlsResult.rows.length} extracted controls for zones [${zoneAliases.join(', ')}]`);
 
     // Query 2: Get curated setback rules from zone_setback_rules
-    // DISABLED: zone_setback_rules table missing source_provision_id column
-    // Falling back to Query 1 (development_controls has 198 setback controls)
+    // REMOVED: All fallback queries that hide missing metadata
+    // If data is missing, the API should fail loudly
     const setbackResult = { rows: [] };
-    console.log(`[Constraints API] Skipping zone_setback_rules query (source_provision_id column missing)`);
-    console.log(`[Constraints API] Using development_controls for setback data (198 controls available)`);
+    console.log(`[Constraints API] Skipping zone_setback_rules query (deprecated)`);
 
-    // Query 2b: If no specific setback rules, try to find descriptive character provisions
-    let descriptiveSetbacks: any[] = [];
-    if (setbackResult.rows.length === 0) {
-      console.log(`[Constraints API] No specific setback rules found, searching for descriptive provisions...`);
-
-      const descriptiveSetbackQuery = `
-        SELECT
-          rp.id as provision_id,
-          rp.provision_text,
-          rp.ref_number,
-          rp.section_header,
-          rp.document_id,
-          rp.zone,
-          'setback' as control_type,
-          CASE
-            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 'specific_numeric'
-            ELSE 'character_contextual'
-          END as control_subtype,
-          NULL as value_numeric,
-          NULL as unit,
-          CASE
-            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 0.75
-            ELSE 0.6
-          END as confidence
-        FROM regulatory_provisions_canonical rp
-        JOIN documents d ON rp.document_id = d.id
-        WHERE (
-          rp.provision_text ILIKE '%front%setback%'
-          OR rp.provision_text ILIKE '%side%setback%'
-          OR rp.provision_text ILIKE '%rear%setback%'
-          OR rp.provision_text ILIKE '%building%setback%'
-        )
-        AND (d.pdf_name ~* $1::text)
+    // Data quality check: Log missing metadata
+    const missingMetadataQuery = `
+      SELECT
+        COUNT(*) FILTER (WHERE zone IS NULL) as missing_zone,
+        COUNT(*) FILTER (WHERE development_type IS NULL) as missing_dev_type,
+        COUNT(*) as total_provisions
+      FROM regulatory_provisions_canonical rp
+      LEFT JOIN documents d ON rp.document_id = d.id
+      WHERE (d.pdf_name ~* $1::text OR rp.document_id ~* $1::text)
         AND d.document_type = 'DCP'
-        AND rp.document_id NOT ILIKE '%_9_%'  -- Exclude Section 9 (precinct-specific)
-        AND rp.document_id NOT ILIKE '%precinct%'  -- Exclude anything with "precinct" in name
-        AND rp.provision_text NOT ILIKE '%secondary%dwelling%'  -- Exclude secondary dwelling provisions
-        AND rp.provision_text NOT ILIKE '%residential flat%'  -- Exclude RFB for dwelling_house
-        AND rp.provision_text NOT ILIKE '%high-rise%'  -- Exclude high-rise for dwelling_house
-        AND rp.provision_text NOT ILIKE '%multi dwelling%'  -- Exclude multi-dwelling for dwelling_house
-        AND (
-          rp.document_id ILIKE '%4.1%'  -- Prioritize Section 4.1 (Low Density Residential)
-          OR rp.document_id ILIKE '%4.2%'  -- Or Section 4.2 (Multi Dwelling)
-          OR rp.document_id ILIKE '%5.0%'  -- Or Section 5.0 (Commercial)
-        )
-        ORDER BY
-          CASE
-            -- Highest priority: Table provisions with actual data
-            WHEN rp.ref_number ILIKE '%table%' AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 1
-            -- Second: General section provisions with numeric measurements
-            WHEN rp.document_id ILIKE '%4.1%' AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 2
-            -- Third: Section 4.1 provisions (general residential)
-            WHEN rp.document_id ILIKE '%4.1%' THEN 3
-            -- Fourth: Section 4.2 provisions (multi-dwelling)
-            WHEN rp.document_id ILIKE '%4.2%' THEN 4
-            -- Fifth: Any provision with measurements
-            WHEN rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)' THEN 5
-            -- Lower priority: Keyword-only provisions
-            WHEN rp.provision_text ILIKE '%front%' THEN 6
-            WHEN rp.provision_text ILIKE '%side%' THEN 7
-            WHEN rp.provision_text ILIKE '%rear%' THEN 8
-            ELSE 9
-          END,
-          -- Prefer longer provisions (more detail) for same priority
-          LENGTH(rp.provision_text) DESC
-        LIMIT 10
-      `;
-
-      const descriptiveResult = await pool.query(descriptiveSetbackQuery, [lgaSearchPattern]);
-      descriptiveSetbacks = descriptiveResult.rows;
-
-      console.log(`[Constraints API] Found ${descriptiveSetbacks.length} descriptive setback provisions`);
-    }
-
-    // Query 2c: For E1/E2/E3 zones, search for environmental buffers (not just "setback")
-    if (['E1', 'E2', 'E3'].includes(zone)) {
-      console.log(`[Constraints API] Environmental zone detected (${zone}), searching for buffers...`);
-
-      const environmentalBufferQuery = `
-        SELECT
-          rp.id as provision_id,
-          rp.provision_text,
-          rp.ref_number,
-          rp.section_header,
-          rp.document_id,
-          rp.zone,
-          'setback' as control_type,
-          CASE
-            WHEN rp.provision_text ILIKE '%riparian%' THEN 'riparian_buffer'
-            WHEN rp.provision_text ILIKE '%biodiversity%' THEN 'biodiversity_buffer'
-            WHEN rp.provision_text ILIKE '%asset protection%' THEN 'bushfire_buffer'
-            WHEN rp.provision_text ILIKE '%vegetation%' THEN 'vegetation_buffer'
-            WHEN rp.provision_text ILIKE '%creek%' OR rp.provision_text ILIKE '%waterway%' THEN 'waterway_buffer'
-            ELSE 'environmental_buffer'
-          END as control_subtype,
-          NULL as value_numeric,
-          NULL as unit,
-          0.7 as confidence
-        FROM regulatory_provisions_canonical rp
-        JOIN documents d ON rp.document_id = d.id
-        WHERE (
-          rp.provision_text ILIKE '%setback%'
-          OR rp.provision_text ILIKE '%riparian%corridor%'
-          OR rp.provision_text ILIKE '%riparian%buffer%'
-          OR rp.provision_text ILIKE '%biodiversity%buffer%'
-          OR rp.provision_text ILIKE '%asset protection zone%'
-          OR rp.provision_text ILIKE '%vegetation%buffer%'
-          OR rp.provision_text ILIKE '%creek%buffer%'
-          OR rp.provision_text ILIKE '%waterway%setback%'
-          OR rp.provision_text ILIKE '%waterway%buffer%'
-        )
         AND rp.provision_text ~ '[0-9]+\\.?[0-9]*\\s*(m|metre)'
-        AND (d.pdf_name ~* $1::text)
-        AND d.document_type = 'DCP'
-        ORDER BY
-          CASE
-            WHEN rp.provision_text ILIKE '%riparian%' THEN 1
-            WHEN rp.provision_text ILIKE '%biodiversity%' THEN 2
-            WHEN rp.provision_text ILIKE '%asset%' THEN 3
-            WHEN rp.provision_text ILIKE '%vegetation%' THEN 4
-            ELSE 5
-          END,
-          LENGTH(rp.provision_text)
-        LIMIT 10
-      `;
-
-      const envResult = await pool.query(environmentalBufferQuery, [lgaSearchPattern]);
-      descriptiveSetbacks = [...descriptiveSetbacks, ...envResult.rows];
-
-      console.log(`[Constraints API] Found ${envResult.rows.length} environmental buffer provisions for ${zone}`);
-    }
-
-    // Query 2d: For R5 zones, show SEPP Housing 2021 clause references
-    if (zone === 'R5' && developmentType === 'dwelling_house') {
-      console.log(`[Constraints API] R5 dwelling house detected, searching for SEPP Housing references...`);
-
-      const seppHousingQuery = `
-        SELECT
-          rp.id as provision_id,
-          rp.provision_text,
-          rp.ref_number,
-          rp.section_header,
-          rp.document_id,
-          rp.zone,
-          'setback' as control_type,
-          'sepp_housing_reference' as control_subtype,
-          NULL as value_numeric,
-          NULL as unit,
-          0.8 as confidence
-        FROM regulatory_provisions_canonical rp
-        WHERE rp.zone = 'R5'
         AND rp.provision_text ILIKE '%setback%'
-        AND rp.provision_text ~* 'clause'
-        ORDER BY
-          CASE
-            WHEN rp.provision_text ILIKE '%front%' THEN 1
-            WHEN rp.provision_text ILIKE '%side%' THEN 2
-            WHEN rp.provision_text ILIKE '%rear%' THEN 3
-            ELSE 4
-          END
-        LIMIT 10
-      `;
+    `;
 
-      const seppHousingResult = await pool.query(seppHousingQuery);
-      descriptiveSetbacks = [...descriptiveSetbacks, ...seppHousingResult.rows];
+    const metadataCheck = await query(missingMetadataQuery, [lgaSearchPattern]);
+    const { missing_zone, missing_dev_type, total_provisions } = metadataCheck.rows[0] || {};
 
-      console.log(`[Constraints API] Found ${seppHousingResult.rows.length} SEPP Housing clause references for R5`);
+    if (missing_zone > 0 || missing_dev_type > 0) {
+      console.error(`[Constraints API] ❌ DATA QUALITY ISSUE:`, {
+        lga: lgaSearchPattern,
+        missing_zone: parseInt(missing_zone) || 0,
+        missing_dev_type: parseInt(missing_dev_type) || 0,
+        total_provisions: parseInt(total_provisions) || 0,
+        message: 'Provisions found but missing zone/development_type metadata'
+      });
     }
 
-    // Query 2e: For R3 zones + multi-dwelling, integrate ADG building separation standards
-    if (zone === 'R3' && developmentType && [
-      'multi_dwelling_housing',
-      'residential_flat_building',
-      'shop_top_housing'
-    ].includes(developmentType)) {
-      console.log(`[Constraints API] R3 multi-dwelling detected, integrating ADG standards...`);
-
-      // Determine building height category
-      // TODO: Get actual building height from property data or user input
-      const assumedBuildingHeight = 15; // Default to mid-rise for R3
-      let heightCategory: string;
-
-      if (assumedBuildingHeight <= 12) {
-        heightCategory = 'up_to_12m';
-      } else if (assumedBuildingHeight <= 25) {
-        heightCategory = '12m_to_25m';
-      } else {
-        heightCategory = 'over_25m';
-      }
-
-      // Query ADG standards from setback_rules table
-      const adgQuery = `
-        SELECT
-          sr.boundary_type,
-          sr.storey_level,
-          sr.setback_meters,
-          sr.document_name,
-          sr.ref_number,
-          sr.source_text,
-          sr.provision_id
-        FROM setback_rules sr
-        WHERE sr.document_name ILIKE '%apartment design%'
-        AND sr.zone IS NULL  -- ADG applies to all zones
-        ORDER BY
-          CASE sr.boundary_type
-            WHEN 'building_separation' THEN 1
-            ELSE 2
-          END,
-          sr.storey_level
-      `;
-
-      const adgResult = await pool.query(adgQuery);
-
-      // Transform ADG results into control format
-      const adgControls = adgResult.rows.map(row => ({
-        control_type: 'setback',
-        control_subtype: `adg_${row.storey_level || row.boundary_type}`,
-        value_numeric: row.setback_meters,
-        unit: 'm',
-        confidence: 0.95, // ADG is statutory - high confidence
-        provision_id: row.provision_id,
-        provision_text: row.source_text || `ADG Building Separation: ${row.storey_level || row.boundary_type} - ${row.setback_meters}m`,
-        ref_number: row.ref_number || 'ADG 3F-1',
-        section_header: 'Apartment Design Guide (SEPP 65)',
-        document_id: 'sepp_65_apartment_design_guide',
-        zone: 'R3'
-      }));
-
-      descriptiveSetbacks = [...descriptiveSetbacks, ...adgControls];
-
-      console.log(`[Constraints API] Found ${adgControls.length} ADG standards for R3 multi-dwelling`);
-    }
-
-    // B1 setbacks now loaded from zone_setback_rules table (lines 170-207)
-    // No longer need hardcoded rules - they're in the database!
-
-    // Combine zone-specific controls, setbacks, descriptive setbacks, AND precinct controls
+    // Combine zone-specific controls, setbacks, AND precinct controls (NO FALLBACKS)
     const allControls = [
       ...controlsResult.rows,
       ...setbackResult.rows,
-      ...descriptiveSetbacks,
       ...precinctControls
     ];
 
@@ -474,7 +266,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
 
-      const baseResult = await pool.query(basePermissionQuery, [...zoneAliases, normalizedType]);
+      const baseResult = await query(basePermissionQuery, [...zoneAliases, normalizedType]);
 
       if (baseResult.rows.length > 0) {
         const basePermission = baseResult.rows[0].permission_status;
@@ -505,7 +297,7 @@ export async function POST(request: NextRequest) {
             LIMIT 1
           `;
 
-          const seppResult = await pool.query(seppQuery, [...zoneAliases, developmentType]);
+          const seppResult = await query(seppQuery, [...zoneAliases, developmentType]);
 
           if (seppResult.rows.length > 0) {
             permissions = seppResult.rows;
@@ -524,21 +316,23 @@ export async function POST(request: NextRequest) {
           console.log(`[Constraints API] Permission for ${developmentType} in ${zone}: ${permissionStatus}`);
         }
       } else {
-        // No base permission found - default to consent_required (conservative approach)
-        // Don't use SEPP exempt/complying as fallback because it doesn't grant permission
-        console.log(`[Constraints API] No LEP permission found for ${developmentType} in ${zone}`);
+        // No base permission found - LOG ERROR instead of silent fallback
+        console.error(`[Constraints API] ❌ MISSING PERMISSION DATA:`, {
+          zone,
+          development_type: developmentType,
+          normalized_type: normalizedType,
+          message: 'No LEP permission found in database'
+        });
 
-        permissionStatus = 'consent_required';
+        permissionStatus = 'unknown';
         permissions = [{
           zone,
           development_type: developmentType,
-          permission_status: 'consent_required',
-          conditions: 'LEP permissibility not specified - DA may be required',
-          source_type: 'default_conservative',
-          confidence_score: '0.5'
+          permission_status: 'unknown',
+          conditions: 'ERROR: Permission data not found in database',
+          source_type: 'missing_data',
+          confidence_score: '0.0'
         }];
-
-        console.log(`[Constraints API] Defaulting to consent_required (no LEP data)`);
       }
     }
 
@@ -602,7 +396,7 @@ export async function POST(request: NextRequest) {
       LIMIT 20
     `;
 
-    const seppResult = await pool.query(seppQuery, [clauseArray]);
+    const seppResult = await query(seppQuery, [clauseArray]);
 
     console.log(`[Constraints API] Found ${seppResult.rows.length} SEPP overrides`);
 
@@ -768,13 +562,22 @@ function transformControlsToConstraints(
     // Determine authority level
     const authority = inferAuthorityLevel(control.document_id || '');
 
-    // Create provisions array for ConstraintCard compatibility
+    // Create provisions array for ConstraintCard compatibility with version metadata
     const provisions = control.provision_text ? [{
       id: control.provision_id || 0,
       ref_number: control.ref_number || 'N/A',
       section_header: control.section_header || '',
       provision_text: control.provision_text,
-      document_id: control.document_id || ''
+      document_id: control.document_id || '',
+      version: control.regulation_year ? {
+        regulation_year: control.regulation_year,
+        amendment_reference: control.amendment_reference,
+        amendment_date: control.amendment_date,
+        version_status: control.version_status,
+        last_verified_date: control.last_verified_date,
+        days_since_verified: parseInt(control.days_since_verified) || 0,
+        staleness_level: control.staleness_level
+      } : undefined
     }] : [];
 
     constraints.push({
