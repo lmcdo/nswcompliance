@@ -110,18 +110,26 @@ export async function POST(request: NextRequest) {
       // Add more mappings as needed
     };
 
+    // When user is filtering by provision type (tables/controls/objectives),
+    // search across ALL DCP sections, not just the development type section
+    const isFilteringByType = provisionType && provisionType !== 'all';
+    const isFilteringByCategory = categories && categories.length > 0;
+    const isBrowsingMode = isFilteringByType || isFilteringByCategory;
+
     const mapping = devTypeMapping[developmentType];
-    if (mapping) {
+    if (mapping && !isBrowsingMode) {
+      // Normal mode: filter to specific development type section
       dcpDocumentPattern = mapping.pattern;
       dcpSectionName = mapping.section;
     } else {
-      // Fallback: search all DCP documents for this LGA
+      // Browse mode: search all DCP documents for this LGA
       dcpDocumentPattern = `${lgaSearchPattern}.*DCP`;
-      dcpSectionName = 'All DCP Sections';
+      dcpSectionName = isBrowsingMode ? 'All DCP Sections (Browse Mode)' : 'All DCP Sections';
     }
 
     console.log('[DCP Provisions API] Document pattern:', dcpDocumentPattern);
     console.log('[DCP Provisions API] Section:', dcpSectionName);
+    console.log('[DCP Provisions API] Browse mode:', isBrowsingMode);
 
     // Build dynamic WHERE clauses
     const whereClauses: string[] = [];
