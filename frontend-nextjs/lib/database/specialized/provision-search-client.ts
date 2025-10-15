@@ -276,7 +276,7 @@ export class ProvisionSearchClient {
         ? filters.documentTypes
         : null;
 
-      // Call database function with Tier 1 ranking + version metadata
+      // Call database function with Tier 1 ranking + version metadata + page numbers
       const result = await client.query(`
         SELECT
           provision_id,
@@ -284,6 +284,7 @@ export class ProvisionSearchClient {
           provision_text,
           document_type,
           zone,
+          page_number,
           text_rank,
           hierarchy_weight,
           quant_boost,
@@ -316,6 +317,7 @@ export class ProvisionSearchClient {
           provision_type: '', // Not returned by function, can enhance later
           authority_level: row.document_type as 'SEPP' | 'LEP' | 'DCP',
           zone: row.zone,
+          page_number: row.page_number,
           ranking: {
             text_rank: parseFloat(row.text_rank),
             hierarchy_weight: parseFloat(row.hierarchy_weight),
