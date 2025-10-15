@@ -49,6 +49,7 @@ export class ProvisionSearchClient {
     const client = await this.pool.connect();
     try {
       // Build dynamic query with filters - includes version metadata from documents
+      // Join to base table to get pdf_page (not in canonical view)
       let sqlQuery = `
         SELECT
           rp.id,
@@ -58,7 +59,7 @@ export class ProvisionSearchClient {
           rp.provision_type,
           rp.zone,
           rp.development_type,
-          rp.page_number,
+          COALESCE(rp_base.pdf_page, 0) as page_number,
           CASE
             WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State_Environmental_Planning_Policy%' THEN 'SEPP'
             WHEN rp.document_id LIKE '%Local_Environmental_Plan%' OR rp.document_id LIKE 'Inner_West_LEP%' THEN 'LEP'
@@ -76,6 +77,7 @@ export class ProvisionSearchClient {
             ELSE 'stale'
           END as staleness_level
         FROM regulatory_provisions_canonical rp
+        LEFT JOIN regulatory_provisions rp_base ON rp.id = rp_base.id
         LEFT JOIN documents d ON rp.document_id = d.id
         WHERE 1=1
       `;
