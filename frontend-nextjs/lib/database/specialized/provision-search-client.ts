@@ -60,8 +60,8 @@ export class ProvisionSearchClient {
           rp.development_type,
           rp.page_number,
           CASE
-            WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State Environmental Planning Policy%' THEN 'SEPP'
-            WHEN rp.document_id LIKE '%LEP%' THEN 'LEP'
+            WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State_Environmental_Planning_Policy%' THEN 'SEPP'
+            WHEN rp.document_id LIKE '%Local_Environmental_Plan%' OR rp.document_id LIKE 'Inner_West_LEP%' THEN 'LEP'
             ELSE 'DCP'
           END as authority_level,
           d.regulation_year,
@@ -200,8 +200,8 @@ export class ProvisionSearchClient {
           rp.development_type,
           rp.page_number,
           CASE
-            WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State Environmental Planning Policy%' THEN 'SEPP'
-            WHEN rp.document_id LIKE '%LEP%' THEN 'LEP'
+            WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State_Environmental_Planning_Policy%' THEN 'SEPP'
+            WHEN rp.document_id LIKE '%Local_Environmental_Plan%' OR rp.document_id LIKE 'Inner_West_LEP%' THEN 'LEP'
             ELSE 'DCP'
           END as authority_level,
           d.regulation_year,
