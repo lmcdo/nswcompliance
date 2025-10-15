@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
+import { getProvisionDisplayTitle } from '@/lib/provision-title-utils';
 
 interface ProvisionResult {
   id: number;
@@ -336,14 +337,15 @@ export function DCPProvisionsBrowser({
                               {typeLabel}
                             </Badge>
                             <span className="text-xs text-gray-500">
-                              {provision.ref_number} • Page {provision.pdf_page}
+                              {getProvisionDisplayTitle({
+                                id: provision.id,
+                                ref_number: provision.ref_number,
+                                section_header: provision.section_header || '',
+                                provision_text: provision.provision_text,
+                                document_id: provision.document_id
+                              })} • Page {provision.pdf_page}
                             </span>
                           </div>
-                          {provision.section_header && (
-                            <div className="text-sm font-semibold text-gray-800">
-                              {provision.section_header}
-                            </div>
-                          )}
                         </div>
                         <div
                           className="text-sm text-gray-700 prose prose-sm max-w-none"
