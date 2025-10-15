@@ -276,12 +276,13 @@ export class ProvisionSearchClient {
         ? filters.documentTypes
         : null;
 
-      // Call database function with Tier 1 ranking + version metadata + page numbers
+      // Call database function with Tier 1 ranking + version metadata + page numbers + document_id
       const result = await client.query(`
         SELECT
           provision_id,
           ref_number,
           provision_text,
+          document_id,
           document_type,
           zone,
           page_number,
@@ -313,7 +314,7 @@ export class ProvisionSearchClient {
           id: row.provision_id,
           ref_number: row.ref_number,
           provision_text: this.truncateText(row.provision_text, 500),
-          document_id: row.document_type, // Database function returns document_type
+          document_id: row.document_id, // Full document ID for title parsing
           provision_type: '', // Not returned by function, can enhance later
           authority_level: row.document_type as 'SEPP' | 'LEP' | 'DCP',
           zone: row.zone,

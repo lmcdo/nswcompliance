@@ -14,6 +14,7 @@ RETURNS TABLE(
   provision_id integer,
   ref_number text,
   provision_text text,
+  document_id text,
   document_type text,
   zone text,
   page_number integer,
@@ -40,6 +41,7 @@ BEGIN
       rp.id as prov_id,
       rp.ref_number as prov_ref_number,
       rp.provision_text as prov_text,
+      rp.document_id as prov_document_id,
       CASE
         WHEN rp.document_id LIKE '%SEPP%' OR rp.document_id LIKE '%State_Environmental_Planning_Policy%' THEN 'SEPP'
         WHEN rp.document_id LIKE '%Local_Environmental_Plan%' OR rp.document_id LIKE 'Inner_West_LEP%' THEN 'LEP'
@@ -103,6 +105,7 @@ BEGIN
     prov_id as provision_id,
     prov_ref_number as ref_number,
     prov_text as provision_text,
+    prov_document_id as document_id,
     doc_type as document_type,
     prov_zone as zone,
     prov_page_number as page_number,

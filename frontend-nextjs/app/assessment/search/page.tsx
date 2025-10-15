@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import ProvisionSearch from '@/components/assessment/core/ProvisionSearch';
 import { ComplianceProvision } from '@/lib/assessment/types';
+import { getProvisionDisplayTitle } from '@/lib/provision-title-utils';
 
 export default function ProvisionSearchPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -117,7 +118,15 @@ export default function ProvisionSearchPage() {
 
                   <div>
                     <label className="text-xs text-gray-600">Clause</label>
-                    <p className="font-medium text-sm">{selectedProvision.ref_number || selectedProvision.clause}</p>
+                    <p className="font-medium text-sm">
+                      {getProvisionDisplayTitle({
+                        id: selectedProvision.id,
+                        ref_number: selectedProvision.ref_number || selectedProvision.clause || '',
+                        section_header: selectedProvision.section_header || '',
+                        provision_text: selectedProvision.provision_text || selectedProvision.content || '',
+                        document_id: selectedProvision.document_id || ''
+                      })}
+                    </p>
                   </div>
 
                   {selectedProvision.page_number > 0 && (
