@@ -83,15 +83,19 @@ export class ProvisionSearchClient {
       const params: any[] = [];
       let paramIndex = 1;
 
-      // Add text search with PostgreSQL full-text capabilities
+      // Add text search with word boundary support
       if (query && query.trim()) {
+        const searchTerm = query.trim();
+        // Use regex word boundary matching for better precision (prevents "park" matching "Park Avenue")
         sqlQuery += ` AND (
-          rp.provision_text ILIKE $${paramIndex} OR
-          rp.ref_number ILIKE $${paramIndex} OR
-          rp.document_id ILIKE $${paramIndex}
+          rp.provision_text ~* $${paramIndex} OR
+          rp.ref_number ILIKE $${paramIndex + 1} OR
+          rp.document_id ILIKE $${paramIndex + 1}
         )`;
-        params.push(`%${query.trim()}%`);
-        paramIndex++;
+        // Word boundary regex: \y matches word boundaries in PostgreSQL
+        params.push(`\\y${searchTerm}\\y`); // Regex with word boundaries
+        params.push(`%${searchTerm}%`);     // ILIKE fallback for ref_number/document_id
+        paramIndex += 2;
       }
 
       // Add document type filter
