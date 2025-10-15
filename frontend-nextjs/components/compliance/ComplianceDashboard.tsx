@@ -14,6 +14,7 @@ import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
+import { DCPProvisionsBrowser } from './DCPProvisionsBrowser';
 import {
   assessControlRelevance,
   createFilterContext,
@@ -1038,9 +1039,8 @@ export function ComplianceDashboard({
         </Card>
       )}
 
-      {/* DCP Design Controls Section */}
-      {complianceData?.building_envelope &&
-       complianceData.building_envelope.filter(c => c.source.authority_level === 'DCP').length > 0 && (
+      {/* DCP Design Controls Section - Always show if property has zone/dev type */}
+      {propertyData?.constraints?.zone && (
         <Card className="border-green-200">
           <CardHeader className="bg-green-50">
             <CardTitle className="flex items-center gap-2">
@@ -1052,18 +1052,34 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
-            <div className="space-y-3">
-              {complianceData.building_envelope
-                .filter(c => c.source.authority_level === 'DCP')
-                .map((constraint, index) => (
-                <ConstraintCard
-                  key={`dcp-${index}`}
-                  constraint={constraint}
-                  onViewDetails={handleViewProvision}
-                  compact={true}
-                />
-              ))}
-            </div>
+            {/* Extracted Controls (if any) */}
+            {complianceData?.building_envelope &&
+             complianceData.building_envelope.filter(c => c.source.authority_level === 'DCP').length > 0 && (
+              <div className="space-y-3 mb-4">
+                {complianceData.building_envelope
+                  .filter(c => c.source.authority_level === 'DCP')
+                  .map((constraint, index) => (
+                  <ConstraintCard
+                    key={`dcp-${index}`}
+                    constraint={constraint}
+                    onViewDetails={handleViewProvision}
+                    compact={true}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Browse All DCP Provisions */}
+            <DCPProvisionsBrowser
+              lga={propertyData.constraints.lga || ''}
+              zone={propertyData.constraints.zone}
+              developmentType={developmentType}
+              address={propertyData.address}
+              onViewProvision={(provision) => {
+                // No-op - expansion handled internally by DCPProvisionsBrowser
+                // Keeping prop for compatibility
+              }}
+            />
           </CardContent>
         </Card>
       )}
