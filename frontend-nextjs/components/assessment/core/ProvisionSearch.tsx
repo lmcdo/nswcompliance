@@ -252,6 +252,11 @@ export default function ProvisionSearch({
  📋 Has measurements
  </span>
  )}
+ {provision.page_number > 0 && (
+ <span className="text-xs text-gray-500">
+ Page {provision.page_number}
+ </span>
+ )}
  </div>
  <p className="text-sm text-gray-700 line-clamp-3">
  {provision.provision_text || provision.content}

@@ -120,6 +120,13 @@ export default function ProvisionSearchPage() {
                     <p className="font-medium text-sm">{selectedProvision.ref_number || selectedProvision.clause}</p>
                   </div>
 
+                  {selectedProvision.page_number > 0 && (
+                    <div>
+                      <label className="text-xs text-gray-600">Page Number</label>
+                      <p className="font-medium text-sm">{selectedProvision.page_number}</p>
+                    </div>
+                  )}
+
                   {selectedProvision.zone && (
                     <div>
                       <label className="text-xs text-gray-600">Zone</label>
