@@ -52,12 +52,7 @@ const MARRICKVILLE_PRECINCT_STREETS: Record<string, string[]> = {
   '9_43': ['Edinburgh Road', 'Meeks Road', 'Fitzroy Street'],
   '9_44': ['Way Street'],
   '9_45': ['Gill Street', 'Old Canterbury Road', 'Longport Street'],
-  '9_47': ['Addison Road', 'Fitzroy Street', 'Sydenham Road'],
-
-  // Dulwich Hill precincts (postcode 2203)
-  '10_': ['Pile Street', 'Gordon Street', 'Constitution Road', 'Dulwich Grove'],  // Dulwich Hill North
-  '18_': ['Railway Parade', 'Kingsland Road', 'Ewart Street'],  // Dulwich Hill Station North
-  '22_': ['Wardell Road', 'Terry Street', 'Victoria Road']  // Dulwich Hill Station South
+  '9_47': ['Addison Road', 'Fitzroy Street', 'Sydenham Road']
 };
 
 /**
@@ -110,10 +105,7 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
           '9_37': 'King Street and Enmore Road Commercial',
           '9_38': 'Dulwich Hill Commercial',
           '9_28': 'Cooks River West',
-          '9_29': 'South Western Marrickville',
-          '10_': 'Dulwich Hill North',
-          '18_': 'Dulwich Hill Station North',
-          '22_': 'Dulwich Hill Station South Precinct 22'
+          '9_29': 'South Western Marrickville'
           // Add more as needed
         };
 
@@ -141,13 +133,10 @@ export async function getPrecinctForAddress(
     const lgaLower = lga.toLowerCase();
 
     // Inner West LGA includes Marrickville, Ashfield, and Leichhardt
-    // Check if address is in Marrickville area (postcode 2204/2203 or contains "marrickville"/"dulwich hill")
+    // Check if address is in Marrickville area (postcode 2204 or contains "marrickville")
     if (lgaLower.includes('marrickville') ||
         (lgaLower.includes('inner west') &&
-         (address.toLowerCase().includes('marrickville') ||
-          address.toLowerCase().includes('dulwich hill') ||
-          address.includes('2204') ||
-          address.includes('2203')))) {
+         (address.toLowerCase().includes('marrickville') || address.includes('2204')))) {
       return getMarrickvillePrecinct(address);
     }
 
