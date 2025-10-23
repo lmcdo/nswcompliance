@@ -176,7 +176,7 @@ SELECT
   pb.extraction_method,
   pb.confidence_score,
   pb.area_sqm,
-  ROUND(pb.area_sqm / 10000, 2) as area_hectares,
+  ROUND((pb.area_sqm / 10000)::numeric, 2) as area_hectares,
   pb.perimeter_m,
   ST_AsGeoJSON(pb.boundary) as boundary_geojson,
   ST_AsText(pb.centroid) as centroid_wkt,

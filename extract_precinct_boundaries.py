@@ -86,7 +86,7 @@ def get_property_coordinates(address):
         lon = (centroid_x - 500000) / 111320 + 147
         lat = centroid_y / 111320 - 33
 
-        print(f"  ✓ {address}: ({lon:.6f}, {lat:.6f})")
+        print(f"  OK: {address}: ({lon:.6f}, {lat:.6f})")
         return (lon, lat)
 
     except Exception as e:
@@ -101,7 +101,7 @@ def create_approximate_boundary(sample_addresses, precinct_id, precinct_name, lg
     Create approximate precinct boundary from sample addresses
     Uses convex hull of known addresses within the precinct
     """
-    print(f"\n📍 Creating boundary for {precinct_id}: {precinct_name}")
+    print(f"\n[*] Creating boundary for {precinct_id}: {precinct_name}")
 
     coords = []
     for address in sample_addresses:
@@ -110,7 +110,7 @@ def create_approximate_boundary(sample_addresses, precinct_id, precinct_name, lg
             coords.append(coord)
 
     if len(coords) < 3:
-        print(f"  ✗ Not enough coordinates ({len(coords)}) to create boundary")
+        print(f"  ERROR: Not enough coordinates ({len(coords)}) to create boundary")
         return None
 
     # Create convex hull
@@ -124,7 +124,7 @@ def create_approximate_boundary(sample_addresses, precinct_id, precinct_name, lg
     # Convert to WKT for PostgreSQL
     boundary_wkt = boundary.wkt
 
-    print(f"  ✓ Created boundary from {len(coords)} points")
+    print(f"  OK: Created boundary from {len(coords)} points")
 
     return boundary_wkt
 
@@ -231,10 +231,10 @@ def insert_precinct_boundary(precinct_id, precinct_name, lga, former_council, bo
             boundary_wkt, confidence_score, extraction_method
         ))
         conn.commit()
-        print(f"  ✓ Inserted into database (confidence: {confidence_score})")
+        print(f"  OK: Inserted into database (confidence: {confidence_score})")
         return True
     except Exception as e:
-        print(f"  ✗ Database error: {e}")
+        print(f"  ERROR: Database error: {e}")
         conn.rollback()
         return False
 
@@ -246,9 +246,9 @@ def main():
     try:
         cur.execute("SELECT PostGIS_Version()")
         version = cur.fetchone()[0]
-        print(f"✓ PostGIS version: {version}\n")
+        print(f"SUCCESS: PostGIS version: {version}\n")
     except Exception as e:
-        print(f"✗ PostGIS not installed: {e}")
+        print(f"ERROR: PostGIS not installed: {e}")
         print("Please run: python install_postgis.py")
         return
 
@@ -265,9 +265,9 @@ def main():
             print("✗ Table dcp_precinct_boundaries does not exist")
             print("Please run: psql -d nsw_planning -f migrations/create_precinct_boundaries_postgis.sql")
             return
-        print("✓ Table dcp_precinct_boundaries exists\n")
+        print("SUCCESS: Table dcp_precinct_boundaries exists\n")
     except Exception as e:
-        print(f"✗ Error checking table: {e}")
+        print(f"ERROR: Error checking table: {e}")
         return
 
     # Extract boundaries for each precinct
@@ -302,8 +302,8 @@ def main():
 
     # Summary
     print(f"\n=== Summary ===")
-    print(f"✓ Successfully created: {success_count} precincts")
-    print(f"✗ Failed: {fail_count} precincts")
+    print(f"SUCCESS: Created {success_count} precincts")
+    print(f"FAILED: {fail_count} precincts")
 
     # Show what's in the database
     cur.execute("""
@@ -320,7 +320,7 @@ def main():
     cur.close()
     conn.close()
 
-    print("\n✓ Extraction complete!")
+    print("\nSUCCESS: Extraction complete!")
     print("\nNext steps:")
     print("1. Test precinct matching: python test_precinct_matching.py")
     print("2. Update precinct-service.ts to use PostGIS queries")
