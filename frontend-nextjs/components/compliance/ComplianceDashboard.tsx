@@ -15,6 +15,8 @@ import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
 import { DCPProvisionsBrowser } from './DCPProvisionsBrowser';
+import { PrecinctProvisionsBrowser } from './PrecinctProvisionsBrowser';
+import { CategorizedRequirementsCard } from './CategorizedRequirementsCard';
 import {
   assessControlRelevance,
   createFilterContext,
@@ -104,6 +106,10 @@ export function ComplianceDashboard({
     description: string;
     provisionId: number;
   } | null>(null);
+
+  // Week 3: Categorized precinct requirements state
+  const [categorizedRequirements, setCategorizedRequirements] = useState<any>(null);
+  const [loadingCategorized, setLoadingCategorized] = useState(false);
 
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
@@ -495,6 +501,57 @@ export function ComplianceDashboard({
       loadComplianceData();
     }
   }, [propertyData, developmentType, extractPlanningAPIProvisions, extractLEPConstraints]);
+
+  // Week 3: Fetch categorized precinct requirements
+  useEffect(() => {
+    const fetchCategorizedRequirements = async () => {
+      // Only fetch if we have an address and feature is enabled
+      if (!propertyData?.address) {
+        setCategorizedRequirements(null);
+        return;
+      }
+
+      // Check feature flag (can disable if needed)
+      const enableCategorized = process.env.NEXT_PUBLIC_ENABLE_CATEGORIZED_REQUIREMENTS !== 'false';
+      if (!enableCategorized) {
+        return;
+      }
+
+      try {
+        setLoadingCategorized(true);
+        console.log('[ComplianceDashboard] Fetching categorized precinct requirements for:', propertyData.address);
+
+        const response = await fetch('/api/compliance/precinct-requirements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: propertyData.address,
+            lga: propertyData.constraints?.lga || propertyData.council
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.categories && data.data.categories.length > 0) {
+            setCategorizedRequirements(data.data);
+            console.log('[ComplianceDashboard] Loaded', data.metrics.total_requirements, 'categorized requirements');
+          } else {
+            setCategorizedRequirements(null);
+          }
+        } else {
+          console.warn('[ComplianceDashboard] Failed to fetch categorized requirements:', response.statusText);
+          setCategorizedRequirements(null);
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Error fetching categorized requirements:', error);
+        setCategorizedRequirements(null);
+      } finally {
+        setLoadingCategorized(false);
+      }
+    };
+
+    fetchCategorizedRequirements();
+  }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council]);
 
   // Handler for opening slide-out panel
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
@@ -1080,6 +1137,88 @@ export function ComplianceDashboard({
                 // Keeping prop for compatibility
               }}
             />
+
+            {/* Week 3: Categorized Precinct Requirements */}
+            {categorizedRequirements && categorizedRequirements.categories && (
+              <CategorizedRequirementsCard
+                categories={categorizedRequirements.categories}
+                precinctName={categorizedRequirements.precinct?.precinct_name}
+                onViewSource={async (provisionIds, documentIds) => {
+                  console.log('[ComplianceDashboard] View source requested:', provisionIds, documentIds);
+
+                  try {
+                    // Fetch source provisions by IDs
+                    const response = await fetch('/api/provisions/by-ids', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ ids: provisionIds })
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      if (data.success && data.provisions && data.provisions.length > 0) {
+                        // Show in existing legal text panel
+                        setSelectedProvision({
+                          constraint: {
+                            type: 'special',
+                            value: 'Source Provisions',
+                            source: {
+                              clause: 'Source',
+                              document: documentIds[0] || 'DCP',
+                              authority_level: 'DCP'
+                            }
+                          },
+                          provisions: data.provisions.map((p: any) => ({
+                            id: p.id,
+                            ref_number: p.ref_number || 'N/A',
+                            section_header: p.section_header || 'Precinct Provision',
+                            provision_text: p.provision_text,
+                            document_id: p.document_id
+                          }))
+                        });
+                        setPanelOpen(true);
+                      } else {
+                        console.warn('[ComplianceDashboard] No provisions found for IDs:', provisionIds);
+                      }
+                    } else {
+                      console.error('[ComplianceDashboard] Failed to fetch provisions:', response.statusText);
+                    }
+                  } catch (error) {
+                    console.error('[ComplianceDashboard] Error fetching source provisions:', error);
+                  }
+                }}
+                className="mt-4"
+              />
+            )}
+
+            {/* Precinct-Specific Provisions (Feature Flag) */}
+            {process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
+              <PrecinctProvisionsBrowser
+                lga={propertyData.constraints.lga || propertyData.council || ''}
+                address={propertyData.address}
+                onViewProvision={(provision) => {
+                  setSelectedProvision({
+                    constraint: {
+                      type: 'special',
+                      value: 'Precinct Controls',
+                      source: {
+                        clause: provision.ref_number || 'Precinct Provision',
+                        document: `Precinct ${provision.precinct_id}: ${provision.precinct_name}`,
+                        authority_level: 'DCP'
+                      }
+                    },
+                    provisions: [{
+                      id: provision.id,
+                      ref_number: provision.ref_number,
+                      section_header: provision.section_header || 'Precinct Provision',
+                      provision_text: provision.provision_text,
+                      document_id: provision.document_id
+                    }]
+                  });
+                  setPanelOpen(true);
+                }}
+              />
+            )}
           </CardContent>
         </Card>
       )}
