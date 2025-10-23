@@ -1169,7 +1169,7 @@ export function ComplianceDashboard({
               }}
             />
 
-            {/* Week 3: Categorized Precinct Requirements */}
+            {/* Week 3: Categorized Precinct Requirements (replaces old browser) */}
             {categorizedRequirements && categorizedRequirements.categories && (
               <CategorizedRequirementsCard
                 categories={categorizedRequirements.categories}
@@ -1178,8 +1178,8 @@ export function ComplianceDashboard({
               />
             )}
 
-            {/* Precinct-Specific Provisions (Feature Flag) */}
-            {process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
+            {/* Precinct-Specific Provisions (OLD - only show if new categorized card is not available) */}
+            {!categorizedRequirements && process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
               <PrecinctProvisionsBrowser
                 lga={propertyData.constraints.lga || propertyData.council || ''}
                 address={propertyData.address}
