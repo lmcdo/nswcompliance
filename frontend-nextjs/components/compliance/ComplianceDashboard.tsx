@@ -521,7 +521,8 @@ export function ComplianceDashboard({
         setLoadingCategorized(true);
         console.log('[ComplianceDashboard] Fetching categorized precinct requirements for:', propertyData.address);
 
-        const response = await fetch('/api/compliance/precinct-requirements', {
+        // Step 1: Match address to precinct
+        const matchResponse = await fetch('/api/precinct/match', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -530,11 +531,41 @@ export function ComplianceDashboard({
           })
         });
 
+        if (!matchResponse.ok) {
+          console.warn('[ComplianceDashboard] Failed to match precinct');
+          setCategorizedRequirements(null);
+          return;
+        }
+
+        const matchData = await matchResponse.json();
+
+        if (!matchData.success || !matchData.precinct) {
+          console.log('[ComplianceDashboard] No precinct match for this address');
+          setCategorizedRequirements(null);
+          return;
+        }
+
+        const precinctId = matchData.precinct.precinctId || matchData.precinct.precinct_id;
+        const precinctName = matchData.precinct.precinctName || matchData.precinct.precinct_name;
+
+        console.log('[ComplianceDashboard] Matched to precinct:', precinctId, precinctName);
+
+        // Step 2: Fetch categorized requirements for this specific precinct
+        const response = await fetch('/api/compliance/precinct-requirements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            precinctId: precinctId,
+            precinctName: precinctName,
+            lga: propertyData.constraints?.lga || propertyData.council
+          })
+        });
+
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data.categories && data.data.categories.length > 0) {
             setCategorizedRequirements(data.data);
-            console.log('[ComplianceDashboard] Loaded', data.metrics.total_requirements, 'categorized requirements');
+            console.log('[ComplianceDashboard] Loaded', data.metrics.total_requirements, 'categorized requirements for', precinctName);
           } else {
             setCategorizedRequirements(null);
           }
