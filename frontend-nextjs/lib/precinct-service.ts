@@ -130,12 +130,17 @@ export async function getPrecinctForAddress(
   lga: string
 ): Promise<PrecinctMapping | null> {
   try {
-    // Currently only supports Marrickville
-    if (lga.toLowerCase().includes('marrickville')) {
+    const lgaLower = lga.toLowerCase();
+
+    // Inner West LGA includes Marrickville, Ashfield, and Leichhardt
+    // Check if address is in Marrickville area (postcode 2204 or contains "marrickville")
+    if (lgaLower.includes('marrickville') ||
+        (lgaLower.includes('inner west') &&
+         (address.toLowerCase().includes('marrickville') || address.includes('2204')))) {
       return getMarrickvillePrecinct(address);
     }
 
-    // TODO: Add Ashfield and Leichhardt precinct mappings
+    // TODO: Add Ashfield and Leichhardt precinct mappings for other Inner West areas
 
     return null;
   } catch (error) {
@@ -145,71 +150,54 @@ export async function getPrecinctForAddress(
 }
 
 /**
- * Get DCP controls for a precinct
+ * Get DCP provisions for a precinct
+ * Queries the new dcp_precinct_provisions table
+ */
+export async function getPrecinctProvisions(
+  precinctId: string,
+  lga: string
+): Promise<any[]> {
+  try {
+    console.log('[Precinct Service] Fetching provisions for:', { precinctId, lga });
+
+    const query = `
+      SELECT
+        pp.id,
+        pp.precinct_id,
+        pp.precinct_name,
+        pp.provision_text,
+        pp.provision_type,
+        pp.ref_number,
+        pp.section_header,
+        pp.pdf_page,
+        pp.document_id,
+        pp.pdf_path,
+        pp.pdf_page_image_url
+      FROM dcp_precinct_provisions pp
+      WHERE pp.precinct_id = $1
+        AND pp.lga = $2
+      ORDER BY pp.display_order ASC, pp.ref_number ASC
+      LIMIT 50
+    `;
+
+    const result = await pool.query(query, [precinctId, lga]);
+    console.log(`[Precinct Service] Query returned ${result.rows.length} rows`);
+
+    return result.rows;
+  } catch (error) {
+    console.error('[Precinct Service] Error getting provisions:', error);
+    throw error;
+  }
+}
+
+/**
+ * DEPRECATED: Use getPrecinctProvisions instead
+ * Old function that queried development_controls (which had no precinct data)
  */
 export async function getPrecinctControls(
   precinctDocumentId: string,
   controlTypes?: string[]
 ): Promise<any[]> {
-  try {
-    const typeFilter = controlTypes?.length
-      ? `AND dc.control_type IN (${controlTypes.map(t => `'${t}'`).join(',')})`
-      : '';
-
-    const query = `
-      SELECT
-        dc.control_type,
-        dc.control_subtype,
-        dc.value_numeric,
-        dc.value_text,
-        dc.unit,
-        dc.confidence_score,
-        rp.id as provision_id,
-        rp.provision_text,
-        rp.ref_number,
-        rp.section_header,
-        rp.document_id,
-        d.full_text as document_full_text
-      FROM development_controls dc
-      JOIN regulatory_provisions_canonical rp ON dc.provision_id = rp.id
-      LEFT JOIN documents d ON d.id = rp.document_id
-      WHERE rp.document_id LIKE '%' || $1 || '%'
-        ${typeFilter}
-        AND dc.confidence_score::numeric > 0.70
-      ORDER BY
-        dc.confidence_score::numeric DESC,
-        CASE dc.control_type
-          WHEN 'height' THEN 1
-          WHEN 'setback' THEN 2
-          WHEN 'fsr' THEN 3
-          WHEN 'parking' THEN 4
-          WHEN 'open_space' THEN 5
-          WHEN 'heritage' THEN 6
-          WHEN 'vegetation' THEN 7
-          ELSE 8
-        END
-      LIMIT 20
-    `;
-
-    const result = await pool.query(query, [precinctDocumentId]);
-
-    // Enhance provision_text with full document context if available
-    const enhancedRows = result.rows.map(row => {
-      // If we have full document text, try to extract the complete provision
-      if (row.document_full_text && row.provision_text) {
-        // Use the full document text as provision text
-        // (In UI, the "View Full Text" button will show the complete document)
-        return {
-          ...row,
-          provision_text: row.document_full_text  // Use full document text
-        };
-      }
-      return row;
-    });
-
-    return enhancedRows;
-  } catch (error) {
-    console.error('[Precinct Service] Error getting controls:', error);
-    return [];
-  }
+  console.warn('[Precinct Service] getPrecinctControls is deprecated, use getPrecinctProvisions instead');
+  return [];
 }

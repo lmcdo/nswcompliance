@@ -28,6 +28,7 @@ interface PrecinctProvision {
   section_header: string;
   pdf_page: number;
   document_id: string;
+  pdf_page_image_url?: string;
 }
 
 interface PrecinctProvisionsBrowserProps {
@@ -47,6 +48,7 @@ export function PrecinctProvisionsBrowser({
   const [provisions, setProvisions] = useState<PrecinctProvision[]>([]);
   const [expanded, setExpanded] = useState(true);
   const [expandedProvisionId, setExpandedProvisionId] = useState<number | null>(null);
+  const [viewingPdfImage, setViewingPdfImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (!address || !lga) {
@@ -104,6 +106,14 @@ export function PrecinctProvisionsBrowser({
         const provisionsData = await provisionsResponse.json();
 
         if (provisionsData.success) {
+          console.log('[PrecinctProvisionsBrowser] Provisions data:', {
+            count: provisionsData.data.provisions.length,
+            firstProvision: provisionsData.data.provisions[0] ? {
+              id: provisionsData.data.provisions[0].id,
+              hasPdfUrl: !!provisionsData.data.provisions[0].pdf_page_image_url,
+              pdfUrl: provisionsData.data.provisions[0].pdf_page_image_url
+            } : null
+          });
           setProvisions(provisionsData.data.provisions);
         } else {
           throw new Error(provisionsData.error || 'Unknown error');
@@ -174,7 +184,8 @@ export function PrecinctProvisionsBrowser({
 
   // Has precinct + provisions
   return (
-    <Card className="mt-4 border-blue-200 bg-blue-50/30">
+    <>
+      <Card className="mt-4 border-blue-200 bg-blue-50/30">
       <CardHeader className="cursor-pointer" onClick={() => setExpanded(!expanded)}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -288,23 +299,93 @@ export function PrecinctProvisionsBrowser({
                                 {provision.section_header}
                               </span>
                             </div>
-                            {onViewProvision && (
-                              <Button
-                                variant="outline"
-                                size="sm"
+                            {provision.pdf_page_image_url && (
+                              <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  onViewProvision(provision);
+                                  console.log('[PrecinctProvisionsBrowser] PDF button clicked:', provision.pdf_page_image_url);
+                                  setViewingPdfImage(provision.pdf_page_image_url || null);
                                 }}
+                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
                               >
-                                View in Panel
-                              </Button>
+                                📄 View PDF Page
+                              </button>
                             )}
                           </div>
                         </div>
-                        <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                          {provision.provision_text}
-                        </div>
+                        <div
+                          className="text-sm text-gray-700 prose prose-sm max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: (() => {
+                              // Helper to escape HTML special chars
+                              const escapeHtml = (str: string) => {
+                                return str
+                                  .replace(/&/g, '&amp;')
+                                  .replace(/</g, '&lt;')
+                                  .replace(/>/g, '&gt;')
+                                  .replace(/"/g, '&quot;')
+                                  .replace(/'/g, '&#039;');
+                              };
+
+                              let text = provision.provision_text;
+
+                              // Format tables with proper styling first (preserve existing table tags)
+                              text = text.replace(/<table/g, '<table class="min-w-full border-collapse border border-gray-300 my-4"');
+                              text = text.replace(/<td/g, '<td class="border border-gray-300 px-2 py-1 text-xs"');
+                              text = text.replace(/<th/g, '<th class="border border-gray-300 px-2 py-1 text-xs font-semibold bg-gray-100"');
+
+                              // Process line by line to group continuation lines
+                              const lines = text.split('\n');
+                              const grouped: string[] = [];
+
+                              for (let i = 0; i < lines.length; i++) {
+                                const line = lines[i].trim();
+
+                                // Skip empty lines and header junk
+                                if (!line || /^#/.test(line) || /^\d+$/.test(line)) continue;
+
+                                // Check if this is a section header (e.g., "9.29.1 Heritage")
+                                if (/^\d+\.\d+(?:\.\d+)?\s+[A-Z]/.test(line)) {
+                                  const escaped = escapeHtml(line);
+                                  grouped.push('<h3 class="font-semibold text-base mt-4 mb-2">' + escaped + '</h3>');
+                                }
+                                // Check if this is a numbered list item (e.g., "5. To protect...")
+                                else if (/^\d+\.\s+/.test(line)) {
+                                  // Collect this line and any continuation lines
+                                  let fullText = line;
+                                  while (i + 1 < lines.length && lines[i + 1].trim() && !/^\d+\./.test(lines[i + 1].trim()) && !/^\d+\.\d+/.test(lines[i + 1].trim())) {
+                                    i++;
+                                    fullText += ' ' + lines[i].trim();
+                                  }
+                                  const escaped = escapeHtml(fullText);
+                                  grouped.push('<li class="mb-2">' + escaped + '</li>');
+                                }
+                                // Regular paragraph text
+                                else {
+                                  // Collect continuation lines into a paragraph
+                                  let fullText = line;
+                                  while (i + 1 < lines.length && lines[i + 1].trim() && !/^\d+\./.test(lines[i + 1].trim()) && !/^\d+\.\d+/.test(lines[i + 1].trim())) {
+                                    i++;
+                                    fullText += ' ' + lines[i].trim();
+                                  }
+                                  const escaped = escapeHtml(fullText);
+                                  grouped.push('<p class="mb-3">' + escaped + '</p>');
+                                }
+                              }
+
+                              // Wrap consecutive <li> in <ol>
+                              let html = grouped.join('\n');
+                              html = html.replace(/(<li[^>]*>.*?<\/li>\n?)+/g, (match) => {
+                                return '<ol class="list-decimal list-outside my-3 ml-4">' + match + '</ol>';
+                              });
+
+                              // Convert markdown bold
+                              html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+                              return html;
+                            })()
+                          }}
+                        />
                       </div>
                     </div>
                   )}
@@ -319,6 +400,33 @@ export function PrecinctProvisionsBrowser({
           </div>
         </CardContent>
       )}
-    </Card>
+      </Card>
+
+      {/* PDF Page Image Modal */}
+      {viewingPdfImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingPdfImage(null)}
+        >
+          <div className="relative max-w-7xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden">
+            <button
+              onClick={() => setViewingPdfImage(null)}
+              className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10"
+              aria-label="Close"
+            >
+              <span className="text-2xl leading-none">×</span>
+            </button>
+            <div className="overflow-auto max-h-[90vh] p-4">
+              <img
+                src={viewingPdfImage}
+                alt="PDF Page"
+                className="w-full h-auto"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
