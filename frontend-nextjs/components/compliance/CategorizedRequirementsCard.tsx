@@ -39,19 +39,20 @@ interface CategoryGroup {
 interface CategorizedRequirementsCardProps {
   categories: CategoryGroup[];
   precinctName?: string;
-  onViewSource?: (provisionIds: number[], documentIds: string[]) => void;
   className?: string;
 }
 
 export function CategorizedRequirementsCard({
   categories,
   precinctName,
-  onViewSource,
   className = ''
 }: CategorizedRequirementsCardProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(categories.slice(0, 3).map(c => c.category)) // Expand first 3 by default
   );
+  const [expandedRequirementId, setExpandedRequirementId] = useState<number | null>(null);
+  const [sourceProvisions, setSourceProvisions] = useState<any[]>([]);
+  const [loadingSource, setLoadingSource] = useState(false);
 
   const toggleCategory = (category: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -61,6 +62,38 @@ export function CategorizedRequirementsCard({
       newExpanded.add(category);
     }
     setExpandedCategories(newExpanded);
+  };
+
+  const toggleRequirementSource = async (requirementId: number, provisionIds: number[]) => {
+    if (expandedRequirementId === requirementId) {
+      // Collapse if already expanded
+      setExpandedRequirementId(null);
+      setSourceProvisions([]);
+      return;
+    }
+
+    // Expand and fetch source provisions
+    setExpandedRequirementId(requirementId);
+    setLoadingSource(true);
+
+    try {
+      const response = await fetch('/api/provisions/by-ids', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: provisionIds })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.provisions) {
+          setSourceProvisions(data.provisions);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch source provisions:', error);
+    } finally {
+      setLoadingSource(false);
+    }
   };
 
   const getConfidenceBadge = (confidence: 'high' | 'medium' | 'low') => {
@@ -211,16 +244,62 @@ export function CategorizedRequirementsCard({
                         <div>
                           Source: {req.source_provision_ids.length} provision{req.source_provision_ids.length !== 1 ? 's' : ''}
                         </div>
-                        {onViewSource && (
-                          <button
-                            onClick={() => onViewSource(req.source_provision_ids, req.source_document_ids)}
-                            className="flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
-                          >
-                            View Source
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-                        )}
+                        <button
+                          onClick={() => toggleRequirementSource(req.id, req.source_provision_ids)}
+                          className="flex items-center gap-1 text-purple-600 hover:text-purple-700 hover:underline"
+                        >
+                          {expandedRequirementId === req.id ? 'Hide Source ▲' : 'View Source ▼'}
+                        </button>
                       </div>
+
+                      {/* Expanded Source Provisions - Inline */}
+                      {expandedRequirementId === req.id && (
+                        <div className="mt-3 border-t border-purple-100 pt-3">
+                          {loadingSource ? (
+                            <div className="text-sm text-gray-500 italic">Loading source provisions...</div>
+                          ) : sourceProvisions.length === 0 ? (
+                            <div className="text-sm text-gray-500 italic">No source provisions found</div>
+                          ) : (
+                            <div className="space-y-3">
+                              <div className="text-xs font-medium text-gray-700 mb-2">
+                                Source Provisions ({sourceProvisions.length})
+                              </div>
+                              {sourceProvisions.map((provision, provIdx) => (
+                                <div key={provision.id} className="border border-gray-200 rounded-lg bg-gray-50 p-3">
+                                  {/* Provision Header */}
+                                  <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200">
+                                    {provision.ref_number && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {provision.ref_number}
+                                      </Badge>
+                                    )}
+                                    {provision.section_header && (
+                                      <span className="text-xs font-semibold text-gray-700">
+                                        {provision.section_header}
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  {/* Provision Text */}
+                                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                                    {provision.provision_text}
+                                  </div>
+
+                                  {/* Provision Footer */}
+                                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+                                    {provision.pdf_name && (
+                                      <span>📄 {provision.pdf_name}</span>
+                                    )}
+                                    {provision.page_number && (
+                                      <span>Page {provision.page_number}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

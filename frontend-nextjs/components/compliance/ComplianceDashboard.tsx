@@ -1174,50 +1174,6 @@ export function ComplianceDashboard({
               <CategorizedRequirementsCard
                 categories={categorizedRequirements.categories}
                 precinctName={categorizedRequirements.precinct?.precinct_name}
-                onViewSource={async (provisionIds, documentIds) => {
-                  console.log('[ComplianceDashboard] View source requested:', provisionIds, documentIds);
-
-                  try {
-                    // Fetch source provisions by IDs
-                    const response = await fetch('/api/provisions/by-ids', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ ids: provisionIds })
-                    });
-
-                    if (response.ok) {
-                      const data = await response.json();
-                      if (data.success && data.provisions && data.provisions.length > 0) {
-                        // Show in existing legal text panel
-                        setSelectedProvision({
-                          constraint: {
-                            type: 'special',
-                            value: 'Source Provisions',
-                            source: {
-                              clause: 'Source',
-                              document: documentIds[0] || 'DCP',
-                              authority_level: 'DCP'
-                            }
-                          },
-                          provisions: data.provisions.map((p: any) => ({
-                            id: p.id,
-                            ref_number: p.ref_number || 'N/A',
-                            section_header: p.section_header || 'Precinct Provision',
-                            provision_text: p.provision_text,
-                            document_id: p.document_id
-                          }))
-                        });
-                        setPanelOpen(true);
-                      } else {
-                        console.warn('[ComplianceDashboard] No provisions found for IDs:', provisionIds);
-                      }
-                    } else {
-                      console.error('[ComplianceDashboard] Failed to fetch provisions:', response.statusText);
-                    }
-                  } catch (error) {
-                    console.error('[ComplianceDashboard] Error fetching source provisions:', error);
-                  }
-                }}
                 className="mt-4"
               />
             )}
