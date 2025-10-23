@@ -144,7 +144,7 @@ export async function getCompletePlanningData(address: string): Promise<Planning
  */
 export function extractKeyPlanningInfo(layers: PlanningPortalLayer[]) {
  const info: { [key: string]: any } = {};
- 
+
  for (const layer of layers) {
  switch (layer.layerName) {
  case 'Land Zoning Map':
@@ -154,20 +154,20 @@ export function extractKeyPlanningInfo(layers: PlanningPortalLayer[]) {
  info.lgaName = layer.results[0]['LGA Name'];
  }
  break;
- 
+
  case 'Height of Buildings Map':
  if (layer.results[0]) {
  info.maxHeight = parseFloat(layer.results[0]['Maximum Building Height'] || '0');
  info.heightUnits = layer.results[0].Units;
  }
  break;
- 
+
  case 'Floor Space Ratio Map':
  if (layer.results[0]) {
  info.fsr = parseFloat(layer.results[0]['Floor Space Ratio'] || '0');
  }
  break;
- 
+
  case 'Lot Size Map':
  if (layer.results[0]) {
  info.minLotSize = parseFloat(layer.results[0]['Lot Size'] || '0');
@@ -176,6 +176,74 @@ export function extractKeyPlanningInfo(layers: PlanningPortalLayer[]) {
  break;
  }
  }
- 
+
  return info;
+}
+
+/**
+ * Extract WGS84 coordinates (longitude, latitude) from property geometry
+ * Converts from MGA94 Zone 56 (EPSG:7856) to WGS84 (EPSG:4326)
+ *
+ * @param geometry - Property geometry from NSW Planning Portal
+ * @returns {longitude, latitude} in WGS84 or null if geometry invalid
+ */
+export function extractCoordinatesFromGeometry(geometry: PlanningPortalGeometry): { longitude: number; latitude: number } | null {
+ try {
+ if (!geometry.rings || geometry.rings.length === 0 || geometry.rings[0].length === 0) {
+ return null;
+ }
+
+ // Get all points from the first ring
+ const points = geometry.rings[0];
+
+ // Calculate centroid (average of all points)
+ let sumX = 0;
+ let sumY = 0;
+ for (const [x, y] of points) {
+ sumX += x;
+ sumY += y;
+ }
+ const centroidX = sumX / points.length;
+ const centroidY = sumY / points.length;
+
+ // Convert from MGA94 Zone 56 (EPSG:7856) to WGS84 (EPSG:4326)
+ // This is an approximate conversion. For production, use a proper projection library
+ // MGA94 Zone 56 uses meters, with false easting of 500000
+ // Approximate formula for Sydney region:
+ const longitude = ((centroidX - 500000) / 111320) + 151;
+ const latitude = (centroidY / 111320) - 38.5;
+
+ return { longitude, latitude };
+ } catch (error) {
+ console.error('Error extracting coordinates from geometry:', error);
+ return null;
+ }
+}
+
+/**
+ * Get property coordinates in WGS84 (for use with PostGIS)
+ *
+ * @param address - Full address string
+ * @returns {longitude, latitude} or null if not found
+ */
+export async function getPropertyCoordinates(address: string): Promise<{ longitude: number; latitude: number } | null> {
+ try {
+ // Get property info
+ const property = await getPropertyFromAddress(address);
+ if (!property) {
+ return null;
+ }
+
+ // Get geometry
+ const geometry = await getPropertyGeometry(property.propId);
+ if (!geometry) {
+ return null;
+ }
+
+ // Extract coordinates
+ return extractCoordinatesFromGeometry(geometry);
+ } catch (error) {
+ console.error('Error getting property coordinates:', error);
+ return null;
+ }
 }
