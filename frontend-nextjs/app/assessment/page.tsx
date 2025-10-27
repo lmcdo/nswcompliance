@@ -152,6 +152,90 @@ export default function AssessmentPage() {
                     </div>
                   </div>
 
+                  {/* TOD/HIA Indicators - Phase 6 */}
+                  {selectedProperty.constraints?.todPrecinct && (
+                    <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 mt-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="font-semibold text-blue-900 text-sm">
+                          Transport Oriented Development Area
+                        </span>
+                      </div>
+                      <p className="text-sm text-blue-800 mb-2">
+                        {selectedProperty.constraints.todPrecinct.precinctName}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="bg-white rounded p-2">
+                          <p className="text-gray-600 text-xs">Max FSR</p>
+                          <p className="font-semibold text-blue-900">
+                            {selectedProperty.constraints.todPrecinct.maxFSRBonus || 2.5}:1
+                          </p>
+                        </div>
+                        <div className="bg-white rounded p-2">
+                          <p className="text-gray-600 text-xs">Max Height</p>
+                          <p className="font-semibold text-blue-900">
+                            {selectedProperty.constraints.todPrecinct.maxHeightBonus || 24}m
+                          </p>
+                        </div>
+                        {selectedProperty.constraints.todPrecinct.stationDistance && (
+                          <div className="bg-white rounded p-2 col-span-2">
+                            <p className="text-gray-600 text-xs">Distance to Station</p>
+                            <p className="font-semibold text-blue-900">
+                              {selectedProperty.constraints.todPrecinct.stationDistance}m
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-blue-600 mt-2">
+                        {selectedProperty.constraints.todPrecinct.seppReference || 'SEPP (Housing) 2021'}
+                      </p>
+                    </div>
+                  )}
+
+                  {selectedProperty.constraints?.acceleratedTOD && (
+                    <div className="bg-purple-50 border-2 border-purple-300 rounded-lg p-4 mt-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        <span className="font-semibold text-purple-900 text-sm">
+                          Priority Accelerated Precinct
+                        </span>
+                      </div>
+                      <p className="text-sm text-purple-800 mt-1">
+                        Fast-track rezoning: {selectedProperty.constraints.acceleratedTOD.precinctName}
+                      </p>
+                      {selectedProperty.constraints.acceleratedTOD.expectedRezoning && (
+                        <p className="text-xs text-purple-600 mt-1">
+                          Expected: {selectedProperty.constraints.acceleratedTOD.expectedRezoning}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {selectedProperty.constraints?.hiaArea && (
+                    <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 mt-2">
+                      <div className="flex items-center gap-2 mb-1">
+                        <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                        <span className="font-semibold text-green-900 text-sm">
+                          Housing Infrastructure Area
+                        </span>
+                      </div>
+                      <p className="text-sm text-green-800 mt-1">
+                        {selectedProperty.constraints.hiaArea.hiaName}
+                      </p>
+                      {selectedProperty.constraints.hiaArea.specialControls && (
+                        <p className="text-xs text-green-700 mt-1">
+                          {selectedProperty.constraints.hiaArea.specialControls}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Development Type Selector */}
                   <div className="border-t pt-3">
                     <label className="text-sm text-gray-600 block mb-2">Development Type</label>
