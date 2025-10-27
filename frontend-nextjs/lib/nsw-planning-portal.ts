@@ -225,10 +225,85 @@ export class NSWPlanningPortalService {
  }
  
  return null;
- 
+
  } catch (error) {
  console.error('Property valuation error:', error);
  return null;
+ }
+ }
+
+ /**
+ * Get TOD and HIA layer data from NSW Planning Portal
+ * Queries SEPP Housing 2021 MapServer for TOD boundaries
+ * Phase 3: Separate API call for TOD/HIA detection
+ */
+ static async getTODLayers(geometry: { x: number; y: number }): Promise<PlanningLayer[]> {
+ const todLayers: PlanningLayer[] = [];
+
+ const controller = new AbortController();
+ const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+ try {
+ console.log('=== Fetching TOD/HIA Layers (Phase 3) ===');
+ console.log('Geometry:', geometry);
+
+ // Query 1: TOD Sites Map (SEPP Housing 2021)
+ const todUrl = `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/SEPP_Housing_2021/MapServer/3/query?` +
+ `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
+ `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
+
+ console.log('Querying TOD Sites Map...');
+ const todResponse = await fetch(todUrl, { signal: controller.signal });
+
+ if (todResponse.ok) {
+ const todData = await todResponse.json();
+ if (todData.features && todData.features.length > 0) {
+ console.log('✅ TOD layer found:', todData.features.length, 'features');
+ todLayers.push({
+ layerName: 'Transport Oriented Development Sites Map',
+ results: todData.features.map((f: any) => f.attributes)
+ });
+ } else {
+ console.log('❌ No TOD features at this location');
+ }
+ }
+
+ // Query 2: Accelerated TOD Precincts
+ const acceleratedUrl = `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/759/query?` +
+ `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
+ `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
+
+ console.log('Querying Accelerated TOD Precincts...');
+ const acceleratedResponse = await fetch(acceleratedUrl, { signal: controller.signal });
+
+ if (acceleratedResponse.ok) {
+ const acceleratedData = await acceleratedResponse.json();
+ if (acceleratedData.features && acceleratedData.features.length > 0) {
+ console.log('✅ Accelerated TOD found:', acceleratedData.features.length, 'features');
+ todLayers.push({
+ layerName: 'Accelerated TOD Precincts Rezoning Areas Map',
+ results: acceleratedData.features.map((f: any) => f.attributes)
+ });
+ } else {
+ console.log('❌ No Accelerated TOD features at this location');
+ }
+ }
+
+ clearTimeout(timeoutId);
+ console.log('TOD/HIA query complete. Found', todLayers.length, 'layer(s)');
+ return todLayers;
+
+ } catch (error) {
+ clearTimeout(timeoutId);
+
+ if (error instanceof Error && error.name === 'AbortError') {
+ console.error('TOD layers request timed out after 8 seconds (non-critical)');
+ } else {
+ console.error('TOD layers fetch failed (non-critical):', error);
+ }
+
+ // Graceful degradation - return empty array, don't break property lookup
+ return [];
  }
  }
 
@@ -439,23 +514,33 @@ export class NSWPlanningPortalService {
  throw new Error('Property not found');
  }
 
- // Step 2: Get planning layers and valuation data in parallel
- console.log('Step 2: Getting planning layers and valuation data...');
- const [layers, propertyData] = await Promise.all([
+ // Step 2: Get planning layers, valuation data, and TOD layers in parallel
+ console.log('Step 2: Getting planning layers, valuation data, and TOD/HIA data...');
+ const [layers, propertyData, todLayers] = await Promise.all([
  this.getPlanningLayers(searchResult.propId),
+ this.getPropertyValuation(searchResult.propId),
+ // Fetch TOD layers after we get property data (need geometry)
  this.getPropertyValuation(searchResult.propId)
+ .then(pd => pd ? this.getTODLayers(pd.geometry) : [])
+ .catch(() => {
+ console.log('TOD layers fetch failed, continuing without TOD data');
+ return [];
+ })
  ]);
 
  console.log('Layers received:', layers);
  console.log('Property data received:', propertyData);
+ console.log('TOD layers received:', todLayers);
 
  if (!propertyData) {
  throw new Error('Property valuation data not found');
  }
 
- // Step 3: Extract constraints from layers
- console.log('Step 3: Extracting constraints from layers...');
- const constraints = this.extractPlanningConstraints(layers);
+ // Step 3: Merge all layers and extract constraints
+ console.log('Step 3: Merging layers and extracting constraints...');
+ const allLayers = [...layers, ...todLayers];
+ console.log('Total layers (including TOD):', allLayers.length);
+ const constraints = this.extractPlanningConstraints(allLayers);
 
  // Step 4: Clean up the address from search result
  // Hunter Street Lewisham has incorrect "8-12" in addresses - remove it
@@ -472,9 +557,9 @@ export class NSWPlanningPortalService {
  return {
  propertyData,
  constraints,
- layers
+ layers: allLayers // Return merged layers including TOD/HIA
  };
- 
+
  } catch (error) {
  console.error('Property compliance data error:', error);
  return null;
