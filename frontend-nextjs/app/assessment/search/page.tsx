@@ -153,12 +153,40 @@ export default function ProvisionSearchPage() {
                   <div>
                     <label className="text-xs text-gray-600">Content</label>
                     <div
-                      className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none"
+                      className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none max-h-none overflow-visible"
+                      style={{ maxHeight: 'none' }}
                       dangerouslySetInnerHTML={{
-                        __html: (selectedProvision.provision_text || selectedProvision.content || '')
-                          .replace(/<table/g, '<table class="min-w-full border-collapse border border-gray-300 my-2"')
-                          .replace(/<td/g, '<td class="border border-gray-300 px-2 py-1 text-xs"')
-                          .replace(/<th/g, '<th class="border border-gray-300 px-2 py-1 text-xs font-semibold bg-gray-100"')
+                        __html: (() => {
+                          let text = selectedProvision.provision_text || selectedProvision.content || '';
+
+                          // Format tables
+                          text = text.replace(/<table/g, '<table class="min-w-full border-collapse border border-gray-300 my-2"');
+                          text = text.replace(/<td/g, '<td class="border border-gray-300 px-2 py-1 text-xs"');
+                          text = text.replace(/<th/g, '<th class="border border-gray-300 px-2 py-1 text-xs font-semibold bg-gray-100"');
+
+                          // Format numbered/lettered lists if not already HTML
+                          if (!text.includes('<table') && !text.includes('<ul') && !text.includes('<ol')) {
+                            // Convert roman numeral lists (i., ii., iii., iv., etc.)
+                            text = text.replace(/\n(i{1,3}v?|vi{0,3}|ix|x)\.\s+/g, '\n<li class="ml-4">');
+
+                            // Convert lettered lists (a), b), c), etc.)
+                            text = text.replace(/\n\(([a-z])\)\s+/g, '\n<li class="ml-4">');
+
+                            // Convert numbered lists (1., 2., 3., etc.)
+                            text = text.replace(/\n(\d+)\.\s+/g, '\n<li class="ml-4">');
+
+                            // Wrap in ul if we have list items
+                            if (text.includes('<li')) {
+                              text = '<ul class="list-disc space-y-1">' + text + '</ul>';
+                              text = text.replace(/<li/g, '</li><li').replace('<ul class="list-disc space-y-1"></li>', '<ul class="list-disc space-y-1">');
+                            }
+                          }
+
+                          // Preserve line breaks
+                          text = text.replace(/\n/g, '<br/>');
+
+                          return text;
+                        })()
                       }}
                     />
                   </div>

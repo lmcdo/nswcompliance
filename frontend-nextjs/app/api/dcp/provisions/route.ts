@@ -89,45 +89,90 @@ export async function POST(request: NextRequest) {
     }
 
     // Build DCP document pattern based on dev type
-    // Since zone/development_type metadata is often NULL, we build pattern from known DCP structure
-    let dcpDocumentPattern: string;
+    // Strategy: Include BOTH Part 2 (general controls) AND Part 4.X (dev-specific)
+    let dcpDocumentPatterns: string[] = [];
     let dcpSectionName: string;
 
     // Map development types to DCP section patterns
-    const devTypeMapping: Record<string, { pattern: string; section: string }> = {
+    // Each dev type gets Part 2 (general) + Part 4.X (specific)
+    const devTypeMapping: Record<string, { patterns: string[]; section: string }> = {
       'dwelling_house': {
-        pattern: `${lgaSearchPattern}.*4\\.1.*Low.*Density`,
-        section: '4.1 Low Density Residential'
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls (parking, privacy, solar)
+          `${lgaSearchPattern}.*4\\.1`             // Part 4.1: Low density specific
+        ],
+        section: 'Part 2 (General) + Part 4.1 (Low Density)'
       },
-      'multi_dwelling_housing': {
-        pattern: `${lgaSearchPattern}.*4\\.2.*Multi.*Dwelling`,
-        section: '4.2 Multi Dwelling Housing'
+      'secondary_dwelling': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*4\\.1`             // Part 4.1: Secondary dwellings covered here
+        ],
+        section: 'Part 2 (General) + Part 4.1 (Low Density)'
       },
-      'residential_flat_building': {
-        pattern: `${lgaSearchPattern}.*4\\.2.*Multi.*Dwelling`,
-        section: '4.2 Multi Dwelling Housing'
+      'multi_dwelling': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*4\\.2`             // Part 4.2: Multi dwelling (when available)
+        ],
+        section: 'Part 2 (General) + Part 4.2 (Multi Dwelling)'
       },
-      // Add more mappings as needed
+      'residential_flat': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*4\\.2`             // Part 4.2: RFBs covered here
+        ],
+        section: 'Part 2 (General) + Part 4.2 (Multi Dwelling)'
+      },
+      'shop_top_housing': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*4\\.3`             // Part 4.3: Shop top housing
+        ],
+        section: 'Part 2 (General) + Part 4.3 (Shop Top)'
+      },
+      'boarding_house': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*Boarding`          // Part 4.3: Boarding houses
+        ],
+        section: 'Part 2 (General) + Part 4.3 (Boarding House)'
+      },
+      'commercial': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*_5`                // Part 5: Commercial/Industrial
+        ],
+        section: 'Part 2 (General) + Part 5 (Commercial)'
+      },
+      'child_care': {
+        patterns: [
+          `${lgaSearchPattern}.*_2_`,              // Part 2: General controls
+          `${lgaSearchPattern}.*_5`                // Part 5: Community facilities
+        ],
+        section: 'Part 2 (General) + Part 5 (Community)'
+      }
     };
 
     // When user is filtering by provision type (tables/controls/objectives),
     // search across ALL DCP sections, not just the development type section
+    // NOTE: Category filters (setbacks, privacy, etc.) should REFINE the existing
+    // dev-type filtering, NOT trigger browse-all mode
     const isFilteringByType = provisionType && provisionType !== 'all';
-    const isFilteringByCategory = categories && categories.length > 0;
-    const isBrowsingMode = isFilteringByType || isFilteringByCategory;
+    const isBrowsingMode = isFilteringByType;  // Only provision type triggers browse mode
 
     const mapping = devTypeMapping[developmentType];
     if (mapping && !isBrowsingMode) {
-      // Normal mode: filter to specific development type section
-      dcpDocumentPattern = mapping.pattern;
+      // Normal mode: filter to Part 2 + dev-specific section
+      dcpDocumentPatterns = mapping.patterns;
       dcpSectionName = mapping.section;
     } else {
       // Browse mode: search all DCP documents for this LGA
-      dcpDocumentPattern = `${lgaSearchPattern}.*DCP`;
+      dcpDocumentPatterns = [`${lgaSearchPattern}.*DCP`];
       dcpSectionName = isBrowsingMode ? 'All DCP Sections (Browse Mode)' : 'All DCP Sections';
     }
 
-    console.log('[DCP Provisions API] Document pattern:', dcpDocumentPattern);
+    console.log('[DCP Provisions API] Document patterns:', dcpDocumentPatterns);
     console.log('[DCP Provisions API] Section:', dcpSectionName);
     console.log('[DCP Provisions API] Browse mode:', isBrowsingMode);
 
@@ -136,10 +181,29 @@ export async function POST(request: NextRequest) {
     const queryParams: any[] = [];
     let paramIndex = 1;
 
-    // Base filter: document_id pattern
-    whereClauses.push(`document_id ~* $${paramIndex}`);
-    queryParams.push(dcpDocumentPattern);
-    paramIndex++;
+    // Base filter: document_id patterns (OR combined)
+    // OPTIMIZATION: Use LIKE for LGA prefix (fast) + regex for precision
+    // Extract LGA prefix from first pattern
+    const lgaPrefix = lgaSearchPattern.includes('|')
+      ? lgaSearchPattern.split('|')[0].replace(/\.\*/g, '%').replace(/[()]/g, '').trim()
+      : lgaSearchPattern.replace(/\.\*/g, '%');
+
+    if (dcpDocumentPatterns.length > 1) {
+      // Multiple patterns - combine with LIKE prefix + OR regex
+      const patternClauses = dcpDocumentPatterns.map(() => {
+        const clause = `document_id ~ $${paramIndex}`;  // Use ~ instead of ~* for case-sensitive (faster)
+        paramIndex++;
+        return clause;
+      });
+      whereClauses.push(`(document_id LIKE $${paramIndex} AND (${patternClauses.join(' OR ')}))`);
+      queryParams.push(...dcpDocumentPatterns, lgaPrefix + '%');
+      paramIndex++;
+    } else {
+      // Single pattern - LIKE prefix + regex
+      whereClauses.push(`(document_id LIKE $${paramIndex} AND document_id ~ $${paramIndex + 1})`);
+      queryParams.push(lgaPrefix + '%', dcpDocumentPatterns[0]);
+      paramIndex += 2;
+    }
 
     // Search filter (full-text)
     if (search && search.trim()) {
@@ -182,8 +246,17 @@ export async function POST(request: NextRequest) {
       : '';
 
     // Main query with smart ranking
+    // OPTIMIZATION: Filter by document_id FIRST (uses index), then apply text filters on smaller set
     const provisionsQuery = `
-      WITH ranked_provisions AS (
+      WITH document_filtered AS MATERIALIZED (
+        -- Step 1: Filter by document_id first (can use index, reduces to ~241 rows)
+        -- MATERIALIZED forces PostgreSQL to execute this first and cache results
+        SELECT *
+        FROM regulatory_provisions
+        WHERE ${whereClauses[0]}  -- Document ID filter only
+      ),
+      ranked_provisions AS (
+        -- Step 2: Apply text filters and ranking on the smaller filtered set
         SELECT
           id,
           ref_number,
@@ -192,6 +265,7 @@ export async function POST(request: NextRequest) {
           document_id,
           provision_type,
           pdf_page,
+          pdf_page_image_url,
           zone,
           development_type,
           -- Provision type ranking (1=highest priority)
@@ -206,8 +280,8 @@ export async function POST(request: NextRequest) {
           ${search && search.trim() ? `
             ts_rank(provision_tsv, plainto_tsquery('english', $${queryParams.findIndex(p => p === search.trim()) + 1})) as search_rank
           ` : '0 as search_rank'}
-        FROM regulatory_provisions
-        WHERE ${whereClauses.join(' AND ')}
+        FROM document_filtered
+        WHERE ${whereClauses.length > 1 ? whereClauses.slice(1).join(' AND ') : 'TRUE'}
       )
       SELECT *
       FROM ranked_provisions
@@ -227,11 +301,16 @@ export async function POST(request: NextRequest) {
     // Execute query
     const provisionsResult = await query(provisionsQuery, queryParams);
 
-    // Get total count for pagination
+    // Get total count for pagination (optimized with same filter order)
     const countQuery = `
+      WITH document_filtered AS MATERIALIZED (
+        SELECT id, provision_text, provision_tsv, section_header
+        FROM regulatory_provisions
+        WHERE ${whereClauses[0]}
+      )
       SELECT COUNT(*) as total
-      FROM regulatory_provisions
-      WHERE ${whereClauses.join(' AND ')}
+      FROM document_filtered
+      WHERE ${whereClauses.length > 1 ? whereClauses.slice(1).join(' AND ') : 'TRUE'}
     `;
 
     const countResult = await query(countQuery, queryParams.slice(0, -2)); // Exclude limit/offset
@@ -259,7 +338,7 @@ export async function POST(request: NextRequest) {
         zone,
         developmentType,
         dcpSection: dcpSectionName,
-        documentPattern: dcpDocumentPattern,
+        documentPatterns: dcpDocumentPatterns,
         filters: {
           search: search || null,
           categories: categories.length > 0 ? categories : null,

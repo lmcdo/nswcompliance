@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Bookmark, Share2, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { getProvisionDisplayTitle, isMachineGeneratedId } from '@/lib/provision-title-utils';
 
 export interface ProvisionContent {
   id: number;
@@ -121,6 +122,52 @@ function TruncatedFormattedText({
   onImageClick?: (src: string) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Check if text contains HTML tables (from database)
+  const containsHtmlTable = text.includes('<table');
+
+  if (containsHtmlTable) {
+    // Render HTML tables directly (database stores tables as HTML, not markdown)
+    // Apply styling by wrapping in a div with global styles
+    return (
+      <div className="text-sm text-gray-800 leading-relaxed prose prose-sm max-w-none my-4">
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            .dcp-table-wrapper table {
+              width: 100%;
+              border-collapse: collapse;
+              margin: 8px 0;
+              font-size: 0.75rem;
+              background-color: white;
+              border: 1px solid #d1d5db;
+            }
+            .dcp-table-wrapper td,
+            .dcp-table-wrapper th {
+              border: 1px solid #d1d5db;
+              padding: 8px 12px;
+              text-align: left;
+              vertical-align: top;
+            }
+            .dcp-table-wrapper th {
+              background-color: #f3f4f6;
+              font-weight: 600;
+              color: #111827;
+            }
+            .dcp-table-wrapper tr:nth-child(even) {
+              background-color: #f9fafb;
+            }
+            .dcp-table-wrapper tr:hover {
+              background-color: #f3f4f6;
+            }
+          `
+        }} />
+        <div
+          className="dcp-table-wrapper overflow-x-auto"
+          dangerouslySetInnerHTML={{ __html: text }}
+        />
+      </div>
+    );
+  }
 
   // Convert SEPP tables to markdown format BEFORE processing
   text = parseSeppHorizontalTables(text);
@@ -888,21 +935,9 @@ export function LegalTextPanel({
                     {/* Clause Header */}
                     <div className="mb-3 pb-2 border-b border-gray-100">
                       <div className="flex items-baseline gap-2">
-                        {/* Check if ref_number looks like a proper clause number (e.g., "9.47" or "4.3") */}
-                        {/^\d+(\.\d+)*[A-Z]?$/.test(provision.ref_number) ? (
-                          <span className="font-semibold text-gray-900">
-                            Clause {provision.ref_number}
-                          </span>
-                        ) : (
-                          <span className="font-semibold text-gray-900">
-                            {provision.ref_number}
-                          </span>
-                        )}
-                        {provision.section_header && (
-                          <span className="text-sm font-medium text-gray-700">
-                            {provision.section_header}
-                          </span>
-                        )}
+                        <span className="font-semibold text-gray-900">
+                          {getProvisionDisplayTitle(provision)}
+                        </span>
                       </div>
                       {/* Document Source (if available) */}
                       {docSource && (

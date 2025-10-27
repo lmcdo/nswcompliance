@@ -1,36 +1,31 @@
 import psycopg2
+conn = psycopg2.connect(host='127.0.0.1', database='nsw_planning', user='postgres', password='postgres')
+cur = conn.cursor()
 
-conn = psycopg2.connect(
-    host='127.0.0.1',
-    database='nsw_planning',
-    user='postgres',
-    port=5432
-)
+cur.execute("""
+    SELECT column_name 
+    FROM information_schema.columns 
+    WHERE table_name = 'regulatory_provisions_canonical'
+    ORDER BY ordinal_position
+""")
+canon_cols = [row[0] for row in cur.fetchall()]
 
-cursor = conn.cursor()
-
-# Check columns
-cursor.execute("""
+cur.execute("""
     SELECT column_name
     FROM information_schema.columns
     WHERE table_name = 'regulatory_provisions'
-    AND table_schema = 'public'
     ORDER BY ordinal_position
 """)
+base_cols = [row[0] for row in cur.fetchall()]
 
-columns = [r[0] for r in cursor.fetchall()]
-print(f"Columns in regulatory_provisions: {columns}")
+print("Canonical view columns:")
+for col in canon_cols:
+    print(f"  {col}")
 
-# Get sample data
-cursor.execute("SELECT * FROM regulatory_provisions LIMIT 1")
-row = cursor.fetchone()
+print("\nBase table has but canonical doesn't:")
+for col in base_cols:
+    if col not in canon_cols:
+        print(f"  {col}")
 
-if row:
-    print("\nSample row:")
-    for col, val in zip(columns, row):
-        val_str = str(val) if val else "NULL"
-        if len(val_str) > 100:
-            val_str = val_str[:100] + "..."
-        print(f"  {col}: {val_str}")
-
+cur.close()
 conn.close()

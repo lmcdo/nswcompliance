@@ -134,7 +134,7 @@ export function CategorizedRequirementsCard({
   const highConfidencePercent = Math.round((totalHighConfidence / totalRequirements) * 100);
 
   return (
-    <Card className={`${className} border-purple-200 bg-purple-50/30`}>
+    <Card id="precinct-requirements-card" className={`${className} border-purple-200 bg-purple-50/30 transition-all`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
@@ -157,6 +157,29 @@ export function CategorizedRequirementsCard({
       </CardHeader>
 
       <CardContent className="space-y-3">
+        {/* Info Box: How Precinct Controls Work */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <span className="text-blue-600 text-lg flex-shrink-0">💡</span>
+            <div className="text-sm text-gray-700">
+              <strong className="text-blue-900">How Precinct Controls Work:</strong>
+              <p className="mt-1">
+                These location-specific requirements <strong>supplement or override</strong> the general DCP controls shown above.
+              </p>
+              <ul className="mt-2 ml-4 space-y-1 text-xs">
+                <li className="flex items-start gap-1">
+                  <span className="text-blue-600 flex-shrink-0">•</span>
+                  <span>If a precinct control conflicts with a general control (e.g., different setback distances), the <strong>precinct control takes precedence</strong>.</span>
+                </li>
+                <li className="flex items-start gap-1">
+                  <span className="text-blue-600 flex-shrink-0">•</span>
+                  <span>Precinct controls may also add <strong>additional requirements</strong> not found in general controls (e.g., heritage character considerations).</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {categories.map(category => {
           const isExpanded = expandedCategories.has(category.category);
           const confidencePercent = Math.round(

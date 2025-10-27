@@ -1,5 +1,6 @@
 ### CRITICAL: Primary Directive (READ FIRST)
 - **MANDATORY**: Always read `CLAUDE_PRIMARY_DIRECTIVE.md` at the start of EVERY session
+- **MANDATORY**: Always read `MCP_SERVER_CONFIGURATION.md` BEFORE touching MCP configs
 - **EXECUTION RULE**: One PRP per session - NO EXCEPTIONS
 - **MAIN REFERENCE**: `documentation/prps/PRP-A_MICRO_PIPELINE_IMPLEMENTATION.md`
 - **SESSION CONTROL**: Run `./prp_checkpoints/session_control.sh` to check next PRP
@@ -26,6 +27,71 @@
 3. Use `from db_safety_wrapper import get_safe_connection` for ALL database operations
 4. Create backup BEFORE any changes
 5. Use timeouts on ALL operations
+
+### DATA INTEGRITY - NEVER CREATE FAKE DATA
+- **CRITICAL: NEVER create fake, placeholder, or "approximate" data**
+- **NEVER guess coordinates, boundaries, addresses, or any real-world data**
+- **NEVER use made-up values when real data is unavailable**
+- **If you cannot obtain real data from an API, database, or file: STOP and ASK the user**
+- **When you hit a roadblock (API fails, geocoding fails, etc.): ASK instead of taking shortcuts**
+- **"Approximate" or "placeholder" data is NEVER acceptable - it's the same as fake data**
+
+### DATA QUALITY - NON-NEGOTIABLE STANDARDS
+- **CRITICAL: Data quality issues are NEVER "optional" or "low priority"**
+- **DO NOT deprioritize data quality issues because workarounds exist**
+- **DO NOT call database corruption "optional" because one component bypasses it**
+- **Malformed data in core tables is a STRUCTURAL FAILURE, not a cosmetic issue**
+
+#### Anti-Pattern: Expedience Bias
+**WRONG:** "99% of provisions are malformed, but LLM categorization worked despite it, so fixing is optional/low priority"
+**RIGHT:** "99% of provisions are malformed. This is Priority 1 regardless of workarounds because:
+  1. Future features will inherit garbage data
+  2. Database integrity is foundational
+  3. Users may see malformed data in other UIs
+  4. Search/indexing is affected
+  5. Professional credibility is undermined"
+
+#### Data Quality Decision Matrix
+When evaluating data issues, answer these questions:
+1. **Does this affect a core data table?** (regulatory_provisions, dcp_precinct_provisions, etc.)
+   - YES = Priority 1 or 2, NEVER optional
+2. **What percentage of data is affected?**
+   - >2% = Priority 1
+   - 0.5-2% = Priority 2
+   - <0.5% = Priority 3
+3. **Do workarounds exist?**
+   - **IRRELEVANT** - workarounds don't excuse data corruption
+4. **Could future features use this data?**
+   - If YES = Must be fixed before "complete"
+
+#### Example: PDF Header Malformation
+- **Affected:** 54.7% of all Marrickville DCP provisions (646 of 1,182)
+- **Pattern:** First 150 chars are PDF page headers, not content
+- **Workaround exists:** LLM categorization bypasses by reading through garbage
+- **CORRECT PRIORITY:** Priority 1 (not optional!)
+- **Reasoning:** Core table corruption affecting majority of data
+
+#### Never Say:
+- ❌ "Low priority - categorized requirements bypass this"
+- ❌ "Optional - LLM worked despite malformation"
+- ❌ "Can wait - users see structured data not raw text"
+
+#### Always Say:
+- ✅ "Priority 1 - 50%+ of core table data is malformed"
+- ✅ "Must fix before v1 - database integrity is foundational"
+- ✅ "Blocking issue - future features will inherit this corruption"
+
+### Geographic/Boundary Data Rules:
+1. **ALWAYS use existing scripts** (like `extract_precinct_boundaries.py`) as the methodology
+2. **ALWAYS use real APIs** (NSW Planning Portal, geocoding services) for coordinate data
+3. **If a script exists for a task, READ IT FIRST and follow its approach exactly**
+4. **NEVER create rectangular approximations** - real boundaries are irregular and follow streets/features
+5. **NEVER make up lat/lon coordinates** - every coordinate must come from a verified source
+6. **Check existing code** in the repo before implementing - the correct method likely already exists
+
+### When Blocked - Proper Response:
+**DON'T DO THIS:** "Geocoding failed, so I'll create approximate rectangles as placeholders"
+**DO THIS:** "Geocoding failed. I see `extract_precinct_boundaries.py` uses NSW Planning Portal API. Should I use that method to get real coordinates? I will NOT create fake/approximate boundaries."
 
 ### Project Awareness & Context 
 - **Always read `PLANNING.md`** at the start of a new conversation to understand the project's architecture, goals, style, and constraints.

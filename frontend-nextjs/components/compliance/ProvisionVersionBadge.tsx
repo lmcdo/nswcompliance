@@ -126,18 +126,40 @@ export function ProvisionVersionBadge({ version, compact = false }: ProvisionVer
  * Compact version badge for inline display in search results
  */
 export function ProvisionVersionInline({ version }: { version: ProvisionVersionMetadata }) {
+  // Badge styling based on staleness
+  const badgeStyles = {
+    current: 'bg-green-50 text-green-700 border-green-300',
+    caution: 'bg-yellow-50 text-yellow-700 border-yellow-300',
+    stale: 'bg-red-50 text-red-700 border-red-300'
+  };
+
+  const icons = {
+    current: '✓',
+    caution: '⚠️',
+    stale: '🚨'
+  };
+
+  const badgeStyle = badgeStyles[version.staleness_level];
+  const icon = icons[version.staleness_level];
+
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs font-medium ${badgeStyle}`}>
+      <span>{icon}</span>
       {version.regulation_year && (
-        <span className="font-medium">{version.regulation_year}</span>
+        <span>{version.regulation_year}</span>
       )}
       {version.amendment_reference && (
-        <span className="text-gray-500">
-          {version.amendment_reference}
+        <span>• {version.amendment_reference}</span>
+      )}
+      {version.staleness_level !== 'current' && (
+        <span className="text-[10px] uppercase">
+          {version.staleness_level === 'caution' ? 'Verify' : 'Stale'}
         </span>
       )}
-      {version.staleness_level === 'stale' && (
-        <span className="text-red-600 font-medium">⚠️</span>
+      {version.days_since_verified > 30 && (
+        <span className="text-[10px]">
+          ({version.days_since_verified}d)
+        </span>
       )}
     </span>
   );

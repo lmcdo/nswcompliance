@@ -4,7 +4,7 @@
  */
 
 import { Pool } from 'pg';
-import { getPropertyCoordinates } from '../services/planning-portal-api';
+import { getPropertyCoordinates } from '../../lib/services/planning-portal-api';
 
 const pool = new Pool({
   host: 'localhost',

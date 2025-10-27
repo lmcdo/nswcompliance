@@ -7,7 +7,7 @@ Write-Host "=== PostGIS Installation for PostgreSQL 17 ===" -ForegroundColor Cya
 Write-Host ""
 
 # Configuration
-$postgisUrl = "https://download.osgeo.org/postgis/windows/pg17/postgis-bundle-pg17-3.4.2x64.zip"
+$postgisUrl = "https://download.osgeo.org/postgis/windows/pg17/postgis-bundle-pg17-3.5.3x64.zip"
 $tempDir = "$env:TEMP\postgis-install"
 $zipFile = "$tempDir\postgis-bundle.zip"
 $extractDir = "$tempDir\extract"

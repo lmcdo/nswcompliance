@@ -190,19 +190,6 @@ export function StructuredSeppRequirements({
                 );
               })}
 
-              {/* View Full Legal Text Link */}
-              {sourceProvisionId && onViewFullText && (
-                <div className="pt-3 border-t border-purple-200">
-                  <button
-                    onClick={() => onViewFullText(sourceProvisionId)}
-                    className="text-sm text-purple-700 hover:text-purple-900 hover:underline flex items-center gap-1"
-                  >
-                    <span>View full legal text</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-
               {/* How to Use This Section */}
               {!compact && (
                 <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
@@ -213,7 +200,6 @@ export function StructuredSeppRequirements({
                     <li>• Click category headers to expand/collapse requirements</li>
                     <li>• Each ✓ represents a specific compliance requirement</li>
                     <li>• All requirements must be met for SEPP compliance</li>
-                    <li>• Click "View full legal text" for exact legislative wording</li>
                   </ul>
                 </div>
               )}

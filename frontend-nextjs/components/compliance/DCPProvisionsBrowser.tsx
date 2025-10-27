@@ -31,6 +31,10 @@ interface DCPProvisionsBrowserProps {
   developmentType: string;
   address?: string;
   onViewProvision: (provision: ProvisionResult) => void;
+  // Precinct cross-reference data
+  precinctDetected?: boolean;
+  precinctName?: string;
+  precinctCategories?: Record<string, number>; // e.g., { setback_front: 1, landscaping: 2 }
 }
 
 const CATEGORY_OPTIONS = [
@@ -54,7 +58,10 @@ export function DCPProvisionsBrowser({
   zone,
   developmentType,
   address,
-  onViewProvision
+  onViewProvision,
+  precinctDetected = false,
+  precinctName,
+  precinctCategories = {}
 }: DCPProvisionsBrowserProps) {
   const [expanded, setExpanded] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -129,6 +136,18 @@ export function DCPProvisionsBrowser({
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
+            // DEBUG: Check if pdf_page_image_url exists
+            console.log('[DCPProvisionsBrowser] API Response:', {
+              totalCount: data.data.totalCount,
+              provisionsCount: data.data.provisions.length,
+              firstProvision: data.data.provisions[0] ? {
+                id: data.data.provisions[0].id,
+                ref: data.data.provisions[0].ref_number,
+                hasPdfUrl: !!data.data.provisions[0].pdf_page_image_url,
+                pdfUrl: data.data.provisions[0].pdf_page_image_url
+              } : null
+            });
+
             // Append or replace based on offset
             if (offset === 0) {
               setProvisions(data.data.provisions);
@@ -229,6 +248,119 @@ export function DCPProvisionsBrowser({
               💡 Change "Development Type" dropdown above to see different provisions
             </div>
           </div>
+
+          {/* Precinct Cross-Reference Warning */}
+          {(() => {
+            if (!precinctDetected || !precinctCategories || Object.keys(precinctCategories).length === 0) {
+              return null;
+            }
+
+            // Detect overlap between user's search/filters and precinct categories
+            const searchLower = debouncedSearch.toLowerCase();
+            const selectedCatIds = debouncedCategories;
+
+            // Category mapping: search term/filter ID -> precinct category names
+            const categoryMapping: Record<string, string[]> = {
+              'setback': ['setback_front', 'setback_side', 'setback_rear'],
+              'landscaping': ['landscaping'],
+              'privacy': ['privacy'],
+              'solar': ['solar'],
+              'design': ['character', 'design'],
+              'open_space': ['open_space']
+            };
+
+            // Find overlapping precinct categories
+            let matchingPrecinctCategories: string[] = [];
+            let totalPrecinctReqs = 0;
+            let searchContext = '';
+
+            // Check active category filters
+            if (selectedCatIds.length > 0) {
+              selectedCatIds.forEach(filterId => {
+                const precinctCatNames = categoryMapping[filterId] || [];
+                precinctCatNames.forEach(precinctCat => {
+                  if (precinctCategories[precinctCat]) {
+                    matchingPrecinctCategories.push(precinctCat);
+                    totalPrecinctReqs += precinctCategories[precinctCat];
+                  }
+                });
+              });
+              searchContext = selectedCatIds.map(id =>
+                CATEGORY_OPTIONS.find(c => c.id === id)?.label || id
+              ).join(', ');
+            }
+            // Check search term
+            else if (searchLower) {
+              Object.entries(categoryMapping).forEach(([keyword, precinctCatNames]) => {
+                if (searchLower.includes(keyword)) {
+                  precinctCatNames.forEach(precinctCat => {
+                    if (precinctCategories[precinctCat]) {
+                      matchingPrecinctCategories.push(precinctCat);
+                      totalPrecinctReqs += precinctCategories[precinctCat];
+                    }
+                  });
+                  searchContext = keyword;
+                }
+              });
+            }
+
+            // Show warning if overlap detected
+            if (matchingPrecinctCategories.length > 0 && totalPrecinctReqs > 0) {
+              const scrollToPrecinct = () => {
+                const element = document.getElementById('precinct-requirements-card');
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  // Flash the element to draw attention
+                  element.classList.add('ring-4', 'ring-purple-400', 'ring-opacity-50');
+                  setTimeout(() => {
+                    element.classList.remove('ring-4', 'ring-purple-400', 'ring-opacity-50');
+                  }, 2000);
+                }
+              };
+
+              return (
+                <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-3 mt-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-yellow-600 text-lg flex-shrink-0">⚠️</span>
+                    <div className="text-sm flex-1">
+                      <strong className="text-yellow-900">Don't miss precinct-specific controls:</strong>
+                      <p className="mt-1 text-gray-700">
+                        This address is in <strong>{precinctName}</strong>.
+                      </p>
+                      <button
+                        onClick={scrollToPrecinct}
+                        className="mt-2 text-blue-600 hover:text-blue-800 font-medium underline flex items-center gap-1"
+                      >
+                        <span>→ View {totalPrecinctReqs} additional {searchContext || 'requirement'}{totalPrecinctReqs !== 1 ? 's' : ''}</span>
+                        <span className="text-xs">specific to this precinct below</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            // Show general precinct notice even without overlap
+            return (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mt-3">
+                <div className="flex items-start gap-2">
+                  <span className="text-purple-600 text-lg flex-shrink-0">📍</span>
+                  <div className="text-sm text-gray-700">
+                    This address is in <strong>{precinctName}</strong>.
+                    <button
+                      onClick={() => {
+                        const element = document.getElementById('precinct-requirements-card');
+                        element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                      className="ml-1 text-purple-600 hover:text-purple-800 font-medium underline"
+                    >
+                      View precinct-specific requirements below
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Category Filters */}
           <div>
@@ -414,17 +546,26 @@ export function DCPProvisionsBrowser({
                                 })}
                               </span>
                             </div>
-                            {provision.pdf_page_image_url && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setViewingPdfImage(provision.pdf_page_image_url || null);
-                                }}
-                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                              >
-                                📄 View PDF Page
-                              </button>
-                            )}
+                            {(() => {
+                              console.log('[DCPProvisionsBrowser] Provision expanded:', {
+                                id: provision.id,
+                                ref: provision.ref_number,
+                                hasPdfUrl: !!provision.pdf_page_image_url,
+                                pdfUrl: provision.pdf_page_image_url
+                              });
+                              return provision.pdf_page_image_url && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    console.log('[DCPProvisionsBrowser] Opening PDF:', provision.pdf_page_image_url);
+                                    setViewingPdfImage(provision.pdf_page_image_url || null);
+                                  }}
+                                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                >
+                                  📄 View PDF Page
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div

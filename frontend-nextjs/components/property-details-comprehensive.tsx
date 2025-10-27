@@ -183,7 +183,8 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
            <div key={layerName} className={`border rounded-lg ${colors.bg} ${colors.border}`}>
              <Button
                variant="ghost"
-               className="!flex w-full justify-between h-auto p-3 font-normal whitespace-normal text-left"
+               className="!flex w-full justify-between h-auto p-3 font-normal whitespace-normal text-left hover:opacity-90"
+               style={isPresent && isSEPP ? { backgroundColor: 'rgb(255 247 237)', backgroundImage: 'none' } as React.CSSProperties : {}}
                onClick={() => layer && toggleLayer(layer.id)}
                disabled={!isPresent}
              >

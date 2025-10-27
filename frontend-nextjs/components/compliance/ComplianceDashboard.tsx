@@ -1167,6 +1167,13 @@ export function ComplianceDashboard({
                 // No-op - expansion handled internally by DCPProvisionsBrowser
                 // Keeping prop for compatibility
               }}
+              // Pass precinct data for cross-reference
+              precinctDetected={!!categorizedRequirements}
+              precinctName={categorizedRequirements?.precinct?.precinct_name}
+              precinctCategories={categorizedRequirements?.categories?.reduce((acc, cat) => {
+                acc[cat.category] = cat.total_count;
+                return acc;
+              }, {} as Record<string, number>)}
             />
 
             {/* Week 3: Categorized Precinct Requirements (replaces old browser) */}

@@ -198,14 +198,6 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           </button>
         </div>
       </form>
-
-      <div className="text-xs text-gray-500 text-center space-x-4">
-        <span> Manual entry allowed</span>
-        <span>•</span>
-        <span> Google suggestions optional</span>
-        <span>•</span>
-        <span> Real-time property lookup</span>
-      </div>
     </div>
   );
 }
