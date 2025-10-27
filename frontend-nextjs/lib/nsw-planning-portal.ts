@@ -35,6 +35,48 @@ export interface PlanningConstraints {
  acidSulfateSoils?: string;
  basixClimate: string | null;
  basixWater: string | null;
+
+ // Phase 4: TOD/HIA fields
+ todPrecinct?: TODPrecinctInfo;
+ acceleratedTOD?: AcceleratedTODInfo;
+ hiaArea?: HIAInfo;
+}
+
+/**
+ * Transport Oriented Development (TOD) Precinct Information
+ * From SEPP (Housing) 2021 TOD Sites Map
+ */
+export interface TODPrecinctInfo {
+ inTODArea: boolean;
+ precinctName: string;
+ stationName?: string;
+ stationDistance?: number;
+ maxFSRBonus?: number;
+ maxHeightBonus?: number;
+ legislativeClause: string;
+ seppReference: string;
+}
+
+/**
+ * Accelerated TOD Precinct Information
+ * Priority precincts for fast-tracked rezoning
+ */
+export interface AcceleratedTODInfo {
+ inAcceleratedPrecinct: boolean;
+ precinctName: string;
+ expectedRezoning?: string;
+ priorityArea: boolean;
+}
+
+/**
+ * Housing Infrastructure Area (HIA) Information
+ * Special infrastructure areas with modified controls
+ */
+export interface HIAInfo {
+ inHIA: boolean;
+ hiaName: string;
+ specialControls?: string;
+ legislativeClause?: string;
 }
 
 export interface PlanningLayer {

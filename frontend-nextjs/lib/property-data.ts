@@ -3,9 +3,19 @@
  * Integrates with NSW Planning Portal APIs for real property data
  */
 
-import { NSWPlanningPortalService, NSWPropertyData, PlanningConstraints } from './nsw-planning-portal';
+import {
+ NSWPlanningPortalService,
+ NSWPropertyData,
+ PlanningConstraints,
+ TODPrecinctInfo,
+ AcceleratedTODInfo,
+ HIAInfo
+} from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
+
+// Re-export TOD/HIA interfaces for use in components
+export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
 
 export interface PropertyConstraints extends PlanningConstraints {
  applicableSepps?: string[];
