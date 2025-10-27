@@ -250,6 +250,30 @@ export class NSWPlanningPortalService {
  applicableSepps: []
  };
 
+ // ===== PHASE 2 TOD/HIA LAYER AUDIT =====
+ console.log('\n=== LAYER COVERAGE AUDIT (Phase 2) ===');
+ console.log('Total layers received:', layers.length);
+ console.log('\nAll layer names:');
+ layers.forEach((layer, index) => {
+ console.log(`  ${index + 1}. ${layer.layerName} (${layer.results?.length || 0} results)`);
+ });
+
+ // Check for TOD/HIA-related keywords
+ const todKeywords = ['transport', 'tod', 'housing', 'accelerated', 'hia', 'infrastructure', 'station', 'precinct'];
+ const todRelatedLayers = layers.filter(l =>
+ todKeywords.some(keyword => l.layerName.toLowerCase().includes(keyword))
+ );
+
+ if (todRelatedLayers.length > 0) {
+ console.log('\n✅ TOD/HIA-related layers FOUND:');
+ todRelatedLayers.forEach(l => console.log(`  - ${l.layerName}`));
+ } else {
+ console.log('\n❌ NO TOD/HIA-related layers found in EPI response');
+ console.log('  Will need separate API call (Phase 3)');
+ }
+ console.log('=== END LAYER AUDIT ===\n');
+ // ===== END PHASE 2 AUDIT =====
+
  console.log('Extracting from', layers.length, 'layers');
  layers.forEach(layer => {
  console.log('Layer:', layer.layerName, 'Results:', layer.results?.length || 0);
