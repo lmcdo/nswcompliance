@@ -110,19 +110,28 @@ export class NSWPlanningPortalService {
 
  /**
  * Get planning layers (zoning, height, FSR, heritage, etc.)
+ * Now includes 10s timeout to prevent indefinite hangs
  */
  static async getPlanningLayers(propId: number, retryCount: number = 0): Promise<PlanningLayer[]> {
  console.log('=== DEBUG: getPlanningLayers ===');
  console.log('PropId:', propId, 'Retry:', retryCount);
- 
+
+ // Add timeout protection to prevent indefinite hangs
+ const controller = new AbortController();
+ const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
  try {
  const response = await fetch(
- `${this.BASE_URL}/layerintersect?type=property&id=${propId}&layers=epi`
+ `${this.BASE_URL}/layerintersect?type=property&id=${propId}&layers=epi`,
+ { signal: controller.signal }
  );
- 
+
+ // Clear timeout on successful response
+ clearTimeout(timeoutId);
+
  console.log('Response status:', response.status);
  console.log('Response ok:', response.ok);
- 
+
  if (response.status === 429) {
  if (retryCount < 2) {
  console.log('Rate limited! Waiting 2 seconds before retry...');
@@ -133,19 +142,35 @@ export class NSWPlanningPortalService {
  return [];
  }
  }
- 
+
  if (!response.ok) {
  const errorText = await response.text();
  console.log('Response error text:', errorText);
  throw new Error(`Planning layers failed: ${response.status}`);
  }
- 
+
  const data = await response.json();
  console.log('Planning layers data received:', data?.length || 0, 'layers');
- 
+
  return data || [];
- 
+
  } catch (error) {
+ // Clear timeout in case of error
+ clearTimeout(timeoutId);
+
+ // Handle timeout specifically
+ if (error instanceof Error && error.name === 'AbortError') {
+ console.error('Planning layers request timed out after 10 seconds');
+ if (retryCount < 1) {
+ console.log('Retrying after timeout...');
+ await new Promise(resolve => setTimeout(resolve, 2000));
+ return this.getPlanningLayers(propId, retryCount + 1);
+ } else {
+ console.error('Planning layers timeout after retry, giving up');
+ return [];
+ }
+ }
+
  console.error('Planning layers error:', error);
  return [];
  }
