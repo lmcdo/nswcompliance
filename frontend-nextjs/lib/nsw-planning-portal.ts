@@ -473,6 +473,59 @@ export class NSWPlanningPortalService {
  case 'Greater Sydney Tree Canopy Cover 2019':
  // Add tree canopy data extraction
  break;
+
+ // ===== PHASE 5: TOD/HIA EXTRACTION =====
+ case 'Transport Oriented Development Sites Map':
+ case 'TOD Precinct':
+ case 'SEPP Housing 2021 - TOD':
+ case 'SEPP (Housing) 2021':
+ console.log('✅ Extracting TOD precinct data:', result);
+ constraints.todPrecinct = {
+ inTODArea: true,
+ precinctName: result['Precinct Name'] || result['PrecinctName'] ||
+ result['Station Name'] || result['StationName'] ||
+ result['Name'] || 'TOD Precinct',
+ stationName: result['Station Name'] || result['StationName'] || result['STATION_NAME'],
+ stationDistance: result['Distance to Station'] || result['StationDistance'] ||
+ result['DISTANCE'] ? parseFloat(result['Distance to Station'] || result['StationDistance'] || result['DISTANCE']) : undefined,
+ maxFSRBonus: result['Maximum FSR'] || result['Max FSR'] || result['FSR'] ?
+ parseFloat(result['Maximum FSR'] || result['Max FSR'] || result['FSR']) : 2.5,
+ maxHeightBonus: result['Maximum Height'] || result['Max Height'] || result['HEIGHT'] ?
+ parseFloat(result['Maximum Height'] || result['Max Height'] || result['HEIGHT']) : 24,
+ legislativeClause: result['Legislative Clause'] || result['Clause'] || 'Clause 4.4',
+ seppReference: result['EPI Name'] || result['SEPP'] || 'SEPP (Housing) 2021'
+ };
+ console.log('TOD precinct extracted:', constraints.todPrecinct);
+ break;
+
+ case 'Accelerated TOD Precincts Rezoning Areas Map':
+ case 'Accelerated Transport Oriented Development':
+ case 'Priority Precincts':
+ console.log('✅ Extracting Accelerated TOD data:', result);
+ constraints.acceleratedTOD = {
+ inAcceleratedPrecinct: true,
+ precinctName: result['Precinct Name'] || result['PrecinctName'] ||
+ result['Name'] || 'Accelerated TOD Precinct',
+ expectedRezoning: result['Rezoning Date'] || result['ExpectedDate'] ||
+ result['Expected_Rezoning'] || result['REZONING_DATE'],
+ priorityArea: true
+ };
+ console.log('Accelerated TOD extracted:', constraints.acceleratedTOD);
+ break;
+
+ case 'Housing Infrastructure Areas':
+ case 'HIA Map':
+ case 'State Significant Development':
+ console.log('✅ Extracting HIA data:', result);
+ constraints.hiaArea = {
+ inHIA: true,
+ hiaName: result['HIA Name'] || result['Name'] || result['Area Name'] || 'HIA Area',
+ specialControls: result['Special Controls'] || result['Controls'] || result['CONTROLS'],
+ legislativeClause: result['Legislative Clause'] || result['Clause']
+ };
+ console.log('HIA area extracted:', constraints.hiaArea);
+ break;
+ // ===== END PHASE 5 =====
  }
  });
  });
