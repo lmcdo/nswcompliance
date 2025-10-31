@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         rp.zone,
         rp.development_type,
         rp.page_number,
+        rp.pdf_page_image_url,
         d.pdf_name,
         d.regulation_year,
         d.amendment_reference

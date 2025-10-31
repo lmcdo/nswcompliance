@@ -69,10 +69,164 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
     return null;
   }
 
+  // Detect if the Planning API heritage data is actually an HCA (not a specific heritage item)
+  const isHeritageDataActuallyHCA = heritage?.heritageType?.toLowerCase().includes('conservation area');
+
+  // Check if we have actual heritage item data (not HCA)
+  const hasSpecificHeritageItem = heritage?.isHeritage &&
+    (heritage.heritageItemName || heritage.heritageItemNumber) &&
+    !isHeritageDataActuallyHCA;
+
   // Determine if State or Local heritage based on significance
-  const isStateHeritage = heritage.heritageSignificance?.toLowerCase() === 'state';
+  const isStateHeritage = heritage?.heritageSignificance?.toLowerCase() === 'state';
   const badgeColor = isStateHeritage ? 'bg-red-100 text-red-800 border-red-300' : 'bg-blue-100 text-blue-800 border-blue-300';
 
+  // If Planning API returned HCA data (not a specific item), prefer HCA API data if available
+  // Otherwise use Planning API HCA data
+  if (isHeritageDataActuallyHCA && !hasSpecificHeritageItem) {
+    const displayHCA = hcaData || {
+      name: heritage.heritageItemName || '',
+      id: heritage.heritageItemNumber || '',
+      significance: heritage.heritageSignificance || 'Local',
+      legislativeClause: heritage.heritageClause || 'Clause 5.10',
+      layClass: heritage.heritageType || 'Conservation Area',
+      epiName: ''
+    };
+
+    return (
+      <Card className="border-amber-300 bg-amber-50/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-700" />
+              <CardTitle className="text-base text-amber-900">Heritage Conservation Area</CardTitle>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-semibold">
+              {displayHCA.significance}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="bg-white rounded-lg p-3 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Heritage Conservation Area</div>
+            <div className="text-sm font-bold text-amber-900">{displayHCA.name}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Heritage ID</div>
+              <div className="text-sm font-semibold text-amber-900">{displayHCA.id}</div>
+            </div>
+            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Type</div>
+              <div className="text-sm font-semibold text-amber-900">{displayHCA.layClass}</div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-3 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Legislative Control</div>
+            <div className="text-sm font-bold text-amber-900">{displayHCA.legislativeClause}</div>
+            {heritage?.heritageLegislationUrl && (
+              <a
+                href={heritage.heritageLegislationUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 mt-1.5"
+              >
+                View LEP Heritage Provisions
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+
+          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900">
+              Development within this Heritage Conservation Area requires assessment against
+              heritage conservation principles under {displayHCA.legislativeClause}.
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-amber-200">
+            <div className="text-xs text-amber-600 mb-2">Heritage Resources:</div>
+            <a
+              href="https://www.heritage.nsw.gov.au/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+            >
+              NSW Heritage Office
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // If ONLY HCA from HCA API (no heritage data from Planning API), show simplified HCA-only card
+  if (!hasSpecificHeritageItem && hcaData && !heritage?.isHeritage) {
+    return (
+      <Card className="border-amber-300 bg-amber-50/30">
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-amber-700" />
+              <CardTitle className="text-base text-amber-900">Heritage Conservation Area</CardTitle>
+            </div>
+            <Badge className="bg-amber-100 text-amber-800 border-amber-300 font-semibold">
+              {hcaData.significance}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="bg-white rounded-lg p-3 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Heritage Conservation Area</div>
+            <div className="text-sm font-bold text-amber-900">{hcaData.name}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Heritage ID</div>
+              <div className="text-sm font-semibold text-amber-900">{hcaData.id}</div>
+            </div>
+            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Type</div>
+              <div className="text-sm font-semibold text-amber-900">{hcaData.layClass}</div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-3 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-1">Legislative Control</div>
+            <div className="text-sm font-bold text-amber-900">{hcaData.legislativeClause}</div>
+          </div>
+
+          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 flex gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-amber-900">
+              Development within this Heritage Conservation Area requires assessment against
+              heritage conservation principles under {hcaData.legislativeClause}.
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-amber-200">
+            <div className="text-xs text-amber-600 mb-2">Heritage Resources:</div>
+            <a
+              href="https://www.heritage.nsw.gov.au/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+            >
+              NSW Heritage Office
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show full heritage item card (with optional HCA section at bottom)
   return (
     <Card className="border-blue-300 bg-blue-50/30">
       <CardHeader className="pb-3">
@@ -82,13 +236,13 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
             <CardTitle className="text-base text-blue-900">Heritage Listed Property</CardTitle>
           </div>
           <Badge className={`${badgeColor} font-semibold`}>
-            {heritage.heritageSignificance || 'Heritage'} Significance
+            {heritage?.heritageSignificance || 'Heritage'} Significance
           </Badge>
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Heritage Item Name */}
-        {heritage.heritageItemName && (
+        {heritage?.heritageItemName && (
           <div className="bg-white rounded-lg p-3 border border-blue-200">
             <div className="text-xs font-semibold text-gray-600 mb-1">Heritage Item</div>
             <div className="text-sm font-bold text-gray-900">{heritage.heritageItemName}</div>
@@ -98,7 +252,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
         {/* Heritage Details Grid */}
         <div className="grid grid-cols-2 gap-2">
           {/* Item Number */}
-          {heritage.heritageItemNumber && (
+          {heritage?.heritageItemNumber && (
             <div className="bg-white rounded-lg p-2.5 border border-blue-100">
               <div className="text-xs text-gray-600 mb-0.5">Item Number</div>
               <div className="text-sm font-semibold text-gray-900">{heritage.heritageItemNumber}</div>
@@ -106,7 +260,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
           )}
 
           {/* Heritage Type */}
-          {heritage.heritageType && (
+          {heritage?.heritageType && (
             <div className="bg-white rounded-lg p-2.5 border border-blue-100">
               <div className="text-xs text-gray-600 mb-0.5">Heritage Type</div>
               <div className="text-sm font-semibold text-gray-900">{heritage.heritageType}</div>
@@ -115,11 +269,11 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
         </div>
 
         {/* Legislative Clause */}
-        {heritage.heritageClause && (
+        {heritage?.heritageClause && (
           <div className="bg-white rounded-lg p-3 border border-blue-200">
             <div className="text-xs font-semibold text-gray-600 mb-1">Legislative Control</div>
             <div className="text-sm font-bold text-gray-900">{heritage.heritageClause}</div>
-            {heritage.heritageLegislationUrl && (
+            {heritage?.heritageLegislationUrl && (
               <a
                 href={heritage.heritageLegislationUrl}
                 target="_blank"
@@ -140,7 +294,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
             <div className="font-semibold mb-1">Heritage Development Controls Apply</div>
             <div className="text-amber-800">
               Development on heritage-listed properties requires heritage impact assessment.
-              Additional approval pathways and design controls apply under {heritage.heritageClause || 'LEP heritage provisions'}.
+              Additional approval pathways and design controls apply under {heritage?.heritageClause || 'LEP heritage provisions'}.
             </div>
           </div>
         </div>
@@ -172,13 +326,14 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
           </div>
         </div>
 
-        {/* Heritage Conservation Area Section (if present) */}
-        {hcaData && (
+        {/* Heritage Conservation Area Section (if present and not duplicate) */}
+        {/* Only show HCA section if we have a specific heritage item AND the property is also in an HCA */}
+        {hcaData && hasSpecificHeritageItem && (
           <div className="pt-3 border-t border-blue-200">
             <div className="bg-amber-50 border border-amber-300 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-2">
                 <Shield className="h-4 w-4 text-amber-700" />
-                <div className="text-sm font-bold text-amber-900">Heritage Conservation Area</div>
+                <div className="text-sm font-bold text-amber-900">Also Within Heritage Conservation Area</div>
                 <Badge className="bg-amber-100 text-amber-800 border-amber-300 text-xs">
                   {hcaData.significance}
                 </Badge>
@@ -204,8 +359,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
                 </div>
 
                 <div className="text-xs italic text-amber-800 mt-2 pt-2 border-t border-amber-200">
-                  Development within this Heritage Conservation Area requires assessment against
-                  heritage conservation principles under {hcaData.legislativeClause}.
+                  This property is subject to additional heritage conservation area controls under {hcaData.legislativeClause}.
                 </div>
               </div>
             </div>

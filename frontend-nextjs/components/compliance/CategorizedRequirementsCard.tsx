@@ -3,6 +3,7 @@
 /**
  * Week 3: Categorized Requirements Display Component
  * Shows LLM-categorized precinct requirements grouped by category
+ * FORCE RELOAD v2
  */
 
 import { useState } from 'react';
@@ -14,7 +15,8 @@ interface CategorizedRequirement {
   id: number;
   category: string;
   subcategory?: string;
-  requirement_text: string;
+  requirement_text: string;  // Summary (prescriptive/actionable parts only)
+  verbatim_source_text?: string;  // Exact text from PDF (for user verification)
   value_numeric?: number;
   value_min?: number;
   value_max?: number;
@@ -25,6 +27,8 @@ interface CategorizedRequirement {
   validated: boolean;
   source_provision_ids: number[];
   source_document_ids: string[];
+  pdf_page_image_url?: string;
+  pdf_pages?: number[];  // Array of page numbers where text may appear
 }
 
 interface CategoryGroup {
@@ -51,8 +55,32 @@ export function CategorizedRequirementsCard({
     new Set(categories.slice(0, 3).map(c => c.category)) // Expand first 3 by default
   );
   const [expandedRequirementId, setExpandedRequirementId] = useState<number | null>(null);
+  const [expandedVerbatimIds, setExpandedVerbatimIds] = useState<Set<number>>(new Set());
   const [sourceProvisions, setSourceProvisions] = useState<any[]>([]);
   const [loadingSource, setLoadingSource] = useState(false);
+  const [viewingPdfPages, setViewingPdfPages] = useState<{pageNumber: number, url: string}[] | null>(null);
+
+  const toggleVerbatimText = (requirementId: number) => {
+    const newExpanded = new Set(expandedVerbatimIds);
+    if (newExpanded.has(requirementId)) {
+      newExpanded.delete(requirementId);
+    } else {
+      newExpanded.add(requirementId);
+    }
+    setExpandedVerbatimIds(newExpanded);
+  };
+
+  // DEBUG: Check if PDF URLs are present
+  console.log('[CategorizedRequirementsCard] Received categories:', categories.length);
+  if (categories.length > 0) {
+    const firstCat = categories[0];
+    console.log('[CategorizedRequirementsCard] First category:', firstCat.category, 'Requirements:', firstCat.requirements.length);
+    if (firstCat.requirements.length > 0) {
+      const firstReq = firstCat.requirements[0];
+      console.log('[CategorizedRequirementsCard] First requirement has pdf_page_image_url:', !!firstReq.pdf_page_image_url);
+      console.log('[CategorizedRequirementsCard] PDF URL:', firstReq.pdf_page_image_url);
+    }
+  }
 
   const toggleCategory = (category: string) => {
     const newExpanded = new Set(expandedCategories);
@@ -65,23 +93,29 @@ export function CategorizedRequirementsCard({
   };
 
   const toggleRequirementSource = async (requirementId: number, provisionIds: number[]) => {
+    console.log('[toggleRequirementSource] Clicked! Requirement ID:', requirementId, 'Provision IDs:', provisionIds);
+
     if (expandedRequirementId === requirementId) {
       // Collapse if already expanded
+      console.log('[toggleRequirementSource] Collapsing already expanded requirement');
       setExpandedRequirementId(null);
       setSourceProvisions([]);
       return;
     }
 
     // Expand and fetch source provisions
+    console.log('[toggleRequirementSource] Fetching source provisions...');
     setExpandedRequirementId(requirementId);
     setLoadingSource(true);
 
     try {
+      console.log('[toggleRequirementSource] Making fetch request to /api/provisions/by-ids');
       const response = await fetch('/api/provisions/by-ids', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: provisionIds })
       });
+      console.log('[toggleRequirementSource] Fetch response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
@@ -229,6 +263,26 @@ export function CategorizedRequirementsCard({
                           <p className="text-sm text-gray-900 leading-relaxed">
                             {req.requirement_text}
                           </p>
+
+                          {/* Verbatim Text (Expandable) */}
+                          {req.verbatim_source_text && req.verbatim_source_text !== req.requirement_text && (
+                            <div className="mt-2">
+                              <button
+                                onClick={() => toggleVerbatimText(req.id)}
+                                className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                              >
+                                {expandedVerbatimIds.has(req.id) ? '▲ Hide' : '▼ View'} exact text from PDF
+                              </button>
+                              {expandedVerbatimIds.has(req.id) && (
+                                <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                  <div className="text-xs font-medium text-gray-700 mb-1">📄 Exact text from PDF:</div>
+                                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {req.verbatim_source_text}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {getConfidenceBadge(req.confidence)}
@@ -236,6 +290,22 @@ export function CategorizedRequirementsCard({
                             <Badge className="bg-blue-100 text-blue-800 text-xs">
                               <CheckCircle className="w-3 h-3" />
                             </Badge>
+                          )}
+                          {req.pdf_pages && req.pdf_pages.length > 0 && req.pdf_page_image_url && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Generate URLs for all pages in the range
+                                const pages = req.pdf_pages!.map(pageNum => ({
+                                  pageNumber: pageNum,
+                                  url: req.pdf_page_image_url!.replace(/_page_\d+\.png$/, `_page_${pageNum}.png`)
+                                }));
+                                setViewingPdfPages(pages);
+                              }}
+                              className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                            >
+                              📄 View PDF Page{req.pdf_pages.length > 1 ? 's ' + req.pdf_pages.join('-') : ' ' + req.pdf_pages[0]}
+                            </button>
                           )}
                         </div>
                       </div>
@@ -309,12 +379,26 @@ export function CategorizedRequirementsCard({
                                   </div>
 
                                   {/* Provision Footer */}
-                                  <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
-                                    {provision.pdf_name && (
-                                      <span>📄 {provision.pdf_name}</span>
-                                    )}
-                                    {provision.page_number && (
-                                      <span>Page {provision.page_number}</span>
+                                  <div className="flex items-center justify-between gap-3 mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+                                    <div className="flex items-center gap-3">
+                                      {provision.pdf_name && (
+                                        <span>📄 {provision.pdf_name}</span>
+                                      )}
+                                      {provision.page_number && (
+                                        <span>Page {provision.page_number}</span>
+                                      )}
+                                    </div>
+                                    {provision.pdf_page_image_url && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          // For provisions, show single page
+                                          setViewingPdfPages([{pageNumber: provision.page_number, url: provision.pdf_page_image_url}]);
+                                        }}
+                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                      >
+                                        📄 View PDF Page {provision.page_number}
+                                      </button>
                                     )}
                                   </div>
                                 </div>
@@ -340,6 +424,35 @@ export function CategorizedRequirementsCard({
           </p>
         </div>
       </CardContent>
+
+      {/* PDF Pages Viewer Modal */}
+      {viewingPdfPages && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => setViewingPdfPages(null)}
+        >
+          <div className="relative max-w-6xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-y-auto">
+            <button
+              onClick={() => setViewingPdfPages(null)}
+              className="sticky top-2 right-2 float-right bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 z-10 mr-2"
+            >
+              Close
+            </button>
+            <div className="p-4 space-y-4" onClick={(e) => e.stopPropagation()}>
+              {viewingPdfPages.map((page) => (
+                <div key={page.pageNumber} className="border-b border-gray-300 pb-4 last:border-0">
+                  <div className="text-sm font-medium text-gray-700 mb-2">Page {page.pageNumber}</div>
+                  <img
+                    src={page.url}
+                    alt={`PDF Page ${page.pageNumber}`}
+                    className="w-full object-contain"
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

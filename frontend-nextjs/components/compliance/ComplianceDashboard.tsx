@@ -16,7 +16,8 @@ import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
 import { DCPProvisionsBrowser } from './DCPProvisionsBrowser';
 import { PrecinctProvisionsBrowser } from './PrecinctProvisionsBrowser';
-import { CategorizedRequirementsCard } from './CategorizedRequirementsCard';
+import { CategorizedRequirementsCard } from './CategorizedRequirementsCardV2';
+import { GeneralDCPSection } from './GeneralDCPSection';
 import {
   assessControlRelevance,
   createFilterContext,
@@ -110,6 +111,10 @@ export function ComplianceDashboard({
   // Week 3: Categorized precinct requirements state
   const [categorizedRequirements, setCategorizedRequirements] = useState<any>(null);
   const [loadingCategorized, setLoadingCategorized] = useState(false);
+
+  // NEW: Unified DCP Complete data state
+  const [dcpCompleteData, setDcpCompleteData] = useState<any>(null);
+  const [loadingDcpComplete, setLoadingDcpComplete] = useState(false);
 
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
@@ -527,7 +532,11 @@ export function ComplianceDashboard({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             address: propertyData.address,
-            lga: propertyData.constraints?.lga || propertyData.council
+            lga: propertyData.constraints?.lga || propertyData.council,
+            coordinates: propertyData.coordinates ? {
+              lat: propertyData.coordinates.lat,
+              lon: propertyData.coordinates.lon
+            } : undefined
           })
         });
 
@@ -549,21 +558,31 @@ export function ComplianceDashboard({
         const precinctName = matchData.precinct.precinctName || matchData.precinct.precinct_name;
 
         console.log('[ComplianceDashboard] Matched to precinct:', precinctId, precinctName);
+        console.log('[ComplianceDashboard] Match data precinct object:', JSON.stringify(matchData.precinct, null, 2));
 
         // Step 2: Fetch categorized requirements for this specific precinct
+        const requestBody = {
+          precinctId: precinctId,
+          precinctName: precinctName,
+          lga: propertyData.constraints?.lga || propertyData.council
+        };
+        console.log('[ComplianceDashboard] Sending to precinct-requirements API:', JSON.stringify(requestBody, null, 2));
+
         const response = await fetch('/api/compliance/precinct-requirements', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            precinctId: precinctId,
-            precinctName: precinctName,
-            lga: propertyData.constraints?.lga || propertyData.council
-          })
+          body: JSON.stringify(requestBody)
         });
 
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data.categories && data.data.categories.length > 0) {
+            // DEBUG: Check if PDF URLs are in the data
+            const firstCat = data.data.categories[0];
+            const firstReq = firstCat?.requirements?.[0];
+            console.log('[ComplianceDashboard] First requirement object:', JSON.stringify(firstReq, null, 2));
+            console.log('[ComplianceDashboard] Has pdf_page_image_url?', !!firstReq?.pdf_page_image_url);
+
             setCategorizedRequirements(data.data);
             console.log('[ComplianceDashboard] Loaded', data.metrics.total_requirements, 'categorized requirements for', precinctName);
           } else {
@@ -583,6 +602,67 @@ export function ComplianceDashboard({
 
     fetchCategorizedRequirements();
   }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council]);
+
+  // NEW: Fetch unified DCP Complete data (general + precinct provisions)
+  useEffect(() => {
+    const fetchDcpComplete = async () => {
+      if (!propertyData?.constraints?.zone || !propertyData?.address) {
+        setDcpCompleteData(null);
+        return;
+      }
+
+      try {
+        setLoadingDcpComplete(true);
+        console.log('[ComplianceDashboard] Fetching DCP Complete data for:', propertyData.address);
+
+        const response = await fetch('/api/compliance/dcp-complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: propertyData.address,
+            coordinates: propertyData.coordinates ? {
+              lat: propertyData.coordinates.lat,
+              lon: propertyData.coordinates.lon
+            } : undefined,
+            zone: propertyData.constraints.zone,
+            developmentType: developmentType,
+            lga: propertyData.constraints.lga || propertyData.council || 'Inner West'
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success) {
+            setDcpCompleteData(data);
+            console.log('[ComplianceDashboard] Loaded DCP Complete:',
+              data.general_provisions?.requirements_count || 0, 'general requirements,',
+              data.precinct_provisions?.requirements_count || 0, 'precinct requirements');
+          } else {
+            console.warn('[ComplianceDashboard] DCP Complete fetch unsuccessful');
+            setDcpCompleteData(null);
+          }
+        } else {
+          console.warn('[ComplianceDashboard] Failed to fetch DCP Complete:', response.statusText);
+          setDcpCompleteData(null);
+        }
+      } catch (error) {
+        console.error('[ComplianceDashboard] Error fetching DCP Complete:', error);
+        setDcpCompleteData(null);
+      } finally {
+        setLoadingDcpComplete(false);
+      }
+    };
+
+    fetchDcpComplete();
+  }, [
+    propertyData?.address,
+    propertyData?.coordinates?.lat,
+    propertyData?.coordinates?.lon,
+    propertyData?.constraints?.zone,
+    propertyData?.constraints?.lga,
+    propertyData?.council,
+    developmentType
+  ]);
 
   // Handler for opening slide-out panel
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
@@ -1140,78 +1220,101 @@ export function ComplianceDashboard({
             </p>
           </CardHeader>
           <CardContent className="pt-4">
-            {/* Extracted Controls (if any) */}
-            {complianceData?.building_envelope &&
-             complianceData.building_envelope.filter(c => c.source.authority_level === 'DCP').length > 0 && (
-              <div className="space-y-3 mb-4">
-                {complianceData.building_envelope
-                  .filter(c => c.source.authority_level === 'DCP')
-                  .map((constraint, index) => (
-                  <ConstraintCard
-                    key={`dcp-${index}`}
-                    constraint={constraint}
-                    onViewDetails={handleViewProvision}
-                    compact={true}
-                  />
-                ))}
+            {/* NEW: Unified General DCP Section (replaces old browsers) */}
+            {dcpCompleteData && dcpCompleteData.success && dcpCompleteData.general_provisions ? (
+              <GeneralDCPSection
+                generalData={dcpCompleteData.general_provisions}
+                precinctData={dcpCompleteData.precinct_provisions}
+                combinedCategories={dcpCompleteData.combined?.categories || []}
+                zone={propertyData.constraints.zone}
+                developmentType={developmentType}
+              />
+            ) : loadingDcpComplete ? (
+              <div className="py-8 text-center text-gray-500">
+                <div className="animate-pulse">Loading DCP provisions...</div>
               </div>
-            )}
+            ) : (
+              <>
+                {/* FALLBACK: Old DCP browsers if new system not available */}
+                {/* Extracted Controls (if any) */}
+                {complianceData?.building_envelope &&
+                 complianceData.building_envelope.filter(c => c.source.authority_level === 'DCP').length > 0 && (
+                  <div className="space-y-3 mb-4">
+                    {complianceData.building_envelope
+                      .filter(c => c.source.authority_level === 'DCP')
+                      .map((constraint, index) => (
+                      <ConstraintCard
+                        key={`dcp-${index}`}
+                        constraint={constraint}
+                        onViewDetails={handleViewProvision}
+                        compact={true}
+                      />
+                    ))}
+                  </div>
+                )}
 
-            {/* Browse All DCP Provisions */}
-            <DCPProvisionsBrowser
-              lga={propertyData.constraints.lga || ''}
-              zone={propertyData.constraints.zone}
-              developmentType={developmentType}
-              address={propertyData.address}
-              onViewProvision={(provision) => {
-                // No-op - expansion handled internally by DCPProvisionsBrowser
-                // Keeping prop for compatibility
-              }}
-              // Pass precinct data for cross-reference
-              precinctDetected={!!categorizedRequirements}
-              precinctName={categorizedRequirements?.precinct?.precinct_name}
-              precinctCategories={categorizedRequirements?.categories?.reduce((acc, cat) => {
-                acc[cat.category] = cat.total_count;
-                return acc;
-              }, {} as Record<string, number>)}
-            />
+                {/* Browse All DCP Provisions */}
+                <DCPProvisionsBrowser
+                  lga={propertyData.constraints.lga || ''}
+                  zone={propertyData.constraints.zone}
+                  developmentType={developmentType}
+                  address={propertyData.address}
+                  onViewProvision={(provision) => {
+                    // No-op - expansion handled internally by DCPProvisionsBrowser
+                    // Keeping prop for compatibility
+                  }}
+                  // Pass precinct data for cross-reference
+                  precinctDetected={!!categorizedRequirements}
+                  precinctName={categorizedRequirements?.precinct?.precinct_name}
+                  precinctCategories={categorizedRequirements?.categories?.reduce((acc, cat) => {
+                    acc[cat.category] = cat.total_count;
+                    return acc;
+                  }, {} as Record<string, number>)}
+                />
 
-            {/* Week 3: Categorized Precinct Requirements (replaces old browser) */}
-            {categorizedRequirements && categorizedRequirements.categories && (
-              <CategorizedRequirementsCard
-                categories={categorizedRequirements.categories}
-                precinctName={categorizedRequirements.precinct?.precinct_name}
-                className="mt-4"
-              />
-            )}
+                {/* Week 3: Categorized Precinct Requirements (replaces old browser) */}
+                {(() => {
+                  console.log('[ComplianceDashboard] RENDER CHECK: categorizedRequirements?', !!categorizedRequirements);
+                  console.log('[ComplianceDashboard] RENDER CHECK: categories?', !!categorizedRequirements?.categories);
+                  console.log('[ComplianceDashboard] RENDER CHECK: categories length:', categorizedRequirements?.categories?.length);
+                  return categorizedRequirements && categorizedRequirements.categories && (
+                    <CategorizedRequirementsCard
+                      categories={categorizedRequirements.categories}
+                      precinctName={categorizedRequirements.precinct?.precinct_name}
+                      className="mt-4"
+                    />
+                  );
+                })()}
 
-            {/* Precinct-Specific Provisions (OLD - only show if new categorized card is not available) */}
-            {!categorizedRequirements && process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
-              <PrecinctProvisionsBrowser
-                lga={propertyData.constraints.lga || propertyData.council || ''}
-                address={propertyData.address}
-                onViewProvision={(provision) => {
-                  setSelectedProvision({
-                    constraint: {
-                      type: 'special',
-                      value: 'Precinct Controls',
-                      source: {
-                        clause: provision.ref_number || 'Precinct Provision',
-                        document: `Precinct ${provision.precinct_id}: ${provision.precinct_name}`,
-                        authority_level: 'DCP'
-                      }
-                    },
-                    provisions: [{
-                      id: provision.id,
-                      ref_number: provision.ref_number,
-                      section_header: provision.section_header || 'Precinct Provision',
-                      provision_text: provision.provision_text,
-                      document_id: provision.document_id
-                    }]
-                  });
-                  setPanelOpen(true);
-                }}
-              />
+                {/* Precinct-Specific Provisions (OLD - only show if new categorized card is not available) */}
+                {!categorizedRequirements && process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
+                  <PrecinctProvisionsBrowser
+                    lga={propertyData.constraints.lga || propertyData.council || ''}
+                    address={propertyData.address}
+                    onViewProvision={(provision) => {
+                      setSelectedProvision({
+                        constraint: {
+                          type: 'special',
+                          value: 'Precinct Controls',
+                          source: {
+                            clause: provision.ref_number || 'Precinct Provision',
+                            document: `Precinct ${provision.precinct_id}: ${provision.precinct_name}`,
+                            authority_level: 'DCP'
+                          }
+                        },
+                        provisions: [{
+                          id: provision.id,
+                          ref_number: provision.ref_number,
+                          section_header: provision.section_header || 'Precinct Provision',
+                          provision_text: provision.provision_text,
+                          document_id: provision.document_id
+                        }]
+                      });
+                      setPanelOpen(true);
+                    }}
+                  />
+                )}
+              </>
             )}
           </CardContent>
         </Card>

@@ -15,7 +15,8 @@ const pool = new Pool({
 });
 
 export interface PrecinctMapping {
-  precinctNumber: string;
+  precinctId: string;        // Changed from precinctNumber for consistency with frontend
+  precinctNumber: string;    // Keep for backward compatibility
   precinctName: string;
   documentId: string;
   lga: string;
@@ -79,6 +80,7 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
             // Precinct 29 is middle section
             if (streetNum >= 200 && streetNum <= 400) {
               return {
+                precinctId: '9_30',
                 precinctNumber: '9_30',
                 precinctName: 'The Warren',
                 documentId: 'Marrickville_DCP_2011___9_30_The_Warren',
@@ -86,6 +88,7 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
               };
             } else if (streetNum < 200) {
               return {
+                precinctId: '9_29',
                 precinctNumber: '9_29',
                 precinctName: 'South Western Marrickville',
                 documentId: 'Marrickville_DCP_2011___9_29_South_Western_Marrickville',
@@ -93,6 +96,7 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
               };
             } else {
               return {
+                precinctId: '9_28',
                 precinctNumber: '9_28',
                 precinctName: 'Cooks River West',
                 documentId: 'Marrickville_DCP_2011___9_28_Cooks_River_West',
@@ -113,6 +117,7 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
         };
 
         return {
+          precinctId: precinctNum,
           precinctNumber: precinctNum,
           precinctName: precinctNames[precinctNum] || `Precinct ${precinctNum}`,
           documentId: `Marrickville_DCP_2011___${precinctNum}_${precinctNames[precinctNum]?.replace(/ /g, '_') || ''}`,
@@ -135,13 +140,14 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
  */
 export async function getPrecinctForAddress(
   address: string,
-  lga: string
+  lga: string,
+  coordinates?: { lat: number; lon: number }
 ): Promise<PrecinctMapping | null> {
   try {
-    console.log('[Precinct Service] Looking up precinct for:', { address, lga });
+    console.log('[Precinct Service] Looking up precinct for:', { address, lga, hasCoordinates: !!coordinates });
 
     // Strategy 1: PostGIS Geometric Matching (PRIMARY METHOD)
-    const geometricMatch = await getPrecinctUsingPostGIS(address, lga);
+    const geometricMatch = await getPrecinctUsingPostGIS(address, lga, coordinates);
     if (geometricMatch) {
       console.log('[Precinct Service] Matched using PostGIS:', geometricMatch.precinctNumber);
       return geometricMatch;
@@ -183,17 +189,23 @@ export async function getPrecinctForAddress(
  */
 async function getPrecinctUsingPostGIS(
   address: string,
-  lga: string
+  lga: string,
+  providedCoordinates?: { lat: number; lon: number }
 ): Promise<PrecinctMapping | null> {
   try {
-    // Step 1: Get property coordinates from NSW Planning Portal
-    const coords = await getPropertyCoordinates(address);
-    if (!coords) {
-      console.log('[Precinct Service] Could not get coordinates for address');
-      return null;
+    // Step 1: Get property coordinates (use provided if available, otherwise geocode)
+    let coords;
+    if (providedCoordinates) {
+      coords = { latitude: providedCoordinates.lat, longitude: providedCoordinates.lon };
+      console.log('[Precinct Service] Using provided coordinates:', coords);
+    } else {
+      coords = await getPropertyCoordinates(address);
+      if (!coords) {
+        console.log('[Precinct Service] Could not get coordinates for address');
+        return null;
+      }
+      console.log('[Precinct Service] Geocoded coordinates:', coords);
     }
-
-    console.log('[Precinct Service] Property coordinates:', coords);
 
     // Step 2: Query PostGIS for precinct containing these coordinates
     const query = `
@@ -230,7 +242,8 @@ async function getPrecinctUsingPostGIS(
     );
 
     return {
-      precinctNumber: precinct.precinct_id,
+      precinctId: precinct.precinct_id,
+      precinctNumber: precinct.precinct_id,  // Same as precinctId for compatibility
       precinctName: precinct.precinct_name,
       documentId: documentId,
       lga: precinct.lga,
@@ -294,7 +307,8 @@ async function findNearestPrecinct(
     console.log(`[Precinct Service] Found nearest precinct ${precinct.precinct_id} at ${Math.round(precinct.distance_m)}m`);
 
     return {
-      precinctNumber: precinct.precinct_id,
+      precinctId: precinct.precinct_id,
+      precinctNumber: precinct.precinct_id,  // Same as precinctId for compatibility
       precinctName: precinct.precinct_name,
       documentId: buildPrecinctDocumentId(precinct.precinct_id, precinct.precinct_name, precinct.lga),
       lga: precinct.lga,

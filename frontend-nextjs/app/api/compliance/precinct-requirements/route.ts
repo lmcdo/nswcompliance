@@ -32,6 +32,8 @@ interface CategorizedRequirement {
   source_provision_ids: number[];
   source_document_ids: string[];
   pdf_pages?: number[];
+  pdf_page?: number;  // Page number from first source provision
+  pdf_page_image_url?: string;  // PDF image URL from first source provision
   extraction_context?: any;
 }
 
@@ -51,6 +53,11 @@ export async function POST(request: NextRequest) {
     const body: PrecinctRequirementQuery = await request.json();
     const { address, precinctId, precinctName, lga } = body;
 
+    console.log('[Precinct Requirements API] Received request body:', JSON.stringify(body, null, 2));
+    console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga });
+    console.log('[Precinct Requirements API] precinctId type:', typeof precinctId, 'value:', precinctId);
+    console.log('[Precinct Requirements API] Will use precinctId?', !!precinctId);
+
     // Must provide at least one identifier
     if (!precinctId && !precinctName && !address) {
       return NextResponse.json({
@@ -59,7 +66,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Query categorized requirements
+    // Query categorized requirements with ALL source provisions for text matching
     let requirementsQuery = `
       SELECT
         pr.id,
@@ -69,6 +76,7 @@ export async function POST(request: NextRequest) {
         pr.category,
         pr.subcategory,
         pr.requirement_text,
+        pr.verbatim_source_text,
         pr.value_numeric,
         pr.value_min,
         pr.value_max,
@@ -84,7 +92,17 @@ export async function POST(request: NextRequest) {
         pr.source_document_ids,
         pr.pdf_pages,
         pr.extraction_context,
-        rc.display_name as category_display_name
+        rc.display_name as category_display_name,
+        (
+          SELECT json_agg(json_build_object(
+            'id', rp.id,
+            'provision_text', rp.provision_text,
+            'pdf_page_image_url', rp.pdf_page_image_url,
+            'page_number', rp.page_number
+          ))
+          FROM regulatory_provisions rp
+          WHERE rp.id = ANY(pr.source_provision_ids)
+        ) as all_source_provisions
       FROM dcp_precinct_requirements pr
       LEFT JOIN requirement_categories rc ON pr.category = rc.category
       WHERE 1=1
@@ -93,22 +111,25 @@ export async function POST(request: NextRequest) {
     const queryParams: any[] = [];
     let paramIndex = 1;
 
+    // If precinctId is provided, only query by ID (it's unique)
+    // Don't also filter by name/LGA as they may not match exactly
     if (precinctId) {
       requirementsQuery += ` AND pr.precinct_id = $${paramIndex}`;
       queryParams.push(precinctId);
       paramIndex++;
-    }
+    } else {
+      // Only use name/LGA filters when precinctId is not provided
+      if (precinctName) {
+        requirementsQuery += ` AND pr.precinct_name ILIKE $${paramIndex}`;
+        queryParams.push(`%${precinctName}%`);
+        paramIndex++;
+      }
 
-    if (precinctName) {
-      requirementsQuery += ` AND pr.precinct_name ILIKE $${paramIndex}`;
-      queryParams.push(`%${precinctName}%`);
-      paramIndex++;
-    }
-
-    if (lga) {
-      requirementsQuery += ` AND pr.lga ILIKE $${paramIndex}`;
-      queryParams.push(`%${lga}%`);
-      paramIndex++;
+      if (lga) {
+        requirementsQuery += ` AND pr.lga ILIKE $${paramIndex}`;
+        queryParams.push(`%${lga}%`);
+        paramIndex++;
+      }
     }
 
     // Order by category and confidence
@@ -149,6 +170,53 @@ export async function POST(request: NextRequest) {
       }
 
       const group = categoryGroups.get(category)!;
+
+      // Find the provision that contains the requirement text
+      const allProvisions = row.all_source_provisions || [];
+      let matchingProvision = null;
+
+      console.log(`[Precinct Requirements API] Req ${row.id}: Found ${allProvisions.length} source provisions`);
+
+      // V2: Use verbatim_source_text for matching (100% reliable)
+      const searchText = row.verbatim_source_text || row.requirement_text;
+      const matchingMethod = row.verbatim_source_text ? 'verbatim' : 'fallback_summary';
+
+      console.log(`[Precinct Requirements API] Req ${row.id}: Searching using ${matchingMethod}: "${searchText.substring(0, 100)}..."`);
+
+      if (allProvisions.length > 0) {
+        // Log all provision pages
+        allProvisions.forEach((p: any, idx: number) => {
+          console.log(`[Precinct Requirements API] Req ${row.id} Provision ${idx}: page=${p.page_number}, has_pdf=${!!p.pdf_page_image_url}, text_length=${p.provision_text?.length || 0}`);
+        });
+
+        // V2: Try to find verbatim text match (exact substring)
+        matchingProvision = allProvisions.find((p: any) =>
+          p.provision_text && p.provision_text.includes(searchText)
+        );
+
+        if (matchingProvision) {
+          console.log(`[Precinct Requirements API] Req ${row.id}: ✅ Found EXACT ${matchingMethod} match in provision with page ${matchingProvision.page_number}`);
+        }
+
+        // Fallback: If no match and we're using verbatim, try partial match (first 50 chars)
+        if (!matchingProvision && row.verbatim_source_text) {
+          const verbatimStart = row.verbatim_source_text.substring(0, 50);
+          matchingProvision = allProvisions.find((p: any) =>
+            p.provision_text && p.provision_text.includes(verbatimStart)
+          );
+
+          if (matchingProvision) {
+            console.log(`[Precinct Requirements API] Req ${row.id}: ⚠️ Found PARTIAL verbatim match in provision with page ${matchingProvision.page_number}`);
+          }
+        }
+
+        // If still no match, use the first provision with a PDF
+        if (!matchingProvision) {
+          matchingProvision = allProvisions.find((p: any) => p.pdf_page_image_url);
+          console.log(`[Precinct Requirements API] Req ${row.id}: ❌ No text match - using first provision with PDF (page ${matchingProvision?.page_number || 'unknown'})`);
+        }
+      }
+
       group.requirements.push({
         id: row.id,
         category: row.category,
@@ -168,6 +236,8 @@ export async function POST(request: NextRequest) {
         source_provision_ids: row.source_provision_ids || [],
         source_document_ids: row.source_document_ids || [],
         pdf_pages: row.pdf_pages || [],
+        pdf_page: matchingProvision?.page_number || undefined,
+        pdf_page_image_url: matchingProvision?.pdf_page_image_url || undefined,
         extraction_context: row.extraction_context
       });
 
@@ -258,3 +328,4 @@ export async function GET(request: NextRequest) {
 
   return POST(mockRequest);
 }
+// Force recompile

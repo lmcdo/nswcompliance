@@ -24,7 +24,21 @@ export async function GET(req: NextRequest) {
  try {
  // Get comprehensive property data
  const propertyData = await PropertyDataService.getPropertyComplianceData(address);
- 
+
+ // Transform Web Mercator geometry (EPSG:3857) to WGS84 coordinates (EPSG:4326)
+ // ComplianceDashboard needs coordinates for geographic neighbourhood detection
+ if (propertyData.geometry && !propertyData.coordinates) {
+ const { x, y } = propertyData.geometry;
+
+ // Web Mercator to WGS84 transformation
+ const lon = (x / 20037508.34) * 180;
+ const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+
+ propertyData.coordinates = { lat, lon };
+
+ console.log(`[Property API] Transformed coordinates: Web Mercator (${x.toFixed(2)}, ${y.toFixed(2)}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+ }
+
  return NextResponse.json({
  success: true,
  data: propertyData,
