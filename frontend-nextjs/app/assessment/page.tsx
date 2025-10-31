@@ -254,7 +254,7 @@ export default function AssessmentPage() {
                       <option value="commercial">Commercial Premises</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Determines which DCP controls apply
+                      Filters out clearly irrelevant DCP controls for this development type
                     </p>
                   </div>
 

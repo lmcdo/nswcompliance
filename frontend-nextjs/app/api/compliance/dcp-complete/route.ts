@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
+import { filterRequirementsByDevType } from '@/lib/dev-type-filter';
 // Force recompile
 
 /**
@@ -934,6 +935,34 @@ export async function POST(request: NextRequest) {
       );
 
       console.log(`✓ General requirements: ${generalRequirements.rows.length} (former_council=${councilForQuery})`);
+    }
+
+    // ========================================================================
+    // STEP 2.5: Apply Development Type Filtering (Strategy 4: Hybrid Multi-Signal)
+    // ========================================================================
+    // Only apply to Marrickville and Leichhardt (neighbourhood-based DCPs without zone/devtype fields)
+    // Ashfield already filters by dev type in the SQL query
+
+    const shouldApplyDevTypeFilter =
+      formerCouncil?.toLowerCase() === 'marrickville' ||
+      formerCouncil?.toLowerCase() === 'leichhardt';
+
+    if (shouldApplyDevTypeFilter && generalRequirements.rows.length > 0) {
+      const beforeFilterCount = generalRequirements.rows.length;
+
+      generalRequirements.rows = filterRequirementsByDevType(
+        generalRequirements.rows,
+        developmentType
+      );
+
+      const afterFilterCount = generalRequirements.rows.length;
+      const removedCount = beforeFilterCount - afterFilterCount;
+      const removalPercent = ((removedCount / beforeFilterCount) * 100).toFixed(1);
+
+      console.log(`✓ Dev type filter applied (${formerCouncil}):`);
+      console.log(`  Before: ${beforeFilterCount} requirements`);
+      console.log(`  After: ${afterFilterCount} requirements`);
+      console.log(`  Removed: ${removedCount} (${removalPercent}%)`);
     }
 
     // ========================================================================
