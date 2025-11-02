@@ -1,0 +1,35 @@
+{
+  "ui_to_lep": {
+    "secondary_dwelling": "secondary_dwellings",
+    "granny_flat": "secondary_dwellings",
+    "dual_occupancy": "dual_occupancies",
+    "multi_dwelling": "multi_dwelling_housing",
+    "townhouse": "multi_dwelling_housing",
+    "residential_flat": "residential_flat_buildings",
+    "apartment": "residential_flat_buildings",
+    "shop_top_housing": "shop_top_housing",
+    "commercial": "business_premises",
+    "office": "office_premises",
+    "retail": "retail_premises",
+    "child_care": "child_care_centres",
+    "boarding_house": "boarding_houses",
+    "dwelling_house": "dwelling_houses",
+    "mixed_use": "mixed_use_development",
+    "community_facility": "community_facilities"
+  },
+  "lep_to_ui": {
+    "secondary_dwellings": "secondary_dwelling",
+    "dual_occupancies": "dual_occupancy",
+    "multi_dwelling_housing": "multi_dwelling",
+    "residential_flat_buildings": "residential_flat",
+    "shop_top_housing": "shop_top_housing",
+    "business_premises": "commercial",
+    "office_premises": "office",
+    "retail_premises": "retail",
+    "child_care_centres": "child_care",
+    "boarding_houses": "boarding_house",
+    "dwelling_houses": "dwelling_house",
+    "mixed_use_development": "mixed_use",
+    "community_facilities": "community_facility"
+  }
+}

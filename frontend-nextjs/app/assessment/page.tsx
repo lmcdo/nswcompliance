@@ -16,8 +16,10 @@
 import React, { useState } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
+import { PermissibilityChecker } from '@/components/compliance/PermissibilityChecker';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
+import { Info } from 'lucide-react';
 
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -26,6 +28,7 @@ export default function AssessmentPage() {
   const [error, setError] = useState<string | null>(null);
   const [developmentType, setDevelopmentType] = useState('dwelling_house');
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
+  const [showZoneInfo, setShowZoneInfo] = useState(false);
 
   const handleAddressSelect = async (address: string) => {
     console.log('=== handleAddressSelect CALLED ===');
@@ -130,9 +133,20 @@ export default function AssessmentPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-600">Zone</label>
+                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                        Zone
+                        {selectedProperty.constraints?.zone && (
+                          <button
+                            onClick={() => setShowZoneInfo(true)}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                            title="View zone details"
+                          >
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </label>
                       <span className="block px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                        {selectedProperty.constraints?.zone || 'Unknown'}
+                        {selectedProperty.constraints?.zoneDescription || selectedProperty.constraints?.zone || 'Unknown'}
                       </span>
                     </div>
                     <div>
@@ -302,16 +316,92 @@ export default function AssessmentPage() {
             )}
 
             {selectedProperty && (
-              <ComplianceDashboard
-                propertyData={selectedProperty}
-                developmentType={developmentType}
-                buildingHeight={buildingHeight}
-                className="transition-all duration-300 ease-in-out"
-              />
+              <>
+                {/* Permissibility Checker - Answer "Can I build X here?" */}
+                <PermissibilityChecker propertyAddress={selectedProperty.address} />
+
+                {/* Compliance Dashboard - Show all applicable provisions */}
+                <ComplianceDashboard
+                  propertyData={selectedProperty}
+                  developmentType={developmentType}
+                  buildingHeight={buildingHeight}
+                  className="transition-all duration-300 ease-in-out"
+                />
+              </>
             )}
           </div>
         </div>
       </div>
+
+      {/* Zone Information Modal */}
+      {showZoneInfo && selectedProperty?.constraints?.zone && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowZoneInfo(false)}>
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedProperty.constraints.zoneDescription || selectedProperty.constraints.zone}
+              </h3>
+              <button
+                onClick={() => setShowZoneInfo(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-6 py-4">
+              <p className="text-sm text-gray-600 mb-4">
+                Zone information is extracted from the {selectedProperty.planningLayers?.find((l: any) => l.layerName === 'Land Zoning Map')?.results[0]?.['EPI Name'] || 'Local Environmental Plan'}.
+              </p>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-900 mb-2">
+                  <strong>Zone Code:</strong> {selectedProperty.constraints.zone}
+                </p>
+                <p className="text-sm text-blue-900">
+                  <strong>Zone Name:</strong> {selectedProperty.constraints.zoneDescription?.replace(selectedProperty.constraints.zone + ':', '').trim() || 'Loading...'}
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-700 space-y-3">
+                <p>
+                  Zone objectives, permitted uses, and prohibited uses are defined in the Local Environmental Plan (LEP) for this property.
+                </p>
+
+                <p className="font-semibold text-gray-900 mt-4">
+                  To view the complete zone provisions:
+                </p>
+
+                <a
+                  href={(() => {
+                    const baseUrl = selectedProperty.planningLayers?.find((l: any) => l.layerName === 'Land Zoning Map')?.results[0]?.['legislationUrl'];
+                    const zoneCode = selectedProperty.constraints.zone;
+                    // For Inner West LEP 2022, add direct zone anchor
+                    if (baseUrl?.includes('epi-2022-0457') && zoneCode) {
+                      return `${baseUrl}#pt-cg1.Zone_${zoneCode}`;
+                    }
+                    return baseUrl || '#';
+                  })()}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  View {selectedProperty.constraints.zone} Zone Provisions
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+
+                <p className="text-xs text-gray-500 mt-4">
+                  The LEP link above provides the official zone objectives, permitted uses, and prohibited uses as gazetted by NSW legislation.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
