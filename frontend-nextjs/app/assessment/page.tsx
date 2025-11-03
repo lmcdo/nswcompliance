@@ -17,6 +17,7 @@ import React, { useState } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { PermissibilityChecker } from '@/components/compliance/PermissibilityChecker';
+import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import { Info } from 'lucide-react';
@@ -24,17 +25,20 @@ import { Info } from 'lucide-react';
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
   const [selectedProperty, setSelectedProperty] = useState<any>(null);
+  const [selectedCoordinates, setSelectedCoordinates] = useState<google.maps.LatLngLiteral | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [developmentType, setDevelopmentType] = useState('dwelling_house');
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
 
-  const handleAddressSelect = async (address: string) => {
+  const handleAddressSelect = async (address: string, coordinates?: google.maps.LatLngLiteral) => {
     console.log('=== handleAddressSelect CALLED ===');
     console.log('Address:', address);
+    console.log('Coordinates:', coordinates);
 
     setSelectedAddress(address);
+    setSelectedCoordinates(coordinates || null);
     setLoading(true);
     setError(null);
 
@@ -319,6 +323,17 @@ export default function AssessmentPage() {
               <>
                 {/* Permissibility Checker - Answer "Can I build X here?" */}
                 <PermissibilityChecker propertyAddress={selectedProperty.address} />
+
+                {/* Development Capacity Calculator - Answer "How big can I build?" */}
+                <CapacityCalculator
+                  propertyAddress={selectedProperty.address}
+                  coordinates={selectedCoordinates}
+                  developmentType={developmentType}
+                  lotArea={selectedProperty.propertyArea ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, '')) : null}
+                  zone={selectedProperty.constraints?.zone || ''}
+                  lga={selectedProperty.constraints?.lga || ''}
+                  formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                />
 
                 {/* Compliance Dashboard - Show all applicable provisions */}
                 <ComplianceDashboard
