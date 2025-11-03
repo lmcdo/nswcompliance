@@ -116,3 +116,20 @@ prp_k9_complete_lep_extraction/
 verify_*.json
 *_results.json
 test_*.json
+
+# Analysis and diagnostic scripts (keep locally, don't commit)
+analyze_*.py
+check_*.py
+fix_*.py
+search_*.py
+find_*.py
+assess_*.py
+audit_*.py
+diagnose_*.py
+
+# Session documentation (commit manually if needed)
+*_COMPLETE.md
+*_ANALYSIS.md
+*_FINDINGS.md
+*_STATUS.md
+*_RESULTS.md
