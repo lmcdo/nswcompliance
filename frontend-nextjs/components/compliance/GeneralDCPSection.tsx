@@ -1,0 +1,791 @@
+/**
+ * GeneralDCPSection.tsx (Fixed page grouping v2)
+ * Unified DCP display component that adapts to each LGA's structure
+ *
+ * Displays:
+ * - General Controls (Chapter F / Part 4.x / Part C.1) - filtered by zone/devtype where available
+ * - Neighbourhood/Precinct Controls (when applicable)
+ *
+ * Adapts to different filtering levels:
+ * - Ashfield: Zone + Dev Type filtering
+ * - Marrickville: Dev Type filtering
+ * - Leichhardt: Universal (no filtering)
+ */
+
+import React, { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { ChevronDown, ChevronRight, Info, FileText, X } from 'lucide-react';
+
+interface GeneralProvision {
+  id: number;
+  section_header: string;
+  provision_text: string;
+  ref_number: string;
+  part_name?: string;
+}
+
+interface GeneralRequirement {
+  id: number;
+  category: string;
+  subcategory?: string;
+  requirement_text: string;  // Summary (prescriptive/actionable parts only)
+  verbatim_source_text?: string;  // Exact text from PDF (for user verification)
+  value_numeric?: number;
+  value_min?: number;
+  value_max?: number;
+  unit?: string;
+  has_conditionals: boolean;
+  conditional_text?: string;
+  confidence: string;
+  pdf_page?: number;
+  pdf_page_image_url?: string;
+  pdf_path?: string;
+}
+
+interface PrecinctProvision {
+  id: number;
+  precinct_id: string;
+  precinct_name: string;
+  section_header: string;
+  provision_text: string;
+  ref_number: string;
+}
+
+interface PrecinctRequirement {
+  id: number;
+  precinct_id: string;
+  precinct_name: string;
+  category: string;
+  subcategory?: string;
+  requirement_text: string;  // Summary (prescriptive/actionable parts only)
+  verbatim_source_text?: string;  // Exact text from PDF (for user verification)
+  value_numeric?: number;
+  unit?: string;
+  has_conditionals: boolean;
+  conditional_text?: string;
+  confidence: string;
+  pdf_page?: number;
+  pdf_page_image_url?: string;
+  pdf_path?: string;
+}
+
+interface CategorySummary {
+  category: string;
+  general_count: number;
+  precinct_count: number;
+  total_count: number;
+  general_requirements: GeneralRequirement[];
+  precinct_requirements: PrecinctRequirement[];
+}
+
+interface GeneralDCPSectionProps {
+  generalData: {
+    source: string;
+    applicable_to: string;
+    count: number;
+    requirements_count: number;
+    provisions: GeneralProvision[];
+    requirements: GeneralRequirement[];
+    by_category: Record<string, GeneralRequirement[]>;
+  };
+  precinctData?: {
+    source: string;
+    precinct_id: string;
+    precinct_name: string;
+    applicable_to: string;
+    count: number;
+    requirements_count: number;
+    provisions: PrecinctProvision[];
+    requirements: PrecinctRequirement[];
+    by_category: Record<string, PrecinctRequirement[]>;
+  } | null;
+  combinedCategories: CategorySummary[];
+  zone: string;
+  developmentType: string;
+  filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
+  formerCouncil?: string;
+}
+
+const CategoryIcon: React.FC<{ category: string }> = ({ category }) => {
+  const iconMap: Record<string, string> = {
+    setback_front: '📏',
+    setback_side: '📐',
+    setback_rear: '📊',
+    parking: '🅿️',
+    landscaping: '🌳',
+    building_height: '📈',
+    building_form: '🏛️',
+    character: '🎨',
+    privacy: '👁️',
+    solar_access: '☀️',
+    open_space: '🌿',
+    deep_soil: '🌱',
+    fencing: '🚧',
+    other: '📋'
+  };
+
+  return <span className="mr-2">{iconMap[category] || '📋'}</span>;
+};
+
+const FilteringLevelBadge: React.FC<{ level?: string; formerCouncil?: string }> = ({ level, formerCouncil }) => {
+  const badgeConfig = {
+    'zone+devtype': { color: 'bg-green-100 text-green-800 border-green-300', label: 'Zone + Type Filtered' },
+    'devtype': { color: 'bg-blue-100 text-blue-800 border-blue-300', label: 'Type Filtered' },
+    'universal': { color: 'bg-gray-100 text-gray-800 border-gray-300', label: formerCouncil ? `${formerCouncil} DCP ${formerCouncil === 'Ashfield' ? '2016' : formerCouncil === 'Marrickville' ? '2011' : '2013'}` : 'Universal' }
+  };
+
+  const config = badgeConfig[level as keyof typeof badgeConfig] || badgeConfig.universal;
+
+  return (
+    <Badge variant="outline" className={`${config.color} text-xs`}>
+      {config.label}
+    </Badge>
+  );
+};
+
+const RequirementCard: React.FC<{
+  requirement: GeneralRequirement | PrecinctRequirement;
+  source: 'general' | 'precinct';
+  hideIndividualPdf?: boolean;
+}> = ({ requirement, source, hideIndividualPdf = false }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [showVerbatim, setShowVerbatim] = useState(false);
+  const [showingPdf, setShowingPdf] = useState(false);
+
+  const sourceColor = source === 'general'
+    ? 'border-l-blue-400 bg-blue-50'
+    : 'border-l-green-400 bg-green-50';
+
+  // Show PDF button if we have the image URL (page number is optional)
+  const hasPdfAccess = requirement.pdf_page_image_url;
+
+  return (
+    <>
+      {requirement.confidence === 'medium' ? (
+        // Descriptive provision (character description)
+        <div className="border-l-4 border-yellow-400 bg-yellow-50 p-4 mb-2 rounded">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-yellow-600 text-lg">⚠️</span>
+            <span className="font-semibold text-yellow-800 text-xs uppercase tracking-wide">Character Description</span>
+          </div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-medium text-gray-600 uppercase">
+              {requirement.category.replace(/_/g, ' ')}
+            </span>
+            {requirement.has_conditionals && (
+              <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
+                Conditional
+              </Badge>
+            )}
+          </div>
+          <p className="text-sm text-gray-800">{requirement.requirement_text}</p>
+          <p className="text-xs text-gray-600 mt-2 italic">
+            ℹ️ This describes typical character, not minimum requirements
+          </p>
+        </div>
+      ) : (
+        // Prescriptive requirement (high/low confidence)
+        <div
+          className={`border-l-4 ${sourceColor} p-3 mb-2 rounded cursor-pointer hover:shadow-sm transition-shadow`}
+          onClick={() => setExpanded(!expanded)}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-xs font-medium text-gray-600 uppercase">
+                  {requirement.category.replace(/_/g, ' ')}
+                </span>
+                {requirement.has_conditionals && (
+                  <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
+                    Conditional
+                  </Badge>
+                )}
+              </div>
+              <p className="text-sm text-gray-800">{requirement.requirement_text}</p>
+
+            {/* Verbatim Text Toggle - Hidden when PDF grouping is active */}
+            {!hideIndividualPdf && requirement.verbatim_source_text && requirement.verbatim_source_text !== requirement.requirement_text && (
+              <div className="mt-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowVerbatim(!showVerbatim);
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
+                >
+                  {showVerbatim ? '▲ Hide' : '▼ View'} {requirement.pdf_page ? `PDF page ${requirement.pdf_page}` : 'PDF source'}
+                </button>
+                {showVerbatim && (
+                  <div className="mt-2 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                    <div className="text-xs font-medium text-gray-700 mb-1">📄 Exact text from PDF:</div>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {requirement.verbatim_source_text}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {expanded && (
+              <div className="mt-2 space-y-2">
+                {requirement.has_conditionals && requirement.conditional_text && (
+                  <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                    <strong>Condition:</strong> {requirement.conditional_text}
+                  </div>
+                )}
+                {hasPdfAccess && !hideIndividualPdf && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowingPdf(true);
+                    }}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    {requirement.pdf_page ? `View PDF Page ${requirement.pdf_page}` : 'View PDF'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="ml-2">
+            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </div>
+        </div>
+      </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {showingPdf && hasPdfAccess && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowingPdf(false)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h3 className="font-semibold">{requirement.pdf_page ? `DCP Page ${requirement.pdf_page}` : 'DCP Source Document'}</h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowingPdf(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <img
+                src={requirement.pdf_page_image_url}
+                alt={requirement.pdf_page ? `PDF Page ${requirement.pdf_page}` : 'DCP Source Document'}
+                className="w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const CategorySection: React.FC<{
+  category: CategorySummary;
+  defaultExpanded?: boolean;
+  setViewingPdfImage: (value: { url: string; page: number } | null) => void;
+  showOnly?: 'general' | 'precinct' | 'both';
+}> = ({ category, defaultExpanded = false, setViewingPdfImage, showOnly = 'both' }) => {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  return (
+    <div className="border rounded-lg mb-4 overflow-hidden">
+      <div
+        className="bg-gray-50 p-4 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-between"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-3">
+          <CategoryIcon category={category.category} />
+          <div>
+            <h4 className="font-semibold text-gray-900 capitalize">
+              {category.category.replace(/_/g, ' ')}
+            </h4>
+            <p className="text-xs text-gray-600">
+              {showOnly === 'general' && category.general_count > 0 && (
+                `${category.general_count} requirement${category.general_count !== 1 ? 's' : ''}`
+              )}
+              {showOnly === 'precinct' && category.precinct_count > 0 && (
+                `${category.precinct_count} requirement${category.precinct_count !== 1 ? 's' : ''}`
+              )}
+              {showOnly === 'both' && (
+                <>
+                  {category.total_count} requirement{category.total_count !== 1 ? 's' : ''}
+                  {category.general_count > 0 && category.precinct_count > 0 &&
+                    ` (${category.general_count} general + ${category.precinct_count} precinct)`}
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {(showOnly === 'general' || showOnly === 'both') && category.general_count > 0 && (
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 text-xs">
+              {category.general_count} General
+            </Badge>
+          )}
+          {(showOnly === 'precinct' || showOnly === 'both') && category.precinct_count > 0 && (
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+              {category.precinct_count} Precinct
+            </Badge>
+          )}
+          {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="p-4 bg-white">
+          {(showOnly === 'general' || showOnly === 'both') && category.general_requirements.length > 0 && (
+            <div className="mb-4">
+              <h5 className="text-sm font-medium text-blue-700 mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                General Controls
+              </h5>
+              <div className="border-l-4 border-l-blue-400 bg-blue-50 rounded">
+                {(() => {
+                  // Group by PDF page number (simple and reliable)
+                  // Within a category, all requirements are from the same document
+                  const groupedByPage: { [page: number]: GeneralRequirement[] } = {};
+                  const requirementsWithoutPage: GeneralRequirement[] = [];
+
+                  category.general_requirements.forEach(req => {
+                    const pageNum = req.pdf_page;
+                    if (pageNum) {
+                      if (!groupedByPage[pageNum]) {
+                        groupedByPage[pageNum] = [];
+                      }
+                      groupedByPage[pageNum].push(req);
+                    } else {
+                      requirementsWithoutPage.push(req);
+                    }
+                  });
+
+                  // Sort page groups by page number (ascending order)
+                  const sortedPageGroups = Object.entries(groupedByPage)
+                    .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
+
+                  return sortedPageGroups.map(([pageNumStr, requirements], groupIdx) => {
+                    const pdfPage = parseInt(pageNumStr);
+                    const pdfUrl = requirements[0]?.pdf_page_image_url;
+                    const hasMultiple = requirements.length > 1;
+
+                    return (
+                      <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t border-blue-200' : ''}>
+                        {/* Requirements list */}
+                        <div className="divide-y divide-blue-100">
+                          {requirements.map((req) => (
+                            <div key={req.id} className="p-3">
+                              {req.confidence === 'medium' ? (
+                                // Descriptive provision (character description)
+                                <div className="border-l-4 border-yellow-400 bg-yellow-50 p-3 rounded">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-yellow-600 text-lg">⚠️</span>
+                                    <span className="font-semibold text-yellow-800 text-xs uppercase tracking-wide">Character Description</span>
+                                  </div>
+                                  <p className="text-sm text-gray-800">{req.requirement_text}</p>
+                                  <p className="text-xs text-gray-600 mt-2 italic">
+                                    ℹ️ This describes typical character, not minimum requirements
+                                  </p>
+                                </div>
+                              ) : (
+                                // Prescriptive requirement (high/low confidence)
+                                <div className="flex items-start gap-2">
+                                  <span className="text-blue-600 font-bold">✓</span>
+                                  <p className="text-sm text-gray-800">{req.requirement_text}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {/* PDF button at bottom of page group */}
+                        {pdfPage && pdfUrl && (
+                          <div className="px-3 py-2 bg-blue-100 border-t border-blue-200 flex items-center justify-between">
+                            <div className="text-xs text-blue-800">
+                              <span className="font-semibold">{hasMultiple ? `${requirements.length} requirements` : '1 requirement'}</span> from page {pdfPage}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs bg-blue-600 text-white hover:bg-blue-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('[PDF Button] Clicked! URL:', pdfUrl);
+                                setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                              }}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              View PDF Page {pdfPage}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+
+          {(showOnly === 'precinct' || showOnly === 'both') && category.precinct_requirements.length > 0 && (
+            <div>
+              <h5 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
+                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+                Precinct-Specific Controls
+              </h5>
+              <div className="border-l-4 border-l-green-400 bg-green-50 rounded">
+                {(() => {
+                  // Group by PDF page number (simple and reliable)
+                  // Within a category, all requirements are from the same document
+                  const groupedByPage: { [page: number]: PrecinctRequirement[] } = {};
+                  const requirementsWithoutPage: PrecinctRequirement[] = [];
+
+                  category.precinct_requirements.forEach(req => {
+                    const pageNum = req.pdf_page;
+                    if (pageNum) {
+                      if (!groupedByPage[pageNum]) {
+                        groupedByPage[pageNum] = [];
+                      }
+                      groupedByPage[pageNum].push(req);
+                    } else {
+                      requirementsWithoutPage.push(req);
+                    }
+                  });
+
+                  // Sort page groups by page number (ascending order)
+                  const sortedPageGroups = Object.entries(groupedByPage)
+                    .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
+
+                  return sortedPageGroups.map(([pageNumStr, requirements], groupIdx) => {
+                    const pdfPage = parseInt(pageNumStr);
+                    const pdfUrl = requirements[0]?.pdf_page_image_url;
+                    const hasMultiple = requirements.length > 1;
+
+                    return (
+                      <div key={`precinct-page-${pdfPage}`} className={groupIdx > 0 ? 'border-t border-green-200' : ''}>
+                        {/* Requirements list */}
+                        <div className="divide-y divide-green-100">
+                          {requirements.map((req) => (
+                            <div key={req.id} className="p-3">
+                              {req.confidence === 'medium' ? (
+                                // Descriptive provision (character description)
+                                <div className="border-l-4 border-yellow-400 bg-yellow-50 p-3 rounded">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <span className="text-yellow-600 text-lg">⚠️</span>
+                                    <span className="font-semibold text-yellow-800 text-xs uppercase tracking-wide">Character Description</span>
+                                  </div>
+                                  <p className="text-sm text-gray-800">{req.requirement_text}</p>
+                                  <p className="text-xs text-gray-600 mt-2 italic">
+                                    ℹ️ This describes typical character, not minimum requirements
+                                  </p>
+                                </div>
+                              ) : (
+                                // Prescriptive requirement (high/low confidence)
+                                <div className="flex items-start gap-2">
+                                  <span className="text-green-600 font-bold">✓</span>
+                                  <p className="text-sm text-gray-800">{req.requirement_text}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                        {/* PDF button at bottom of page group */}
+                        {pdfPage && pdfUrl && (
+                          <div className="px-3 py-2 bg-green-100 border-t border-green-200 flex items-center justify-between">
+                            <div className="text-xs text-green-800">
+                              <span className="font-semibold">{hasMultiple ? `${requirements.length} requirements` : '1 requirement'}</span> from page {pdfPage}
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs bg-green-600 text-white hover:bg-green-700"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                console.log('[PDF Button] Clicked! URL:', pdfUrl);
+                                setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                              }}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              View PDF Page {pdfPage}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
+  generalData,
+  precinctData,
+  combinedCategories,
+  zone,
+  developmentType,
+  filteringLevel = 'universal',
+  formerCouncil
+}) => {
+  // Modal state for PDF viewer (page group footers)
+  const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
+
+  // Display mode: 'separated' (default) or 'combined'
+  const [displayMode, setDisplayMode] = useState<'separated' | 'combined'>('separated');
+
+  const totalProvisions = generalData.count + (precinctData?.count || 0);
+  const totalRequirements = generalData.requirements_count + (precinctData?.requirements_count || 0);
+
+  // Determine filtering level from data if not provided
+  const detectedFilteringLevel = filteringLevel || (() => {
+    if (generalData.source.includes('Chapter F')) return 'zone+devtype';
+    if (generalData.source.includes('Part 4')) return 'devtype';
+    return 'universal';
+  })();
+
+  return (
+    <Card className="w-full">
+      <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-xl flex items-center gap-2">
+              📘 DCP Controls for Your Development
+            </CardTitle>
+          </div>
+          <FilteringLevelBadge level={detectedFilteringLevel} formerCouncil={formerCouncil} />
+        </div>
+
+        {formerCouncil && (
+          <div className="text-xs text-blue-700 mt-3 bg-blue-50 border border-blue-200 rounded px-3 py-2">
+            <p className="mb-2 font-semibold">{formerCouncil} former council structures its DCP provisions according to the following strategy:</p>
+            {formerCouncil === 'Ashfield' && (
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Chapter F: general provisions (here you can filter by zone ({zone}) + development type ({developmentType.replace(/_/g, ' ')})).</li>
+                <li>Chapter D: Precinct overlays (13 precincts total) shown separately if site falls within precinct boundary (see special provisions below).</li>
+              </ul>
+            )}
+            {formerCouncil === 'Marrickville' && (
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Parts 2-8: general provisions (here you can filter by development type ({developmentType.replace(/_/g, ' ')})).</li>
+                <li>Part 9: Precinct controls (47 precincts total) shown separately based on site location within its planning precinct boundaries (see special provisions below).</li>
+              </ul>
+            )}
+            {formerCouncil === 'Leichhardt' && (
+              <ul className="list-disc ml-5 space-y-1">
+                <li>Parts A-E: universal provisions (no zone/devtype filtering applied).</li>
+                <li>Part C Section 2: Distinctive neighbourhoods (37 total) shown separately if site falls within neighbourhood boundary (see special provisions below).</li>
+              </ul>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-4 mt-4 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-700">{totalProvisions}</span>
+            <span className="text-gray-600">Provisions</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-700">{totalRequirements}</span>
+            <span className="text-gray-600">Requirements</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold text-gray-700">{combinedCategories.length}</span>
+            <span className="text-gray-600">Categories</span>
+          </div>
+        </div>
+
+        {/* Display Mode Toggle */}
+        {precinctData && (
+          <div className="mt-4 flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-xs text-amber-900 font-medium">Display Mode</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Some categories have both general and precinct-specific requirements
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={displayMode === 'separated' ? 'default' : 'outline'}
+                onClick={() => setDisplayMode('separated')}
+                className="text-xs h-8"
+              >
+                Separated
+              </Button>
+              <Button
+                size="sm"
+                variant={displayMode === 'combined' ? 'default' : 'outline'}
+                onClick={() => setDisplayMode('combined')}
+                className="text-xs h-8"
+              >
+                Combined
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardHeader>
+
+      <CardContent className="p-6">
+        {/* General Controls Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-8 bg-blue-400 rounded"></div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                DCP General Controls
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                  {generalData.requirements_count} Requirements
+                </Badge>
+              </h3>
+              <p className="text-sm text-gray-600 flex items-center gap-2">
+                {formerCouncil ? `${formerCouncil} DCP ${formerCouncil === 'Ashfield' ? '2016' : formerCouncil === 'Marrickville' ? '2011' : '2013'} ${generalData.source}` : generalData.source}
+                <Info className="w-4 h-4 text-gray-400" />
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                {developmentType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}{formerCouncil && ` · Former council area: ${formerCouncil} Council`}
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+            <p className="text-sm text-blue-800 flex items-center gap-2">
+              <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs px-2 py-0.5">
+                Council-wide
+              </Badge>
+              <span><strong>Applies to:</strong> {formerCouncil ? `All properties in the former area of ${formerCouncil} council` : generalData.applicable_to}</span>
+            </p>
+          </div>
+
+          {combinedCategories.filter(cat => cat.general_count > 0).length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No general provisions for this zone and development type
+            </div>
+          ) : (
+            combinedCategories
+              .filter(cat => cat.general_count > 0)
+              .map((cat, idx) => (
+                <CategorySection
+                  key={cat.category}
+                  category={cat}
+                  defaultExpanded={false}
+                  setViewingPdfImage={setViewingPdfImage}
+                  showOnly={displayMode === 'separated' ? 'general' : 'both'}
+                />
+              ))
+          )}
+        </div>
+
+        {/* Precinct Controls Section */}
+        {precinctData && (
+          <div>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-1 h-8 bg-green-400 rounded"></div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  Neighbourhood/Precinct Controls
+                  <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                    {precinctData.requirements_count} Requirements
+                  </Badge>
+                </h3>
+                <p className="text-sm text-gray-600 flex items-center gap-2">
+                  <span className="font-semibold">
+                    {formerCouncil === 'Leichhardt' ? 'Leichhardt Distinctive Neighbourhood name:' :
+                     formerCouncil === 'Marrickville' ? 'Marrickville Precinct name:' :
+                     formerCouncil === 'Ashfield' ? 'Ashfield Precinct name:' :
+                     'Precinct name:'}
+                  </span>
+                  {' '}{precinctData.precinct_name}
+                  <Info className="w-4 h-4 text-gray-400" />
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <p className="text-sm text-green-800 flex items-center gap-2">
+                <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs px-2 py-0.5">
+                  {formerCouncil === 'Leichhardt' ? 'Neighbourhood' : 'Precinct'}
+                </Badge>
+                <span><strong>Applies to:</strong> {precinctData.applicable_to}</span>
+              </p>
+              <p className="text-xs text-green-700 mt-1">
+                These controls apply <strong>in addition to</strong> the general controls above
+              </p>
+            </div>
+
+            {combinedCategories
+              .filter(cat => cat.precinct_count > 0)
+              .map((cat) => (
+                <CategorySection
+                  key={cat.category}
+                  category={cat}
+                  defaultExpanded={false}
+                  setViewingPdfImage={setViewingPdfImage}
+                  showOnly={displayMode === 'separated' ? 'precinct' : 'both'}
+                />
+              ))}
+          </div>
+        )}
+
+        {/* No precinct message - only show for Ashfield (Marrickville/Leichhardt all have precincts/neighbourhoods) */}
+        {!precinctData && formerCouncil === 'Ashfield' && (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+            <p className="text-sm text-gray-600">
+              This property is not within a specific precinct area.
+              Only general DCP controls apply.
+            </p>
+          </div>
+        )}
+      </CardContent>
+
+      {/* PDF Viewer Modal - Shared modal for page group footers */}
+      {viewingPdfImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingPdfImage(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h3 className="font-semibold">DCP Page {viewingPdfImage.page}</h3>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setViewingPdfImage(null)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <img
+                src={viewingPdfImage.url}
+                alt={`DCP Page ${viewingPdfImage.page}`}
+                className="w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+};
+
+export default GeneralDCPSection;
