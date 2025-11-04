@@ -105,7 +105,7 @@ export class PropertyDataService {
  throw new Error('Property not found in NSW Planning Portal');
  }
 
- const { propertyData, constraints, layers } = nswData;
+ const { propertyData, constraints, layers, roadClassifications } = nswData;
 
  // Extract source information from layers
  const fsrLayer = layers.find(l => l.layerName === 'Floor Space Ratio Map');
@@ -199,6 +199,7 @@ export class PropertyDataService {
  geometry: propertyData.geometry,
  seppRouting,
  planningLayers: layers, // Pass through ALL layer data
+ roadClassifications, // Road functional hierarchy for setback calculations
  lotDetails: undefined // TODO: Add lot data when available from NSW service
  };
  

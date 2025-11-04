@@ -3,6 +3,8 @@
  * Real-time property data, zoning, and environmental overlays
  */
 
+import { getRoadClassifications, type RoadClassification } from './road-classification-service';
+
 export interface NSWPropertyData {
  propId: number;
  address: string;
@@ -22,6 +24,7 @@ export interface PlanningConstraints {
  maxHeight: number | null;
  minLotSize: number | null;
  zone: string | null;
+ zoneDescription: string | null;
  lga: string | null;
  heritage: boolean;
  heritageType?: string;
@@ -358,6 +361,7 @@ export class NSWPlanningPortalService {
  maxHeight: null,
  minLotSize: null,
  zone: null,
+ zoneDescription: null,
  lga: null,
  heritage: false,
  floodProne: false,
@@ -418,9 +422,13 @@ export class NSWPlanningPortalService {
  break;
  
  case 'Land Zoning Map':
- // From API: "Zone": "R4"
+ // From API: "Zone": "R4", "title": "R4: High Density Residential"
  if (result['Zone']) {
  constraints.zone = result['Zone'];
+ }
+ // Extract official zone description from title field
+ if (result['title']) {
+ constraints.zoneDescription = result['title'];
  }
  // Extract LGA from Land Zoning Map
  if (result['LGA Name']) {
@@ -611,7 +619,7 @@ export class NSWPlanningPortalService {
 
  // Step 2: Get planning layers, valuation data, and TOD layers in parallel
  console.log('Step 2: Getting planning layers, valuation data, and TOD/HIA data...');
- const [layers, propertyData, todLayers] = await Promise.all([
+ const [layers, propertyData, todLayers, roadClassifications] = await Promise.all([
  this.getPlanningLayers(searchResult.propId),
  this.getPropertyValuation(searchResult.propId),
  // Fetch TOD layers after we get property data (need geometry)
@@ -620,12 +628,27 @@ export class NSWPlanningPortalService {
  .catch(() => {
  console.log('TOD layers fetch failed, continuing without TOD data');
  return [];
+ }),
+ // Fetch road classifications for setback calculations (need WGS84 coordinates)
+ this.getPropertyValuation(searchResult.propId)
+ .then(pd => {
+ if (!pd) return [];
+ // Convert Web Mercator (x, y) to WGS84 (lon, lat)
+ const lon = (pd.geometry.x / 20037508.34) * 180;
+ const lat = (Math.atan(Math.exp((pd.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+ console.log(`[Road Classification] Converted coordinates: Web Mercator (${pd.geometry.x}, ${pd.geometry.y}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+ return getRoadClassifications(lat, lon);
+ })
+ .catch(() => {
+ console.log('Road classification fetch failed, continuing without road data');
+ return [];
  })
  ]);
 
  console.log('Layers received:', layers);
  console.log('Property data received:', propertyData);
  console.log('TOD layers received:', todLayers);
+ console.log('Road classifications received:', roadClassifications);
 
  if (!propertyData) {
  throw new Error('Property valuation data not found');
@@ -652,7 +675,8 @@ export class NSWPlanningPortalService {
  return {
  propertyData,
  constraints,
- layers: allLayers // Return merged layers including TOD/HIA
+ layers: allLayers, // Return merged layers including TOD/HIA
+ roadClassifications // Return road classification data for setback calculations
  };
 
  } catch (error) {
