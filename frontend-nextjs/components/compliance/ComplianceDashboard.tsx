@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
@@ -113,6 +114,22 @@ export function ComplianceDashboard({
 
   // Ref to access GeneralDCPSection's display mode setter
   const displayModeSetterRef = useRef<((mode: 'separated' | 'combined', options?: { expandCategory?: string }) => void) | null>(null);
+
+  // Collapsible state for main sections
+  const [collapsedSections, setCollapsedSections] = useState({
+    sepp: false,
+    adg: false,
+    lep: false,
+    dcp: false,
+    environmental: false
+  });
+
+  const toggleSection = (section: keyof typeof collapsedSections) => {
+    setCollapsedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
@@ -940,21 +957,32 @@ export function ComplianceDashboard({
 
         return (
         <Card className="border-3 border-pink-400 bg-pink-50">
-          <CardHeader className="bg-pink-100">
-            <CardTitle className="flex items-center gap-2">
-              <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
-              SEPP Special Provisions
-              {informational.length > 0 && (
-                <span className="text-sm font-normal text-gray-600">
-                  ({actionRequired.length} require action, {informational.length} informational)
-                </span>
+          <CardHeader
+            className="bg-pink-100 cursor-pointer hover:bg-pink-200 transition-colors"
+            onClick={() => toggleSection('sepp')}
+          >
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
+                SEPP Special Provisions
+                {informational.length > 0 && (
+                  <span className="text-sm font-normal text-gray-600">
+                    ({actionRequired.length} require action, {informational.length} informational)
+                  </span>
+                )}
+              </div>
+              {collapsedSections.sepp ? (
+                <ChevronDown className="w-12 h-12 text-pink-600" />
+              ) : (
+                <ChevronUp className="w-12 h-12 text-pink-600" />
               )}
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               State Environmental Planning Policies - Highest legal precedence
             </p>
           </CardHeader>
-          <CardContent className="pt-4">
+          {!collapsedSections.sepp && (
+            <CardContent className="pt-4">
             {/* Structured Requirements (100% Reliable) */}
             {structuredRequirements.length > 0 && (
               <div className="mb-6">
@@ -1045,7 +1073,8 @@ export function ComplianceDashboard({
                 </div>
               </div>
             )}
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
         );
       })()}
@@ -1057,36 +1086,59 @@ export function ComplianceDashboard({
         developmentType === 'shop_top_housing'
       ) && (
         <Card className="border-3 border-pink-400 bg-pink-50">
-          <CardHeader className="bg-pink-100">
-            <CardTitle className="flex items-center gap-2">
-              <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
-              NSW Apartment Design Guide - Building Separation
+          <CardHeader
+            className="bg-pink-100 cursor-pointer hover:bg-pink-200 transition-colors"
+            onClick={() => toggleSection('adg')}
+          >
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
+                NSW Apartment Design Guide - Building Separation
+              </div>
+              {collapsedSections.adg ? (
+                <ChevronDown className="w-12 h-12 text-pink-600" />
+              ) : (
+                <ChevronUp className="w-12 h-12 text-pink-600" />
+              )}
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
               Statutory standards under SEPP (Housing) 2021
             </p>
           </CardHeader>
-          <CardContent className="pt-4">
+          {!collapsedSections.adg && (
+            <CardContent className="pt-4">
             <ADGBuildingSeparationTable
               buildingHeight={buildingHeight}
               developmentType={developmentType}
             />
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
       )}
 
       {/* LEP Requirements Section */}
       <Card className="border-blue-300 bg-blue-50/30">
-        <CardHeader className="bg-blue-100">
-          <CardTitle className="flex items-center gap-2">
-            <span className="text-xl">🟦</span>
-            LEP Requirements
+        <CardHeader
+          className="bg-blue-100 cursor-pointer hover:bg-blue-200 transition-colors"
+          onClick={() => toggleSection('lep')}
+        >
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🟦</span>
+              LEP Requirements
+            </div>
+            {collapsedSections.lep ? (
+              <ChevronDown className="w-12 h-12 text-blue-600" />
+            ) : (
+              <ChevronUp className="w-12 h-12 text-blue-600" />
+            )}
           </CardTitle>
           <p className="text-sm text-gray-700 mt-1">
             Local Environmental Plan - Zoning, Building Envelope, Heritage
           </p>
         </CardHeader>
-        <CardContent className="pt-4 space-y-3">
+        {!collapsedSections.lep && (
+          <CardContent className="pt-4 space-y-3">
           {/* 1. Land Use Zoning (Priority) */}
           {propertyData.constraints?.zone && (() => {
             const landZoningLayer = propertyData.planningLayers?.find(
@@ -1136,8 +1188,8 @@ export function ComplianceDashboard({
             />
           ))}
 
-          {/* 4. FSR Card */}
-          {complianceData?.building_envelope
+          {/* 4. FSR Card - REMOVED */}
+          {/* {complianceData?.building_envelope
             .filter(c => c.source.authority_level === 'LEP' && c.type === 'fsr')
             .map((constraint, index) => (
             <ConstraintCard
@@ -1146,7 +1198,7 @@ export function ComplianceDashboard({
               onViewDetails={handleViewProvision}
               compact={true}
             />
-          ))}
+          ))} */}
 
           {/* 5. Minimum Lot Size (Conditional - only if Planning API provides it) */}
           {(() => {
@@ -1168,23 +1220,35 @@ export function ComplianceDashboard({
               );
             }
             return null;
-          })()}
-        </CardContent>
+          })}
+          </CardContent>
+        )}
       </Card>
 
       {/* DCP Design Controls Section - Always show if property has zone/dev type */}
       {propertyData?.constraints?.zone && (
         <Card id="dcp-section" className="border-green-300 bg-green-50/30">
-          <CardHeader className="bg-green-100">
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🟢</span>
-              DCP Design Controls
+          <CardHeader
+            className="bg-green-100 cursor-pointer hover:bg-green-200 transition-colors"
+            onClick={() => toggleSection('dcp')}
+          >
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🟢</span>
+                DCP Design Controls
+              </div>
+              {collapsedSections.dcp ? (
+                <ChevronDown className="w-12 h-12 text-green-600" />
+              ) : (
+                <ChevronUp className="w-12 h-12 text-green-600" />
+              )}
             </CardTitle>
             <p className="text-sm text-gray-700 mt-1">
               Development Control Plan - General Provisions & Precinct-Specific Controls
             </p>
           </CardHeader>
-          <CardContent className="pt-4">
+          {!collapsedSections.dcp && (
+            <CardContent className="pt-4">
             {/* NEW: Unified General DCP Section (replaces old browsers) */}
             {dcpCompleteData && dcpCompleteData.success && dcpCompleteData.general_provisions ? (
               <GeneralDCPSection
@@ -1284,7 +1348,8 @@ export function ComplianceDashboard({
                 )}
               </>
             )}
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
       )}
 
@@ -1292,13 +1357,24 @@ export function ComplianceDashboard({
       {/* Environmental Constraints */}
       {complianceData?.environmental && complianceData.environmental.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🌳</span>
-              Environmental Constraints
+          <CardHeader
+            className="cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => toggleSection('environmental')}
+          >
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🌳</span>
+                Environmental Constraints
+              </div>
+              {collapsedSections.environmental ? (
+                <ChevronDown className="w-12 h-12 text-gray-600" />
+              ) : (
+                <ChevronUp className="w-12 h-12 text-gray-600" />
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          {!collapsedSections.environmental && (
+            <CardContent>
             <div className="space-y-3">
               {complianceData.environmental.map((constraint, index) => (
                 <ConstraintCard
@@ -1309,7 +1385,8 @@ export function ComplianceDashboard({
                 />
               ))}
             </div>
-          </CardContent>
+            </CardContent>
+          )}
         </Card>
       )}
 
