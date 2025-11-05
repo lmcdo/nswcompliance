@@ -130,6 +130,33 @@ const CategoryIcon: React.FC<{ category: string }> = ({ category }) => {
   return <span className="mr-2">{iconMap[category] || '📋'}</span>;
 };
 
+// Format category names with proper capitalization
+const formatCategoryName = (category: string): string => {
+  const formatted = category.replace(/_/g, ' ');
+
+  // Special cases that need specific capitalization
+  const specialCases: Record<string, string> = {
+    'da requirements': 'DA Requirements',
+    'basix': 'BASIX',
+    'sepp': 'SEPP',
+    'lep': 'LEP',
+    'dcp': 'DCP',
+    'hca': 'HCA',
+  };
+
+  // Check if the full string matches a special case
+  const lowerFormatted = formatted.toLowerCase();
+  if (specialCases[lowerFormatted]) {
+    return specialCases[lowerFormatted];
+  }
+
+  // Otherwise, capitalize each word normally
+  return formatted
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 const FilteringLevelBadge: React.FC<{ level?: string; formerCouncil?: string }> = ({ level, formerCouncil }) => {
   const badgeConfig = {
     'zone+devtype': { color: 'bg-green-100 text-green-800 border-green-300', label: 'Zone + Type Filtered' },
@@ -172,8 +199,8 @@ const RequirementCard: React.FC<{
             <span className="font-semibold text-yellow-800 text-xs uppercase tracking-wide">Character Description</span>
           </div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-medium text-gray-600 uppercase">
-              {requirement.category.replace(/_/g, ' ')}
+            <span className="text-xs font-medium text-gray-600">
+              {formatCategoryName(requirement.category)}
             </span>
             {requirement.has_conditionals && (
               <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
@@ -195,8 +222,8 @@ const RequirementCard: React.FC<{
           <div className="flex items-start justify-between">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-gray-600 uppercase">
-                  {requirement.category.replace(/_/g, ' ')}
+                <span className="text-xs font-medium text-gray-600">
+                  {formatCategoryName(requirement.category)}
                 </span>
                 {requirement.has_conditionals && (
                   <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700 border-yellow-300">
@@ -311,8 +338,8 @@ const CategorySection: React.FC<{
         <div className="flex items-center gap-3">
           <CategoryIcon category={category.category} />
           <div>
-            <h4 className="font-semibold text-gray-900 capitalize">
-              {category.category.replace(/_/g, ' ')}
+            <h4 className="font-semibold text-gray-900">
+              {formatCategoryName(category.category)}
             </h4>
             <p className="text-xs text-gray-600">
               {showOnly === 'general' && category.general_count > 0 && (
