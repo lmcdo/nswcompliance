@@ -29,9 +29,10 @@ interface HeritageDetailsProps {
     y: number;
   };
   lga?: string;
+  onViewDCPHeritage?: () => void;
 }
 
-export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDetailsProps) {
+export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeritage }: HeritageDetailsProps) {
   const [hcaData, setHcaData] = useState<HCAData | null>(null);
   const [hcaLoading, setHcaLoading] = useState(false);
 
@@ -95,7 +96,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
 
     return (
       <Card className="border-amber-300 bg-amber-50/30">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-amber-700" />
@@ -106,58 +107,67 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="bg-white rounded-lg p-3 border border-amber-200">
-            <div className="text-xs font-semibold text-amber-600 mb-1">Heritage Conservation Area</div>
+        <CardContent className="space-y-2">
+          <div className="bg-white rounded-lg p-2 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-0.5">Heritage Conservation Area</div>
             <div className="text-sm font-bold text-amber-900">{displayHCA.name}</div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{displayHCA.legislativeClause} Inner West LEP 2022</div>
+              {heritage?.heritageLegislationUrl && (
+                <a
+                  href={heritage.heritageLegislationUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:text-blue-800 underline flex items-center gap-1 mb-1 text-left"
+                >
+                  View LEP Heritage Provisions
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+              {onViewDCPHeritage && (
+                <button
+                  onClick={onViewDCPHeritage}
+                  className="text-xs text-green-700 hover:text-green-800 underline flex items-center gap-1 font-medium text-left"
+                >
+                  View DCP heritage controls below
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Heritage ID</div>
               <div className="text-sm font-semibold text-amber-900">{displayHCA.id}</div>
             </div>
-            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Type</div>
               <div className="text-sm font-semibold text-amber-900">{displayHCA.layClass}</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-amber-200">
-            <div className="text-xs font-semibold text-amber-600 mb-1">Legislative Control</div>
-            <div className="text-sm font-bold text-amber-900">{displayHCA.legislativeClause}</div>
-            {heritage?.heritageLegislationUrl && (
-              <a
-                href={heritage.heritageLegislationUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1 mt-1.5"
-              >
-                View LEP Heritage Provisions
-                <ExternalLink className="h-3 w-3" />
-              </a>
-            )}
-          </div>
-
-          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 flex gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+          <div className="bg-amber-100 border border-amber-300 rounded-lg p-2 flex gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {displayHCA.legislativeClause}.
+              <div className="mt-1.5 pt-1.5 border-t border-amber-200">
+                <span className="text-amber-700 font-semibold">Heritage Resources: </span>
+                <a
+                  href="https://www.heritage.nsw.gov.au/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+                >
+                  NSW Heritage Office
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
             </div>
-          </div>
-
-          <div className="pt-2 border-t border-amber-200">
-            <div className="text-xs text-amber-600 mb-2">Heritage Resources:</div>
-            <a
-              href="https://www.heritage.nsw.gov.au/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
-            >
-              NSW Heritage Office
-              <ExternalLink className="h-3 w-3" />
-            </a>
           </div>
         </CardContent>
       </Card>
@@ -168,7 +178,7 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
   if (!hasSpecificHeritageItem && hcaData && !heritage?.isHeritage) {
     return (
       <Card className="border-amber-300 bg-amber-50/30">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-2">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-2">
               <Shield className="h-5 w-5 text-amber-700" />
@@ -179,47 +189,56 @@ export function HeritageDetails({ heritage, propertyGeometry, lga }: HeritageDet
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="bg-white rounded-lg p-3 border border-amber-200">
-            <div className="text-xs font-semibold text-amber-600 mb-1">Heritage Conservation Area</div>
+        <CardContent className="space-y-2">
+          <div className="bg-white rounded-lg p-2 border border-amber-200">
+            <div className="text-xs font-semibold text-amber-600 mb-0.5">Heritage Conservation Area</div>
             <div className="text-sm font-bold text-amber-900">{hcaData.name}</div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
+              <div className="text-xs text-amber-600 mb-0.5">Legislative Control</div>
+              <div className="text-sm font-semibold text-amber-900 mb-1.5">{hcaData.legislativeClause} Inner West LEP 2022</div>
+              {onViewDCPHeritage && (
+                <button
+                  onClick={onViewDCPHeritage}
+                  className="text-xs text-green-700 hover:text-green-800 underline flex items-center gap-1 font-medium text-left"
+                >
+                  View DCP heritage controls below
+                  <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Heritage ID</div>
               <div className="text-sm font-semibold text-amber-900">{hcaData.id}</div>
             </div>
-            <div className="bg-white rounded-lg p-2.5 border border-amber-100">
+            <div className="bg-white rounded-lg p-2 border border-amber-100">
               <div className="text-xs text-amber-600 mb-0.5">Type</div>
               <div className="text-sm font-semibold text-amber-900">{hcaData.layClass}</div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-amber-200">
-            <div className="text-xs font-semibold text-amber-600 mb-1">Legislative Control</div>
-            <div className="text-sm font-bold text-amber-900">{hcaData.legislativeClause}</div>
-          </div>
-
-          <div className="bg-amber-100 border border-amber-300 rounded-lg p-3 flex gap-2">
-            <AlertTriangle className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+          <div className="bg-amber-100 border border-amber-300 rounded-lg p-2 flex gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-700 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {hcaData.legislativeClause}.
+              <div className="mt-1.5 pt-1.5 border-t border-amber-200">
+                <span className="text-amber-700 font-semibold">Heritage Resources: </span>
+                <a
+                  href="https://www.heritage.nsw.gov.au/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+                >
+                  NSW Heritage Office
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
             </div>
-          </div>
-
-          <div className="pt-2 border-t border-amber-200">
-            <div className="text-xs text-amber-600 mb-2">Heritage Resources:</div>
-            <a
-              href="https://www.heritage.nsw.gov.au/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
-            >
-              NSW Heritage Office
-              <ExternalLink className="h-3 w-3" />
-            </a>
           </div>
         </CardContent>
       </Card>

@@ -19,14 +19,17 @@ interface PropertyData {
  heightSource?: any;
  environmental?: any;
  heritage?: any;
+ propertyArea?: string;
 }
 
 interface PropertyDetailsComprehensiveProps {
  propertyData: PropertyData;
+ lepClauseData?: any;
 }
 
-export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsComprehensiveProps) {
+export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: PropertyDetailsComprehensiveProps) {
  const [expandedLayers, setExpandedLayers] = useState<Set<string>>(new Set())
+ const [isCardCollapsed, setIsCardCollapsed] = useState(false)
 
  const toggleLayer = (layerId: string) => {
  const newExpanded = new Set(expandedLayers)
@@ -101,7 +104,29 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
  // Key regulatory fields
  if (result['Zone']) important.push({ key: 'Zone', value: result['Zone'] })
  if (result['Maximum Building Height']) important.push({ key: 'Height', value: `${result['Maximum Building Height']}${result['Units'] || ''}` })
- if (result['Floor Space Ratio']) important.push({ key: 'FSR', value: `${result['Floor Space Ratio']}:1 sq m` })
+ if (result['Floor Space Ratio']) {
+   // Always show FSR from Planning Portal
+   important.push({ key: 'FSR', value: `${result['Floor Space Ratio']}:1` })
+
+   // Check if there's a dev-type-specific LEP clause cap that overrides FSR calculation
+   const lepClauseCap = lepClauseData?.capacity?.maxGFA;
+   const lepSource = lepClauseData?.capacity?.gfaSource;
+
+   if (lepClauseCap && lepSource && lepSource !== 'FSR calculation') {
+     // Show LEP clause limit (overrides FSR calculation)
+     important.push({ key: 'Maximum Gross Floor Area', value: `${lepClauseCap.toFixed(1)}m² (${lepSource})` })
+   } else {
+     // Calculate max GFA from FSR if lot area is available
+     if (propertyData.propertyArea) {
+       const lotArea = parseFloat(propertyData.propertyArea.replace(/[^\d.]/g, ''))
+       const fsr = parseFloat(result['Floor Space Ratio'])
+       if (!isNaN(lotArea) && !isNaN(fsr)) {
+         const maxGFA = (fsr * lotArea).toFixed(1)
+         important.push({ key: 'Maximum Gross Floor Area', value: `${maxGFA}m²` })
+       }
+     }
+   }
+ }
  if (result['Land Use']) important.push({ key: 'Use', value: result['Land Use'] })
  if (result['Legislative Clause']) important.push({ key: 'Clause', value: result['Legislative Clause'] })
 
@@ -119,19 +144,19 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
  }
 
  if (!propertyData || !propertyData.planningLayers || propertyData.planningLayers.length === 0) {
- return (
- <Card className="shadow-sm">
- <CardHeader>
- <CardTitle className="text-lg font-semibold flex items-center gap-2">
- <FileText className="h-5 w-5" />
- Planning Layers Details
- </CardTitle>
- </CardHeader>
- <CardContent>
- <div className="text-sm text-gray-500">Loading comprehensive planning data...</div>
- </CardContent>
- </Card>
- )
+   return (
+     <Card className="shadow-sm">
+       <CardHeader>
+         <CardTitle className="text-lg font-semibold flex items-center gap-2">
+           <FileText className="h-5 w-5" />
+           Planning Layers Details
+         </CardTitle>
+       </CardHeader>
+       <CardContent>
+         <div className="text-sm text-gray-500">Loading comprehensive planning data...</div>
+       </CardContent>
+     </Card>
+   )
  }
 
  // Define all expected NSW Planning Layers
@@ -158,13 +183,25 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
 
  return (
    <Card className="shadow-sm">
-     <CardHeader>
-       <CardTitle className="text-lg font-semibold flex items-center gap-2">
-         <FileText className="h-5 w-5" />
-         NSW Planning Layers ({expectedLayers.length})
+     <CardHeader className="cursor-pointer" onClick={() => setIsCardCollapsed(!isCardCollapsed)}>
+       <CardTitle className="text-lg font-semibold flex items-center justify-between">
+         <div className="flex items-center gap-2">
+           <FileText className="h-5 w-5" />
+           NSW Planning Layers ({expectedLayers.length})
+         </div>
+         {isCardCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
        </CardTitle>
      </CardHeader>
-     <CardContent className="space-y-3">
+     {!isCardCollapsed && (
+     <CardContent className="space-y-2">
+       {/* Property Compliance Info at top */}
+       <div className="border-b pb-3 mb-2">
+         <p className="font-medium text-gray-900 text-sm mb-1">{propertyData.address}</p>
+         <p className="text-xs text-gray-600">
+           {propertyData.constraints?.lga || 'Unknown'} LGA | {propertyData.constraints?.zone || 'Unknown'} | {propertyData.constraints?.maxHeight ? `${propertyData.constraints.maxHeight}m` : 'No height'} | {propertyData.constraints?.maxFsr ? `${propertyData.constraints.maxFsr}:1` : 'No FSR'} | Heritage: {propertyData.heritage?.isHeritage ? 'Yes' : 'No'} | Flood: {propertyData.constraints?.floodProne ? 'Yes' : 'No'} | {propertyData.constraints?.basixWater || 'N/A'} Water SEPP
+         </p>
+       </div>
+
        {expectedLayers.map((layerName) => {
          const layer = layerMap.get(layerName)
          const isPresent = !!layer
@@ -183,7 +220,7 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
            <div key={layerName} className={`border rounded-lg ${colors.bg} ${colors.border}`}>
              <Button
                variant="ghost"
-               className="!flex w-full justify-between h-auto p-3 font-normal whitespace-normal text-left hover:opacity-90"
+               className="!flex w-full justify-between h-auto p-2 font-normal whitespace-normal text-left hover:opacity-90"
                style={isPresent && isSEPP ? { backgroundColor: 'rgb(255 247 237)', backgroundImage: 'none' } as React.CSSProperties : {}}
                onClick={() => layer && toggleLayer(layer.id)}
                disabled={!isPresent}
@@ -201,21 +238,79 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
              </Button>
 
              {layer && expandedLayers.has(layer.id) && (
-               <div className="border-t bg-gray-50 p-3 space-y-3">
+               <div className="border-t bg-gray-50 p-2 space-y-2">
                  {layer.results.map((result, idx) => (
-                   <div key={idx} className="bg-white rounded-lg p-3 shadow-sm">
-                     {/* Important fields prominently displayed */}
-                     <div className="flex flex-wrap gap-1.5 mb-2">
-                       {getImportantFields(result).map(({ key, value }) => (
-                         <Badge key={key} variant="default" className="text-xs font-semibold px-2 py-0.5">
-                           {key}: {value}
-                         </Badge>
-                       ))}
+                   <div key={idx} className="bg-white rounded-lg p-2 shadow-sm">
+                     {/* Top row: Blue and Green pills stacked in top right corner */}
+                     <div className="flex justify-end mb-2">
+                       <div className="flex flex-col gap-1 items-end">
+                         {result['EPI Name'] && (
+                           <Badge className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800">
+                             {result['EPI Name']}{result['Legislative Clause'] ? ` - ${result['Legislative Clause']}` : ''}
+                           </Badge>
+                         )}
+                         {result['Amendment'] && (
+                           <Badge className="text-xs px-2 py-0.5 bg-green-100 text-green-800">
+                             {result['Amendment']}
+                           </Badge>
+                         )}
+                       </div>
+                     </div>
+
+                     {/* Main content - important fields as text lines */}
+                     <div className="space-y-1 text-sm">
+                       {result['Maximum Building Height'] && (
+                         <p>
+                           <span className="text-gray-700">Maximum Height of Buildings:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Maximum Building Height']}{result['Units'] || 'm'}</span>
+                         </p>
+                       )}
+                       {result['Floor Space Ratio'] && (
+                         <p>
+                           <span className="text-gray-700">Floor Space Ratio:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Floor Space Ratio']}:1</span>
+                         </p>
+                       )}
+                       {result['Zone'] && (
+                         <p>
+                           <span className="text-gray-700">Zone:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Zone']}</span>
+                         </p>
+                       )}
+                       {result['Land Use'] && (
+                         <p>
+                           <span className="text-gray-700">Land Use:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Land Use']}</span>
+                         </p>
+                       )}
+                       {result['Class'] && (
+                         <p>
+                           <span className="text-gray-700">Class:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Class']}</span>
+                         </p>
+                       )}
+                       {result['Canopy %'] && (
+                         <p>
+                           <span className="text-gray-700">Canopy Coverage:</span>{' '}
+                           <span className="font-semibold text-gray-900">{result['Canopy %']}%</span>
+                         </p>
+                       )}
                      </div>
 
                      {/* All other metadata - simple list format */}
-                     <div className="space-y-1.5 text-xs">
-                       {getSecondaryFields(result).map(([key, value]) => (
+                     <div className="space-y-0.5 text-xs mt-2 pt-2 border-t">
+                       {getSecondaryFields(result).filter(([key]) =>
+                         key !== 'Amendment' &&
+                         key !== 'EPI Name' &&
+                         key !== 'Legislative Clause' &&
+                         key !== 'Maximum Building Height' &&
+                         key !== 'Units' &&
+                         key !== 'Floor Space Ratio' &&
+                         key !== 'Zone' &&
+                         key !== 'Land Use' &&
+                         key !== 'Class' &&
+                         key !== 'Canopy %'
+                       ).map(([key, value]) => (
                          <div key={key} className="leading-relaxed">
                            <span className="text-gray-500 font-medium">{key}:</span>{' '}
                            <span className="text-gray-900 font-semibold">
@@ -232,6 +327,7 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
          )
        })}
      </CardContent>
+     )}
    </Card>
  )
 }

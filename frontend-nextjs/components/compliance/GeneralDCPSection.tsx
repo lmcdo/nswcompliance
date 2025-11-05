@@ -4,7 +4,7 @@
  *
  * Displays:
  * - General Controls (Chapter F / Part 4.x / Part C.1) - filtered by zone/devtype where available
- * - Neighbourhood/Precinct Controls (when applicable)
+ * - Precinct Controls (Marrickville/Ashfield) or Distinctive Neighbourhood (Leichhardt) when applicable
  *
  * Adapts to different filtering levels:
  * - Ashfield: Zone + Dev Type filtering
@@ -12,11 +12,11 @@
  * - Leichhardt: Universal (no filtering)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, Info, FileText, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 
 interface GeneralProvision {
   id: number;
@@ -106,6 +106,7 @@ interface GeneralDCPSectionProps {
   developmentType: string;
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
+  displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
 }
 
 const CategoryIcon: React.FC<{ category: string }> = ({ category }) => {
@@ -252,8 +253,8 @@ const RequirementCard: React.FC<{
               </div>
             )}
           </div>
-          <div className="ml-2">
-            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          <div className="ml-2 p-1.5 rounded-full hover:bg-gray-200 transition-colors">
+            {expanded ? <ChevronDown className="w-5 h-5 text-gray-600" /> : <ChevronRight className="w-5 h-5 text-gray-600" />}
           </div>
         </div>
       </div>
@@ -341,7 +342,9 @@ const CategorySection: React.FC<{
               {category.precinct_count} Precinct
             </Badge>
           )}
-          {expanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+          <div className="p-2 rounded-full hover:bg-gray-200 transition-colors">
+            {expanded ? <ChevronDown className="w-6 h-6 text-gray-700" /> : <ChevronRight className="w-6 h-6 text-gray-700" />}
+          </div>
         </div>
       </div>
 
@@ -541,13 +544,34 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   zone,
   developmentType,
   filteringLevel = 'universal',
-  formerCouncil
+  formerCouncil,
+  displayModeSetterRef
 }) => {
   // Modal state for PDF viewer (page group footers)
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
 
   // Display mode: 'separated' (default) or 'combined'
   const [displayMode, setDisplayMode] = useState<'separated' | 'combined'>('separated');
+
+  // Track which category should be expanded
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
+  // Expose setDisplayMode and helper functions to parent via ref
+  useEffect(() => {
+    if (displayModeSetterRef) {
+      displayModeSetterRef.current = (mode: 'separated' | 'combined', options?: { expandCategory?: string }) => {
+        setDisplayMode(mode);
+        if (options?.expandCategory) {
+          setGeneralExpanded(true);
+          setExpandedCategory(options.expandCategory);
+        }
+      };
+    }
+  }, [displayModeSetterRef]);
+
+  // Collapsible sections
+  const [generalExpanded, setGeneralExpanded] = useState(false);
+  const [precinctExpanded, setPrecinctExpanded] = useState(true);
 
   const totalProvisions = generalData.count + (precinctData?.count || 0);
   const totalRequirements = generalData.requirements_count + (precinctData?.requirements_count || 0);
@@ -560,8 +584,8 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   })();
 
   return (
-    <Card className="w-full">
-      <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+    <Card className="w-full border-3 border-green-400">
+      <CardHeader className="border-b bg-green-50">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-xl flex items-center gap-2">
@@ -595,100 +619,88 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
           </div>
         )}
 
-        <div className="flex gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-700">{totalProvisions}</span>
-            <span className="text-gray-600">Provisions</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-700">{totalRequirements}</span>
-            <span className="text-gray-600">Requirements</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-700">{combinedCategories.length}</span>
-            <span className="text-gray-600">Categories</span>
-          </div>
+        <div className="mt-4 text-sm text-gray-700">
+          <span className="font-semibold">{totalProvisions}</span> regulatory Provisions comprising <span className="font-semibold">{totalRequirements}</span> Requirements in <span className="font-semibold">{combinedCategories.length}</span> categories
         </div>
-
-        {/* Display Mode Toggle */}
-        {precinctData && (
-          <div className="mt-4 flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-xs text-amber-900 font-medium">Display Mode</p>
-              <p className="text-xs text-amber-700 mt-0.5">
-                Some categories have both general and precinct-specific requirements
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={displayMode === 'separated' ? 'default' : 'outline'}
-                onClick={() => setDisplayMode('separated')}
-                className="text-xs h-8"
-              >
-                Separated
-              </Button>
-              <Button
-                size="sm"
-                variant={displayMode === 'combined' ? 'default' : 'outline'}
-                onClick={() => setDisplayMode('combined')}
-                className="text-xs h-8"
-              >
-                Combined
-              </Button>
-            </div>
-          </div>
-        )}
       </CardHeader>
 
       <CardContent className="p-6">
+        {/* Display Mode Toggle - Above DCP General Controls */}
+        {precinctData && (
+          <div className="mb-6 flex items-center justify-end gap-2">
+            <Button
+              size="sm"
+              variant={displayMode === 'separated' ? 'default' : 'outline'}
+              onClick={() => setDisplayMode('separated')}
+              className="text-xs h-8"
+            >
+              Separated
+            </Button>
+            <Button
+              size="sm"
+              variant={displayMode === 'combined' ? 'default' : 'outline'}
+              onClick={() => setDisplayMode('combined')}
+              className="text-xs h-8"
+            >
+              Combined
+            </Button>
+          </div>
+        )}
         {/* General Controls Section */}
         <div className="mb-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-1 h-8 bg-blue-400 rounded"></div>
-            <div>
+          <div
+            className="flex items-center gap-3 mb-4 cursor-pointer"
+            onClick={() => setGeneralExpanded(!generalExpanded)}
+          >
+            <div className="w-1 h-8 bg-green-500 rounded"></div>
+            <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 DCP General Controls
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-300">
+                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
                   {generalData.requirements_count} Requirements
                 </Badge>
               </h3>
-              <p className="text-sm text-gray-600 flex items-center gap-2">
+              <p className="text-sm text-gray-600">
                 {formerCouncil ? `${formerCouncil} DCP ${formerCouncil === 'Ashfield' ? '2016' : formerCouncil === 'Marrickville' ? '2011' : '2013'} ${generalData.source}` : generalData.source}
-                <Info className="w-4 h-4 text-gray-400" />
               </p>
               <p className="text-sm text-gray-600 mt-1">
                 {developmentType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}{formerCouncil && ` · Former council area: ${formerCouncil} Council`}
               </p>
             </div>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-            <p className="text-sm text-blue-800 flex items-center gap-2">
-              <Badge className="bg-blue-500 hover:bg-blue-500 text-white text-xs px-2 py-0.5">
-                Council-wide
-              </Badge>
-              <span><strong>Applies to:</strong> {formerCouncil ? `All properties in the former area of ${formerCouncil} council` : generalData.applicable_to}</span>
-            </p>
-          </div>
-
-          {combinedCategories.filter(cat => cat.general_count > 0).length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No general provisions for this zone and development type
+            <div className="ml-2 p-2 rounded-full hover:bg-green-100 transition-colors">
+              {generalExpanded ? <ChevronDown className="w-6 h-6 text-green-700" /> : <ChevronRight className="w-6 h-6 text-green-700" />}
             </div>
-          ) : (
-            combinedCategories
-              .filter(cat => cat.general_count > 0)
-              .map((cat, idx) => (
-                <CategorySection
-                  key={cat.category}
-                  category={cat}
-                  defaultExpanded={false}
-                  setViewingPdfImage={setViewingPdfImage}
-                  showOnly={displayMode === 'separated' ? 'general' : 'both'}
-                />
-              ))
+          </div>
+
+          {generalExpanded && (
+            <>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-green-800 flex items-center gap-2">
+                  <Badge className="bg-green-500 hover:bg-green-500 text-white text-xs px-2 py-0.5">
+                    Council-wide
+                  </Badge>
+                  <span><strong>Applies to:</strong> {formerCouncil ? `All properties in the former area of ${formerCouncil} council` : generalData.applicable_to}</span>
+                </p>
+              </div>
+
+              {combinedCategories.filter(cat => cat.general_count > 0).length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No general provisions for this zone and development type
+                </div>
+              ) : (
+                combinedCategories
+                  .filter(cat => cat.general_count > 0)
+                  .map((cat, idx) => (
+                    <CategorySection
+                      key={cat.category}
+                      category={cat}
+                      defaultExpanded={cat.category === expandedCategory}
+                      setViewingPdfImage={setViewingPdfImage}
+                      showOnly={displayMode === 'separated' ? 'general' : 'both'}
+                    />
+                  ))
+              )}
+            </>
           )}
         </div>
 
@@ -699,12 +711,12 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               <div className="w-1 h-8 bg-green-400 rounded"></div>
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  Neighbourhood/Precinct Controls
+                  {formerCouncil === 'Leichhardt' ? 'Distinctive Neighbourhood Controls' : 'Precinct Controls'}
                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
                     {precinctData.requirements_count} Requirements
                   </Badge>
                 </h3>
-                <p className="text-sm text-gray-600 flex items-center gap-2">
+                <p className="text-sm text-gray-600">
                   <span className="font-semibold">
                     {formerCouncil === 'Leichhardt' ? 'Leichhardt Distinctive Neighbourhood name:' :
                      formerCouncil === 'Marrickville' ? 'Marrickville Precinct name:' :
@@ -712,7 +724,6 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                      'Precinct name:'}
                   </span>
                   {' '}{precinctData.precinct_name}
-                  <Info className="w-4 h-4 text-gray-400" />
                 </p>
               </div>
             </div>

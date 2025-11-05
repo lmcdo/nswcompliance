@@ -6,7 +6,7 @@
  * Follows Universal Technical Implementation Specification
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
@@ -14,6 +14,8 @@ import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { HeritageDetails } from './HeritageDetails';
+import { LandUseZoningCard } from './LandUseZoningCard';
+import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 import { DCPProvisionsBrowser } from './DCPProvisionsBrowser';
 import { PrecinctProvisionsBrowser } from './PrecinctProvisionsBrowser';
 import { CategorizedRequirementsCard } from './CategorizedRequirementsCardV2';
@@ -100,13 +102,6 @@ export function ComplianceDashboard({
   // Structured SEPP requirements state
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
 
-  // Parking requirements state
-  const [parkingData, setParkingData] = useState<{
-    fullTable: string;
-    relevantRow: string | null;
-    description: string;
-    provisionId: number;
-  } | null>(null);
 
   // Week 3: Categorized precinct requirements state
   const [categorizedRequirements, setCategorizedRequirements] = useState<any>(null);
@@ -115,6 +110,9 @@ export function ComplianceDashboard({
   // NEW: Unified DCP Complete data state
   const [dcpCompleteData, setDcpCompleteData] = useState<any>(null);
   const [loadingDcpComplete, setLoadingDcpComplete] = useState(false);
+
+  // Ref to access GeneralDCPSection's display mode setter
+  const displayModeSetterRef = useRef<((mode: 'separated' | 'combined', options?: { expandCategory?: string }) => void) | null>(null);
 
   // Extract NSW Planning API Special Provisions (Water Use, BASIX, etc.)
   const extractPlanningAPIProvisions = useCallback((): ComplianceConstraint[] => {
@@ -465,35 +463,6 @@ export function ComplianceDashboard({
           await loadStructuredRequirements();
         }
 
-        // Fetch parking requirements
-        try {
-          const parkingResponse = await fetch('/api/dcp/parking', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              developmentType,
-              zone: propertyData.constraints.zone,
-              lga: propertyData.constraints?.lga
-            })
-          });
-
-          if (parkingResponse.ok) {
-            const parkingResult = await parkingResponse.json();
-            if (parkingResult.success) {
-              console.log('[ComplianceDashboard] Loaded parking requirements:', parkingResult.data);
-              setParkingData({
-                fullTable: parkingResult.data.fullTable,
-                relevantRow: parkingResult.data.relevantRow,
-                description: parkingResult.data.description,
-                provisionId: parkingResult.data.provisionId
-              });
-            }
-          }
-        } catch (parkingErr) {
-          console.error('[ComplianceDashboard] Failed to load parking requirements:', parkingErr);
-          // Don't fail the whole dashboard if parking fails
-        }
-
       } catch (err) {
         console.error('[ComplianceDashboard] Failed to load compliance data:', err);
         setError(err instanceof Error ? err.message : 'Failed to load compliance data');
@@ -626,7 +595,8 @@ export function ComplianceDashboard({
             } : undefined,
             zone: propertyData.constraints.zone,
             developmentType: developmentType,
-            lga: propertyData.constraints.lga || propertyData.council || 'Inner West'
+            lga: propertyData.constraints.lga || propertyData.council || 'Inner West',
+            heritageStatus: propertyData.constraints?.heritage || null
           })
         });
 
@@ -952,71 +922,6 @@ export function ComplianceDashboard({
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Property Header */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-xl">
-            Property Compliance: {propertyData.address}
-          </CardTitle>
-          <div className="text-sm text-gray-600">
-            {propertyData.constraints?.lga && `${propertyData.constraints.lga} LGA`}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Permission Status Badge */}
-          {permissionStatus && (
-            <div className="mb-4">
-              {permissionStatus === 'exempt' && (
-                <div className="bg-green-100 border border-green-300 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">✓</span>
-                    <div>
-                      <div className="font-semibold text-green-800">Exempt Development</div>
-                      <div className="text-sm text-green-700">
-                        No Development Application required if standards are met
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {permissionStatus === 'complying' && (
-                <div className="bg-blue-100 border border-blue-300 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">📋</span>
-                    <div>
-                      <div className="font-semibold text-blue-800">Complying Development</div>
-                      <div className="text-sm text-blue-700">
-                        Complying Development Certificate (CDC) pathway available if standards are met
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {permissionStatus === 'consent_required' && (
-                <div className="bg-orange-100 border border-orange-300 rounded-lg px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">⚠</span>
-                    <div>
-                      <div className="font-semibold text-orange-800">Development Approval Required</div>
-                      <div className="text-sm text-orange-700">
-                        Full Development Application (DA) required
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Quick Reference Strip */}
-          <div className="bg-gray-50 px-4 py-2 rounded-lg text-sm font-mono">
-            {getQuickReference()}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* SEPP Overlay Indicator removed - SEPP cards shown inline below */}
-
       {/* Flex Layout: Constraints List + Slide-Out Panel */}
       <div className="flex gap-4" style={{ minHeight: 'calc(100vh - 400px)' }}>
         {/* Left: Constraints List (expands/contracts with panel) */}
@@ -1034,10 +939,10 @@ export function ComplianceDashboard({
         const informational = seppProvisions.filter(p => p.requiresAction === false);
 
         return (
-        <Card className="border-orange-200">
-          <CardHeader className="bg-orange-50">
+        <Card className="border-3 border-pink-400 bg-pink-50">
+          <CardHeader className="bg-pink-100">
             <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🟥</span>
+              <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
               SEPP Special Provisions
               {informational.length > 0 && (
                 <span className="text-sm font-normal text-gray-600">
@@ -1151,10 +1056,10 @@ export function ComplianceDashboard({
         developmentType === 'residential_flat' ||
         developmentType === 'shop_top_housing'
       ) && (
-        <Card className="border-red-300">
-          <CardHeader className="bg-red-50">
+        <Card className="border-3 border-pink-400 bg-pink-50">
+          <CardHeader className="bg-pink-100">
             <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🟥</span>
+              <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
               NSW Apartment Design Guide - Building Separation
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
@@ -1170,53 +1075,113 @@ export function ComplianceDashboard({
         </Card>
       )}
 
-      {/* Heritage Details (LEP Level - Between ADG and LEP Envelope) */}
-      <HeritageDetails
-        heritage={propertyData.heritage}
-        propertyGeometry={propertyData.geometry}
-        lga={propertyData.constraints?.lga}
-      />
+      {/* LEP Requirements Section */}
+      <Card className="border-blue-300 bg-blue-50/30">
+        <CardHeader className="bg-blue-100">
+          <CardTitle className="flex items-center gap-2">
+            <span className="text-xl">🟦</span>
+            LEP Requirements
+          </CardTitle>
+          <p className="text-sm text-gray-700 mt-1">
+            Local Environmental Plan - Zoning, Building Envelope, Heritage
+          </p>
+        </CardHeader>
+        <CardContent className="pt-4 space-y-3">
+          {/* 1. Land Use Zoning (Priority) */}
+          {propertyData.constraints?.zone && (() => {
+            const landZoningLayer = propertyData.planningLayers?.find(
+              layer => layer.layerName === 'Land Zoning Map'
+            );
+            const zoneResult = landZoningLayer?.results?.[0];
 
-      {/* LEP Building Envelope Section */}
-      {complianceData?.building_envelope &&
-       complianceData.building_envelope.filter(c => c.source.authority_level === 'LEP').length > 0 && (
-        <Card className="border-blue-200">
-          <CardHeader className="bg-blue-50">
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🟦</span>
-              LEP Building Envelope Constraints
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              Local Environmental Plan - Height, FSR, Lot Size
-            </p>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="space-y-3">
-              {complianceData.building_envelope
-                .filter(c => c.source.authority_level === 'LEP')
-                .map((constraint, index) => (
-                <ConstraintCard
-                  key={`lep-envelope-${index}`}
-                  constraint={constraint}
-                  onViewDetails={handleViewProvision}
-                  compact={true}
+            return (
+              <LandUseZoningCard
+                zone={propertyData.constraints.zone}
+                zoneDescription={propertyData.constraints.zoneDescription}
+                lga={propertyData.constraints.lga || 'Inner West'}
+                legislationUrl={zoneResult?.['legislationUrl']}
+                epiName={zoneResult?.['EPI Name']}
+                amendment={zoneResult?.['Amendment']}
+                legislativeClause={zoneResult?.['Legislative Clause'] || 'Clause 2.3'}
+              />
+            );
+          })()}
+
+          {/* 2. Heritage Conservation Area / Heritage Item */}
+          <HeritageDetails
+            heritage={propertyData.heritage}
+            propertyGeometry={propertyData.geometry}
+            lga={propertyData.constraints?.lga}
+            onViewDCPHeritage={() => {
+              // Switch to combined mode and expand heritage category
+              if (displayModeSetterRef.current) {
+                displayModeSetterRef.current('combined', { expandCategory: 'heritage' });
+              }
+              // Scroll to DCP section
+              setTimeout(() => {
+                document.getElementById('dcp-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 100);
+            }}
+          />
+
+          {/* 3. Height Card */}
+          {complianceData?.building_envelope
+            .filter(c => c.source.authority_level === 'LEP' && c.type === 'height')
+            .map((constraint, index) => (
+            <ConstraintCard
+              key={`lep-height-${index}`}
+              constraint={constraint}
+              onViewDetails={handleViewProvision}
+              compact={true}
+            />
+          ))}
+
+          {/* 4. FSR Card */}
+          {complianceData?.building_envelope
+            .filter(c => c.source.authority_level === 'LEP' && c.type === 'fsr')
+            .map((constraint, index) => (
+            <ConstraintCard
+              key={`lep-fsr-${index}`}
+              constraint={constraint}
+              onViewDetails={handleViewProvision}
+              compact={true}
+            />
+          ))}
+
+          {/* 5. Minimum Lot Size (Conditional - only if Planning API provides it) */}
+          {(() => {
+            const lotSizeLayer = propertyData.planningLayers?.find(
+              layer => layer.layerName === 'Lot Size Map' || layer.layerName === 'Minimum Lot Size Map'
+            );
+            const lotSizeResult = lotSizeLayer?.results?.[0];
+            const minimumSize = lotSizeResult?.['Minimum Lot Size'] || lotSizeResult?.['Lot Size'];
+
+            if (minimumSize) {
+              return (
+                <MinimumLotSizeCard
+                  minimumSize={parseFloat(minimumSize)}
+                  unit={lotSizeResult?.['Units'] || 'm²'}
+                  epiName={lotSizeResult?.['EPI Name']}
+                  amendment={lotSizeResult?.['Amendment']}
+                  legislativeClause={lotSizeResult?.['Legislative Clause'] || 'Clause 4.1'}
                 />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+              );
+            }
+            return null;
+          })()}
+        </CardContent>
+      </Card>
 
       {/* DCP Design Controls Section - Always show if property has zone/dev type */}
       {propertyData?.constraints?.zone && (
-        <Card className="border-green-200">
-          <CardHeader className="bg-green-50">
+        <Card id="dcp-section" className="border-green-300 bg-green-50/30">
+          <CardHeader className="bg-green-100">
             <CardTitle className="flex items-center gap-2">
               <span className="text-xl">🟢</span>
               DCP Design Controls
             </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              Development Control Plan - Setbacks, Design Guidelines
+            <p className="text-sm text-gray-700 mt-1">
+              Development Control Plan - General Provisions & Precinct-Specific Controls
             </p>
           </CardHeader>
           <CardContent className="pt-4">
@@ -1228,6 +1193,8 @@ export function ComplianceDashboard({
                 combinedCategories={dcpCompleteData.combined?.categories || []}
                 zone={propertyData.constraints.zone}
                 developmentType={developmentType}
+                formerCouncil={dcpCompleteData.query?.formerCouncil}
+                displayModeSetterRef={displayModeSetterRef}
               />
             ) : loadingDcpComplete ? (
               <div className="py-8 text-center text-gray-500">
@@ -1281,6 +1248,7 @@ export function ComplianceDashboard({
                     <CategorizedRequirementsCard
                       categories={categorizedRequirements.categories}
                       precinctName={categorizedRequirements.precinct?.precinct_name}
+                      developmentType={developmentType}
                       className="mt-4"
                     />
                   );
@@ -1320,67 +1288,6 @@ export function ComplianceDashboard({
         </Card>
       )}
 
-      {/* DCP Parking Requirements */}
-      {parkingData && (
-        <Card className="border-green-200">
-          <CardHeader className="bg-green-50">
-            <CardTitle className="flex items-center gap-2">
-              <span className="text-xl">🅿️</span>
-              Parking Requirements
-            </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
-              Marrickville DCP 2011 - Section 2.10
-            </p>
-          </CardHeader>
-          <CardContent className="pt-4">
-            <div className="bg-white border rounded-lg p-4">
-              <div className="text-sm text-gray-700 mb-3">
-                <strong>Development Type:</strong> {developmentType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </div>
-              <div className="text-sm text-gray-600 mb-4">
-                {parkingData.description}
-              </div>
-
-              {parkingData.relevantRow && (
-                <div className="bg-gray-50 rounded p-3 mb-3 overflow-x-auto">
-                  <div
-                    className="text-xs"
-                    dangerouslySetInnerHTML={{ __html: parkingData.relevantRow }}
-                  />
-                </div>
-              )}
-
-              <button
-                onClick={() => {
-                  // Open full table in slide-out panel
-                  setSelectedProvision({
-                    constraint: {
-                      type: 'special',
-                      value: 'Parking Requirements',
-                      source: {
-                        clause: 'Table 1',
-                        document: 'Marrickville DCP 2011 - Section 2.10',
-                        authority_level: 'DCP'
-                      }
-                    },
-                    provisions: [{
-                      id: parkingData.provisionId,
-                      ref_number: 'Table 1',
-                      section_header: 'Car Parking Requirements',
-                      provision_text: parkingData.fullTable,
-                      document_id: 'Marrickville_DCP_2011__2_10_Parking'
-                    }]
-                  });
-                  setPanelOpen(true);
-                }}
-                className="text-sm text-blue-600 hover:text-blue-700 underline"
-              >
-                View Full Parking Table
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Environmental Constraints */}
       {complianceData?.environmental && complianceData.environmental.length > 0 && (

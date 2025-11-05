@@ -13,14 +13,11 @@
  * - Expandable cards show full legal text via /api/provisions/[id]/complete
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
-import { PermissibilityChecker } from '@/components/compliance/PermissibilityChecker';
-import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
-import { Info } from 'lucide-react';
 
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -31,6 +28,45 @@ export default function AssessmentPage() {
   const [developmentType, setDevelopmentType] = useState('dwelling_house');
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
+  const [lepClauseData, setLepClauseData] = useState<any>(null);
+
+  // Fetch LEP clause data when property or dev type changes
+  useEffect(() => {
+    async function fetchLepClauses() {
+      if (!selectedProperty) {
+        setLepClauseData(null);
+        return;
+      }
+
+      const lotArea = selectedProperty.propertyArea ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, '')) : null;
+      if (!lotArea) return;
+
+      try {
+        const response = await fetch('/api/capacity/calculate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            address: selectedProperty.address,
+            coordinates: selectedCoordinates,
+            developmentType: developmentType,
+            lotArea: lotArea,
+            zone: selectedProperty.constraints?.zone || '',
+            lga: selectedProperty.constraints?.lga || '',
+            formerCouncil: selectedProperty.constraints?.formerCouncil || ''
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setLepClauseData(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch LEP clause data:', error);
+      }
+    }
+
+    fetchLepClauses();
+  }, [selectedProperty, developmentType, selectedCoordinates]);
 
   const handleAddressSelect = async (address: string, coordinates?: google.maps.LatLngLiteral) => {
     console.log('=== handleAddressSelect CALLED ===');
@@ -137,17 +173,8 @@ export default function AssessmentPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-600 flex items-center gap-1">
+                      <label className="text-sm text-gray-600">
                         Zone
-                        {selectedProperty.constraints?.zone && (
-                          <button
-                            onClick={() => setShowZoneInfo(true)}
-                            className="text-gray-400 hover:text-blue-600 transition-colors"
-                            title="View zone details"
-                          >
-                            <Info className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                       </label>
                       <span className="block px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
                         {selectedProperty.constraints?.zoneDescription || selectedProperty.constraints?.zone || 'Unknown'}
@@ -306,7 +333,10 @@ export default function AssessmentPage() {
 
             {/* Planning API Data - All Layers */}
             {selectedProperty && (
-              <PropertyDetailsComprehensive propertyData={selectedProperty} />
+              <PropertyDetailsComprehensive
+                propertyData={selectedProperty}
+                lepClauseData={lepClauseData}
+              />
             )}
           </div>
 
@@ -321,20 +351,6 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Permissibility Checker - Answer "Can I build X here?" */}
-                <PermissibilityChecker propertyAddress={selectedProperty.address} />
-
-                {/* Development Capacity Calculator - Answer "How big can I build?" */}
-                <CapacityCalculator
-                  propertyAddress={selectedProperty.address}
-                  coordinates={selectedCoordinates}
-                  developmentType={developmentType}
-                  lotArea={selectedProperty.propertyArea ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, '')) : null}
-                  zone={selectedProperty.constraints?.zone || ''}
-                  lga={selectedProperty.constraints?.lga || ''}
-                  formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                />
-
                 {/* Compliance Dashboard - Show all applicable provisions */}
                 <ComplianceDashboard
                   propertyData={selectedProperty}
