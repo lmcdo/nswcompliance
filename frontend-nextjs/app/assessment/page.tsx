@@ -18,6 +18,7 @@ import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
+import { PersistentFeedbackHub } from '@/components/feedback/PersistentFeedbackHub';
 
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -29,6 +30,12 @@ export default function AssessmentPage() {
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [lepClauseData, setLepClauseData] = useState<any>(null);
+
+  // Handle feedback submissions from professionals
+  const handleFeedbackSubmit = (feedback: any) => {
+    console.log('Professional feedback submitted:', feedback);
+    // Here you could also send to analytics, show notifications, etc.
+  };
 
   // Fetch LEP clause data when property or dev type changes
   useEffect(() => {
@@ -432,6 +439,16 @@ export default function AssessmentPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Professional Feedback Hub - Always Available */}
+      {selectedProperty && (
+        <PersistentFeedbackHub
+          propertyAddress={selectedProperty.address}
+          propertyId={selectedProperty.address?.replace(/[^a-zA-Z0-9]/g, '_')}
+          sections={['setbacks', 'compliance_results', 'zoning', 'parking', 'general']}
+          onFeedback={handleFeedbackSubmit}
+        />
       )}
     </div>
   );
