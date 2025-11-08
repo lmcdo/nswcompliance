@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, MapPin, Loader2, X } from 'lucide-react';
+// Force recompile to apply address formatting fix
 
 interface PropertySearchProps {
   onAddressSelect: (address: string, coordinates?: google.maps.LatLngLiteral) => void;
@@ -24,7 +25,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
   // }, [selectedAddress, inputValue]);
 
   useEffect(() => {
-    // No custom styles - let Google Maps use default styling
+    let dropdownObserver: MutationObserver | null = null;
 
     const initializeAutocomplete = () => {
       // Clear any existing autocomplete first
@@ -47,12 +48,41 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           }
         );
 
+        // Fix dropdown display: Add comma+space between street and suburb
+        // Use MutationObserver to watch for Google's dropdown appearing
+        dropdownObserver = new MutationObserver(() => {
+          const pacContainer = document.querySelector('.pac-container');
+          if (pacContainer) {
+            const items = pacContainer.querySelectorAll('.pac-item');
+            items.forEach((item) => {
+              // Find the span with no class (contains suburb like "Leichhardt NSW, Australia")
+              const spans = item.querySelectorAll('span');
+              spans.forEach((span) => {
+                if (!span.className && span.textContent) {
+                  const text = span.textContent;
+                  // Add comma+space before suburb: "Leichhardt NSW" becomes ", Leichhardt NSW"
+                  // Only if it doesn't already have leading comma/space
+                  if (text.trim() && !text.trim().startsWith(',') && text.match(/^[A-Z]/)) {
+                    span.textContent = ', ' + text.trim();
+                  }
+                }
+              });
+            });
+          }
+        });
+
+        // Observe the document body for dropdown appearing
+        dropdownObserver.observe(document.body, {
+          childList: true,
+          subtree: true
+        });
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
 
           if (place?.formatted_address) {
-            const address = place.formatted_address;
+            let address = place.formatted_address;
+
             const coordinates = place.geometry?.location ? {
               lat: place.geometry.location.lat(),
               lng: place.geometry.location.lng()
@@ -109,10 +139,17 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
         if (autocompleteRef.current) {
           window.google?.maps.event.clearInstanceListeners(autocompleteRef.current);
         }
+        if (dropdownObserver) {
+          dropdownObserver.disconnect();
+        }
       };
     }
 
+    // Cleanup on unmount
     return () => {
+      if (dropdownObserver) {
+        dropdownObserver.disconnect();
+      }
       if (autocompleteRef.current) {
         window.google?.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
