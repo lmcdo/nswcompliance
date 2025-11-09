@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
+import { PdfPageButton } from './PdfPageButton';
 
 interface GeneralProvision {
   id: number;
@@ -243,7 +244,7 @@ const RequirementCard: React.FC<{
                   }}
                   className="text-xs text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1"
                 >
-                  {showVerbatim ? '▲ Hide' : '▼ View'} {requirement.pdf_page ? `PDF page ${requirement.pdf_page}` : 'PDF source'}
+                  {showVerbatim ? '▲ Hide verbatim text' : '▼ View verbatim text'}
                 </button>
                 {showVerbatim && (
                   <div className="mt-2 p-3 bg-gray-100 border border-gray-300 rounded-lg">
@@ -251,32 +252,25 @@ const RequirementCard: React.FC<{
                     <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
                       {requirement.verbatim_source_text}
                     </p>
+                    {/* Standardized PDF button - right-aligned below verbatim */}
+                    {hasPdfAccess && (
+                      <PdfPageButton
+                        pageNumber={requirement.pdf_page}
+                        pdfUrl={requirement.pdf_page_image_url!}
+                        onClick={() => setShowingPdf(true)}
+                        variant="inline"
+                      />
+                    )}
                   </div>
                 )}
               </div>
             )}
 
-            {expanded && (
-              <div className="mt-2 space-y-2">
-                {requirement.has_conditionals && requirement.conditional_text && (
-                  <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                    <strong>Condition:</strong> {requirement.conditional_text}
-                  </div>
-                )}
-                {hasPdfAccess && !hideIndividualPdf && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowingPdf(true);
-                    }}
-                  >
-                    <FileText className="h-3 w-3 mr-1" />
-                    {requirement.pdf_page ? `View PDF Page ${requirement.pdf_page}` : 'View PDF'}
-                  </Button>
-                )}
+            {expanded && requirement.has_conditionals && requirement.conditional_text && (
+              <div className="mt-2">
+                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                  <strong>Condition:</strong> {requirement.conditional_text}
+                </div>
               </div>
             )}
           </div>

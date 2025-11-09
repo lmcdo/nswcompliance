@@ -1,0 +1,722 @@
+[
+  {
+    "id": 17346,
+    "requirement_text": "Minimum setbacks must be provided unless smaller setbacks can maintain privacy and amenity.",
+    "pdf_page_old": 11,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_11.png"
+  },
+  {
+    "id": 17344,
+    "requirement_text": "Buildings must align with the street and open space systems.",
+    "pdf_page_old": 11,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_11.png"
+  },
+  {
+    "id": 17351,
+    "requirement_text": "Provide secure cycle parking for residents and visitors.",
+    "pdf_page_old": 12,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_12.png"
+  },
+  {
+    "id": 17347,
+    "requirement_text": "Buildings must have a high quality appearance and respect local character.",
+    "pdf_page_old": 12,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_12.png"
+  },
+  {
+    "id": 17349,
+    "requirement_text": "Waste management areas must integrate into the streetscape.",
+    "pdf_page_old": 13,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_13.png"
+  },
+  {
+    "id": 17350,
+    "requirement_text": "Provide adequate on-site storage for waste and recyclables.",
+    "pdf_page_old": 13,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_13.png"
+  },
+  {
+    "id": 17357,
+    "requirement_text": "Maximize direct sunlight within buildings and orient windows to the north.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17356,
+    "requirement_text": "At least 70% of apartments must receive 2 hours of direct sunlight.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17355,
+    "requirement_text": "Design buildings to minimize overshadowing and loss of solar access.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 13781,
+    "requirement_text": "Specific requirements apply to Residential Apartment Development.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17358,
+    "requirement_text": "At least 60% of apartments must be naturally cross ventilated.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17354,
+    "requirement_text": "Maintain solar access to adjacent properties.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17353,
+    "requirement_text": "Reduced separation may be considered with privacy measures.",
+    "pdf_page_old": 14,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_14.png"
+  },
+  {
+    "id": 17372,
+    "requirement_text": "Maximize plantings on structures to enhance private open space.",
+    "pdf_page_old": 15,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_15.png"
+  },
+  {
+    "id": 17359,
+    "requirement_text": "Minimize off-street parking to reduce impacts.",
+    "pdf_page_old": 15,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_15.png"
+  },
+  {
+    "id": 17367,
+    "requirement_text": "Enhance the overall appearance of Johnston Street, Rose Street, and View Street.",
+    "pdf_page_old": 15,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_15.png"
+  },
+  {
+    "id": 17369,
+    "requirement_text": "Ensure suitable area for landscaping and deep soil planting.",
+    "pdf_page_old": 15,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_15.png"
+  },
+  {
+    "id": 17361,
+    "requirement_text": "Car entries should be single width and replace hard paving with landscaping.",
+    "pdf_page_old": 16,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_16.png"
+  },
+  {
+    "id": 17377,
+    "requirement_text": "Design landscaping for open views and clear pedestrian passage.",
+    "pdf_page_old": 16,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_16.png"
+  },
+  {
+    "id": 17360,
+    "requirement_text": "Replace hardstand parking with landscaping.",
+    "pdf_page_old": 16,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_16.png"
+  },
+  {
+    "id": 17375,
+    "requirement_text": "Structures fronting Victoria Road must not exceed 4 storeys.",
+    "pdf_page_old": 16,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_16.png"
+  },
+  {
+    "id": 17382,
+    "requirement_text": "Height of development must respond to existing and future scale, character, and form of the streetscape.",
+    "pdf_page_old": 17,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_17.png"
+  },
+  {
+    "id": 13806,
+    "requirement_text": "Maximum ridge height on 170 View Street is RL 14.5.",
+    "pdf_page_old": 17,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_17.png"
+  },
+  {
+    "id": 17383,
+    "requirement_text": "Adequate access and parking must be provided on and off Victoria Road.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 17385,
+    "requirement_text": "Plantings must provide screening between buildings/dwellings and open space.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 17384,
+    "requirement_text": "Landscaping should represent indigenous species, with formal plantings to foreshore promenade and street system.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 17381,
+    "requirement_text": "Maximum wall height: 4m; maximum building height: 7.5m (two storeys) above Johnston Street.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 13818,
+    "requirement_text": "Development must have bulk and scale that responds to surrounding context.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 13814,
+    "requirement_text": "Building mass and articulation must reflect the character of Johnson Street.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 13819,
+    "requirement_text": "Development must not exceed maximum height in storeys and RL.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 17380,
+    "requirement_text": "Minimum rear setback: 3m at ground floor level.",
+    "pdf_page_old": 18,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_18.png"
+  },
+  {
+    "id": 17387,
+    "requirement_text": "Building and landscape materials must be fit for purpose, reflect desired character, and be of high specification.",
+    "pdf_page_old": 19,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_19.png"
+  },
+  {
+    "id": 17386,
+    "requirement_text": "Buildings must have adequate separation to minimize visual bulk and ensure amenity.",
+    "pdf_page_old": 19,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_19.png"
+  },
+  {
+    "id": 17391,
+    "requirement_text": "Signage must be on non-residential parts of the building.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 17389,
+    "requirement_text": "Buildings should be of contemporary design.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 17397,
+    "requirement_text": "Maximum solid wall length without modulation is 12m.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 17394,
+    "requirement_text": "At least 70% of residential units must receive 2 hours of direct sunlight.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 13827,
+    "requirement_text": "Building and landscape materials must be fit for purpose and of high quality.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 17393,
+    "requirement_text": "Maximize access for people of all abilities.",
+    "pdf_page_old": 20,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_20.png"
+  },
+  {
+    "id": 13828,
+    "requirement_text": "Development must submit a heritage management document.",
+    "pdf_page_old": 22,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_22.png"
+  },
+  {
+    "id": 13829,
+    "requirement_text": "Council may require a Conservation Management Plan for significant Heritage Items.",
+    "pdf_page_old": 22,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_22.png"
+  },
+  {
+    "id": 17401,
+    "requirement_text": "A Landscape Plan of Management/Maintenance Plan must be submitted.",
+    "pdf_page_old": 22,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_22.png"
+  },
+  {
+    "id": 17404,
+    "requirement_text": "Protect and enhance residential amenity",
+    "pdf_page_old": 26,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_26.png"
+  },
+  {
+    "id": 17405,
+    "requirement_text": "Built form layout to be consistent with Figure G54",
+    "pdf_page_old": 26,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_26.png"
+  },
+  {
+    "id": 17409,
+    "requirement_text": "New buildings must not encroach on existing setbacks",
+    "pdf_page_old": 28,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_28.png"
+  },
+  {
+    "id": 17408,
+    "requirement_text": "Retain and enhance views to and from the water",
+    "pdf_page_old": 29,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_29.png"
+  },
+  {
+    "id": 17406,
+    "requirement_text": "Parking must not detrimentally affect house presentation",
+    "pdf_page_old": 29,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_29.png"
+  },
+  {
+    "id": 17407,
+    "requirement_text": "Minimum flexible floor space: 980 m2",
+    "pdf_page_old": 29,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_29.png"
+  },
+  {
+    "id": 17415,
+    "requirement_text": "Reduce overall building bulk and scale for human scale development",
+    "pdf_page_old": 30,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_30.png"
+  },
+  {
+    "id": 17414,
+    "requirement_text": "No demolition or cutting into rock faces for parking",
+    "pdf_page_old": 30,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_30.png"
+  },
+  {
+    "id": 17416,
+    "requirement_text": "Provide setbacks and design measures for future redevelopment of neighboring properties",
+    "pdf_page_old": 30,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_30.png"
+  },
+  {
+    "id": 13849,
+    "requirement_text": "Minimize adverse impacts of student accommodation on nearby properties.",
+    "pdf_page_old": 30,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_30.png"
+  },
+  {
+    "id": 17413,
+    "requirement_text": "Minimum parking frontage: 5m",
+    "pdf_page_old": 30,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_30.png"
+  },
+  {
+    "id": 13847,
+    "requirement_text": "Site specific controls to define desired future character and development principles.",
+    "pdf_page_old": 31,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_31.png"
+  },
+  {
+    "id": 17419,
+    "requirement_text": "Ensure high resident amenity, safety, and privacy in boarding houses",
+    "pdf_page_old": 32,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_32.png"
+  },
+  {
+    "id": 17417,
+    "requirement_text": "30% of bedrooms must have private open space of at least 4sqm",
+    "pdf_page_old": 32,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_32.png"
+  },
+  {
+    "id": 17418,
+    "requirement_text": "Provide communal bathrooms: 1 wash basin and 1 toilet per 10 residents; 1 shower or bath per 10 residents",
+    "pdf_page_old": 32,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_32.png"
+  },
+  {
+    "id": 13852,
+    "requirement_text": "Buildings must have a high-quality appearance to enhance public domain.",
+    "pdf_page_old": 33,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_33.png"
+  },
+  {
+    "id": 13854,
+    "requirement_text": "Building design must balance new development with older locality character.",
+    "pdf_page_old": 33,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_33.png"
+  },
+  {
+    "id": 13851,
+    "requirement_text": "New road must have a total width of 16m and specific dimensions for various elements.",
+    "pdf_page_old": 33,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_33.png"
+  },
+  {
+    "id": 13853,
+    "requirement_text": "Building design must respond to surrounding industrial character and heritage.",
+    "pdf_page_old": 33,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_33.png"
+  },
+  {
+    "id": 17425,
+    "requirement_text": "Employment uses must incorporate design and acoustic measures to protect residential amenity.",
+    "pdf_page_old": 33,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_33.png"
+  },
+  {
+    "id": 17424,
+    "requirement_text": "Site canopy coverage must achieve 15% through landscaping and mature tree planting.",
+    "pdf_page_old": 34,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_34.png"
+  },
+  {
+    "id": 17426,
+    "requirement_text": "Development applications must include a view analysis identifying private views from neighboring properties.",
+    "pdf_page_old": 36,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_36.png"
+  },
+  {
+    "id": 17427,
+    "requirement_text": "Minimum Green Building Council rating: 4 stars.",
+    "pdf_page_old": 36,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_36.png"
+  },
+  {
+    "id": 17420,
+    "requirement_text": "Setbacks must comply with specified details in Figure G12-G19.",
+    "pdf_page_old": 37,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_37.png"
+  },
+  {
+    "id": 17428,
+    "requirement_text": "A Site Waste Minimisation and Waste Management Plan (SWMMP) must be submitted with the development application.",
+    "pdf_page_old": 37,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_37.png"
+  },
+  {
+    "id": 13858,
+    "requirement_text": "Waste and recycling storage areas must integrate with Chester Street streetscape.",
+    "pdf_page_old": 37,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_37.png"
+  },
+  {
+    "id": 17422,
+    "requirement_text": "Building bulk must be modulated according to height, setback, and active frontage controls.",
+    "pdf_page_old": 37,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_37.png"
+  },
+  {
+    "id": 17421,
+    "requirement_text": "Building height must comply with clause 6.15 of Inner West LEP 2022.",
+    "pdf_page_old": 37,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_37.png"
+  },
+  {
+    "id": 17437,
+    "requirement_text": "Provide minimum 4 sqm of space for every 500 sqm of non-residential floor space for waste storage.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17435,
+    "requirement_text": "Provide dedicated space for interim storage of bulky waste; minimum 8 sqm for every 50 rooms.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17433,
+    "requirement_text": "Ensure high quality appearance of all building facades.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 13868,
+    "requirement_text": "Provide on-site space for storing reusable commercial items near retail or commercial premises.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17434,
+    "requirement_text": "Provide access to garbage and recycling disposal on each residential level; waste chute advisable for buildings 4 storeys or more.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17436,
+    "requirement_text": "Provide communal space for recovery of materials; minimum 2 sqm for every 50 rooms.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17438,
+    "requirement_text": "Submit a Heritage Impact Statement with development applications for redevelopment in the Precinct.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17430,
+    "requirement_text": "Buildings must have a high quality appearance and consider surrounding character.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17431,
+    "requirement_text": "Building and landscape materials must be fit for purpose and reflect desired character.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17432,
+    "requirement_text": "Use heavy materials for base structure and lightweight materials for the top; include screening elements for privacy.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17429,
+    "requirement_text": "Separation between buildings as per RFDC requirements.",
+    "pdf_page_old": 38,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_38.png"
+  },
+  {
+    "id": 17445,
+    "requirement_text": "Signage must be appropriate and not cause visual clutter.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17448,
+    "requirement_text": "Optimize solar access to habitable rooms and private open space.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17449,
+    "requirement_text": "All development must comply with SEPP 65.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17444,
+    "requirement_text": "Comply with Part C1.10 for equity of access and mobility.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17443,
+    "requirement_text": "Maximise access to the development for all abilities.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17447,
+    "requirement_text": "Signage must comply with Part C1.15 for non-residential purposes.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17442,
+    "requirement_text": "Buildings and landscape elements must enhance streetscape character and residential amenity.",
+    "pdf_page_old": 39,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_39.png"
+  },
+  {
+    "id": 17456,
+    "requirement_text": "All development must comply with visual privacy provisions.",
+    "pdf_page_old": 40,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_40.png"
+  },
+  {
+    "id": 17457,
+    "requirement_text": "New development must follow the lot amalgamation pattern.",
+    "pdf_page_old": 40,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_40.png"
+  },
+  {
+    "id": 17454,
+    "requirement_text": "Minimum communal open space: 2000sqm.",
+    "pdf_page_old": 40,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_40.png"
+  },
+  {
+    "id": 17453,
+    "requirement_text": "60% of residential units must be naturally cross ventilated.",
+    "pdf_page_old": 40,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_40.png"
+  },
+  {
+    "id": 17455,
+    "requirement_text": "Minimum deep soil landscaping: 2000sqm.",
+    "pdf_page_old": 41,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_41.png"
+  },
+  {
+    "id": 13888,
+    "requirement_text": "Car parking provided at specified rates, maximum 250 spaces.",
+    "pdf_page_old": 41,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_41.png"
+  },
+  {
+    "id": 17458,
+    "requirement_text": "Achieve architectural design excellence and sympathetic building composition.",
+    "pdf_page_old": 41,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_41.png"
+  },
+  {
+    "id": 17465,
+    "requirement_text": "Building location and layout must align with Figure 3.",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 17459,
+    "requirement_text": "Vehicular access must align with specified locations.",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 17461,
+    "requirement_text": "Consider various environmental performance matters in development.",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 13899,
+    "requirement_text": "Pursue innovation for sustainable building practices.",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 13900,
+    "requirement_text": "Relocate overhead power cables underground with approval.",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 17460,
+    "requirement_text": "Minimum building setback from City West Link: 3m",
+    "pdf_page_old": 42,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_42.png"
+  },
+  {
+    "id": 17466,
+    "requirement_text": "Submit a landscape plan with the Development Application.",
+    "pdf_page_old": 43,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_43.png"
+  },
+  {
+    "id": 13902,
+    "requirement_text": "Design stormwater drainage system to Council's satisfaction.",
+    "pdf_page_old": 43,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_43.png"
+  },
+  {
+    "id": 13901,
+    "requirement_text": "Provide a Travel Access Guide approved by Council.",
+    "pdf_page_old": 43,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_43.png"
+  },
+  {
+    "id": 17462,
+    "requirement_text": "Waste management facilities must be provided within the development.",
+    "pdf_page_old": 44,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_44.png"
+  },
+  {
+    "id": 17463,
+    "requirement_text": "Building setbacks and separations must comply with Figure G41.",
+    "pdf_page_old": 44,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_44.png"
+  },
+  {
+    "id": 13905,
+    "requirement_text": "Building height must not exceed maximum in Figure G40.",
+    "pdf_page_old": 44,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_44.png"
+  },
+  {
+    "id": 13907,
+    "requirement_text": "Minimum setback of 3m from City West Link Road, Lonsdale Street, and Russell Street.",
+    "pdf_page_old": 45,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_45.png"
+  },
+  {
+    "id": 17469,
+    "requirement_text": "Building design must demonstrate well-considered composition and proportions.",
+    "pdf_page_old": 45,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_45.png"
+  },
+  {
+    "id": 17468,
+    "requirement_text": "Ensure appropriate separation from adjoining properties as per Figure G41.",
+    "pdf_page_old": 46,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_46.png"
+  },
+  {
+    "id": 17467,
+    "requirement_text": "Dwellings should be oriented towards Lonsdale and Russell Street.",
+    "pdf_page_old": 46,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_46.png"
+  },
+  {
+    "id": 17472,
+    "requirement_text": "Ground floor living spaces must face street frontages.",
+    "pdf_page_old": 47,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_47.png"
+  },
+  {
+    "id": 17474,
+    "requirement_text": "Demonstrate compliance for access provision for people with disabilities in the Development Application.",
+    "pdf_page_old": 47,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_47.png"
+  },
+  {
+    "id": 17473,
+    "requirement_text": "Landscaping must comply with tree management provisions and achieve a 40% tree canopy target.",
+    "pdf_page_old": 47,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_47.png"
+  },
+  {
+    "id": 17471,
+    "requirement_text": "Maximum finished floor level for ground floor dwellings: 1.0m above natural ground level.",
+    "pdf_page_old": 47,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_47.png"
+  },
+  {
+    "id": 13924,
+    "requirement_text": "Car and bicycle parking must comply with parking provisions.",
+    "pdf_page_old": 48,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_48.png"
+  },
+  {
+    "id": 17475,
+    "requirement_text": "Maintain solar access to adjacent and nearby properties.",
+    "pdf_page_old": 48,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_48.png"
+  },
+  {
+    "id": 13925,
+    "requirement_text": "Development must maximize principles of ecologically sustainable development.",
+    "pdf_page_old": 48,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_48.png"
+  },
+  {
+    "id": 17476,
+    "requirement_text": "All development must comply with environmental performance provisions.",
+    "pdf_page_old": 48,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_48.png"
+  },
+  {
+    "id": 17477,
+    "requirement_text": "Dwellings must comply with BASIX State Environmental Planning Policy.",
+    "pdf_page_old": 49,
+    "pdf_page_image_url_old": "/pdf-pages/leichhardt-part-g/page_49.png"
+  }
+]
