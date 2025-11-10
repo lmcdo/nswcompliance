@@ -109,6 +109,7 @@ interface GeneralDCPSectionProps {
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
   propertyArea?: string;  // For subdivision filtering
+  daRequirementsCount?: number;  // For DA requirements display
   displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
 }
 
@@ -569,6 +570,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   filteringLevel = 'universal',
   formerCouncil,
   propertyArea,
+  daRequirementsCount = 0,
   displayModeSetterRef
 }) => {
   // Modal state for PDF viewer (page group footers)
@@ -641,13 +643,13 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             </p>
             {formerCouncil && (
               <div className="text-xs text-gray-700 mt-2 flex items-center gap-3 flex-wrap">
-                <span className="font-semibold">Former Council: {formerCouncil}</span>
+                <span className="font-semibold">{formerCouncil} DCP 2013</span>
                 <span>|</span>
                 <span>{totalProvisions} controls</span>
-                {precinctData && precinctData.requirements_count > 0 && (
+                {daRequirementsCount > 0 && (
                   <>
                     <span>|</span>
-                    <span>{precinctData.requirements_count} precinct requirements</span>
+                    <span>{daRequirementsCount} DA requirements</span>
                   </>
                 )}
                 {setbackInfo && (

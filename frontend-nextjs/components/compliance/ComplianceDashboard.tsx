@@ -1260,18 +1260,6 @@ export function ComplianceDashboard({
                 <ChevronUp className="w-12 h-12 text-green-600" />
               )}
             </CardTitle>
-            <p className="text-sm text-gray-700 mt-1 italic">
-              Development Control Plan - General Provisions & Precinct-Specific Controls
-              {dcpCompleteData?.query?.formerCouncil && (
-                <span className="block text-xs mt-0.5 text-gray-600 font-bold">
-                  Former Council: {dcpCompleteData.query.formerCouncil} |
-                  {dcpCompleteData.general_provisions?.requirements_count || 0} controls
-                  {dcpCompleteData.da_requirements?.requirements?.length > 0 &&
-                    ` | ${dcpCompleteData.da_requirements.requirements.length} DA requirements`
-                  }
-                </span>
-              )}
-            </p>
           </CardHeader>
           {!collapsedSections.dcp && (
             <CardContent className="pt-4">
@@ -1294,6 +1282,7 @@ export function ComplianceDashboard({
                   developmentType={developmentType}
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
                   propertyArea={propertyData.propertyArea}
+                  daRequirementsCount={dcpCompleteData.da_requirements?.requirements?.length || 0}
                   displayModeSetterRef={displayModeSetterRef}
                 />
               )
