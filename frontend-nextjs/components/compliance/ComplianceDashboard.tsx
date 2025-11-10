@@ -21,6 +21,8 @@ import { DCPProvisionsBrowser } from './DCPProvisionsBrowser';
 import { PrecinctProvisionsBrowser } from './PrecinctProvisionsBrowser';
 import { CategorizedRequirementsCard } from './CategorizedRequirementsCardV2';
 import { GeneralDCPSection } from './GeneralDCPSection';
+import PartBasedDCPSection from './PartBasedDCPSection';
+import { CouncilSetbackGuidance } from './CouncilSetbackGuidance';
 import {
   assessControlRelevance,
   createFilterContext,
@@ -117,10 +119,10 @@ export function ComplianceDashboard({
 
   // Collapsible state for main sections
   const [collapsedSections, setCollapsedSections] = useState({
-    sepp: false,
+    sepp: true,
     adg: false,
-    lep: false,
-    dcp: false,
+    lep: true,
+    dcp: true,
     environmental: false
   });
 
@@ -964,7 +966,7 @@ export function ComplianceDashboard({
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
-                SEPP Special Provisions
+                <span className="font-semibold">SEPP Special Provisions</span>
                 {informational.length > 0 && (
                   <span className="text-sm font-normal text-gray-600">
                     ({actionRequired.length} require action, {informational.length} informational)
@@ -977,8 +979,13 @@ export function ComplianceDashboard({
                 <ChevronUp className="w-12 h-12 text-pink-600" />
               )}
             </CardTitle>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-gray-600 mt-1 italic">
               State Environmental Planning Policies - Highest legal precedence
+              {seppProvisions.length > 0 && seppProvisions[0].source?.title && (
+                <span className="block text-xs mt-0.5 text-gray-500 font-bold">
+                  {seppProvisions[0].source.title}
+                </span>
+              )}
             </p>
           </CardHeader>
           {!collapsedSections.sepp && (
@@ -1125,7 +1132,7 @@ export function ComplianceDashboard({
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xl">🟦</span>
-              LEP Requirements
+              <span className="font-semibold">LEP Requirements</span>
             </div>
             {collapsedSections.lep ? (
               <ChevronDown className="w-12 h-12 text-blue-600" />
@@ -1133,8 +1140,19 @@ export function ComplianceDashboard({
               <ChevronUp className="w-12 h-12 text-blue-600" />
             )}
           </CardTitle>
-          <p className="text-sm text-gray-700 mt-1">
+          <p className="text-sm text-gray-700 mt-1 italic">
             Local Environmental Plan - Zoning, Building Envelope, Heritage
+            {(() => {
+              const lepLayer = propertyData.planningLayers?.find(layer =>
+                layer.layerName === 'Land Application Map' &&
+                layer.results?.[0]?.['EPI Name']
+              );
+              return lepLayer?.results?.[0]?.['EPI Name'] && (
+                <span className="block text-xs mt-0.5 text-gray-600 font-bold">
+                  {lepLayer.results[0]['EPI Name']}
+                </span>
+              );
+            })()}
           </p>
         </CardHeader>
         {!collapsedSections.lep && (
@@ -1220,7 +1238,7 @@ export function ComplianceDashboard({
               );
             }
             return null;
-          })}
+          })()}
           </CardContent>
         )}
       </Card>
@@ -1235,7 +1253,7 @@ export function ComplianceDashboard({
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🟢</span>
-                DCP Design Controls
+                <span className="font-semibold">DCP Design Controls</span>
               </div>
               {collapsedSections.dcp ? (
                 <ChevronDown className="w-12 h-12 text-green-600" />
@@ -1243,23 +1261,50 @@ export function ComplianceDashboard({
                 <ChevronUp className="w-12 h-12 text-green-600" />
               )}
             </CardTitle>
-            <p className="text-sm text-gray-700 mt-1">
+            <p className="text-sm text-gray-700 mt-1 italic">
               Development Control Plan - General Provisions & Precinct-Specific Controls
+              {dcpCompleteData?.query?.formerCouncil && (
+                <span className="block text-xs mt-0.5 text-gray-600 font-bold">
+                  Former Council: {dcpCompleteData.query.formerCouncil} |
+                  {dcpCompleteData.general_provisions?.requirements_count || 0} controls
+                  {dcpCompleteData.da_requirements?.requirements?.length > 0 &&
+                    ` | ${dcpCompleteData.da_requirements.requirements.length} DA requirements`
+                  }
+                </span>
+              )}
             </p>
           </CardHeader>
           {!collapsedSections.dcp && (
             <CardContent className="pt-4">
-            {/* NEW: Unified General DCP Section (replaces old browsers) */}
-            {dcpCompleteData && dcpCompleteData.success && dcpCompleteData.general_provisions ? (
-              <GeneralDCPSection
-                generalData={dcpCompleteData.general_provisions}
-                precinctData={dcpCompleteData.precinct_provisions}
-                combinedCategories={dcpCompleteData.combined?.categories || []}
+            {/* Council-specific setback guidance (collapsed by default) */}
+            {dcpCompleteData?.query?.formerCouncil && (
+              <CouncilSetbackGuidance
+                formerCouncil={dcpCompleteData.query.formerCouncil as 'Ashfield' | 'Marrickville' | 'Leichhardt'}
                 zone={propertyData.constraints.zone}
-                developmentType={developmentType}
-                formerCouncil={dcpCompleteData.query?.formerCouncil}
-                displayModeSetterRef={displayModeSetterRef}
               />
+            )}
+
+            {/* NEW: Part-based DCP Section (Phase 1) with DA Requirements */}
+            {dcpCompleteData && dcpCompleteData.success && dcpCompleteData.general_provisions ? (
+              dcpCompleteData.general_provisions.by_part ? (
+                <PartBasedDCPSection
+                  generalData={dcpCompleteData.general_provisions}
+                  daRequirements={dcpCompleteData.da_requirements}
+                  formerCouncil={dcpCompleteData.query?.formerCouncil}
+                  zone={propertyData.constraints.zone}
+                  developmentType={developmentType}
+                />
+              ) : (
+                <GeneralDCPSection
+                  generalData={dcpCompleteData.general_provisions}
+                  precinctData={dcpCompleteData.precinct_provisions}
+                  combinedCategories={dcpCompleteData.combined?.categories || []}
+                  zone={propertyData.constraints.zone}
+                  developmentType={developmentType}
+                  formerCouncil={dcpCompleteData.query?.formerCouncil}
+                  displayModeSetterRef={displayModeSetterRef}
+                />
+              )
             ) : loadingDcpComplete ? (
               <div className="py-8 text-center text-gray-500">
                 <div className="animate-pulse">Loading DCP provisions...</div>
