@@ -1,0 +1,85 @@
+{
+  "inner_west": {
+    "lga_name": "Inner West Council",
+    "formed_date": "2016-05-12",
+    "former_councils": [
+      {
+        "name": "Ashfield",
+        "postcodes": ["2131", "2044", "2039", "2140", "2137", "2133", "2132", "2045"],
+        "suburbs": [
+          "Ashfield",
+          "Croydon",
+          "Croydon Park",
+          "Enfield",
+          "Haberfield",
+          "Russell Lea",
+          "Five Dock",
+          "Wareemba",
+          "Rodd Point",
+          "Cabarita",
+          "Concord West",
+          "North Strathfield",
+          "Strathfield South",
+          "Homebush West"
+        ]
+      },
+      {
+        "name": "Leichhardt",
+        "postcodes": ["2040", "2041", "2042", "2043", "2038", "2037", "2050", "2049"],
+        "suburbs": [
+          "Leichhardt",
+          "Balmain",
+          "Balmain East",
+          "Birchgrove",
+          "Rozelle",
+          "Annandale",
+          "Glebe",
+          "Forest Lodge",
+          "Camperdown",
+          "Enmore",
+          "Erskineville",
+          "Lewisham"
+        ],
+        "notes": "Newtown commercial (King Street) uses Marrickville DCP for B1 zones"
+      },
+      {
+        "name": "Marrickville",
+        "postcodes": ["2204", "2048", "2046", "2047", "2203"],
+        "suburbs": [
+          "Marrickville",
+          "Dulwich Hill",
+          "Petersham",
+          "Stanmore",
+          "Sydenham",
+          "Tempe",
+          "Newtown"
+        ],
+        "notes": "Newtown is split - commercial King Street uses Marrickville DCP"
+      }
+    ],
+    "special_cases": [
+      {
+        "description": "Newtown boundary - commercial vs residential",
+        "rule": "King Street commercial uses Marrickville DCP (B1 zones)",
+        "postcodes_affected": ["2042"],
+        "resolution": "Use postcode 2204 for Marrickville provisions, 2042 for Leichhardt provisions"
+      },
+      {
+        "description": "St Peters split between Ashfield and Marrickville",
+        "postcodes_affected": ["2044"],
+        "resolution": "Primarily Ashfield"
+      },
+      {
+        "description": "Rozelle split between Ashfield and Leichhardt",
+        "postcodes_affected": ["2039"],
+        "resolution": "Primarily Leichhardt"
+      }
+    ],
+    "dcp_priority_order": [
+      "postcode_exact_match",
+      "suburb_exact_match",
+      "special_case_rules",
+      "default_to_all_three"
+    ]
+  }
+}
