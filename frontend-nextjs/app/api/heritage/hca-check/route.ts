@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/db';
+import { getHeritageCache, createCacheKey } from '@/lib/cache';
 
 /**
  * Convert Web Mercator (EPSG:3857) coordinates to WGS84 (EPSG:4326)
@@ -99,6 +100,27 @@ export async function POST(req: NextRequest) {
     let pointX = parseFloat(x);
     let pointY = parseFloat(y);
 
+    // Check cache (round coordinates to 6 decimal places for cache key)
+    const roundedX = pointX.toFixed(6);
+    const roundedY = pointY.toFixed(6);
+    const cacheKey = createCacheKey('hca', { x: roundedX, y: roundedY, lga });
+    const cache = getHeritageCache();
+    const cached = cache.get(cacheKey);
+
+    if (cached) {
+      console.log(`[Heritage HCA API] Cache HIT: ${cacheKey}`);
+      return NextResponse.json({
+        ...cached,
+        metadata: {
+          ...cached.metadata,
+          fromCache: true,
+          cacheHit: true
+        }
+      });
+    }
+
+    console.log(`[Heritage HCA API] Cache MISS: ${cacheKey}`);
+
     if (isNaN(pointX) || isNaN(pointY)) {
       return NextResponse.json({
         success: false,
@@ -144,10 +166,13 @@ export async function POST(req: NextRequest) {
       console.log(`[HCA Check] Bounding box filter: ${bboxResult.rows.length} candidates`);
 
       if (bboxResult.rows.length === 0) {
-        return NextResponse.json({
+        const response = {
           success: true,
-          data: { inHCA: false }
-        });
+          data: { inHCA: false },
+          metadata: { fromCache: false }
+        };
+        cache.set(cacheKey, response);
+        return NextResponse.json(response);
       }
 
       // Stage 2: Precise point-in-polygon check
@@ -160,7 +185,7 @@ export async function POST(req: NextRequest) {
           if (isInside) {
             console.log(`[HCA Check] Match found: ${row.h_id} - ${row.h_name}`);
 
-            return NextResponse.json({
+            const response = {
               success: true,
               data: {
                 inHCA: true,
@@ -172,8 +197,11 @@ export async function POST(req: NextRequest) {
                   epiName: row.epi_name,
                   layClass: row.lay_class
                 }
-              }
-            });
+              },
+              metadata: { fromCache: false }
+            };
+            cache.set(cacheKey, response);
+            return NextResponse.json(response);
           }
         }
       }
@@ -181,10 +209,13 @@ export async function POST(req: NextRequest) {
       // No match found after precise check
       console.log(`[HCA Check] No match found (bbox candidates checked, none contained point)`);
 
-      return NextResponse.json({
+      const response = {
         success: true,
-        data: { inHCA: false }
-      });
+        data: { inHCA: false },
+        metadata: { fromCache: false }
+      };
+      cache.set(cacheKey, response);
+      return NextResponse.json(response);
 
     } finally {
       client.release();

@@ -13,6 +13,9 @@ export function FeatureFlagDebugPanel() {
  const { flags, updateFlag, resetFlags, isLoading, error } = useFeatureFlags();
  const [isVisible, setIsVisible] = useState(false);
 
+ // Disabled - use browser console instead
+ return null;
+
  // Only show in development
  if (process.env.NODE_ENV !== 'development') {
  return null;

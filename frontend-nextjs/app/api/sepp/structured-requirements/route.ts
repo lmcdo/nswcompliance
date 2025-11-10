@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { getSEPPCache, createCacheKey } from '@/lib/cache';
 
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({
@@ -63,6 +64,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check cache first
+    const cacheKey = createCacheKey('sepp-structured', { seppId, developmentType, schedule: schedule || 'all' });
+    const cache = getSEPPCache();
+    const cached = cache.get(cacheKey);
+
+    if (cached) {
+      console.log(`[Structured Requirements API] Cache HIT: ${cacheKey}`);
+      return NextResponse.json({
+        ...cached,
+        metadata: {
+          ...cached.metadata,
+          fromCache: true,
+          cacheHit: true
+        }
+      });
+    }
+
+    console.log(`[Structured Requirements API] Cache MISS: ${cacheKey}`);
     console.log(`[Structured Requirements API] Query: seppId=${seppId}, developmentType=${developmentType}, schedule=${schedule}`);
 
     // Map development type to category
@@ -162,7 +181,7 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         hasStructuredRequirements: true,
@@ -174,9 +193,16 @@ export async function POST(request: NextRequest) {
       },
       metadata: {
         processingTimeMs: processingTime,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        fromCache: false
       }
-    });
+    };
+
+    // Cache the response (SEPP data is static)
+    cache.set(cacheKey, response);
+    console.log(`[Structured Requirements API] Cached: ${cacheKey}`);
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('[Structured Requirements API] Error:', error);

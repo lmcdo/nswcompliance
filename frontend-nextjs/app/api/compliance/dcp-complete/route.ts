@@ -67,6 +67,13 @@ interface GeneralRequirement {
   pdf_page?: number;
   pdf_page_image_url?: string;
   pdf_path?: string;
+  // Phase 1: Contextual presentation fields
+  part_name?: string | null;
+  part_number?: string | null;
+  objective?: string | null;
+  user_category?: string | null;
+  section_type?: string | null;
+  priority_level?: number | null;
 }
 
 interface PrecinctProvision {
@@ -837,7 +844,13 @@ export async function POST(request: NextRequest) {
             dgr.confidence,
             COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
             COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
-            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path
+            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+            dgr.part_name,
+            dgr.part_number,
+            dgr.objective,
+            dgr.user_category,
+            dgr.section_type,
+            dgr.priority_level
           FROM dcp_general_requirements dgr
           LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
           WHERE dgr.lga = $1
@@ -865,7 +878,13 @@ export async function POST(request: NextRequest) {
             dgr.confidence,
             COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
             COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
-            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path
+            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+            dgr.part_name,
+            dgr.part_number,
+            dgr.objective,
+            dgr.user_category,
+            dgr.section_type,
+            dgr.priority_level
           FROM dcp_general_requirements dgr
           LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
           WHERE dgr.lga = $1
@@ -891,7 +910,13 @@ export async function POST(request: NextRequest) {
             dgr.confidence,
             COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
             COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
-            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path
+            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+            dgr.part_name,
+            dgr.part_number,
+            dgr.objective,
+            dgr.user_category,
+            dgr.section_type,
+            dgr.priority_level
           FROM dcp_general_requirements dgr
           LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
           WHERE dgr.lga = $1
@@ -917,7 +942,13 @@ export async function POST(request: NextRequest) {
             dgr.confidence,
             COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
             COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
-            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path
+            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+            dgr.part_name,
+            dgr.part_number,
+            dgr.objective,
+            dgr.user_category,
+            dgr.section_type,
+            dgr.priority_level
           FROM dcp_general_requirements dgr
           LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
           WHERE dgr.lga = $1
@@ -1032,10 +1063,16 @@ export async function POST(request: NextRequest) {
 
       precinctRequirements = precinctRequirementsResult.rows;
 
+      // Set precinctInfo from provisions OR requirements (requirements are more common)
       if (precinctProvisions.length > 0) {
         precinctInfo = {
           precinct_id: precinctProvisions[0].precinct_id,
           precinct_name: precinctProvisions[0].precinct_name
+        };
+      } else if (precinctRequirements.length > 0) {
+        precinctInfo = {
+          precinct_id: precinctRequirements[0].precinct_id || detectedPrecinctId,
+          precinct_name: precinctRequirements[0].precinct_name || detectedNeighbourhoodName || 'Unknown Precinct'
         };
       }
 
@@ -1090,6 +1127,48 @@ export async function POST(request: NextRequest) {
     }));
 
     // ========================================================================
+    // STEP 5.5: Part-Level Grouping & DA Requirements Filtering (Phase 1)
+    // ========================================================================
+
+    // Filter DA requirements (documentation/process provisions)
+    const daRequirements = generalRequirements.rows.filter(req =>
+      req.category === 'da_requirements' ||
+      req.user_category === 'documentation' ||
+      req.category === 'process'
+    );
+
+    // Group by Part → Category → Requirements
+    const byPart: Record<string, any> = {};
+
+    for (const requirement of generalRequirements.rows) {
+      const partName = requirement.part_name || 'General Provisions';
+      const category = requirement.user_category || requirement.category || 'other';
+
+      if (!byPart[partName]) {
+        byPart[partName] = {
+          part_number: requirement.part_number || null,
+          provision_count: 0,
+          objectives: [],
+          categories: {}
+        };
+      }
+
+      // Collect unique objectives for this Part
+      if (requirement.objective && requirement.objective.trim()) {
+        if (!byPart[partName].objectives.includes(requirement.objective)) {
+          byPart[partName].objectives.push(requirement.objective);
+        }
+      }
+
+      // Group by category within part
+      if (!byPart[partName].categories[category]) {
+        byPart[partName].categories[category] = [];
+      }
+      byPart[partName].categories[category].push(requirement);
+      byPart[partName].provision_count++;
+    }
+
+    // ========================================================================
     // STEP 6: Build Response
     // ========================================================================
 
@@ -1111,6 +1190,18 @@ export async function POST(request: NextRequest) {
       applicableToText = `All properties in ${lga}`;
     }
 
+    // Determine DCP instrument name based on council
+    let dcpInstrumentName: string;
+    if (formerCouncil?.toLowerCase() === 'ashfield') {
+      dcpInstrumentName = 'Inner West Ashfield DCP 2016';
+    } else if (formerCouncil?.toLowerCase() === 'marrickville') {
+      dcpInstrumentName = 'Marrickville DCP 2011';
+    } else if (formerCouncil?.toLowerCase() === 'leichhardt') {
+      dcpInstrumentName = 'Leichhardt DCP 2013';
+    } else {
+      dcpInstrumentName = `${lga} Development Control Plan`;
+    }
+
     const response = {
       success: true,
       elapsed_ms: elapsedTime,
@@ -1118,16 +1209,24 @@ export async function POST(request: NextRequest) {
         address,
         zone,
         developmentType,
-        lga
+        lga,
+        formerCouncil
       },
       general_provisions: {
-        source: 'Chapter F - General DCP Controls',
+        source: dcpInstrumentName,
         applicable_to: applicableToText,
         count: generalProvisions.rows.length,
         requirements_count: generalRequirements.rows.length,
         provisions: generalProvisions.rows,
         requirements: generalRequirements.rows,
-        by_category: generalByCategory
+        by_category: generalByCategory,
+        // Phase 1: Part-level grouping
+        by_part: byPart
+      },
+      // Phase 1: DA Requirements filtering
+      da_requirements: {
+        count: daRequirements.length,
+        requirements: daRequirements
       },
       precinct_provisions: precinctInfo ? {
         source: precinctInfo.precinct_name,

@@ -1,5 +1,0 @@
-{
-  "/api/property/route": "app/api/property/route.js",
-  "/api/compliance/constraints/route": "app/api/compliance/constraints/route.js",
-  "/assessment/page": "app/assessment/page.js"
-}

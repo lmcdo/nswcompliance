@@ -3,9 +3,10 @@ const nextConfig = {
  experimental: {
  serverComponentsExternalPackages: ['better-sqlite3']
  },
- // Disable problematic hot reload features
- reactStrictMode: false,
- swcMinify: false,
+ // Production optimizations - enable SWC minification and strict mode for production builds
+ // Disabled in development to avoid hot reload issues
+ reactStrictMode: process.env.NODE_ENV === 'production',
+ swcMinify: process.env.NODE_ENV === 'production',
  webpack: (config, { dev, isServer }) => {
  // Disable file watching that causes zombie processes
  if (dev && !isServer) {
