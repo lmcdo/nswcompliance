@@ -980,8 +980,8 @@ export function ComplianceDashboard({
               )}
             </CardTitle>
             <p className="text-base text-gray-600 mt-1 italic">
-              {seppProvisions.length > 0 && seppProvisions[0].source?.title
-                ? `${seppProvisions[0].source.title} - Highest legal precedence`
+              {seppProvisions.length > 0 && seppProvisions[0].source?.document
+                ? `${seppProvisions[0].source.document} - Highest legal precedence`
                 : 'State Environmental Planning Policies - Highest legal precedence'}
             </p>
           </CardHeader>
