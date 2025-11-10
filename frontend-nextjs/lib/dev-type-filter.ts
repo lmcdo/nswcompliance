@@ -50,6 +50,17 @@ const CATEGORY_EXCLUSIONS: Record<string, string[]> = {
     'bedroom_size',
     'balcony',
   ],
+  childcare: [
+    'bedroom_size',         // Not residential dwelling
+    'apartment_mix',        // Not multi-res
+    'dwelling_size',        // Not residential dwelling
+    'loading_dock',         // Not commercial loading
+    'shop_front',           // Not retail
+    'outdoor_dining',       // Not food/drink premises
+  ],
+  mixed_use: [
+    // Intentionally minimal exclusions - these developments need both residential AND commercial controls
+  ],
 };
 
 const RESIDENTIAL_DEV_TYPES = [
@@ -57,13 +68,18 @@ const RESIDENTIAL_DEV_TYPES = [
   'secondary_dwelling',
   'dual_occupancy',
   'multi_dwelling_housing',
+  'multi_dwelling',              // Dropdown variant (shortened form)
   'residential_flat_building',
+  'residential_flat',            // Dropdown variant (shortened form)
+  'boarding_house',              // Missing from original list
   'manor_house',
   'attached_dwelling',
   'semi_detached_dwelling',
 ];
 
 const COMMERCIAL_DEV_TYPES = [
+  'commercial',                  // Generic catch-all from dropdown
+  'commercial_premises',         // Standard NSW LEP term
   'shop',
   'business_premises',
   'office_premises',
@@ -78,6 +94,19 @@ const INDUSTRIAL_DEV_TYPES = [
   'general_industrial',
   'warehouse',
   'industrial_premises',
+];
+
+// Special use types that need custom handling
+const CHILDCARE_DEV_TYPES = [
+  'child_care',
+  'child_care_centre',
+  'early_education_and_care_facility',
+];
+
+// Mixed-use types that need both residential AND commercial controls
+const MIXED_USE_DEV_TYPES = [
+  'shop_top_housing',
+  'mixed_use_development',
 ];
 
 // ============================================================================
@@ -110,6 +139,20 @@ const EXPLICIT_INDUSTRIAL_PATTERNS = [
   /\bwarehouses?\b/i,
 ];
 
+const EXPLICIT_CHILDCARE_PATTERNS = [
+  /\bchild care\b/i,
+  /\bchildcare\b/i,
+  /\bearly education\b/i,
+  /\bday care\b/i,
+  /\bnursery\b/i,
+];
+
+const EXPLICIT_MIXED_USE_PATTERNS = [
+  /\bmixed use\b/i,
+  /\bshop top\b/i,
+  /\bresidential and commercial\b/i,
+];
+
 // ============================================================================
 // Phase 3: Section Name Hints (60% confidence)
 // ============================================================================
@@ -134,6 +177,18 @@ const SECTION_NAME_INDUSTRIAL_HINTS = [
   /factory/i,
 ];
 
+const SECTION_NAME_CHILDCARE_HINTS = [
+  /child care/i,
+  /childcare/i,
+  /early education/i,
+  /day care/i,
+];
+
+const SECTION_NAME_MIXED_USE_HINTS = [
+  /mixed use/i,
+  /shop top/i,
+];
+
 // ============================================================================
 // Phase 4: Keyword Density (50% confidence)
 // ============================================================================
@@ -141,6 +196,8 @@ const SECTION_NAME_INDUSTRIAL_HINTS = [
 const RESIDENTIAL_KEYWORDS = ['dwelling', 'house', 'apartment', 'bedroom', 'balcony', 'unit', 'flat'];
 const COMMERCIAL_KEYWORDS = ['shop', 'business', 'retail', 'office', 'commercial', 'customer', 'trading'];
 const INDUSTRIAL_KEYWORDS = ['warehouse', 'factory', 'industrial', 'loading', 'storage', 'manufacturing'];
+const CHILDCARE_KEYWORDS = ['children', 'child', 'care', 'education', 'play', 'supervision'];
+const MIXED_USE_KEYWORDS = ['mixed', 'shop top', 'residential and commercial', 'upper floor'];
 
 // ============================================================================
 // Main Filtering Logic
@@ -157,13 +214,20 @@ function calculateApplicability(
   const signals: Signal[] = [];
 
   // Determine dev type category
-  let devTypeCategory: 'residential' | 'commercial' | 'industrial' | 'unknown' = 'unknown';
+  let devTypeCategory: 'residential' | 'commercial' | 'industrial' | 'childcare' | 'mixed_use' | 'unknown' = 'unknown';
   if (RESIDENTIAL_DEV_TYPES.includes(developmentType)) {
     devTypeCategory = 'residential';
   } else if (COMMERCIAL_DEV_TYPES.includes(developmentType)) {
     devTypeCategory = 'commercial';
   } else if (INDUSTRIAL_DEV_TYPES.includes(developmentType)) {
     devTypeCategory = 'industrial';
+  } else if (CHILDCARE_DEV_TYPES.includes(developmentType)) {
+    devTypeCategory = 'childcare';
+  } else if (MIXED_USE_DEV_TYPES.includes(developmentType)) {
+    devTypeCategory = 'mixed_use';
+  } else {
+    // Log unrecognized types for debugging
+    console.warn(`⚠️ Unrecognized development type: "${developmentType}" - defaulting to show all requirements`);
   }
 
   // Signal 1: Category-based defaults (70% confidence)
@@ -208,6 +272,28 @@ function calculateApplicability(
           applies: true,
           confidence: 0.9,
           source: 'explicit_industrial_mention',
+        });
+        break;
+      }
+    }
+  } else if (devTypeCategory === 'childcare') {
+    for (const pattern of EXPLICIT_CHILDCARE_PATTERNS) {
+      if (pattern.test(verbatimText)) {
+        signals.push({
+          applies: true,
+          confidence: 0.9,
+          source: 'explicit_childcare_mention',
+        });
+        break;
+      }
+    }
+  } else if (devTypeCategory === 'mixed_use') {
+    for (const pattern of EXPLICIT_MIXED_USE_PATTERNS) {
+      if (pattern.test(verbatimText)) {
+        signals.push({
+          applies: true,
+          confidence: 0.9,
+          source: 'explicit_mixed_use_mention',
         });
         break;
       }
@@ -257,6 +343,28 @@ function calculateApplicability(
         break;
       }
     }
+  } else if (devTypeCategory === 'childcare') {
+    for (const hint of SECTION_NAME_CHILDCARE_HINTS) {
+      if (hint.test(sectionText)) {
+        signals.push({
+          applies: true,
+          confidence: 0.6,
+          source: 'section_name_childcare_hint',
+        });
+        break;
+      }
+    }
+  } else if (devTypeCategory === 'mixed_use') {
+    for (const hint of SECTION_NAME_MIXED_USE_HINTS) {
+      if (hint.test(sectionText)) {
+        signals.push({
+          applies: true,
+          confidence: 0.6,
+          source: 'section_name_mixed_use_hint',
+        });
+        break;
+      }
+    }
   }
 
   // Signal 4: Keyword density (50% confidence)
@@ -270,6 +378,10 @@ function calculateApplicability(
     targetKeywords = COMMERCIAL_KEYWORDS;
   } else if (devTypeCategory === 'industrial') {
     targetKeywords = INDUSTRIAL_KEYWORDS;
+  } else if (devTypeCategory === 'childcare') {
+    targetKeywords = CHILDCARE_KEYWORDS;
+  } else if (devTypeCategory === 'mixed_use') {
+    targetKeywords = MIXED_USE_KEYWORDS;
   }
 
   for (const keyword of targetKeywords) {
