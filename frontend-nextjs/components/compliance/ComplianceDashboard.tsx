@@ -1250,9 +1250,24 @@ export function ComplianceDashboard({
             onClick={() => toggleSection('dcp')}
           >
             <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🟢</span>
-                <span className="font-semibold">DCP Design Controls</span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🟢</span>
+                  <span className="font-semibold">DCP Design Controls</span>
+                </div>
+                {dcpCompleteData?.query?.formerCouncil && (
+                  <div className="text-xs text-gray-700 mt-2 flex items-center gap-3 flex-wrap font-normal">
+                    <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
+                    <span>|</span>
+                    <span>{dcpCompleteData.general_provisions?.requirements_count || 0} controls</span>
+                    {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
+                      <>
+                        <span>|</span>
+                        <span>{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
               {collapsedSections.dcp ? (
                 <ChevronDown className="w-12 h-12 text-green-600" />

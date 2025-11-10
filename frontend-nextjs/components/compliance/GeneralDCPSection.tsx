@@ -635,34 +635,15 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
       <CardHeader className="border-b bg-green-50">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            <CardTitle className="text-xl flex items-center gap-2">
-              📘 DCP Controls for Your Development
-            </CardTitle>
-            <p className="text-sm text-gray-700 mt-1 italic">
-              Development Control Plan - General Provisions & Precinct-Specific Controls
+            <p className="text-sm text-gray-700 font-semibold">
+              General Provisions & Precinct-Specific Controls
             </p>
-            {formerCouncil && (
-              <div className="text-xs text-gray-700 mt-2 flex items-center gap-3 flex-wrap">
-                <span className="font-semibold">{formerCouncil} DCP 2013</span>
-                <span>|</span>
-                <span>{totalProvisions} controls</span>
-                {daRequirementsCount > 0 && (
-                  <>
-                    <span>|</span>
-                    <span>{daRequirementsCount} DA requirements</span>
-                  </>
-                )}
-                {setbackInfo && (
-                  <>
-                    <span>|</span>
-                    <span className="flex items-center gap-1">
-                      Setback Approach:
-                      <Badge variant="outline" className={`text-xs ${setbackInfo.color}`}>
-                        {setbackInfo.approach}
-                      </Badge>
-                    </span>
-                  </>
-                )}
+            {formerCouncil && setbackInfo && (
+              <div className="text-xs text-gray-700 mt-1 flex items-center gap-2">
+                <span>Setback Approach:</span>
+                <Badge variant="outline" className={`text-xs ${setbackInfo.color}`}>
+                  {setbackInfo.approach}
+                </Badge>
               </div>
             )}
           </div>
