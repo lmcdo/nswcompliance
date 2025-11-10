@@ -115,9 +115,9 @@ export async function POST(request: NextRequest) {
       };
 
     } else {
-      console.log('[PostgreSQL Migration] Using legacy Python subprocess');
-      implementation = 'subprocess';
-      complianceResult = await callLegacyPythonEngine(address, proposed_development, coordinates);
+      // Legacy Python subprocess disabled for Vercel deployment
+      console.log('[PostgreSQL Migration] Python subprocess not available, using PostgreSQL');
+      throw new Error('Python subprocess not available - PostgreSQL migration required');
     }
 
     const processingTime = Date.now() - startTime;
@@ -152,112 +152,13 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Legacy Python subprocess function - kept for rollback capability
+ * Legacy Python subprocess function - DISABLED for Vercel deployment
+ * The PostgreSQL implementation should be used instead via feature flags
+ *
+ * Original implementation removed to fix build errors.
+ * If Python subprocess is needed, enable it via feature flag and ensure
+ * the Python environment is properly configured in the deployment.
  */
-async function callLegacyPythonEngine(
-  address: string,
-  proposed_development: any,
-  coordinates?: any
-): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const pythonScript = `
-import asyncio
-import sys
-import json
-import os
-sys.path.append('${process.cwd().replace(/\\/g, '/')}')
-sys.path.append('${process.cwd().replace(/\\/g, '/')}/services')
-
-async def main():
-  try:
-    from services.live_compliance_engine import LiveComplianceEngine
-    engine = LiveComplianceEngine()
-    address = "${address.replace(/"/g, '\\"')}"
-    proposed_dev = ${JSON.stringify(proposed_development)}
-    coords = ${coordinates ? JSON.stringify(coordinates) : 'None'}
-
-    result = await engine.calculate_compliance(address, proposed_dev, coords)
-
-    response = {
-      'overall_compliant': result.overall_compliant,
-      'warnings': result.warnings,
-      'total_calculation_time_ms': result.total_calculation_time_ms
-    }
-
-    if result.fsr_compliance:
-      response['fsr_compliance'] = {
-        'compliant': result.fsr_compliance.compliant,
-        'actual_value': result.fsr_compliance.actual_value,
-        'limit_value': result.fsr_compliance.limit_value,
-        'margin': result.fsr_compliance.margin,
-        'units': result.fsr_compliance.units,
-        'confidence': result.fsr_compliance.confidence,
-        'data_source': result.fsr_compliance.data_source,
-        'calculation_time_ms': result.fsr_compliance.calculation_time_ms
-      }
-
-    print(json.dumps(response))
-
-  except Exception as e:
-    print(json.dumps({
-      'error': f'Compliance calculation failed: {str(e)}',
-      'overall_compliant': False,
-      'warnings': [str(e)],
-      'total_calculation_time_ms': 0
-    }))
-
-asyncio.run(main())
-`;
-
-    const { spawn } = require('child_process');
-    const python = spawn('python', ['-c', pythonScript]);
-
-    let result = '';
-    let error = '';
-
-    python.stdout.on('data', (data: Buffer) => {
-      result += data.toString();
- });
-
- python.stderr.on('data', (data: Buffer) => {
- error += data.toString();
- });
-
- python.on('close', (code: number) => {
- if (code !== 0) {
- console.error('[API] Python process failed:', error);
- reject(new Error(`Python process failed with code ${code}: ${error}`));
- } else {
- try {
- const parsed = JSON.parse(result.trim());
- console.log('[API] Live compliance calculation completed');
- resolve(parsed);
- } catch (e) {
- console.error('[API] Failed to parse Python response:', result);
- reject(new Error(`Invalid JSON response: ${result.substring(0, 200)}...`));
- }
- }
- });
-
- // Set timeout for Python process
- setTimeout(() => {
- python.kill();
- reject(new Error('Live compliance calculation timed out'));
- }, 30000); // 30 second timeout
- });
-
- } catch (error) {
- console.error('[API] Live compliance check failed:', error);
-
- const response: ComplianceResponse = {
- success: false,
- error: error instanceof Error ? error.message : 'Unknown error occurred',
- processing_time_ms: Date.now() - startTime
- };
-
- return NextResponse.json(response, { status: 500 });
- }
-}
 
 // GET endpoint for testing
 export async function GET(request: NextRequest) {
