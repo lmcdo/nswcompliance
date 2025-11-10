@@ -98,34 +98,35 @@ export function getPriorityStats(
 
 /**
  * Auto-detect development type from zone code
+ * Returns specific development types that match the dev-type-filter expectations
  */
 export function detectDevTypeFromZone(zone?: string): string {
   if (!zone) return 'dwelling_house';
 
   const zoneUpper = zone.toUpperCase();
 
-  // Residential zones (R1, R2, R3, R4, R5, etc.)
+  // Residential zones (R1, R2, R3, R4, R5, etc.) - default to dwelling_house
   if (zoneUpper.startsWith('R')) {
-    return 'residential';
+    return 'dwelling_house';
   }
 
-  // Business/Commercial zones (B1, B2, B3, B4, etc.)
-  if (zoneUpper.startsWith('B')) {
+  // Business/Commercial zones (B1, B2, B3, B4, etc.) or Employment zones (E1, E2, etc.)
+  if (zoneUpper.startsWith('B') || zoneUpper.startsWith('E')) {
     return 'commercial';
   }
 
   // Industrial zones (IN1, IN2, IN3, etc.)
   if (zoneUpper.startsWith('IN')) {
-    return 'industrial';
+    return 'commercial'; // Use commercial filter for industrial
   }
 
-  // Mixed Use (MU1)
+  // Mixed Use (MU1) or Shop Top
   if (zoneUpper.startsWith('MU')) {
-    return 'mixed_use';
+    return 'shop_top_housing';
   }
 
-  // Default to residential for edge cases
-  return 'residential';
+  // Default to dwelling_house for unknown zones
+  return 'dwelling_house';
 }
 
 /**

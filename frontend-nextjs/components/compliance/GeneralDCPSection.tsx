@@ -682,7 +682,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                 {prioritized.objectives.length > 0 && (
                   <li>• <strong>Design objectives auto-collapsed</strong> ({prioritized.objectives.length}): Informational only, not compliance requirements</li>
                 )}
-                <li>• <strong>Development type filter applied</strong>: {zone} zone → {developmentType.replace(/_/g, ' ')} (commercial signage excluded)</li>
+                <li>• <strong>Development type filter</strong>: Auto-detected from {zone} zone → {developmentType.replace(/_/g, ' ')} controls</li>
               </ul>
               <button
                 onClick={() => setShowFilterDetails(!showFilterDetails)}
