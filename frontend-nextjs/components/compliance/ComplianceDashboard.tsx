@@ -1302,6 +1302,7 @@ export function ComplianceDashboard({
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
+                  propertyArea={propertyData.propertyArea}
                   displayModeSetterRef={displayModeSetterRef}
                 />
               )

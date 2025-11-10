@@ -16,8 +16,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, X, Info } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
+import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, groupByCategory } from '@/lib/requirement-prioritization';
 
 interface GeneralProvision {
   id: number;
@@ -107,6 +108,7 @@ interface GeneralDCPSectionProps {
   developmentType: string;
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
+  propertyArea?: string;  // For subdivision filtering
   displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
 }
 
@@ -566,6 +568,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   developmentType,
   filteringLevel = 'universal',
   formerCouncil,
+  propertyArea,
   displayModeSetterRef
 }) => {
   // Modal state for PDF viewer (page group footers)
@@ -603,6 +606,19 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
     if (generalData.source.includes('Part 4')) return 'devtype';
     return 'universal';
   })();
+
+  // Calculate smart filtering stats
+  const originalRequirementsCount = generalData.requirements_count;
+
+  // Count subdivision requirements
+  const subdivisionCount = generalData.requirements.filter(isSubdivisionRequirement).length;
+  const showSubdivision = canSubdivide(propertyArea);
+
+  // Prioritize requirements (numeric vs qualitative)
+  const prioritized = prioritizeRequirements(generalData.requirements);
+
+  // State for showing filter details
+  const [showFilterDetails, setShowFilterDetails] = useState(false);
 
   return (
     <Card className="w-full border-3 border-green-400">
@@ -646,6 +662,59 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
       </CardHeader>
 
       <CardContent className="p-6">
+        {/* Smart Filter Summary */}
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-6 text-sm">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-blue-700 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="font-medium text-blue-900 mb-1">
+                Showing {prioritized.numeric.length} numeric requirements + {prioritized.qualitative.length} qualitative requirements
+              </p>
+              <p className="text-blue-800 text-xs mb-2">
+                Automatically organized based on your property:
+              </p>
+              <ul className="text-blue-800 text-xs space-y-1">
+                <li>• <strong>Numeric requirements</strong> ({prioritized.numeric.length}): Setbacks, heights, areas - actionable measurements</li>
+                <li>• <strong>Qualitative requirements</strong> ({prioritized.qualitative.length}): Design principles, character, context - important but less prescriptive</li>
+                {!showSubdivision && propertyArea && (
+                  <li>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {propertyArea} - too small to subdivide (450m² minimum)</li>
+                )}
+                {prioritized.objectives.length > 0 && (
+                  <li>• <strong>Design objectives auto-collapsed</strong> ({prioritized.objectives.length}): Informational only, not compliance requirements</li>
+                )}
+                <li>• <strong>Development type filter applied</strong>: {zone} zone → {developmentType.replace(/_/g, ' ')} (commercial signage excluded)</li>
+              </ul>
+              <button
+                onClick={() => setShowFilterDetails(!showFilterDetails)}
+                className="text-xs text-blue-700 underline mt-2 hover:text-blue-900"
+              >
+                {showFilterDetails ? 'Hide' : 'Show'} filtering details
+              </button>
+            </div>
+          </div>
+
+          {showFilterDetails && (
+            <div className="mt-3 pt-3 border-t border-blue-200 text-xs text-blue-800 space-y-2">
+              <div>
+                <strong>How numeric/qualitative split works:</strong> Requirements with specific measurements (value_numeric, value_min, value_max) are shown first as "numeric requirements" - these are directly actionable. Requirements without measurements are "qualitative" - equally important for DA approval but focus on design principles, character compatibility, and contextual considerations.
+              </div>
+              {!showSubdivision && (
+                <div>
+                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {propertyArea}, subdivision controls are not relevant and have been auto-filtered.
+                </div>
+              )}
+              <div>
+                <strong>Development type filtering:</strong> Based on your {zone} zone, clearly irrelevant requirements (e.g., commercial signage for residential developments) have been filtered out. This is conservative filtering - when uncertain, requirements are shown.
+              </div>
+              {prioritized.objectives.length > 0 && (
+                <div>
+                  <strong>Objectives:</strong> Design objectives describe council's intent and desired outcomes. They're important context but aren't compliance requirements with specific measurements or standards. They're auto-collapsed to reduce cognitive load while remaining accessible.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Display Mode Toggle - Above DCP General Controls */}
         {precinctData && (
           <div className="mb-6 flex items-center justify-end gap-2">

@@ -19,6 +19,7 @@ import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
+import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 
 export default function AssessmentPage() {
   const [selectedAddress, setSelectedAddress] = useState('');
@@ -30,6 +31,14 @@ export default function AssessmentPage() {
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [lepClauseData, setLepClauseData] = useState<any>(null);
+
+  // Auto-detect development type from zone when property loads
+  useEffect(() => {
+    if (selectedProperty?.constraints?.zone) {
+      const detectedDevType = detectDevTypeFromZone(selectedProperty.constraints.zone);
+      setDevelopmentType(detectedDevType);
+    }
+  }, [selectedProperty?.constraints?.zone]);
 
   // Fetch LEP clause data when property or dev type changes
   useEffect(() => {
@@ -282,27 +291,7 @@ export default function AssessmentPage() {
                     </div>
                   )}
 
-                  {/* Development Type Selector */}
-                  <div className="border-t pt-3">
-                    <label className="text-sm text-gray-600 block mb-2">Development Type</label>
-                    <select
-                      value={developmentType}
-                      onChange={(e) => setDevelopmentType(e.target.value)}
-                      className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="dwelling_house">Dwelling House</option>
-                      <option value="secondary_dwelling">Secondary Dwelling</option>
-                      <option value="shop_top_housing">Shop Top Housing</option>
-                      <option value="multi_dwelling">Multi Dwelling Housing</option>
-                      <option value="residential_flat">Residential Flat Building</option>
-                      <option value="boarding_house">Boarding House</option>
-                      <option value="child_care">Child Care Centre</option>
-                      <option value="commercial">Commercial Premises</option>
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Filters out clearly irrelevant DCP controls for this development type
-                    </p>
-                  </div>
+                  {/* Development Type - Auto-detected from zone (hidden from UI) */}
 
                   {/* Building Height Input (conditional on multi-dwelling types) */}
                   {(developmentType === 'multi_dwelling' ||
@@ -435,7 +424,7 @@ export default function AssessmentPage() {
         </div>
       )}
 
-      {/* Feedback Widget - Always visible */}
+      {/* Feedback Widget */}
       <FeedbackWidget
         propertyAddress={selectedProperty?.address}
       />
