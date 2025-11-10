@@ -980,9 +980,13 @@ export function ComplianceDashboard({
               )}
             </CardTitle>
             <p className="text-base text-gray-600 mt-1 italic">
-              {seppProvisions.length > 0 && seppProvisions[0].source?.document
-                ? `${seppProvisions[0].source.document} - Highest legal precedence`
-                : 'State Environmental Planning Policies - Highest legal precedence'}
+              {seppProvisions.length > 0 && seppProvisions[0].source?.document ? (
+                <>
+                  <span className="font-bold">{seppProvisions[0].source.document}</span> - Highest legal precedence
+                </>
+              ) : (
+                'State Environmental Planning Policies - Highest legal precedence'
+              )}
             </p>
           </CardHeader>
           {!collapsedSections.sepp && (
@@ -1143,7 +1147,12 @@ export function ComplianceDashboard({
                 layer.layerName === 'Land Application Map' &&
                 layer.results?.[0]?.['EPI Name']
               );
-              return (lepLayer?.results?.[0]?.['EPI Name'] || 'Inner West Local Environmental Plan 2022') + ' - Zoning, Building Envelope, Heritage';
+              const lepName = lepLayer?.results?.[0]?.['EPI Name'] || 'Inner West Local Environmental Plan 2022';
+              return (
+                <>
+                  <span className="font-bold">{lepName}</span> - Zoning, Building Envelope, Heritage
+                </>
+              );
             })()}
           </p>
         </CardHeader>
@@ -1256,7 +1265,7 @@ export function ComplianceDashboard({
             {dcpCompleteData?.query?.formerCouncil && (
               <>
                 <p className="text-base text-gray-700 mt-1 italic">
-                  Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
+                  <span className="font-bold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
                   {' | '}
                   {dcpCompleteData.general_provisions?.requirements_count || 0} controls
                   {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
