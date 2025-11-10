@@ -966,9 +966,9 @@ export function ComplianceDashboard({
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="inline-block w-5 h-5 bg-pink-600 rounded"></span>
-                <span className="font-semibold">SEPP Special Provisions</span>
+                <span className="font-semibold text-lg">SEPP Special Provisions</span>
                 {informational.length > 0 && (
-                  <span className="text-sm font-normal text-gray-600">
+                  <span className="text-base font-normal text-gray-600">
                     ({actionRequired.length} require action, {informational.length} informational)
                   </span>
                 )}
@@ -979,7 +979,7 @@ export function ComplianceDashboard({
                 <ChevronUp className="w-12 h-12 text-pink-600" />
               )}
             </CardTitle>
-            <p className="text-sm text-gray-600 mt-1 italic">
+            <p className="text-base text-gray-600 mt-1 italic">
               State Environmental Planning Policies - Highest legal precedence
               {seppProvisions.length > 0 && seppProvisions[0].source?.title && (
                 <span className="block text-xs mt-0.5 text-gray-500 font-bold">
@@ -1131,8 +1131,8 @@ export function ComplianceDashboard({
         >
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-xl">🟦</span>
-              <span className="font-semibold">LEP Requirements</span>
+              <span className="text-2xl">🟦</span>
+              <span className="font-semibold text-lg">LEP Requirements</span>
             </div>
             {collapsedSections.lep ? (
               <ChevronDown className="w-12 h-12 text-blue-600" />
@@ -1140,7 +1140,7 @@ export function ComplianceDashboard({
               <ChevronUp className="w-12 h-12 text-blue-600" />
             )}
           </CardTitle>
-          <p className="text-sm text-gray-700 mt-1 italic">
+          <p className="text-base text-gray-700 mt-1 italic">
             Local Environmental Plan - Zoning, Building Envelope, Heritage
             {(() => {
               const lepLayer = propertyData.planningLayers?.find(layer =>
@@ -1252,22 +1252,22 @@ export function ComplianceDashboard({
           >
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xl">🟢</span>
-                <span className="font-semibold">DCP Design Controls</span>
+                <span className="text-2xl">🟢</span>
+                <span className="font-semibold text-lg">DCP Design Controls</span>
                 {dcpCompleteData?.query?.formerCouncil && (
                   <>
-                    <span className="text-xs text-gray-500">|</span>
-                    <span className="text-xs">Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span></span>
-                    <span className="text-xs text-gray-500">|</span>
-                    <span className="text-xs">{dcpCompleteData.general_provisions?.requirements_count || 0} controls</span>
+                    <span className="text-sm text-gray-500">|</span>
+                    <span className="text-sm">Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span></span>
+                    <span className="text-sm text-gray-500">|</span>
+                    <span className="text-sm">{dcpCompleteData.general_provisions?.requirements_count || 0} controls</span>
                     {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
                       <>
-                        <span className="text-xs text-gray-500">|</span>
-                        <span className="text-xs">{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
+                        <span className="text-sm text-gray-500">|</span>
+                        <span className="text-sm">{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
                       </>
                     )}
-                    <span className="text-xs text-gray-500">|</span>
-                    <span className="text-xs text-gray-600 italic">
+                    <span className="text-sm text-gray-500">|</span>
+                    <span className="text-sm text-gray-600 italic">
                       {dcpCompleteData.query.formerCouncil === 'Ashfield'
                         ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
                         : dcpCompleteData.query.formerCouncil === 'Marrickville'
