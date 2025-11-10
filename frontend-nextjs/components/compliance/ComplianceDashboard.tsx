@@ -6,7 +6,7 @@
  * Follows Universal Technical Implementation Specification
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import useSWR from 'swr';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,6 +30,7 @@ import {
   type FilterResult
 } from '@/lib/environmental-relevance-filter';
 import { extractVersionFromPlanningAPI } from '@/lib/version-metadata-utils';
+import { canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement } from '@/lib/requirement-prioritization';
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -177,6 +178,54 @@ export function ComplianceDashboard({
       keepPreviousData: true,         // Keep previous data while fetching new
     }
   );
+
+  // Calculate filtered DCP count for header display
+  const filteredDcpCount = useMemo(() => {
+    if (!dcpCompleteData?.general_provisions?.requirements) {
+      return dcpCompleteData?.general_provisions?.requirements_count || 0;
+    }
+
+    const requirements = dcpCompleteData.general_provisions.requirements;
+    let filtered = requirements;
+
+    // Apply subdivision filter
+    const propertyCanSubdivide = canSubdivide(propertyData?.propertyArea);
+    if (!propertyCanSubdivide) {
+      filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
+    }
+
+    // Apply heritage filter
+    const propertyHasHeritage = hasHeritage(propertyData?.heritage);
+    if (!propertyHasHeritage) {
+      filtered = filtered.filter((req: any) => !isHeritageRequirement(req));
+    }
+
+    return filtered.length;
+  }, [dcpCompleteData?.general_provisions?.requirements, propertyData?.propertyArea, propertyData?.heritage]);
+
+  // Calculate filtered DA requirements count for header display
+  const filteredDaCount = useMemo(() => {
+    if (!dcpCompleteData?.da_requirements?.requirements) {
+      return dcpCompleteData?.da_requirements?.requirements?.length || 0;
+    }
+
+    const requirements = dcpCompleteData.da_requirements.requirements;
+    let filtered = requirements;
+
+    // Apply subdivision filter
+    const propertyCanSubdivide = canSubdivide(propertyData?.propertyArea);
+    if (!propertyCanSubdivide) {
+      filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
+    }
+
+    // Apply heritage filter
+    const propertyHasHeritage = hasHeritage(propertyData?.heritage);
+    if (!propertyHasHeritage) {
+      filtered = filtered.filter((req: any) => !isHeritageRequirement(req));
+    }
+
+    return filtered.length;
+  }, [dcpCompleteData?.da_requirements?.requirements, propertyData?.propertyArea, propertyData?.heritage]);
 
   // Collapsible state for main sections
   const [collapsedSections, setCollapsedSections] = useState({
@@ -1268,11 +1317,11 @@ export function ComplianceDashboard({
                 <p className="text-base text-gray-700 mt-1 italic">
                   <span className="font-bold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
                   {' | '}
-                  {dcpCompleteData.general_provisions?.requirements_count || 0} controls
-                  {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
+                  {filteredDcpCount} controls
+                  {filteredDaCount > 0 && (
                     <>
                       {' | '}
-                      {dcpCompleteData.da_requirements.requirements.length} DA requirements
+                      {filteredDaCount} DA requirements
                     </>
                   )}
                 </p>
@@ -1298,6 +1347,7 @@ export function ComplianceDashboard({
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
                   propertyArea={propertyData.propertyArea}
+                  heritage={propertyData.heritage}
                 />
               ) : (
                 <GeneralDCPSection
@@ -1308,6 +1358,7 @@ export function ComplianceDashboard({
                   developmentType={developmentType}
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
                   propertyArea={propertyData.propertyArea}
+                  heritage={propertyData.heritage}
                   daRequirementsCount={dcpCompleteData.da_requirements?.requirements?.length || 0}
                   displayModeSetterRef={displayModeSetterRef}
                 />

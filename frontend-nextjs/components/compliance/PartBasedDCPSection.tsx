@@ -16,7 +16,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FileText, Book, Info } from 'lucide-react';
 import DARequirementsSection from './DARequirementsSection';
 import PartSection from './PartSection';
-import { canSubdivide, isSubdivisionRequirement } from '@/lib/requirement-prioritization';
+import { canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement } from '@/lib/requirement-prioritization';
 
 interface GeneralRequirement {
   id: number;
@@ -66,6 +66,7 @@ interface PartBasedDCPSectionProps {
   zone: string;
   developmentType: string;
   propertyArea?: string;  // For subdivision filtering
+  heritage?: any;  // For heritage filtering
 }
 
 /**
@@ -77,44 +78,71 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
   formerCouncil = 'INNER WEST',
   zone,
   developmentType,
-  propertyArea
+  propertyArea,
+  heritage
 }) => {
   // Subdivision filter state
   const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
   const propertyCanSubdivide = canSubdivide(propertyArea);
+
+  // Heritage filter state
+  const [showHeritageOverride, setShowHeritageOverride] = useState(false);
+  const propertyHasHeritage = hasHeritage(heritage);
 
   // Count subdivision requirements
   const subdivisionCount = useMemo(() => {
     return generalData.requirements.filter(isSubdivisionRequirement).length;
   }, [generalData.requirements]);
 
+  // Count heritage requirements
+  const heritageCount = useMemo(() => {
+    return generalData.requirements.filter(isHeritageRequirement).length;
+  }, [generalData.requirements]);
+
   const subdivisionFiltered = !propertyCanSubdivide && !showSubdivisionOverride && subdivisionCount > 0;
+  const heritageFiltered = !propertyHasHeritage && !showHeritageOverride && heritageCount > 0;
 
   // Debug logging
   useEffect(() => {
-    console.log('[PartBased Subdivision Filter] Debug:', {
+    console.log('[PartBased Smart Filters] Debug:', {
       propertyArea,
       propertyCanSubdivide,
+      heritage: propertyHasHeritage,
       totalRequirements: generalData.requirements.length,
-      subdivisionCount
+      subdivisionCount,
+      heritageCount
     });
-  }, [propertyArea, propertyCanSubdivide, generalData.requirements, subdivisionCount]);
+  }, [propertyArea, propertyCanSubdivide, propertyHasHeritage, generalData.requirements, subdivisionCount, heritageCount]);
 
-  // Apply subdivision filter to requirements
+  // Apply smart filters to requirements
   const filteredRequirements = useMemo(() => {
-    if (showSubdivisionOverride || propertyCanSubdivide) {
-      console.log('[PartBased Subdivision Filter] Showing all requirements (no filter)');
-      return generalData.requirements;
+    let filtered = generalData.requirements;
+
+    // Apply subdivision filter
+    if (!showSubdivisionOverride && !propertyCanSubdivide) {
+      filtered = filtered.filter(req => !isSubdivisionRequirement(req));
+      console.log('[PartBased Smart Filters] Filtered out subdivision requirements:', {
+        removed: subdivisionCount
+      });
     }
 
-    const filtered = generalData.requirements.filter(req => !isSubdivisionRequirement(req));
-    console.log('[PartBased Subdivision Filter] Filtered out subdivision requirements:', {
+    // Apply heritage filter
+    if (!showHeritageOverride && !propertyHasHeritage) {
+      const beforeHeritage = filtered.length;
+      filtered = filtered.filter(req => !isHeritageRequirement(req));
+      console.log('[PartBased Smart Filters] Filtered out heritage requirements:', {
+        removed: beforeHeritage - filtered.length
+      });
+    }
+
+    console.log('[PartBased Smart Filters] Final filtered count:', {
       before: generalData.requirements.length,
       after: filtered.length,
-      removed: generalData.requirements.length - filtered.length
+      totalRemoved: generalData.requirements.length - filtered.length
     });
+
     return filtered;
-  }, [generalData.requirements, showSubdivisionOverride, propertyCanSubdivide]);
+  }, [generalData.requirements, showSubdivisionOverride, propertyCanSubdivide, showHeritageOverride, propertyHasHeritage, subdivisionCount]);
 
   // Rebuild by_part structure with filtered requirements
   const filteredByPart = useMemo(() => {
@@ -158,24 +186,41 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
   return (
     <div className="space-y-6">
       {/* Smart Filter Summary */}
-      {subdivisionFiltered && (
+      {(subdivisionFiltered || heritageFiltered) && (
         <div className="bg-blue-50 border-l-4 border-blue-500 p-3 text-sm">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-blue-700 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
               <p className="font-medium text-blue-900 mb-1">
-                Smart Filter Active: {subdivisionCount} subdivision {subdivisionCount === 1 ? 'requirement' : 'requirements'} hidden
+                Smart Filter Active: {subdivisionFiltered && heritageFiltered ? `${subdivisionCount + heritageCount} requirements hidden` : subdivisionFiltered ? `${subdivisionCount} subdivision ${subdivisionCount === 1 ? 'requirement' : 'requirements'} hidden` : `${heritageCount} heritage ${heritageCount === 1 ? 'requirement' : 'requirements'} hidden`}
               </p>
-              <div className="flex items-center justify-between">
-                <p className="text-blue-800 text-xs">
-                  Property is {propertyArea} - too small to subdivide (450m² minimum required)
-                </p>
-                <button
-                  onClick={() => setShowSubdivisionOverride(true)}
-                  className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
-                >
-                  Show anyway
-                </button>
+              <div className="space-y-2">
+                {subdivisionFiltered && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-blue-800 text-xs">
+                      • Subdivision: Property is {propertyArea} - too small to subdivide (450m² minimum)
+                    </p>
+                    <button
+                      onClick={() => setShowSubdivisionOverride(true)}
+                      className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+                    >
+                      Show anyway
+                    </button>
+                  </div>
+                )}
+                {heritageFiltered && (
+                  <div className="flex items-center justify-between">
+                    <p className="text-blue-800 text-xs">
+                      • Heritage: Property not in Heritage Conservation Area
+                    </p>
+                    <button
+                      onClick={() => setShowHeritageOverride(true)}
+                      className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+                    >
+                      Show anyway
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -190,6 +235,10 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
           zone={zone}
           developmentType={developmentType}
           formerCouncil={formerCouncil}
+          propertyArea={propertyArea}
+          heritage={heritage}
+          showSubdivisionOverride={showSubdivisionOverride}
+          showHeritageOverride={showHeritageOverride}
         />
       )}
 

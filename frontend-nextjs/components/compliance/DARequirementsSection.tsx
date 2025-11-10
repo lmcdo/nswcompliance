@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronRight, FileText, AlertCircle, CheckCircle2, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
+import { canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement } from '@/lib/requirement-prioritization';
 
 interface DARequirement {
   id: number;
@@ -30,6 +31,10 @@ interface DARequirementsSectionProps {
   zone?: string;
   developmentType?: string;
   formerCouncil?: string;
+  propertyArea?: string;  // For subdivision filtering
+  heritage?: any;  // For heritage filtering
+  showSubdivisionOverride?: boolean;  // Override state from parent
+  showHeritageOverride?: boolean;  // Override state from parent
 }
 
 type RequirementCategory = 'standard' | 'councilSpecific' | 'conditional' | 'excluded';
@@ -470,13 +475,37 @@ const DARequirementsSection: React.FC<DARequirementsSectionProps> = ({
   defaultExpanded = true,
   zone = '',
   developmentType = 'dwelling_house',
-  formerCouncil = ''
+  formerCouncil = '',
+  propertyArea,
+  heritage,
+  showSubdivisionOverride = false,
+  showHeritageOverride = false
 }) => {
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showExcluded, setShowExcluded] = useState(false);
 
-  // Categorize all requirements
-  const categorized = requirements.reduce((acc, req) => {
+  const propertyCanSubdivide = canSubdivide(propertyArea);
+  const propertyHasHeritage = hasHeritage(heritage);
+
+  // Apply smart filters to requirements (using parent's override state)
+  const filteredRequirements = useMemo(() => {
+    let filtered = requirements;
+
+    // Apply subdivision filter
+    if (!showSubdivisionOverride && !propertyCanSubdivide) {
+      filtered = filtered.filter(req => !isSubdivisionRequirement(req));
+    }
+
+    // Apply heritage filter
+    if (!showHeritageOverride && !propertyHasHeritage) {
+      filtered = filtered.filter(req => !isHeritageRequirement(req));
+    }
+
+    return filtered;
+  }, [requirements, showSubdivisionOverride, propertyCanSubdivide, showHeritageOverride, propertyHasHeritage]);
+
+  // Categorize filtered requirements
+  const categorized = filteredRequirements.reduce((acc, req) => {
     const category = categorizeRequirement(req, developmentType, zone, formerCouncil);
     if (!acc[category]) acc[category] = [];
     acc[category].push(req);

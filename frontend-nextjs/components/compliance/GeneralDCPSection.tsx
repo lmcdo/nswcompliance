@@ -12,13 +12,13 @@
  * - Leichhardt: Universal (no filtering)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, FileText, X, Info } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
-import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, groupByCategory } from '@/lib/requirement-prioritization';
+import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement, groupByCategory } from '@/lib/requirement-prioritization';
 
 interface GeneralProvision {
   id: number;
@@ -109,6 +109,7 @@ interface GeneralDCPSectionProps {
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
   propertyArea?: string;  // For subdivision filtering
+  heritage?: any;  // For heritage filtering
   daRequirementsCount?: number;  // For DA requirements display
   displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
 }
@@ -570,6 +571,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   filteringLevel = 'universal',
   formerCouncil,
   propertyArea,
+  heritage,
   daRequirementsCount = 0,
   displayModeSetterRef
 }) => {
@@ -586,15 +588,21 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
   const propertyCanSubdivide = canSubdivide(propertyArea);
 
+  // Heritage filter state
+  const [showHeritageOverride, setShowHeritageOverride] = useState(false);
+  const propertyHasHeritage = hasHeritage(heritage);
+
   // Debug logging
   useEffect(() => {
-    console.log('[Subdivision Filter] Debug:', {
+    console.log('[Smart Filters] Debug:', {
       propertyArea,
       propertyCanSubdivide,
+      heritage: propertyHasHeritage,
       totalRequirements: generalData.requirements.length,
-      subdivisionCount: generalData.requirements.filter(isSubdivisionRequirement).length
+      subdivisionCount: generalData.requirements.filter(isSubdivisionRequirement).length,
+      heritageCount: generalData.requirements.filter(isHeritageRequirement).length
     });
-  }, [propertyArea, propertyCanSubdivide, generalData.requirements]);
+  }, [propertyArea, propertyCanSubdivide, propertyHasHeritage, generalData.requirements]);
 
   // Expose setDisplayMode and helper functions to parent via ref
   useEffect(() => {
@@ -609,27 +617,47 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
     }
   }, [displayModeSetterRef]);
 
-  // Apply subdivision filter to requirements
+  // Apply smart filters to requirements
   const filteredRequirements = React.useMemo(() => {
-    if (showSubdivisionOverride || propertyCanSubdivide) {
-      // Show all requirements (no filtering)
-      console.log('[Subdivision Filter] Showing all requirements (no filter)');
-      return generalData.requirements;
+    let filtered = generalData.requirements;
+
+    // Apply subdivision filter
+    if (!showSubdivisionOverride && !propertyCanSubdivide) {
+      filtered = filtered.filter(req => !isSubdivisionRequirement(req));
+      console.log('[Smart Filters] Filtered out subdivision requirements:', {
+        removed: generalData.requirements.length - filtered.length
+      });
     }
 
-    // Filter out subdivision requirements if lot is too small
-    const filtered = generalData.requirements.filter(req => !isSubdivisionRequirement(req));
-    console.log('[Subdivision Filter] Filtered out subdivision requirements:', {
+    // Apply heritage filter
+    if (!showHeritageOverride && !propertyHasHeritage) {
+      const beforeHeritage = filtered.length;
+      filtered = filtered.filter(req => !isHeritageRequirement(req));
+      console.log('[Smart Filters] Filtered out heritage requirements:', {
+        removed: beforeHeritage - filtered.length
+      });
+    }
+
+    console.log('[Smart Filters] Final filtered count:', {
       before: generalData.requirements.length,
       after: filtered.length,
-      removed: generalData.requirements.length - filtered.length
+      totalRemoved: generalData.requirements.length - filtered.length
     });
-    return filtered;
-  }, [generalData.requirements, showSubdivisionOverride, propertyCanSubdivide]);
 
-  // Count subdivision requirements for display
-  const subdivisionCount = generalData.requirements.filter(isSubdivisionRequirement).length;
+    return filtered;
+  }, [generalData.requirements, showSubdivisionOverride, propertyCanSubdivide, showHeritageOverride, propertyHasHeritage]);
+
+  // Count requirements for display
+  const subdivisionCount = React.useMemo(() => {
+    return generalData.requirements.filter(isSubdivisionRequirement).length;
+  }, [generalData.requirements]);
+
+  const heritageCount = React.useMemo(() => {
+    return generalData.requirements.filter(isHeritageRequirement).length;
+  }, [generalData.requirements]);
+
   const subdivisionFiltered = !propertyCanSubdivide && !showSubdivisionOverride && subdivisionCount > 0;
+  const heritageFiltered = !propertyHasHeritage && !showHeritageOverride && heritageCount > 0;
 
   // Prioritize requirements (numeric vs qualitative) - using filtered list
   const prioritized = prioritizeRequirements(filteredRequirements);
@@ -678,7 +706,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             <div className="flex-1">
               <p className="font-medium text-blue-900 mb-1">
                 Showing {prioritized.numeric.length} numeric requirements + {prioritized.qualitative.length} qualitative requirements
-                {subdivisionFiltered && ` (${subdivisionCount} hidden)`}
+                {(subdivisionFiltered || heritageFiltered) && ` (${(subdivisionFiltered ? subdivisionCount : 0) + (heritageFiltered ? heritageCount : 0)} hidden)`}
               </p>
               <p className="text-blue-800 text-xs mb-2">
                 Automatically organized based on your property:
@@ -691,6 +719,17 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                     <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {propertyArea} - too small to subdivide (450m² minimum)</span>
                     <button
                       onClick={() => setShowSubdivisionOverride(true)}
+                      className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+                    >
+                      Show anyway
+                    </button>
+                  </li>
+                )}
+                {heritageFiltered && (
+                  <li className="flex items-center justify-between">
+                    <span>• <strong>Heritage requirements hidden</strong> ({heritageCount}): Property not in Heritage Conservation Area</span>
+                    <button
+                      onClick={() => setShowHeritageOverride(true)}
                       className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
                     >
                       Show anyway
@@ -719,6 +758,11 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               {subdivisionFiltered && (
                 <div>
                   <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {propertyArea}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
+                </div>
+              )}
+              {heritageFiltered && (
+                <div>
+                  <strong>Heritage filtering:</strong> Heritage Conservation Area (HCA) requirements only apply if your property is within a designated HCA. Since this property is not in an HCA, {heritageCount} heritage {heritageCount === 1 ? 'control' : 'controls'} {heritageCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
                 </div>
               )}
               <div>

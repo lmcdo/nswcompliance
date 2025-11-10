@@ -165,6 +165,33 @@ export function isSubdivisionRequirement(req: FilterableRequirement): boolean {
 }
 
 /**
+ * Check if property is in a Heritage Conservation Area
+ */
+export function hasHeritage(heritage?: any): boolean {
+  if (!heritage) return false;
+
+  return heritage.isHeritage === true ||
+         !!heritage.hcaName ||
+         (heritage.heritageItems && heritage.heritageItems.length > 0);
+}
+
+/**
+ * Check if requirement is heritage-related
+ */
+export function isHeritageRequirement(req: FilterableRequirement): boolean {
+  const text = (req.verbatim_source_text || req.requirement_text || '').toLowerCase();
+  const conditional = (req.conditional_text || '').toLowerCase();
+  const category = (req.category || '').toLowerCase();
+
+  return text.includes('heritage') ||
+         text.includes('conservation area') ||
+         text.includes('hca') ||
+         conditional.includes('heritage') ||
+         conditional.includes('conservation area') ||
+         category.includes('heritage');
+}
+
+/**
  * Group requirements by category for display
  */
 export function groupByCategory(requirements: FilterableRequirement[]): Record<string, FilterableRequirement[]> {
