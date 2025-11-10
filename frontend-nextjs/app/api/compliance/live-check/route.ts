@@ -223,7 +223,6 @@ asyncio.run(main())
  error += data.toString();
  });
 
- const complianceResult = await new Promise<any>((resolve, reject) => {
  python.on('close', (code: number) => {
  if (code !== 0) {
  console.error('[API] Python process failed:', error);
@@ -231,6 +230,7 @@ asyncio.run(main())
  } else {
  try {
  const parsed = JSON.parse(result.trim());
+ console.log('[API] Live compliance calculation completed');
  resolve(parsed);
  } catch (e) {
  console.error('[API] Failed to parse Python response:', result);
@@ -245,17 +245,6 @@ asyncio.run(main())
  reject(new Error('Live compliance calculation timed out'));
  }, 30000); // 30 second timeout
  });
-
- console.log('[API] Live compliance calculation completed');
-
- // Return successful response
- const response: ComplianceResponse = {
- success: true,
- compliance: complianceResult,
- processing_time_ms: Date.now() - startTime
- };
-
- return NextResponse.json(response);
 
  } catch (error) {
  console.error('[API] Live compliance check failed:', error);
