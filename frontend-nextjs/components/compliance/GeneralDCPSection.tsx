@@ -582,6 +582,20 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   // Track which category should be expanded
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
+  // Subdivision filter state
+  const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
+  const propertyCanSubdivide = canSubdivide(propertyArea);
+
+  // Debug logging
+  useEffect(() => {
+    console.log('[Subdivision Filter] Debug:', {
+      propertyArea,
+      propertyCanSubdivide,
+      totalRequirements: generalData.requirements.length,
+      subdivisionCount: generalData.requirements.filter(isSubdivisionRequirement).length
+    });
+  }, [propertyArea, propertyCanSubdivide, generalData.requirements]);
+
   // Expose setDisplayMode and helper functions to parent via ref
   useEffect(() => {
     if (displayModeSetterRef) {
@@ -594,6 +608,31 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
       };
     }
   }, [displayModeSetterRef]);
+
+  // Apply subdivision filter to requirements
+  const filteredRequirements = React.useMemo(() => {
+    if (showSubdivisionOverride || propertyCanSubdivide) {
+      // Show all requirements (no filtering)
+      console.log('[Subdivision Filter] Showing all requirements (no filter)');
+      return generalData.requirements;
+    }
+
+    // Filter out subdivision requirements if lot is too small
+    const filtered = generalData.requirements.filter(req => !isSubdivisionRequirement(req));
+    console.log('[Subdivision Filter] Filtered out subdivision requirements:', {
+      before: generalData.requirements.length,
+      after: filtered.length,
+      removed: generalData.requirements.length - filtered.length
+    });
+    return filtered;
+  }, [generalData.requirements, showSubdivisionOverride, propertyCanSubdivide]);
+
+  // Count subdivision requirements for display
+  const subdivisionCount = generalData.requirements.filter(isSubdivisionRequirement).length;
+  const subdivisionFiltered = !propertyCanSubdivide && !showSubdivisionOverride && subdivisionCount > 0;
+
+  // Prioritize requirements (numeric vs qualitative) - using filtered list
+  const prioritized = prioritizeRequirements(filteredRequirements);
 
   // Collapsible sections
   const [generalExpanded, setGeneralExpanded] = useState(false);
@@ -609,18 +648,18 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
     return 'universal';
   })();
 
-  // Calculate smart filtering stats
-  const originalRequirementsCount = generalData.requirements_count;
-
-  // Count subdivision requirements
-  const subdivisionCount = generalData.requirements.filter(isSubdivisionRequirement).length;
-  const showSubdivision = canSubdivide(propertyArea);
-
-  // Prioritize requirements (numeric vs qualitative)
-  const prioritized = prioritizeRequirements(generalData.requirements);
-
   // State for showing filter details
   const [showFilterDetails, setShowFilterDetails] = useState(false);
+
+  // Create filtered combined categories (apply subdivision filter to general requirements)
+  const filteredCombinedCategories = React.useMemo(() => {
+    return combinedCategories.map(cat => ({
+      ...cat,
+      general_requirements: filteredRequirements.filter(req => req.category === cat.category),
+      general_count: filteredRequirements.filter(req => req.category === cat.category).length,
+      total_count: filteredRequirements.filter(req => req.category === cat.category).length + cat.precinct_count
+    }));
+  }, [combinedCategories, filteredRequirements]);
 
   // Get council-specific setback approach info
   const getSetbackApproach = (council: string) => {
@@ -639,6 +678,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             <div className="flex-1">
               <p className="font-medium text-blue-900 mb-1">
                 Showing {prioritized.numeric.length} numeric requirements + {prioritized.qualitative.length} qualitative requirements
+                {subdivisionFiltered && ` (${subdivisionCount} hidden)`}
               </p>
               <p className="text-blue-800 text-xs mb-2">
                 Automatically organized based on your property:
@@ -646,8 +686,16 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               <ul className="text-blue-800 text-xs space-y-1">
                 <li>• <strong>Numeric requirements</strong> ({prioritized.numeric.length}): Setbacks, heights, areas - actionable measurements</li>
                 <li>• <strong>Qualitative requirements</strong> ({prioritized.qualitative.length}): Design principles, character, context - important but less prescriptive</li>
-                {!showSubdivision && propertyArea && (
-                  <li>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {propertyArea} - too small to subdivide (450m² minimum)</li>
+                {subdivisionFiltered && (
+                  <li className="flex items-center justify-between">
+                    <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {propertyArea} - too small to subdivide (450m² minimum)</span>
+                    <button
+                      onClick={() => setShowSubdivisionOverride(true)}
+                      className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
+                    >
+                      Show anyway
+                    </button>
+                  </li>
                 )}
                 {prioritized.objectives.length > 0 && (
                   <li>• <strong>Design objectives auto-collapsed</strong> ({prioritized.objectives.length}): Informational only, not compliance requirements</li>
@@ -668,9 +716,9 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               <div>
                 <strong>How numeric/qualitative split works:</strong> Requirements with specific measurements (value_numeric, value_min, value_max) are shown first as "numeric requirements" - these are directly actionable. Requirements without measurements are "qualitative" - equally important for DA approval but focus on design principles, character compatibility, and contextual considerations.
               </div>
-              {!showSubdivision && (
+              {subdivisionFiltered && (
                 <div>
-                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {propertyArea}, subdivision controls are not relevant and have been auto-filtered.
+                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {propertyArea}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
                 </div>
               )}
               <div>
@@ -743,12 +791,12 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                 </p>
               </div>
 
-              {combinedCategories.filter(cat => cat.general_count > 0).length === 0 ? (
+              {filteredCombinedCategories.filter(cat => cat.general_count > 0).length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   No general provisions for this zone and development type
                 </div>
               ) : (
-                combinedCategories
+                filteredCombinedCategories
                   .filter(cat => cat.general_count > 0)
                   .map((cat, idx) => (
                     <CategorySection
@@ -800,7 +848,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               </p>
             </div>
 
-            {combinedCategories
+            {filteredCombinedCategories
               .filter(cat => cat.precinct_count > 0)
               .map((cat) => (
                 <CategorySection

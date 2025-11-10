@@ -1297,6 +1297,7 @@ export function ComplianceDashboard({
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
+                  propertyArea={propertyData.propertyArea}
                 />
               ) : (
                 <GeneralDCPSection
