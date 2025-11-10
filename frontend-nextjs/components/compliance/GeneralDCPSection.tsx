@@ -620,14 +620,49 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   // State for showing filter details
   const [showFilterDetails, setShowFilterDetails] = useState(false);
 
+  // Get council-specific setback approach info
+  const getSetbackApproach = (council: string) => {
+    if (council === 'Ashfield') return { approach: 'Prescriptive Minimums', color: 'bg-blue-100 text-blue-800 border-blue-300' };
+    return { approach: 'Character-Based', color: 'bg-purple-100 text-purple-800 border-purple-300' };
+  };
+
+  const setbackInfo = formerCouncil ? getSetbackApproach(formerCouncil) : null;
+
   return (
     <Card className="w-full border-3 border-green-400">
       <CardHeader className="border-b bg-green-50">
         <div className="flex items-start justify-between">
-          <div>
+          <div className="flex-1">
             <CardTitle className="text-xl flex items-center gap-2">
               📘 DCP Controls for Your Development
             </CardTitle>
+            <p className="text-sm text-gray-700 mt-1 italic">
+              Development Control Plan - General Provisions & Precinct-Specific Controls
+            </p>
+            {formerCouncil && (
+              <div className="text-xs text-gray-700 mt-2 flex items-center gap-3 flex-wrap">
+                <span className="font-semibold">Former Council: {formerCouncil}</span>
+                <span>|</span>
+                <span>{totalProvisions} controls</span>
+                {precinctData && precinctData.requirements_count > 0 && (
+                  <>
+                    <span>|</span>
+                    <span>{precinctData.requirements_count} precinct requirements</span>
+                  </>
+                )}
+                {setbackInfo && (
+                  <>
+                    <span>|</span>
+                    <span className="flex items-center gap-1">
+                      Setback Approach:
+                      <Badge variant="outline" className={`text-xs ${setbackInfo.color}`}>
+                        {setbackInfo.approach}
+                      </Badge>
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <FilteringLevelBadge level={detectedFilteringLevel} formerCouncil={formerCouncil} />
         </div>
@@ -655,10 +690,6 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             )}
           </div>
         )}
-
-        <div className="mt-4 text-sm text-gray-700">
-          <span className="font-semibold">{totalProvisions}</span> regulatory Provisions comprising <span className="font-semibold">{totalRequirements}</span> Requirements in <span className="font-semibold">{combinedCategories.length}</span> categories
-        </div>
       </CardHeader>
 
       <CardContent className="p-6">

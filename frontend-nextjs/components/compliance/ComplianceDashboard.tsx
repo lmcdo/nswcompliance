@@ -22,7 +22,6 @@ import { PrecinctProvisionsBrowser } from './PrecinctProvisionsBrowser';
 import { CategorizedRequirementsCard } from './CategorizedRequirementsCardV2';
 import { GeneralDCPSection } from './GeneralDCPSection';
 import PartBasedDCPSection from './PartBasedDCPSection';
-import { CouncilSetbackGuidance } from './CouncilSetbackGuidance';
 import {
   assessControlRelevance,
   createFilterContext,
@@ -1276,14 +1275,6 @@ export function ComplianceDashboard({
           </CardHeader>
           {!collapsedSections.dcp && (
             <CardContent className="pt-4">
-            {/* Council-specific setback guidance (collapsed by default) */}
-            {dcpCompleteData?.query?.formerCouncil && (
-              <CouncilSetbackGuidance
-                formerCouncil={dcpCompleteData.query.formerCouncil as 'Ashfield' | 'Marrickville' | 'Leichhardt'}
-                zone={propertyData.constraints.zone}
-              />
-            )}
-
             {/* NEW: Part-based DCP Section (Phase 1) with DA Requirements */}
             {dcpCompleteData && dcpCompleteData.success && dcpCompleteData.general_provisions ? (
               dcpCompleteData.general_provisions.by_part ? (
