@@ -1267,9 +1267,11 @@ export function ComplianceDashboard({
                       </>
                     )}
                     <span className="text-xs text-gray-500">|</span>
-                    <Badge variant="outline" className={`text-xs ${dcpCompleteData.query.formerCouncil === 'Ashfield' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
-                      {dcpCompleteData.query.formerCouncil === 'Ashfield' ? 'Prescriptive Minimums' : 'Character-Based'}
-                    </Badge>
+                    <span className="text-xs text-gray-600 italic">
+                      {dcpCompleteData.query.formerCouncil === 'Ashfield'
+                        ? 'Setbacks: Prescriptive minimum distances'
+                        : 'Setbacks: Character-based assessment'}
+                    </span>
                   </>
                 )}
               </div>
