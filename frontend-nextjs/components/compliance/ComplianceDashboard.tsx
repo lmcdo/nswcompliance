@@ -1256,7 +1256,7 @@ export function ComplianceDashboard({
                 {dcpCompleteData?.query?.formerCouncil && (
                   <>
                     <span className="text-xs text-gray-500">|</span>
-                    <span className="text-xs font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
+                    <span className="text-xs">Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span></span>
                     <span className="text-xs text-gray-500">|</span>
                     <span className="text-xs">{dcpCompleteData.general_provisions?.requirements_count || 0} controls</span>
                     {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
@@ -1265,6 +1265,10 @@ export function ComplianceDashboard({
                         <span className="text-xs">{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
                       </>
                     )}
+                    <span className="text-xs text-gray-500">|</span>
+                    <Badge variant="outline" className={`text-xs ${dcpCompleteData.query.formerCouncil === 'Ashfield' ? 'bg-blue-100 text-blue-800 border-blue-300' : 'bg-purple-100 text-purple-800 border-purple-300'}`}>
+                      {dcpCompleteData.query.formerCouncil === 'Ashfield' ? 'Prescriptive Minimums' : 'Character-Based'}
+                    </Badge>
                   </>
                 )}
               </div>
