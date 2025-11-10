@@ -1266,14 +1266,6 @@ export function ComplianceDashboard({
                         <span className="text-sm">{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
                       </>
                     )}
-                    <span className="text-sm text-gray-500">|</span>
-                    <span className="text-sm text-gray-600 italic">
-                      {dcpCompleteData.query.formerCouncil === 'Ashfield'
-                        ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
-                        : dcpCompleteData.query.formerCouncil === 'Marrickville'
-                        ? 'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
-                        : 'In Leichhardt, setbacks are determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
-                    </span>
                   </>
                 )}
               </div>
@@ -1283,6 +1275,15 @@ export function ComplianceDashboard({
                 <ChevronUp className="w-12 h-12 text-green-600" />
               )}
             </CardTitle>
+            {dcpCompleteData?.query?.formerCouncil && (
+              <p className="text-base text-gray-700 mt-1 italic">
+                {dcpCompleteData.query.formerCouncil === 'Ashfield'
+                  ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                  : dcpCompleteData.query.formerCouncil === 'Marrickville'
+                  ? 'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                  : 'In Leichhardt, setbacks are determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
+              </p>
+            )}
           </CardHeader>
           {!collapsedSections.dcp && (
             <CardContent className="pt-4">
