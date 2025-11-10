@@ -1251,23 +1251,9 @@ export function ComplianceDashboard({
             onClick={() => toggleSection('dcp')}
           >
             <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
                 <span className="text-2xl">🟢</span>
                 <span className="font-semibold text-lg">DCP Design Controls</span>
-                {dcpCompleteData?.query?.formerCouncil && (
-                  <>
-                    <span className="text-sm text-gray-500">|</span>
-                    <span className="text-sm">Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span></span>
-                    <span className="text-sm text-gray-500">|</span>
-                    <span className="text-sm">{dcpCompleteData.general_provisions?.requirements_count || 0} controls</span>
-                    {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
-                      <>
-                        <span className="text-sm text-gray-500">|</span>
-                        <span className="text-sm">{dcpCompleteData.da_requirements.requirements.length} DA requirements</span>
-                      </>
-                    )}
-                  </>
-                )}
               </div>
               {collapsedSections.dcp ? (
                 <ChevronDown className="w-12 h-12 text-green-600" />
@@ -1276,13 +1262,26 @@ export function ComplianceDashboard({
               )}
             </CardTitle>
             {dcpCompleteData?.query?.formerCouncil && (
-              <p className="text-base text-gray-700 mt-1 italic">
-                {dcpCompleteData.query.formerCouncil === 'Ashfield'
-                  ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
-                  : dcpCompleteData.query.formerCouncil === 'Marrickville'
-                  ? 'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
-                  : 'In Leichhardt, setbacks are determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
-              </p>
+              <>
+                <p className="text-base text-gray-700 mt-1 italic">
+                  Former Council: <span className="font-semibold">{dcpCompleteData.query.formerCouncil} DCP 2013</span>
+                  {' | '}
+                  {dcpCompleteData.general_provisions?.requirements_count || 0} controls
+                  {dcpCompleteData.da_requirements?.requirements?.length > 0 && (
+                    <>
+                      {' | '}
+                      {dcpCompleteData.da_requirements.requirements.length} DA requirements
+                    </>
+                  )}
+                </p>
+                <p className="text-base text-gray-700 mt-1 italic">
+                  {dcpCompleteData.query.formerCouncil === 'Ashfield'
+                    ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                    : dcpCompleteData.query.formerCouncil === 'Marrickville'
+                    ? 'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                    : 'In Leichhardt, setbacks are determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
+                </p>
+              </>
             )}
           </CardHeader>
           {!collapsedSections.dcp && (
