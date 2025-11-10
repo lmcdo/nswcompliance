@@ -631,53 +631,9 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   const setbackInfo = formerCouncil ? getSetbackApproach(formerCouncil) : null;
 
   return (
-    <Card className="w-full border-3 border-green-400">
-      <CardHeader className="border-b bg-green-50">
-        <div className="flex items-start justify-between">
-          <div className="flex-1">
-            <p className="text-sm text-gray-700 font-semibold">
-              General Provisions & Precinct-Specific Controls
-            </p>
-            {formerCouncil && setbackInfo && (
-              <div className="text-xs text-gray-700 mt-1 flex items-center gap-2">
-                <span>Setback Approach:</span>
-                <Badge variant="outline" className={`text-xs ${setbackInfo.color}`}>
-                  {setbackInfo.approach}
-                </Badge>
-              </div>
-            )}
-          </div>
-          <FilteringLevelBadge level={detectedFilteringLevel} formerCouncil={formerCouncil} />
-        </div>
-
-        {formerCouncil && (
-          <div className="text-xs text-blue-700 mt-3 bg-blue-50 border border-blue-200 rounded px-3 py-2">
-            <p className="mb-2 font-semibold">{formerCouncil} former council structures its DCP provisions according to the following strategy:</p>
-            {formerCouncil === 'Ashfield' && (
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Chapter F: general provisions (here you can filter by zone ({zone}) + development type ({developmentType.replace(/_/g, ' ')})).</li>
-                <li>Chapter D: Precinct overlays (13 precincts total) shown separately if site falls within precinct boundary (see special provisions below).</li>
-              </ul>
-            )}
-            {formerCouncil === 'Marrickville' && (
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Parts 2-8: general provisions (here you can filter by development type ({developmentType.replace(/_/g, ' ')})).</li>
-                <li>Part 9: Precinct controls (47 precincts total) shown separately based on site location within its planning precinct boundaries (see special provisions below).</li>
-              </ul>
-            )}
-            {formerCouncil === 'Leichhardt' && (
-              <ul className="list-disc ml-5 space-y-1">
-                <li>Parts A-E: universal provisions (no zone/devtype filtering applied).</li>
-                <li>Part C Section 2: Distinctive neighbourhoods (37 total) shown separately if site falls within neighbourhood boundary (see special provisions below).</li>
-              </ul>
-            )}
-          </div>
-        )}
-      </CardHeader>
-
-      <CardContent className="p-6">
-        {/* Smart Filter Summary */}
-        <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-6 text-sm">
+    <div className="w-full">
+      {/* Smart Filter Summary */}
+      <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-6 text-sm">
           <div className="flex items-start gap-2">
             <Info className="h-4 w-4 text-blue-700 mt-0.5 flex-shrink-0" />
             <div className="flex-1">
@@ -899,7 +855,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
           </div>
         </div>
       )}
-    </Card>
+    </div>
   );
 };
 
