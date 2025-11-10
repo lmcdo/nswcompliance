@@ -1269,8 +1269,10 @@ export function ComplianceDashboard({
                     <span className="text-xs text-gray-500">|</span>
                     <span className="text-xs text-gray-600 italic">
                       {dcpCompleteData.query.formerCouncil === 'Ashfield'
-                        ? 'Setbacks specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
-                        : 'Setbacks determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
+                        ? 'In Ashfield, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                        : dcpCompleteData.query.formerCouncil === 'Marrickville'
+                        ? 'In Marrickville, setbacks are specified as numeric minimums (e.g., 900mm side, 6m rear). Rules-based approach with clear compliance thresholds.'
+                        : 'In Leichhardt, setbacks are determined by streetscape character and context. Requires analysis of existing building patterns and neighbourhood rhythm.'}
                     </span>
                   </>
                 )}
