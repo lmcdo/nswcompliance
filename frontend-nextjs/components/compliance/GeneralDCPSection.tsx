@@ -823,7 +823,6 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             </p>
           </div>
         )}
-      </CardContent>
 
       {/* PDF Viewer Modal - Shared modal for page group footers */}
       {viewingPdfImage && (
