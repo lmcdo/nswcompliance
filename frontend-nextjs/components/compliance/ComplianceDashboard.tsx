@@ -1141,17 +1141,12 @@ export function ComplianceDashboard({
             )}
           </CardTitle>
           <p className="text-base text-gray-700 mt-1 italic">
-            Local Environmental Plan - Zoning, Building Envelope, Heritage
             {(() => {
               const lepLayer = propertyData.planningLayers?.find(layer =>
                 layer.layerName === 'Land Application Map' &&
                 layer.results?.[0]?.['EPI Name']
               );
-              return lepLayer?.results?.[0]?.['EPI Name'] && (
-                <span className="block text-xs mt-0.5 text-gray-600 font-bold">
-                  {lepLayer.results[0]['EPI Name']}
-                </span>
-              );
+              return (lepLayer?.results?.[0]?.['EPI Name'] || 'Inner West Local Environmental Plan 2022') + ' - Zoning, Building Envelope, Heritage';
             })()}
           </p>
         </CardHeader>
