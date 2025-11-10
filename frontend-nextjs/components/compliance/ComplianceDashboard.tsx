@@ -9,6 +9,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { ConstraintCard } from './ConstraintCard';
 import { SeppOverlayIndicator } from './SeppOverlayIndicator';
 import { LegalTextPanel, SelectedProvision } from './LegalTextPanel';
