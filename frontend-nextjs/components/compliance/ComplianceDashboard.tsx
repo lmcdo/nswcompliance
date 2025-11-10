@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import useSWR from 'swr';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -110,12 +111,72 @@ export function ComplianceDashboard({
   const [categorizedRequirements, setCategorizedRequirements] = useState<any>(null);
   const [loadingCategorized, setLoadingCategorized] = useState(false);
 
-  // NEW: Unified DCP Complete data state
-  const [dcpCompleteData, setDcpCompleteData] = useState<any>(null);
-  const [loadingDcpComplete, setLoadingDcpComplete] = useState(false);
+  // NEW: Unified DCP Complete data state - Using SWR for caching
+  // Removed: const [dcpCompleteData, setDcpCompleteData] = useState<any>(null);
+  // Removed: const [loadingDcpComplete, setLoadingDcpComplete] = useState(false);
 
   // Ref to access GeneralDCPSection's display mode setter
   const displayModeSetterRef = useRef<((mode: 'separated' | 'combined', options?: { expandCategory?: string }) => void) | null>(null);
+
+  // SWR fetcher for DCP Complete API with caching
+  const dcpCompleteFetcher = async ([url, body]: [string, any]) => {
+    console.log('[ComplianceDashboard] Fetching DCP Complete data for:', body.address);
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    if (!response.ok) {
+      throw new Error(`DCP Complete API failed: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      throw new Error('DCP Complete fetch unsuccessful');
+    }
+
+    console.log('[ComplianceDashboard] Loaded DCP Complete:',
+      data.general_provisions?.requirements_count || 0, 'general requirements,',
+      data.precinct_provisions?.requirements_count || 0, 'precinct requirements');
+
+    return data;
+  };
+
+  // Create SWR key for DCP Complete API
+  const dcpCompleteKey = propertyData?.constraints?.zone && propertyData?.address
+    ? [
+        '/api/compliance/dcp-complete',
+        {
+          address: propertyData.address,
+          coordinates: propertyData.coordinates ? {
+            lat: propertyData.coordinates.lat,
+            lon: propertyData.coordinates.lon
+          } : undefined,
+          zone: propertyData.constraints.zone,
+          developmentType: developmentType,
+          lga: propertyData.constraints.lga || propertyData.council || 'Inner West',
+          heritageStatus: propertyData.constraints?.heritage || null
+        }
+      ]
+    : null;
+
+  // Use SWR for caching DCP Complete data
+  const {
+    data: dcpCompleteData,
+    error: dcpCompleteError,
+    isLoading: loadingDcpComplete
+  } = useSWR(
+    dcpCompleteKey,
+    dcpCompleteFetcher,
+    {
+      revalidateOnFocus: false,      // Don't refetch when window gains focus
+      revalidateOnReconnect: false,  // Don't refetch on reconnect
+      dedupingInterval: 60000,        // Dedupe requests within 1 minute
+      shouldRetryOnError: false,      // Don't retry on error
+      keepPreviousData: true,         // Keep previous data while fetching new
+    }
+  );
 
   // Collapsible state for main sections
   const [collapsedSections, setCollapsedSections] = useState({
@@ -591,67 +652,7 @@ export function ComplianceDashboard({
     fetchCategorizedRequirements();
   }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council]);
 
-  // NEW: Fetch unified DCP Complete data (general + precinct provisions)
-  useEffect(() => {
-    const fetchDcpComplete = async () => {
-      if (!propertyData?.constraints?.zone || !propertyData?.address) {
-        setDcpCompleteData(null);
-        return;
-      }
-
-      try {
-        setLoadingDcpComplete(true);
-        console.log('[ComplianceDashboard] Fetching DCP Complete data for:', propertyData.address);
-
-        const response = await fetch('/api/compliance/dcp-complete', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: propertyData.address,
-            coordinates: propertyData.coordinates ? {
-              lat: propertyData.coordinates.lat,
-              lon: propertyData.coordinates.lon
-            } : undefined,
-            zone: propertyData.constraints.zone,
-            developmentType: developmentType,
-            lga: propertyData.constraints.lga || propertyData.council || 'Inner West',
-            heritageStatus: propertyData.constraints?.heritage || null
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success) {
-            setDcpCompleteData(data);
-            console.log('[ComplianceDashboard] Loaded DCP Complete:',
-              data.general_provisions?.requirements_count || 0, 'general requirements,',
-              data.precinct_provisions?.requirements_count || 0, 'precinct requirements');
-          } else {
-            console.warn('[ComplianceDashboard] DCP Complete fetch unsuccessful');
-            setDcpCompleteData(null);
-          }
-        } else {
-          console.warn('[ComplianceDashboard] Failed to fetch DCP Complete:', response.statusText);
-          setDcpCompleteData(null);
-        }
-      } catch (error) {
-        console.error('[ComplianceDashboard] Error fetching DCP Complete:', error);
-        setDcpCompleteData(null);
-      } finally {
-        setLoadingDcpComplete(false);
-      }
-    };
-
-    fetchDcpComplete();
-  }, [
-    propertyData?.address,
-    propertyData?.coordinates?.lat,
-    propertyData?.coordinates?.lon,
-    propertyData?.constraints?.zone,
-    propertyData?.constraints?.lga,
-    propertyData?.council,
-    developmentType
-  ]);
+  // REMOVED: Old useEffect for DCP Complete - now using SWR hook above
 
   // Handler for opening slide-out panel
   const handleViewProvision = useCallback(async (constraint: ComplianceConstraint) => {
