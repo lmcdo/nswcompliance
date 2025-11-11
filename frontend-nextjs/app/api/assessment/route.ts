@@ -62,8 +62,7 @@ async function handleLoadProperty({ address }: { address: string }) {
  landValue: propertyData.landValue,
  heritage: propertyData.constraints.heritage
  },
- constraints: propertyData.constraints,
- layers: propertyData.layers
+ constraints: propertyData.constraints
  }
  });
 }
