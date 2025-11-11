@@ -54,12 +54,12 @@ async function handleLoadProperty({ address }: { address: string }) {
  success: true,
  data: {
  property: {
- propId: propertyData.propertyData.propId,
- address: propertyData.propertyData.address,
+ propId: propertyData.propId,
+ address: propertyData.address,
  zone: propertyData.constraints.zone,
  lga: propertyData.constraints.lga,
- area: propertyData.propertyData.propertyArea,
- landValue: propertyData.propertyData.landValue,
+ area: propertyData.propertyArea,
+ landValue: propertyData.landValue,
  heritage: propertyData.constraints.heritage
  },
  constraints: propertyData.constraints,
