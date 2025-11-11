@@ -340,7 +340,7 @@ export default function TODParkingCalculator({
         {(manualUnitCount <= 0 || !manualParkingRate || manualParkingRate <= 0) && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm text-yellow-800">
-              Enter both unit count (>0) and parking rate (>0) to calculate requirements
+              Enter both unit count ({'>'}0) and parking rate ({'>'}0) to calculate requirements
             </p>
           </div>
         )}
