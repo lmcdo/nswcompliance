@@ -1400,7 +1400,7 @@ export function ComplianceDashboard({
                   // Pass precinct data for cross-reference
                   precinctDetected={!!categorizedRequirements}
                   precinctName={categorizedRequirements?.precinct?.precinct_name}
-                  precinctCategories={categorizedRequirements?.categories?.reduce((acc, cat) => {
+                  precinctCategories={categorizedRequirements?.categories?.reduce((acc: Record<string, number>, cat: any) => {
                     acc[cat.category] = cat.total_count;
                     return acc;
                   }, {} as Record<string, number>)}

@@ -56,7 +56,7 @@ export function PersistentFeedbackHub({
   useEffect(() => {
     if (propertyId !== sessionState.currentPropertyId) {
       // New property - reset but remember some state
-      setSessionState(prev => ({
+      setSessionState((prev: FeedbackSessionState) => ({
         ...prev,
         currentPropertyId: propertyId,
         hasSubmitted: false,
@@ -70,7 +70,7 @@ export function PersistentFeedbackHub({
   useEffect(() => {
     const savedRole = localStorage.getItem('feedback-user-role');
     if (savedRole && !sessionState.userRole) {
-      setSessionState(prev => ({ ...prev, userRole: savedRole }));
+      setSessionState((prev: FeedbackSessionState) => ({ ...prev, userRole: savedRole }));
     }
   }, []);
 
@@ -86,7 +86,7 @@ export function PersistentFeedbackHub({
     const timer = setTimeout(() => {
       // Show feedback trigger for relevant sections
       if (shouldShowFeedbackForSection() && !sessionState.dismissedSections.has(activeTrigger)) {
-        setSessionState(prev => ({ ...prev, isVisible: true }));
+        setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: true }));
         setActiveTrigger(sections?.[0] || 'general');
       }
     }, 2000); // Shorter delay for persistent hub
@@ -174,7 +174,7 @@ export function PersistentFeedbackHub({
     // Reappear after delay for continued session
     setTimeout(() => {
       if (shouldShowFeedbackForSection()) {
-        setSessionState(prev => ({ ...prev, isVisible: true }));
+        setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: true }));
       }
     }, 15000); // 15 seconds
   }, []);

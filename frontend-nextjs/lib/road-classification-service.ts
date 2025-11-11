@@ -113,9 +113,9 @@ export async function getRoadClassifications(
     });
 
     // Sort by hierarchy (lower code = more important road = likely frontage)
-    roads.sort((a, b) => a.hierarchy_code - b.hierarchy_code);
+    roads.sort((a: any, b: any) => a.hierarchy_code - b.hierarchy_code);
 
-    console.log(`[Road Classification] Found ${roads.length} roads:`, roads.map(r => `${r.road_name} (${r.functional_hierarchy}, code ${r.hierarchy_code})`));
+    console.log(`[Road Classification] Found ${roads.length} roads:`, roads.map((r: any) => `${r.road_name} (${r.functional_hierarchy}, code ${r.hierarchy_code})`));
 
     console.log('[Road Classification] Returning roads array:', roads);
     return roads;
