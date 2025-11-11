@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { postgresComplianceClient } from '@/lib/database/postgres-compliance-client';
+import { getCounterValues } from '@/lib/metrics/counters';
 
 interface MetricSample {
   name: string;
@@ -17,12 +18,6 @@ interface MetricSample {
 
 const metricsRegistry = new Map<string, MetricSample>();
 const startTime = Date.now();
-
-// Request counters
-let requestTotal = 0;
-let requestErrors = 0;
-let databaseQueries = 0;
-let databaseErrors = 0;
 
 /**
  * Prometheus metrics endpoint
@@ -191,13 +186,13 @@ async function getDatabaseMetrics(): Promise<MetricSample[]> {
         name: 'database_queries_total',
         type: 'counter',
         help: 'Total database queries executed',
-        value: databaseQueries
+        value: getCounterValues().databaseQueries
       },
       {
         name: 'database_errors_total',
         type: 'counter',
         help: 'Total database errors',
-        value: databaseErrors
+        value: getCounterValues().databaseErrors
       }
     );
 
@@ -252,24 +247,26 @@ async function getDatabaseMetrics(): Promise<MetricSample[]> {
  * HTTP request metrics
  */
 function getHTTPMetrics(): MetricSample[] {
+  const counters = getCounterValues();
+
   return [
     {
       name: 'http_requests_total',
       type: 'counter',
       help: 'Total HTTP requests',
-      value: requestTotal
+      value: counters.requestTotal
     },
     {
       name: 'http_request_errors_total',
       type: 'counter',
       help: 'Total HTTP request errors',
-      value: requestErrors
+      value: counters.requestErrors
     },
     {
       name: 'http_request_success_rate',
       type: 'gauge',
       help: 'HTTP request success rate',
-      value: requestTotal > 0 ? (requestTotal - requestErrors) / requestTotal : 1
+      value: counters.requestTotal > 0 ? (counters.requestTotal - counters.requestErrors) / counters.requestTotal : 1
     }
   ];
 }
@@ -364,32 +361,4 @@ function escapeLabel(value: string): string {
     .replace(/\n/g, '\\n')
     .replace(/\r/g, '\\r')
     .replace(/\t/g, '\\t');
-}
-
-/**
- * Increment request counter (called by middleware)
- */
-export function incrementRequestCounter() {
-  requestTotal++;
-}
-
-/**
- * Increment error counter (called by error handlers)
- */
-export function incrementErrorCounter() {
-  requestErrors++;
-}
-
-/**
- * Increment database query counter
- */
-export function incrementDatabaseQueryCounter() {
-  databaseQueries++;
-}
-
-/**
- * Increment database error counter
- */
-export function incrementDatabaseErrorCounter() {
-  databaseErrors++;
 }
