@@ -3,11 +3,11 @@ import { Pool } from 'pg';
 
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'nsw_planning',
-  user: 'postgres',
-  password: 'postgres',
+  host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
+  database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
+  user: process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
   statement_timeout: 30000  // 30 second timeout
 });
 

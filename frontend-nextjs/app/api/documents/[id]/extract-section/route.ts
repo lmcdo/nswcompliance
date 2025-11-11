@@ -14,11 +14,11 @@ import { getCachedSection, cacheSection, getCacheStats } from '@/lib/document-ex
 import type { ExtractedSection } from '@/lib/lga-configs/types';
 
 const pool = new Pool({
-  host: 'localhost',
-  database: 'nsw_planning',
-  user: 'postgres',
-  password: 'postgres',
-  port: 5432,
+  host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
+  database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
+  user: process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
+  port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
 });
 
 export async function GET(
