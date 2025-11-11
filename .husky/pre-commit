@@ -1,0 +1,12 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run type check before commit
+cd frontend-nextjs
+echo "🔍 Running type check..."
+npm run type-check || {
+  echo "❌ Type errors found. Please fix before committing."
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed"

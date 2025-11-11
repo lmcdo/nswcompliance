@@ -9,7 +9,9 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "pre-deploy": "npm run type-check && npm run lint && npm run build",
+    "deploy": "npm run pre-deploy && vercel --prod"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",
