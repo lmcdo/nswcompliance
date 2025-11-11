@@ -1,252 +1,172 @@
 /**
  * Provision Title Utilities
- * Generic functions to extract human-readable titles from provision data
- *
- * Handles machine-generated IDs like:
- * - Provision_531
- * - table_in_Marrickville_DCP_2011__4.1_Low_Density_Residential_Development_0
- * - 4.3, 9.29.3 (actual clause numbers)
+ * Helper functions for displaying provision titles and metadata
  */
-
-export interface ProvisionContent {
-  id: number;
-  ref_number: string;
-  section_header: string;
-  provision_text: string;
-  document_id: string;
-}
 
 /**
- * Extract section name from document_id
- *
- * Examples:
- * - "Marrickville_DCP_2011__4.1_Low_Density_Residential_Development"
- *   → "4.1 Low Density Residential Development"
- *
- * - "Leichhardt_DCP_2013__Part_C_Heritage"
- *   → "Part C Heritage"
+ * Check if a provision ID is machine-generated (vs human-readable)
  */
-function extractSectionFromDocumentId(documentId: string): string | null {
-  if (!documentId) return null;
+export function isMachineGeneratedId(id: string | number): boolean {
+  if (typeof id === 'number') return true;
 
-  // Pattern: Document_Name_YEAR__Section_Name
-  // Everything after "__" is the section name
-  const match = documentId.match(/__(.+)$/);
-  if (!match) return null;
-
-  const section = match[1]
-    .replace(/_/g, ' ')  // Replace underscores with spaces
-    .replace(/\s+/g, ' ') // Normalize multiple spaces
-    .trim();
-
-  return section || null;
-}
-
-/**
- * Extract table subject from HTML table markup
- * Looks for cell with colspan attribute (typically the table title)
- * Falls back to second cell if no colspan found
- *
- * Examples:
- * - "<table><tr><td>Width of lot</td><td colspan='2'>Minimum setback from side boundaries</td>..."
- *   → "Minimum setback from side boundaries"
- *
- * - "<table><tr><td>Front</td><td colspan='2'>The front garden..."
- *   → "The front garden..."
- */
-function extractTableSubject(provisionText: string): string | null {
-  if (!provisionText.includes('<table')) return null;
-
-  // First, try to find cell with colspan attribute (typically the table title)
-  const colspanMatch = provisionText.match(/<t[dh][^>]*colspan[^>]*>(.*?)<\/t[dh]>/i);
-
-  let subject: string;
-
-  if (colspanMatch) {
-    // Use colspan cell (this is usually the table title)
-    subject = colspanMatch[1];
-  } else {
-    // Fallback: get all cells in first row and use the longest one
-    const allCells = provisionText.match(/<t[dh][^>]*>(.*?)<\/t[dh]>/gi);
-    if (!allCells || allCells.length === 0) return null;
-
-    // Extract content from each cell
-    const cellContents = allCells.slice(0, 3).map(cell => {
-      const content = cell.replace(/<t[dh][^>]*>/i, '').replace(/<\/t[dh]>/i, '');
-      return content.replace(/&#x27;/g, "'").replace(/&quot;/g, '"').replace(/<[^>]+>/g, '').trim();
-    });
-
-    // Use the longest cell (likely the title) or second cell if first is short
-    if (cellContents.length > 1 && cellContents[0].length < 20) {
-      subject = cellContents[1]; // Second cell is likely the title
-    } else {
-      subject = cellContents[0];
-    }
-  }
-
-  // Clean up HTML entities and tags
-  subject = subject
-    .replace(/&#x27;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/&gt;/g, '>')
-    .replace(/&lt;/g, '<')
-    .replace(/<[^>]+>/g, '')
-    .trim();
-
-  // Take first sentence only (before period) if it's long
-  if (subject.length > 50 && subject.includes('.')) {
-    subject = subject.split('.')[0];
-  }
-
-  // Capitalize first letter
-  return subject.charAt(0).toUpperCase() + subject.slice(1);
+  // Machine-generated IDs are typically all numeric or UUID-like
+  return /^\d+$/.test(id) || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 }
 
 /**
  * Get display title for a provision
- *
- * Priority:
- * 1. section_header (if exists and not empty)
- * 2. Parse document_id for section name + ref_number pattern
- * 3. Fallback to cleaned ref_number
+ * Prioritizes human-readable identifiers over machine IDs
  */
-export function getProvisionDisplayTitle(provision: ProvisionContent): string {
-  // 1. Prefer section_header if available and not empty
-  if (provision.section_header?.trim()) {
-    return provision.section_header.trim();
+export function getProvisionDisplayTitle(provision: {
+  ref_number?: string;
+  section_header?: string;
+  provision_text?: string;
+  id?: string | number;
+}): string {
+  // Priority 1: ref_number (e.g., "4.3", "Part A")
+  if (provision.ref_number && provision.ref_number.trim() !== '') {
+    return provision.ref_number;
   }
 
-  // 2. Extract section from document_id (most reliable context)
-  const docSection = extractSectionFromDocumentId(provision.document_id);
-
-  // 3. Determine format based on ref_number pattern
-
-  // Pattern: table_in_XXX
-  if (provision.ref_number.match(/^table_in_/i)) {
-    // Try to extract specific table subject from HTML content
-    const tableSubject = extractTableSubject(provision.provision_text);
-
-    if (tableSubject && docSection) {
-      return `${docSection} - ${tableSubject}`;
-    } else if (tableSubject) {
-      return tableSubject;
-    } else if (docSection) {
-      return `${docSection} - Table`;
-    }
-
-    return 'Table';
+  // Priority 2: section_header
+  if (provision.section_header && provision.section_header.trim() !== '') {
+    return provision.section_header;
   }
 
-  // Pattern: Provision_123 (machine-generated ID)
-  if (provision.ref_number.match(/^[Pp]rovision_\d+$/)) {
-    return docSection || 'Provision';
-  }
-
-  // Pattern: 4.3 or 9.29.3 or 4.3A (actual clause number)
-  if (provision.ref_number.match(/^\d+(\.\d+)*[A-Z]?$/)) {
-    return `Clause ${provision.ref_number}`;
-  }
-
-  // Pattern: Schedule_XXX
-  if (provision.ref_number.match(/^[Ss]chedule/)) {
-    return provision.ref_number.replace(/_/g, ' ');
-  }
-
-  // Fallback: Use document section or clean up ref_number
-  return docSection || provision.ref_number.replace(/_/g, ' ');
-}
-
-/**
- * Get short title for compact displays (card headers)
- * Returns ONLY the specific table subject, not the section name
- *
- * Examples:
- * - "4.1 Low Density - Minimum setback" → "Minimum setback"
- * - Table with colspan title → Extract just the title
- */
-export function getProvisionShortTitle(provision: ProvisionContent): string {
-  // Check if provision contains table HTML (regardless of ref_number pattern)
-  // Many provisions have table content but generic provision_* IDs
-  if (provision.provision_text?.includes('<table')) {
-    const tableSubject = extractTableSubject(provision.provision_text);
-    console.log('[getProvisionShortTitle] Table HTML detected:', {
-      ref_number: provision.ref_number,
-      tableSubject,
-      text_length: provision.provision_text.length
-    });
-    if (tableSubject) {
-      return tableSubject;
+  // Priority 3: First 50 chars of provision text
+  if (provision.provision_text) {
+    const text = provision.provision_text.trim();
+    if (text.length > 0) {
+      return text.length > 50 ? `${text.substring(0, 50)}...` : text;
     }
   }
 
-  // For plain text provisions (not tables), extract first meaningful sentence
-  // This helps differentiate provisions from the same section
-  if (provision.provision_text && !provision.provision_text.includes('<table')) {
-    // Remove HTML tags and numbered list markers
-    let cleanText = provision.provision_text
-      .replace(/<[^>]+>/g, '') // Remove HTML
-      .replace(/^\d+\.\s+/gm, '') // Remove "1. ", "2. " at line starts
-      .trim();
+  // Fallback: ID
+  return `Provision ${provision.id || 'Unknown'}`;
+}
 
-    // Get first sentence (up to period or newline)
-    const firstSentence = cleanText.split(/[.\n]/)[0]?.trim();
-    if (firstSentence && firstSentence.length > 10 && firstSentence.length < 100) {
-      console.log('[getProvisionShortTitle] Using first sentence:', firstSentence);
-      return firstSentence;
-    }
+/**
+ * Get short title for a provision (for cards/compact views)
+ */
+export function getProvisionShortTitle(provision: {
+  ref_number?: string;
+  section_header?: string;
+  id?: string | number;
+}): string {
+  if (provision.ref_number && provision.ref_number.trim() !== '') {
+    return provision.ref_number;
   }
 
-  const fullTitle = getProvisionDisplayTitle(provision);
-
-  // If title has " - " separator, take only the part after it (the specific subject)
-  if (fullTitle.includes(' - ')) {
-    const parts = fullTitle.split(' - ');
-    const shortTitle = parts[parts.length - 1];
-    console.log('[getProvisionShortTitle] Split title:', { fullTitle, shortTitle });
-    return shortTitle; // Return the last part (most specific)
+  if (provision.section_header) {
+    const header = provision.section_header.trim();
+    // Truncate long section headers
+    return header.length > 30 ? `${header.substring(0, 30)}...` : header;
   }
 
-  // Remove "Clause " prefix for compact display
-  return fullTitle.replace(/^Clause\s+/, '');
+  return `#${provision.id || '?'}`;
 }
 
 /**
- * Get section metadata (the broader context, not the specific title)
- * Returns the section name like "4.1 Low Density Residential Development"
+ * Get section name from provision metadata
  */
-export function getProvisionSectionName(provision: ProvisionContent): string | null {
-  // Extract section from document_id
-  return extractSectionFromDocumentId(provision.document_id);
+export function getProvisionSectionName(provision: {
+  section_header?: string;
+  part_name?: string;
+  category?: string;
+}): string {
+  if (provision.section_header && provision.section_header.trim() !== '') {
+    return provision.section_header;
+  }
+
+  if (provision.part_name && provision.part_name.trim() !== '') {
+    return provision.part_name;
+  }
+
+  if (provision.category && provision.category.trim() !== '') {
+    return provision.category;
+  }
+
+  return 'General Provisions';
 }
 
 /**
- * Check if ref_number is a machine-generated ID (not human-readable)
- */
-export function isMachineGeneratedId(refNumber: string): boolean {
-  return (
-    refNumber.match(/^[Pp]rovision_\d+$/) !== null ||
-    refNumber.match(/^table_in_/) !== null
-  );
-}
-
-/**
- * Format constraint value display for cards
- * Handles "See provision" placeholders and clause-style values
+ * Format constraint value for display
  */
 export function formatConstraintValue(
-  value: string | number,
-  provision?: ProvisionContent
+  value: string | number | null | undefined,
+  unit?: string
 ): string {
-  // If value is "See provision" placeholder, use provision title
-  if (typeof value === 'string' && value.toLowerCase().includes('provision')) {
-    return provision ? getProvisionShortTitle(provision) : 'See provision';
+  if (value === null || value === undefined || value === '') {
+    return 'Not specified';
   }
 
-  // If value looks like a clause number, use provision title instead
-  if (typeof value === 'string' && /^\d+(\.\d+)+[A-Z]?$/.test(value)) {
-    return provision ? getProvisionShortTitle(provision) : value;
+  const numericValue = typeof value === 'number' ? value : parseFloat(value as string);
+
+  if (isNaN(numericValue)) {
+    return String(value);
   }
 
-  // Otherwise return as-is
-  return String(value);
+  // Format numeric values
+  const formatted = numericValue % 1 === 0
+    ? numericValue.toString()
+    : numericValue.toFixed(2);
+
+  // Add unit if provided
+  return unit ? `${formatted} ${unit}` : formatted;
+}
+
+/**
+ * Extract provision reference from text (e.g., "See clause 4.3" → "4.3")
+ */
+export function extractProvisionReference(text: string): string | null {
+  // Common patterns: "clause 4.3", "section 2.1", "part A", etc.
+  const patterns = [
+    /(?:clause|section|part)\s+([A-Z0-9.]+)/i,
+    /\b([0-9]+\.[0-9]+(?:\.[0-9]+)?)\b/, // Numeric references like 4.3 or 4.3.1
+    /\bPart\s+([A-Z])\b/i, // Part A, Part B, etc.
+  ];
+
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Determine provision type from metadata
+ */
+export function getProvisionType(provision: {
+  document_id?: string;
+  provision_type?: string;
+  section_header?: string;
+}): 'LEP' | 'DCP' | 'SEPP' | 'Unknown' {
+  // Check explicit provision_type field
+  if (provision.provision_type) {
+    const type = provision.provision_type.toUpperCase();
+    if (type.includes('LEP')) return 'LEP';
+    if (type.includes('DCP')) return 'DCP';
+    if (type.includes('SEPP')) return 'SEPP';
+  }
+
+  // Check document_id
+  if (provision.document_id) {
+    const docId = provision.document_id.toUpperCase();
+    if (docId.includes('LEP')) return 'LEP';
+    if (docId.includes('DCP')) return 'DCP';
+    if (docId.includes('SEPP')) return 'SEPP';
+  }
+
+  // Check section_header
+  if (provision.section_header) {
+    const header = provision.section_header.toUpperCase();
+    if (header.includes('LEP')) return 'LEP';
+    if (header.includes('DCP')) return 'DCP';
+    if (header.includes('SEPP')) return 'SEPP';
+  }
+
+  return 'Unknown';
 }
