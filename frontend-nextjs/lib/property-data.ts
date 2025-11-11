@@ -67,6 +67,10 @@ export interface PropertyData {
  x: number;
  y: number;
  };
+ coordinates?: {
+ lat: number;
+ lon: number;
+ };
  seppRouting?: SeppRoutingResult;
  planningLayers?: PlanningLayer[];
  lotDetails?: LotDetails;

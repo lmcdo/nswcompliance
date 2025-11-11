@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
     // STEP 2: Query or Create General Requirements
     // ========================================================================
 
-    let generalRequirements: { rows: GeneralRequirement[] };
+    let generalRequirements: { rows: GeneralRequirement[] } = { rows: [] };
     let precinctRequirements: PrecinctRequirement[] = []; // Declare early to avoid initialization errors
     let usedPrecinctFallback = false; // Track if fallback populated precinct requirements
 
@@ -292,9 +292,9 @@ export async function POST(request: NextRequest) {
     if (generalProvisions.rows.length === 0 && !isInnerWestCouncil) {
       console.log(`⚠ No provisions in dcp_general_provisions for ${documentFilter}`);
 
-      let fallbackQuery: string;
-      let fallbackParams: any[];
-      let fallbackResult: any; // Declare variable for all branches
+      let fallbackQuery: string = '';
+      let fallbackParams: any[] = [];
+      let fallbackResult: any = undefined; // Declare variable for all branches
 
       if (detectedNeighbourhoodName && detectedPrecinctId) {
         // Return provisions for the specific neighbourhood + general provisions
@@ -668,7 +668,8 @@ export async function POST(request: NextRequest) {
       if (fallbackResult === null) {
         // Already processed (Marrickville with precinct + general)
         console.log(`✓ Fallback already processed above`);
-      } else {
+      } else if (fallbackQuery && fallbackParams.length > 0) {
+        // Only execute if query was set in one of the branches above
         fallbackResult = await query<GeneralProvision>(
           fallbackQuery,
           fallbackParams
@@ -676,6 +677,8 @@ export async function POST(request: NextRequest) {
 
         console.log(`✓ Fallback provisions: ${fallbackResult.rows.length}`);
         generalProvisions.rows = fallbackResult.rows;
+      } else {
+        console.log(`⚠ No fallback query configured`);
       }
 
       // For fallback, also create "requirements" from provisions so PDF buttons work
