@@ -228,8 +228,8 @@ export async function POST(request: NextRequest) {
       `;
       generalProvisionsParams = [queryLGA];
     } else if (formerCouncil?.toLowerCase() === 'leichhardt') {
-      // Leichhardt: Universal controls (no filtering)
-      // Note: dcp_general_provisions doesn't have former_council column
+      // Leichhardt: Force fallback to regulatory_provisions
+      // Return 0 rows to trigger fallback (no Leichhardt data in dcp_general_provisions)
       generalProvisionsQuery = `
         SELECT
           id,
@@ -242,10 +242,9 @@ export async function POST(request: NextRequest) {
           development_types,
           display_order
         FROM dcp_general_provisions
-        WHERE lga = $1
-        ORDER BY part_number, display_order
+        WHERE FALSE
       `;
-      generalProvisionsParams = [queryLGA];
+      generalProvisionsParams = [];
     } else {
       // Default: Zone + DevType filtering
       generalProvisionsQuery = `
@@ -284,10 +283,10 @@ export async function POST(request: NextRequest) {
     let usedPrecinctFallback = false; // Track if fallback populated precinct requirements
 
     // FALLBACK: If no provisions found in new table, check old regulatory_provisions table
-    // NOTE: Skip fallback for Inner West councils (Ashfield, Marrickville, Leichhardt) - they use dcp_general_requirements table
+    // NOTE: Skip fallback for Ashfield/Marrickville (use dcp_general_requirements)
+    // Leichhardt intentionally uses fallback to regulatory_provisions for universal controls
     const isInnerWestCouncil = formerCouncil?.toLowerCase() === 'ashfield' ||
-                                formerCouncil?.toLowerCase() === 'marrickville' ||
-                                formerCouncil?.toLowerCase() === 'leichhardt';
+                                formerCouncil?.toLowerCase() === 'marrickville';
 
     if (generalProvisions.rows.length === 0 && !isInnerWestCouncil) {
       console.log(`⚠ No provisions in dcp_general_provisions for ${documentFilter}`);
@@ -357,6 +356,7 @@ export async function POST(request: NextRequest) {
               NULL as category_name
             FROM regulatory_provisions
             WHERE document_id ILIKE $1
+            AND page_number != '0'  -- Exclude TOC pages
             AND (
               document_id ~ '_2011_[247][_.]'  -- Parts 2, 4, 7
               OR document_id ILIKE '%_4.1_%'   -- Low density residential
@@ -506,6 +506,7 @@ export async function POST(request: NextRequest) {
                 NULL as category_name
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
+              AND page_number != '0'  -- Exclude TOC pages
               AND (
                 document_id ILIKE '%Chapter_F%'
                 OR document_id ILIKE '%Chapter F%'
@@ -532,6 +533,7 @@ export async function POST(request: NextRequest) {
                 NULL as category_name
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
+              AND page_number != '0'  -- Exclude TOC pages
               AND (
                 document_id ILIKE '%Part%General%'
                 OR document_id ILIKE '%Chapter%General%'
@@ -653,6 +655,7 @@ export async function POST(request: NextRequest) {
             document_id
           FROM regulatory_provisions
           WHERE document_id ILIKE $1
+          AND page_number != '0'  -- Exclude TOC pages
           AND (
             document_id ~ '_2011_[2478][_.]'  -- General provisions (Parts 2, 4, 7, 8) after _2011_
             OR document_id ILIKE '%_10.%'  -- Definitions
