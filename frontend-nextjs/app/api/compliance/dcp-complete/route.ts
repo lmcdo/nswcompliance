@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { filterRequirementsByDevType } from '@/lib/dev-type-filter';
+import { getZoneAliases } from '@/lib/zone-translation';
 // Force recompile
 
 /**
@@ -176,6 +177,10 @@ export async function POST(request: NextRequest) {
       queryLGA = formerCouncil.toUpperCase();
     }
 
+    // Apply zone translation (E1 → [E1, B1, B2] for legacy DCPs)
+    const zoneAliases = getZoneAliases(zone);
+    console.log(`[DCP Complete] Zone translation: ${zone} → [${zoneAliases.join(', ')}]`);
+
     // ========================================================================
     // STEP 1: Query General Provisions (Chapter F) - ALWAYS
     // ========================================================================
@@ -190,6 +195,7 @@ export async function POST(request: NextRequest) {
 
     if (formerCouncil?.toLowerCase() === 'ashfield') {
       // Ashfield: Filter by zone AND development type
+      // Uses zone translation to match legacy B1/B2 zones with current E1 zone
       generalProvisionsQuery = `
         SELECT
           id,
@@ -203,11 +209,11 @@ export async function POST(request: NextRequest) {
           display_order
         FROM dcp_general_provisions
         WHERE lga = $1
-        AND $2 = ANY(applicable_zones)
+        AND applicable_zones && $2::text[]
         AND $3 = ANY(development_types)
         ORDER BY part_number, display_order
       `;
-      generalProvisionsParams = [queryLGA, zone, developmentType];
+      generalProvisionsParams = [queryLGA, zoneAliases, developmentType];
     } else if (formerCouncil?.toLowerCase() === 'marrickville') {
       // Marrickville: NO zone filtering (neighbourhood-based, not zone-based)
       // Note: dcp_general_provisions doesn't have former_council column
@@ -246,7 +252,7 @@ export async function POST(request: NextRequest) {
       `;
       generalProvisionsParams = [];
     } else {
-      // Default: Zone + DevType filtering
+      // Default: Zone + DevType filtering (with zone translation for legacy DCPs)
       generalProvisionsQuery = `
         SELECT
           id,
@@ -260,11 +266,11 @@ export async function POST(request: NextRequest) {
           display_order
         FROM dcp_general_provisions
         WHERE lga = $1
-        AND $2 = ANY(applicable_zones)
+        AND applicable_zones && $2::text[]
         AND $3 = ANY(development_types)
         ORDER BY part_number, display_order
       `;
-      generalProvisionsParams = [queryLGA, zone, developmentType];
+      generalProvisionsParams = [queryLGA, zoneAliases, developmentType];
     }
 
     const generalProvisions = await query<GeneralProvision>(
@@ -834,6 +840,7 @@ export async function POST(request: NextRequest) {
 
       if (councilForQuery?.toLowerCase() === 'ashfield') {
         // Ashfield: Filter by zone AND devtype
+        // Uses zone translation to match legacy B1/B2 zones with current E1 zone
         generalRequirementsQuery = `
           SELECT DISTINCT ON (dgr.id)
             dgr.id,
@@ -860,12 +867,12 @@ export async function POST(request: NextRequest) {
           FROM dcp_general_requirements dgr
           LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
           WHERE dgr.lga = $1
-          AND $2 = ANY(dgr.applicable_zones)
+          AND dgr.applicable_zones && $2::text[]
           AND $3 = ANY(dgr.development_types)
           AND dgr.former_council = $4
           ORDER BY dgr.id
         `;
-        queryParams = [queryLGA, zone, developmentType, councilForQuery];
+        queryParams = [queryLGA, zoneAliases, developmentType, councilForQuery];
       } else if (councilForQuery?.toLowerCase() === 'marrickville') {
         // Marrickville: No zone filtering (zones are NULL in DB)
         generalRequirementsQuery = `
