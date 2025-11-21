@@ -870,8 +870,10 @@ export async function POST(request: NextRequest) {
 
         // Check if querying commercial zones (E1, B1, B2, etc.)
         const isCommercialZone = zoneAliases.some(z => z.startsWith('E') || z.startsWith('B'));
+        console.log(`[Ashfield Query] zoneAliases: ${JSON.stringify(zoneAliases)}, isCommercialZone: ${isCommercialZone}`);
 
         if (isCommercialZone) {
+          console.log('[Ashfield Query] Taking COMMERCIAL zone path (NO dev type filter)');
           // Commercial zones: NO dev type filter (like Marrickville/Leichhardt)
           // Reason: Database has specific types (shop, food_and_drink_premises) but
           // frontend infers generic "commercial" → mismatch → 0 results
@@ -906,7 +908,9 @@ export async function POST(request: NextRequest) {
             ORDER BY dgr.id
           `;
           queryParams = [queryLGA, zoneAliases, councilForQuery];
+          console.log(`[Ashfield Query] Query params (commercial): ${JSON.stringify(queryParams)}`);
         } else {
+          console.log('[Ashfield Query] Taking RESIDENTIAL zone path (WITH dev type filter)');
           // Residential zones: Keep precise dev type filtering
           generalRequirementsQuery = `
             SELECT DISTINCT ON (dgr.id)
@@ -940,6 +944,7 @@ export async function POST(request: NextRequest) {
             ORDER BY dgr.id
           `;
           queryParams = [queryLGA, zoneAliases, developmentType, councilForQuery];
+          console.log(`[Ashfield Query] Query params (residential): ${JSON.stringify(queryParams)}`);
         }
       } else if (councilForQuery?.toLowerCase() === 'marrickville') {
         // Marrickville: No zone filtering (zones are NULL in DB)
