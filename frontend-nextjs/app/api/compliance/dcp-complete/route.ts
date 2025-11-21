@@ -194,26 +194,52 @@ export async function POST(request: NextRequest) {
     let generalProvisionsParams: any[];
 
     if (formerCouncil?.toLowerCase() === 'ashfield') {
-      // Ashfield: Filter by zone AND development type
+      // Ashfield: Filter by zone, conditionally filter by devtype
       // Uses zone translation to match legacy B1/B2 zones with current E1 zone
-      generalProvisionsQuery = `
-        SELECT
-          id,
-          part_number,
-          part_name,
-          section_header,
-          provision_text,
-          ref_number,
-          applicable_zones,
-          development_types,
-          display_order
-        FROM dcp_general_provisions
-        WHERE lga = $1
-        AND applicable_zones && $2::text[]
-        AND $3 = ANY(development_types)
-        ORDER BY part_number, display_order
-      `;
-      generalProvisionsParams = [queryLGA, zoneAliases, developmentType];
+
+      // Check if querying commercial zones (E1, B1, B2, etc.)
+      const isCommercialZone = zoneAliases.some(z => z.startsWith('E') || z.startsWith('B'));
+
+      if (isCommercialZone) {
+        // Commercial zones: NO dev type filter (like Marrickville/Leichhardt)
+        generalProvisionsQuery = `
+          SELECT
+            id,
+            part_number,
+            part_name,
+            section_header,
+            provision_text,
+            ref_number,
+            applicable_zones,
+            development_types,
+            display_order
+          FROM dcp_general_provisions
+          WHERE lga = $1
+          AND applicable_zones && $2::text[]
+          ORDER BY part_number, display_order
+        `;
+        generalProvisionsParams = [queryLGA, zoneAliases];
+      } else {
+        // Residential zones: Keep precise dev type filtering
+        generalProvisionsQuery = `
+          SELECT
+            id,
+            part_number,
+            part_name,
+            section_header,
+            provision_text,
+            ref_number,
+            applicable_zones,
+            development_types,
+            display_order
+          FROM dcp_general_provisions
+          WHERE lga = $1
+          AND applicable_zones && $2::text[]
+          AND $3 = ANY(development_types)
+          ORDER BY part_number, display_order
+        `;
+        generalProvisionsParams = [queryLGA, zoneAliases, developmentType];
+      }
     } else if (formerCouncil?.toLowerCase() === 'marrickville') {
       // Marrickville: NO zone filtering (neighbourhood-based, not zone-based)
       // Note: dcp_general_provisions doesn't have former_council column
@@ -839,40 +865,82 @@ export async function POST(request: NextRequest) {
       let queryParams: any[];
 
       if (councilForQuery?.toLowerCase() === 'ashfield') {
-        // Ashfield: Filter by zone AND devtype
+        // Ashfield: Filter by zone, conditionally filter by devtype
         // Uses zone translation to match legacy B1/B2 zones with current E1 zone
-        generalRequirementsQuery = `
-          SELECT DISTINCT ON (dgr.id)
-            dgr.id,
-            dgr.category,
-            dgr.subcategory,
-            dgr.requirement_text,
-            dgr.verbatim_source_text,
-            dgr.value_numeric,
-            dgr.value_min,
-            dgr.value_max,
-            dgr.unit,
-            dgr.has_conditionals,
-            dgr.conditional_text,
-            dgr.confidence,
-            COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
-            COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
-            COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
-            dgr.part_name,
-            dgr.part_number,
-            dgr.objective,
-            dgr.user_category,
-            dgr.section_type,
-            dgr.priority_level
-          FROM dcp_general_requirements dgr
-          LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
-          WHERE dgr.lga = $1
-          AND dgr.applicable_zones && $2::text[]
-          AND $3 = ANY(dgr.development_types)
-          AND dgr.former_council = $4
-          ORDER BY dgr.id
-        `;
-        queryParams = [queryLGA, zoneAliases, developmentType, councilForQuery];
+
+        // Check if querying commercial zones (E1, B1, B2, etc.)
+        const isCommercialZone = zoneAliases.some(z => z.startsWith('E') || z.startsWith('B'));
+
+        if (isCommercialZone) {
+          // Commercial zones: NO dev type filter (like Marrickville/Leichhardt)
+          // Reason: Database has specific types (shop, food_and_drink_premises) but
+          // frontend infers generic "commercial" → mismatch → 0 results
+          generalRequirementsQuery = `
+            SELECT DISTINCT ON (dgr.id)
+              dgr.id,
+              dgr.category,
+              dgr.subcategory,
+              dgr.requirement_text,
+              dgr.verbatim_source_text,
+              dgr.value_numeric,
+              dgr.value_min,
+              dgr.value_max,
+              dgr.unit,
+              dgr.has_conditionals,
+              dgr.conditional_text,
+              dgr.confidence,
+              COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
+              COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
+              COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+              dgr.part_name,
+              dgr.part_number,
+              dgr.objective,
+              dgr.user_category,
+              dgr.section_type,
+              dgr.priority_level
+            FROM dcp_general_requirements dgr
+            LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
+            WHERE dgr.lga = $1
+            AND dgr.applicable_zones && $2::text[]
+            AND dgr.former_council = $3
+            ORDER BY dgr.id
+          `;
+          queryParams = [queryLGA, zoneAliases, councilForQuery];
+        } else {
+          // Residential zones: Keep precise dev type filtering
+          generalRequirementsQuery = `
+            SELECT DISTINCT ON (dgr.id)
+              dgr.id,
+              dgr.category,
+              dgr.subcategory,
+              dgr.requirement_text,
+              dgr.verbatim_source_text,
+              dgr.value_numeric,
+              dgr.value_min,
+              dgr.value_max,
+              dgr.unit,
+              dgr.has_conditionals,
+              dgr.conditional_text,
+              dgr.confidence,
+              COALESCE(dgr.pdf_page, dgp.pdf_page) as pdf_page,
+              COALESCE(dgr.pdf_page_image_url, dgp.pdf_page_image_url) as pdf_page_image_url,
+              COALESCE(dgr.pdf_path, dgp.pdf_path) as pdf_path,
+              dgr.part_name,
+              dgr.part_number,
+              dgr.objective,
+              dgr.user_category,
+              dgr.section_type,
+              dgr.priority_level
+            FROM dcp_general_requirements dgr
+            LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
+            WHERE dgr.lga = $1
+            AND dgr.applicable_zones && $2::text[]
+            AND $3 = ANY(dgr.development_types)
+            AND dgr.former_council = $4
+            ORDER BY dgr.id
+          `;
+          queryParams = [queryLGA, zoneAliases, developmentType, councilForQuery];
+        }
       } else if (councilForQuery?.toLowerCase() === 'marrickville') {
         // Marrickville: No zone filtering (zones are NULL in DB)
         generalRequirementsQuery = `
