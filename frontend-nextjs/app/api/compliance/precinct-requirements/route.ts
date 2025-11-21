@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
         pr.source_provision_ids,
         pr.source_document_ids,
         pr.pdf_pages,
+        pr.pdf_page_image_url,
         pr.extraction_context,
         rc.display_name as category_display_name,
         (
@@ -236,8 +237,13 @@ export async function POST(request: NextRequest) {
         source_provision_ids: row.source_provision_ids || [],
         source_document_ids: row.source_document_ids || [],
         pdf_pages: row.pdf_pages || [],
-        pdf_page: matchingProvision?.page_number || undefined,
-        pdf_page_image_url: matchingProvision?.pdf_page_image_url || undefined,
+        // CRITICAL: Extract page number for grouping
+        // Priority: 1) matchingProvision 2) pdf_pages array first element 3) undefined
+        pdf_page: matchingProvision?.page_number || (row.pdf_pages && row.pdf_pages.length > 0 ? row.pdf_pages[0] : undefined),
+        // CRITICAL FIX: For precinct requirements (like E2 heritage), use their own PDF image URL FIRST
+        // Precinct requirements have contextually appropriate images stored directly in dcp_precinct_requirements
+        // Only fall back to regulatory_provisions if the requirement doesn't have its own image
+        pdf_page_image_url: row.pdf_page_image_url || matchingProvision?.pdf_page_image_url || undefined,
         extraction_context: row.extraction_context
       });
 
