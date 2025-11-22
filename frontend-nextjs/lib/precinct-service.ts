@@ -7,11 +7,8 @@ import { Pool } from 'pg';
 import { getPropertyCoordinates } from '../../lib/services/planning-portal-api';
 
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'nsw_planning',
-  user: 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres'
+  connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 export interface PrecinctMapping {
@@ -135,25 +132,39 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
  *
  * Strategy:
  * 1. Try PostGIS geometric matching (most accurate)
- * 2. Fall back to hardcoded street name matching (less accurate, legacy)
- * 3. Return null if no match found
+ * 2. Try heritage→precinct mapping (for HCAs without boundaries)
+ * 3. Fall back to hardcoded street name matching (less accurate, legacy)
+ * 4. Return null if no match found
  */
 export async function getPrecinctForAddress(
   address: string,
   lga: string,
-  coordinates?: { lat: number; lon: number }
+  coordinates?: { lat: number; lon: number },
+  heritageItemName?: string
 ): Promise<PrecinctMapping | null> {
   try {
-    console.log('[Precinct Service] Looking up precinct for:', { address, lga, hasCoordinates: !!coordinates });
+    console.log('[Precinct Service] Looking up precinct for:', { address, lga, hasCoordinates: !!coordinates, heritageItemName });
 
-    // Strategy 1: PostGIS Geometric Matching (PRIMARY METHOD)
+    // Strategy 1: Heritage→Precinct Mapping (PRIORITY for HCAs without spatial boundaries)
+    // Check this FIRST when heritage data is available, as HCAs are more specific than geometric matching
+    if (heritageItemName) {
+      console.log('[Precinct Service] HCA detected, trying heritage mapping first:', heritageItemName);
+      const heritageMatch = await getPrecinctFromHeritageMapping(heritageItemName, lga);
+      if (heritageMatch) {
+        console.log('[Precinct Service] ✅ Matched via heritage mapping:', heritageMatch.precinctNumber);
+        return heritageMatch;
+      }
+      console.log('[Precinct Service] Heritage mapping found no match, falling back to PostGIS');
+    }
+
+    // Strategy 2: PostGIS Geometric Matching (PRIMARY METHOD for non-HCA addresses)
     const geometricMatch = await getPrecinctUsingPostGIS(address, lga, coordinates);
     if (geometricMatch) {
       console.log('[Precinct Service] Matched using PostGIS:', geometricMatch.precinctNumber);
       return geometricMatch;
     }
 
-    // Strategy 2: Hardcoded Street Name Matching (FALLBACK for areas without PostGIS boundaries)
+    // Strategy 3: Hardcoded Street Name Matching (FALLBACK for areas without PostGIS boundaries)
     console.log('[Precinct Service] PostGIS match failed, trying hardcoded fallback...');
     const lgaLower = lga.toLowerCase();
 
@@ -179,6 +190,88 @@ export async function getPrecinctForAddress(
 
   } catch (error) {
     console.error('[Precinct Service] Error:', error);
+    return null;
+  }
+}
+
+/**
+ * Get precinct from heritage item name mapping
+ * For HCAs that have requirements but no spatial boundaries (e.g., E2 Haberfield HCA)
+ */
+async function getPrecinctFromHeritageMapping(
+  heritageItemName: string,
+  lga: string
+): Promise<PrecinctMapping | null> {
+  try {
+    // Try exact match first (most accurate)
+    let query = `
+      SELECT
+        precinct_id,
+        lga,
+        notes
+      FROM heritage_precinct_mapping
+      WHERE heritage_item_name = $1
+        AND LOWER(lga) = LOWER($2)
+      LIMIT 1
+    `;
+
+    let result = await pool.query(query, [heritageItemName, lga]);
+
+    // If no exact match, try fuzzy matching (handles Planning Portal name variations)
+    // e.g., "Haberfield HCA (nominated area of State significance)" matches "Haberfield HCA"
+    if (result.rows.length === 0) {
+      console.log('[Precinct Service] No exact match, trying fuzzy match...');
+
+      query = `
+        SELECT
+          precinct_id,
+          lga,
+          notes
+        FROM heritage_precinct_mapping
+        WHERE $1 ILIKE (heritage_item_name || '%')
+          AND LOWER(lga) = LOWER($2)
+        ORDER BY LENGTH(heritage_item_name) DESC
+        LIMIT 1
+      `;
+
+      result = await pool.query(query, [heritageItemName, lga]);
+      console.log(`[Precinct Service] Fuzzy match query returned ${result.rows.length} rows`);
+    }
+
+    if (result.rows.length === 0) {
+      console.log('[Precinct Service] Heritage mapping: No rows returned from query');
+      return null;
+    }
+
+    const mapping = result.rows[0];
+
+    // Get precinct name from requirements table
+    const nameQuery = `
+      SELECT DISTINCT precinct_name
+      FROM dcp_precinct_requirements
+      WHERE precinct_id = $1
+      LIMIT 1
+    `;
+    const nameResult = await pool.query(nameQuery, [mapping.precinct_id]);
+    const precinctName = nameResult.rows[0]?.precinct_name || heritageItemName;
+
+    return {
+      precinctId: mapping.precinct_id,
+      precinctNumber: mapping.precinct_id,
+      precinctName: precinctName,
+      documentId: buildPrecinctDocumentId(mapping.precinct_id, precinctName, mapping.lga),
+      lga: mapping.lga,
+      confidenceScore: 0.9, // High confidence for direct heritage mapping
+      matchMethod: 'fallback' as const
+    };
+  } catch (error) {
+    console.error('[Precinct Service] Heritage mapping ERROR:', error);
+    console.error('[Precinct Service] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      heritageItemName,
+      lga
+    });
     return null;
   }
 }

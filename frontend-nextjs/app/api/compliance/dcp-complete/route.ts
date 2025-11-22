@@ -1064,6 +1064,14 @@ export async function POST(request: NextRequest) {
       formerCouncil?.toLowerCase() === 'marrickville' ||
       formerCouncil?.toLowerCase() === 'leichhardt';
 
+    // DEBUG: Log first few PDF URLs
+    if (generalRequirements.rows.length > 0) {
+      console.log('[DEBUG] First 3 general requirements PDF URLs:');
+      generalRequirements.rows.slice(0, 3).forEach((r, i) => {
+        console.log(`  [${i}] pdf_page_image_url: ${r.pdf_page_image_url}`);
+      });
+    }
+
     if (shouldApplyDevTypeFilter && generalRequirements.rows.length > 0) {
       const beforeFilterCount = generalRequirements.rows.length;
 

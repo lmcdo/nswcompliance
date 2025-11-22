@@ -12,7 +12,8 @@ import { getPrecinctForAddress } from '@/lib/precinct-service';
  *   coordinates?: {        // Optional coordinates for spatial matching
  *     lat: number,
  *     lon: number
- *   }
+ *   },
+ *   heritageItemName?: string  // Optional heritage item name for HCA→precinct mapping
  * }
  *
  * Response:
@@ -30,7 +31,7 @@ import { getPrecinctForAddress } from '@/lib/precinct-service';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { address, lga, coordinates } = body;
+    const { address, lga, coordinates, heritageItemName } = body;
 
     // Validate required fields
     if (!address || !lga) {
@@ -40,10 +41,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    console.log('[Precinct Match API] Matching address:', { address, lga, hasCoordinates: !!coordinates });
+    console.log('[Precinct Match API] Matching address:', { address, lga, hasCoordinates: !!coordinates, heritageItemName });
 
-    // Get precinct for address - pass coordinates if available
-    const precinct = await getPrecinctForAddress(address, lga, coordinates);
+    // Get precinct for address - pass coordinates and heritage data if available
+    const precinct = await getPrecinctForAddress(address, lga, coordinates, heritageItemName);
 
     if (precinct) {
       console.log('[Precinct Match API] Matched to precinct:', precinct.precinctNumber);

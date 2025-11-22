@@ -530,7 +530,9 @@ export function ComplianceDashboard({
             lga: propertyData.constraints?.lga,
             developmentType: developmentType,
             propId: propertyData.propId,
-            planningApiClauses: uniqueClauses  // Pass extracted clauses (generic per LGA)
+            planningApiClauses: uniqueClauses,  // Pass extracted clauses (generic per LGA)
+            heritageItemName: propertyData.heritage?.heritageItemName, // For HCA→precinct mapping
+            coordinates: propertyData.coordinates // FIX: Pass coordinates for precinct spatial matching
           })
         });
 
@@ -634,7 +636,8 @@ export function ComplianceDashboard({
             coordinates: propertyData.coordinates ? {
               lat: propertyData.coordinates.lat,
               lon: propertyData.coordinates.lon
-            } : undefined
+            } : undefined,
+            heritageItemName: propertyData.heritage?.heritageItemName // For HCA→precinct mapping
           })
         });
 
@@ -1406,21 +1409,6 @@ export function ComplianceDashboard({
                   }, {} as Record<string, number>)}
                 />
 
-                {/* Week 3: Categorized Precinct Requirements (replaces old browser) */}
-                {(() => {
-                  console.log('[ComplianceDashboard] RENDER CHECK: categorizedRequirements?', !!categorizedRequirements);
-                  console.log('[ComplianceDashboard] RENDER CHECK: categories?', !!categorizedRequirements?.categories);
-                  console.log('[ComplianceDashboard] RENDER CHECK: categories length:', categorizedRequirements?.categories?.length);
-                  return categorizedRequirements && categorizedRequirements.categories && (
-                    <CategorizedRequirementsCard
-                      categories={categorizedRequirements.categories}
-                      precinctName={categorizedRequirements.precinct?.precinct_name}
-                      developmentType={developmentType}
-                      className="mt-4"
-                    />
-                  );
-                })()}
-
                 {/* Precinct-Specific Provisions (OLD - only show if new categorized card is not available) */}
                 {!categorizedRequirements && process.env.NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS === 'true' && propertyData.address && (
                   <PrecinctProvisionsBrowser
@@ -1451,6 +1439,22 @@ export function ComplianceDashboard({
                 )}
               </>
             )}
+
+            {/* Week 3: Categorized Precinct Requirements - ALWAYS SHOW (moved outside fallback) */}
+            {(() => {
+              console.log('[ComplianceDashboard] RENDER CHECK: categorizedRequirements?', !!categorizedRequirements);
+              console.log('[ComplianceDashboard] RENDER CHECK: categories?', !!categorizedRequirements?.categories);
+              console.log('[ComplianceDashboard] RENDER CHECK: categories length:', categorizedRequirements?.categories?.length);
+              return categorizedRequirements && categorizedRequirements.categories && (
+                <CategorizedRequirementsCard
+                  categories={categorizedRequirements.categories}
+                  precinctName={categorizedRequirements.precinct?.precinct_name}
+                  developmentType={developmentType}
+                  className="mt-4"
+                />
+              );
+            })()}
+
             </CardContent>
           )}
         </Card>

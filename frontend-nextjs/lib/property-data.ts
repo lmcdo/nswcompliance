@@ -165,16 +165,22 @@ export class PropertyDataService {
  // Environmental constraints - use extracted data or provide defaults
  const environmental = {
  acidSulfateSoils: constraints.acidSulfateSoils || 'Class 5',
- basixClimate: constraints.basixClimate || 'Class 5', 
+ basixClimate: constraints.basixClimate || 'Class 5',
  basixWater: constraints.basixWater || '40%',
  floodProne: constraints.floodProne,
  bushfireProne: constraints.bushfireProne
  };
 
+ // Convert Web Mercator (x, y) to WGS84 (lat, lon) for geocoding
+ // Formula from nsw-planning-portal.ts lines 637-640
+ const lon = (propertyData.geometry.x / 20037508.34) * 180;
+ const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+ console.log(`[PropertyDataService] Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (lat: ${lat.toFixed(6)}, lon: ${lon.toFixed(6)})`);
+
  // Route applicable SEPPs
  const seppRouter = new SeppRouter();
  let applicableSepps = constraints.applicableSepps || [];
- 
+
  // Add contextual SEPPs based on development characteristics
  applicableSepps = seppRouter.addContextualSepps(
  'residential_low', // TODO: determine from zone and property
@@ -201,6 +207,7 @@ export class PropertyDataService {
  heritage,
  environmental,
  geometry: propertyData.geometry,
+ coordinates: { lat, lon }, // FIX: Add WGS84 coordinates for precinct matching
  seppRouting,
  planningLayers: layers, // Pass through ALL layer data
  roadClassifications, // Road functional hierarchy for setback calculations

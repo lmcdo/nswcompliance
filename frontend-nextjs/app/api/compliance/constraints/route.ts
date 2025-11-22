@@ -14,6 +14,8 @@ interface ConstraintQuery {
   developmentType?: string;
   propId?: number;
   planningApiClauses?: string[];  // Clause numbers extracted from Planning API layers
+  heritageItemName?: string;  // Heritage item name for HCA→precinct mapping
+  coordinates?: { lat: number; lon: number };  // WGS84 coordinates for spatial precinct matching
 }
 
 interface ProvisionResult {
@@ -53,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: ConstraintQuery = await request.json();
-    const { address, zone, lga, developmentType, propId, planningApiClauses = [] } = body;
+    const { address, zone, lga, developmentType, propId, planningApiClauses = [], heritageItemName, coordinates } = body;
 
     if (!zone) {
       return NextResponse.json({
@@ -105,8 +107,10 @@ export async function POST(request: NextRequest) {
     // Feature flag allows safe gradual rollout (set ENABLE_PRECINCT_MATCHING=true to enable)
     const enablePrecinctMatching = process.env.ENABLE_PRECINCT_MATCHING === 'true';
 
+    // IMPORTANT: Use original 'lga' for heritage mapping, not mapped 'targetLGA'
+    // Heritage mapping uses "INNER WEST", but DCP queries use "Ashfield/Marrickville/Leichhardt"
     const precinct = enablePrecinctMatching && address
-      ? await getPrecinctForAddress(address, targetLGA)
+      ? await getPrecinctForAddress(address, lga, coordinates, heritageItemName)
       : null;
 
     let precinctControls: any[] = [];

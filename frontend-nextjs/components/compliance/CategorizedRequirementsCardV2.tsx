@@ -496,15 +496,27 @@ export function CategorizedRequirementsCard({
                   {requirementsWithoutPage.length > 0 && (
                     <div className="border-b border-purple-50 last:border-b-0">
                       <div className="px-4 py-2 bg-gray-50 text-xs text-gray-600">
-                        Requirements without page reference
+                        Heritage Requirements
                       </div>
                       <div className="divide-y divide-purple-50">
                         {requirementsWithoutPage.map((req) => (
                           <div key={req.id} className="px-4 py-3">
                             <div className="flex items-start gap-2">
                               <span className="text-purple-600 font-bold">✓</span>
-                              <p className="text-sm text-gray-800">{req.requirement_text}</p>
+                              <p className="text-sm text-gray-800 flex-1">{req.requirement_text}</p>
                             </div>
+                            {/* Show PDF button if URL is available */}
+                            {req.pdf_page_image_url && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => setViewingPdfImage(req.pdf_page_image_url!)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-medium rounded hover:bg-purple-200 transition-colors"
+                                >
+                                  <ExternalLink className="w-3 h-3" />
+                                  View heritage controls
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
