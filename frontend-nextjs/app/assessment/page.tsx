@@ -16,6 +16,7 @@
 import React, { useState, useEffect } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
+import { ProvisionsByTopic } from '@/components/compliance/ProvisionsByTopic';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
@@ -31,6 +32,7 @@ export default function AssessmentPage() {
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [lepClauseData, setLepClauseData] = useState<any>(null);
+  const [viewMode, setViewMode] = useState<'classic' | '4layer'>('4layer');
 
   // Auto-detect development type from zone when property loads
   useEffect(() => {
@@ -341,13 +343,63 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Compliance Dashboard - Show all applicable provisions */}
-                <ComplianceDashboard
-                  propertyData={selectedProperty}
-                  developmentType={developmentType}
-                  buildingHeight={buildingHeight}
-                  className="transition-all duration-300 ease-in-out"
-                />
+                {/* View Mode Toggle */}
+                <div className="bg-white border rounded-lg p-3 mb-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">View Mode</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setViewMode('4layer')}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                          viewMode === '4layer'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        4-Layer Filter
+                      </button>
+                      <button
+                        onClick={() => setViewMode('classic')}
+                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                          viewMode === 'classic'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        Classic View
+                      </button>
+                    </div>
+                  </div>
+                  {viewMode === '4layer' && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Provisions filtered by zone, site conditions, and precinct using 4-layer model
+                    </p>
+                  )}
+                </div>
+
+                {/* 4-Layer Provisions by Topic */}
+                {viewMode === '4layer' && (
+                  <ProvisionsByTopic
+                    zone={selectedProperty.constraints?.zone}
+                    heritage={selectedProperty.heritage?.isHeritage || false}
+                    flood={selectedProperty.planningLayers?.some((l: any) =>
+                      l.layerName?.toLowerCase().includes('flood') &&
+                      l.results?.length > 0
+                    ) || false}
+                    precinctId={selectedProperty.constraints?.precinctId}
+                    devType={developmentType}
+                  />
+                )}
+
+                {/* Classic Compliance Dashboard */}
+                {viewMode === 'classic' && (
+                  <ComplianceDashboard
+                    propertyData={selectedProperty}
+                    developmentType={developmentType}
+                    buildingHeight={buildingHeight}
+                    className="transition-all duration-300 ease-in-out"
+                  />
+                )}
               </>
             )}
           </div>
