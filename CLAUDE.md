@@ -5,6 +5,14 @@
 - **MAIN REFERENCE**: `documentation/prps/PRP-A_MICRO_PIPELINE_IMPLEMENTATION.md`
 - **SESSION CONTROL**: Run `./prp_checkpoints/session_control.sh` to check next PRP
 
+### PROVISION-BASED ARCHITECTURE (Active Implementation)
+When working on **provision extraction, compliance API, filtering, or enrichment**:
+- **READ FIRST**: `.claude/prp/INDEX.md` - Quick reference with architecture diagram
+- **FULL DOCS**: `PROVISION_BASED_ARCHITECTURE_STRATEGY.md` - 8-part implementation guide
+- **KEY INSIGHT**: Planning Portal API drives automatic filtering (Part 1 is THE CORE)
+- **Data Model**: New `v2_` columns on `regulatory_provisions` table
+- **MANDATORY**: After completing ANY phase, UPDATE `.claude/prp/INDEX.md` Implementation State table
+
 ### PRIMARY UI ROUTES (Quick Reference)
 - **Main Assessment Page**: `/assessment` (`frontend-nextjs/app/assessment/page.tsx`)
   - 2-column layout: Planning API data (left) + SEPP/LEP/DCP provisions (right)
@@ -27,6 +35,44 @@
 3. Use `from db_safety_wrapper import get_safe_connection` for ALL database operations
 4. Create backup BEFORE any changes
 5. Use timeouts on ALL operations
+
+### DEPLOYMENT & DATABASE SYNC (READ BEFORE DEPLOYING)
+- **FULL DOCS**: `DEPLOYMENT.md` - Complete deployment guide
+- **MIGRATIONS**: `migrations/` folder contains all schema changes
+
+#### Quick Deployment Checklist:
+1. **Before deploying code changes:**
+   ```bash
+   # Check local vs Supabase sync status
+   python scripts/compare_local_supabase.py
+   ```
+
+2. **Run migrations on Supabase:**
+   ```bash
+   psql $SUPABASE_DB_URL -f migrations/001_add_v2_columns.sql
+   ```
+
+3. **Sync enriched data (if v2_ columns changed):**
+   ```bash
+   python scripts/sync_v2_to_supabase.py
+   ```
+
+4. **Verify after deploy:**
+   ```bash
+   curl "https://your-app.vercel.app/api/provisions/for-property?zone=R2"
+   ```
+
+#### Environment Configuration:
+| Environment | Database | Config File |
+|------------|----------|-------------|
+| Local Dev | `localhost:5432/nsw_planning` | `.env`, `frontend-nextjs/.env.local` |
+| Production | Supabase pooler | `frontend-nextjs/.env.vercel.final`, Vercel dashboard |
+
+#### CI/CD Actions (Repeatable):
+- **Schema changes**: Add new migration to `migrations/`, run on both local and Supabase
+- **Data enrichment**: Run locally first, then `sync_v2_to_supabase.py`
+- **Code deploy**: Push to `main`, Vercel auto-deploys
+- **Rollback**: Use Supabase dashboard backups or `backups/` folder
 
 ### DATA INTEGRITY - NEVER CREATE FAKE DATA
 - **CRITICAL: NEVER create fake, placeholder, or "approximate" data**
