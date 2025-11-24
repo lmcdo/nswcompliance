@@ -8,10 +8,12 @@
 ### PROVISION-BASED ARCHITECTURE (Active Implementation)
 When working on **provision extraction, compliance API, filtering, or enrichment**:
 - **READ FIRST**: `.claude/prp/INDEX.md` - Quick reference with architecture diagram
+- **DATA QUALITY**: `.claude/DATA_QUALITY_TRACKER.md` - Current issues and fix progress
 - **FULL DOCS**: `PROVISION_BASED_ARCHITECTURE_STRATEGY.md` - 8-part implementation guide
 - **KEY INSIGHT**: Planning Portal API drives automatic filtering (Part 1 is THE CORE)
 - **Data Model**: New `v2_` columns on `regulatory_provisions` table
 - **MANDATORY**: After completing ANY phase, UPDATE `.claude/prp/INDEX.md` Implementation State table
+- **TEST QUALITY**: Run `python test_workflow_quality.py` to assess current data quality
 
 ### PRIMARY UI ROUTES (Quick Reference)
 - **Main Assessment Page**: `/assessment` (`frontend-nextjs/app/assessment/page.tsx`)
