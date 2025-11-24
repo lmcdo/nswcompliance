@@ -17,6 +17,7 @@ export interface PrecinctMapping {
   precinctName: string;
   documentId: string;
   lga: string;
+  formerCouncil?: string;    // Former council area (Ashfield, Marrickville, Leichhardt)
   confidenceScore?: number;
   matchMethod?: 'geometric' | 'fallback' | 'hardcoded';
 }
@@ -81,7 +82,8 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
                 precinctNumber: '9_30',
                 precinctName: 'The Warren',
                 documentId: 'Marrickville_DCP_2011___9_30_The_Warren',
-                lga: 'Marrickville'
+                lga: 'Marrickville',
+                formerCouncil: 'Marrickville'
               };
             } else if (streetNum < 200) {
               return {
@@ -89,7 +91,8 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
                 precinctNumber: '9_29',
                 precinctName: 'South Western Marrickville',
                 documentId: 'Marrickville_DCP_2011___9_29_South_Western_Marrickville',
-                lga: 'Marrickville'
+                lga: 'Marrickville',
+                formerCouncil: 'Marrickville'
               };
             } else {
               return {
@@ -97,7 +100,8 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
                 precinctNumber: '9_28',
                 precinctName: 'Cooks River West',
                 documentId: 'Marrickville_DCP_2011___9_28_Cooks_River_West',
-                lga: 'Marrickville'
+                lga: 'Marrickville',
+                formerCouncil: 'Marrickville'
               };
             }
           }
@@ -118,7 +122,8 @@ function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
           precinctNumber: precinctNum,
           precinctName: precinctNames[precinctNum] || `Precinct ${precinctNum}`,
           documentId: `Marrickville_DCP_2011___${precinctNum}_${precinctNames[precinctNum]?.replace(/ /g, '_') || ''}`,
-          lga: 'Marrickville'
+          lga: 'Marrickville',
+          formerCouncil: 'Marrickville'
         };
       }
     }
@@ -261,6 +266,7 @@ async function getPrecinctFromHeritageMapping(
       precinctName: precinctName,
       documentId: buildPrecinctDocumentId(mapping.precinct_id, precinctName, mapping.lga),
       lga: mapping.lga,
+      formerCouncil: getFormerCouncilFromPrecinctId(mapping.precinct_id),
       confidenceScore: 0.9, // High confidence for direct heritage mapping
       matchMethod: 'fallback' as const
     };
@@ -340,6 +346,7 @@ async function getPrecinctUsingPostGIS(
       precinctName: precinct.precinct_name,
       documentId: documentId,
       lga: precinct.lga,
+      formerCouncil: getFormerCouncilFromPrecinctId(precinct.precinct_id),
       confidenceScore: precinct.confidence_score,
       matchMethod: 'geometric'
     };
@@ -405,6 +412,7 @@ async function findNearestPrecinct(
       precinctName: precinct.precinct_name,
       documentId: buildPrecinctDocumentId(precinct.precinct_id, precinct.precinct_name, precinct.lga),
       lga: precinct.lga,
+      formerCouncil: getFormerCouncilFromPrecinctId(precinct.precinct_id),
       confidenceScore: precinct.confidence_score,
       matchMethod: 'geometric'
     };
@@ -430,19 +438,31 @@ function buildPrecinctDocumentId(precinctId: string, precinctName: string, lga: 
 }
 
 function getFormerCouncilFromPrecinctId(precinctId: string): string {
-  // Marrickville precincts: 9_XX or just XX_
-  // Ashfield precincts: A_XX or specific naming
-  // Leichhardt precincts: L_XX or Part_G format
+  // Marrickville precincts: 9_XX, XX_, Part_9
+  // Ashfield precincts: ashfield_, A_, Chapter_D, Chapter_E, Chapter_F
+  // Leichhardt precincts: C2, L_, Part_G, Part_C
 
-  if (precinctId.startsWith('9_') || /^\d+_$/.test(precinctId)) {
-    return 'Marrickville';
-  } else if (precinctId.startsWith('A_')) {
+  const id = precinctId.toLowerCase();
+
+  // Ashfield patterns
+  if (id.startsWith('ashfield') || id.startsWith('a_') ||
+      id.includes('chapter_d') || id.includes('chapter_e') || id.includes('chapter_f')) {
     return 'Ashfield';
-  } else if (precinctId.startsWith('L_') || precinctId.includes('Part_G')) {
+  }
+
+  // Leichhardt patterns (C2.X.X.X format)
+  if (id.startsWith('c2') || id.startsWith('l_') ||
+      id.includes('part_g') || id.includes('part_c')) {
     return 'Leichhardt';
   }
 
-  return 'Inner West';
+  // Marrickville patterns
+  if (precinctId.startsWith('9_') || /^\d+_$/.test(precinctId) || id.includes('part_9')) {
+    return 'Marrickville';
+  }
+
+  // Default to Marrickville as it's most common in Inner West
+  return 'Marrickville';
 }
 
 /**

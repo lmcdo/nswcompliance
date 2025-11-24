@@ -177,6 +177,35 @@ export class PropertyDataService {
  const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
  console.log(`[PropertyDataService] Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (lat: ${lat.toFixed(6)}, lon: ${lon.toFixed(6)})`);
 
+ // Match precinct for DCP filtering
+ try {
+   const { getPrecinctForAddress } = await import('./precinct-service');
+   const precinctData = await getPrecinctForAddress(
+     propertyData.address,
+     constraints.lga || '',
+     { lat, lon }  // Pass coordinates with correct property names
+   );
+
+   if (precinctData) {
+     constraints.precinctId = precinctData.precinctId;
+     console.log(`[PropertyDataService] Precinct matched: ${precinctData.precinctId} (${precinctData.precinctName})`);
+   }
+ } catch (error) {
+   console.log('[PropertyDataService] Precinct matching failed:', error);
+ }
+
+ // Determine former council using address-based mapping (more reliable than precinct ID)
+ try {
+   const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
+   const formerCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
+   if (formerCouncil) {
+     constraints.formerCouncil = formerCouncil;
+     console.log(`[PropertyDataService] Former council determined: ${formerCouncil}`);
+   }
+ } catch (error) {
+   console.log('[PropertyDataService] Former council mapping failed:', error);
+ }
+
  // Route applicable SEPPs
  const seppRouter = new SeppRouter();
  let applicableSepps = constraints.applicableSepps || [];

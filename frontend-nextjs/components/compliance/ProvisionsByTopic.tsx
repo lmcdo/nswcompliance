@@ -12,9 +12,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface Provision {
   id: number;
@@ -26,6 +27,7 @@ interface Provision {
   v2_precinct_id: string;
   v2_marker: string;
   pdf_page: number;
+  pdf_page_image_url?: string;
   layer?: string;
 }
 
@@ -43,6 +45,8 @@ interface ProvisionsByTopicProps {
   precinctId?: string;
   devType?: string;
   assessmentType?: 'CDC' | 'DA';
+  council?: string;  // 'marrickville' | 'leichhardt' | 'ashfield'
+  professionalMode?: 'certifier' | 'planner';
 }
 
 const TOPIC_ICONS: Record<string, any> = {
@@ -123,6 +127,33 @@ const DEV_TYPE_OPTIONS = [
   { value: 'warehouse', label: '  Warehouse', group: 'Industrial' },
 ];
 
+// Council-specific configuration
+const COUNCIL_CONFIGS: Record<string, {
+  topicFilterRequired: boolean;
+  warningThreshold: number;
+  suggestedTopics: string[];
+  topicOrder: string[];
+}> = {
+  marrickville: {
+    topicFilterRequired: false,
+    warningThreshold: 300,
+    suggestedTopics: ['setbacks', 'height', 'parking', 'heritage', 'building_form'],
+    topicOrder: ['setbacks', 'height', 'parking', 'landscaping', 'heritage', 'building_form', 'access', 'solar', 'privacy'],
+  },
+  leichhardt: {
+    topicFilterRequired: true,
+    warningThreshold: 200,
+    suggestedTopics: ['parking', 'building_form', 'landscaping', 'heritage', 'setbacks', 'height'],
+    topicOrder: ['parking', 'setbacks', 'height', 'landscaping', 'building_form', 'heritage', 'access'],
+  },
+  ashfield: {
+    topicFilterRequired: false,
+    warningThreshold: 500,
+    suggestedTopics: ['building_form', 'parking', 'trees', 'access', 'heritage', 'waste'],
+    topicOrder: ['parking', 'height', 'trees', 'access', 'building_form', 'heritage', 'waste'],
+  },
+};
+
 export function ProvisionsByTopic({
   zone,
   heritage = false,
@@ -130,6 +161,8 @@ export function ProvisionsByTopic({
   precinctId,
   devType: initialDevType,
   assessmentType: initialAssessmentType,
+  council,
+  professionalMode = 'certifier',
 }: ProvisionsByTopicProps) {
   const [data, setData] = useState<{
     by_layer: LayerResult[];
@@ -142,6 +175,11 @@ export function ProvisionsByTopic({
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
   const [selectedDevType, setSelectedDevType] = useState(initialDevType || '');
   const [selectedAssessmentType, setSelectedAssessmentType] = useState<'CDC' | 'DA' | ''>(initialAssessmentType || '');
+  const [selectedTopic, setSelectedTopic] = useState<string>('');
+  const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
+
+  // Get council config (default to marrickville if unknown)
+  const councilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
 
   useEffect(() => {
     async function fetchProvisions() {
@@ -156,6 +194,8 @@ export function ProvisionsByTopic({
         if (precinctId) params.set('precinct_id', precinctId);
         if (selectedDevType) params.set('dev_type', selectedDevType);
         if (selectedAssessmentType) params.set('assessment_type', selectedAssessmentType);
+        if (selectedTopic) params.set('topic', selectedTopic);
+        if (council) params.set('former_council', council);
 
         const response = await fetch(`/api/provisions/for-property?${params}`);
         if (!response.ok) throw new Error('Failed to fetch provisions');
@@ -163,9 +203,10 @@ export function ProvisionsByTopic({
         const result = await response.json();
         if (result.success) {
           setData(result.data);
-          // Auto-expand first 3 topics
-          const topics = Object.keys(result.data.by_topic || {}).slice(0, 3);
-          setExpandedTopics(new Set(topics));
+          // Auto-expand first 3 topics (sorted by council priority)
+          const topics = Object.keys(result.data.by_topic || {});
+          const sortedTopics = sortTopicsByPriority(topics, councilConfig.topicOrder);
+          setExpandedTopics(new Set(sortedTopics.slice(0, 3)));
         } else {
           throw new Error(result.error || 'Unknown error');
         }
@@ -177,7 +218,19 @@ export function ProvisionsByTopic({
     }
 
     fetchProvisions();
-  }, [zone, heritage, flood, precinctId, selectedDevType, selectedAssessmentType]);
+  }, [zone, heritage, flood, precinctId, selectedDevType, selectedAssessmentType, selectedTopic, councilConfig.topicOrder]);
+
+  // Sort topics by professional priority
+  function sortTopicsByPriority(topics: string[], priorityOrder: string[]): string[] {
+    return [...topics].sort((a, b) => {
+      const aIndex = priorityOrder.indexOf(a);
+      const bIndex = priorityOrder.indexOf(b);
+      if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+      if (aIndex !== -1) return -1;
+      if (bIndex !== -1) return 1;
+      return a.localeCompare(b);
+    });
+  }
 
   const toggleTopic = (topic: string) => {
     setExpandedTopics(prev => {
@@ -229,7 +282,13 @@ export function ProvisionsByTopic({
 
   if (!data) return null;
 
-  const topics = Object.entries(data.by_topic || {}).sort((a, b) => b[1].length - a[1].length);
+  // Sort topics by council-specific professional priority, not just count
+  const topicEntries = Object.entries(data.by_topic || {});
+  const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), councilConfig.topicOrder);
+  const topics = sortedTopicNames.map(name => {
+    const entry = topicEntries.find(([n]) => n === name);
+    return entry || [name, []];
+  }).filter(([, provisions]) => provisions.length > 0) as [string, Provision[]][];
 
   return (
     <div className="space-y-4">
@@ -244,6 +303,46 @@ export function ProvisionsByTopic({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {/* Council-specific guidance */}
+          {council === 'leichhardt' && !selectedTopic && selectedAssessmentType !== 'CDC' && (
+            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r">
+              <p className="text-sm text-amber-800">
+                <strong>Leichhardt DCP:</strong> Select a topic below to narrow results.
+                Without topic filter, you may see 2,000+ provisions.
+              </p>
+            </div>
+          )}
+
+          {/* Topic Filter - Prominent for Leichhardt */}
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Topic:</label>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => setSelectedTopic('')}
+                className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                  selectedTopic === ''
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All
+              </button>
+              {councilConfig.suggestedTopics.map((topic) => (
+                <button
+                  key={topic}
+                  onClick={() => setSelectedTopic(topic)}
+                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    selectedTopic === topic
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  {TOPIC_LABELS[topic] || topic}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Filters Row */}
           <div className="flex flex-wrap items-center gap-4">
             {/* Dev Type Selector */}
@@ -311,6 +410,15 @@ export function ProvisionsByTopic({
             </p>
           )}
 
+          {/* Warning if too many results */}
+          {data && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && selectedAssessmentType !== 'CDC' && (
+            <div className="bg-amber-50 border border-amber-200 rounded p-2">
+              <p className="text-xs text-amber-800">
+                <strong>{data.summary.total_provisions} provisions</strong> - Consider selecting a topic above to narrow results
+              </p>
+            </div>
+          )}
+
           {/* Layer Summary */}
           <div className="flex flex-wrap gap-2 text-sm">
             <Badge variant="outline">
@@ -364,51 +472,137 @@ export function ProvisionsByTopic({
             {isExpanded && (
               <CardContent className="pt-0">
                 <div className="space-y-2">
-                  {provisions.slice(0, 20).map((provision) => (
-                    <div
-                      key={provision.id}
-                      className="border rounded-lg p-3 hover:bg-gray-50"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
-                              {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
-                            </Badge>
-                            {provision.v2_dcp_part && (
-                              <Badge variant="outline" className="text-xs">
-                                {provision.v2_dcp_part}
-                              </Badge>
-                            )}
-                            {provision.v2_marker && (
-                              <Badge variant="outline" className="text-xs bg-purple-50">
-                                {provision.v2_marker}
-                              </Badge>
-                            )}
-                          </div>
-                          <p
-                            className={`text-sm ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
-                            onClick={() => toggleProvision(provision.id)}
+                  {(() => {
+                    // Group provisions by PDF page (extract from image URL as source of truth)
+                    const groupedByPage: { [page: number]: Provision[] } = {};
+                    const provisionsWithoutPage: Provision[] = [];
+
+                    provisions.slice(0, 20).forEach(prov => {
+                      // Use pdf_page field (corrected for offset) as primary source
+                      let pageNum: number | null = null;
+                      if (prov.pdf_page) {
+                        pageNum = prov.pdf_page;
+                      }
+                      // Fallback to URL only if pdf_page is missing
+                      if (!pageNum && prov.pdf_page_image_url && prov.pdf_page_image_url.includes('_page_')) {
+                        const match = prov.pdf_page_image_url.match(/_page_(\d+)\./);
+                        if (match) {
+                          pageNum = parseInt(match[1]);
+                        }
+                      }
+
+                      if (pageNum) {
+                        if (!groupedByPage[pageNum]) {
+                          groupedByPage[pageNum] = [];
+                        }
+                        groupedByPage[pageNum].push(prov);
+                      } else {
+                        provisionsWithoutPage.push(prov);
+                      }
+                    });
+
+                    // Sort page groups by page number
+                    const sortedPageGroups = Object.entries(groupedByPage)
+                      .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
+
+                    return (
+                      <>
+                        {sortedPageGroups.map(([pageNumStr, pageProvisions], groupIdx) => {
+                          const pdfUrl = pageProvisions[0]?.pdf_page_image_url;
+                          const pdfPage = parseInt(pageNumStr); // Already extracted from URL in grouping logic
+
+                          return (
+                            <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t pt-2' : ''}>
+                              {/* Provisions in this page group */}
+                              {pageProvisions.map((provision) => (
+                                <div
+                                  key={provision.id}
+                                  className="border rounded-lg p-3 hover:bg-gray-50 mb-2"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
+                                          {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
+                                        </Badge>
+                                        {provision.v2_dcp_part && (
+                                          <Badge variant="outline" className="text-xs">
+                                            {provision.v2_dcp_part}
+                                          </Badge>
+                                        )}
+                                        {provision.v2_marker && (
+                                          <Badge variant="outline" className="text-xs bg-purple-50">
+                                            {provision.v2_marker}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      <p
+                                        className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                        onClick={() => toggleProvision(provision.id)}
+                                      >
+                                        {provision.provision_text}
+                                      </p>
+                                      {provision.provision_text.length > 150 && (
+                                        <button
+                                          className="text-xs text-blue-600 mt-1"
+                                          onClick={() => toggleProvision(provision.id)}
+                                        >
+                                          {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* PDF Page Button - after all provisions from this page */}
+                              {pdfPage && pdfUrl && (
+                                <div className="flex justify-end mt-1 mb-3">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                                    }}
+                                  >
+                                    <FileText className="h-3 w-3 mr-1" />
+                                    View PDF page {pdfPage}
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Provisions without page numbers */}
+                        {provisionsWithoutPage.map((provision) => (
+                          <div
+                            key={provision.id}
+                            className="border rounded-lg p-3 hover:bg-gray-50"
                           >
-                            {provision.provision_text}
-                          </p>
-                          {provision.provision_text.length > 150 && (
-                            <button
-                              className="text-xs text-blue-600 mt-1"
-                              onClick={() => toggleProvision(provision.id)}
-                            >
-                              {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
-                            </button>
-                          )}
-                        </div>
-                        {provision.pdf_page && (
-                          <Badge variant="outline" className="text-xs shrink-0">
-                            p.{provision.pdf_page}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
+                                    {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
+                                  </Badge>
+                                  {provision.v2_dcp_part && (
+                                    <Badge variant="outline" className="text-xs">
+                                      {provision.v2_dcp_part}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-sm">{provision.provision_text}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
+
                   {provisions.length > 20 && (
                     <p className="text-sm text-gray-500 text-center py-2">
                       Showing 20 of {provisions.length} provisions
@@ -420,6 +614,41 @@ export function ProvisionsByTopic({
           </Card>
         );
       })}
+
+      {/* PDF Page Viewer Modal */}
+      {viewingPdfImage && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingPdfImage(null)}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
+              <h3 className="text-lg font-semibold text-gray-900">
+                PDF Page {viewingPdfImage.page}
+              </h3>
+              <button
+                onClick={() => setViewingPdfImage(null)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* PDF Image */}
+            <div className="p-4">
+              <img
+                src={viewingPdfImage.url}
+                alt={`PDF page ${viewingPdfImage.page}`}
+                className="w-full h-auto"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

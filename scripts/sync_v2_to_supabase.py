@@ -24,7 +24,8 @@ V2_COLUMNS = [
     'v2_applicable_zones',
     'v2_applicable_dev_types',
     'v2_site_condition_required',
-    'v2_has_numeric_value'
+    'v2_has_numeric_value',
+    'pdf_page'  # Added for page offset sync
 ]
 
 def get_local_connection():

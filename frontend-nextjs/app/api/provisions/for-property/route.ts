@@ -40,6 +40,7 @@ interface PropertyFilters {
   dev_type?: string;
   topic?: string;
   assessment_type?: 'CDC' | 'DA';  // CDC = quantitative only, DA = all
+  former_council?: string;  // Former council name (Ashfield, Marrickville, Leichhardt)
 }
 
 interface LayerResult {
@@ -127,6 +128,7 @@ export async function GET(request: NextRequest) {
       dev_type: searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
+      former_council: searchParams.get('former_council') || undefined,
     };
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
@@ -242,12 +244,21 @@ async function queryLayer(
       v2_marker,
       v2_display_behavior,
       pdf_page,
-      pdf_source_file
+      pdf_source_file,
+      pdf_page_image_url
     FROM regulatory_provisions
     WHERE v2_is_actionable = true
       AND v2_dcp_layer = $${paramIndex++}
   `;
   params.push(layer);
+
+  // Filter by former council (Ashfield/Marrickville/Leichhardt) via document_id pattern
+  if (filters.former_council) {
+    // Capitalize first letter for matching (e.g., "marrickville" -> "Marrickville")
+    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
+    sql += ` AND document_id ILIKE $${paramIndex++}`;
+    params.push(`%${councilName}%`);
+  }
 
   // Layer-specific filtering
   if (layer === 'use_specific' && filters.zone) {
@@ -287,6 +298,8 @@ async function queryLayer(
   // Optional dev_type filter with hierarchical matching
   if (filters.dev_type) {
     // Expand dev_type to include parent types (e.g., dwelling_addition_rear -> [dwelling_addition_rear, dwelling_addition, dwelling_house])
+    // NOTE: 'ALL' tagged provisions (286) are excluded - they inflate results too much.
+    // Data issue: secondary_dwelling has few specific tags. Fix in enrichment, not API.
     const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
     sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[])`;
     params.push(expandedTypes);
