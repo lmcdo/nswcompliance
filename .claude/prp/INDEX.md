@@ -68,17 +68,28 @@ USER ENTERS ADDRESS
 
 ## Implementation State
 
-**Current Phase:** ALL PHASES COMPLETE
+**Current Phase:** COMPLETE - Ready for deployment
 
-### ✅ SESSION PROGRESS (2025-11-23)
+### ✅ DEV-TYPE ENRICHMENT COMPLETE (2025-11-24)
+
+All 13 dev_types now have adequate CDC provision coverage:
+- Residential: 277-307 provisions each
+- Commercial: 99-122 provisions each
+- Industrial: 109-117 provisions each
+- Special use: 40-277 provisions each
+
+**Fix Scripts:** `scripts/fixes/DQ7_*.py`
+
+### SESSION PROGRESS (2025-11-23)
 
 | Phase | Status | Result |
 |-------|--------|--------|
 | Precinct tagging | ✅ COMPLETE | 42% → **94.3%** (all parts >80%) |
 | 4-Layer API | ✅ COMPLETE | `/api/provisions/for-property` working |
 | New UI | ✅ COMPLETE | `ProvisionsByTopic.tsx` + toggle on `/assessment` |
-| Granular dev-types | ✅ COMPLETE | Hierarchical filter: 1048 → 600 (dwelling_house) |
-| Assessment type | ✅ COMPLETE | CDC filter: 600 → **46** provisions |
+| Granular dev-types | ✅ COMPLETE | All 13 dev_types have 40-307 CDC provisions |
+| Assessment type | ✅ COMPLETE | CDC filter working |
+| **Dev-type enrichment** | ✅ COMPLETE | All dev_types meet thresholds |
 
 ### COMPLETED
 
@@ -97,7 +108,7 @@ USER ENTERS ADDRESS
 | Web research | ✅ COMPLETE | Professional workflows for all 3 councils |
 | 4-Layer model | ✅ COMPLETE | Generic → Use → Condition → Precinct |
 | Strategy doc update | ✅ COMPLETE | Parts 1,2,4,5,7 updated for 4-layer |
-| **Layer + Topic tagging** | ✅ COMPLETE | v2_dcp_layer, v2_dcp_part, v2_topic populated |
+| **Layer + Topic tagging** | ✅ COMPLETE | v2_dcp_layer, v2_dcp_part, v2_topic populated (DQ-2 fix: 14,501 topics corrected) |
 | **Marker extraction** | ✅ COMPLETE | Leichhardt: 917 C markers, Ashfield: 91 PC/DS/C/O |
 | **Precinct tagging** | ✅ COMPLETE | 1,146/1,215 (94.3%) - All parts >80% |
 | **New API** | ✅ COMPLETE | `/api/provisions/for-property` with 4-layer query |
@@ -277,8 +288,9 @@ TARGET: ~50 provisions
 | DCP configs | `enrichment/config/` (ashfield, leichhardt, marrickville) |
 | Extractors | `enrichment/extractors/` |
 | DCP analysis | `DCP_PHILOSOPHICAL_DIFFERENCES.md` |
-| New API | `frontend-nextjs/app/api/provisions/` (not started) |
-| New UI | `frontend-nextjs/components/provisions/` (not started) |
+| New API | `frontend-nextjs/app/api/provisions/for-property/route.ts` |
+| New UI | `frontend-nextjs/components/compliance/ProvisionsByTopic.tsx` |
+| DQ Fix Scripts | `scripts/fixes/DQ*.py` |
 
 ---
 
@@ -289,4 +301,24 @@ This ensures continuity across sessions and prevents duplicate work.
 
 ---
 
-*Last updated: 2025-11-23 (ALL PHASES COMPLETE: 4-layer API + UI + dev-type hierarchy + CDC filter)*
+## Session Log
+
+### 2025-11-24: DQ-7 Dev-Type Enrichment Complete
+- **DQ-1**: Resolved - Not a bug (precinct 12_ has qualitative-only provisions)
+- **DQ-2**: Fixed - 14,501 topics corrected via position-based matching
+- **DQ-3**: Fixed - 9 TOC entries marked non-actionable
+- **DQ-4**: Accepted - O markers design limitation
+- **DQ-5**: Accepted - 78% generic expected for DCP structure
+- **DQ-6**: Accepted - 2% duplicates are SEPP boilerplate
+- **DQ-7**: Fixed - All 13 dev_types now have 40-307 CDC provisions
+  - Scripts: `DQ7_devtype_enrichment.py`, `DQ7_commercial_industrial_enrichment.py`, `DQ7_remaining_devtypes.py`
+
+**STATUS: READY FOR DEPLOYMENT**
+- All data quality issues resolved
+- Professional scenario testing passed for CDC workflows
+- Zone handling: 'ALL' = wildcard (correct for Leichhardt/Ashfield structure)
+- Next: `python scripts/sync_v2_to_supabase.py` then deploy
+
+---
+
+*Last updated: 2025-11-24 (DQ-7 dev-type enrichment complete - all 13 dev_types now have adequate coverage)*
