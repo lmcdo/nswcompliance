@@ -292,10 +292,11 @@ async function queryLayer(
     params.push(filters.precinct_id);
   }
 
-  // Optional topic filter
+  // Optional topic filter (case-insensitive, handle underscore vs space)
+  // DB has "Building Form", UI sends "building_form"
   if (filters.topic) {
-    sql += ` AND v2_topic = $${paramIndex++}`;
-    params.push(filters.topic);
+    sql += ` AND LOWER(REPLACE(v2_topic, ' ', '_')) = LOWER($${paramIndex++})`;
+    params.push(filters.topic.replace(/ /g, '_'));
   }
 
   // Optional dev_type filter with hierarchical matching
@@ -325,7 +326,9 @@ function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
 
   for (const layer of layers) {
     for (const provision of layer.provisions) {
-      const topic = provision.v2_topic || 'other';
+      // Normalize topic: "Building Form" → "building_form" for consistent UI keys
+      const rawTopic = provision.v2_topic || 'other';
+      const topic = rawTopic.toLowerCase().replace(/ /g, '_');
       if (!byTopic[topic]) {
         byTopic[topic] = [];
       }
