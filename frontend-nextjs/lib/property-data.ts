@@ -177,7 +177,7 @@ export class PropertyDataService {
  const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
  console.log(`[PropertyDataService] Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (lat: ${lat.toFixed(6)}, lon: ${lon.toFixed(6)})`);
 
- // Match precinct for DCP filtering
+ // Match precinct for DCP filtering - precinct data includes formerCouncil from spatial match
  try {
    const { getPrecinctForAddress } = await import('./precinct-service');
    const precinctData = await getPrecinctForAddress(
@@ -189,21 +189,29 @@ export class PropertyDataService {
    if (precinctData) {
      constraints.precinctId = precinctData.precinctId;
      console.log(`[PropertyDataService] Precinct matched: ${precinctData.precinctId} (${precinctData.precinctName})`);
+
+     // Use formerCouncil from precinct spatial match (most reliable)
+     if (precinctData.formerCouncil) {
+       constraints.formerCouncil = precinctData.formerCouncil;
+       console.log(`[PropertyDataService] Former council from precinct: ${precinctData.formerCouncil}`);
+     }
    }
  } catch (error) {
    console.log('[PropertyDataService] Precinct matching failed:', error);
  }
 
- // Determine former council using address-based mapping (more reliable than precinct ID)
- try {
-   const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
-   const formerCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
-   if (formerCouncil) {
-     constraints.formerCouncil = formerCouncil;
-     console.log(`[PropertyDataService] Former council determined: ${formerCouncil}`);
+ // Fallback: determine former council from postcode if not set by precinct
+ if (!constraints.formerCouncil) {
+   try {
+     const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
+     const formerCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
+     if (formerCouncil) {
+       constraints.formerCouncil = formerCouncil;
+       console.log(`[PropertyDataService] Former council from postcode fallback: ${formerCouncil}`);
+     }
+   } catch (error) {
+     console.log('[PropertyDataService] Former council mapping failed:', error);
    }
- } catch (error) {
-   console.log('[PropertyDataService] Former council mapping failed:', error);
  }
 
  // Route applicable SEPPs

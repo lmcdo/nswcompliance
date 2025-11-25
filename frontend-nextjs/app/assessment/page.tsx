@@ -372,7 +372,7 @@ export default function AssessmentPage() {
                   </div>
                   {viewMode === '4layer' && (
                     <p className="text-xs text-gray-500 mt-2">
-                      Provisions filtered by zone, site conditions, and precinct using 4-layer model
+                      4-layer model: General provisions + Zone-specific + Site conditions (heritage/flood) + Precinct
                     </p>
                   )}
                 </div>
@@ -388,6 +388,7 @@ export default function AssessmentPage() {
                     ) || false}
                     precinctId={selectedProperty.constraints?.precinctId}
                     devType={developmentType}
+                    council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
                   />
                 )}
 

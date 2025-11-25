@@ -245,7 +245,10 @@ async function queryLayer(
       v2_display_behavior,
       pdf_page,
       pdf_source_file,
-      pdf_page_image_url
+      pdf_page_image_url,
+      v2_heritage_type,
+      v2_heritage_element,
+      v2_heritage_hca
     FROM regulatory_provisions
     WHERE v2_is_actionable = true
       AND v2_dcp_layer = $${paramIndex++}

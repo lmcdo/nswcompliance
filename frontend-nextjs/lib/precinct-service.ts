@@ -438,13 +438,19 @@ function buildPrecinctDocumentId(precinctId: string, precinctName: string, lga: 
 }
 
 function getFormerCouncilFromPrecinctId(precinctId: string): string {
-  // Marrickville precincts: 9_XX, XX_, Part_9
-  // Ashfield precincts: ashfield_, A_, Chapter_D, Chapter_E, Chapter_F
-  // Leichhardt precincts: C2, L_, Part_G, Part_C
+  // Marrickville precincts: 9_XX, XX_ (numeric underscore like 13_)
+  // Ashfield precincts: "Part X" format (Part 1 through Part 13 from Chapter D)
+  // Leichhardt precincts: C2.X.X.X format
 
   const id = precinctId.toLowerCase();
 
-  // Ashfield patterns
+  // Ashfield patterns - "Part X" format from precinct_boundaries table
+  // Part 1-13 are Ashfield Chapter D precincts (Ashfield Town Centre, Summer Hill, etc.)
+  if (/^part\s*\d+$/i.test(precinctId)) {
+    return 'Ashfield';
+  }
+
+  // Other Ashfield patterns
   if (id.startsWith('ashfield') || id.startsWith('a_') ||
       id.includes('chapter_d') || id.includes('chapter_e') || id.includes('chapter_f')) {
     return 'Ashfield';
@@ -456,7 +462,7 @@ function getFormerCouncilFromPrecinctId(precinctId: string): string {
     return 'Leichhardt';
   }
 
-  // Marrickville patterns
+  // Marrickville patterns - numeric underscore like 9_, 10_, 13_
   if (precinctId.startsWith('9_') || /^\d+_$/.test(precinctId) || id.includes('part_9')) {
     return 'Marrickville';
   }
