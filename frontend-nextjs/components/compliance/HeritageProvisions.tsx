@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { FormattedProvisionText } from './FormattedProvisionText';
 
 interface Provision {
   id: number;
@@ -180,12 +181,12 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                                 </Badge>
                               )}
                             </div>
-                            <p
-                              className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                            <div
+                              className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                               onClick={() => toggleProvision(provision.id)}
                             >
-                              {provision.provision_text}
-                            </p>
+                              <FormattedProvisionText text={provision.provision_text} compact />
+                            </div>
                             {provision.provision_text.length > 150 && (
                               <button
                                 className="text-xs text-blue-600 mt-1"
@@ -228,7 +229,7 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                           </Badge>
                         ))}
                       </div>
-                      <p className="text-sm">{provision.provision_text}</p>
+                      <FormattedProvisionText text={provision.provision_text} compact />
                     </div>
                   ))}
 

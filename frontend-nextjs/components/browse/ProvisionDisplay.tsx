@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, Table2, Hash, Search, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { FormattedProvisionText } from '@/components/compliance/FormattedProvisionText';
 
 interface Provision {
   id: number;
@@ -251,9 +252,7 @@ export function ProvisionDisplay({ documentId, sectionNumber, sectionTitle }: Pr
                         dangerouslySetInnerHTML={{ __html: provision.provisionText }}
                       />
                     ) : (
-                      <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
-                        {provision.provisionText}
-                      </p>
+                      <FormattedProvisionText text={provision.provisionText} />
                     )}
                   </div>
 

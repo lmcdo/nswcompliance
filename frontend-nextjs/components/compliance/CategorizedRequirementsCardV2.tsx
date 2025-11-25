@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
+import { FormattedProvisionText } from './FormattedProvisionText';
 
 interface CategorizedRequirement {
   id: number;
@@ -440,8 +441,8 @@ export function CategorizedRequirementsCard({
                                   </div>
 
                                   {/* Provision Text */}
-                                  <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                                    {provision.provision_text}
+                                  <div className="text-sm text-gray-700">
+                                    <FormattedProvisionText text={provision.provision_text} compact />
                                   </div>
 
                                   {/* Provision Footer */}
