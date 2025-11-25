@@ -25,7 +25,11 @@ V2_COLUMNS = [
     'v2_applicable_dev_types',
     'v2_site_condition_required',
     'v2_has_numeric_value',
-    'pdf_page'  # Added for page offset sync
+    'pdf_page',  # Added for page offset sync
+    # DQ-11 heritage sub-categorization columns
+    'v2_heritage_type',
+    'v2_heritage_element',
+    'v2_heritage_hca'
 ]
 
 def get_local_connection():
