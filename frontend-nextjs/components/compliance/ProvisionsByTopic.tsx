@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { COUNCIL_CONFIGS, type CouncilConfig } from '@/lib/council-config';
+import { HeritageProvisions } from './HeritageProvisions';
 
 interface Provision {
   id: number;
@@ -30,6 +31,9 @@ interface Provision {
   pdf_page: number;
   pdf_page_image_url?: string;
   layer?: string;
+  v2_heritage_type?: 'control' | 'character' | 'descriptive';
+  v2_heritage_element?: string[];
+  v2_heritage_hca?: string;
 }
 
 interface LayerResult {
@@ -505,6 +509,10 @@ export function ProvisionsByTopic({
 
             {isExpanded && (
               <CardContent className="pt-0">
+                {topic === 'heritage' && council === 'ashfield' && (
+                  <HeritageProvisions provisions={provisions} />
+                )}
+                {!(topic === 'heritage' && council === 'ashfield') && (
                 <div className="space-y-2">
                   {(() => {
                     // Group provisions by PDF page (extract from image URL as source of truth)
@@ -643,6 +651,7 @@ export function ProvisionsByTopic({
                     </p>
                   )}
                 </div>
+                )}
               </CardContent>
             )}
           </Card>
