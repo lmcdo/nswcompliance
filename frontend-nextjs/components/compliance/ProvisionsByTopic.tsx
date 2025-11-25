@@ -12,10 +12,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, X, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { COUNCIL_CONFIGS, type CouncilConfig } from '@/lib/council-config';
 
 interface Provision {
   id: number;
@@ -127,32 +128,7 @@ const DEV_TYPE_OPTIONS = [
   { value: 'warehouse', label: '  Warehouse', group: 'Industrial' },
 ];
 
-// Council-specific configuration
-const COUNCIL_CONFIGS: Record<string, {
-  topicFilterRequired: boolean;
-  warningThreshold: number;
-  suggestedTopics: string[];
-  topicOrder: string[];
-}> = {
-  marrickville: {
-    topicFilterRequired: false,
-    warningThreshold: 300,
-    suggestedTopics: ['setbacks', 'height', 'parking', 'heritage', 'building_form'],
-    topicOrder: ['setbacks', 'height', 'parking', 'landscaping', 'heritage', 'building_form', 'access', 'solar', 'privacy'],
-  },
-  leichhardt: {
-    topicFilterRequired: true,
-    warningThreshold: 200,
-    suggestedTopics: ['parking', 'building_form', 'landscaping', 'heritage', 'setbacks', 'height'],
-    topicOrder: ['parking', 'setbacks', 'height', 'landscaping', 'building_form', 'heritage', 'access'],
-  },
-  ashfield: {
-    topicFilterRequired: false,
-    warningThreshold: 500,
-    suggestedTopics: ['building_form', 'parking', 'trees', 'access', 'heritage', 'waste'],
-    topicOrder: ['parking', 'height', 'trees', 'access', 'building_form', 'heritage', 'waste'],
-  },
-};
+// Use imported COUNCIL_CONFIGS from council-config.ts
 
 export function ProvisionsByTopic({
   zone,
@@ -179,7 +155,8 @@ export function ProvisionsByTopic({
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
 
   // Get council config (default to marrickville if unknown)
-  const councilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
+  const councilConfig: CouncilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
+  const topicOrder = professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner;
 
   useEffect(() => {
     async function fetchProvisions() {
@@ -205,7 +182,7 @@ export function ProvisionsByTopic({
           setData(result.data);
           // Auto-expand first 3 topics (sorted by council priority)
           const topics = Object.keys(result.data.by_topic || {});
-          const sortedTopics = sortTopicsByPriority(topics, councilConfig.topicOrder);
+          const sortedTopics = sortTopicsByPriority(topics, topicOrder);
           setExpandedTopics(new Set(sortedTopics.slice(0, 3)));
         } else {
           throw new Error(result.error || 'Unknown error');
@@ -218,7 +195,7 @@ export function ProvisionsByTopic({
     }
 
     fetchProvisions();
-  }, [zone, heritage, flood, precinctId, selectedDevType, selectedAssessmentType, selectedTopic, councilConfig.topicOrder]);
+  }, [zone, heritage, flood, precinctId, selectedDevType, selectedAssessmentType, selectedTopic, topicOrder]);
 
   // Sort topics by professional priority
   function sortTopicsByPriority(topics: string[], priorityOrder: string[]): string[] {
@@ -284,7 +261,7 @@ export function ProvisionsByTopic({
 
   // Sort topics by council-specific professional priority, not just count
   const topicEntries = Object.entries(data.by_topic || {});
-  const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), councilConfig.topicOrder);
+  const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), topicOrder);
   const topics = sortedTopicNames.map(name => {
     const entry = topicEntries.find(([n]) => n === name);
     return entry || [name, []];
@@ -303,11 +280,43 @@ export function ProvisionsByTopic({
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Council-specific guidance */}
+          {/* DCP Citation and Explanation */}
+          {council && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-blue-900">
+                    {councilConfig.dcpCitation}
+                  </p>
+                  <p className="text-sm text-blue-800">
+                    {councilConfig.dcpExplanation}
+                  </p>
+                  <div className="text-xs text-blue-700 pt-1 border-t border-blue-200">
+                    <span className="font-medium">Provisions are filtered into 4 layers:</span>
+                    <span className="ml-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1"></span>General (apply to all)
+                    </span>
+                    <span className="ml-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>Zone-specific
+                    </span>
+                    <span className="ml-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>Site conditions (heritage/flood)
+                    </span>
+                    <span className="ml-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"></span>Precinct/suburb
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Council-specific guidance for Leichhardt */}
           {council === 'leichhardt' && !selectedTopic && selectedAssessmentType !== 'CDC' && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r">
               <p className="text-sm text-amber-800">
-                <strong>Leichhardt DCP:</strong> Select a topic below to narrow results.
+                <strong>Tip:</strong> Select a topic below to narrow results.
                 Without topic filter, you may see 2,000+ provisions.
               </p>
             </div>
@@ -419,21 +428,25 @@ export function ProvisionsByTopic({
             </div>
           )}
 
-          {/* Layer Summary */}
+          {/* Layer Summary with Legend */}
           <div className="flex flex-wrap gap-2 text-sm">
             <Badge variant="outline">
               Total: {data.summary?.total_provisions || 0}
             </Badge>
             <Badge className={LAYER_COLORS.generic}>
+              <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
               General: {data.summary?.layer_1_generic || 0}
             </Badge>
             <Badge className={LAYER_COLORS.use_specific}>
+              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
               Zone: {data.summary?.layer_2_use_specific || 0}
             </Badge>
             <Badge className={LAYER_COLORS.condition}>
+              <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
               Condition: {data.summary?.layer_3_condition || 0}
             </Badge>
             <Badge className={LAYER_COLORS.precinct}>
+              <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"></span>
               Precinct: {data.summary?.layer_4_precinct || 0}
             </Badge>
           </div>
@@ -444,6 +457,13 @@ export function ProvisionsByTopic({
       {topics.map(([topic, provisions]) => {
         const Icon = TOPIC_ICONS[topic] || FileText;
         const isExpanded = expandedTopics.has(topic);
+
+        // Calculate layer breakdown for this topic
+        const layerCounts: Record<string, number> = {};
+        provisions.forEach(p => {
+          const layer = p.layer || p.v2_dcp_layer || 'unknown';
+          layerCounts[layer] = (layerCounts[layer] || 0) + 1;
+        });
 
         return (
           <Card key={topic}>
@@ -465,6 +485,20 @@ export function ProvisionsByTopic({
                   <Badge variant="secondary" className="ml-2">
                     {provisions.length}
                   </Badge>
+                  {/* Layer breakdown badges */}
+                  <span className="text-xs text-gray-500 ml-2">
+                    {Object.entries(layerCounts).map(([layer, count]) => (
+                      <span key={layer} className="mr-2">
+                        <span className={`inline-block w-2 h-2 rounded-full mr-1 ${
+                          layer === 'generic' ? 'bg-gray-400' :
+                          layer === 'use_specific' ? 'bg-blue-400' :
+                          layer === 'condition' ? 'bg-amber-400' :
+                          layer === 'precinct' ? 'bg-green-400' : 'bg-gray-300'
+                        }`}></span>
+                        {count}
+                      </span>
+                    ))}
+                  </span>
                 </div>
               </div>
             </CardHeader>

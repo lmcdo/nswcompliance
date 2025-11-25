@@ -298,10 +298,9 @@ async function queryLayer(
   // Optional dev_type filter with hierarchical matching
   if (filters.dev_type) {
     // Expand dev_type to include parent types (e.g., dwelling_addition_rear -> [dwelling_addition_rear, dwelling_addition, dwelling_house])
-    // NOTE: 'ALL' tagged provisions (286) are excluded - they inflate results too much.
-    // Data issue: secondary_dwelling has few specific tags. Fix in enrichment, not API.
+    // Include provisions tagged with 'ALL' (applies to all development types)
     const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
-    sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[])`;
+    sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[] OR 'ALL' = ANY(v2_applicable_dev_types))`;
     params.push(expandedTypes);
   }
 
