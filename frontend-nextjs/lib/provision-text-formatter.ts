@@ -96,7 +96,9 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
         level: section.number.split('.').length
       });
       // Remove the heading from the line for further processing
-      line = line.replace(/^\d+(?:\.\d+)+\s+[^CcOo]+/, '').trim();
+      // Use the extracted section info, not a separate regex
+      const headingText = `${section.number} ${section.title}`;
+      line = line.slice(headingText.length).trim();
       if (!line) continue;
     }
 

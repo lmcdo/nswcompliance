@@ -16,8 +16,9 @@ import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, X, Info 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { COUNCIL_CONFIGS, type CouncilConfig } from '@/lib/council-config';
+import { COUNCIL_CONFIGS, TOPIC_LABELS, type CouncilConfig } from '@/lib/council-config';
 import { HeritageProvisions } from './HeritageProvisions';
+import { FormattedProvisionText } from './FormattedProvisionText';
 
 interface Provision {
   id: number;
@@ -67,20 +68,7 @@ const TOPIC_ICONS: Record<string, any> = {
   water: MapPin,
 };
 
-const TOPIC_LABELS: Record<string, string> = {
-  setbacks: 'Setbacks',
-  height: 'Height & Envelope',
-  parking: 'Parking',
-  heritage: 'Heritage',
-  landscaping: 'Landscaping',
-  solar: 'Solar Access',
-  privacy: 'Privacy',
-  access: 'Access & Movement',
-  building_form: 'Building Form',
-  water: 'Water Management',
-  food_premises: 'Food Premises',
-  unknown: 'Other Requirements',
-};
+// TOPIC_LABELS imported from council-config.ts (has 26 entries)
 
 const LAYER_COLORS: Record<string, string> = {
   generic: 'bg-gray-100 text-gray-800',
@@ -579,12 +567,12 @@ export function ProvisionsByTopic({
                                           </Badge>
                                         )}
                                       </div>
-                                      <p
-                                        className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                      <div
+                                        className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                                         onClick={() => toggleProvision(provision.id)}
                                       >
-                                        {provision.provision_text}
-                                      </p>
+                                        <FormattedProvisionText text={provision.provision_text} compact />
+                                      </div>
                                       {provision.provision_text.length > 150 && (
                                         <button
                                           className="text-xs text-blue-600 mt-1"
@@ -637,7 +625,7 @@ export function ProvisionsByTopic({
                                     </Badge>
                                   )}
                                 </div>
-                                <p className="text-sm">{provision.provision_text}</p>
+                                <FormattedProvisionText text={provision.provision_text} compact />
                               </div>
                             </div>
                           </div>
