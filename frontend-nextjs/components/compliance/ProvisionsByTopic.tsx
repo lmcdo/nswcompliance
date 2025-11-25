@@ -526,8 +526,9 @@ export function ProvisionsByTopic({
                         pageNum = prov.pdf_page;
                       }
                       // Fallback to URL only if pdf_page is missing
-                      if (!pageNum && prov.pdf_page_image_url && prov.pdf_page_image_url.includes('_page_')) {
-                        const match = prov.pdf_page_image_url.match(/_page_(\d+)\./);
+                      // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
+                      if (!pageNum && prov.pdf_page_image_url) {
+                        const match = prov.pdf_page_image_url.match(/[/_]page_(\d+)\./);
                         if (match) {
                           pageNum = parseInt(match[1]);
                         }
