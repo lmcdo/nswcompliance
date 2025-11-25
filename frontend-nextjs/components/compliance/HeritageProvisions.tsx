@@ -3,11 +3,13 @@
 /**
  * Heritage Provisions Sub-Component (DQ-11)
  * Groups Ashfield heritage provisions by type: control, character, descriptive
+ * With PDF page grouping and View PDF buttons matching main component pattern
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface Provision {
   id: number;
@@ -15,6 +17,8 @@ interface Provision {
   v2_heritage_type?: 'control' | 'character' | 'descriptive';
   v2_heritage_element?: string[];
   v2_heritage_hca?: string;
+  pdf_page_image_url?: string;
+  pdf_page?: number;
 }
 
 interface HeritageProvisionsProps {
@@ -55,6 +59,7 @@ const HERITAGE_ELEMENT_LABELS: Record<string, string> = {
 export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['control']));
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
+  const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
 
   // Group by heritage type
   const byType: Record<string, Provision[]> = { control: [], character: [], descriptive: [] };
@@ -88,67 +93,176 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
     });
   };
 
+  // Group provisions by PDF page
+  const groupByPage = (typeProvisions: Provision[], limit: number) => {
+    const groupedByPage: { [page: number]: Provision[] } = {};
+    const provisionsWithoutPage: Provision[] = [];
+
+    typeProvisions.slice(0, limit).forEach(prov => {
+      let pageNum: number | null = null;
+      if (prov.pdf_page) {
+        pageNum = prov.pdf_page;
+      }
+      // Fallback to URL if pdf_page is missing
+      if (!pageNum && prov.pdf_page_image_url && prov.pdf_page_image_url.includes('_page_')) {
+        const match = prov.pdf_page_image_url.match(/_page_(\d+)\./);
+        if (match) {
+          pageNum = parseInt(match[1]);
+        }
+      }
+
+      if (pageNum) {
+        if (!groupedByPage[pageNum]) {
+          groupedByPage[pageNum] = [];
+        }
+        groupedByPage[pageNum].push(prov);
+      } else {
+        provisionsWithoutPage.push(prov);
+      }
+    });
+
+    const sortedPageGroups = Object.entries(groupedByPage)
+      .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
+
+    return { sortedPageGroups, provisionsWithoutPage };
+  };
+
   const typeOrder = ['control', 'character', 'descriptive'];
 
   return (
-    <div className="space-y-3">
-      {typeOrder.map(type => {
-        const typeProvisions = byType[type];
-        if (!typeProvisions || typeProvisions.length === 0) return null;
+    <>
+      <div className="space-y-3">
+        {typeOrder.map(type => {
+          const typeProvisions = byType[type];
+          if (!typeProvisions || typeProvisions.length === 0) return null;
 
-        const isExpanded = expandedTypes.has(type);
-        const displayLimit = type === 'control' ? 20 : 5;
+          const isExpanded = expandedTypes.has(type);
+          const displayLimit = type === 'control' ? 20 : 5;
+          const { sortedPageGroups, provisionsWithoutPage } = groupByPage(typeProvisions, displayLimit);
 
-        return (
-          <div key={type} className={`border rounded-lg ${HERITAGE_TYPE_COLORS[type]}`}>
-            <div
-              className="px-3 py-2 cursor-pointer flex items-center justify-between"
-              onClick={() => toggleType(type)}
-            >
-              <div className="flex items-center gap-2">
-                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="font-medium">{HERITAGE_TYPE_LABELS[type]}</span>
-                <Badge variant="secondary" className="text-xs">{typeProvisions.length}</Badge>
-              </div>
-              {type === 'control' && (
-                <span className="text-xs opacity-75">Checkable requirements</span>
-              )}
-            </div>
-
-            {isExpanded && (
-              <div className="px-3 pb-3 space-y-2 bg-white rounded-b-lg">
-                {typeProvisions.slice(0, displayLimit).map(provision => (
-                  <div key={provision.id} className="border rounded p-2 bg-white">
-                    <div className="flex items-center gap-1 mb-1 flex-wrap">
-                      {provision.v2_heritage_element?.map(elem => (
-                        <Badge key={elem} variant="outline" className="text-xs bg-purple-50">
-                          {HERITAGE_ELEMENT_LABELS[elem] || elem}
-                        </Badge>
-                      ))}
-                      {provision.v2_heritage_hca && (
-                        <Badge variant="outline" className="text-xs bg-amber-50">
-                          {provision.v2_heritage_hca.replace(/_/g, ' ')}
-                        </Badge>
-                      )}
-                    </div>
-                    <p
-                      className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
-                      onClick={() => toggleProvision(provision.id)}
-                    >
-                      {provision.provision_text}
-                    </p>
-                  </div>
-                ))}
-                {typeProvisions.length > displayLimit && (
-                  <p className="text-xs text-gray-500 text-center">
-                    Showing {displayLimit} of {typeProvisions.length}
-                  </p>
+          return (
+            <div key={type} className={`border rounded-lg ${HERITAGE_TYPE_COLORS[type]}`}>
+              <div
+                className="px-3 py-2 cursor-pointer flex items-center justify-between"
+                onClick={() => toggleType(type)}
+              >
+                <div className="flex items-center gap-2">
+                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <span className="font-medium">{HERITAGE_TYPE_LABELS[type]}</span>
+                  <Badge variant="secondary" className="text-xs">{typeProvisions.length}</Badge>
+                </div>
+                {type === 'control' && (
+                  <span className="text-xs opacity-75">Checkable requirements</span>
                 )}
               </div>
-            )}
+
+              {isExpanded && (
+                <div className="px-3 pb-3 bg-white rounded-b-lg">
+                  {sortedPageGroups.map(([pageNumStr, pageProvisions], groupIdx) => {
+                    const pdfUrl = pageProvisions[0]?.pdf_page_image_url;
+                    const pdfPage = parseInt(pageNumStr);
+
+                    return (
+                      <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t pt-2 mt-2' : ''}>
+                        {/* Provisions in this page group */}
+                        {pageProvisions.map((provision) => (
+                          <div key={provision.id} className="border rounded p-2 bg-white mb-2">
+                            <div className="flex items-center gap-1 mb-1 flex-wrap">
+                              {provision.v2_heritage_element?.map(elem => (
+                                <Badge key={elem} variant="outline" className="text-xs bg-purple-50">
+                                  {HERITAGE_ELEMENT_LABELS[elem] || elem}
+                                </Badge>
+                              ))}
+                              {provision.v2_heritage_hca && (
+                                <Badge variant="outline" className="text-xs bg-amber-50">
+                                  {provision.v2_heritage_hca.replace(/_/g, ' ')}
+                                </Badge>
+                              )}
+                            </div>
+                            <p
+                              className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                              onClick={() => toggleProvision(provision.id)}
+                            >
+                              {provision.provision_text}
+                            </p>
+                            {provision.provision_text.length > 150 && (
+                              <button
+                                className="text-xs text-blue-600 mt-1"
+                                onClick={() => toggleProvision(provision.id)}
+                              >
+                                {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* PDF Page Button - after all provisions from this page */}
+                        {pdfPage && pdfUrl && (
+                          <div className="flex justify-end mt-1 mb-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                              }}
+                            >
+                              <FileText className="h-3 w-3 mr-1" />
+                              View PDF page {pdfPage}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Provisions without page numbers */}
+                  {provisionsWithoutPage.map((provision) => (
+                    <div key={provision.id} className="border rounded p-2 bg-white mb-2">
+                      <div className="flex items-center gap-1 mb-1 flex-wrap">
+                        {provision.v2_heritage_element?.map(elem => (
+                          <Badge key={elem} variant="outline" className="text-xs bg-purple-50">
+                            {HERITAGE_ELEMENT_LABELS[elem] || elem}
+                          </Badge>
+                        ))}
+                      </div>
+                      <p className="text-sm">{provision.provision_text}</p>
+                    </div>
+                  ))}
+
+                  {typeProvisions.length > displayLimit && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Showing {displayLimit} of {typeProvisions.length}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* PDF Image Modal */}
+      {viewingPdfImage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setViewingPdfImage(null)}>
+          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto m-4" onClick={e => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-4 py-2 flex items-center justify-between">
+              <span className="font-medium">PDF Page {viewingPdfImage.page}</span>
+              <Button size="sm" variant="ghost" onClick={() => setViewingPdfImage(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-4">
+              <img
+                src={viewingPdfImage.url}
+                alt={`PDF page ${viewingPdfImage.page}`}
+                className="max-w-full h-auto"
+              />
+            </div>
           </div>
-        );
-      })}
-    </div>
+        </div>
+      )}
+    </>
   );
 }
