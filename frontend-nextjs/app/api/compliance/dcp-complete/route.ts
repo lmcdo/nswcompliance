@@ -546,7 +546,9 @@ export async function POST(request: NextRequest) {
               ORDER BY pdf_page, id
             `;
           } else {
-            // Leichhardt: Look for general provisions (when extracted)
+            // Leichhardt: Fetch general provisions from Parts A-F
+            // Part structure: A=Intro, B=Access, C=Place, D=Energy, E=Water, F=Food
+            // Exclude: Part C Section 2 (Distinctive Neighbourhoods) and Part G (Neighbourhoods)
             generalProvQuery = `
               SELECT
                 id,
@@ -562,14 +564,26 @@ export async function POST(request: NextRequest) {
                 pdf_page_image_url,
                 pdf_source_file as pdf_path,
                 document_id,
+                v2_topic,
                 NULL as category_name
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
               AND page_number != '0'  -- Exclude TOC pages
               AND (
-                document_id ILIKE '%Part%General%'
-                OR document_id ILIKE '%Chapter%General%'
+                -- General Parts A, B, D, E, F
+                document_id ILIKE '%Part A%'
+                OR document_id ILIKE '%Part B%'
+                OR document_id ILIKE '%Part D%'
+                OR document_id ILIKE '%Part E%'
+                OR document_id ILIKE '%Part F%'
+                -- Part C Section 1 only (general place controls)
+                OR document_id ILIKE '%Part C%Section 1%'
+                OR document_id ILIKE '%Part C Place Section 1%'
               )
+              -- Exclude Part C Section 2 (Distinctive Neighbourhoods) and Part G
+              AND document_id NOT ILIKE '%Section 2%'
+              AND document_id NOT ILIKE '%Part G%'
+              AND document_id NOT ILIKE '%Distinctive_Neighbour%'
               ORDER BY pdf_page, id
             `;
           }
@@ -597,7 +611,13 @@ export async function POST(request: NextRequest) {
           }));
 
           // Process general provisions using the mapping function
-          const mapPartToCategory = (partNumber: string | null, docId: string): string => {
+          // Use v2_topic preferentially if available (55% of Leichhardt provisions have it)
+          const mapPartToCategory = (partNumber: string | null, docId: string, v2Topic?: string | null): string => {
+            // Use v2_topic if available (enriched data from LLM categorization)
+            if (v2Topic) {
+              return v2Topic;
+            }
+
             if (!partNumber) {
               // Try to extract from document_id
               if (docId.includes('Chapter_F') || docId.includes('Chapter F')) {
@@ -627,9 +647,13 @@ export async function POST(request: NextRequest) {
             if (partNumber.startsWith('F.4')) return 'Landscaping & Open Space';
             if (partNumber.startsWith('F.5')) return 'Heritage & Character';
 
-            // Leichhardt general parts
+            // Leichhardt general parts (mapped to meaningful categories)
             if (partNumber.startsWith('A')) return 'Administration';
-            if (partNumber.startsWith('B')) return 'General Controls';
+            if (partNumber.startsWith('B')) return 'Access & Mobility';
+            if (partNumber.startsWith('C')) return 'Place & Character';
+            if (partNumber.startsWith('D')) return 'Energy & Sustainability';
+            if (partNumber.startsWith('E')) return 'Water Management';
+            if (partNumber.startsWith('F')) return 'Food Production';
 
             return `Part ${partNumber}`;
           };
@@ -637,7 +661,7 @@ export async function POST(request: NextRequest) {
           generalRequirements = {
             rows: generalProvResult.rows.map((prov: any) => ({
               id: prov.id,
-              category: mapPartToCategory(prov.part_number, prov.document_id),
+              category: mapPartToCategory(prov.part_number, prov.document_id, prov.v2_topic),
               subcategory: prov.section_header,
               requirement_text: prov.provision_text,
               verbatim_source_text: prov.provision_text, // For legacy data, provision_text IS the verbatim
@@ -660,7 +684,8 @@ export async function POST(request: NextRequest) {
           if (generalProvResult.rows.length === 0) {
             console.log(`  ⚠️ No general provisions found for ${formerCouncil} (data may not be extracted yet)`);
           } else {
-            console.log(`  ✅ ${formerCouncil} fallback complete: ${precinctRequirements.length} precinct + ${generalRequirements.rows.length} general`);
+            const topicCount = generalProvResult.rows.filter((p: any) => p.v2_topic).length;
+            console.log(`  ✅ ${formerCouncil} fallback complete: ${precinctRequirements.length} precinct + ${generalRequirements.rows.length} general (${topicCount} with v2_topic)`);
           }
 
           // Skip the rest of fallback processing
