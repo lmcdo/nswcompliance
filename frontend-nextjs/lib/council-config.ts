@@ -13,6 +13,9 @@ export interface CouncilConfig {
   totalProvisions: number;
   primaryLayer: 'generic' | 'precinct' | 'condition' | 'use_specific';
   zoneFilterEffective: boolean;
+  devTypeFilterEffective: boolean;
+  devTypeNote?: string; // Displayed when dev type has no effect
+  availableDevTypes?: { id: string; name: string; count: number }[];
   topicFilterRequired: boolean;
   warningThreshold: number;
   resultGuidance: {
@@ -31,10 +34,12 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'marrickville',
     name: 'Marrickville',
     dcpCitation: 'Inner West Development Control Plan (Marrickville) 2011',
-    dcpExplanation: 'This DCP covers 46 suburb precincts organized across Parts 1-9, each with local character controls. Provisions are well-balanced across layers: 30% are precinct-specific (green), 32% are zone-specific (blue), and 26% are general requirements (grey). Both zone and development type filters work effectively for this council.',
+    dcpExplanation: 'This DCP covers 46 suburb precincts organized across Parts 1-9, each with local character controls. Provisions are well-balanced across layers: 30% are precinct-specific (green), 32% are zone-specific (blue), and 26% are general requirements (grey). Zone filtering works effectively for this council.',
     totalProvisions: 1051,
     primaryLayer: 'precinct',
     zoneFilterEffective: true,
+    devTypeFilterEffective: false,
+    devTypeNote: 'Marrickville DCP provisions apply broadly by topic, not by development type. Permissible development types are determined by the LEP - see the SEPP & LEP tab for land use permissibility in your zone.',
     topicFilterRequired: false,
     warningThreshold: 300,
     resultGuidance: {
@@ -56,6 +61,8 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     totalProvisions: 2648,
     primaryLayer: 'generic',
     zoneFilterEffective: false,
+    devTypeFilterEffective: false,
+    devTypeNote: 'Leichhardt DCP provisions apply universally by topic, not by development type. Permissible development types are determined by the LEP - see the SEPP & LEP tab for land use permissibility in your zone.',
     topicFilterRequired: true,
     warningThreshold: 200,
     resultGuidance: {
@@ -73,10 +80,33 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'ashfield',
     name: 'Ashfield',
     dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'This DCP defines 11 urban villages in Chapter D, though precinct-specific controls only cover 13% of provisions (green). 59% are conditional (amber) - these are almost all for heritage properties, but also include flood-prone and bushfire-prone properties. The system filters these automatically. General provisions account for 28% (grey). Zone filtering is ineffective (2% blue). Development type filtering has moderate effectiveness at 33%.',
+    dcpExplanation: 'This DCP defines 11 urban villages in Chapter D, though precinct-specific controls only cover 13% of provisions (green). 59% are conditional (amber) - these are almost all for heritage properties, but also include flood-prone and bushfire-prone properties. The system filters these automatically. General provisions account for 28% (grey). Zone filtering is ineffective (2% blue). Development type filtering is effective (98.5% coverage across 20 specific use types).',
     totalProvisions: 1526,
     primaryLayer: 'condition',
     zoneFilterEffective: false,
+    devTypeFilterEffective: true,
+    availableDevTypes: [
+      { id: 'dwelling_house', name: 'Dwelling House', count: 57 },
+      { id: 'multi_dwelling_housing', name: 'Multi Dwelling Housing', count: 52 },
+      { id: 'residential_flat_building', name: 'Residential Flat Building', count: 49 },
+      { id: 'shop_top_housing', name: 'Shop Top Housing', count: 40 },
+      { id: 'food_and_drink_premises', name: 'Food & Drink Premises', count: 18 },
+      { id: 'take_away_food', name: 'Take Away Food', count: 18 },
+      { id: 'secondary_dwelling', name: 'Secondary Dwelling', count: 13 },
+      { id: 'neighbourhood_centre', name: 'Neighbourhood Centre', count: 12 },
+      { id: 'attached_dwelling', name: 'Attached Dwelling', count: 11 },
+      { id: 'manor_house', name: 'Manor House', count: 11 },
+      { id: 'neighbourhood_shop', name: 'Neighbourhood Shop', count: 11 },
+      { id: 'townhouse', name: 'Townhouse', count: 11 },
+      { id: 'business_park', name: 'Business Park', count: 5 },
+      { id: 'commercial_core', name: 'Commercial Core', count: 4 },
+      { id: 'shop', name: 'Shop', count: 4 },
+      { id: 'boarding_house', name: 'Boarding House', count: 3 },
+      { id: 'child_care_centre', name: 'Child Care Centre', count: 3 },
+      { id: 'student_accommodation', name: 'Student Accommodation', count: 3 },
+      { id: 'residential_care_facility', name: 'Residential Care Facility', count: 1 },
+      { id: 'seniors_housing', name: 'Seniors Housing', count: 1 },
+    ],
     topicFilterRequired: false,
     warningThreshold: 500,
     resultGuidance: {

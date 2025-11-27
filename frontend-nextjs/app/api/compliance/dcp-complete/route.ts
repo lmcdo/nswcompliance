@@ -928,7 +928,7 @@ export async function POST(request: NextRequest) {
             FROM dcp_general_requirements dgr
             LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
             WHERE dgr.lga = $1
-            AND dgr.applicable_zones && $2::text[]
+            AND (dgr.applicable_zones && $2::text[] OR array_length(dgr.applicable_zones, 1) IS NULL)
             AND dgr.former_council = $3
             ORDER BY dgr.id
           `;
@@ -963,7 +963,7 @@ export async function POST(request: NextRequest) {
             FROM dcp_general_requirements dgr
             LEFT JOIN dcp_general_provisions dgp ON dgp.id = dgr.source_provision_ids[1]
             WHERE dgr.lga = $1
-            AND dgr.applicable_zones && $2::text[]
+            AND (dgr.applicable_zones && $2::text[] OR array_length(dgr.applicable_zones, 1) IS NULL)
             AND $3 = ANY(dgr.development_types)
             AND dgr.former_council = $4
             ORDER BY dgr.id
