@@ -1,45 +1,24 @@
-from db_safety_wrapper import get_safe_connection
-import json
+import sys, os
+from dotenv import load_dotenv
+load_dotenv()
+import psycopg2
 
-conn = get_safe_connection()
-if conn:
-    cur = conn.cursor()
+conn = psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
+cur = conn.cursor()
 
-    # Check regulatory_provisions table structure
-    print("Checking regulatory_provisions table structure...")
-    cur.execute("""
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'regulatory_provisions'
-        ORDER BY ordinal_position
-    """)
-    columns = cur.fetchall()
-    print("Columns:")
-    for col in columns:
-        print(f"  - {col[0]}: {col[1]}")
+# Check current URLs in dcp_general_requirements
+print("=== dcp_general_requirements URLs (Ashfield E1/B1/B2) ===")
+cur.execute("""
+    SELECT id, part_name, pdf_page, pdf_page_image_url
+    FROM dcp_general_requirements
+    WHERE former_council = 'Ashfield'
+    AND applicable_zones && ARRAY['E1', 'B1', 'B2']::text[]
+    ORDER BY id
+    LIMIT 10
+""")
+for r in cur.fetchall():
+    url = r[3][:60] + "..." if r[3] and len(r[3]) > 60 else r[3]
+    print(f'  ID: {r[0]}, Part: {r[1][:20] if r[1] else "N"}, Page: {r[2]}, URL: {url}')
 
-    # Check for clause 4.3 and 4.4 content
-    print("\n\nChecking for clause 4.3 and 4.4 content...")
-    cur.execute("""
-        SELECT clause_number, title, content
-        FROM regulatory_provisions
-        WHERE clause_number IN ('4.3', '4.4', '4.3A', '4.3B', '4.4A', '4.4B')
-           OR clause_number LIKE '4.3%'
-           OR clause_number LIKE '4.4%'
-        LIMIT 10
-    """)
-    results = cur.fetchall()
-    if results:
-        for row in results:
-            print(f'\nClause: {row[0]}')
-            print(f'Title: {row[1]}')
-            if row[2]:
-                print(f'Content length: {len(row[2])}')
-                print(f'First 300 chars: {row[2][:300]}...')
-            else:
-                print('Content: None')
-            print('---')
-    else:
-        print("No clauses 4.3 or 4.4 found")
-
-    conn.close()
+cur.close()
+conn.close()

@@ -133,3 +133,221 @@ diagnose_*.py
 *_FINDINGS.md
 *_STATUS.md
 *_RESULTS.md
+
+# ===========================================
+# Working files - NOT for version control
+# ===========================================
+
+# BROAD: Ignore ALL root-level markdown except key docs
+/*.md
+!README.md
+!CLAUDE.md
+!PLANNING.md
+!DEPLOYMENT.md
+!TASK.md
+!CHANGELOG.md
+
+# BROAD: Ignore ALL root-level Python scripts except core
+/*.py
+!setup.py
+!test_workflow_quality.py
+
+# BROAD: Ignore ALL root-level JSON except package configs
+/*.json
+!package.json
+!tsconfig.json
+
+# Database backups (large binary files)
+backups/
+*.backup
+
+# Extraction working directories
+extraction_logs/
+extraction_outputs/
+extraction_temp/
+enrichment/
+extractors/
+
+# Temporary/working Python scripts
+add_*.py
+apply_*.py
+backup_*.py
+batch_*.py
+calculate_*.py
+categorize_*.py
+clean_*.py
+cleanup_*.py
+compare_*.py
+complete_*.py
+comprehensive_*.py
+configure_*.py
+consolidate_*.py
+copy_*.py
+correct_*.py
+count_*.py
+create_*.py
+debug_*.py
+deduplicate_*.py
+deep_*.py
+delete_*.py
+detect_*.py
+determine_*.py
+display_*.py
+download_*.py
+drop_*.py
+enrich_*.py
+examine_*.py
+execute_*.py
+explain_*.py
+explore_*.py
+export_*.py
+extract_*.py
+final_*.py
+force_*.py
+import_*.py
+map_*.py
+migrate_*.py
+
+# Working markdown documentation (not core docs)
+*_IMPLEMENTATION_PLAN.md
+*_STRATEGY.md
+*_GUIDE.md
+*_SUMMARY.md
+*_PLAN.md
+*_FIX.md
+*_ISSUE.md
+*_DEBUG.md
+*_AUDIT.md
+*_REPORT.md
+*_DIAGNOSIS.md
+*_QUICKSTART.md
+*_CHECKLIST.md
+*_REFERENCE.md
+*_EXPLAINED.md
+*_REALITY_CHECK.md
+
+# Temporary SQL files
+*.sql
+!migrations/*.sql
+
+# Working JSON files (not config)
+*_extracted.json
+*_provisions.json
+*_to_import.json
+*_test.json
+*_backup*.json
+*_mapping*.json
+correct_*.json
+
+# PowerShell scripts
+*.ps1
+
+# Temp/junk files
+0
+1
+0.75
++
+bullshit
+continue
+feature
+fix
+version
+nul
+
+# QGIS project files
+*.qgz
+*.qgs
+
+# Misc working files
+*.txt
+!requirements.txt
+corrupted_*.txt
+filter_*.txt
+dcp_*.txt
+
+# Claude local settings (keep .claude/prp and core docs)
+.claude/settings.local.json
+.claude/mcp.json
+.claude/instructions.md
+.claude/DQ*.md
+.claude/SYSTEMATIC*.md
+
+# GitHub workflows (if not ready)
+# .github/
+
+# Environment backups
+.env*.backup
+
+# Root-level junk files
+version
+
+# Frontend working files
+frontend-nextjs/.env.production
+frontend-nextjs/.env.vercel*
+frontend-nextjs/check_*.js
+frontend-nextjs/map_*.js
+frontend-nextjs/debug_*.js
+frontend-nextjs/appapicomplianceprecinct-requirementsroute.ts
+frontend-nextjs/libprovision-title-utils.ts
+
+# Root-level JS debug files
+debug_*.js
+
+# PRPs working directory
+PRPs/
+
+# Docs directory (large PDFs)
+docs/
+
+# PDF page images (stored in cloud, not git)
+frontend-nextjs/public/pdf-pages/
+**/pdf-pages/
+
+# Frontend gitignore (already have root one)
+frontend-nextjs/.gitignore
+
+# Test files
+test_*.js
+test_*.ts
+test_*.html
+run_*.js
+get_*.js
+
+# Batch files
+*.bat
+
+# PDF.js worker files (large)
+frontend-nextjs/public/pdf.worker.min.mjs
+frontend-nextjs/public/pdfjs/
+
+# Frontend misc
+frontend-nextjs/vercel.json
+
+# Scripts directory (working scripts)
+scripts/
+
+# PRP checkpoint working files
+prp_checkpoints/*.py
+
+# Tool directories
+poppler/
+schemas/
+test_update/
+
+# Single-word junk files
+i
+next
+of
+restart
+same
+session
+taking
+supabse
+
+# HTML table extracts
+table_*.html
+
+# Misc junk
+nsw-compliance-engine-frontend@*
+"version"
+'version'

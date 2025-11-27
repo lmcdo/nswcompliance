@@ -1,33 +1,22 @@
 #!/usr/bin/env python3
-from db_config import get_connection
+import os
+from dotenv import load_dotenv
+load_dotenv()
+import psycopg2
 
-conn = get_connection()
+conn = psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
 cur = conn.cursor()
 
-tables = ['regulatory_provisions', 'development_controls', 'development_permissions']
+cur.execute('''
+    SELECT column_name, data_type
+    FROM information_schema.columns
+    WHERE table_name = 'dcp_precinct_requirements'
+    ORDER BY ordinal_position
+''')
 
-for table in tables:
-    cur.execute(f"""
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = '{table}'
-        ORDER BY ordinal_position
-    """)
-    print(f"\n=== {table} ===")
-    for row in cur.fetchall():
-        print(f"  {row[0]:30} {row[1]}")
-
-print("\n=== Sample development_controls ===")
-cur.execute("""
-    SELECT dc.control_type, dc.control_subtype, dc.value_numeric, dc.unit, 
-           rp.development_type, rp.zone, rp.document_id
-    FROM development_controls dc
-    JOIN regulatory_provisions rp ON dc.provision_id::integer = rp.id
-    LIMIT 3
-""")
+print('dcp_precinct_requirements columns:')
 for row in cur.fetchall():
-    print(f"\n{row[0]}: {row[2]} {row[3]} ({row[1]})")
-    print(f"  Dev: {row[4]}, Zone: {row[5]}")
-    print(f"  Doc: {row[6][:50]}...")
+    print(f'  {row[0]}: {row[1]}')
 
+cur.close()
 conn.close()

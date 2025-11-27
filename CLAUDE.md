@@ -22,7 +22,7 @@ When working on **provision extraction, compliance API, filtering, or enrichment
   - See: `frontend-nextjs/app/assessment/README.md` for details
 - **Dashboard Alternative**: `/assessment/dashboard` (same functionality, different entry point)
 
-### DATABASE SAFETY - READ FIRST 
+### DATABASE SAFETY - READ FIRST
 - **NEVER connect to database without reading this section**
 - **ALWAYS run `./scripts/db_safety_check.sh` BEFORE any database work**
 - **ALWAYS create backup before ANY database operation**
@@ -30,6 +30,33 @@ When working on **provision extraction, compliance API, filtering, or enrichment
 - **ALWAYS use timeouts (30 seconds max)**
 - **ALWAYS use `db_safety_wrapper.py` for database connections**
 - **Database issues = STOP IMMEDIATELY**
+
+### CRITICAL: DUAL DATABASE ENVIRONMENT
+**The frontend and root project use DIFFERENT databases!**
+
+| Component | Database | Connection String |
+|-----------|----------|-------------------|
+| `frontend-nextjs/` | **LOCAL** | `postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning` |
+| Root `.env` scripts | **SUPABASE** | `SUPABASE_DB_URL` from `.env` |
+
+**When making database fixes:**
+1. **ALWAYS check which database the affected component uses**
+2. **Frontend issues = fix LOCAL database** (127.0.0.1)
+3. **Root script issues = fix SUPABASE database**
+4. **For deployment = sync BOTH databases**
+
+**Common mistake:** Running fix scripts with `SUPABASE_DB_URL` when the frontend uses LOCAL.
+
+**Quick check:**
+```python
+# To fix LOCAL (frontend):
+local_url = "postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning"
+conn = psycopg2.connect(local_url)
+
+# To fix SUPABASE (production):
+supa_url = os.getenv('SUPABASE_DB_URL')
+conn = psycopg2.connect(supa_url)
+```
 
 ### Memory Aid for Claude:
 1. Check CLAUDE.md database section FIRST

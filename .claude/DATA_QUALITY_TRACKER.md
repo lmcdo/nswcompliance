@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2025-11-24
-**Session:** ALL DQ ISSUES RESOLVED (DQ-1 through DQ-7)
+**Last Updated:** 2025-11-25
+**Session:** DQ-11 Heritage Sub-Categorization COMPLETE
 
 ---
 
@@ -18,6 +18,10 @@
 | DQ-5: Generic layer 78% | ✅ Expected | P3 |
 | DQ-6: Duplicates (2%) | ✅ Accepted | P3 |
 | DQ-7: Dev-type coverage | ✅ Fixed | P0 (was) |
+| DQ-8: DCP-ONLY scope | ✅ Documented | P1 |
+| DQ-9: DCP filter bug (IWLEP) | ✅ FIXED | P1 |
+| DQ-10: Council-specific UI/UX | ✅ DOCUMENTED | P1 |
+| DQ-11: Heritage sub-categorization | ✅ COMPLETE | P2 (was) |
 
 ---
 
@@ -29,6 +33,7 @@
 | 2 | `PROVISION_BASED_ARCHITECTURE_STRATEGY.md` | Full 8-part strategy |
 | 3 | `DEPLOYMENT.md` | How to sync local/Supabase |
 | 4 | **THIS FILE** | Current quality issues and fix progress |
+| 5 | `.claude/DQ11_HERITAGE_SUBCATEGORIZATION.md` | Heritage enrichment research & plan |
 
 ---
 
@@ -235,6 +240,22 @@ Key findings:
 
 **ALL DATA QUALITY ISSUES NOW RESOLVED**
 
+### DQ-8: DCP-ONLY Scope Clarification (2025-11-24)
+**Finding**: Previous DQ-7 enrichment incorrectly included SEPP/LEP provisions.
+**Scope**: This pipeline is DCP-ONLY. SEPP/LEP values come from Planning Portal API.
+
+**Actual DCP CDC Data:**
+| Council | Total DCP | CDC-eligible |
+|---------|-----------|--------------|
+| Marrickville | 1,051 | 79 (8%) |
+| Leichhardt | 2,989 | 43 (1%) |
+| Ashfield | 1,526 | 10 (1%) |
+| **TOTAL** | **5,566** | **132 (2%)** |
+
+**Reality**: Only 2% of DCP provisions are CDC-eligible (have numeric values).
+This is DATA REALITY - DCPs are mostly qualitative (objectives, character statements).
+The 132 DCP CDC provisions ARE correctly dev_type tagged.
+
 ### Professional Scenario Testing (2025-11-24)
 - **CDC scenarios**: All pass (272-274 provisions for residential, 86-88 for commercial/industrial)
 - **DA scenarios**: Return more results (7000+) - expected, DA includes objectives not just controls
@@ -242,7 +263,134 @@ Key findings:
   - Marrickville uses specific zones (R2, R3/R4 for Part 4)
   - Leichhardt/Ashfield use 'ALL' (zone not a determinant for those DCPs)
 
+### DQ-9: DCP Filter Bug - IWLEP Reference (2025-11-24)
+**Status:** ✅ FIXED
+**Priority:** P1 - HIGH (was)
+**Finding**: Wrong DCP filter was excluding valid DCP provisions.
+
+**Root Cause:**
+- WRONG filter: `NOT ILIKE '%LEP%'` - excluded DCP files with "IWLEP" in name
+- CORRECT filter: `NOT ILIKE '%Local_Environmental_Plan%'` - only excludes actual LEP docs
+
+**Impact:**
+- 2,330 Leichhardt DCP provisions were incorrectly filtered out
+- Leichhardt appeared to have "659" provisions but actually has **2,989**
+
+**Corrected Data:**
+| Council | generic | precinct | condition | use_specific | TOTAL |
+|---------|---------|----------|-----------|--------------|-------|
+| Marrickville | 230 (22%) | 359 (34%) | 315 (30%) | 147 (14%) | 1,051 |
+| **Leichhardt** | **2,309 (77%)** | 659 (22%) | 0 | 21 (1%) | **2,989** |
+| Ashfield | 422 (28%) | 197 (13%) | 907 (59%) | 0 | 1,526 |
+
+**Fix:** Updated filter in INDEX.md and test files to use correct pattern
+
+### DQ-10: Council-Specific UI/UX Strategy (2025-11-24)
+**Status:** ✅ DOCUMENTED
+**Priority:** P1 - HIGH
+
+**Finding**: Each council's DCP has a DIFFERENT compliance philosophy that UI should reflect.
+
+**Council DCP Structures:**
+| Council | Primary Layer | Filter Strategy |
+|---------|---------------|-----------------|
+| Marrickville | Balanced (precinct 34%, condition 30%, generic 22%) | Zone + Precinct + Topic |
+| Leichhardt | **Generic-heavy (77%)** | Topic is PRIMARY filter (reduces 2,211 → 30-85) |
+| Ashfield | Condition-heavy (59%) | Site conditions + Topic |
+
+**Test Results (dwelling_house filter with correct DCP filter):**
+| Council | dwelling_house count | Layer distribution |
+|---------|---------------------|-------------------|
+| Marrickville | 228 | generic 53%, use_specific 21%, precinct 15%, condition 11% |
+| **Leichhardt** | **2,211** | generic 98%, precinct 2% |
+| Ashfield | 394 | generic 99%, condition 1% |
+
+**UI/UX Implications:**
+1. **Leichhardt**: Has 2,211 dwelling_house provisions - MUST use topic filter to narrow
+   - Topic options: parking (85), building_form (81), landscaping (34), heritage (30)
+2. **Marrickville**: Zone filter effective, also use topic
+3. **Ashfield**: Site condition (heritage) is key filter, also use topic
+
+**For certifier workflow:**
+- Leichhardt CDC: 21 provisions (workable)
+- Marrickville CDC: 17 provisions (workable)
+- Topic filtering reduces DA queries by 80-95%
+
+### Comprehensive Professional Testing (2025-11-24)
+**Test Suite:** `test_comprehensive_professional.py`, `test_tailored_filters.py`
+**Results:** 9/13 scenarios PASS
+
+**Scenario Results:**
+| Scenario | Count | Expected | Status |
+|----------|-------|----------|--------|
+| Marrickville R2 Dwelling DA | 193 | 50+ | PASS |
+| Marrickville R2 Dwelling CDC | 17 | 5+ | PASS |
+| Marrickville R3 Multi-Dwelling DA | 109 | 30+ | PASS |
+| Marrickville B2 Retail CDC | 25 | 3+ | PASS |
+| Leichhardt R2 Dwelling DA | 39 | 100+ | FAIL (data gap) |
+| Leichhardt R2 Dwelling CDC | 2 | 5+ | FAIL (data gap) |
+| Ashfield R2 Dwelling DA | 390 | 50+ | PASS |
+| Ashfield Dual Occ DA | 397 | 30+ | PASS |
+| ALL COUNCILS R2 Dwelling DA | 649 | 200+ | PASS |
+
+**Key Insights:**
+1. **Marrickville**: Full 4-layer support, zone filtering effective (34% zone-specific)
+2. **Leichhardt**: Generic-heavy (77% generic, 2,989 total) - topic filter CRITICAL
+3. **Ashfield**: Condition-heavy (59% condition layer), low CDC is data reality
+
+**Filter Effectiveness by Type:**
+- **Dev_type**: Effective for ALL councils (reduces to 2-30% of total)
+- **Topic**: Very effective (2-8% per topic, 80-95% reduction)
+- **Zone**: Only for Marrickville (34% zone-specific)
+
+### Session Log: Council-Specific UI Implementation (2025-11-24)
+
+**Completed:**
+1. ✅ Fixed DCP filter bug (`NOT ILIKE '%LEP%'` was wrong - excluded IWLEP-referenced files)
+2. ✅ Correct filter: `NOT ILIKE '%Local_Environmental_Plan%'`
+3. ✅ Discovered Leichhardt has 2,989 provisions (not 659) - was filter bug, not data gap
+4. ✅ Implemented council-specific UI in `ProvisionsByTopic.tsx`:
+   - Topic filter buttons with council-specific suggested topics
+   - Warning for Leichhardt when no topic selected
+   - Professional priority ordering of topics
+5. ✅ Created `frontend-nextjs/lib/council-config.ts`
+6. ✅ Created `PROFESSIONAL_USER_GUIDE.md` for trial users
+7. ✅ Created git tag `v1.0-pre-council-ux` on main before merge
+8. ✅ Pushed tag to remote
+
 ### Next Steps:
-1. Sync to Supabase: `python scripts/sync_v2_to_supabase.py`
-2. Deploy to Vercel
-3. Test production API
+1. ✅ ~~Fix DQ-9~~ (was filter bug, not data gap - FIXED)
+2. ✅ ~~Implement council-aware filtering~~ (DONE)
+3. Merge to main and deploy to Vercel
+4. Test production with professional users
+
+### DQ-11: Heritage Sub-Categorization (2025-11-25)
+**Status:** ✅ COMPLETE
+**Priority:** P2 (was)
+**Scope:** Ashfield Chapter E1 heritage provisions (907 total)
+
+**Problem:** 907 heritage provisions shown as undifferentiated list. No way to find relevant controls.
+
+**Solution Applied:** LLM categorization using OpenAI gpt-4o-mini
+
+**Final Results (verified in database):**
+| Type | Count | Description |
+|------|-------|-------------|
+| control | 163 | Actionable requirements with C markers or imperative verbs |
+| character | 422 | HCA-specific descriptions and significance statements |
+| descriptive | 322 | Historical narratives, style definitions, background |
+
+**Element Tagging (controls):**
+- fence: 39, materials: 37, roof: 29, verandah: 21, scale: 16
+- car_parking: 15, window: 14, facade: 14, demolition: 13, chimney: 12
+
+**HCA Tagging:**
+- ashfield_heights: 142, summer_hill: 49, queen_street: 17, victoria_square: 16
+- murrell: 11, farleigh: 7, tintern: 6, moonagee: 6, holwood: 6
+
+**Schema columns added:**
+- `v2_heritage_type` (TEXT)
+- `v2_heritage_element` (TEXT[])
+- `v2_heritage_hca` (TEXT)
+
+**Fix Script:** `scripts/fixes/DQ11_heritage_categorization.py`

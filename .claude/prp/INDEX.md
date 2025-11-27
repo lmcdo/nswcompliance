@@ -44,7 +44,34 @@ USER ENTERS ADDRESS
 └─────────────────────────────────┘
 ```
 
-**Note:** SEPP/LEP numeric values (FSR, height, etc.) come from Planning Portal API directly. DCP provisions are the focus of this pipeline.
+**CRITICAL SCOPE - DCP ONLY:**
+- SEPP/LEP values come from Planning Portal API directly - NOT in scope for this pipeline
+- **DCP provisions ONLY** - All enrichment, filtering, and testing must exclude SEPP/LEP
+- **CORRECT Filter:** `document_id NOT ILIKE '%State_Environmental_Planning_Policy%' AND document_id NOT ILIKE '%Local_Environmental_Plan%'`
+- **WRONG Filter:** `NOT ILIKE '%LEP%'` - incorrectly excludes DCP files with "IWLEP" reference
+
+**COUNCIL DCP STRUCTURES (2025-11-24):**
+Each council has a DIFFERENT compliance philosophy:
+
+| Council | Total | Primary Layer | Secondary | Tertiary |
+|---------|-------|---------------|-----------|----------|
+| Marrickville | 1,051 | precinct (34%) | condition (30%) | generic (22%) |
+| **Leichhardt** | **2,989** | **generic (77%)** | precinct (22%) | - |
+| Ashfield | 1,526 | condition (59%) | generic (28%) | precinct (13%) |
+
+**UI/UX Implications:**
+- **Marrickville**: Balanced - show zone/precinct/condition filters prominently
+- **Leichhardt**: Generic-heavy - generic provisions always apply; precinct is secondary
+- **Ashfield**: Condition-heavy - site conditions (heritage) drive primary filtering
+
+**IMPLEMENTED (2025-11-24):**
+- `frontend-nextjs/lib/council-config.ts` - Council-specific configuration
+- `frontend-nextjs/components/compliance/ProvisionsByTopic.tsx` - Council-aware UI with:
+  - Topic filter buttons (council-specific suggested topics)
+  - Warning for Leichhardt when no topic selected
+  - Warning when results exceed threshold
+  - Professional priority ordering of topics
+- `frontend-nextjs/app/assessment/page.tsx` - Passes council prop
 
 ---
 
@@ -319,6 +346,14 @@ This ensures continuity across sessions and prevents duplicate work.
 - Zone handling: 'ALL' = wildcard (correct for Leichhardt/Ashfield structure)
 - Next: `python scripts/sync_v2_to_supabase.py` then deploy
 
+### DQ-11: Heritage Sub-Categorization (Ashfield) - COMPLETE
+**Status:** ✅ COMPLETE (2025-11-25)
+**Problem:** 907 heritage provisions undifferentiated
+**Solution:** LLM categorization via OpenAI gpt-4o-mini
+**Results:** control (163), character (422), descriptive (322)
+**New columns:** `v2_heritage_type`, `v2_heritage_element[]`, `v2_heritage_hca`
+**Script:** `scripts/fixes/DQ11_heritage_categorization.py`
+
 ---
 
-*Last updated: 2025-11-24 (DQ-7 dev-type enrichment complete - all 13 dev_types now have adequate coverage)*
+*Last updated: 2025-11-25 (DQ-11 heritage sub-categorization complete)*

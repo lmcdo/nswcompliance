@@ -1,44 +1,350 @@
 # Provision-Based Architecture Strategy
 
 ## Document Purpose
-This document consolidates the strategic thinking for refactoring the compliance engine from a "requirements extraction" approach to a "provision enrichment" approach. This is the reference for implementation.
+
+This document defines the architecture for the compliance engine. It is structured by importance: **the runtime flow comes first** because everything else exists to support it.
 
 ---
 
-## Part 1: The Core Problem
+## Part 1: Runtime Architecture (THE CORE)
 
-### Current Approach (Requirements-Based)
+This is what the system does when a user enters an address.
+
+### The Complete Flow
 
 ```
-PDF → Provisions → LLM "extracts requirements" → dcp_*_requirements tables
+┌─────────────────────────────────────────────────────────────────┐
+│                    USER ENTERS ADDRESS                          │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              PHASE A: PLANNING PORTAL API                       │
+│                                                                 │
+│  Automatic call to NSW Planning Portal returns:                 │
+│                                                                 │
+│  Location:           zone, lga, coordinates                     │
+│  Numeric controls:   maxHeight, maxFsr, minLotSize              │
+│  Site conditions:    heritage, floodProne, bushfireProne        │
+│  Strategic overlays: todPrecinct, hiaArea                       │
+│                                                                 │
+│  Code: frontend-nextjs/lib/nsw-planning-portal.ts               │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              PHASE B: PRECINCT DETECTION                        │
+│                                                                 │
+│  Spatial query using coordinates → precinct_id                  │
+│                                                                 │
+│  Code: frontend-nextjs/lib/precinct-service.ts                  │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              PHASE C: AUTOMATIC FILTERING (4-Layer Model)       │
+│                                                                 │
+│  Planning Portal data drives database query using 4 layers:     │
+│                                                                 │
+│  LAYER 1 - Generic (Part 2/Section 1): ALWAYS include           │
+│    → v2_dcp_layer = 'generic'                                   │
+│                                                                 │
+│  LAYER 2 - Use-specific (Part 4/Section 3): Zone-filtered       │
+│    → v2_dcp_layer = 'use_specific'                              │
+│    → zone = "R2" filters to Part 4.1 (low density)              │
+│                                                                 │
+│  LAYER 3 - Condition (Part 8/heritage markers): IF applicable   │
+│    → heritage = false → EXCLUDE heritage-required               │
+│    → floodProne = false → EXCLUDE flood-required                │
+│    → bushfireProne = false → EXCLUDE bushfire-required          │
+│                                                                 │
+│  LAYER 4 - Precinct (Part 9/Section 2): Location-filtered       │
+│    → precinct = "X" → Include precinct X provisions             │
+│                                                                 │
+│  Result: ~350-400 provisions (no user input yet)                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              PHASE D: USER SELECTION                            │
+│                                                                 │
+│  Development Type dropdown:                                     │
+│    Residential > Alterations > Rear addition                    │
+│    → Filter: v2_applicable_dev_types contains 'rear_addition'   │
+│                                                                 │
+│  Assessment Type dropdown:                                      │
+│    ○ CDC  ○ DA  ○ Exempt                                        │
+│    → CDC: Only quantitative controls                            │
+│    → DA: All applicable provisions                              │
+│                                                                 │
+│  Result: ~50-90 provisions                                      │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              PHASE E: DISPLAY                                   │
+│                                                                 │
+│  Provisions grouped by category, showing:                       │
+│  • Original provision text (not LLM summary)                    │
+│  • Extracted numeric values                                     │
+│  • PDF page link                                                │
+│  • Precinct override/supplement indicators                      │
+│                                                                 │
+│  + Keyword search within filtered results                       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Planning Portal Fields Used
+
+| Portal Field | Type | Filter Logic (4-Layer Model) |
+|--------------|------|------------------------------|
+| `lga` | string | Which council's DCP to query |
+| `zone` | string | Layer 2 only: Filter use-specific provisions (Part 4) |
+| `heritage` | boolean | Layer 3: If false, exclude heritage-required provisions |
+| `floodProne` | boolean | Layer 3: If false, exclude flood-required provisions |
+| `bushfireProne` | boolean | Layer 3: If false, exclude bushfire-required provisions |
+| `coordinates` | {x,y} | Layer 4: Spatial lookup for precinct |
+| `maxHeight` | number | Display; future: auto-check compliance |
+| `maxFsr` | number | Display; future: auto-check compliance |
+
+**Note:** Layer 1 (Generic) provisions are ALWAYS included regardless of zone.
+
+### User Selection Options
+
+**Development Type (hierarchical dropdown):**
+```
+▼ Residential
+  ├─ New dwelling house
+  ├─ Alterations & additions
+  │   ├─ Ground floor addition
+  │   ├─ First floor addition
+  │   └─ Rear addition
+  ├─ Secondary dwelling (granny flat)
+  ├─ Dual occupancy - attached
+  ├─ Dual occupancy - detached
+  └─ Multi-dwelling housing
+▼ Commercial
+  ├─ Shop fit-out
+  ├─ Change of use
+  └─ New commercial building
+```
+
+**Assessment Type (radio):**
+- CDC (Complying Development) → Only quantitative controls
+- DA (Development Application) → All provisions
+- Exempt Development → Exempt thresholds only
+- State Significant → State-level provisions
+
+### Provision Count Cascade
+
+```
+48,374 total provisions in database
+
+Phase A-C (Automatic - Planning Portal):
+├─ LGA filter (Inner West):     ~2,000
+├─ Zone filter (R2):            ~800
+├─ Precinct (general + match):  ~850
+├─ Heritage = false:            ~836 (-14)
+├─ Flood = false:               ~820 (-16)
+└─ Bushfire = false:            ~812 (-8)
+
+Phase D (User selection):
+├─ Dev type (rear_addition):    ~200
+└─ Assessment (CDC):            ~90
+
+FINAL: ~90 provisions (~45 quantitative)
+```
+
+### API Design
+
+```typescript
+// POST /api/provisions/for-property
+{
+  "address": "180 Addison Road, Marrickville NSW 2204",
+  "development_type": "dwelling_addition_rear",  // optional
+  "assessment_type": "CDC"                       // optional
+}
+
+// Response
+{
+  "property": {
+    "address": "180 Addison Road, Marrickville NSW 2204",
+    "zone": "R2",
+    "precinct": "Lewisham North",
+    "heritage": false,
+    "flood": false,
+    "bushfire": false
+  },
+  "filters_applied": {
+    "automatic": ["lga=Inner West", "zone=R2", "heritage=false", ...],
+    "user": ["development_type=rear_addition", "assessment_type=CDC"]
+  },
+  "provisions": {
+    "total": 87,
+    "quantitative": 45,
+    "qualitative": 42
+  },
+  "categories": [
+    {
+      "name": "Setbacks",
+      "count": 6,
+      "provisions": [...]
+    }
+  ]
+}
+```
+
+---
+
+## Part 2: Data Model
+
+The provision enrichment must support the runtime flow in Part 1.
+
+### Required Fields on regulatory_provisions
+
+```sql
+-- Core identification
+id                          -- existing
+provision_text              -- existing (THE PRIMARY DISPLAY TEXT)
+document_id                 -- existing
+page_number                 -- existing
+pdf_page_image_url          -- existing
+
+-- NEW: Type classification
+v2_provision_type           -- control/objective/definition/note/procedural
+
+-- NEW: DCP Layer (4-layer model from web research)
+v2_dcp_layer                -- 'generic' | 'use_specific' | 'condition' | 'precinct'
+                            -- generic = Part 2 (Mville), Section 1 (Leich), always apply
+                            -- use_specific = Part 4 (Mville), Section 3 (Leich), zone-filtered
+                            -- condition = Part 8 (heritage), filtered by site condition
+                            -- precinct = Part 9/Section 2, location-filtered
+
+-- NEW: DCP Part/Section (source location)
+v2_dcp_part                 -- e.g., 'Part 2.6', 'Part C Section 1', 'Chapter D'
+
+-- NEW: Topic for UI grouping
+v2_topic                    -- 'setbacks' | 'parking' | 'solar' | 'privacy' | 'landscaping' | etc.
+
+-- NEW: Categories for UI sub-grouping
+v2_categories               -- text[] e.g., ['setback_front', 'setback']
+
+-- NEW: Scope (DEPRECATED - use v2_dcp_layer instead)
+v2_scope                    -- 'general' | 'precinct' (kept for backwards compat)
+v2_precinct_id              -- if layer = 'precinct'
+
+-- NEW: Numeric extraction
+v2_has_numeric_value        -- boolean
+v2_extracted_values         -- jsonb {value_min, value_max, unit}
+
+-- NEW: Applicability (maps to Planning Portal)
+v2_applicable_zones         -- text[] e.g., ['R2', 'R3'] or ['ALL']
+v2_applicable_dev_types     -- text[] e.g., ['dwelling_addition_rear']
+
+-- NEW: Site condition requirements (KEY FOR FILTERING)
+v2_site_condition_required  -- 'heritage' | 'flood' | 'bushfire' | null
+                            -- If 'heritage': only show when property IS heritage
+                            -- If null: always show (general provision)
+
+-- NEW: Precinct relationships
+v2_relationship_type        -- 'override' | 'supplement' | 'standalone'
+v2_overrides_provision_id   -- FK to general provision this overrides
+
+-- NEW: Conditionals
+v2_has_conditionals         -- boolean
+v2_conditional_summary      -- text summary of conditions
+
+-- NEW: Processing metadata
+v2_enrichment_version       -- version string
+v2_enriched_at              -- timestamp
+```
+
+### Mapping: Portal Fields → Provision Fields (4-Layer Model)
+
+| Portal Returns | Layer | Provision Field | Query Logic |
+|----------------|-------|-----------------|-------------|
+| `lga: "Inner West"` | All | `document_id` | Filter by council DCP |
+| (always) | 1-Generic | `v2_dcp_layer` | `v2_dcp_layer = 'generic'` (ALWAYS include) |
+| `zone: "R2"` | 2-Use | `v2_dcp_layer`, `v2_applicable_zones` | `v2_dcp_layer = 'use_specific' AND 'R2' = ANY(v2_applicable_zones)` |
+| `heritage: false` | 3-Condition | `v2_site_condition_required` | `v2_site_condition_required != 'heritage'` |
+| `floodProne: false` | 3-Condition | `v2_site_condition_required` | `v2_site_condition_required != 'flood'` |
+| `bushfireProne: false` | 3-Condition | `v2_site_condition_required` | `v2_site_condition_required != 'bushfire'` |
+| `precinct: "X"` | 4-Precinct | `v2_dcp_layer`, `v2_precinct_id` | `v2_dcp_layer = 'precinct' AND v2_precinct_id = 'X'` |
+| (user selects) | All | `v2_applicable_dev_types` | `dev_type = ANY(v2_applicable_dev_types)` |
+
+### Site Condition Logic
+
+This is critical for filtering:
+
+```sql
+-- Provision: "Heritage items must maintain original facade"
+-- v2_site_condition_required = 'heritage'
+-- This provision ONLY appears if property IS heritage
+
+-- Provision: "Setback minimum 6m"
+-- v2_site_condition_required = NULL
+-- This provision appears for ALL properties (general)
+
+-- Query when heritage = false:
+WHERE (v2_site_condition_required IS NULL
+       OR v2_site_condition_required != 'heritage')
+```
+
+### Development Type Granularity
+
+**Problem:** Coarse tagging like `['dwelling']` returns too many provisions.
+
+**Solution:** Granular sub-types:
+
+```
+dwelling                    → TOO BROAD
+dwelling_new                → New dwelling house
+dwelling_addition           → Any addition
+dwelling_addition_ground    → Ground floor addition
+dwelling_addition_first     → First floor addition
+dwelling_addition_rear      → Rear addition
+dwelling_secondary          → Granny flat
+dual_occupancy              → Either type
+dual_occupancy_attached     → Attached
+dual_occupancy_detached     → Detached
+```
+
+Provisions tagged with `dwelling_addition_rear` only match when user selects "rear addition".
+
+---
+
+## Part 3: Why Provision-Based
+
+### The Problem with Current Approach
+
+```
+Current: PDF → Provisions → LLM "extracts requirements" → dcp_*_requirements
 ```
 
 **What happens:**
-- Original DCP text sits in `regulatory_provisions` table
-- LLM reads provisions and creates NEW "requirement" records in `dcp_general_requirements` and `dcp_precinct_requirements`
-- UI displays the LLM's summary text
-- Original text stored as `verbatim_source_text` but treated as secondary
-- Page linkage is often broken
+- Original DCP text in `regulatory_provisions` table
+- LLM creates NEW "requirement" records with summary text
+- UI displays LLM summary, not original
+- Page linkage often broken
 
-**Example of the problem:**
+**Example:**
 
-Original DCP Text:
+Original DCP:
 ```
 "C4 Buildings must be setback a minimum of 6 metres from the front boundary
-to maintain the established streetscape character of the area and provide
-adequate separation from the public domain."
+to maintain the established streetscape character of the area."
 ```
 
-LLM Output:
+LLM output:
 ```
 "Minimum front setback: 6m"
 ```
 
-We're throwing away the actual regulatory text and replacing it with an LLM summary. This is backwards.
+This throws away the actual regulatory text.
 
-### Why This Matters for Professionals
+### Why This Fails Professionals
 
-A professional submitting a DA needs to write:
+A professional writing a DA submission needs:
 
 > "The proposed development complies with Control C4 of Ashfield DCP Chapter D
 > which states that 'Buildings must be setback a minimum of 6 metres from the
@@ -46,1405 +352,336 @@ A professional submitting a DA needs to write:
 
 They cannot cite "Minimum front setback: 6m" - that's not what the DCP says.
 
-### Optimal Approach (Provision-Based)
+### The Optimal Approach
 
 ```
-PDF → Provisions → LLM CATEGORIZES/ENRICHES provisions → Enriched provisions
+Optimal: PDF → Provisions → LLM ENRICHES provisions → Same provisions with metadata
 ```
 
 **The provision IS the requirement. Don't create synthetic text.**
 
----
+The LLM adds metadata (type, categories, values) to existing provisions. It does not create new text.
 
-## Part 2: What Professionals Actually Need
+### Provision Types
 
-### The Professional Workflow
-
-1. Enter address → get zone, precinct, overlays
-2. Filter by category (setbacks, heights, parking, etc.)
-3. See ACTUAL provision text with:
-   - Category tags
-   - Extracted numeric values
-   - Applicable zones/dev types
-   - Link to PDF page
-4. Click to view source PDF for citation
-
-### User Needs Analysis
-
-**Finding relevant controls:**
-- Filter by category (setbacks, heights, etc.)
-- Current approach works for this
-
-**Citing in DA submissions:**
-- Need original provision text, not LLM summary
-- Current approach fails this
-
-**Verifying numeric compliance:**
-- Need extracted values (6m, 9m, 0.5:1)
-- Current approach works for this
-
-**Checking source PDF:**
-- Need direct, correct page link
-- Current approach often broken
-
-**Understanding conditional applicability:**
-- Need structured conditionals
-- Current approach sometimes captures this
+| Type | Pattern | Example |
+|------|---------|---------|
+| CONTROL | "must", "shall", "minimum" | "Buildings must be setback minimum 6m" |
+| OBJECTIVE | "To ensure...", "Purpose:" | "To maintain streetscape character" |
+| PERFORMANCE_CRITERIA | "PC1:", "must achieve" | "Must achieve adequate privacy" |
+| DEFINITION | "means", "includes" | "Front setback means the distance..." |
+| NOTE | "Note:", "Except where" | "Does not apply to heritage items" |
+| PROCEDURAL | "Applications must", "Submit" | "Applications must include site plan" |
 
 ---
 
-## Part 3: Provision Types to Classify
+## Part 4: Enrichment Pipeline
 
-### Type Taxonomy
+How to prepare provisions to support the runtime flow.
 
-**CONTROL** - The actual rules
-- Pattern: "must", "shall", "minimum", "maximum", "required"
-- Example: "Buildings must be setback minimum 6m"
-- Primary compliance requirements. Most important for users.
+### Tiered Processing (97% API Cost Reduction)
 
-**OBJECTIVE** - The "why" behind the controls
-- Pattern: "To ensure...", "To protect...", "Purpose:", "O1:", "O2:"
-- Example: "To maintain the established streetscape character"
-- Useful context. Helps when seeking variations.
-
-**PERFORMANCE CRITERIA** - Outcome-based alternatives
-- Pattern: "PC1:", "Performance Criteria:", "must achieve"
-- Example: "Development must achieve adequate visual privacy"
-- Important for merit-based assessments.
-
-**DEFINITION** - What terms mean
-- Pattern: "means", "includes", "is defined as"
-- Example: "Front setback means the distance from..."
-- Reference material for interpretation.
-
-**NOTE/EXCEPTION** - Conditional applicability
-- Pattern: "Note:", "Except where", "Does not apply to"
-- Example: "Note: This control does not apply to heritage items"
-- Critical for determining what actually applies.
-
----
-
-## Part 4: The Enrichment Data Model
-
-### What LLM Should Output
-
-Instead of creating new requirement text, the LLM categorizes and enriches existing provisions:
-
-```json
-{
-  "provision_id": 87445,
-  "original_text": "C4 Buildings must be setback minimum 6m from front boundary...",
-
-  "provision_type": "control",
-
-  "categories": ["setback_front"],
-  "subcategory": "minimum",
-
-  "values": {
-    "value_min": 6,
-    "value_max": null,
-    "unit": "m"
-  },
-
-  "applicable_zones": ["R2", "R3"],
-  "development_types": ["dwelling_house", "dual_occupancy"],
-
-  "has_conditionals": true,
-  "conditional_logic": "unless heritage item",
-
-  "page_number": 170,
-  "pdf_url": "/pdf-pages/ashfield-chapter-d/page_170.png"
-}
-```
-
-### Database Schema Changes
-
-For EVERY provision (from rules-based extraction):
-```
-provision_id
-provision_text (original - PRIMARY DISPLAY)
-document_id
-page_number
-pdf_page_image_url
-
-has_numeric_value: boolean
-extracted_numbers: jsonb {value: 6, unit: "m", type: "minimum"}
-explicit_zones: text[] (if stated in text)
-explicit_dev_types: text[] (if stated in text)
-```
-
-For CLASSIFIED provisions (from batch LLM):
-```
-provision_type: control/objective/definition/note/procedural
-categories: text[]
-```
-
-For INHERITED applicability (from document structure):
-```
-inherited_zones: text[]
-inherited_dev_types: text[]
-precinct_id: text (if precinct-specific)
-scope: "general" | "precinct"
-```
-
-For DEEPLY ENRICHED provisions (selective LLM):
-```
-conditional_logic: text
-cross_references: text[]
-applicability_notes: text
-```
-
----
-
-## Part 5: Tiered Extraction Strategy (Volume Efficiency)
-
-### The Volume Problem
-
-Ashfield alone has:
-- Chapter D (Precincts): 287 provisions
-- Chapter E1 (Heritage): 1,126 provisions
-- Chapter F (Development): 73 provisions
-- Other chapters: 500+ provisions
-
-Marrickville has 1,000+ provisions. Leichhardt similar.
-
-Processing every provision with full LLM enrichment is expensive, slow, and often unnecessary.
-
-### The Solution: Tiered Processing
-
-**Phase 1: Rules-Based Numeric Extraction (Fast, Free)**
-
-Before any LLM involvement, scan all provisions with regex patterns:
+**Phase 1: Regex Numeric Extraction (Free, Instant)**
 
 ```python
 patterns = [
-    r"minimum\s+(\d+\.?\d*)\s*(m|metres|meters)",
-    r"maximum\s+(\d+\.?\d*)\s*(m|metres|meters|storeys)",
-    r"at least\s+(\d+\.?\d*)\s*(m|%|sqm)",
-    r"no more than\s+(\d+\.?\d*)",
+    r"minimum\s+(\d+\.?\d*)\s*(m|metres)",
+    r"maximum\s+(\d+\.?\d*)\s*(m|storeys)",
     r"setback of\s+(\d+\.?\d*)\s*m",
     r"FSR\s+(\d+\.?\d*):1",
     r"height limit\s+(\d+\.?\d*)\s*m"
 ]
 ```
 
-This extracts 80% of numeric values without any LLM cost.
+Result: 80% of numeric values extracted, 0 API calls.
 
-Result: Every provision gets `has_numeric_value` flag and `extracted_values` if found.
+**Phase 2: Type Classification (Batch LLM)**
 
-**Phase 2: Provision Type Classification (Batch LLM)**
-
-Send provisions in large batches (50-100) to LLM with a simple task:
-
+Send 50-100 provisions per batch:
 ```
-For each provision, classify as:
-CONTROL | OBJECTIVE | PERFORMANCE_CRITERIA | DEFINITION | NOTE | PROCEDURAL
+Classify each as: CONTROL | OBJECTIVE | DEFINITION | NOTE | PROCEDURAL
 ```
 
-This is fast because it's simple classification, not extraction.
+Simple classification = fast, cheap.
 
-Result: Every provision gets a `provision_type`.
+**Phase 3: Applicability Tagging (Rules + LLM)**
 
-**Phase 3: Zone/DevType Tagging (Rules + LLM Hybrid)**
+Many provisions state applicability explicitly:
+- "This applies to R2 zones" → regex extracts
+- "For dwelling houses" → regex extracts
 
-Many provisions explicitly state applicability:
-- "This applies to R2 and R3 zones" - regex catches this
-- "For dwelling houses and dual occupancies" - regex catches this
+Inherit from document structure:
+- "Chapter F1: Dwelling Houses" → all provisions inherit `dwelling_house`
 
-For provisions without explicit tagging, inherit from document structure:
-- "Part 4.1: Low Density Residential" → applies to R2, dwelling_house
-- "Chapter D8: Summer Hill" → applies to Summer Hill precinct
+LLM only for ambiguous cases.
 
-Only use LLM for ambiguous cases.
+**Phase 4: Site Condition Tagging**
 
-**Phase 4: Deep Enrichment (Selective LLM)**
+Identify provisions that require specific site conditions:
+- Contains "heritage item" → `v2_site_condition_required = 'heritage'`
+- Contains "flood prone" → `v2_site_condition_required = 'flood'`
+- Contains "bushfire prone" → `v2_site_condition_required = 'bushfire'`
 
-Only fully enrich provisions that are:
+**Phase 5: Deep Enrichment (Selective)**
+
+Only for provisions that are:
 - Type = CONTROL
-- AND have conditionals OR cross-references OR complex applicability
+- AND have conditionals OR cross-references
 
-This is maybe 20% of provisions. The other 80% don't need deep analysis.
+This is ~20% of provisions.
 
-### The Efficiency Math
+**Phase 6: Layer + Topic Tagging (NEW - from web research)**
 
-Current approach:
-- 2,000 provisions × full LLM enrichment = 2,000 API calls
+Assign each provision to the 4-layer model based on document_id:
 
-Smart approach:
-- Phase 1 (regex): 2,000 provisions, 0 API calls, instant
-- Phase 2 (type classification): 2,000 provisions in 40 batches = 40 API calls
-- Phase 3 (zone tagging): 80% rules-based, 20% LLM = ~10 API calls
-- Phase 4 (deep enrichment): 400 provisions (20%) in 8 batches = 8 API calls
+```python
+# Marrickville
+"Part 2" → v2_dcp_layer = 'generic', v2_topic from section (2.6→privacy, 2.7→solar)
+"Part 4" → v2_dcp_layer = 'use_specific'
+"Part 8" → v2_dcp_layer = 'condition', v2_site_condition = 'heritage'
+"Part 9" → v2_dcp_layer = 'precinct'
 
-Total: ~60 API calls vs 2,000. That's 97% reduction.
+# Leichhardt
+"Section 1" → v2_dcp_layer = 'generic', v2_topic from C marker
+"Section 2" → v2_dcp_layer = 'precinct'
+"Section 3" → v2_dcp_layer = 'use_specific'
+"Part D/E" → v2_dcp_layer = 'generic', v2_topic = 'energy'/'water'
+
+# Ashfield
+"Chapter F" → v2_dcp_layer = 'generic' (with marker-based display rules)
+"Chapter D" → v2_dcp_layer = 'precinct'
+"Chapter E1" → v2_dcp_layer = 'condition', v2_site_condition = 'heritage'
+```
+
+Extract topic from:
+- Section number (Marrickville: 2.6 = privacy)
+- C marker (Leichhardt: C3 = parking)
+- Keyword matching (fallback)
+
+### Cost Comparison
+
+| Approach | API Calls |
+|----------|-----------|
+| Full LLM on all provisions | 2,000 |
+| Tiered approach | ~60 |
+| **Reduction** | **97%** |
 
 ---
 
-## Part 6: Precinct Integration
+## Part 5: Precinct Integration (4-Layer Model)
 
-### The Regulatory Hierarchy
+### The Hierarchy (Revised)
 
 ```
-SEPP (State)
-    ↓ overrides
-LEP (Local Environmental Plan)
-    ↓ overrides
-DCP General Provisions
-    ↓ overrides (if precinct-specific control exists)
-DCP Precinct Provisions
+SEPP (State) → LEP → DCP Layer 1 (Generic) → DCP Layer 2 (Use) → DCP Layer 3 (Condition) → DCP Layer 4 (Precinct)
 ```
 
-If property is in Summer Hill precinct:
-- Summer Hill provisions apply
-- General provisions ALSO apply UNLESS Summer Hill has a specific control on that topic
-- Where Summer Hill is silent, general provisions fill the gap
+**How layers combine for a property in Summer Hill precinct, R2 zone, non-heritage:**
 
-If property is NOT in any precinct:
-- Only general provisions apply
+| Layer | Provisions | Action |
+|-------|------------|--------|
+| 1-Generic | Part 2 (privacy, solar, parking, etc.) | ALWAYS include |
+| 2-Use | Part 4.1 (R2 low density) | Include (zone match) |
+| 3-Condition | Part 8 (heritage) | EXCLUDE (property not heritage) |
+| 4-Precinct | Part 9.X (Summer Hill) | Include (location match) |
+
+All 4 layers apply simultaneously - they don't override each other like SEPP/LEP.
+Precinct provisions may override/supplement specific General controls (see below).
 
 ### Relationship Types
 
 **Override:**
-General: "Front setback minimum 6m"
-Precinct: "Front setback minimum 4m for properties fronting Smith Street"
-→ For Smith Street properties in Summer Hill, 4m applies, not 6m.
+- General: "Front setback minimum 6m"
+- Precinct: "Front setback minimum 4m for Smith Street"
+- Result: 4m applies to Smith Street properties, not 6m
 
 **Supplement:**
-General: "Landscaping must cover 30% of site"
-Precinct: "In addition, corner sites must provide street tree planting"
-→ Both apply. Precinct adds to general requirement.
+- General: "Landscaping 30% of site"
+- Precinct: "Corner sites must also provide street tree"
+- Result: Both apply
 
 **Standalone:**
-Precinct: "Development must maintain views to the railway heritage corridor"
-→ No general equivalent. Unique to precinct.
+- Precinct: "Maintain views to railway heritage corridor"
+- Result: No general equivalent, unique to precinct
 
-### Data Model for Precinct Provisions
+### Detection Patterns
 
-```
-provision_id: 456
-provision_text: "Front setback minimum 4m for properties fronting Smith Street"
-scope: "precinct"
-precinct_id: "summer_hill"
-category: "setback_front"
-applicable_zones: ["B2"]
-
-relationship_type: "override" | "supplement" | "standalone"
-overrides_provision_id: 123  (links to the general provision it replaces)
-override_condition: "properties fronting Smith Street"
-```
-
-### Override Detection
-
-Text patterns that indicate override:
+Override indicators:
 - "notwithstanding Part F..."
 - "instead of the requirements in..."
 - "in lieu of..."
-- "despite the provisions of..."
 
-Text patterns that indicate supplement:
+Supplement indicators:
 - "in addition to..."
 - "as well as..."
-- "supplementary to..."
 
-### Query Logic for Precinct Properties
+### Query Logic
 
 ```sql
--- Step 1: Get applicable general provisions
+-- Get general provisions
 SELECT * FROM provisions
-WHERE scope = 'general'
-AND ('B2' = ANY(applicable_zones) OR 'ALL' = ANY(applicable_zones));
+WHERE v2_scope = 'general'
+AND 'R2' = ANY(v2_applicable_zones);
 
--- Step 2: Get applicable precinct provisions
+-- Get precinct provisions
 SELECT * FROM provisions
-WHERE scope = 'precinct'
-AND precinct_id = 'summer_hill'
-AND ('B2' = ANY(applicable_zones) OR 'ALL' = ANY(applicable_zones));
+WHERE v2_scope = 'precinct'
+AND v2_precinct_id = 'summer_hill';
 
--- Step 3: Resolve overrides (application logic)
--- For each category:
---   If precinct has override → show precinct, hide general
---   If precinct has supplement → show both
---   If precinct silent → show general only
+-- Application logic resolves:
+-- If precinct has override → show precinct only
+-- If precinct has supplement → show both
+-- If precinct silent → show general only
 ```
 
 ---
 
-## Part 7: UI Display Strategy
+## Part 6: DCP Configuration
 
-### Current UI (Broken)
+Each council's DCP has different structure. Core processing is universal; applicability inheritance is configured per DCP.
 
+### Key Insight: All Three DCPs Share Similar Architecture
+
+Despite surface differences, all three councils follow the same pattern:
+1. **Generic/General provisions** - Topic-based, apply to ALL development
+2. **Use-specific provisions** - Apply to residential, commercial, etc.
+3. **Location-specific provisions** - Precincts/neighbourhoods
+4. **Condition-based provisions** - Heritage, flood, bushfire
+
+### Structure Comparison (Revised via Web Research)
+
+**MARRICKVILLE DCP 2011:**
 ```
-Category: Setback Front
-Requirement: "Minimum front setback: 6m"  ← LLM summary
-[View PDF Page] ← often wrong page
-Source: 0 provisions ← broken linkage
-```
-
-### Optimal UI
-
-```
-CONTROL - Front Setback
-
-"C4 Buildings must be setback a minimum of 6 metres from the
-front boundary to maintain the established streetscape character
-of the area."  ← ACTUAL TEXT
-
-📊 Extracted: minimum 6m
-🏗️ Applies to: R2, R3 zones | Dwelling house, Dual occupancy
-⚠️ Conditional: Excludes heritage items (see C4.1)
-
-[Objective] "To maintain the established streetscape character..."
-
-📄 Source: Ashfield DCP Ch.D p.170 [View PDF]
+Part 2: Generic Provisions (topic-based) → ALL development
+  - 2.3 Site Analysis, 2.6 Privacy, 2.7 Solar, 2.10 Parking
+  - 2.14 Environmental, 2.17 WSUD, 2.18 Landscaping, 2.21 Waste
+Part 4: Residential (zone-based)
+  - 4.1 Low Density (R2) → dwelling_house, alterations
+  - 4.2 Multi-dwelling (R3/R4) → townhouses, apartments
+Part 5: Commercial/Mixed Use (B zones)
+Part 8: Heritage (condition-based) → only if heritage item/HCA
+Part 9: Planning Precincts (47 precincts with character statements)
 ```
 
-### Precinct Display
-
-For Summer Hill property, grouped by category:
-
+**LEICHHARDT DCP 2013:**
 ```
-SETBACKS
-
-[PRECINCT - Summer Hill]
-"C4 Front setback minimum 4m for properties fronting Smith Street"
-Overrides general provision. Applies to: Smith Street frontages only.
-
-[GENERAL - Ashfield LGA]
-"Front setback minimum 6m"
-Applies to: All other Summer Hill properties not on Smith Street.
-
----
-
-BUILDING HEIGHT
-
-[PRECINCT - Summer Hill]
-"Maximum height 2 storeys to maintain village character"
-Overrides general provision.
-
-[GENERAL - Ashfield LGA] (greyed out)
-"Maximum height 9m"
-Overridden by precinct provision.
-
----
-
-LANDSCAPING
-
-[GENERAL - Ashfield LGA]
-"Landscaping minimum 30% of site"
-No precinct override.
-
-[PRECINCT - Summer Hill] (supplement badge)
-"Corner sites must provide street tree planting"
-Additional requirement.
+Part C Section 1: General Provisions (topic-based via C markers) → ALL development
+  - C1 Site Analysis, C2 Heritage, C3 Parking, C15 Parking Rates
+  - C18-C21 Bicycle Parking, C43-C55 Vehicle Access
+Part C Section 2: Urban Character / Distinctive Neighbourhoods (23+)
+Part C Section 3: Residential Provisions (use-specific)
+  - Setbacks, height envelopes (2.4m, 3.6m, 6.0m, 7.2m)
+  - Solar (3hrs min), privacy, dormers
+Part C Section 4: Non-Residential Provisions
+Part C Section 5: Special Entertainment Precincts
+Part D/E: Energy/Water (topic-based, ALL dev types)
+Part G: Site-Specific Controls
 ```
 
----
-
-## Part 8: Implementation Priorities
-
-### Enrichment Priority Order
-
-1. **Applicability determination** - What properties does this apply to?
-2. **Provision type** - Control vs objective vs definition
-3. **Scope** - General vs precinct
-4. **Category** - Setback, height, parking, etc.
-5. **Numeric extraction** - Values, units
-6. **Override relationships** - Only for precinct provisions
-7. **Conditional logic** - Only for complex provisions
-
-### Processing Priority by Provision Tier
-
-**Tier 1: Numeric Controls** - MOST VALUABLE
-- "Minimum setback: 6m", "Maximum height: 9m", "FSR: 0.5:1"
-- Calculable. User enters proposal, app can check compliance.
-- Full enrichment priority.
-
-**Tier 2: Qualitative Controls** - IMPORTANT
-- "Development must be sympathetic to surrounding character"
-- Not calculable but still mandatory.
-- Type classification + category tagging.
-
-**Tier 3: Objectives** - CONTEXT
-- "To maintain streetscape character"
-- Useful for variations.
-- Type classification only.
-
-**Tier 4: Definitions** - REFERENCE
-- "Front setback means the distance from..."
-- Lookup material.
-- Type classification only.
-
-**Tier 5: Administrative/Procedural** - LOW PRIORITY
-- "Applications must be lodged with Council"
-- Rarely needed.
-- Minimal processing.
-
----
-
-## Part 9: Key Principles Summary
-
-1. **The provision IS the requirement.** Don't create synthetic text.
-
-2. **Source fidelity is paramount.** Professionals need to cite actual DCP text.
-
-3. **Use rules first, LLM second.** Regex catches 80% of numeric values for free.
-
-4. **Batch classification, selective deep enrichment.** Type-classify everything in batches, only deeply analyze controls with complexity.
-
-5. **Prioritize applicability over categorization.** The most important metadata is "does this apply to my property" not "what category is this."
-
-6. **Precinct provisions must be understood in relationship to general provisions.** They don't exist in isolation - they override, supplement, or stand alone.
-
-7. **Tiered processing for efficiency.** Not all provisions are equal. Process accordingly.
-
----
-
-## Part 10: Migration Path
-
-### Phase 1: Data Model Changes
-- Add new columns to `regulatory_provisions` table
-- Keep existing `dcp_*_requirements` tables temporarily
-
-### Phase 2: Rules-Based Enrichment
-- Run regex extraction on all provisions
-- Populate `has_numeric_value`, `extracted_numbers`
-
-### Phase 3: Batch Classification
-- Run LLM batch classification for provision types
-- Run LLM batch classification for categories
-
-### Phase 4: Scope and Applicability
-- Tag provisions with scope (general/precinct)
-- Inherit zone/dev_type from document structure
-- Detect override relationships for precinct provisions
-
-### Phase 5: UI Migration
-- Update UI to display original provision text as primary
-- Show enrichment metadata alongside
-- Implement precinct/general resolution logic
-
-### Phase 6: Deprecate Requirements Tables
-- Once UI is using enriched provisions, deprecate `dcp_*_requirements`
-- All data lives in enriched `regulatory_provisions`
-
----
-
-## Part 11: DCP Structure Differences (Ashfield, Marrickville, Leichhardt)
-
-### DCP Structure Comparison
-
-**Ashfield DCP 2016:**
+**ASHFIELD DCP 2016:**
 ```
-Chapter A: Miscellaneous
-Chapter B: Public Domain
-Chapter C: Sustainability
-Chapter D: Precinct Guidelines (D1-D12 specific areas)
-Chapter E1: Heritage
-Chapter F: Development Category (organized BY DEV TYPE)
-  - F1: Dwelling Houses
-  - F2: Dual Occupancy
-  - F3: Multi Dwelling
-  - etc.
+Chapter E1: Heritage (condition-based)
+Chapter D: Precincts (D1-D17 with specific controls)
+Chapter F: Development Category (PC/DS format)
+  - DS (Design Solutions): 29 quantitative controls → CDC
+  - PC (Performance Criteria): 134 objectives → DA
+  - C/O controls: 99 additional controls
+  - Unmarked: 1,264 narrative/context → collapsed display
 ```
 
-**Marrickville DCP 2011:**
-```
-Part 1: Statutory Information
-Part 2: Generic Provisions
-Part 3: Subdivision
-Part 4: Residential (organized BY DEV TYPE)
-  - 4.1: Low Density
-  - 4.2: Multi Dwelling
-Part 5: Commercial
-Part 6: Industrial
-Part 7: Miscellaneous
-Part 8: Heritage
-Part 9: Precincts (9.1-9.48 specific areas)
-```
+### Professional Workflow (How All Three Are Actually Used)
 
-**Leichhardt DCP 2013:**
-```
-Part A: Introduction
-Part B: Connections
-Part C: Place (organized BY TOPIC)
-Part D: Energy (organized BY TOPIC)
-Part E: Water (organized BY TOPIC)
-Part F: Food (organized BY TOPIC)
-Part G: Neighbourhoods (G1-G12 specific areas)
-```
+For residential alteration, professionals check:
 
-### Key Differences
+| Council | Generic Topics | Zone/Use | Condition | Location |
+|---------|---------------|----------|-----------|----------|
+| Marrickville | Part 2 (ALL) | Part 4.1/4.2 | Part 8 (if heritage) | Part 9 (precinct) |
+| Leichhardt | Section 1 (ALL) | Section 3 | C2, C37 (if heritage) | Section 2 (neighbourhood) |
+| Ashfield | Chapter F (ALL) | Chapter F (by marker) | Chapter E1 (if heritage) | Chapter D (precinct) |
 
-**Organization Philosophy:**
-
-Ashfield and Marrickville organize general provisions BY DEVELOPMENT TYPE.
-- "This chapter applies to dwelling houses"
-- "This part applies to multi-dwelling housing"
-- Easy to inherit `applicable_dev_types` from document structure.
-
-Leichhardt organizes general provisions BY TOPIC.
-- "Part D: Energy" applies to ALL development types
-- "Part E: Water" applies to ALL development types
-- Harder to inherit `applicable_dev_types` - most are "ALL".
-
-**Precinct Naming:**
-- Ashfield: D1, D2, D3... D12 (12 precincts)
-- Marrickville: 9.1, 9.2... 9.48 (48 precincts)
-- Leichhardt: G1, G2... G12 (12 neighbourhoods)
-
-Different naming conventions but same concept.
-
-**Control Numbering:**
-- Ashfield: "C1", "C2", "C3" style controls
-- Marrickville: "4.2.1", "4.2.2" section numbering
-- Leichhardt: "PC1", "PC2" performance criteria style
-
-Different patterns for regex extraction.
-
-### What Works Universally
-
-**Provision Type Classification** - YES
-Controls, objectives, definitions, notes exist in all DCPs. The patterns are the same:
-- "must", "shall" → Control
-- "To ensure...", "Purpose:" → Objective
-- "means", "includes" → Definition
-
-**Category Tagging** - YES
-Setbacks, heights, parking, landscaping exist in all DCPs regardless of how they're organized.
-
-**Numeric Extraction** - YES (with pattern variations)
-All DCPs have numeric controls. Regex patterns work universally:
-- "minimum X metres" - all DCPs use this
-- "maximum Y storeys" - all DCPs use this
-
-**Precinct vs General Scope** - YES
-All three have:
-- General provisions (apply LGA-wide)
-- Precinct provisions (apply to specific areas)
-
-The concept of override/supplement relationships exists in all.
-
-### What Varies By DCP
-
-**Applicability Inheritance:**
-
-```
-Ashfield Chapter F1 (Dwelling Houses):
-→ Can inherit: applicable_dev_types = ["dwelling_house"]
-→ Provisions here automatically apply to dwelling houses
-
-Leichhardt Part D (Energy):
-→ Cannot inherit specific dev type
-→ applicable_dev_types = ["ALL"] for most provisions
-→ Must look at provision text itself for applicability
-```
-
-**Document Structure Parsing:**
-
-Each DCP needs its own mapping:
+### Configuration Files (Updated)
 
 ```python
-# Ashfield
-ASHFIELD_STRUCTURE = {
-    "Chapter F1": {"dev_types": ["dwelling_house"]},
-    "Chapter F2": {"dev_types": ["dual_occupancy"]},
-    "Chapter D": {"scope": "precinct"},
-}
-
-# Marrickville
-MARRICKVILLE_STRUCTURE = {
-    "Part 4.1": {"dev_types": ["dwelling_house"], "zones": ["R2"]},
-    "Part 4.2": {"dev_types": ["multi_dwelling_housing"]},
+# config/marrickville_config.py
+STRUCTURE = {
+    # Part 2 - Generic (ALL apply)
+    "Part 2.3": {"topic": "site_analysis", "applies_to": "ALL"},
+    "Part 2.6": {"topic": "privacy", "applies_to": "ALL"},
+    "Part 2.7": {"topic": "solar", "applies_to": "ALL"},
+    "Part 2.10": {"topic": "parking", "applies_to": "ALL"},
+    "Part 2.18": {"topic": "landscaping", "applies_to": "ALL"},
+    # Part 4 - Zone-specific
+    "Part 4.1": {"zones": ["R2"], "dev_types": ["dwelling_house", "alterations"]},
+    "Part 4.2": {"zones": ["R3", "R4"], "dev_types": ["multi_dwelling", "rfb"]},
+    # Part 8 - Condition-based
+    "Part 8": {"site_condition": "heritage"},
+    # Part 9 - Location-specific
     "Part 9": {"scope": "precinct"},
 }
 
-# Leichhardt
-LEICHHARDT_STRUCTURE = {
-    "Part D": {"topic": "energy", "dev_types": ["ALL"]},
-    "Part E": {"topic": "water", "dev_types": ["ALL"]},
-    "Part G": {"scope": "precinct"},
+# config/leichhardt_config.py
+STRUCTURE = {
+    # Section 1 - General (topic via C markers)
+    "Part C Section 1": {
+        "applies_to": "ALL",
+        "markers": {
+            "C1": "site_analysis", "C2": "heritage", "C3": "parking",
+            "C15": "parking_rates", "C18-C21": "bicycle_parking"
+        }
+    },
+    # Section 3 - Residential
+    "Part C Section 3": {"dev_types": ["residential"]},
+    # Section 2 - Neighbourhoods
+    "Part C Section 2": {"scope": "precinct"},
+}
+
+# config/ashfield_config.py
+STRUCTURE = {
+    # Chapter F - by marker type
+    "Chapter F": {
+        "marker_types": {
+            "DS": {"display": "always_cdc", "type": "control"},
+            "PC": {"display": "da_variations", "type": "objective"},
+            "C/O": {"display": "da", "type": "control"},
+            "unmarked": {"display": "collapsed_context"}
+        }
+    },
+    # Chapter E1 - Heritage
+    "Chapter E1": {"site_condition": "heritage"},
+    # Chapter D - Precincts
+    "Chapter D": {"scope": "precinct"},
 }
 ```
 
-**Precinct ID Extraction:**
+### What's Universal vs. Configured
 
-```python
-# Ashfield - Extract from "D8" → precinct_id = "D8"
-# Marrickville - Extract from "9.15" → precinct_id = "9.15"
-# Leichhardt - Extract from "G7" → precinct_id = "G7"
-```
-
-Different regex patterns needed per DCP.
-
-### Strategy Adaptation
-
-The core strategy works. The implementation needs DCP-specific configuration.
-
-**Phase 1 (Regex Numeric Extraction):**
-Same patterns work across all DCPs. No adaptation needed.
-
-**Phase 2 (Type Classification):**
-Same LLM prompt works. No adaptation needed.
-
-**Phase 3 (Applicability Tagging):**
-NEEDS ADAPTATION per DCP:
-
-```python
-def get_inherited_applicability(provision, dcp_type):
-    if dcp_type == "ashfield":
-        return ashfield_inheritance_rules(provision.document_id)
-    elif dcp_type == "marrickville":
-        return marrickville_inheritance_rules(provision.document_id)
-    elif dcp_type == "leichhardt":
-        return leichhardt_inheritance_rules(provision.document_id)
-```
-
-**Phase 4 (Deep Enrichment):**
-Same approach. Override detection patterns are universal ("notwithstanding", "in lieu of").
-
-### The Leichhardt Challenge
-
-Leichhardt is most different because:
-
-1. Topic-based organization means most provisions apply to ALL dev types
-2. Applicability must be determined from provision text, not document structure
-3. More work for LLM, less inheritance from structure
-
-**Solution for Leichhardt:**
-
-Since we can't inherit dev_type from structure, we need more text analysis:
-
-```python
-# Look for explicit applicability in provision text
-patterns = [
-    r"for (dwelling houses|residential development)",
-    r"applies to (commercial|industrial)",
-    r"in (R2|R3|B2) zones",
-]
-```
-
-If no explicit applicability found, default to "ALL" - which is often correct for Leichhardt's topic-based provisions.
-
-### Implementation Recommendation
-
-**Create DCP-specific configuration files:**
-
-```
-config/
-  ashfield_dcp_config.py
-  marrickville_dcp_config.py
-  leichhardt_dcp_config.py
-```
-
-Each config contains:
-- Document structure mapping
-- Precinct ID extraction patterns
-- Inheritance rules
-- Any DCP-specific regex patterns
-
-**Core processing remains universal:**
-- Type classification
-- Category tagging
-- Numeric extraction
+**Universal (same code):**
+- Type classification (control/objective/definition/note)
+- Category tagging by topic keywords
+- Numeric extraction (regex patterns)
+- Site condition detection (heritage/flood/bushfire)
 - Override detection
 
-**Applicability logic is DCP-specific:**
-- Ashfield: Heavy inheritance from Chapter structure
-- Marrickville: Heavy inheritance from Part structure
-- Leichhardt: Light inheritance, more text analysis
-
-### Summary
-
-**YES, the strategy works for all three.**
-
-The core approach (provision-based, tiered processing, type classification) is universal.
-
-The adaptation needed is in applicability inheritance - each DCP has different document structure that implies different applicability rules.
-
-This is a configuration problem, not an architecture problem.
+**Configured per DCP:**
+- Which parts apply to ALL vs specific zones/dev-types
+- Topic extraction method (numbered sections vs C markers vs PC/DS)
+- Precinct ID extraction patterns
+- Display behavior by marker type (Ashfield PC/DS)
+- How to map sections to topics
 
 ---
 
-## Part 12: Migration Preparation (Best Practices)
+## Part 7: Migration Execution
 
-### Current State Assessment
-
-**Database Tables:**
-```
-regulatory_provisions     - Raw extracted text from PDFs (SOURCE OF TRUTH)
-dcp_general_requirements  - LLM-generated requirements (TO BE DEPRECATED)
-dcp_precinct_requirements - LLM-generated precinct requirements (TO BE DEPRECATED)
-dcp_precinct_provisions   - Another provisions table (UNCLEAR PURPOSE)
-```
-
-**API Routes:**
-```
-/api/compliance/          - Serves requirements data
-/api/compliance/precinct-requirements/
-/api/compliance/general-requirements/
-```
-
-**UI Components:**
-```
-CategorizedRequirementsCard - Displays LLM-generated requirements
-ComplianceDashboard        - Main compliance view
-```
-
-### Recommended Approach: Parallel Build, Not In-Place Migration
+### Approach: Parallel Build
 
 **DO NOT** modify existing tables/routes/UI in place.
+Build new alongside old, test, then switch.
 
-**Instead:** Build the new system alongside the old, test it, then switch over.
-
-### Database Preparation
-
-**Step 1: Create New Columns on regulatory_provisions**
-
-Don't create new tables. Enrich the existing source table.
+### Database Changes
 
 ```sql
-ALTER TABLE regulatory_provisions ADD COLUMN IF NOT EXISTS
-  -- Type classification
-  provision_type TEXT,  -- control/objective/definition/note/procedural
-
-  -- Categories
-  categories TEXT[],
-
-  -- Scope
-  scope TEXT,  -- general/precinct
-  precinct_id TEXT,
-
-  -- Extracted values
-  has_numeric_value BOOLEAN DEFAULT FALSE,
-  extracted_values JSONB,  -- {value_min: 6, value_max: null, unit: "m"}
-
-  -- Applicability
-  applicable_zones TEXT[],
-  applicable_dev_types TEXT[],
-
-  -- Conditionals
-  has_conditionals BOOLEAN DEFAULT FALSE,
-  conditional_summary TEXT,
-
-  -- Relationships (for precinct provisions)
-  relationship_type TEXT,  -- override/supplement/standalone
-  overrides_provision_id INTEGER REFERENCES regulatory_provisions(id),
-
-  -- Processing metadata
-  enrichment_version TEXT,
-  enriched_at TIMESTAMP;
-```
-
-**Step 2: Create Migration Tracking Table**
-
-```sql
-CREATE TABLE IF NOT EXISTS provision_enrichment_log (
-  id SERIAL PRIMARY KEY,
-  provision_id INTEGER REFERENCES regulatory_provisions(id),
-  phase TEXT,  -- 'numeric', 'type', 'applicability', 'deep'
-  status TEXT,  -- 'pending', 'completed', 'failed'
-  processed_at TIMESTAMP,
-  error_message TEXT
-);
-```
-
-**Step 3: Backup Current State**
-
-```bash
-pg_dump -t regulatory_provisions -t dcp_general_requirements -t dcp_precinct_requirements > backup_before_enrichment.sql
-```
-
-### Git Strategy
-
-**Step 1: Create Feature Branch**
-
-```bash
-git checkout -b feature/provision-based-architecture
-```
-
-**Step 2: Directory Structure for New Code**
-
-```
-compliance-engine/
-├── enrichment/                    # NEW - Enrichment pipeline
-│   ├── __init__.py
-│   ├── config/
-│   │   ├── ashfield_config.py
-│   │   ├── marrickville_config.py
-│   │   └── leichhardt_config.py
-│   ├── extractors/
-│   │   ├── numeric_extractor.py   # Phase 1 - Regex
-│   │   ├── type_classifier.py     # Phase 2 - LLM batch
-│   │   └── applicability_tagger.py # Phase 3 - Hybrid
-│   ├── pipeline.py                # Orchestrates all phases
-│   └── tests/
-│       ├── test_numeric_extractor.py
-│       └── test_type_classifier.py
-│
-├── frontend-nextjs/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── compliance/        # EXISTING - Keep working
-│   │   │   └── provisions/        # NEW - New API routes
-│   │   │       ├── route.ts
-│   │   │       └── [id]/route.ts
-│   │   └── assessment/
-│   │       ├── page.tsx           # EXISTING - Keep working
-│   │       └── v2/                # NEW - New UI
-│   │           └── page.tsx
-│   └── components/
-│       ├── compliance/            # EXISTING - Keep working
-│       └── provisions/            # NEW - New components
-│           ├── ProvisionCard.tsx
-│           └── ProvisionList.tsx
-```
-
-**Key principle:** New code goes in new directories. Don't modify existing until ready to switch.
-
-### API Strategy
-
-**Step 1: Create New API Routes (Don't Touch Old Ones)**
-
-```
-/api/provisions/                    # NEW - Enriched provisions
-/api/provisions/search              # NEW - Search with filters
-/api/provisions/[id]                # NEW - Single provision detail
-
-/api/compliance/                    # EXISTING - Keep working
-/api/compliance/general-requirements/  # EXISTING - Keep working
-```
-
-**Step 2: New API Response Shape**
-
-```typescript
-// NEW: /api/provisions/search
-{
-  "provisions": [
-    {
-      "id": 87445,
-      "text": "C4 Buildings must be setback minimum 6m...",  // ORIGINAL TEXT
-      "provision_type": "control",
-      "categories": ["setback_front"],
-      "scope": "precinct",
-      "precinct_id": "D8",
-      "extracted_values": {
-        "value_min": 6,
-        "unit": "m"
-      },
-      "applicable_zones": ["B2", "B4"],
-      "has_conditionals": true,
-      "conditional_summary": "Excludes heritage items",
-      "page_number": 170,
-      "pdf_page_image_url": "/pdf-pages/ashfield-chapter-d/page_170.png",
-      "document_id": "Ashfield DCP 2016 Chapter D"
-    }
-  ],
-  "filters_applied": {
-    "zone": "B2",
-    "precinct": "D8",
-    "categories": ["setback_front"]
-  }
-}
-```
-
-**Step 3: Feature Flag for API Switching**
-
-```typescript
-// In API route
-const USE_NEW_PROVISIONS_API = process.env.USE_PROVISIONS_V2 === 'true';
-
-if (USE_NEW_PROVISIONS_API) {
-  return fetchFromEnrichedProvisions(params);
-} else {
-  return fetchFromLegacyRequirements(params);
-}
-```
-
-### UI Strategy
-
-**Step 1: Create New Components (Don't Modify Old)**
-
-```
-components/
-├── compliance/
-│   └── CategorizedRequirementsCard.tsx  # EXISTING - Don't touch
-│
-└── provisions/                          # NEW
-    ├── ProvisionCard.tsx                # Shows original text + metadata
-    ├── ProvisionList.tsx                # Grouped by category
-    ├── ProvisionFilter.tsx              # Zone/DevType/Category filters
-    └── PrecinctGeneralResolver.tsx      # Shows precinct vs general
-```
-
-**Step 2: New Page Route**
-
-```
-/assessment         # EXISTING - Uses old components
-/assessment/v2      # NEW - Uses new components
-```
-
-**Step 3: A/B Testing Capability**
-
-```typescript
-// In assessment page
-const { searchParams } = useSearchParams();
-const useV2 = searchParams.get('v2') === 'true';
-
-if (useV2) {
-  return <ProvisionsBasedAssessment />;
-} else {
-  return <RequirementsBasedAssessment />;  // Current
-}
-```
-
-Access new UI at: `/assessment?v2=true`
-
-### Enrichment Pipeline Execution
-
-**Step 1: Run Enrichment in Stages**
-
-```bash
-# Phase 1: Numeric extraction (fast, no API cost)
-python enrichment/pipeline.py --phase=numeric --council=ashfield
-
-# Phase 2: Type classification (batch LLM)
-python enrichment/pipeline.py --phase=type --council=ashfield
-
-# Phase 3: Applicability tagging
-python enrichment/pipeline.py --phase=applicability --council=ashfield
-
-# Phase 4: Deep enrichment (selective)
-python enrichment/pipeline.py --phase=deep --council=ashfield
-```
-
-**Step 2: Validate Each Phase Before Proceeding**
-
-```bash
-# After each phase, run validation
-python enrichment/validate.py --phase=numeric --council=ashfield
-# Output: "Numeric extraction complete: 287/287 provisions processed, 156 with values"
-```
-
-**Step 3: Run for Each Council Separately**
-
-```bash
-# Ashfield first (smallest, good test)
-python enrichment/pipeline.py --all-phases --council=ashfield
-
-# Validate, fix issues
-
-# Then Leichhardt
-python enrichment/pipeline.py --all-phases --council=leichhardt
-
-# Then Marrickville (largest)
-python enrichment/pipeline.py --all-phases --council=marrickville
-```
-
-### Testing Strategy
-
-**Step 1: Unit Tests for Extractors**
-
-```python
-# test_numeric_extractor.py
-def test_extracts_minimum_metres():
-    text = "Buildings must be setback minimum 6 metres"
-    result = extract_numeric_values(text)
-    assert result == {"value_min": 6, "unit": "m"}
-
-def test_extracts_maximum_storeys():
-    text = "Maximum height 3 storeys"
-    result = extract_numeric_values(text)
-    assert result == {"value_max": 3, "unit": "storeys"}
-```
-
-**Step 2: Integration Tests for API**
-
-```typescript
-// Test new provisions API
-describe('/api/provisions/search', () => {
-  it('returns provisions filtered by zone', async () => {
-    const res = await fetch('/api/provisions/search?zone=R2');
-    const data = await res.json();
-    expect(data.provisions.every(p =>
-      p.applicable_zones.includes('R2') || p.applicable_zones.includes('ALL')
-    )).toBe(true);
-  });
-});
-```
-
-**Step 3: Visual Regression Tests for UI**
-
-Compare `/assessment` (old) vs `/assessment?v2=true` (new) for same address.
-
-### Cutover Strategy
-
-**Step 1: Soft Launch**
-
-```
-Week 1: New API and UI available at /v2 routes
-Week 2: Internal testing, fix bugs
-Week 3: Beta users access new UI
-Week 4: Gather feedback, iterate
-```
-
-**Step 2: Feature Flag Flip**
-
-```bash
-# In production environment
-USE_PROVISIONS_V2=true
-```
-
-Now `/assessment` uses new system, old is at `/assessment/legacy`.
-
-**Step 3: Deprecation**
-
-```
-Month 1: Old routes still work, show deprecation warning
-Month 2: Old routes redirect to new
-Month 3: Remove old routes, drop old tables
-```
-
-### What NOT To Do
-
-- **DON'T** delete existing tables until new system is proven
-- **DON'T** modify existing API routes in place
-- **DON'T** modify existing UI components in place
-- **DON'T** run enrichment on production without backup
-- **DON'T** try to migrate everything at once
-
-### Immediate Next Steps
-
-1. **Create backup of current database**
-
-2. **Create feature branch**
-```bash
-git checkout -b feature/provision-based-architecture
-```
-
-3. **Add new columns to regulatory_provisions**
-
-4. **Create enrichment directory structure**
-
-5. **Build Phase 1 numeric extractor with tests**
-
-6. **Run on Ashfield as pilot**
-
-7. **Validate results before proceeding**
-
----
-
-## Part 13: Legacy vs New Code Management
-
-### The Confusion Risk
-
-**Database:**
-- `regulatory_provisions` has existing columns + new enrichment columns
-- `dcp_general_requirements` (old) vs new enrichment data
-- Which columns are legacy? Which are active?
-
-**Code:**
-- Old extraction scripts still in repo
-- Old API routes still working
-- Old UI components still rendering
-- New code alongside - which is which?
-
-**Data:**
-- Old LLM-extracted "requirements" in database
-- New enrichment metadata on provisions
-- Both coexist during transition
-
-### Strategy: Explicit Naming + Deprecation Markers
-
-### Database Naming Convention
-
-**New columns get `v2_` prefix during transition:**
-
-```sql
-ALTER TABLE regulatory_provisions ADD COLUMN
-  v2_provision_type TEXT,
-  v2_categories TEXT[],
-  v2_scope TEXT,
-  v2_has_numeric_value BOOLEAN,
-  v2_extracted_values JSONB,
-  v2_applicable_zones TEXT[],
-  v2_applicable_dev_types TEXT[],
-  v2_enrichment_version TEXT,
-  v2_enriched_at TIMESTAMP;
-```
-
-**Why v2_ prefix:**
-- Immediately clear these are new enrichment columns
-- Won't conflict with any existing columns
-- Easy to query: `SELECT * WHERE v2_provision_type IS NOT NULL`
-- After full migration, can rename to remove prefix
-
-**Legacy tables get comment markers:**
-
-```sql
-COMMENT ON TABLE dcp_general_requirements IS
-  'DEPRECATED: Legacy LLM-extracted requirements. Use regulatory_provisions.v2_* columns instead.
-   Scheduled for removal after migration complete.';
-
-COMMENT ON TABLE dcp_precinct_requirements IS
-  'DEPRECATED: Legacy LLM-extracted precinct requirements. Use regulatory_provisions.v2_* columns instead.
-   Scheduled for removal after migration complete.';
-```
-
-### Code Organization
-
-**Directory structure with explicit separation:**
-
-```
-compliance-engine/
-├── DEPRECATED/                     # Move old code here, don't delete
-│   ├── extraction/
-│   │   ├── extract_ashfield_chapter_d_precincts.py
-│   │   ├── extract_marrickville_v2_COMPLIANT.py
-│   │   └── README.md              # "These scripts created legacy requirements tables"
-│   └── README.md                  # "Code in this folder is deprecated"
-│
-├── enrichment/                    # NEW - clearly named
-│   ├── __init__.py
-│   ├── extractors/
-│   └── pipeline.py
-│
-├── frontend-nextjs/
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── compliance/        # LEGACY - add deprecation comments
-│   │   │   │   └── route.ts       # Add: // DEPRECATED: Use /api/provisions instead
-│   │   │   └── provisions/        # NEW
-│   │   └── assessment/
-│   │       ├── page.tsx           # LEGACY
-│   │       └── v2/
-│   │           └── page.tsx       # NEW
-│   └── components/
-│       ├── compliance/            # LEGACY - add deprecation comments
-│       │   └── CategorizedRequirementsCard.tsx  # // DEPRECATED
-│       └── provisions/            # NEW
-```
-
-### File-Level Deprecation Markers
-
-**Every legacy file gets a header comment:**
-
-```typescript
-// frontend-nextjs/app/api/compliance/route.ts
-
-/**
- * @deprecated This API route serves legacy LLM-extracted requirements.
- * Use /api/provisions instead which serves enriched provisions.
- *
- * Migration status: DEPRECATED
- * Replacement: /api/provisions/search
- *
- * DO NOT ADD NEW FEATURES TO THIS FILE.
- */
-```
-
-```python
-# extract_ashfield_chapter_d_precincts.py
-
-"""
-DEPRECATED: This script creates legacy dcp_precinct_requirements records.
-
-This extraction approach has been replaced by the provision enrichment pipeline.
-See: enrichment/pipeline.py
-
-Migration status: DEPRECATED
-Replacement: enrichment/pipeline.py --council=ashfield
-
-DO NOT USE THIS SCRIPT FOR NEW EXTRACTIONS.
-"""
-```
-
-### Database Query Helpers
-
-**Create views that make the distinction clear:**
-
-```sql
--- View for new system
-CREATE VIEW v2_enriched_provisions AS
-SELECT
-  id,
-  provision_text,
-  document_id,
-  page_number,
-  pdf_page_image_url,
-  v2_provision_type AS provision_type,
-  v2_categories AS categories,
-  v2_scope AS scope,
-  v2_extracted_values AS extracted_values,
-  v2_applicable_zones AS applicable_zones,
-  v2_applicable_dev_types AS applicable_dev_types
-FROM regulatory_provisions
-WHERE v2_enriched_at IS NOT NULL;
-
--- View that clearly labels legacy data
-CREATE VIEW legacy_requirements AS
-SELECT
-  id,
-  requirement_text,
-  category,
-  'LEGACY - Use v2_enriched_provisions instead' AS migration_note
-FROM dcp_general_requirements;
-```
-
-### API Response Headers
-
-**Legacy APIs return deprecation warning:**
-
-```typescript
-// In legacy API route
-export async function GET(request: Request) {
-  // Set deprecation header
-  const response = NextResponse.json(data);
-  response.headers.set('Deprecation', 'true');
-  response.headers.set('Link', '</api/provisions>; rel="successor-version"');
-
-  return response;
-}
-```
-
-### Environment Variables for Routing
-
-```bash
-# .env
-
-# Which system to use (for gradual rollout)
-USE_PROVISIONS_V2=false          # false = legacy, true = new
-
-# Feature flags for specific components
-V2_GENERAL_REQUIREMENTS=false    # Use new for general requirements?
-V2_PRECINCT_REQUIREMENTS=false   # Use new for precinct requirements?
-V2_UI_COMPONENTS=false           # Use new UI components?
-```
-
-### Migration Status Tracking
-
-**Create a migration status table:**
-
-```sql
-CREATE TABLE migration_status (
-  component TEXT PRIMARY KEY,
-  status TEXT,  -- 'legacy', 'migrating', 'v2', 'deprecated'
-  legacy_location TEXT,
-  v2_location TEXT,
-  notes TEXT,
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-INSERT INTO migration_status VALUES
-  ('general_requirements_api', 'legacy', '/api/compliance/general-requirements', '/api/provisions/search?scope=general', 'Migration in progress'),
-  ('precinct_requirements_api', 'legacy', '/api/compliance/precinct-requirements', '/api/provisions/search?scope=precinct', 'Not started'),
-  ('requirements_ui', 'legacy', 'CategorizedRequirementsCard.tsx', 'ProvisionCard.tsx', 'Not started'),
-  ('ashfield_data', 'migrating', 'dcp_*_requirements', 'regulatory_provisions.v2_*', 'Phase 1 complete');
-```
-
-### Documentation
-
-**Create a MIGRATION_STATUS.md in repo root:**
-
-```markdown
-# Migration Status: Requirements → Provisions
-
-## Overview
-We are migrating from LLM-extracted "requirements" to enriched "provisions".
-
-## Status by Component
-
-| Component | Status | Legacy Location | New Location |
-|-----------|--------|-----------------|--------------|
-| General Requirements API | DEPRECATED | /api/compliance/general-requirements | /api/provisions/search |
-| Precinct Requirements API | DEPRECATED | /api/compliance/precinct-requirements | /api/provisions/search |
-| Requirements UI | DEPRECATED | CategorizedRequirementsCard | ProvisionCard |
-| Ashfield Data | MIGRATING | dcp_*_requirements | regulatory_provisions.v2_* |
-
-## How to Know Which System You're Using
-
-**Database:**
-- Legacy: Tables named `dcp_*_requirements`
-- New: Columns prefixed with `v2_` on `regulatory_provisions`
-
-**API:**
-- Legacy: Routes under `/api/compliance/*`
-- New: Routes under `/api/provisions/*`
-
-**UI:**
-- Legacy: Components in `components/compliance/`
-- New: Components in `components/provisions/`
-
-## DO NOT
-- Add features to legacy code
-- Create new legacy-style extractions
-- Query legacy tables for new features
-```
-
-### Quick Reference Summary
-
-**Database:**
-- Legacy tables: `dcp_general_requirements`, `dcp_precinct_requirements`
-- New columns: `v2_*` prefix on `regulatory_provisions`
-- New views: `v2_enriched_provisions`
-
-**API Routes:**
-- Legacy: `/api/compliance/*`
-- New: `/api/provisions/*`
-
-**UI Components:**
-- Legacy: `components/compliance/`
-- New: `components/provisions/`
-
-**Python Scripts:**
-- Legacy: `DEPRECATED/` folder
-- New: `enrichment/` folder
-
-**File Markers:**
-- Legacy: `@deprecated` docstring at top
-- New: Normal (no deprecation marker)
-
----
-
-## Part 14: Execution Steps (Getting Started)
-
-### Prerequisites Checklist
-
-Before starting migration:
-- [ ] This strategy document committed to repo
-- [ ] Database backup created
-- [ ] Feature branch created
-- [ ] Team notified of migration plan (if applicable)
-
-### Phase 0: Setup (Do First)
-
-**Step 0.1: Commit this strategy document**
-```bash
-git add PROVISION_BASED_ARCHITECTURE_STRATEGY.md
-git commit -m "docs: Add provision-based architecture strategy document"
-```
-
-**Step 0.2: Create feature branch**
-```bash
-git checkout -b feature/provision-based-architecture
-```
-
-**Step 0.3: Create database backup**
-```bash
-# Using pg_dump
-pg_dump $SUPABASE_DB_URL > backups/pre_v2_migration_$(date +%Y%m%d).sql
-
-# Or using Python backup script
-python backup_db_now.py
-```
-
-### Phase 1: Schema Changes
-
-**Step 1.1: Create migration SQL file**
-
-Create file: `migrations/001_add_v2_enrichment_columns.sql`
-
-```sql
--- Add v2 enrichment columns to regulatory_provisions
+-- Add v2_ columns to regulatory_provisions
 ALTER TABLE regulatory_provisions
 ADD COLUMN IF NOT EXISTS v2_provision_type TEXT,
 ADD COLUMN IF NOT EXISTS v2_categories TEXT[],
@@ -1454,6 +691,7 @@ ADD COLUMN IF NOT EXISTS v2_has_numeric_value BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS v2_extracted_values JSONB,
 ADD COLUMN IF NOT EXISTS v2_applicable_zones TEXT[],
 ADD COLUMN IF NOT EXISTS v2_applicable_dev_types TEXT[],
+ADD COLUMN IF NOT EXISTS v2_site_condition_required TEXT,
 ADD COLUMN IF NOT EXISTS v2_has_conditionals BOOLEAN DEFAULT FALSE,
 ADD COLUMN IF NOT EXISTS v2_conditional_summary TEXT,
 ADD COLUMN IF NOT EXISTS v2_relationship_type TEXT,
@@ -1461,179 +699,198 @@ ADD COLUMN IF NOT EXISTS v2_overrides_provision_id INTEGER,
 ADD COLUMN IF NOT EXISTS v2_enrichment_version TEXT,
 ADD COLUMN IF NOT EXISTS v2_enriched_at TIMESTAMP;
 
--- Indexes for common queries
-CREATE INDEX IF NOT EXISTS idx_v2_provision_type ON regulatory_provisions(v2_provision_type);
-CREATE INDEX IF NOT EXISTS idx_v2_scope ON regulatory_provisions(v2_scope);
-CREATE INDEX IF NOT EXISTS idx_v2_precinct_id ON regulatory_provisions(v2_precinct_id);
-CREATE INDEX IF NOT EXISTS idx_v2_categories ON regulatory_provisions USING GIN(v2_categories);
-CREATE INDEX IF NOT EXISTS idx_v2_applicable_zones ON regulatory_provisions USING GIN(v2_applicable_zones);
-CREATE INDEX IF NOT EXISTS idx_v2_enriched_at ON regulatory_provisions(v2_enriched_at);
+-- Indexes
+CREATE INDEX idx_v2_provision_type ON regulatory_provisions(v2_provision_type);
+CREATE INDEX idx_v2_scope ON regulatory_provisions(v2_scope);
+CREATE INDEX idx_v2_categories ON regulatory_provisions USING GIN(v2_categories);
+CREATE INDEX idx_v2_applicable_zones ON regulatory_provisions USING GIN(v2_applicable_zones);
+CREATE INDEX idx_v2_site_condition ON regulatory_provisions(v2_site_condition_required);
 
--- Add deprecation comments to legacy tables
-COMMENT ON TABLE dcp_general_requirements IS
-  'DEPRECATED: Use regulatory_provisions.v2_* columns instead';
-COMMENT ON TABLE dcp_precinct_requirements IS
-  'DEPRECATED: Use regulatory_provisions.v2_* columns instead';
+-- Deprecation comments on legacy tables
+COMMENT ON TABLE dcp_general_requirements IS 'DEPRECATED: Use regulatory_provisions.v2_* instead';
+COMMENT ON TABLE dcp_precinct_requirements IS 'DEPRECATED: Use regulatory_provisions.v2_* instead';
 ```
 
-**Step 1.2: Run migration**
-```bash
-psql $SUPABASE_DB_URL -f migrations/001_add_v2_enrichment_columns.sql
+### Directory Structure
+
+```
+compliance-engine/
+├── enrichment/                     # NEW
+│   ├── config/
+│   │   ├── ashfield_config.py
+│   │   ├── marrickville_config.py
+│   │   └── leichhardt_config.py
+│   ├── extractors/
+│   │   ├── numeric_extractor.py
+│   │   ├── type_classifier.py
+│   │   ├── applicability_tagger.py
+│   │   └── site_condition_tagger.py
+│   ├── pipeline.py
+│   └── tests/
+│
+├── frontend-nextjs/
+│   ├── app/api/
+│   │   ├── compliance/             # LEGACY
+│   │   └── provisions/             # NEW
+│   │       └── for-property/
+│   │           └── route.ts
+│   └── components/
+│       ├── compliance/             # LEGACY
+│       └── provisions/             # NEW
+│
+└── DEPRECATED/                     # Move old extraction scripts
 ```
 
-**Step 1.3: Verify columns added**
-```sql
-SELECT column_name FROM information_schema.columns
-WHERE table_name = 'regulatory_provisions' AND column_name LIKE 'v2_%';
-```
+### Execution Steps (Updated 2025-11-23)
 
-### Phase 2: Build Enrichment Pipeline
+**Phase 0: Setup** ✅ COMPLETE
+- [x] Backup database (`backups/regulatory_provisions_before_v2_20251122_231205.json`)
+- [x] Create feature branch: `feature/provision-based-architecture`
 
-**Step 2.1: Create directory structure**
-```bash
-mkdir -p enrichment/extractors enrichment/config enrichment/tests
-touch enrichment/__init__.py
-touch enrichment/extractors/__init__.py
-touch enrichment/config/__init__.py
-```
+**Phase 1: Schema** ✅ COMPLETE
+- [x] Run migration SQL (16 v2_ columns)
+- [x] Create indexes (9 indexes)
+- [x] Verify columns exist
 
-**Step 2.2: Build numeric extractor (Phase 1 - no LLM)**
+**Phase 2: Build Pipeline** ✅ COMPLETE
+- [x] Actionable classifier (v2_is_actionable: 11,835 actionable / 36,539 boilerplate)
+- [x] Numeric extractor (regex) - 451 provisions with numeric values
+- [x] Type classifier (control/objective/definition/note/procedural)
+- [x] Site condition tagger (heritage: 1,926 / flood / bushfire)
+- [x] Applicability tagger (zones + dev types)
+- [x] Council-specific configs (`enrichment/config/`)
 
-Create `enrichment/extractors/numeric_extractor.py` with regex patterns for:
-- Minimum/maximum values
-- Units (m, metres, storeys, %, sqm)
-- FSR ratios
-- Height limits
+**Phase 3: Web Research** ✅ COMPLETE (2025-11-23)
+- [x] Research professional workflow for Marrickville
+- [x] Research professional workflow for Leichhardt
+- [x] Research professional workflow for Ashfield
+- [x] Document 4-layer model (Generic → Use → Condition → Precinct)
+- [x] Update strategy document
 
-**Step 2.3: Build tests**
+**Phase 4: Layer + Topic Tagging** ❌ NOT STARTED
+- [ ] Add v2_dcp_layer column
+- [ ] Add v2_dcp_part column
+- [ ] Add v2_topic column
+- [ ] Implement layer tagger (Part 2 → generic, Part 4 → use_specific, etc.)
+- [ ] Implement topic extractor (section numbers, C markers, keywords)
+- [ ] Run on all 3 councils
 
-Create `enrichment/tests/test_numeric_extractor.py` with test cases:
-- "minimum 6 metres" → {value_min: 6, unit: "m"}
-- "maximum 3 storeys" → {value_max: 3, unit: "storeys"}
-- "FSR 0.5:1" → {fsr: 0.5}
-- Edge cases and failures
+**Phase 5: Marker Extraction** ❌ NOT STARTED
+- [ ] Leichhardt C marker extraction (C1, C2, C3, etc.)
+- [ ] Ashfield PC/DS marker extraction
+- [ ] Map markers to topics
 
-**Step 2.4: Run tests**
-```bash
-pytest enrichment/tests/test_numeric_extractor.py -v
-```
+**Phase 6: New API** ❌ NOT STARTED
+- [ ] Create `/api/provisions/for-property`
+- [ ] Implement 4-layer query logic
+- [ ] Test with real addresses
 
-### Phase 3: Pilot on Ashfield
+**Phase 7: New UI** ❌ NOT STARTED
+- [ ] ProvisionCard component
+- [ ] Development type dropdown
+- [ ] Assessment type selector
+- [ ] Topic grouping (by v2_topic)
 
-**Step 3.1: Run numeric extraction on Ashfield only**
-```bash
-python enrichment/pipeline.py --phase=numeric --council=ashfield --dry-run
-# Review output
-python enrichment/pipeline.py --phase=numeric --council=ashfield
-```
-
-**Step 3.2: Verify results**
-```sql
-SELECT COUNT(*),
-       COUNT(v2_has_numeric_value) as enriched,
-       SUM(CASE WHEN v2_has_numeric_value THEN 1 ELSE 0 END) as with_values
-FROM regulatory_provisions
-WHERE document_id LIKE '%Ashfield%';
-```
-
-**Step 3.3: Build type classifier (Phase 2 - batch LLM)**
-
-Create `enrichment/extractors/type_classifier.py` for:
-- Classifying: CONTROL, OBJECTIVE, DEFINITION, NOTE, PROCEDURAL
-- Batch processing (50 provisions per call)
-
-**Step 3.4: Run type classification on Ashfield**
-```bash
-python enrichment/pipeline.py --phase=type --council=ashfield
-```
-
-**Step 3.5: Verify type classification**
-```sql
-SELECT v2_provision_type, COUNT(*)
-FROM regulatory_provisions
-WHERE document_id LIKE '%Ashfield%' AND v2_provision_type IS NOT NULL
-GROUP BY v2_provision_type;
-```
-
-### Phase 4: Expand to Other Councils
-
-After Ashfield is validated:
-
-```bash
-# Leichhardt
-python enrichment/pipeline.py --all-phases --council=leichhardt
-
-# Marrickville (largest - do last)
-python enrichment/pipeline.py --all-phases --council=marrickville
-```
-
-### Phase 5: Build New API
-
-**Step 5.1: Create new API route**
-
-Create `frontend-nextjs/app/api/provisions/search/route.ts`
-
-**Step 5.2: Test new API**
-```bash
-curl "http://localhost:3000/api/provisions/search?zone=R2&council=ashfield"
-```
-
-### Phase 6: Build New UI
-
-**Step 6.1: Create new components**
-- `components/provisions/ProvisionCard.tsx`
-- `components/provisions/ProvisionList.tsx`
-
-**Step 6.2: Create v2 assessment page**
-
-Create `frontend-nextjs/app/assessment/v2/page.tsx`
-
-**Step 6.3: Test at `/assessment?v2=true`**
-
-### Phase 7: Cutover
-
-**Step 7.1: Flip feature flag**
-```bash
-# .env.production
-USE_PROVISIONS_V2=true
-```
-
-**Step 7.2: Monitor for issues**
-
-**Step 7.3: Deprecate old routes (after stability confirmed)**
+**Phase 8: Cutover**
+- [ ] Feature flag flip
+- [ ] Monitor
+- [ ] Deprecate old routes
 
 ### Rollback Plan
 
-If issues occur at any phase:
-
-**Database rollback:**
 ```bash
-psql $SUPABASE_DB_URL -f backups/pre_v2_migration_YYYYMMDD.sql
-```
+# Database
+psql $SUPABASE_DB_URL -f backups/pre_v2_migration.sql
 
-**Code rollback:**
-```bash
+# Code
 git checkout main
+
+# Feature flag
+USE_PROVISIONS_V2=false
 ```
 
-**Feature flag rollback:**
+---
+
+## Part 8: Reference
+
+### Category Distribution (Inner West)
+
+```
+character: 56      landscaping: 40
+parking: 42        privacy: 34
+safety: 34         building_form: 30
+building_height: 26   accessibility: 19
+setback_front: 19     streetscape: 18
+fencing: 18        stormwater: 16
+environmental: 16     solar_access: 14
+heritage: 14       ...and 36 more
+```
+
+### UI Display
+
+**Optimal provision display:**
+
+```
+CONTROL - Front Setback
+
+"C4 Buildings must be setback a minimum of 6 metres from the
+front boundary to maintain the established streetscape character
+of the area."  ← ACTUAL TEXT
+
+📊 Extracted: minimum 6m
+🏗️ Applies to: R2, R3 | Dwelling house, Dual occupancy
+⚠️ Conditional: Excludes heritage items (see C4.1)
+
+📄 Source: Ashfield DCP Ch.D p.170 [View PDF]
+```
+
+**Precinct display:**
+
+```
+SETBACKS
+
+[PRECINCT - Summer Hill]
+"Front setback minimum 4m for Smith Street"
+Overrides general.
+
+[GENERAL - Ashfield] (greyed)
+"Front setback minimum 6m"
+Overridden by precinct.
+```
+
+### Legacy Code Management
+
+**File markers:**
+```typescript
+/**
+ * @deprecated Use /api/provisions instead.
+ * DO NOT ADD NEW FEATURES.
+ */
+```
+
+**Environment variables:**
 ```bash
-USE_PROVISIONS_V2=false
+USE_PROVISIONS_V2=false  # Toggle new system
 ```
 
 ### Success Criteria
 
-Migration is complete when:
-- [ ] All provisions have v2_provision_type populated
-- [ ] All provisions have v2_categories populated
+- [ ] All provisions have v2_provision_type
+- [ ] All provisions have v2_categories
 - [ ] Numeric controls have v2_extracted_values
+- [ ] Site conditions properly tagged
 - [ ] New API returns correct filtered results
 - [ ] New UI displays original provision text
-- [ ] PDF page links work correctly
-- [ ] Legacy tables can be dropped without impact
+- [ ] PDF page links work
+- [ ] Legacy tables can be dropped
 
 ---
 
 *Document created: 2024-11-22*
-*Last updated: 2024-11-22*
-*Purpose: Reference for provision-based architecture implementation*
+*Restructured: 2025-11-22*
+*Major revision: 2025-11-23*
+  - *Parts 1,2,4,5,7 updated for 4-layer model (Generic → Use → Condition → Precinct)*
+  - *Part 6 revised with web research on professional DCP workflows*
+  - *Added v2_dcp_layer, v2_dcp_part, v2_topic fields*
+  - *Execution checklist updated to reflect actual completion state*
+*Purpose: Authoritative reference for provision-based architecture implementation*
