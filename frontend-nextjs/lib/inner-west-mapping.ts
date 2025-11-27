@@ -35,21 +35,16 @@ const postcodeMapping: { [key: string]: string } = {
 };
 
 const suburbMapping: { [key: string]: string } = {
-  // Ashfield suburbs
+  // Ashfield suburbs (actual Inner West, not Canada Bay)
   'ashfield': 'Ashfield',
   'croydon': 'Ashfield',
   'croydon park': 'Ashfield',
   'enfield': 'Ashfield',
   'haberfield': 'Ashfield',
-  'russell lea': 'Ashfield',
+  'summer hill': 'Ashfield',
   'five dock': 'Ashfield',
   'wareemba': 'Ashfield',
   'rodd point': 'Ashfield',
-  'cabarita': 'Ashfield',
-  'concord west': 'Ashfield',
-  'north strathfield': 'Ashfield',
-  'strathfield south': 'Ashfield',
-  'homebush west': 'Ashfield',
 
   // Leichhardt suburbs
   'leichhardt': 'Leichhardt',

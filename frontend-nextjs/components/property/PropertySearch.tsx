@@ -3,8 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Search, MapPin, Loader2, X } from 'lucide-react';
-// Force recompile to apply address formatting fix
+import { Search, MapPin, Loader2, X, AlertCircle } from 'lucide-react';
 
 interface PropertySearchProps {
   onAddressSelect: (address: string, coordinates?: google.maps.LatLngLiteral) => void;
@@ -12,8 +11,17 @@ interface PropertySearchProps {
   selectedAddress?: string;
 }
 
+// Inner West LGA bounding box (approximate)
+const INNER_WEST_BOUNDS = {
+  south: -33.92,  // Southern boundary
+  west: 151.12,   // Western boundary
+  north: -33.85,  // Northern boundary
+  east: 151.19    // Eastern boundary
+};
+
 export function PropertySearch({ onAddressSelect, loading, selectedAddress }: PropertySearchProps) {
   const [inputValue, setInputValue] = useState('');
+  const [lgaError, setLgaError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -41,9 +49,10 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
             types: ['address'],
             componentRestrictions: { country: 'AU' },
             fields: ['formatted_address', 'geometry', 'address_components'],
+            // Bias results toward Inner West LGA (but don't hard-restrict)
             bounds: new window.google.maps.LatLngBounds(
-              new window.google.maps.LatLng(-37.5, 140.9), // SW corner - NSW bounds like original
-              new window.google.maps.LatLng(-28.1, 153.6) // NE corner - NSW bounds like original
+              new window.google.maps.LatLng(INNER_WEST_BOUNDS.south, INNER_WEST_BOUNDS.west),
+              new window.google.maps.LatLng(INNER_WEST_BOUNDS.north, INNER_WEST_BOUNDS.east)
             )
           }
         );
@@ -79,6 +88,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
+          setLgaError(null); // Clear any previous error
 
           if (place?.formatted_address) {
             let address = place.formatted_address;
@@ -90,19 +100,22 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
             setInputValue(address);
 
-            // Check if address is in NSW (simple validation like original)
-            const isNSW = address.includes('NSW') ||
-              place.address_components?.some(component =>
-                component.types.includes('administrative_area_level_1') &&
-                component.short_name === 'NSW'
-              );
+            // Check LGA from address_components
+            const lgaComponent = place.address_components?.find(component =>
+              component.types.includes('administrative_area_level_2')
+            );
+            const lga = lgaComponent?.long_name || '';
 
-            if (isNSW) {
+            // Validate: Only allow Inner West addresses
+            const isInnerWest = lga.toLowerCase().includes('inner west');
+
+            if (isInnerWest) {
               onAddressSelect(address, coordinates);
             } else {
-              // Still allow the selection but warn the user
-              onAddressSelect(address, coordinates);
-              console.warn('Address may not be in NSW');
+              // Show error for non-Inner West addresses
+              const lgaDisplay = lga || 'unknown area';
+              setLgaError(`This address is in ${lgaDisplay}. Only Inner West LGA addresses are currently supported.`);
+              console.warn(`Address rejected: ${address} is in ${lgaDisplay}, not Inner West`);
             }
           }
         });
@@ -158,14 +171,17 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setLgaError(null);
     if (inputValue.trim()) {
       // Allow manual entry - just pass the address through
+      // Note: Manual entries bypass LGA validation (validated server-side)
       onAddressSelect(inputValue.trim());
     }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
+    setLgaError(null); // Clear error when user types
   };
 
   const handleClearInput = (e?: React.MouseEvent) => {
@@ -190,7 +206,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           Property Address
         </h2>
         <p className="text-gray-600 text-sm">
-          Type any NSW address or select from suggestions
+          Enter an Inner West address to analyze
         </p>
       </div>
 
@@ -235,6 +251,17 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           </button>
         </div>
       </form>
+
+      {/* LGA validation error message */}
+      {lgaError && (
+        <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+          <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-amber-800 font-medium">Address not supported</p>
+            <p className="text-sm text-amber-700">{lgaError}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
