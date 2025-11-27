@@ -5,18 +5,15 @@
  *
  * Two-column layout:
  * - Left (1/4): Property search + NSW Planning API data (all layers with clickable URLs)
- * - Right (3/4): ComplianceDashboard showing unfiltered SEPP/LEP/DCP provisions from database
- *
- * Database integration:
- * - Queries regulatory_provisions table (up to 50 provisions per zone)
- * - Displays color-coded by authority level (SEPP=red, LEP=blue, DCP=green)
- * - Expandable cards show full legal text via /api/provisions/[id]/complete
+ * - Right (3/4): Tabbed view with:
+ *   - Tab 1 "SEPP & LEP": State-level controls (StructuredSeppRequirements, LandUseZoning, ADG, TOD)
+ *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTopic (4-layer model)
  */
 
 import React, { useState, useEffect } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
-import { ComplianceDashboard } from '@/components/compliance/ComplianceDashboard';
 import { ProvisionsByTopic } from '@/components/compliance/ProvisionsByTopic';
+import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
@@ -32,7 +29,7 @@ export default function AssessmentPage() {
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [lepClauseData, setLepClauseData] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'classic' | '4layer'>('4layer');
+  const [viewMode, setViewMode] = useState<'sepp-lep' | 'dcp'>('sepp-lep');
 
   // Auto-detect development type from zone when property loads
   useEffect(() => {
@@ -343,42 +340,45 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* View Mode Toggle */}
-                <div className="bg-white border rounded-lg p-3 mb-4 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">View Mode</span>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setViewMode('4layer')}
-                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                          viewMode === '4layer'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        4-Layer Filter
-                      </button>
-                      <button
-                        onClick={() => setViewMode('classic')}
-                        className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                          viewMode === 'classic'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        Classic View
-                      </button>
-                    </div>
+                {/* Regulatory Tabs */}
+                <div className="bg-white border rounded-lg shadow-sm mb-4">
+                  <div className="flex border-b">
+                    <button
+                      onClick={() => setViewMode('sepp-lep')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        viewMode === 'sepp-lep'
+                          ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      SEPP & LEP
+                      <span className="ml-2 text-xs text-gray-400">State Controls</span>
+                    </button>
+                    <button
+                      onClick={() => setViewMode('dcp')}
+                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                        viewMode === 'dcp'
+                          ? 'border-b-2 border-green-600 text-green-700 bg-green-50'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      DCP Provisions
+                      <span className="ml-2 text-xs text-gray-400">Council Controls</span>
+                    </button>
                   </div>
-                  {viewMode === '4layer' && (
-                    <p className="text-xs text-gray-500 mt-2">
-                      4-layer model: General provisions + Zone-specific + Site conditions (heritage/flood) + Precinct
-                    </p>
-                  )}
                 </div>
 
-                {/* 4-Layer Provisions by Topic */}
-                {viewMode === '4layer' && (
+                {/* SEPP & LEP Tab Content */}
+                {viewMode === 'sepp-lep' && (
+                  <StateLevelControls
+                    propertyData={selectedProperty}
+                    developmentType={developmentType}
+                    buildingHeight={buildingHeight || undefined}
+                  />
+                )}
+
+                {/* DCP Tab Content */}
+                {viewMode === 'dcp' && (
                   <ProvisionsByTopic
                     zone={selectedProperty.constraints?.zone}
                     heritage={selectedProperty.heritage?.isHeritage || false}
@@ -389,16 +389,6 @@ export default function AssessmentPage() {
                     precinctId={selectedProperty.constraints?.precinctId}
                     devType={developmentType}
                     council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
-                  />
-                )}
-
-                {/* Classic Compliance Dashboard */}
-                {viewMode === 'classic' && (
-                  <ComplianceDashboard
-                    propertyData={selectedProperty}
-                    developmentType={developmentType}
-                    buildingHeight={buildingHeight}
-                    className="transition-all duration-300 ease-in-out"
                   />
                 )}
               </>

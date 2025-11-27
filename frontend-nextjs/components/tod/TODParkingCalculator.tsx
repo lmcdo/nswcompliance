@@ -300,12 +300,6 @@ export default function TODParkingCalculator({
  )}
 
 
- {/* Debug Info - Parking Calculator Status */}
- <div className="bg-yellow-50 border border-yellow-300 rounded p-3 text-sm font-mono">
- <p><strong> DEBUG:</strong> Units={manualUnitCount}, Rate={manualParkingRate}, Type={typeof manualParkingRate}</p>
- <p><strong>Button Active:</strong> {(manualUnitCount > 0 && manualParkingRate !== null && manualParkingRate > 0) ? ' YES' : ' NO'}</p>
- </div>
-
  {/* Calculate Button */}
  {manualUnitCount > 0 && manualParkingRate !== null && manualParkingRate > 0 && (
  <div className="flex justify-center">
