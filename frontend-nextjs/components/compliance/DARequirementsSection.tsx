@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, FileText, AlertCircle, CheckCircle2, Info } 
 import { Badge } from '@/components/ui/badge';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
 import { canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement } from '@/lib/requirement-prioritization';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface DARequirement {
   id: number;
@@ -320,7 +321,7 @@ const RequirementGroup: React.FC<{ requirements: DARequirement[] }> = ({ require
             </div>
             <div className="p-4">
               <img
-                src={viewingPdfImage}
+                src={getPdfImageUrl(viewingPdfImage) || ''}
                 alt="DCP Source Document"
                 className="w-full h-auto"
               />

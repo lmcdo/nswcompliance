@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface PrecinctInfo {
   precinctNumber: string;
@@ -418,7 +419,7 @@ export function PrecinctProvisionsBrowser({
             </button>
             <div className="overflow-auto max-h-[90vh] p-4">
               <img
-                src={viewingPdfImage}
+                src={getPdfImageUrl(viewingPdfImage) || ''}
                 alt="PDF Page"
                 className="w-full h-auto"
                 onClick={(e) => e.stopPropagation()}

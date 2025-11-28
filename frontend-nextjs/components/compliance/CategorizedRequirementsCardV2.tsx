@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
 import { FormattedProvisionText } from './FormattedProvisionText';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface CategorizedRequirement {
   id: number;
@@ -557,7 +558,7 @@ export function CategorizedRequirementsCard({
             </div>
             <div className="p-4">
               <img
-                src={viewingPdfImage}
+                src={getPdfImageUrl(viewingPdfImage) || ''}
                 alt="PDF Page"
                 className="w-full h-auto"
               />

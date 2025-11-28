@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { getProvisionDisplayTitle } from '@/lib/provision-title-utils';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface ProvisionResult {
   id: number;
@@ -669,7 +670,7 @@ export function DCPProvisionsBrowser({
             </button>
             <div className="overflow-auto max-h-[90vh] p-4">
               <img
-                src={viewingPdfImage}
+                src={getPdfImageUrl(viewingPdfImage) || ''}
                 alt="PDF Page"
                 className="w-full h-auto"
                 onClick={(e) => e.stopPropagation()}

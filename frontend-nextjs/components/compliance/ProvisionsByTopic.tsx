@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { COUNCIL_CONFIGS, TOPIC_LABELS, type CouncilConfig } from '@/lib/council-config';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 import { HeritageProvisions } from './HeritageProvisions';
 import { FormattedProvisionText } from './FormattedProvisionText';
 
@@ -685,7 +686,7 @@ export function ProvisionsByTopic({
             {/* PDF Image */}
             <div className="p-4">
               <img
-                src={viewingPdfImage.url}
+                src={getPdfImageUrl(viewingPdfImage.url) || ''}
                 alt={`PDF page ${viewingPdfImage.page}`}
                 className="w-full h-auto"
               />

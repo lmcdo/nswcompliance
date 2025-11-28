@@ -11,6 +11,7 @@ import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { FormattedProvisionText } from './FormattedProvisionText';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface Provision {
   id: number;
@@ -257,7 +258,7 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
             </div>
             <div className="p-4">
               <img
-                src={viewingPdfImage.url}
+                src={getPdfImageUrl(viewingPdfImage.url) || ''}
                 alt={`PDF page ${viewingPdfImage.page}`}
                 className="max-w-full h-auto"
               />

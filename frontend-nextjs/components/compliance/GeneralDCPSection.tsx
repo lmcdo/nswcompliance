@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight, FileText, X, Info } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
 import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement, groupByCategory } from '@/lib/requirement-prioritization';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface GeneralProvision {
   id: number;
@@ -938,7 +939,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             </div>
             <div className="p-4">
               <img
-                src={viewingPdfImage.url}
+                src={getPdfImageUrl(viewingPdfImage.url) || ''}
                 alt={`DCP Page ${viewingPdfImage.page}`}
                 className="w-full h-auto"
               />
