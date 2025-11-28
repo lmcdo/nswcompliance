@@ -12,15 +12,36 @@ export interface FormattedElement {
 }
 
 /**
- * Fix common OCR spacing errors and LaTeX artifacts
+ * Fix common OCR spacing errors, LaTeX artifacts, and encoding issues (mojibake)
  * e.g., "before1920.Therearemanydifferences" → "before 1920. There are many differences"
  * e.g., "$20 \% 1$" → "20%"
+ * e.g., "â€™" → "'" (UTF-8 mojibake)
  */
 function fixOcrSpacing(text: string): string {
   let fixed = text;
 
+  // ===== FIX ENCODING ISSUES (MOJIBAKE) =====
+  // These occur when UTF-8 text is interpreted as Windows-1252
+
+  // Fix curly apostrophes/quotes
+  fixed = fixed.replace(/â€™/g, "'");  // RIGHT SINGLE QUOTATION MARK
+  fixed = fixed.replace(/â€˜/g, "'");  // LEFT SINGLE QUOTATION MARK
+  fixed = fixed.replace(/â€œ/g, '"');  // LEFT DOUBLE QUOTATION MARK
+  fixed = fixed.replace(/â€/g, '"');   // RIGHT DOUBLE QUOTATION MARK (partial)
+  fixed = fixed.replace(/â€"/g, '—');  // EM DASH
+  fixed = fixed.replace(/â€"/g, '–');  // EN DASH
+
+  // Fix bullet points
+  fixed = fixed.replace(/â€¢/g, '•');  // BULLET
+
+  // Fix other common mojibake
+  fixed = fixed.replace(/Â /g, ' ');   // Non-breaking space artifact
+  fixed = fixed.replace(/Â·/g, '·');   // Middle dot
+  fixed = fixed.replace(/â€¦/g, '…');  // ELLIPSIS
+
+  // ===== FIX LATEX ARTIFACTS =====
+
   // Fix LaTeX math mode notation: "$20 \% 1$" → "20%"
-  // Pattern: $number \% optional-footnote$
   fixed = fixed.replace(/\$(\d+)\s*\\%\s*\d*\$/g, '$1%');
 
   // Fix other LaTeX percentage patterns: "\%" → "%"
@@ -29,12 +50,13 @@ function fixOcrSpacing(text: string): string {
   // Fix stray LaTeX delimiters
   fixed = fixed.replace(/\$(\d+)\$/g, '$1');
 
-  // Fix orphaned section numbers followed by newline and heading
-  // "5.1\nObjectives" → "5.1 Objectives"
-  fixed = fixed.replace(/(\d+\.\d+)\s*\n\s*(Objectives|Controls|Requirements)/gi, '$1 $2');
+  // ===== FIX ORPHANED SECTION NUMBERS =====
 
-  // Fix section numbers on their own line: "5.1\n" at start → join with next content
-  fixed = fixed.replace(/^(\d+(?:\.\d+)*)\s*\n+/gm, '$1 ');
+  // Fix section numbers on their own line followed by content
+  // Handles: "5.1\nObjectives" or "5.1 \n Objectives" → "5.1 Objectives"
+  fixed = fixed.replace(/(\d+(?:\.\d+)+)\s*[\r\n]+\s*/g, '$1 ');
+
+  // ===== FIX OCR SPACING ERRORS =====
 
   // Fix missing space after period before capital letter
   // "word.Capital" → "word. Capital"
