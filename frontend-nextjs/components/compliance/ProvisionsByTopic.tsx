@@ -346,23 +346,35 @@ export function ProvisionsByTopic({
 
           {/* Filters Row */}
           <div className="flex flex-wrap items-center gap-4">
-            {/* Dev Type Selector */}
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Dev Type:
-              </label>
-              <select
-                value={selectedDevType}
-                onChange={(e) => setSelectedDevType(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                {DEV_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {/* Dev Type Selector - only show for councils where dev type filtering is effective */}
+            {councilConfig.devTypeFilterEffective ? (
+              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                  Dev Type:
+                </label>
+                <select
+                  value={selectedDevType}
+                  onChange={(e) => setSelectedDevType(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Development Types</option>
+                  {councilConfig.availableDevTypes?.map((dt) => (
+                    <option key={dt.id} value={dt.id}>
+                      {dt.name} ({dt.count})
+                    </option>
+                  )) || DEV_TYPE_OPTIONS.slice(1).map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : councilConfig.devTypeNote ? (
+              <div className="flex-1 min-w-[200px] text-sm text-amber-800 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
+                <span className="font-medium">Dev Type filter not applicable:</span>
+                <span className="ml-1">This DCP's provisions apply broadly by topic. For permitted uses in your zone, see the <span className="font-medium underline">SEPP & LEP</span> tab.</span>
+              </div>
+            ) : null}
 
             {/* Assessment Type Toggle */}
             <div className="flex items-center gap-2">
