@@ -12,11 +12,29 @@ export interface FormattedElement {
 }
 
 /**
- * Fix common OCR spacing errors
+ * Fix common OCR spacing errors and LaTeX artifacts
  * e.g., "before1920.Therearemanydifferences" → "before 1920. There are many differences"
+ * e.g., "$20 \% 1$" → "20%"
  */
 function fixOcrSpacing(text: string): string {
   let fixed = text;
+
+  // Fix LaTeX math mode notation: "$20 \% 1$" → "20%"
+  // Pattern: $number \% optional-footnote$
+  fixed = fixed.replace(/\$(\d+)\s*\\%\s*\d*\$/g, '$1%');
+
+  // Fix other LaTeX percentage patterns: "\%" → "%"
+  fixed = fixed.replace(/\\%/g, '%');
+
+  // Fix stray LaTeX delimiters
+  fixed = fixed.replace(/\$(\d+)\$/g, '$1');
+
+  // Fix orphaned section numbers followed by newline and heading
+  // "5.1\nObjectives" → "5.1 Objectives"
+  fixed = fixed.replace(/(\d+\.\d+)\s*\n\s*(Objectives|Controls|Requirements)/gi, '$1 $2');
+
+  // Fix section numbers on their own line: "5.1\n" at start → join with next content
+  fixed = fixed.replace(/^(\d+(?:\.\d+)*)\s*\n+/gm, '$1 ');
 
   // Fix missing space after period before capital letter
   // "word.Capital" → "word. Capital"
