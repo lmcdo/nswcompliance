@@ -1,109 +1,57 @@
-"""Check: Heritage vs Non-Heritage Demolition provisions"""
+"""Check dcp_general_provisions structure"""
 import psycopg2
 
 conn = psycopg2.connect('postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning')
 cur = conn.cursor()
 
 print("=" * 70)
-print("HERITAGE vs NON-HERITAGE DEMOLITION")
+print("DCP_GENERAL_PROVISIONS DATA CHECK")
 print("=" * 70)
 
-councils = ['Marrickville', 'Ashfield', 'Leichhardt']
-
-for council in councils:
-    print(f"\n### {council.upper()} ###")
-
-    # Demolition provisions IN heritage context
-    cur.execute("""
-        SELECT COUNT(*)
-        FROM regulatory_provisions
-        WHERE document_id ILIKE %s
-        AND provision_text ILIKE '%%demolition%%'
-        AND (
-            v2_topic ILIKE '%%heritage%%'
-            OR document_id ILIKE '%%heritage%%'
-            OR section_header ILIKE '%%heritage%%'
-            OR provision_text ILIKE '%%heritage%%'
-        )
-    """, (f'%{council}%',))
-    heritage_demo = cur.fetchone()[0]
-
-    # Demolition provisions NOT in heritage context
-    cur.execute("""
-        SELECT COUNT(*)
-        FROM regulatory_provisions
-        WHERE document_id ILIKE %s
-        AND provision_text ILIKE '%%demolition%%'
-        AND NOT (
-            v2_topic ILIKE '%%heritage%%'
-            OR document_id ILIKE '%%heritage%%'
-            OR section_header ILIKE '%%heritage%%'
-            OR provision_text ILIKE '%%heritage%%'
-        )
-    """, (f'%{council}%',))
-    general_demo = cur.fetchone()[0]
-
-    print(f"  Heritage Demolition: {heritage_demo}")
-    print(f"  General Demolition: {general_demo}")
-
-    # Sample heritage demolition
-    if heritage_demo > 0:
-        cur.execute("""
-            SELECT LEFT(provision_text, 150)
-            FROM regulatory_provisions
-            WHERE document_id ILIKE %s
-            AND provision_text ILIKE '%%demolition%%'
-            AND provision_text ILIKE '%%heritage%%'
-            LIMIT 2
-        """, (f'%{council}%',))
-        print(f"\n  Sample HERITAGE demolition:")
-        for row in cur.fetchall():
-            text = row[0].replace('\n', ' ') if row[0] else ''
-            print(f"    \"{text}...\"")
-
-    # Sample general demolition
-    if general_demo > 0:
-        cur.execute("""
-            SELECT LEFT(provision_text, 150)
-            FROM regulatory_provisions
-            WHERE document_id ILIKE %s
-            AND provision_text ILIKE '%%demolition%%'
-            AND NOT provision_text ILIKE '%%heritage%%'
-            AND NOT v2_topic ILIKE '%%heritage%%'
-            LIMIT 2
-        """, (f'%{council}%',))
-        print(f"\n  Sample GENERAL demolition:")
-        for row in cur.fetchall():
-            text = row[0].replace('\n', ' ') if row[0] else ''
-            print(f"    \"{text}...\"")
-
-# Check if v2_topic distinguishes them
-print("\n" + "=" * 70)
-print("v2_topic FOR DEMOLITION PROVISIONS")
-print("=" * 70)
-
+# Check LGA values
 cur.execute("""
-    SELECT v2_topic, COUNT(*)
-    FROM regulatory_provisions
-    WHERE document_id ILIKE '%%Marrickville%%'
-    AND provision_text ILIKE '%%demolition%%'
-    GROUP BY v2_topic
-    ORDER BY 2 DESC
+    SELECT DISTINCT lga, COUNT(*)
+    FROM dcp_general_provisions
+    GROUP BY lga
 """)
-print("\nMarrickville demolition by v2_topic:")
+print("\nLGA values in dcp_general_provisions:")
 for row in cur.fetchall():
-    print(f"  {row[0] or 'NULL'}: {row[1]}")
+    print(f"  '{row[0]}': {row[1]}")
 
+# Check what development_types look like
 cur.execute("""
-    SELECT v2_topic, COUNT(*)
-    FROM regulatory_provisions
-    WHERE document_id ILIKE '%%Leichhardt%%'
-    AND provision_text ILIKE '%%demolition%%'
-    GROUP BY v2_topic
+    SELECT development_types, COUNT(*)
+    FROM dcp_general_provisions
+    GROUP BY development_types
     ORDER BY 2 DESC
+    LIMIT 10
 """)
-print("\nLeichhardt demolition by v2_topic:")
+print("\nDevelopment_types arrays:")
 for row in cur.fetchall():
-    print(f"  {row[0] or 'NULL'}: {row[1]}")
+    print(f"  {row[0]}: {row[1]}")
+
+# Sample some actual records
+cur.execute("""
+    SELECT id, lga, part_number, LEFT(provision_text, 80), development_types
+    FROM dcp_general_provisions
+    LIMIT 5
+""")
+print("\nSample records:")
+for row in cur.fetchall():
+    print(f"  id={row[0]}, lga='{row[1]}', part={row[2]}")
+    print(f"    text: {row[3]}...")
+    print(f"    dev_types: {row[4]}")
+
+# Check applicable_zones
+cur.execute("""
+    SELECT applicable_zones, COUNT(*)
+    FROM dcp_general_provisions
+    GROUP BY applicable_zones
+    ORDER BY 2 DESC
+    LIMIT 10
+""")
+print("\nApplicable_zones arrays:")
+for row in cur.fetchall():
+    print(f"  {row[0]}: {row[1]}")
 
 conn.close()

@@ -47,20 +47,20 @@ export default function AssessmentPage() {
       {/* Regulatory Currency Warning Banner */}
       <RegulatoryCurrencyBanner />
 
-      {/* Header */}
+      {/* Header - responsive text sizing */}
       <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
             NSW Planning Assessment
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 mt-1 text-sm md:text-base hidden sm:block">
             Professional compliance assessment using real-time planning data
           </p>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="bg-white border-b px-4 py-3">
+      {/* Search Bar - sticky on mobile for easy access */}
+      <div className="bg-white border-b px-4 py-3 sticky top-0 z-40 md:relative">
         <div className="max-w-7xl mx-auto">
           <PropertySearch
             onAddressSelect={handleAddressSelect}
@@ -70,13 +70,13 @@ export default function AssessmentPage() {
         </div>
       </div>
 
-      {/* Main Content - 2 Column Layout */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Panel - Property Card (1/4 width) */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white border rounded-lg p-6 shadow-sm">
-              <h3 className="text-lg font-semibold mb-4">Property Information</h3>
+      {/* Main Content - 2 Column Layout (stacked on mobile) */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
+          {/* Left Panel - Property Card (1/4 width on desktop, full width on mobile) */}
+          <div className="lg:col-span-1 space-y-4 md:space-y-6">
+            <div className="bg-white border rounded-lg p-4 md:p-6 shadow-sm">
+              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4">Property Information</h3>
 
               {loading && (
                 <div className="animate-pulse space-y-3">
@@ -261,30 +261,30 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Regulatory Tabs */}
+                {/* Regulatory Tabs - larger touch targets on mobile */}
                 <div className="bg-white border rounded-lg shadow-sm mb-4">
                   <div className="flex border-b">
                     <button
                       onClick={() => setViewMode('sepp-lep')}
-                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                      className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
                           ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                       }`}
                     >
-                      SEPP & LEP
-                      <span className="ml-2 text-xs text-gray-400">State Controls</span>
+                      <span className="block">SEPP & LEP</span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">State Controls</span>
                     </button>
                     <button
                       onClick={() => setViewMode('dcp')}
-                      className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+                      className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
                           ? 'border-b-2 border-green-600 text-green-700 bg-green-50'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100'
                       }`}
                     >
-                      DCP Provisions
-                      <span className="ml-2 text-xs text-gray-400">Council Controls</span>
+                      <span className="block">DCP Provisions</span>
+                      <span className="text-xs text-gray-400 hidden sm:inline">Council Controls</span>
                     </button>
                   </div>
                 </div>
@@ -318,17 +318,17 @@ export default function AssessmentPage() {
         </div>
       </div>
 
-      {/* Zone Information Modal */}
+      {/* Zone Information Modal - fullscreen on mobile */}
       {showZoneInfo && selectedProperty?.constraints?.zone && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4" onClick={() => setShowZoneInfo(false)}>
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center md:p-4" onClick={() => setShowZoneInfo(false)}>
+          <div className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-2xl max-h-[90vh] md:max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white border-b px-4 md:px-6 py-3 md:py-4 flex items-center justify-between">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900 pr-4">
                 {selectedProperty.constraints.zoneDescription || selectedProperty.constraints.zone}
               </h3>
               <button
                 onClick={() => setShowZoneInfo(false)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -336,7 +336,7 @@ export default function AssessmentPage() {
               </button>
             </div>
 
-            <div className="px-6 py-4">
+            <div className="px-4 md:px-6 py-4">
               <p className="text-sm text-gray-600 mb-4">
                 Zone information is extracted from the {selectedProperty.planningLayers?.find((l: any) => l.layerName === 'Land Zoning Map')?.results[0]?.['EPI Name'] || 'Local Environmental Plan'}.
               </p>

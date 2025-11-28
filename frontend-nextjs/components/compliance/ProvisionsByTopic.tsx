@@ -474,25 +474,25 @@ export function ProvisionsByTopic({
         return (
           <Card key={topic}>
             <CardHeader
-              className="cursor-pointer hover:bg-gray-50 transition-colors py-3"
+              className="cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors py-4 md:py-3 min-h-[56px] md:min-h-0"
               onClick={() => toggleTopic(topic)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {isExpanded ? (
-                    <ChevronDown className="h-4 w-4" />
+                    <ChevronDown className="h-5 w-5 md:h-4 md:w-4" />
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-5 w-5 md:h-4 md:w-4" />
                   )}
-                  <Icon className="h-4 w-4" />
-                  <span className="font-medium">
+                  <Icon className="h-5 w-5 md:h-4 md:w-4" />
+                  <span className="font-medium text-sm md:text-base">
                     {TOPIC_LABELS[topic] || topic}
                   </span>
                   <Badge variant="secondary" className="ml-2">
                     {provisions.length}
                   </Badge>
-                  {/* Layer breakdown badges */}
-                  <span className="text-xs text-gray-500 ml-2">
+                  {/* Layer breakdown badges - hidden on mobile */}
+                  <span className="text-xs text-gray-500 ml-2 hidden md:inline">
                     {Object.entries(layerCounts).map(([layer, count]) => (
                       <span key={layer} className="mr-2">
                         <span className={`inline-block w-2 h-2 rounded-full mr-1 ${layer === 'generic' ? 'bg-gray-400' :
@@ -588,7 +588,7 @@ export function ProvisionsByTopic({
                                         </div>
                                         {provision.provision_text.length > 150 && (
                                           <button
-                                            className="text-xs text-blue-600 mt-1"
+                                            className="text-xs md:text-xs text-blue-600 mt-2 py-2 px-3 -ml-3 min-h-[44px] flex items-center hover:bg-blue-50 rounded transition-colors"
                                             onClick={() => toggleProvision(provision.id)}
                                           >
                                             {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
@@ -660,31 +660,31 @@ export function ProvisionsByTopic({
         );
       })}
 
-      {/* PDF Page Viewer Modal */}
+      {/* PDF Page Viewer Modal - fullscreen on mobile */}
       {viewingPdfImage && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-end md:items-center justify-center md:p-4"
           onClick={() => setViewingPdfImage(null)}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative"
+            className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
-              <h3 className="text-lg font-semibold text-gray-900">
+              <h3 className="text-base md:text-lg font-semibold text-gray-900">
                 PDF Page {viewingPdfImage.page}
               </h3>
               <button
                 onClick={() => setViewingPdfImage(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <X className="w-6 h-6" />
               </button>
             </div>
 
             {/* PDF Image */}
-            <div className="p-4">
+            <div className="p-2 md:p-4">
               <img
                 src={getPdfImageUrl(viewingPdfImage.url) || ''}
                 alt={`PDF page ${viewingPdfImage.page}`}

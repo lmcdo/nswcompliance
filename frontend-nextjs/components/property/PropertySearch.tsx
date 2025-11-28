@@ -211,7 +211,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
       </div>
 
       <form onSubmit={handleSubmit}>
-        <div className="flex gap-2 mb-4">
+        <div className="flex flex-col sm:flex-row gap-2 mb-4">
           <div className="relative flex-1">
             <input
               ref={inputRef}
@@ -219,17 +219,17 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
               value={inputValue}
               onChange={handleInputChange}
               placeholder="Start typing an address..."
-              className="w-full h-10 px-3 pr-16 text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
+              className="w-full h-12 sm:h-10 px-3 pr-16 text-base sm:text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
               disabled={loading}
             />
             {inputValue && (
               <button
                 type="button"
                 onClick={handleClearInput}
-                className="absolute right-10 top-1/2 transform -translate-y-1/2 p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="absolute right-10 top-1/2 transform -translate-y-1/2 p-2 hover:bg-gray-100 rounded-full transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center -mr-1"
                 title="Clear search"
               >
-                <X className="h-3 w-3 text-gray-400 hover:text-gray-600" />
+                <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
               </button>
             )}
             <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -238,11 +238,11 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           <button
             type="submit"
             disabled={loading || !inputValue.trim()}
-            className="h-10 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
+            className="h-12 sm:h-10 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-base sm:text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
                 Analyzing...
               </>
             ) : (
