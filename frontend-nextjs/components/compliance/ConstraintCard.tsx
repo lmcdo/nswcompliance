@@ -340,7 +340,7 @@ export function ConstraintCard({
                 }
 
                 // Use utility function for smart value formatting
-                const formattedValue = formatConstraintValue(val, provision);
+                const formattedValue = formatConstraintValue(val, constraint.unit);
 
                 // If it's a provision reference or descriptive title
                 if (typeof val === 'string' && (
