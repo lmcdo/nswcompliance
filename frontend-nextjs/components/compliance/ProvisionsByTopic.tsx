@@ -71,11 +71,17 @@ const TOPIC_ICONS: Record<string, any> = {
 
 // TOPIC_LABELS imported from council-config.ts (has 26 entries)
 
+import { LayerBadges } from '@/lib/design-tokens';
+
+// ... other imports ...
+
+// TOPIC_LABELS imported from council-config.ts (has 26 entries)
+
 const LAYER_COLORS: Record<string, string> = {
-  generic: 'bg-gray-100 text-gray-800',
-  use_specific: 'bg-blue-100 text-blue-800',
-  condition: 'bg-amber-100 text-amber-800',
-  precinct: 'bg-green-100 text-green-800',
+  generic: `${LayerBadges.generic.bg} ${LayerBadges.generic.text}`,
+  use_specific: `${LayerBadges.use_specific.bg} ${LayerBadges.use_specific.text}`,
+  condition: `${LayerBadges.condition.bg} ${LayerBadges.condition.text}`,
+  precinct: `${LayerBadges.precinct.bg} ${LayerBadges.precinct.text}`,
 };
 
 const LAYER_LABELS: Record<string, string> = {
@@ -321,11 +327,10 @@ export function ProvisionsByTopic({
             <div className="flex flex-wrap gap-1">
               <button
                 onClick={() => setSelectedTopic('')}
-                className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                  selectedTopic === ''
+                className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedTopic === ''
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 All
               </button>
@@ -333,11 +338,10 @@ export function ProvisionsByTopic({
                 <button
                   key={topic}
                   onClick={() => setSelectedTopic(topic)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${
-                    selectedTopic === topic
+                  className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedTopic === topic
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   {TOPIC_LABELS[topic] || topic}
                 </button>
@@ -385,32 +389,29 @@ export function ProvisionsByTopic({
               <div className="flex rounded-md border overflow-hidden">
                 <button
                   onClick={() => setSelectedAssessmentType('')}
-                  className={`px-3 py-1.5 text-sm transition-colors ${
-                    selectedAssessmentType === ''
+                  className={`px-3 py-1.5 text-sm transition-colors ${selectedAssessmentType === ''
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                    }`}
                 >
                   All
                 </button>
                 <button
                   onClick={() => setSelectedAssessmentType('DA')}
-                  className={`px-3 py-1.5 text-sm border-l transition-colors ${
-                    selectedAssessmentType === 'DA'
+                  className={`px-3 py-1.5 text-sm border-l transition-colors ${selectedAssessmentType === 'DA'
                       ? 'bg-blue-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                    }`}
                   title="Development Application - All provisions"
                 >
                   DA
                 </button>
                 <button
                   onClick={() => setSelectedAssessmentType('CDC')}
-                  className={`px-3 py-1.5 text-sm border-l transition-colors ${
-                    selectedAssessmentType === 'CDC'
+                  className={`px-3 py-1.5 text-sm border-l transition-colors ${selectedAssessmentType === 'CDC'
                       ? 'bg-green-600 text-white'
                       : 'bg-white text-gray-600 hover:bg-gray-50'
-                  }`}
+                    }`}
                   title="Complying Development Certificate - Quantitative only"
                 >
                   CDC
@@ -494,12 +495,11 @@ export function ProvisionsByTopic({
                   <span className="text-xs text-gray-500 ml-2">
                     {Object.entries(layerCounts).map(([layer, count]) => (
                       <span key={layer} className="mr-2">
-                        <span className={`inline-block w-2 h-2 rounded-full mr-1 ${
-                          layer === 'generic' ? 'bg-gray-400' :
-                          layer === 'use_specific' ? 'bg-blue-400' :
-                          layer === 'condition' ? 'bg-amber-400' :
-                          layer === 'precinct' ? 'bg-green-400' : 'bg-gray-300'
-                        }`}></span>
+                        <span className={`inline-block w-2 h-2 rounded-full mr-1 ${layer === 'generic' ? 'bg-gray-400' :
+                            layer === 'use_specific' ? 'bg-blue-400' :
+                              layer === 'condition' ? 'bg-amber-400' :
+                                layer === 'precinct' ? 'bg-green-400' : 'bg-gray-300'
+                          }`}></span>
                         {count}
                       </span>
                     ))}
@@ -514,145 +514,145 @@ export function ProvisionsByTopic({
                   <HeritageProvisions provisions={provisions} />
                 )}
                 {!(topic === 'heritage' && council === 'ashfield') && (
-                <div className="space-y-2">
-                  {(() => {
-                    // Group provisions by PDF page (extract from image URL as source of truth)
-                    const groupedByPage: { [page: number]: Provision[] } = {};
-                    const provisionsWithoutPage: Provision[] = [];
+                  <div className="space-y-2">
+                    {(() => {
+                      // Group provisions by PDF page (extract from image URL as source of truth)
+                      const groupedByPage: { [page: number]: Provision[] } = {};
+                      const provisionsWithoutPage: Provision[] = [];
 
-                    provisions.slice(0, 20).forEach(prov => {
-                      // Use pdf_page field (corrected for offset) as primary source
-                      let pageNum: number | null = null;
-                      if (prov.pdf_page) {
-                        pageNum = prov.pdf_page;
-                      }
-                      // Fallback to URL only if pdf_page is missing
-                      // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
-                      if (!pageNum && prov.pdf_page_image_url) {
-                        const match = prov.pdf_page_image_url.match(/[/_]page_(\d+)\./);
-                        if (match) {
-                          pageNum = parseInt(match[1]);
+                      provisions.slice(0, 20).forEach(prov => {
+                        // Use pdf_page field (corrected for offset) as primary source
+                        let pageNum: number | null = null;
+                        if (prov.pdf_page) {
+                          pageNum = prov.pdf_page;
                         }
-                      }
-
-                      if (pageNum) {
-                        if (!groupedByPage[pageNum]) {
-                          groupedByPage[pageNum] = [];
+                        // Fallback to URL only if pdf_page is missing
+                        // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
+                        if (!pageNum && prov.pdf_page_image_url) {
+                          const match = prov.pdf_page_image_url.match(/[/_]page_(\d+)\./);
+                          if (match) {
+                            pageNum = parseInt(match[1]);
+                          }
                         }
-                        groupedByPage[pageNum].push(prov);
-                      } else {
-                        provisionsWithoutPage.push(prov);
-                      }
-                    });
 
-                    // Sort page groups by page number
-                    const sortedPageGroups = Object.entries(groupedByPage)
-                      .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
+                        if (pageNum) {
+                          if (!groupedByPage[pageNum]) {
+                            groupedByPage[pageNum] = [];
+                          }
+                          groupedByPage[pageNum].push(prov);
+                        } else {
+                          provisionsWithoutPage.push(prov);
+                        }
+                      });
 
-                    return (
-                      <>
-                        {sortedPageGroups.map(([pageNumStr, pageProvisions], groupIdx) => {
-                          const pdfUrl = pageProvisions[0]?.pdf_page_image_url;
-                          const pdfPage = parseInt(pageNumStr); // Already extracted from URL in grouping logic
+                      // Sort page groups by page number
+                      const sortedPageGroups = Object.entries(groupedByPage)
+                        .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
 
-                          return (
-                            <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t pt-2' : ''}>
-                              {/* Provisions in this page group */}
-                              {pageProvisions.map((provision) => (
-                                <div
-                                  key={provision.id}
-                                  className="border rounded-lg p-3 hover:bg-gray-50 mb-2"
-                                >
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
-                                          {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
-                                        </Badge>
-                                        {provision.v2_dcp_part && (
-                                          <Badge variant="outline" className="text-xs">
-                                            {provision.v2_dcp_part}
+                      return (
+                        <>
+                          {sortedPageGroups.map(([pageNumStr, pageProvisions], groupIdx) => {
+                            const pdfUrl = pageProvisions[0]?.pdf_page_image_url;
+                            const pdfPage = parseInt(pageNumStr); // Already extracted from URL in grouping logic
+
+                            return (
+                              <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t pt-2' : ''}>
+                                {/* Provisions in this page group */}
+                                {pageProvisions.map((provision) => (
+                                  <div
+                                    key={provision.id}
+                                    className="border rounded-lg p-3 hover:bg-gray-50 mb-2"
+                                  >
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
+                                            {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
                                           </Badge>
-                                        )}
-                                        {provision.v2_marker && (
-                                          <Badge variant="outline" className="text-xs bg-purple-50">
-                                            {provision.v2_marker}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <div
-                                        className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
-                                        onClick={() => toggleProvision(provision.id)}
-                                      >
-                                        <FormattedProvisionText text={provision.provision_text} compact />
-                                      </div>
-                                      {provision.provision_text.length > 150 && (
-                                        <button
-                                          className="text-xs text-blue-600 mt-1"
+                                          {provision.v2_dcp_part && (
+                                            <Badge variant="outline" className="text-xs">
+                                              {provision.v2_dcp_part}
+                                            </Badge>
+                                          )}
+                                          {provision.v2_marker && (
+                                            <Badge variant="outline" className="text-xs bg-purple-50">
+                                              {provision.v2_marker}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <div
+                                          className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                                           onClick={() => toggleProvision(provision.id)}
                                         >
-                                          {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
-                                        </button>
-                                      )}
+                                          <FormattedProvisionText text={provision.provision_text} compact />
+                                        </div>
+                                        {provision.provision_text.length > 150 && (
+                                          <button
+                                            className="text-xs text-blue-600 mt-1"
+                                            onClick={() => toggleProvision(provision.id)}
+                                          >
+                                            {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
+                                          </button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
 
-                              {/* PDF Page Button - after all provisions from this page */}
-                              {pdfPage && pdfUrl && (
-                                <div className="flex justify-end mt-1 mb-3">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingPdfImage({ url: pdfUrl, page: pdfPage });
-                                    }}
-                                  >
-                                    <FileText className="h-3 w-3 mr-1" />
-                                    View PDF page {pdfPage}
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                                {/* PDF Page Button - after all provisions from this page */}
+                                {pdfPage && pdfUrl && (
+                                  <div className="flex justify-end mt-1 mb-3">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      View PDF page {pdfPage}
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
 
-                        {/* Provisions without page numbers */}
-                        {provisionsWithoutPage.map((provision) => (
-                          <div
-                            key={provision.id}
-                            className="border rounded-lg p-3 hover:bg-gray-50"
-                          >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
-                                    {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
-                                  </Badge>
-                                  {provision.v2_dcp_part && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {provision.v2_dcp_part}
+                          {/* Provisions without page numbers */}
+                          {provisionsWithoutPage.map((provision) => (
+                            <div
+                              key={provision.id}
+                              className="border rounded-lg p-3 hover:bg-gray-50"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
+                                      {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
                                     </Badge>
-                                  )}
+                                    {provision.v2_dcp_part && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {provision.v2_dcp_part}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <FormattedProvisionText text={provision.provision_text} compact />
                                 </div>
-                                <FormattedProvisionText text={provision.provision_text} compact />
                               </div>
                             </div>
-                          </div>
-                        ))}
-                      </>
-                    );
-                  })()}
+                          ))}
+                        </>
+                      );
+                    })()}
 
-                  {provisions.length > 20 && (
-                    <p className="text-sm text-gray-500 text-center py-2">
-                      Showing 20 of {provisions.length} provisions
-                    </p>
-                  )}
-                </div>
+                    {provisions.length > 20 && (
+                      <p className="text-sm text-gray-500 text-center py-2">
+                        Showing 20 of {provisions.length} provisions
+                      </p>
+                    )}
+                  </div>
                 )}
               </CardContent>
             )}

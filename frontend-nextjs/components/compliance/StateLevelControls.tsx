@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Scale, Building2, Car } from 'lucide-react';
+import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
@@ -118,27 +119,27 @@ export function StateLevelControls({
   return (
     <div className="space-y-4">
       {/* SEPP Section */}
-      <Card className="border-purple-200 bg-purple-50/30">
+      <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}/30`}>
         <CardHeader
-          className="cursor-pointer hover:bg-purple-100/50 transition-colors"
+          className={`cursor-pointer ${AuthorityColors.SEPP.hover.replace('100', '100/50')} transition-colors`}
           onClick={() => toggleSection('sepp')}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {collapsedSections.sepp ? (
-                <ChevronRight className="h-5 w-5 text-purple-600" />
+                <ChevronRight className={`h-5 w-5 ${AuthorityColors.SEPP.text.replace('700', '600')}`} />
               ) : (
-                <ChevronDown className="h-5 w-5 text-purple-600" />
+                <ChevronDown className={`h-5 w-5 ${AuthorityColors.SEPP.text.replace('700', '600')}`} />
               )}
-              <Scale className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg text-purple-900">SEPP Requirements</CardTitle>
+              <Scale className={`h-5 w-5 ${AuthorityColors.SEPP.text.replace('700', '600')}`} />
+              <CardTitle className={`text-lg ${AuthorityColors.SEPP.text.replace('700', '900')}`}>SEPP Requirements</CardTitle>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-purple-100 text-purple-800">State Policy</Badge>
+              <Badge className={`${AuthorityColors.SEPP.bg.replace('50', '100')} ${AuthorityColors.SEPP.text.replace('700', '800')}`}>State Policy</Badge>
               <Badge className="bg-green-100 text-green-800">100% Reliable</Badge>
             </div>
           </div>
-          <p className="text-sm text-purple-700 mt-1 ml-7">
+          <p className={`text-sm ${AuthorityColors.SEPP.text} mt-1 ml-7`}>
             State Environmental Planning Policies - Mandatory requirements
           </p>
         </CardHeader>
@@ -146,8 +147,8 @@ export function StateLevelControls({
           <CardContent className="pt-0">
             {loadingSepp ? (
               <div className="animate-pulse space-y-2">
-                <div className="h-4 bg-purple-200 rounded w-3/4"></div>
-                <div className="h-4 bg-purple-200 rounded w-1/2"></div>
+                <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-3/4`}></div>
+                <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-1/2`}></div>
               </div>
             ) : structuredRequirements.length > 0 ? (
               <StructuredSeppRequirements
@@ -164,24 +165,24 @@ export function StateLevelControls({
       </Card>
 
       {/* LEP Section */}
-      <Card className="border-blue-200 bg-blue-50/30">
+      <Card className={`${AuthorityColors.LEP.border.replace('500', '200')} ${AuthorityColors.LEP.bg}/30`}>
         <CardHeader
-          className="cursor-pointer hover:bg-blue-100/50 transition-colors"
+          className={`cursor-pointer ${AuthorityColors.LEP.hover.replace('100', '100/50')} transition-colors`}
           onClick={() => toggleSection('lep')}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               {collapsedSections.lep ? (
-                <ChevronRight className="h-5 w-5 text-blue-600" />
+                <ChevronRight className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
               ) : (
-                <ChevronDown className="h-5 w-5 text-blue-600" />
+                <ChevronDown className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
               )}
-              <Building2 className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-lg text-blue-900">LEP Controls</CardTitle>
+              <Building2 className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
+              <CardTitle className={`text-lg ${AuthorityColors.LEP.text.replace('700', '900')}`}>LEP Controls</CardTitle>
             </div>
-            <Badge className="bg-blue-100 text-blue-800">Local Environmental Plan</Badge>
+            <Badge className={`${AuthorityColors.LEP.bg.replace('50', '100')} ${AuthorityColors.LEP.text.replace('700', '800')}`}>Local Environmental Plan</Badge>
           </div>
-          <p className="text-sm text-blue-700 mt-1 ml-7">
+          <p className={`text-sm ${AuthorityColors.LEP.text} mt-1 ml-7`}>
             Zoning, land use permissibility, and lot size requirements
           </p>
         </CardHeader>
