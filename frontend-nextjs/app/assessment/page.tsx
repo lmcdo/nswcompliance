@@ -10,117 +10,37 @@
  *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTopic (4-layer model)
  */
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTopic } from '@/components/compliance/ProvisionsByTopic';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
-import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 import { StatusColors } from '@/lib/design-tokens';
+import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
 
 export default function AssessmentPage() {
-  const [selectedAddress, setSelectedAddress] = useState('');
-  const [selectedProperty, setSelectedProperty] = useState<any>(null);
-  const [selectedCoordinates, setSelectedCoordinates] = useState<google.maps.LatLngLiteral | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [developmentType, setDevelopmentType] = useState('dwelling_house');
-  const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
-  const [showZoneInfo, setShowZoneInfo] = useState(false);
-  const [lepClauseData, setLepClauseData] = useState<any>(null);
-  const [viewMode, setViewMode] = useState<'sepp-lep' | 'dcp'>('sepp-lep');
+  // Property data and fetching
+  const {
+    selectedAddress,
+    selectedProperty,
+    loading,
+    error,
+    lepClauseData,
+    developmentType,
+    handleAddressSelect,
+  } = usePropertyAssessment();
 
-  // Auto-detect development type from zone when property loads
-  useEffect(() => {
-    if (selectedProperty?.constraints?.zone) {
-      const detectedDevType = detectDevTypeFromZone(selectedProperty.constraints.zone);
-      setDevelopmentType(detectedDevType);
-    }
-  }, [selectedProperty?.constraints?.zone]);
-
-  // Fetch LEP clause data when property or dev type changes
-  useEffect(() => {
-    async function fetchLepClauses() {
-      if (!selectedProperty) {
-        setLepClauseData(null);
-        return;
-      }
-
-      const lotArea = selectedProperty.propertyArea ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, '')) : null;
-      if (!lotArea) return;
-
-      try {
-        const response = await fetch('/api/capacity/calculate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            address: selectedProperty.address,
-            coordinates: selectedCoordinates,
-            developmentType: developmentType,
-            lotArea: lotArea,
-            zone: selectedProperty.constraints?.zone || '',
-            lga: selectedProperty.constraints?.lga || '',
-            formerCouncil: selectedProperty.constraints?.formerCouncil || ''
-          })
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setLepClauseData(data);
-        }
-      } catch (error) {
-        console.error('Failed to fetch LEP clause data:', error);
-      }
-    }
-
-    fetchLepClauses();
-  }, [selectedProperty, developmentType, selectedCoordinates]);
-
-  const handleAddressSelect = async (address: string, coordinates?: google.maps.LatLngLiteral) => {
-    console.log('=== handleAddressSelect CALLED ===');
-    console.log('Address:', address);
-    console.log('Coordinates:', coordinates);
-
-    setSelectedAddress(address);
-    setSelectedCoordinates(coordinates || null);
-    setLoading(true);
-    setError(null);
-
-    try {
-      const url = `/api/property?address=${encodeURIComponent(address)}`;
-      console.log('Fetching:', url);
-
-      const response = await fetch(url);
-      console.log('Response status:', response.status);
-      console.log('Response ok:', response.ok);
-
-      if (response.ok) {
-        const apiResponse = await response.json();
-        console.log('API Response:', apiResponse);
-
-        if (apiResponse.success) {
-          console.log('✅ Success! Property data:', apiResponse.data);
-          setSelectedProperty(apiResponse.data);
-        } else {
-          console.error('❌ API returned error:', apiResponse.error);
-          throw new Error(apiResponse.error || 'Failed to load property');
-        }
-      } else {
-        const errorText = await response.text();
-        console.error('❌ HTTP Error:', response.status, errorText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (err) {
-      console.error('❌ Fetch error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load property');
-      setSelectedProperty(null);
-    } finally {
-      setLoading(false);
-      console.log('=== handleAddressSelect COMPLETE ===');
-    }
-  };
+  // UI state (view mode, modals, inputs)
+  const {
+    viewMode,
+    setViewMode,
+    showZoneInfo,
+    setShowZoneInfo,
+    buildingHeight,
+    setBuildingHeight,
+  } = useAssessmentUI();
 
   return (
     <div className="min-h-screen bg-gray-50">
