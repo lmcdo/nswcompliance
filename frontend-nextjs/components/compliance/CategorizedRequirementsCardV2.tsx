@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface CategorizedRequirement {
   id: number;
@@ -541,31 +541,12 @@ export function CategorizedRequirementsCard({
       </CardContent>
 
       {/* PDF Image Viewer Modal */}
-      {viewingPdfImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4"
-          onClick={() => setViewingPdfImage(null)}
-        >
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <h3 className="font-semibold">DCP Source Document</h3>
-              <button
-                onClick={() => setViewingPdfImage(null)}
-                className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4">
-              <img
-                src={getPdfImageUrl(viewingPdfImage) || ''}
-                alt="PDF Page"
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        imageUrl={viewingPdfImage}
+        title="DCP Source Document"
+      />
     </Card>
   );
 }

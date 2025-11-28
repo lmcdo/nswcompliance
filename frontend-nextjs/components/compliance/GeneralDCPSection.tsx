@@ -16,10 +16,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, FileText, X, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Info } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement, groupByCategory } from '@/lib/requirement-prioritization';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface GeneralProvision {
   id: number;
@@ -917,36 +917,14 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
           </div>
         )}
 
-      {/* PDF Viewer Modal - Shared modal for page group footers */}
-      {viewingPdfImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewingPdfImage(null)}
-        >
-          <div
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-auto relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <h3 className="font-semibold">DCP Page {viewingPdfImage.page}</h3>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setViewingPdfImage(null)}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-4">
-              <img
-                src={getPdfImageUrl(viewingPdfImage.url) || ''}
-                alt={`DCP Page ${viewingPdfImage.page}`}
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* PDF Viewer Modal */}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        imageUrl={viewingPdfImage?.url}
+        pageNumber={viewingPdfImage?.page}
+        title="DCP Source Document"
+      />
     </div>
   );
 };

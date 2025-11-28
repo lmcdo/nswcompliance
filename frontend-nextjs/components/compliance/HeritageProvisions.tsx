@@ -7,11 +7,11 @@
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, FileText, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface Provision {
   id: number;
@@ -247,25 +247,12 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
       </div>
 
       {/* PDF Image Modal */}
-      {viewingPdfImage && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setViewingPdfImage(null)}>
-          <div className="bg-white rounded-lg max-w-4xl max-h-[90vh] overflow-auto m-4" onClick={e => e.stopPropagation()}>
-            <div className="sticky top-0 bg-white border-b px-4 py-2 flex items-center justify-between">
-              <span className="font-medium">PDF Page {viewingPdfImage.page}</span>
-              <Button size="sm" variant="ghost" onClick={() => setViewingPdfImage(null)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="p-4">
-              <img
-                src={getPdfImageUrl(viewingPdfImage.url) || ''}
-                alt={`PDF page ${viewingPdfImage.page}`}
-                className="max-w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        imageUrl={viewingPdfImage?.url}
+        pageNumber={viewingPdfImage?.page}
+      />
     </>
   );
 }

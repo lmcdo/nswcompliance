@@ -12,12 +12,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, X, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { COUNCIL_CONFIGS, TOPIC_LABELS, type CouncilConfig } from '@/lib/council-config';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
 import { HeritageProvisions } from './HeritageProvisions';
 import { FormattedProvisionText } from './FormattedProvisionText';
 
@@ -660,40 +660,13 @@ export function ProvisionsByTopic({
         );
       })}
 
-      {/* PDF Page Viewer Modal - fullscreen on mobile */}
-      {viewingPdfImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-end md:items-center justify-center md:p-4"
-          onClick={() => setViewingPdfImage(null)}
-        >
-          <div
-            className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-auto relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b px-4 py-3 flex items-center justify-between z-10">
-              <h3 className="text-base md:text-lg font-semibold text-gray-900">
-                PDF Page {viewingPdfImage.page}
-              </h3>
-              <button
-                onClick={() => setViewingPdfImage(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors p-2 -mr-2 min-w-[44px] min-h-[44px] flex items-center justify-center"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            {/* PDF Image */}
-            <div className="p-2 md:p-4">
-              <img
-                src={getPdfImageUrl(viewingPdfImage.url) || ''}
-                alt={`PDF page ${viewingPdfImage.page}`}
-                className="w-full h-auto"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      {/* PDF Page Viewer Modal */}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        imageUrl={viewingPdfImage?.url}
+        pageNumber={viewingPdfImage?.page}
+      />
     </div>
   );
 }

@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { MapPin, FileText, ChevronDown, ChevronRight } from 'lucide-react';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 
 interface PrecinctInfo {
   precinctNumber: string;
@@ -404,30 +404,12 @@ export function PrecinctProvisionsBrowser({
       </Card>
 
       {/* PDF Page Image Modal */}
-      {viewingPdfImage && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewingPdfImage(null)}
-        >
-          <div className="relative max-w-7xl max-h-[90vh] bg-white rounded-lg shadow-2xl overflow-hidden">
-            <button
-              onClick={() => setViewingPdfImage(null)}
-              className="absolute top-4 right-4 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 z-10"
-              aria-label="Close"
-            >
-              <span className="text-2xl leading-none">×</span>
-            </button>
-            <div className="overflow-auto max-h-[90vh] p-4">
-              <img
-                src={getPdfImageUrl(viewingPdfImage) || ''}
-                alt="PDF Page"
-                className="w-full h-auto"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-        </div>
-      )}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        imageUrl={viewingPdfImage}
+        title="Precinct DCP Document"
+      />
     </>
   );
 }
