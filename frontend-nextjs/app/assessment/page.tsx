@@ -263,8 +263,12 @@ export default function AssessmentPage() {
               <>
                 {/* Regulatory Tabs - larger touch targets on mobile */}
                 <div className="bg-white border rounded-lg shadow-sm mb-4">
-                  <div className="flex border-b">
+                  <div className="flex border-b" role="tablist" aria-label="Regulatory controls">
                     <button
+                      role="tab"
+                      id="tab-sepp-lep"
+                      aria-selected={viewMode === 'sepp-lep'}
+                      aria-controls="panel-sepp-lep"
                       onClick={() => setViewMode('sepp-lep')}
                       className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
@@ -276,6 +280,10 @@ export default function AssessmentPage() {
                       <span className="text-xs text-gray-400 hidden sm:inline">State Controls</span>
                     </button>
                     <button
+                      role="tab"
+                      id="tab-dcp"
+                      aria-selected={viewMode === 'dcp'}
+                      aria-controls="panel-dcp"
                       onClick={() => setViewMode('dcp')}
                       className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
@@ -291,26 +299,30 @@ export default function AssessmentPage() {
 
                 {/* SEPP & LEP Tab Content */}
                 {viewMode === 'sepp-lep' && (
-                  <StateLevelControls
-                    propertyData={selectedProperty}
-                    developmentType={developmentType}
-                    buildingHeight={buildingHeight || undefined}
-                  />
+                  <div role="tabpanel" id="panel-sepp-lep" aria-labelledby="tab-sepp-lep">
+                    <StateLevelControls
+                      propertyData={selectedProperty}
+                      developmentType={developmentType}
+                      buildingHeight={buildingHeight || undefined}
+                    />
+                  </div>
                 )}
 
                 {/* DCP Tab Content */}
                 {viewMode === 'dcp' && (
-                  <ProvisionsByTopic
-                    zone={selectedProperty.constraints?.zone}
-                    heritage={selectedProperty.heritage?.isHeritage || false}
-                    flood={selectedProperty.planningLayers?.some((l: any) =>
-                      l.layerName?.toLowerCase().includes('flood') &&
-                      l.results?.length > 0
-                    ) || false}
-                    precinctId={selectedProperty.constraints?.precinctId}
-                    devType={developmentType}
-                    council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
-                  />
+                  <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
+                    <ProvisionsByTopic
+                      zone={selectedProperty.constraints?.zone}
+                      heritage={selectedProperty.heritage?.isHeritage || false}
+                      flood={selectedProperty.planningLayers?.some((l: any) =>
+                        l.layerName?.toLowerCase().includes('flood') &&
+                        l.results?.length > 0
+                      ) || false}
+                      precinctId={selectedProperty.constraints?.precinctId}
+                      devType={developmentType}
+                      council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
+                    />
+                  </div>
                 )}
               </>
             )}

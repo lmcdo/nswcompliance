@@ -476,6 +476,16 @@ export function ProvisionsByTopic({
             <CardHeader
               className="cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors py-4 md:py-3 min-h-[56px] md:min-h-0"
               onClick={() => toggleTopic(topic)}
+              role="button"
+              aria-expanded={isExpanded}
+              aria-controls={`topic-content-${topic}`}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleTopic(topic);
+                }
+              }}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -509,7 +519,7 @@ export function ProvisionsByTopic({
             </CardHeader>
 
             {isExpanded && (
-              <CardContent className="pt-0">
+              <CardContent className="pt-0" id={`topic-content-${topic}`}>
                 {topic === 'heritage' && council === 'ashfield' && (
                   <HeritageProvisions provisions={provisions} />
                 )}
