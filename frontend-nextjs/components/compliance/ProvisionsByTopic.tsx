@@ -51,7 +51,6 @@ interface ProvisionsByTopicProps {
   flood?: boolean;
   precinctId?: string;
   devType?: string;
-  assessmentType?: 'CDC' | 'DA';
   council?: string;  // 'marrickville' | 'leichhardt' | 'ashfield'
   professionalMode?: 'certifier' | 'planner';
 }
@@ -135,7 +134,6 @@ export function ProvisionsByTopic({
   flood = false,
   precinctId,
   devType: initialDevType,
-  assessmentType: initialAssessmentType,
   council,
   professionalMode = 'certifier',
 }: ProvisionsByTopicProps) {
@@ -149,7 +147,6 @@ export function ProvisionsByTopic({
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
   const [selectedDevType, setSelectedDevType] = useState(initialDevType || '');
-  const [selectedAssessmentType, setSelectedAssessmentType] = useState<'CDC' | 'DA' | ''>(initialAssessmentType || '');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
 
@@ -169,7 +166,6 @@ export function ProvisionsByTopic({
         if (flood) params.set('flood', 'true');
         if (precinctId) params.set('precinct_id', precinctId);
         if (selectedDevType) params.set('dev_type', selectedDevType);
-        if (selectedAssessmentType) params.set('assessment_type', selectedAssessmentType);
         if (selectedTopic) params.set('topic', selectedTopic);
         if (council) params.set('former_council', council);
 
@@ -194,7 +190,7 @@ export function ProvisionsByTopic({
     }
 
     fetchProvisions();
-  }, [zone, heritage, flood, precinctId, selectedDevType, selectedAssessmentType, selectedTopic, topicOrder]);
+  }, [zone, heritage, flood, precinctId, selectedDevType, selectedTopic, topicOrder]);
 
   // Sort topics by professional priority
   function sortTopicsByPriority(topics: string[], priorityOrder: string[]): string[] {
@@ -312,7 +308,7 @@ export function ProvisionsByTopic({
           )}
 
           {/* Council-specific guidance for Leichhardt */}
-          {council === 'leichhardt' && !selectedTopic && selectedAssessmentType !== 'CDC' && (
+          {council === 'leichhardt' && !selectedTopic && (
             <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r">
               <p className="text-sm text-amber-800">
                 <strong>Tip:</strong> Select a topic below to narrow results.
@@ -381,52 +377,10 @@ export function ProvisionsByTopic({
               </div>
             ) : null}
 
-            {/* Assessment Type Toggle */}
-            <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                Assessment:
-              </label>
-              <div className="flex rounded-md border overflow-hidden">
-                <button
-                  onClick={() => setSelectedAssessmentType('')}
-                  className={`px-3 py-1.5 text-sm transition-colors ${selectedAssessmentType === ''
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setSelectedAssessmentType('DA')}
-                  className={`px-3 py-1.5 text-sm border-l transition-colors ${selectedAssessmentType === 'DA'
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  title="Development Application - All provisions"
-                >
-                  DA
-                </button>
-                <button
-                  onClick={() => setSelectedAssessmentType('CDC')}
-                  className={`px-3 py-1.5 text-sm border-l transition-colors ${selectedAssessmentType === 'CDC'
-                      ? 'bg-green-600 text-white'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
-                    }`}
-                  title="Complying Development Certificate - Quantitative only"
-                >
-                  CDC
-                </button>
-              </div>
-            </div>
           </div>
-          {selectedAssessmentType === 'CDC' && (
-            <p className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded">
-              CDC mode: Showing only quantitative, checkable controls
-            </p>
-          )}
 
           {/* Warning if too many results */}
-          {data && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && selectedAssessmentType !== 'CDC' && (
+          {data && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && (
             <div className="bg-amber-50 border border-amber-200 rounded p-2">
               <p className="text-xs text-amber-800">
                 <strong>{data.summary.total_provisions} provisions</strong> - Consider selecting a topic above to narrow results
