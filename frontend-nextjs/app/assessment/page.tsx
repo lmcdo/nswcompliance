@@ -11,6 +11,7 @@
  */
 
 import React from 'react';
+import { Building2, MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTopic } from '@/components/compliance/ProvisionsByTopic';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
@@ -47,17 +48,29 @@ export default function AssessmentPage() {
       {/* Regulatory Currency Warning Banner */}
       <RegulatoryCurrencyBanner />
 
-      {/* Header - responsive text sizing */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-3 md:py-4">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-            NSW Planning Assessment
-          </h1>
-          <p className="text-gray-600 mt-1 text-sm md:text-base hidden sm:block">
-            Professional compliance assessment using real-time planning data
-          </p>
+      {/* Header - teal accent design */}
+      <header className="relative border-b bg-white shadow-sm">
+        <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-teal-500 to-emerald-500" />
+        <div className="max-w-7xl mx-auto flex items-center gap-4 px-4 py-3 md:py-4 pl-6">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-600 shadow-sm">
+            <Building2 className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1">
+            <h1 className="text-xl md:text-2xl font-semibold tracking-tight text-gray-900">
+              NSW Planning Assessment
+            </h1>
+            <p className="text-gray-500 text-sm hidden sm:block">
+              Professional compliance assessment using real-time planning data
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <MapPin className="h-3.5 w-3.5" />
+              Inner West Council
+            </span>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Search Bar - sticky on mobile for easy access */}
       <div className="bg-white border-b px-4 py-3 sticky top-0 z-40 md:relative">
@@ -103,10 +116,10 @@ export default function AssessmentPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-600">
+                      <label className="text-sm text-gray-500">
                         Zone
                       </label>
-                      <span className="block px-2 py-1 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                      <span className="inline-block mt-1 px-2.5 py-1 rounded text-xs font-medium bg-sky-100 text-sky-700">
                         {selectedProperty.constraints?.zoneDescription || selectedProperty.constraints?.zone || 'Unknown'}
                       </span>
                     </div>
@@ -261,7 +274,7 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Regulatory Tabs - larger touch targets on mobile */}
+                {/* Regulatory Tabs - teal theme */}
                 <div className="bg-white border rounded-lg shadow-sm mb-4">
                   <div className="flex border-b" role="tablist" aria-label="Regulatory controls">
                     <button
@@ -270,14 +283,14 @@ export default function AssessmentPage() {
                       aria-selected={viewMode === 'sepp-lep'}
                       aria-controls="panel-sepp-lep"
                       onClick={() => setViewMode('sepp-lep')}
-                      className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
+                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
-                          ? 'border-b-2 border-purple-600 text-purple-700 bg-purple-50'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100'
+                          ? 'border-b-2 border-teal-600 text-teal-700'
+                          : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
                       }`}
                     >
-                      <span className="block">SEPP & LEP</span>
-                      <span className="text-xs text-gray-400 hidden sm:inline">State Controls</span>
+                      <span className="block font-medium">SEPP & LEP</span>
+                      <span className="text-xs text-gray-400 hidden sm:block">State Controls</span>
                     </button>
                     <button
                       role="tab"
@@ -285,14 +298,14 @@ export default function AssessmentPage() {
                       aria-selected={viewMode === 'dcp'}
                       aria-controls="panel-dcp"
                       onClick={() => setViewMode('dcp')}
-                      className={`flex-1 px-3 md:px-4 py-4 md:py-3 text-sm font-medium transition-colors min-h-[48px] ${
+                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
-                          ? 'border-b-2 border-green-600 text-green-700 bg-green-50'
-                          : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 active:bg-gray-100'
+                          ? 'border-b-2 border-teal-600 text-teal-700'
+                          : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
                       }`}
                     >
-                      <span className="block">DCP Provisions</span>
-                      <span className="text-xs text-gray-400 hidden sm:inline">Council Controls</span>
+                      <span className="block font-medium">DCP Provisions</span>
+                      <span className="text-xs text-gray-400 hidden sm:block">Council Controls</span>
                     </button>
                   </div>
                 </div>

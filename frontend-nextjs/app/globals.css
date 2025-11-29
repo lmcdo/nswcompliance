@@ -3,26 +3,29 @@
 @tailwind utilities;
 
 :root {
-  --background: 0 0% 100%;
-  --foreground: 222.2 84% 4.9%;
+  /* NSW Planning Compliance - Teal/Slate Professional Palette */
+  --background: 210 20% 98%;
+  --foreground: 220 20% 10%;
   --card: 0 0% 100%;
-  --card-foreground: 222.2 84% 4.9%;
+  --card-foreground: 220 20% 10%;
   --popover: 0 0% 100%;
-  --popover-foreground: 222.2 84% 4.9%;
-  --primary: 222.2 47.4% 11.2%;
-  --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96%;
-  --secondary-foreground: 222.2 84% 4.9%;
-  --muted: 210 40% 96%;
-  --muted-foreground: 215.4 16.3% 46.9%;
-  --accent: 210 40% 96%;
-  --accent-foreground: 222.2 84% 4.9%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
-  --border: 214.3 31.8% 91.4%;
-  --input: 214.3 31.8% 91.4%;
-  --ring: 222.2 84% 4.9%;
-  --radius: 0.5rem;
+  --popover-foreground: 220 20% 10%;
+  /* Primary: Teal-600 */
+  --primary: 175 84% 32%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 20% 96%;
+  --secondary-foreground: 220 20% 10%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 220 10% 46%;
+  /* Accent: Light teal */
+  --accent: 175 50% 95%;
+  --accent-foreground: 175 84% 25%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 220 13% 91%;
+  --input: 220 13% 91%;
+  --ring: 175 84% 32%;
+  --radius: 0.625rem;
 }
 
 .dark {
@@ -131,7 +134,7 @@ div.pac-container .pac-item-query {
 .pac-matched,
 div.pac-container .pac-matched {
   font-weight: 600;
-  color: #2563eb;
+  color: #0d9488;
 }
 
 /* Force remove all borders from pac items */

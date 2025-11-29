@@ -39,7 +39,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     primaryLayer: 'precinct',
     zoneFilterEffective: true,
     devTypeFilterEffective: false,
-    devTypeNote: 'Marrickville DCP provisions apply broadly by topic, not by development type. Permissible development types are determined by the LEP - see the SEPP & LEP tab for land use permissibility in your zone.',
+    devTypeNote: 'For Marrickville Council DCP 2011, provisions apply broadly by topic rather than development type. For permitted uses in your zone, see the SEPP & LEP tab.',
     topicFilterRequired: false,
     warningThreshold: 300,
     resultGuidance: {
@@ -62,7 +62,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     primaryLayer: 'generic',
     zoneFilterEffective: false,
     devTypeFilterEffective: false,
-    devTypeNote: 'Leichhardt DCP provisions apply universally by topic, not by development type. Permissible development types are determined by the LEP - see the SEPP & LEP tab for land use permissibility in your zone.',
+    devTypeNote: 'For Leichhardt Council DCP 2013, provisions apply universally by topic rather than development type. For permitted uses in your zone, see the SEPP & LEP tab.',
     topicFilterRequired: true,
     warningThreshold: 200,
     resultGuidance: {

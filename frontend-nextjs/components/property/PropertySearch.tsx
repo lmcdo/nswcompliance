@@ -238,7 +238,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           <button
             type="submit"
             disabled={loading || !inputValue.trim()}
-            className="h-12 sm:h-10 px-4 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white font-medium text-base sm:text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
+            className="h-12 sm:h-10 px-6 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-medium text-base sm:text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
           >
             {loading ? (
               <>

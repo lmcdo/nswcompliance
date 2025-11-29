@@ -65,7 +65,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  href={value}
  target="_blank"
  rel="noopener noreferrer"
- className="text-blue-600 hover:text-blue-700 underline inline-flex items-center gap-1"
+ className="text-teal-600 hover:text-teal-700 underline inline-flex items-center gap-1"
  >
  View Legislation
  <ExternalLink className="h-3 w-3" />
@@ -84,7 +84,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  href={url}
  target="_blank"
  rel="noopener noreferrer"
- className="text-blue-600 hover:text-blue-800 underline font-medium"
+ className="text-teal-600 hover:text-teal-800 underline font-medium"
  >
  {text}
  </a>
@@ -209,11 +209,11 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
          // Determine color scheme based on layer type
          const isSEPP = layerName === 'Special Provisions'
 
-         // Color scheme: SEPP=Orange, LEP=Blue, N/A=Gray
+         // Color scheme: SEPP=Orange, LEP=Teal, N/A=Gray
          const colors = isPresent
            ? (isSEPP
              ? { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', circleBg: 'bg-orange-100', circleText: 'text-orange-700', circleBorder: 'border-orange-300', circleActiveBg: 'bg-orange-600' }
-             : { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-800', circleBg: 'bg-blue-100', circleText: 'text-blue-700', circleBorder: 'border-blue-300', circleActiveBg: 'bg-blue-600' })
+             : { bg: 'bg-white', border: 'border-gray-200', text: 'text-teal-700', circleBg: 'bg-teal-50', circleText: 'text-teal-700', circleBorder: 'border-teal-200', circleActiveBg: 'bg-teal-600' })
            : { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-500', circleBg: '', circleText: '', circleBorder: '', circleActiveBg: '' }
 
          return (
@@ -245,7 +245,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                      <div className="flex justify-end mb-2">
                        <div className="flex flex-col gap-1 items-end">
                          {result['EPI Name'] && (
-                           <Badge className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800">
+                           <Badge className="text-xs px-2 py-0.5 bg-sky-100 text-sky-800">
                              {result['EPI Name']}{result['Legislative Clause'] ? ` - ${result['Legislative Clause']}` : ''}
                            </Badge>
                          )}

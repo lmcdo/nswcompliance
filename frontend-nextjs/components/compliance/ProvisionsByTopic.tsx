@@ -277,29 +277,29 @@ export function ProvisionsByTopic({
         <CardContent className="space-y-3">
           {/* DCP Citation and Explanation */}
           {council && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div className="bg-teal-50/50 border border-teal-100 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <Info className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
                 <div className="space-y-2">
-                  <p className="text-sm font-semibold text-blue-900">
+                  <p className="text-sm font-semibold text-teal-900">
                     {councilConfig.dcpCitation}
                   </p>
-                  <p className="text-sm text-blue-800">
+                  <p className="text-sm text-gray-700">
                     {councilConfig.dcpExplanation}
                   </p>
-                  <div className="text-xs text-blue-700 pt-1 border-t border-blue-200">
-                    <span className="font-medium">Provisions are filtered into 4 layers:</span>
-                    <span className="ml-2">
-                      <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1"></span>General (apply to all)
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 pt-2">
+                    <span className="font-medium text-gray-500">Provisions are filtered into 4 layers:</span>
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-slate-400"></span>General (apply to all)
                     </span>
-                    <span className="ml-2">
-                      <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>Zone-specific
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>Zone-specific
                     </span>
-                    <span className="ml-2">
-                      <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>Site conditions (heritage/flood)
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>Site conditions (heritage/flood)
                     </span>
-                    <span className="ml-2">
-                      <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"></span>Precinct/suburb
+                    <span className="flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>Precinct/suburb
                     </span>
                   </div>
                 </div>
@@ -319,13 +319,13 @@ export function ProvisionsByTopic({
 
           {/* Topic Filter - Prominent for Leichhardt */}
           <div className="flex flex-wrap items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Topic:</label>
-            <div className="flex flex-wrap gap-1">
+            <label className="text-sm font-medium text-gray-500">Topic:</label>
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedTopic('')}
-                className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedTopic === ''
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${selectedTopic === ''
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
               >
                 All
@@ -334,9 +334,9 @@ export function ProvisionsByTopic({
                 <button
                   key={topic}
                   onClick={() => setSelectedTopic(topic)}
-                  className={`px-3 py-1 text-sm rounded-full transition-colors ${selectedTopic === topic
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${selectedTopic === topic
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
                     }`}
                 >
                   {TOPIC_LABELS[topic] || topic}
@@ -372,8 +372,7 @@ export function ProvisionsByTopic({
               </div>
             ) : councilConfig.devTypeNote ? (
               <div className="flex-1 min-w-[200px] text-sm text-amber-800 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
-                <span className="font-medium">Dev Type filter not applicable:</span>
-                <span className="ml-1">This DCP's provisions apply broadly by topic. For permitted uses in your zone, see the <span className="font-medium underline">SEPP & LEP</span> tab.</span>
+                {councilConfig.devTypeNote}
               </div>
             ) : null}
 
