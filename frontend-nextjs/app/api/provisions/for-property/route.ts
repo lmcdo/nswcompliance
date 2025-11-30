@@ -20,8 +20,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+// WORKAROUND: Supabase certs not in standard CA chains
+// Must set this BEFORE creating Pool
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 // Database pool with 30-second timeout per CLAUDE.md
-// SSL required for Supabase Supavisor - need both URL param AND config object
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
   max: 20,
