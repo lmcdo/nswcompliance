@@ -42,13 +42,16 @@ export function getPool(): Pool {
     };
 
     if (rawDatabaseUrl) {
-      // Use connectionString directly - more reliable for SSL negotiation
-      // Append sslmode=require if not present (required for Supabase)
+      // Use connectionString with sslmode AND ssl config for cert bypass
       let connectionString = rawDatabaseUrl;
       if ((isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
         connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
       }
       poolConfig.connectionString = connectionString;
+      // Also set ssl config to bypass certificate verification
+      if (isSupabase || isProduction) {
+        poolConfig.ssl = { rejectUnauthorized: false };
+      }
     } else {
       // Fallback to individual env vars for local development
       poolConfig.host = process.env.PGHOST || 'localhost';

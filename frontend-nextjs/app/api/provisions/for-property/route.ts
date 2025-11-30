@@ -26,7 +26,7 @@ const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
 const isSupabase = rawDbUrl?.includes('supabase');
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Use connectionString directly with sslmode=require for reliable SSL
+// Use connectionString with sslmode AND ssl config for cert bypass
 let connectionString = rawDbUrl;
 if (connectionString && (isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
   connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
@@ -39,6 +39,8 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
+  // Bypass certificate verification for Supabase
+  ssl: (isSupabase || isProduction) ? { rejectUnauthorized: false } : undefined,
 });
 
 interface PropertyFilters {
