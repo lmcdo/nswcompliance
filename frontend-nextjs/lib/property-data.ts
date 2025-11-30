@@ -200,18 +200,20 @@ export class PropertyDataService {
    console.log('[PropertyDataService] Precinct matching failed:', error);
  }
 
- // Fallback: determine former council from postcode if not set by precinct
- if (!constraints.formerCouncil) {
-   try {
-     const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
-     const formerCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
-     if (formerCouncil) {
-       constraints.formerCouncil = formerCouncil;
-       console.log(`[PropertyDataService] Former council from postcode fallback: ${formerCouncil}`);
+ // ALWAYS check suburb name for former council - more reliable than precinct boundaries
+ // Suburb name matching overrides precinct-derived council for boundary cases like Petersham
+ try {
+   const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
+   const suburbBasedCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
+   if (suburbBasedCouncil) {
+     if (constraints.formerCouncil && constraints.formerCouncil !== suburbBasedCouncil) {
+       console.log(`[PropertyDataService] Suburb override: ${constraints.formerCouncil} → ${suburbBasedCouncil}`);
      }
-   } catch (error) {
-     console.log('[PropertyDataService] Former council mapping failed:', error);
+     constraints.formerCouncil = suburbBasedCouncil;
+     console.log(`[PropertyDataService] Former council from suburb: ${suburbBasedCouncil}`);
    }
+ } catch (error) {
+   console.log('[PropertyDataService] Former council mapping failed:', error);
  }
 
  // Route applicable SEPPs
