@@ -50,13 +50,11 @@ export function getPool(): Pool {
       poolConfig.password = decodeURIComponent(url.password);
       poolConfig.database = url.pathname.slice(1); // Remove leading /
 
-      // For Supabase Supavisor, require SSL with disabled cert verification
+      // For Supabase Supavisor, require SSL
+      // IMPORTANT: Must also set NODE_TLS_REJECT_UNAUTHORIZED=0 in Vercel env vars
+      // because ssl: { rejectUnauthorized: false } doesn't actually enable SSL in pg library
       if (isSupabase || isProduction) {
-        poolConfig.ssl = {
-          rejectUnauthorized: false,
-          // Force TLS to be used (node-postgres checks for truthiness)
-          requestCert: false,
-        };
+        poolConfig.ssl = true;
       }
     } else {
       // Fallback to individual env vars for local development

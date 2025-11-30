@@ -43,11 +43,9 @@ if (rawDbUrl) {
   poolConfig.password = decodeURIComponent(url.password);
   poolConfig.database = url.pathname.slice(1);
 
+  // IMPORTANT: Also needs NODE_TLS_REJECT_UNAUTHORIZED=0 in Vercel env
   if (isSupabase || isProduction) {
-    poolConfig.ssl = {
-      rejectUnauthorized: false,
-      requestCert: false,
-    };
+    poolConfig.ssl = true;
   }
 }
 
