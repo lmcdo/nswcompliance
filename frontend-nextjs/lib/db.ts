@@ -42,15 +42,17 @@ export function getPool(): Pool {
     };
 
     if (rawDatabaseUrl) {
-      // Use connectionString with sslmode AND ssl config for cert bypass
-      let connectionString = rawDatabaseUrl;
-      if ((isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
-        connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
-      }
-      poolConfig.connectionString = connectionString;
-      // Also set ssl config to bypass certificate verification
+      // Don't use sslmode in URL - let ssl config handle it entirely
+      poolConfig.connectionString = rawDatabaseUrl;
+      // SSL config with all options to ensure it works
       if (isSupabase || isProduction) {
-        poolConfig.ssl = { rejectUnauthorized: false };
+        poolConfig.ssl = {
+          rejectUnauthorized: false,
+          // These ensure SSL is actually used
+          requestCert: true,
+          // Min TLS version
+          minVersion: 'TLSv1.2',
+        };
       }
     } else {
       // Fallback to individual env vars for local development
