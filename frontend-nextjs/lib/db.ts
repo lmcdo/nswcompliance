@@ -42,20 +42,13 @@ export function getPool(): Pool {
     };
 
     if (rawDatabaseUrl) {
-      // Parse the URL to extract components
-      const url = new URL(rawDatabaseUrl);
-      poolConfig.host = url.hostname;
-      poolConfig.port = parseInt(url.port) || 5432;
-      poolConfig.user = decodeURIComponent(url.username);
-      poolConfig.password = decodeURIComponent(url.password);
-      poolConfig.database = url.pathname.slice(1); // Remove leading /
-
-      // For Supabase Supavisor, require SSL
-      // IMPORTANT: Must also set NODE_TLS_REJECT_UNAUTHORIZED=0 in Vercel env vars
-      // because ssl: { rejectUnauthorized: false } doesn't actually enable SSL in pg library
-      if (isSupabase || isProduction) {
-        poolConfig.ssl = true;
+      // Use connectionString directly - more reliable for SSL negotiation
+      // Append sslmode=require if not present (required for Supabase)
+      let connectionString = rawDatabaseUrl;
+      if ((isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
+        connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
       }
+      poolConfig.connectionString = connectionString;
     } else {
       // Fallback to individual env vars for local development
       poolConfig.host = process.env.PGHOST || 'localhost';

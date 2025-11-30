@@ -21,35 +21,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
 // Database pool with 30-second timeout per CLAUDE.md
-// SSL required for Supabase pooler (port 6543)
+// SSL required for Supabase pooler
 const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
 const isSupabase = rawDbUrl?.includes('supabase');
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Parse URL and use individual params to ensure SSL config is respected
-let poolConfig: any = {
+// Use connectionString directly with sslmode=require for reliable SSL
+let connectionString = rawDbUrl;
+if (connectionString && (isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
+  connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+}
+
+const pool = new Pool({
+  connectionString,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-};
-
-if (rawDbUrl) {
-  const url = new URL(rawDbUrl);
-  poolConfig.host = url.hostname;
-  poolConfig.port = parseInt(url.port) || 5432;
-  poolConfig.user = decodeURIComponent(url.username);
-  poolConfig.password = decodeURIComponent(url.password);
-  poolConfig.database = url.pathname.slice(1);
-
-  // IMPORTANT: Also needs NODE_TLS_REJECT_UNAUTHORIZED=0 in Vercel env
-  if (isSupabase || isProduction) {
-    poolConfig.ssl = true;
-  }
-}
-
-const pool = new Pool(poolConfig);
+});
 
 interface PropertyFilters {
   lga?: string;
