@@ -59,7 +59,17 @@ export function determineFormerCouncilArea(address: string, lga: string): string
 
   const addressLower = address.toLowerCase();
 
-  // First try postcode matching (most reliable)
+  // First try suburb name matching (more accurate for split postcodes)
+  if (suburbMapping) {
+    for (const [suburb, councilArea] of Object.entries(suburbMapping)) {
+      if (addressLower.includes(suburb)) {
+        console.log(`[Inner West Mapping] Suburb match: ${suburb} → ${councilArea}`);
+        return councilArea;
+      }
+    }
+  }
+
+  // Then try postcode matching as fallback
   const postcodeMatch = addressLower.match(/\b(\d{4})\b/);
   if (postcodeMatch) {
     const postcode = postcodeMatch[1];
@@ -68,23 +78,11 @@ export function determineFormerCouncilArea(address: string, lga: string): string
     const specialCase = hasSpecialCase('inner_west', postcode);
     if (specialCase) {
       console.log(`[Inner West Mapping] Special case detected for postcode ${postcode}: ${specialCase.description}`);
-      // For now, still use postcode mapping but log the special case
-      // Future: Could implement more complex special case logic here
     }
 
     if (postcodeMapping && postcodeMapping[postcode]) {
       console.log(`[Inner West Mapping] Postcode match: ${postcode} → ${postcodeMapping[postcode]}`);
       return postcodeMapping[postcode];
-    }
-  }
-
-  // Then try suburb name matching
-  if (suburbMapping) {
-    for (const [suburb, councilArea] of Object.entries(suburbMapping)) {
-      if (addressLower.includes(suburb)) {
-        console.log(`[Inner West Mapping] Suburb match: ${suburb} → ${councilArea}`);
-        return councilArea;
-      }
     }
   }
 
