@@ -290,7 +290,7 @@ export function ProvisionsByTopic({
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 pt-2">
                     <span className="font-medium text-gray-500">Provisions are filtered into 4 layers:</span>
                     <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-slate-400"></span>General (apply to all)
+                      <span className="inline-block w-2 h-2 rounded-full bg-slate-500"></span>General (apply to all)
                     </span>
                     <span className="flex items-center gap-1">
                       <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>Zone-specific
@@ -389,23 +389,19 @@ export function ProvisionsByTopic({
 
           {/* Layer Summary with Legend */}
           <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant="outline">
+            <Badge variant="outline" className="font-medium">
               Total: {data.summary?.total_provisions || 0}
             </Badge>
             <Badge className={LAYER_COLORS.generic}>
-              <span className="inline-block w-2 h-2 rounded-full bg-gray-400 mr-1"></span>
               General: {data.summary?.layer_1_generic || 0}
             </Badge>
             <Badge className={LAYER_COLORS.use_specific}>
-              <span className="inline-block w-2 h-2 rounded-full bg-blue-400 mr-1"></span>
               Zone: {data.summary?.layer_2_use_specific || 0}
             </Badge>
             <Badge className={LAYER_COLORS.condition}>
-              <span className="inline-block w-2 h-2 rounded-full bg-amber-400 mr-1"></span>
               Condition: {data.summary?.layer_3_condition || 0}
             </Badge>
             <Badge className={LAYER_COLORS.precinct}>
-              <span className="inline-block w-2 h-2 rounded-full bg-green-400 mr-1"></span>
               Precinct: {data.summary?.layer_4_precinct || 0}
             </Badge>
           </div>
@@ -458,10 +454,10 @@ export function ProvisionsByTopic({
                   <span className="text-xs text-gray-500 ml-2 hidden md:inline">
                     {Object.entries(layerCounts).map(([layer, count]) => (
                       <span key={layer} className="mr-2">
-                        <span className={`inline-block w-2 h-2 rounded-full mr-1 ${layer === 'generic' ? 'bg-gray-400' :
-                            layer === 'use_specific' ? 'bg-blue-400' :
-                              layer === 'condition' ? 'bg-amber-400' :
-                                layer === 'precinct' ? 'bg-green-400' : 'bg-gray-300'
+                        <span className={`inline-block w-2 h-2 rounded-full mr-1 ${layer === 'generic' ? 'bg-slate-500' :
+                            layer === 'use_specific' ? 'bg-sky-500' :
+                              layer === 'condition' ? 'bg-amber-500' :
+                                layer === 'precinct' ? 'bg-emerald-500' : 'bg-gray-300'
                           }`}></span>
                         {count}
                       </span>
@@ -524,7 +520,7 @@ export function ProvisionsByTopic({
                                 {pageProvisions.map((provision) => (
                                   <div
                                     key={provision.id}
-                                    className="border rounded-lg p-3 hover:bg-gray-50 mb-2"
+                                    className="border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md mb-2"
                                   >
                                     <div className="flex items-start justify-between gap-2">
                                       <div className="flex-1">
@@ -587,7 +583,7 @@ export function ProvisionsByTopic({
                           {provisionsWithoutPage.map((provision) => (
                             <div
                               key={provision.id}
-                              className="border rounded-lg p-3 hover:bg-gray-50"
+                              className="border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md"
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <div className="flex-1">

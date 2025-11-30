@@ -24,20 +24,20 @@ export const AuthorityColors = {
 
 export const LayerBadges = {
     generic: {
-        bg: 'bg-gray-100',
-        text: 'text-gray-800',
+        bg: 'bg-slate-500',
+        text: 'text-white',
     },
     use_specific: {
-        bg: 'bg-blue-100',
-        text: 'text-blue-800',
+        bg: 'bg-sky-500',
+        text: 'text-white',
     },
     condition: {
-        bg: 'bg-amber-100',
-        text: 'text-amber-800',
+        bg: 'bg-amber-500',
+        text: 'text-white',
     },
     precinct: {
-        bg: 'bg-green-100',
-        text: 'text-green-800',
+        bg: 'bg-emerald-500',
+        text: 'text-white',
     },
 } as const;
 

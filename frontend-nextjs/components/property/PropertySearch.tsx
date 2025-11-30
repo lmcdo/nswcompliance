@@ -219,7 +219,7 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
               value={inputValue}
               onChange={handleInputChange}
               placeholder="Start typing an address..."
-              className="w-full h-12 sm:h-10 px-3 pr-16 text-base sm:text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all disabled:bg-gray-50"
+              className="w-full h-12 sm:h-10 px-3 pr-16 text-base sm:text-sm border border-gray-300 rounded-lg bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all disabled:bg-gray-50"
               disabled={loading}
             />
             {inputValue && (
