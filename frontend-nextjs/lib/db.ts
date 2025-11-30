@@ -50,10 +50,13 @@ export function getPool(): Pool {
       poolConfig.password = decodeURIComponent(url.password);
       poolConfig.database = url.pathname.slice(1); // Remove leading /
 
-      // For Supabase Supavisor, require SSL
+      // For Supabase Supavisor, require SSL with disabled cert verification
       if (isSupabase || isProduction) {
-        // ssl: true enables SSL (will verify cert by default)
-        poolConfig.ssl = true;
+        poolConfig.ssl = {
+          rejectUnauthorized: false,
+          // Force TLS to be used (node-postgres checks for truthiness)
+          requestCert: false,
+        };
       }
     } else {
       // Fallback to individual env vars for local development
