@@ -31,8 +31,12 @@ function fixOcrSpacing(text: string): string {
   fixed = fixed.replace(/â€"/g, '—');  // EM DASH
   fixed = fixed.replace(/â€"/g, '–');  // EN DASH
 
-  // Fix bullet points
+  // Fix bullet points - various corruption patterns
   fixed = fixed.replace(/â€¢/g, '•');  // BULLET
+  fixed = fixed.replace(/"¢/g, '• ');  // Corrupted bullet (quote + cent)
+  fixed = fixed.replace(/[""]\s*¢/g, '• ');  // Quote + cent with optional space
+  fixed = fixed.replace(/¢\s+To\b/g, '• To');  // Cent followed by "To" is a bullet
+  fixed = fixed.replace(/^\s*¢\s*/gm, '• ');  // Lone cent at start of line
 
   // Fix other common mojibake
   fixed = fixed.replace(/Â /g, ' ');   // Non-breaking space artifact
@@ -199,10 +203,11 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
     }
 
     // Check for list item patterns
-    // Bullet: • or - at start
+    // Bullet: • or - or * at start
     // Letter: a. b. c. or (a) (b) (c)
     // Number: 1. 2. 3. or (1) (2) (3)
-    const listMatch = line.match(/^([•\-–]\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
+    // Also catch corrupted bullets that weren't fully cleaned
+    const listMatch = line.match(/^([•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
     if (listMatch) {
       elements.push({
         type: 'list-item',
