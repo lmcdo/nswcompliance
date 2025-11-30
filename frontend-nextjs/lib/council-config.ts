@@ -29,12 +29,23 @@ export interface CouncilConfig {
   };
 }
 
+/**
+ * Inner West LGA Overview - shown as collapsible header for all Inner West addresses
+ */
+export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct approaches:
+
+• Marrickville - zone-centric, provisions organised by zone type, most filterable
+• Leichhardt - topic-centric, most provisions apply universally, highest volume
+• Ashfield - development-type focused, heritage-heavy, use dropdown to filter
+
+Your address determines which former council's DCP applies.`;
+
 export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: {
     id: 'marrickville',
     name: 'Marrickville',
     dcpCitation: 'Inner West Development Control Plan (Marrickville) 2011',
-    dcpExplanation: 'Marrickville DCP is precinct-focused, with 46 suburb precincts across Parts 1-9 each having local character controls. Zone filtering is effective here. Site Conditions (amber) only apply if your property is heritage listed, flood prone, or bushfire affected.',
+    dcpExplanation: 'Zone-centric DCP - unlike the others, this one has explicit chapters per zone type. Your zone is auto-detected from the address and filters results automatically. Development type dropdown not available - provisions are organised by zone chapter instead. All 48 suburb precincts have local character controls.\n\n• Part 4.1 (controls for R2 low density) • Part 4.2 (controls for R3/R4 multi-dwelling) • Part 5 (controls for business) • Part 6 (controls for industrial) • Part 8 (controls for heritage) • Part 9 (controls for 48 precincts)',
     totalProvisions: 1051,
     primaryLayer: 'precinct',
     zoneFilterEffective: true,
@@ -57,7 +68,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'leichhardt',
     name: 'Leichhardt',
     dcpCitation: 'Inner West Development Control Plan (Leichhardt) 2013',
-    dcpExplanation: 'Leichhardt DCP is topic-based, organized across Parts A-F (Access, Place, Energy, Water, Food) with most provisions applying generally. Part G defines 26 Distinctive Neighbourhoods but precinct controls are limited. Zone filtering is ineffective - use topic filtering instead. Site Conditions (amber) only apply if your property is heritage listed, flood prone, or bushfire affected.',
+    dcpExplanation: 'Topic-centric DCP organised by theme - most provisions apply universally regardless of zone. Heritage controls are embedded throughout rather than in a separate chapter. Development type dropdown not available. Use topic filtering to navigate. 26 Distinctive Neighbourhoods in Part G provide area-specific character guidance.\n\n• Part C "Place" (controls for setbacks, heights, parking, landscaping - largest section) • Part D (controls for energy) • Part E (controls for water) • Part F (controls for food) • Part G (controls for 26 neighbourhoods)',
     totalProvisions: 2648,
     primaryLayer: 'generic',
     zoneFilterEffective: false,
@@ -80,7 +91,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'ashfield',
     name: 'Ashfield',
     dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'Ashfield DCP is development-type focused. Chapter F has specific controls for dwelling houses, multi-dwelling, and residential flat buildings - select a development type below to filter. Chapter D covers 11 urban village precincts. Site Conditions (amber) only apply if your property is heritage listed, flood prone, or bushfire affected.',
+    dcpExplanation: 'Development-type focused DCP - heritage-heavy with a dedicated heritage chapter. Chapter F contains controls for dwelling houses, multi-dwelling housing, residential flat buildings, and other development types. Chapter C covers sustainability. 11 urban village precincts in Chapter D.\n\n• Chapter F (controls for development types) • Chapter E1 (controls for heritage) • Chapter C (controls for sustainability) • Chapter D (controls for specific precincts)',
     totalProvisions: 1526,
     primaryLayer: 'condition',
     zoneFilterEffective: true,

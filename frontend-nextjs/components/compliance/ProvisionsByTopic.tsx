@@ -12,12 +12,12 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, Info, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
-import { COUNCIL_CONFIGS, TOPIC_LABELS, type CouncilConfig } from '@/lib/council-config';
+import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig } from '@/lib/council-config';
 import { HeritageProvisions } from './HeritageProvisions';
 import { FormattedProvisionText } from './FormattedProvisionText';
 
@@ -149,6 +149,7 @@ export function ProvisionsByTopic({
   const [selectedDevType, setSelectedDevType] = useState(initialDevType || '');
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
+  const [showInnerWestOverview, setShowInnerWestOverview] = useState(false);
 
   // Get council config (default to marrickville if unknown)
   const councilConfig: CouncilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
@@ -264,6 +265,25 @@ export function ProvisionsByTopic({
 
   return (
     <div className="space-y-4">
+      {/* Inner West Overview - Collapsible */}
+      {council && (
+        <button
+          onClick={() => setShowInnerWestOverview(!showInnerWestOverview)}
+          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition-colors"
+        >
+          <HelpCircle className="h-4 w-4" />
+          <span>About Inner West DCPs</span>
+          {showInnerWestOverview ? <ChevronDown className="h-4 w-4 ml-auto" /> : <ChevronRight className="h-4 w-4 ml-auto" />}
+        </button>
+      )}
+      {showInnerWestOverview && (
+        <Card className="bg-slate-50 border-slate-200">
+          <CardContent className="p-4">
+            <p className="text-sm text-slate-700 whitespace-pre-line">{INNER_WEST_OVERVIEW}</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Compact Header */}
       <Card className="overflow-hidden">
         {/* DCP Title Bar */}
@@ -284,8 +304,15 @@ export function ProvisionsByTopic({
         <CardContent className="p-4 space-y-4">
           {/* DCP Explanation - Clean Typography */}
           {council && councilConfig.dcpExplanation && (
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
               {councilConfig.dcpExplanation}
+            </p>
+          )}
+
+          {/* Dev Type Prompt for Ashfield */}
+          {council === 'ashfield' && (
+            <p className="text-sm font-medium text-blue-700 mt-2">
+              Select your development type below to filter relevant provisions.
             </p>
           )}
 
