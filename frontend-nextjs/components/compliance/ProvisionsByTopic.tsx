@@ -295,13 +295,15 @@ export function ProvisionsByTopic({
               <span className="font-semibold">{data.summary?.layer_1_generic || 0}</span> General
             </span>
             <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-100 text-sky-700 rounded">
-              <span className="font-semibold">{data.summary?.layer_2_use_specific || 0}</span> Your Zone
+              <span className="font-semibold">{data.summary?.layer_2_use_specific || 0}</span> Zone
             </span>
-            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded">
-              <span className="font-semibold">{data.summary?.layer_3_condition || 0}</span> Heritage
-            </span>
+            {(data.summary?.layer_3_condition || 0) > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded">
+                <span className="font-semibold">{data.summary?.layer_3_condition}</span> Heritage
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded">
-              <span className="font-semibold">{data.summary?.layer_4_precinct || 0}</span> Your Area
+              <span className="font-semibold">{data.summary?.layer_4_precinct || 0}</span> Precinct
             </span>
           </div>
 
