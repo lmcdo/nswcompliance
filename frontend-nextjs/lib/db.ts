@@ -27,37 +27,45 @@ export function getPool(): Pool {
                        process.env.PGHOST?.includes('supabase');
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // For Supabase Supavisor (pooler), we need sslmode=require in the connection string
-    // The pg library's SSL object alone doesn't work with Supavisor
-    let connectionString = rawDatabaseUrl;
-    if (connectionString && isSupabase && !connectionString.includes('sslmode=')) {
-      connectionString = connectionString + (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
-    }
+    // For Supabase Supavisor (pooler on port 6543):
+    // - SSL is required but their cert isn't in standard CA chains
+    // - Using individual params instead of connectionString to ensure SSL config takes effect
 
-    globalForDb.pool = new Pool({
-      // Prefer DATABASE_URL for production (includes proper pooler format)
-      connectionString: connectionString,
-      // Fallback to individual vars for local development
-      host: connectionString ? undefined : (process.env.PGHOST || 'localhost'),
-      database: connectionString ? undefined : (process.env.PGDATABASE || 'nsw_planning'),
-      user: connectionString ? undefined : (process.env.PGUSER || 'postgres'),
-      password: connectionString ? undefined : (process.env.PGPASSWORD || 'postgres'),
-      port: connectionString ? undefined : parseInt(process.env.PGPORT || '5432'),
-
+    // Parse DATABASE_URL if present
+    let poolConfig: any = {
       // Connection pool settings to prevent exhaustion
-      max: 20, // Maximum number of clients in the pool
-      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 10000, // Return error after 10 seconds if connection cannot be established
-
-      // Keep-alive to prevent connection drops
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
+    };
 
-      // SSL config as backup (sslmode in URL is primary for Supabase)
-      ssl: isProduction || isSupabase
-        ? { rejectUnauthorized: false }
-        : false,
-    });
+    if (rawDatabaseUrl) {
+      // Parse the URL to extract components
+      const url = new URL(rawDatabaseUrl);
+      poolConfig.host = url.hostname;
+      poolConfig.port = parseInt(url.port) || 5432;
+      poolConfig.user = decodeURIComponent(url.username);
+      poolConfig.password = decodeURIComponent(url.password);
+      poolConfig.database = url.pathname.slice(1); // Remove leading /
+
+      // For Supabase, require SSL with relaxed cert verification
+      if (isSupabase || isProduction) {
+        poolConfig.ssl = {
+          rejectUnauthorized: false,
+        };
+      }
+    } else {
+      // Fallback to individual env vars for local development
+      poolConfig.host = process.env.PGHOST || 'localhost';
+      poolConfig.port = parseInt(process.env.PGPORT || '5432');
+      poolConfig.user = process.env.PGUSER || 'postgres';
+      poolConfig.password = process.env.PGPASSWORD || 'postgres';
+      poolConfig.database = process.env.PGDATABASE || 'nsw_planning';
+    }
+
+    globalForDb.pool = new Pool(poolConfig);
 
     // Connection lifecycle monitoring
     globalForDb.pool.on('connect', () => {

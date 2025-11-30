@@ -24,24 +24,31 @@ import { Pool } from 'pg';
 // SSL required for Supabase pooler (port 6543)
 const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
 const isSupabase = rawDbUrl?.includes('supabase');
+const isProduction = process.env.NODE_ENV === 'production';
 
-// For Supabase Supavisor, append sslmode=require to connection string
-let connectionString = rawDbUrl;
-if (connectionString && isSupabase && !connectionString.includes('sslmode=')) {
-  connectionString = connectionString + (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
-}
-
-const pool = new Pool({
-  connectionString,
+// Parse URL and use individual params to ensure SSL config is respected
+let poolConfig: any = {
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-  ssl: process.env.NODE_ENV === 'production' || isSupabase
-    ? { rejectUnauthorized: false }
-    : false,
-});
+};
+
+if (rawDbUrl) {
+  const url = new URL(rawDbUrl);
+  poolConfig.host = url.hostname;
+  poolConfig.port = parseInt(url.port) || 5432;
+  poolConfig.user = decodeURIComponent(url.username);
+  poolConfig.password = decodeURIComponent(url.password);
+  poolConfig.database = url.pathname.slice(1);
+
+  if (isSupabase || isProduction) {
+    poolConfig.ssl = { rejectUnauthorized: false };
+  }
+}
+
+const pool = new Pool(poolConfig);
 
 interface PropertyFilters {
   lga?: string;
