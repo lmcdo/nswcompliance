@@ -42,17 +42,17 @@ export function getPool(): Pool {
     };
 
     if (rawDatabaseUrl) {
-      // Don't use sslmode in URL - let ssl config handle it entirely
-      poolConfig.connectionString = rawDatabaseUrl;
-      // SSL config with all options to ensure it works
+      // Add sslmode=require to URL to ensure SSL is enabled
+      let connectionString = rawDatabaseUrl;
+      if ((isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
+        connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+      }
+      poolConfig.connectionString = connectionString;
+
+      // WORKAROUND: Set process.env to disable cert verification globally
+      // This is needed because pg library's ssl config doesn't merge with sslmode
       if (isSupabase || isProduction) {
-        poolConfig.ssl = {
-          rejectUnauthorized: false,
-          // These ensure SSL is actually used
-          requestCert: true,
-          // Min TLS version
-          minVersion: 'TLSv1.2',
-        };
+        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
       }
     } else {
       // Fallback to individual env vars for local development

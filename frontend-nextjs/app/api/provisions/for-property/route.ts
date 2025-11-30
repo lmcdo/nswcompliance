@@ -26,21 +26,26 @@ const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
 const isSupabase = rawDbUrl?.includes('supabase');
 const isProduction = process.env.NODE_ENV === 'production';
 
-// SSL config with all options to ensure it works
-const sslConfig = (isSupabase || isProduction) ? {
-  rejectUnauthorized: false,
-  requestCert: true,
-  minVersion: 'TLSv1.2' as const,
-} : undefined;
+// For Supabase Supavisor: Add sslmode=require to URL and disable cert verification
+// The pg library's ssl config doesn't merge properly with sslmode in URL
+let connectionString = rawDbUrl || '';
+if ((isSupabase || isProduction) && connectionString && !connectionString.includes('sslmode=')) {
+  connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+}
+
+// WORKAROUND: Disable cert verification globally for Supabase
+// Supabase Supavisor uses certs not in standard CA chains
+if (isSupabase || isProduction) {
+  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+}
 
 const pool = new Pool({
-  connectionString: rawDbUrl,
+  connectionString,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-  ssl: sslConfig,
 });
 
 interface PropertyFilters {
