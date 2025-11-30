@@ -20,13 +20,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
-// WORKAROUND: Supabase certs not in standard CA chains
-// Must set this BEFORE creating Pool
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+// Parse DATABASE_URL to get individual params - connectionString overrides ssl config
+function parseDbUrl(url: string) {
+  const parsed = new URL(url);
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 5432,
+    user: parsed.username,
+    password: decodeURIComponent(parsed.password),
+    database: parsed.pathname.slice(1),
+  };
+}
 
-// Database pool with 30-second timeout per CLAUDE.md
+const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
+const dbParams = dbUrl ? parseDbUrl(dbUrl) : {};
+
+// Database pool with explicit SSL config (not using connectionString)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
+  ...dbParams,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
