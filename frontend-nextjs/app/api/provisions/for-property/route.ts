@@ -35,7 +35,10 @@ function parseDbUrl(url: string) {
 const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
 const dbParams = dbUrl ? parseDbUrl(dbUrl) : {};
 
-// Database pool with explicit SSL config (not using connectionString)
+// Bypass cert verification globally - must be before Pool creation
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
+// Database pool with SSL enabled
 const pool = new Pool({
   ...dbParams,
   max: 20,
@@ -43,9 +46,7 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: true,  // Enable SSL, cert verification disabled via NODE_TLS env
 });
 
 interface PropertyFilters {
