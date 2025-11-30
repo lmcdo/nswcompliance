@@ -21,26 +21,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
 // Database pool with 30-second timeout per CLAUDE.md
-// SSL required for Supabase pooler
-const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
-const isSupabase = rawDbUrl?.includes('supabase');
-const isProduction = process.env.NODE_ENV === 'production';
-
-// For Supabase Supavisor: Add sslmode=require to URL and disable cert verification
-// The pg library's ssl config doesn't merge properly with sslmode in URL
-let connectionString = rawDbUrl || '';
-if ((isSupabase || isProduction) && connectionString && !connectionString.includes('sslmode=')) {
-  connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
-}
-
-// WORKAROUND: Disable cert verification globally for Supabase
-// Supabase Supavisor uses certs not in standard CA chains
-if (isSupabase || isProduction) {
-  process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
-
 const pool = new Pool({
-  connectionString,
+  connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,

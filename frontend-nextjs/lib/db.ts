@@ -21,49 +21,20 @@ const globalForDb = globalThis as unknown as {
  */
 export function getPool(): Pool {
   if (!globalForDb.pool) {
-    // Determine if we need SSL (required for Supabase pooler)
-    const rawDatabaseUrl = process.env.DATABASE_URL;
-    const isSupabase = rawDatabaseUrl?.includes('supabase') ||
-                       process.env.PGHOST?.includes('supabase');
-    const isProduction = process.env.NODE_ENV === 'production';
+    globalForDb.pool = new Pool({
+      host: process.env.PGHOST || 'localhost',
+      database: process.env.PGDATABASE || 'nsw_planning',
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || 'postgres',
+      port: parseInt(process.env.PGPORT || '5432'),
 
-    // For Supabase Supavisor (pooler on port 6543):
-    // - SSL is required but their cert isn't in standard CA chains
-    // - Using individual params instead of connectionString to ensure SSL config takes effect
-
-    // Parse DATABASE_URL if present
-    let poolConfig: any = {
       // Connection pool settings to prevent exhaustion
       max: 20,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 10000,
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
-    };
-
-    if (rawDatabaseUrl) {
-      // Add sslmode=require to URL to ensure SSL is enabled
-      let connectionString = rawDatabaseUrl;
-      if ((isSupabase || isProduction) && !connectionString.includes('sslmode=')) {
-        connectionString += (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
-      }
-      poolConfig.connectionString = connectionString;
-
-      // WORKAROUND: Set process.env to disable cert verification globally
-      // This is needed because pg library's ssl config doesn't merge with sslmode
-      if (isSupabase || isProduction) {
-        process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-      }
-    } else {
-      // Fallback to individual env vars for local development
-      poolConfig.host = process.env.PGHOST || 'localhost';
-      poolConfig.port = parseInt(process.env.PGPORT || '5432');
-      poolConfig.user = process.env.PGUSER || 'postgres';
-      poolConfig.password = process.env.PGPASSWORD || 'postgres';
-      poolConfig.database = process.env.PGDATABASE || 'nsw_planning';
-    }
-
-    globalForDb.pool = new Pool(poolConfig);
+    });
 
     // Connection lifecycle monitoring
     globalForDb.pool.on('connect', () => {
