@@ -29,9 +29,11 @@ export function getPool(): Pool {
       port: parseInt(process.env.PGPORT || '5432'),
 
       // Connection pool settings to prevent exhaustion
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 10000,
+      max: 20, // Maximum number of clients in the pool
+      idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+      connectionTimeoutMillis: 10000, // Return error after 10 seconds if connection cannot be established
+
+      // Keep-alive to prevent connection drops
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
     });
