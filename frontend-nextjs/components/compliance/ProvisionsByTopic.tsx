@@ -264,147 +264,98 @@ export function ProvisionsByTopic({
 
   return (
     <div className="space-y-4">
-      {/* Summary Header with Dev Type Filter */}
-      <Card>
-        <CardHeader className="pb-2">
+      {/* Compact Header */}
+      <Card className="overflow-hidden">
+        {/* DCP Title Bar */}
+        <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              DCP Provisions (4-Layer Filter)
-            </CardTitle>
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4 text-white" />
+              <span className="font-semibold text-white text-sm">
+                {councilConfig?.dcpCitation || 'Development Control Plan'}
+              </span>
+            </div>
+            <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
+              {data.summary?.total_provisions || 0} provisions
+            </Badge>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* DCP Citation and Explanation */}
-          {council && (
-            <div className="bg-teal-50/50 border border-teal-100 rounded-lg p-4">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-teal-600 mt-0.5 flex-shrink-0" />
-                <div className="space-y-2">
-                  <p className="text-sm font-semibold text-teal-900">
-                    {councilConfig.dcpCitation}
-                  </p>
-                  <p className="text-sm text-gray-700">
-                    {councilConfig.dcpExplanation}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-600 pt-2">
-                    <span className="font-medium text-gray-500">Provisions are filtered into 4 layers:</span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-slate-500"></span>General (apply to all)
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-sky-500"></span>Zone-specific
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>Site conditions (heritage/flood)
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>Precinct/suburb
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+        </div>
 
-          {/* Council-specific guidance for Leichhardt */}
-          {council === 'leichhardt' && !selectedTopic && (
-            <div className="bg-amber-50 border-l-4 border-amber-400 p-3 rounded-r">
-              <p className="text-sm text-amber-800">
-                <strong>Tip:</strong> Select a topic below to narrow results.
-                Without topic filter, you may see 2,000+ provisions.
-              </p>
+        <CardContent className="p-4 space-y-4">
+          {/* Layer Summary - Visual Grid */}
+          <div className="grid grid-cols-4 gap-2">
+            <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
+              <div className="text-2xl font-bold text-slate-700">{data.summary?.layer_1_generic || 0}</div>
+              <div className="text-xs text-slate-500 font-medium">General</div>
             </div>
-          )}
+            <div className="bg-sky-50 rounded-lg p-3 text-center border border-sky-100">
+              <div className="text-2xl font-bold text-sky-700">{data.summary?.layer_2_use_specific || 0}</div>
+              <div className="text-xs text-sky-600 font-medium">Zone</div>
+            </div>
+            <div className="bg-amber-50 rounded-lg p-3 text-center border border-amber-100">
+              <div className="text-2xl font-bold text-amber-700">{data.summary?.layer_3_condition || 0}</div>
+              <div className="text-xs text-amber-600 font-medium">Condition</div>
+            </div>
+            <div className="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-100">
+              <div className="text-2xl font-bold text-emerald-700">{data.summary?.layer_4_precinct || 0}</div>
+              <div className="text-xs text-emerald-600 font-medium">Precinct</div>
+            </div>
+          </div>
 
-          {/* Topic Filter - Prominent for Leichhardt */}
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-sm font-medium text-gray-500">Topic:</label>
-            <div className="flex flex-wrap gap-2">
+          {/* Topic Filter Pills */}
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              onClick={() => setSelectedTopic('')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === ''
+                  ? 'bg-slate-800 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+            >
+              All Topics
+            </button>
+            {councilConfig.suggestedTopics.map((topic) => (
               <button
-                onClick={() => setSelectedTopic('')}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${selectedTopic === ''
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                key={topic}
+                onClick={() => setSelectedTopic(topic)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === topic
+                    ? 'bg-slate-800 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
               >
-                All
+                {TOPIC_LABELS[topic] || topic}
               </button>
-              {councilConfig.suggestedTopics.map((topic) => (
-                <button
-                  key={topic}
-                  onClick={() => setSelectedTopic(topic)}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${selectedTopic === topic
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  {TOPIC_LABELS[topic] || topic}
-                </button>
+            ))}
+          </div>
+
+          {/* Dev Type (compact) - only if effective */}
+          {councilConfig.devTypeFilterEffective && (
+            <select
+              value={selectedDevType}
+              onChange={(e) => setSelectedDevType(e.target.value)}
+              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+            >
+              <option value="">All Development Types</option>
+              {councilConfig.availableDevTypes?.map((dt) => (
+                <option key={dt.id} value={dt.id}>
+                  {dt.name} ({dt.count})
+                </option>
+              )) || DEV_TYPE_OPTIONS.slice(1).map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
-            </div>
-          </div>
+            </select>
+          )}
 
-          {/* Filters Row */}
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Dev Type Selector - only show for councils where dev type filtering is effective */}
-            {councilConfig.devTypeFilterEffective ? (
-              <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
-                  Dev Type:
-                </label>
-                <select
-                  value={selectedDevType}
-                  onChange={(e) => setSelectedDevType(e.target.value)}
-                  className="flex-1 px-3 py-1.5 text-sm border rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">All Development Types</option>
-                  {councilConfig.availableDevTypes?.map((dt) => (
-                    <option key={dt.id} value={dt.id}>
-                      {dt.name} ({dt.count})
-                    </option>
-                  )) || DEV_TYPE_OPTIONS.slice(1).map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : councilConfig.devTypeNote ? (
-              <div className="flex-1 min-w-[200px] text-sm text-amber-800 bg-amber-50 px-3 py-2 rounded-md border border-amber-200">
-                {councilConfig.devTypeNote}
-              </div>
-            ) : null}
-
-          </div>
-
-          {/* Warning if too many results */}
+          {/* Warning banner - only if needed */}
           {data && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && (
-            <div className="bg-amber-50 border border-amber-200 rounded p-2">
+            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
               <p className="text-xs text-amber-800">
-                <strong>{data.summary.total_provisions} provisions</strong> - Consider selecting a topic above to narrow results
+                <strong>{data.summary.total_provisions} provisions</strong> — Select a topic to narrow results
               </p>
             </div>
           )}
-
-          {/* Layer Summary with Legend */}
-          <div className="flex flex-wrap gap-2 text-sm">
-            <Badge variant="outline" className="font-medium">
-              Total: {data.summary?.total_provisions || 0}
-            </Badge>
-            <Badge className={LAYER_COLORS.generic}>
-              General: {data.summary?.layer_1_generic || 0}
-            </Badge>
-            <Badge className={LAYER_COLORS.use_specific}>
-              Zone: {data.summary?.layer_2_use_specific || 0}
-            </Badge>
-            <Badge className={LAYER_COLORS.condition}>
-              Condition: {data.summary?.layer_3_condition || 0}
-            </Badge>
-            <Badge className={LAYER_COLORS.precinct}>
-              Precinct: {data.summary?.layer_4_precinct || 0}
-            </Badge>
-          </div>
         </CardContent>
       </Card>
 
@@ -508,101 +459,81 @@ export function ProvisionsByTopic({
                       const sortedPageGroups = Object.entries(groupedByPage)
                         .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
 
+                      // Flatten all provisions for cleaner rendering
+                      const allProvisions = [
+                        ...sortedPageGroups.flatMap(([, provs]) => provs),
+                        ...provisionsWithoutPage
+                      ];
+
                       return (
-                        <>
-                          {sortedPageGroups.map(([pageNumStr, pageProvisions], groupIdx) => {
-                            const pdfUrl = pageProvisions[0]?.pdf_page_image_url;
-                            const pdfPage = parseInt(pageNumStr); // Already extracted from URL in grouping logic
+                        <div className="space-y-2">
+                          {allProvisions.map((provision) => {
+                            const layer = provision.layer || provision.v2_dcp_layer;
+                            const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                              layer === 'use_specific' ? 'border-l-sky-400' :
+                              layer === 'condition' ? 'border-l-amber-400' :
+                              layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
 
                             return (
-                              <div key={`page-${pdfPage}`} className={groupIdx > 0 ? 'border-t pt-2' : ''}>
-                                {/* Provisions in this page group */}
-                                {pageProvisions.map((provision) => (
-                                  <div
-                                    key={provision.id}
-                                    className="border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md mb-2"
-                                  >
-                                    <div className="flex items-start justify-between gap-2">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
-                                            {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
-                                          </Badge>
-                                          {provision.v2_dcp_part && (
-                                            <Badge variant="outline" className="text-xs">
-                                              {provision.v2_dcp_part}
-                                            </Badge>
-                                          )}
-                                          {provision.v2_marker && (
-                                            <Badge variant="outline" className="text-xs bg-purple-50">
-                                              {provision.v2_marker}
-                                            </Badge>
-                                          )}
-                                        </div>
-                                        <div
-                                          className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
-                                          onClick={() => toggleProvision(provision.id)}
-                                        >
-                                          <FormattedProvisionText text={provision.provision_text} compact />
-                                        </div>
-                                        {provision.provision_text.length > 150 && (
-                                          <button
-                                            className="text-xs md:text-xs text-blue-600 mt-2 py-2 px-3 -ml-3 min-h-[44px] flex items-center hover:bg-blue-50 rounded transition-colors"
-                                            onClick={() => toggleProvision(provision.id)}
-                                          >
-                                            {expandedProvisions.has(provision.id) ? 'Show less' : 'Show more'}
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
+                              <div
+                                key={provision.id}
+                                className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                              >
+                                {/* Card Header */}
+                                <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
+                                  <div className="flex items-center gap-2">
+                                    {provision.v2_marker && (
+                                      <span className="font-mono text-sm font-semibold text-slate-700">
+                                        {provision.v2_marker}
+                                      </span>
+                                    )}
+                                    <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
+                                      {LAYER_LABELS[layer] || layer}
+                                    </Badge>
+                                    {provision.v2_dcp_part && (
+                                      <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
+                                    )}
                                   </div>
-                                ))}
-
-                                {/* PDF Page Button - after all provisions from this page */}
-                                {pdfPage && pdfUrl && (
-                                  <div className="flex justify-end mt-1 mb-3">
+                                  {provision.pdf_page_image_url && (
                                     <Button
                                       size="sm"
-                                      variant="outline"
-                                      className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        setViewingPdfImage({ url: pdfUrl, page: pdfPage });
+                                        setViewingPdfImage({
+                                          url: provision.pdf_page_image_url!,
+                                          page: provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0')
+                                        });
                                       }}
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
-                                      View PDF page {pdfPage}
+                                      PDF
                                     </Button>
+                                  )}
+                                </div>
+
+                                {/* Card Content */}
+                                <div className="px-4 py-3">
+                                  <div
+                                    className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
+                                    onClick={() => toggleProvision(provision.id)}
+                                  >
+                                    <FormattedProvisionText text={provision.provision_text} compact />
                                   </div>
-                                )}
+                                  {provision.provision_text.length > 150 && (
+                                    <button
+                                      className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
+                                      onClick={() => toggleProvision(provision.id)}
+                                    >
+                                      {expandedProvisions.has(provision.id) ? '↑ Show less' : '↓ Show more'}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             );
                           })}
-
-                          {/* Provisions without page numbers */}
-                          {provisionsWithoutPage.map((provision) => (
-                            <div
-                              key={provision.id}
-                              className="border border-gray-200 rounded-lg p-4 transition-shadow hover:shadow-md"
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <Badge className={LAYER_COLORS[provision.layer || provision.v2_dcp_layer] || 'bg-gray-100'}>
-                                      {LAYER_LABELS[provision.layer || provision.v2_dcp_layer] || provision.v2_dcp_layer}
-                                    </Badge>
-                                    {provision.v2_dcp_part && (
-                                      <Badge variant="outline" className="text-xs">
-                                        {provision.v2_dcp_part}
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  <FormattedProvisionText text={provision.provision_text} compact />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </>
+                        </div>
                       );
                     })()}
 
