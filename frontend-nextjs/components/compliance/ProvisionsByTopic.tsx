@@ -505,23 +505,26 @@ export function ProvisionsByTopic({
                                       <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
                                     )}
                                   </div>
-                                  {provision.pdf_page_image_url && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewingPdfImage({
-                                          url: provision.pdf_page_image_url!,
-                                          page: provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0')
-                                        });
-                                      }}
-                                    >
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      PDF
-                                    </Button>
-                                  )}
+                                  {provision.pdf_page_image_url && (() => {
+                                    const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                    return (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setViewingPdfImage({
+                                            url: provision.pdf_page_image_url!,
+                                            page: pageNum
+                                          });
+                                        }}
+                                      >
+                                        <FileText className="h-3 w-3 mr-1" />
+                                        View PDF Page {pageNum}
+                                      </Button>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Card Content */}
