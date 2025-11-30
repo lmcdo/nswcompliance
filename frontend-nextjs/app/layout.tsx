@@ -6,6 +6,7 @@ import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { FeatureFlagProvider } from '@/components/providers/FeatureFlagProvider';
 import { FeatureFlagDebugPanel } from '@/components/debug/FeatureFlagDebugPanel';
+import { PostHogProvider } from '@/components/providers/PostHogProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -32,6 +33,7 @@ export default function RootLayout({
  return (
  <html lang="en">
  <body className={inter.className}>
+ <PostHogProvider>
  <FeatureFlagProvider>
  <div id="root">
  {children}
@@ -39,6 +41,7 @@ export default function RootLayout({
  <div id="portal-root" />
  <FeatureFlagDebugPanel />
  </FeatureFlagProvider>
+ </PostHogProvider>
  <Analytics />
  
  {/* Google Maps API with optimized loading strategy */}
