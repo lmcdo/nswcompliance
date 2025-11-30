@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
 // Database pool with 30-second timeout per CLAUDE.md
+// SSL required for Supabase pooler (port 6543)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
   max: 20,
@@ -28,6 +29,9 @@ const pool = new Pool({
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
+  ssl: process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('supabase')
+    ? { rejectUnauthorized: false }
+    : false,
 });
 
 interface PropertyFilters {
