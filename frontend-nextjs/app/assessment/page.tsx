@@ -50,7 +50,7 @@ export default function AssessmentPage() {
 
       {/* Header */}
       <header className="relative border-b bg-white shadow-sm">
-        <div className="absolute inset-y-0 left-0 w-1.5 bg-gradient-to-b from-teal-500 to-emerald-500" />
+        <div className="absolute inset-y-0 left-0 w-5 bg-gradient-to-b from-teal-500 to-emerald-500" />
         <div className="max-w-7xl mx-auto flex items-center gap-4 px-4 py-3 md:py-4 pl-6">
           {/* PlotDetect logo + name */}
           <div className="flex items-center gap-2">
@@ -293,7 +293,7 @@ export default function AssessmentPage() {
                           : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
                       }`}
                     >
-                      <span className="block font-medium">SEPP & LEP</span>
+                      <span className="block text-base font-bold">SEPP Provisions</span>
                       <span className="text-xs text-gray-400 hidden sm:block">State Controls</span>
                     </button>
                     <button
@@ -308,7 +308,7 @@ export default function AssessmentPage() {
                           : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
                       }`}
                     >
-                      <span className="block font-medium">DCP Provisions</span>
+                      <span className="block text-base font-bold">DCP Provisions</span>
                       <span className="text-xs text-gray-400 hidden sm:block">Council Controls</span>
                     </button>
                   </div>
