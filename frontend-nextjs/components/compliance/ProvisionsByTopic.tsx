@@ -282,6 +282,13 @@ export function ProvisionsByTopic({
         </div>
 
         <CardContent className="p-4 space-y-4">
+          {/* DCP Explanation - Clean Typography */}
+          {council && councilConfig.dcpExplanation && (
+            <p className="text-sm text-slate-600 leading-relaxed">
+              {councilConfig.dcpExplanation}
+            </p>
+          )}
+
           {/* Layer Summary - Visual Grid */}
           <div className="grid grid-cols-4 gap-2">
             <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
@@ -327,8 +334,8 @@ export function ProvisionsByTopic({
             ))}
           </div>
 
-          {/* Dev Type (compact) - only if effective */}
-          {councilConfig.devTypeFilterEffective && (
+          {/* Dev Type selector or note */}
+          {councilConfig.devTypeFilterEffective ? (
             <select
               value={selectedDevType}
               onChange={(e) => setSelectedDevType(e.target.value)}
@@ -345,6 +352,10 @@ export function ProvisionsByTopic({
                 </option>
               ))}
             </select>
+          ) : councilConfig.devTypeNote && (
+            <p className="text-xs text-slate-500 italic">
+              {councilConfig.devTypeNote}
+            </p>
           )}
 
           {/* Warning banner - only if needed */}
