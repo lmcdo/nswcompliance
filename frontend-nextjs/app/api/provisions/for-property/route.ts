@@ -22,14 +22,23 @@ import { Pool } from 'pg';
 
 // Database pool with 30-second timeout per CLAUDE.md
 // SSL required for Supabase pooler (port 6543)
+const rawDbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+const isSupabase = rawDbUrl?.includes('supabase');
+
+// For Supabase Supavisor, append sslmode=require to connection string
+let connectionString = rawDbUrl;
+if (connectionString && isSupabase && !connectionString.includes('sslmode=')) {
+  connectionString = connectionString + (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || process.env.SUPABASE_DB_URL,
+  connectionString,
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
   statement_timeout: 30000,
   query_timeout: 30000,
-  ssl: process.env.NODE_ENV === 'production' || process.env.DATABASE_URL?.includes('supabase')
+  ssl: process.env.NODE_ENV === 'production' || isSupabase
     ? { rejectUnauthorized: false }
     : false,
 });

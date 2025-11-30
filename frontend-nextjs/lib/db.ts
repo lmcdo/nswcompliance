@@ -22,19 +22,27 @@ const globalForDb = globalThis as unknown as {
 export function getPool(): Pool {
   if (!globalForDb.pool) {
     // Determine if we need SSL (required for Supabase pooler)
-    const isSupabase = process.env.DATABASE_URL?.includes('supabase') ||
+    const rawDatabaseUrl = process.env.DATABASE_URL;
+    const isSupabase = rawDatabaseUrl?.includes('supabase') ||
                        process.env.PGHOST?.includes('supabase');
     const isProduction = process.env.NODE_ENV === 'production';
 
+    // For Supabase Supavisor (pooler), we need sslmode=require in the connection string
+    // The pg library's SSL object alone doesn't work with Supavisor
+    let connectionString = rawDatabaseUrl;
+    if (connectionString && isSupabase && !connectionString.includes('sslmode=')) {
+      connectionString = connectionString + (connectionString.includes('?') ? '&' : '?') + 'sslmode=require';
+    }
+
     globalForDb.pool = new Pool({
       // Prefer DATABASE_URL for production (includes proper pooler format)
-      connectionString: process.env.DATABASE_URL,
+      connectionString: connectionString,
       // Fallback to individual vars for local development
-      host: process.env.DATABASE_URL ? undefined : (process.env.PGHOST || 'localhost'),
-      database: process.env.DATABASE_URL ? undefined : (process.env.PGDATABASE || 'nsw_planning'),
-      user: process.env.DATABASE_URL ? undefined : (process.env.PGUSER || 'postgres'),
-      password: process.env.DATABASE_URL ? undefined : (process.env.PGPASSWORD || 'postgres'),
-      port: process.env.DATABASE_URL ? undefined : parseInt(process.env.PGPORT || '5432'),
+      host: connectionString ? undefined : (process.env.PGHOST || 'localhost'),
+      database: connectionString ? undefined : (process.env.PGDATABASE || 'nsw_planning'),
+      user: connectionString ? undefined : (process.env.PGUSER || 'postgres'),
+      password: connectionString ? undefined : (process.env.PGPASSWORD || 'postgres'),
+      port: connectionString ? undefined : parseInt(process.env.PGPORT || '5432'),
 
       // Connection pool settings to prevent exhaustion
       max: 20, // Maximum number of clients in the pool
@@ -45,7 +53,7 @@ export function getPool(): Pool {
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
 
-      // SSL required for Supabase pooler connections
+      // SSL config as backup (sslmode in URL is primary for Supabase)
       ssl: isProduction || isSupabase
         ? { rejectUnauthorized: false }
         : false,
