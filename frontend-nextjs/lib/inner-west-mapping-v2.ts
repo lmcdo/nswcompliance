@@ -59,11 +59,32 @@ export function determineFormerCouncilArea(address: string, lga: string): string
 
   const addressLower = address.toLowerCase();
 
-  // First try suburb name matching (more accurate for split postcodes)
+  // First try suburb name matching - match at END of address (before postcode)
+  // This avoids matching street names like "Croydon St" when suburb is "Petersham"
   if (suburbMapping) {
+    // Extract the part of address after street type (St, Rd, Ave, etc.) and before postcode
+    // Pattern: "30 Croydon St Petersham 2049" → look for suburb near end
+    const postcodePattern = /\s+\d{4}\s*$/;
+    const addressWithoutPostcode = addressLower.replace(postcodePattern, '').trim();
+
+    // Match suburb as last word or second-to-last word (before NSW if present)
+    const words = addressWithoutPostcode.split(/\s+/);
+    const lastWords = words.slice(-3).join(' '); // Check last 3 words
+
     for (const [suburb, councilArea] of Object.entries(suburbMapping)) {
-      if (addressLower.includes(suburb)) {
-        console.log(`[Inner West Mapping] Suburb match: ${suburb} → ${councilArea}`);
+      // Check if suburb appears in the last part of address (actual suburb location)
+      if (lastWords.includes(suburb)) {
+        console.log(`[Inner West Mapping] Suburb match (end of address): ${suburb} → ${councilArea}`);
+        return councilArea;
+      }
+    }
+
+    // Fallback: check full address but prefer matches closer to end
+    for (const [suburb, councilArea] of Object.entries(suburbMapping)) {
+      const idx = addressLower.lastIndexOf(suburb);
+      // Only match if suburb appears in second half of address (likely actual suburb, not street name)
+      if (idx > addressLower.length / 2) {
+        console.log(`[Inner West Mapping] Suburb match (second half): ${suburb} → ${councilArea}`);
         return councilArea;
       }
     }
