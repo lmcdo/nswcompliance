@@ -18,36 +18,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { getPool } from '@/lib/db';
 
-// Parse DATABASE_URL to get individual params - connectionString overrides ssl config
-function parseDbUrl(url: string) {
-  const parsed = new URL(url);
-  return {
-    host: parsed.hostname,
-    port: parseInt(parsed.port) || 5432,
-    user: parsed.username,
-    password: decodeURIComponent(parsed.password),
-    database: parsed.pathname.slice(1),
-  };
-}
-
-const dbUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL || '';
-const dbParams = dbUrl ? parseDbUrl(dbUrl) : {};
-
-// Bypass cert verification globally - must be before Pool creation
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
-// Database pool with SSL enabled
-const pool = new Pool({
-  ...dbParams,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 10000,
-  statement_timeout: 30000,
-  query_timeout: 30000,
-  ssl: true,  // Enable SSL, cert verification disabled via NODE_TLS env
-});
+// Use the shared database pool from lib/db.ts
+// It uses PGHOST, PGDATABASE, PGUSER, PGPASSWORD, PGPORT env vars
 
 interface PropertyFilters {
   lga?: string;
@@ -152,6 +126,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
 
+    const pool = getPool();
     const client = await pool.connect();
 
     try {

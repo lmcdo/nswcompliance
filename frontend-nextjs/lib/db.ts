@@ -21,6 +21,8 @@ const globalForDb = globalThis as unknown as {
  */
 export function getPool(): Pool {
   if (!globalForDb.pool) {
+    const isSupabase = process.env.PGHOST?.includes('supabase') || process.env.PGHOST?.includes('pooler');
+
     globalForDb.pool = new Pool({
       host: process.env.PGHOST || 'localhost',
       database: process.env.PGDATABASE || 'nsw_planning',
@@ -36,6 +38,9 @@ export function getPool(): Pool {
       // Keep-alive to prevent connection drops
       keepAlive: true,
       keepAliveInitialDelayMillis: 10000,
+
+      // SSL for Supabase connections
+      ssl: isSupabase ? { rejectUnauthorized: false } : undefined,
     });
 
     // Connection lifecycle monitoring
