@@ -2,6 +2,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import Script from 'next/script';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 import { FeatureFlagProvider } from '@/components/providers/FeatureFlagProvider';
 import { FeatureFlagDebugPanel } from '@/components/debug/FeatureFlagDebugPanel';
@@ -38,6 +39,7 @@ export default function RootLayout({
  <div id="portal-root" />
  <FeatureFlagDebugPanel />
  </FeatureFlagProvider>
+ <Analytics />
  
  {/* Google Maps API with optimized loading strategy */}
  <Script
