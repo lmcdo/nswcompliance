@@ -44,7 +44,7 @@ if (rawDbUrl) {
   poolConfig.database = url.pathname.slice(1);
 
   if (isSupabase || isProduction) {
-    poolConfig.ssl = { rejectUnauthorized: false };
+    poolConfig.ssl = true;
   }
 }
 

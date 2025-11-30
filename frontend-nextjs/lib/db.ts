@@ -50,11 +50,10 @@ export function getPool(): Pool {
       poolConfig.password = decodeURIComponent(url.password);
       poolConfig.database = url.pathname.slice(1); // Remove leading /
 
-      // For Supabase, require SSL with relaxed cert verification
+      // For Supabase Supavisor, require SSL
       if (isSupabase || isProduction) {
-        poolConfig.ssl = {
-          rejectUnauthorized: false,
-        };
+        // ssl: true enables SSL (will verify cert by default)
+        poolConfig.ssl = true;
       }
     } else {
       // Fallback to individual env vars for local development
