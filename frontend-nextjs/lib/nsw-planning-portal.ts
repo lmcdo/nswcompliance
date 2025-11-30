@@ -599,6 +599,35 @@ export class NSWPlanningPortalService {
  }
 
  /**
+ * Get property coordinates (WGS84 lat/lon) from address
+ * Used by precinct-service for PostGIS geometric matching
+ */
+ static async getPropertyCoordinates(address: string): Promise<{ latitude: number; longitude: number } | null> {
+   try {
+     const searchResult = await this.searchProperty(address);
+     if (!searchResult) {
+       return null;
+     }
+
+     const propertyData = await this.getPropertyValuation(searchResult.propId);
+     if (!propertyData || !propertyData.geometry) {
+       return null;
+     }
+
+     // Convert Web Mercator (x, y) to WGS84 (lon, lat)
+     const x = propertyData.geometry.x;
+     const y = propertyData.geometry.y;
+     const longitude = (x / 20037508.34) * 180;
+     const latitude = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+
+     return { latitude, longitude };
+   } catch (error) {
+     console.error('getPropertyCoordinates error:', error);
+     return null;
+   }
+ }
+
+/**
  * Get comprehensive property compliance data
  */
  static async getPropertyComplianceData(address: string): Promise<{
@@ -686,4 +715,12 @@ export class NSWPlanningPortalService {
  return null;
  }
  }
+}
+
+/**
+ * Standalone export for getPropertyCoordinates
+ * Wraps the static class method for easier imports
+ */
+export async function getPropertyCoordinates(address: string): Promise<{ latitude: number; longitude: number } | null> {
+  return NSWPlanningPortalService.getPropertyCoordinates(address);
 }

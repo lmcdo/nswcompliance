@@ -47,31 +47,36 @@ export function assessControlRelevance(
   const title = (control.title || '').toLowerCase();
 
   // =============================================================================
-  // BASIX - ALWAYS RELEVANT FOR RESIDENTIAL/MIXED USE
+  // BASIX - ALWAYS SHOW FOR RESIDENTIAL ZONES (based on zone, not dev type)
   // =============================================================================
   if (epiName.includes('sustainable buildings') && epiName.includes('2022')) {
     // BASIX requirements apply to:
     // - New residential dwellings
     // - Alterations > $50k to residential
     // - Mixed-use developments with residential component
+    //
+    // Show based on ZONE (R1-R5, B4 mixed use) rather than dev type dropdown
+    // This ensures SEPP provisions display without requiring user interaction
 
-    if (context.isResidential || context.isMixedUse) {
-      return {
-        isRelevant: true,
-        requiresAction: true,
-        category: 'basix',
-        reason: 'BASIX certificate required for new dwellings or alterations over $50,000'
-      };
-    }
-
-    // Pure commercial/industrial - BASIX generally not required
-    if (context.isCommercial || context.isIndustrial) {
+    // Only hide for pure commercial/industrial zones
+    if (context.isIndustrial) {
       return {
         isRelevant: false,
         requiresAction: false,
-        reason: 'BASIX not applicable to commercial/industrial development'
+        reason: 'BASIX not applicable to industrial zones'
       };
     }
+
+    // Show for residential, mixed-use, OR when zone detection is ambiguous
+    // Conservative approach: show BASIX unless clearly industrial
+    return {
+      isRelevant: true,
+      requiresAction: true,
+      category: 'basix',
+      reason: context.isResidential
+        ? 'BASIX certificate required for new dwellings or alterations over $50,000'
+        : 'BASIX may apply - check if development includes residential component'
+    };
   }
 
   // =============================================================================

@@ -250,14 +250,16 @@ export function ComplianceDashboard({
     );
 
     if (!specialProvisionsLayer?.results) {
+      console.log('[ComplianceDashboard] No Special Provisions layer found in Planning API response');
       return [];
     }
 
-    // Create filter context
-    const filterContext = createFilterContext(
-      developmentType,
-      propertyData.constraints?.zone || ''
-    );
+    console.log('[ComplianceDashboard] Special Provisions from Planning Portal:', specialProvisionsLayer.results.length, 'items');
+
+    // Create filter context - zone-based filtering for SEPP (no dev type dropdown needed)
+    const zone = propertyData.constraints?.zone || '';
+    const filterContext = createFilterContext(developmentType, zone);
+    console.log('[ComplianceDashboard] SEPP filter context:', { zone, isResidential: filterContext.isResidential, developmentType });
 
     const provisions: ComplianceConstraint[] = [];
     let filteredCount = 0;

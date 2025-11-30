@@ -240,12 +240,12 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              {layer && expandedLayers.has(layer.id) && (
                <div className="border-t bg-gray-50 p-2 space-y-2">
                  {layer.results.map((result, idx) => (
-                   <div key={idx} className="bg-white rounded-lg p-2 shadow-sm">
+                   <div key={idx} className="bg-white rounded-lg p-2 shadow-sm overflow-hidden">
                      {/* Top row: Blue and Green pills stacked in top right corner */}
-                     <div className="flex justify-end mb-2">
-                       <div className="flex flex-col gap-1 items-end">
+                     <div className="mb-2">
+                       <div className="flex flex-col gap-1">
                          {result['EPI Name'] && (
-                           <Badge className="text-xs px-2 py-0.5 bg-sky-100 text-sky-800">
+                           <Badge className="text-xs px-2 py-1 bg-sky-100 text-sky-800 whitespace-normal leading-tight break-words">
                              {result['EPI Name']}{result['Legislative Clause'] ? ` - ${result['Legislative Clause']}` : ''}
                            </Badge>
                          )}

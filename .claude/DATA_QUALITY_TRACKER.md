@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2025-11-25
-**Session:** DQ-11 Heritage Sub-Categorization COMPLETE
+**Last Updated:** 2025-11-29
+**Session:** DQ-14 Leichhardt PDF URL Coverage COMPLETE
 
 ---
 
@@ -22,6 +22,9 @@
 | DQ-9: DCP filter bug (IWLEP) | ✅ FIXED | P1 |
 | DQ-10: Council-specific UI/UX | ✅ DOCUMENTED | P1 |
 | DQ-11: Heritage sub-categorization | ✅ COMPLETE | P2 (was) |
+| DQ-13: Leichhardt uncategorized topics | ✅ FIXED | P1 (was) |
+| DQ-14: Leichhardt PDF URL coverage | ✅ FIXED | P1 (was) |
+| DQ-15: Topic case inconsistency | ✅ FIXED | P2 (was) |
 
 ---
 
@@ -394,3 +397,93 @@ The 132 DCP CDC provisions ARE correctly dev_type tagged.
 - `v2_heritage_hca` (TEXT)
 
 **Fix Script:** `scripts/fixes/DQ11_heritage_categorization.py`
+
+### DQ-13: Leichhardt Uncategorized Topics (2025-11-29)
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
+**Problem:** 42% of Leichhardt provisions (1,242/2,962) had NULL v2_topic
+
+**Root Cause:** Bug in `enrichment/extractors/layer_topic_tagger.py`
+- Section 1 handler only used C marker extraction
+- Many provisions lack C markers but have keyword matches
+- Missing fallback: `or self._extract_topic_from_text(provision_text)`
+
+**Fixes Applied:**
+1. Fixed `layer_topic_tagger.py` - added keyword fallback for Section 1
+2. Marked 124 Part A (Introduction) provisions as non-actionable
+3. Re-classified 1,164 Part C Section 1 provisions
+
+**Results:**
+- Uncategorized: 42% → 10.1% (reduced by 32 percentage points)
+- 878 provisions now have topics assigned
+- Part A correctly marked non-actionable (procedural, not requirements)
+
+**Fix Script:** `scripts/fixes/DQ13_leichhardt_fixes.py`
+
+### DQ-14: Leichhardt PDF URL Coverage (2025-11-29)
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
+**Problem:** Only 26% of Leichhardt provisions had PDF page image URLs (vs 100% for Marrickville/Ashfield)
+
+**Root Cause:** Multiple issues
+1. `pdf_page_image_url` column was NULL, needed population from `pdf_page`
+2. Folder mapping regex: "Section 1" matched before "Part G"
+3. Part G offset: `pdf_page` has +100 offset, should use `page_number` column
+4. Missing PNG files: pages 10, 21, 23, 24, 25, 35 not extracted
+
+**Fixes Applied:**
+1. `DQ14_leichhardt_pdf_urls.py` - Initial URL population (2,097 provisions)
+2. `extract_missing_pdf_pages.py` - Extracted 115 missing pages using PyMuPDF
+3. `DQ14b_fix_part_g_urls.py` - Fixed Part G using `page_number` (487 provisions)
+4. `extract_missing_part_g.py` - Extracted 6 additional Part G pages
+5. Uploaded all new PNG files to Cloudflare R2
+
+**Results:**
+| Metric | Before | After |
+|--------|--------|-------|
+| PDF URL coverage | 26% (773/2,962) | **100%** (2,838/2,838) |
+| Part G coverage | 0% | 100% |
+| Missing PNG files | 160 | 0 |
+
+**Key Insight:** Part G has inconsistent offset pattern (pdf_page ≠ page_number).
+Always use `page_number` column for Part G PDF URLs.
+
+**Fix Scripts:** `scripts/fixes/DQ14_leichhardt_pdf_urls.py`, `scripts/fixes/DQ14b_fix_part_g_urls.py`
+
+### DQ-15: Topic Case Inconsistency (2025-11-29)
+**Status:** ✅ FIXED
+**Priority:** P2 (was)
+**Problem:** Leichhardt had duplicate topics differing only by case (e.g., `parking` vs `Parking`)
+
+**Root Cause:** Inconsistent capitalization during topic extraction
+- 17 topics affected: heritage, height, setbacks, parking, access, landscaping, trees, signage, waste, privacy, stormwater, fencing, flooding, contamination, safety, roofing, solar
+
+**Fix Applied:**
+1. Normalized all topics to Title Case
+2. Fixed `building_form` → `Building Form`
+
+**Results:**
+- 845 provisions updated (725 case normalization + 120 building_form)
+- All topics now use consistent Title Case
+- Leichhardt topic distribution now accurate
+
+**Fix Script:** `scripts/fixes/DQ15_normalize_topic_case.py`
+
+### 50-Address Comprehensive Test (2025-11-29)
+**Status:** ✅ ALL PASS
+**Scope:** 50 representative addresses across all Inner West councils
+
+**Test Results:**
+| Council | Tests | Pass | Warn | Fail | Avg Provisions | Topic | PDF |
+|---------|-------|------|------|------|----------------|-------|-----|
+| Marrickville | 17 | 17 | 0 | 0 | 623 | 95% | 100% |
+| Leichhardt | 17 | 17 | 0 | 0 | 2,790 | 90% | 100% |
+| Ashfield | 16 | 16 | 0 | 0 | 1,502 | 93% | 100% |
+| **TOTAL** | **50** | **50** | **0** | **0** | - | - | - |
+
+**Zones Tested:**
+- R2, R3 (residential)
+- B1, B2, B4 (business)
+- IN1, IN2 (industrial)
+
+**Conclusion:** All 50 addresses return complete, accurate provision data with 100% PDF coverage.

@@ -4,7 +4,7 @@
  */
 
 import { Pool } from 'pg';
-import { getPropertyCoordinates } from '../../lib/services/planning-portal-api';
+import { getPropertyCoordinates } from './nsw-planning-portal';
 
 const pool = new Pool({
   connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL,
