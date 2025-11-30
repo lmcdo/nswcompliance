@@ -80,10 +80,10 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'ashfield',
     name: 'Ashfield',
     dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'This DCP defines 11 urban villages in Chapter D, though precinct-specific controls only cover 13% of provisions (green). 59% are conditional (amber) - these are almost all for heritage properties, but also include flood-prone and bushfire-prone properties. The system filters these automatically. General provisions account for 28% (grey). Zone filtering is ineffective (2% blue). Development type filtering is effective (98.5% coverage across 20 specific use types).',
+    dcpExplanation: 'Chapter F contains development type controls (dwelling houses, multi-dwelling, residential flat buildings). Chapter D covers 11 urban village precincts. Chapter E1 contains heritage controls that only apply to heritage properties. Select a development type below to filter relevant provisions.',
     totalProvisions: 1526,
     primaryLayer: 'condition',
-    zoneFilterEffective: false,
+    zoneFilterEffective: true,
     devTypeFilterEffective: true,
     availableDevTypes: [
       { id: 'dwelling_house', name: 'Dwelling House', count: 57 },

@@ -289,24 +289,20 @@ export function ProvisionsByTopic({
             </p>
           )}
 
-          {/* Layer Summary - Visual Grid */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="bg-slate-50 rounded-lg p-3 text-center border border-slate-100">
-              <div className="text-2xl font-bold text-slate-700">{data.summary?.layer_1_generic || 0}</div>
-              <div className="text-xs text-slate-500 font-medium">General</div>
-            </div>
-            <div className="bg-sky-50 rounded-lg p-3 text-center border border-sky-100">
-              <div className="text-2xl font-bold text-sky-700">{data.summary?.layer_2_use_specific || 0}</div>
-              <div className="text-xs text-sky-600 font-medium">Zone</div>
-            </div>
-            <div className="bg-amber-50 rounded-lg p-3 text-center border border-amber-100">
-              <div className="text-2xl font-bold text-amber-700">{data.summary?.layer_3_condition || 0}</div>
-              <div className="text-xs text-amber-600 font-medium">Condition</div>
-            </div>
-            <div className="bg-emerald-50 rounded-lg p-3 text-center border border-emerald-100">
-              <div className="text-2xl font-bold text-emerald-700">{data.summary?.layer_4_precinct || 0}</div>
-              <div className="text-xs text-emerald-600 font-medium">Precinct</div>
-            </div>
+          {/* Layer Summary - Compact Inline */}
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded">
+              <span className="font-semibold">{data.summary?.layer_1_generic || 0}</span> General
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-100 text-sky-700 rounded">
+              <span className="font-semibold">{data.summary?.layer_2_use_specific || 0}</span> Zone
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded">
+              <span className="font-semibold">{data.summary?.layer_3_condition || 0}</span> Condition
+            </span>
+            <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded">
+              <span className="font-semibold">{data.summary?.layer_4_precinct || 0}</span> Precinct
+            </span>
           </div>
 
           {/* Topic Filter Pills */}
@@ -336,22 +332,27 @@ export function ProvisionsByTopic({
 
           {/* Dev Type selector or note */}
           {councilConfig.devTypeFilterEffective ? (
-            <select
-              value={selectedDevType}
-              onChange={(e) => setSelectedDevType(e.target.value)}
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
-            >
-              <option value="">All Development Types</option>
-              {councilConfig.availableDevTypes?.map((dt) => (
-                <option key={dt.id} value={dt.id}>
-                  {dt.name} ({dt.count})
-                </option>
-              )) || DEV_TYPE_OPTIONS.slice(1).map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <label className="block text-xs font-semibold text-blue-800 mb-1.5">
+                Development Type
+              </label>
+              <select
+                value={selectedDevType}
+                onChange={(e) => setSelectedDevType(e.target.value)}
+                className="w-full px-3 py-2 text-sm border-2 border-blue-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium"
+              >
+                <option value="">Select development type...</option>
+                {councilConfig.availableDevTypes?.map((dt) => (
+                  <option key={dt.id} value={dt.id}>
+                    {dt.name} ({dt.count} provisions)
+                  </option>
+                )) || DEV_TYPE_OPTIONS.slice(1).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : councilConfig.devTypeNote && (
             <p className="text-xs text-slate-500 italic">
               {councilConfig.devTypeNote}
