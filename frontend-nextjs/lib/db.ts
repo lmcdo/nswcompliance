@@ -6,6 +6,9 @@
  *
  * IMPORTANT: All API routes must import from this file
  * to prevent connection pool exhaustion
+ *
+ * NOTE: Use Supabase port 6543 (Transaction mode) for serverless,
+ * NOT 5432 (Session mode) which has connection limits.
  */
 
 import { Pool, PoolClient } from 'pg';
