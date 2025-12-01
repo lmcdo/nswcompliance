@@ -27,6 +27,15 @@ export interface CouncilConfig {
     certifier: string[];
     planner: string[];
   };
+  // Council-specific layer labels
+  layerLabels: {
+    generic: string;
+    use_specific: string;
+    condition: string;
+    precinct: string;
+  };
+  // Hide layers with 0 or minimal provisions
+  hideLayers?: ('generic' | 'use_specific' | 'condition' | 'precinct')[];
 }
 
 /**
@@ -62,6 +71,12 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       certifier: ['setbacks', 'height', 'parking', 'landscaping', 'heritage', 'building_form', 'access', 'solar', 'privacy'],
       planner: ['building_form', 'heritage', 'height', 'setbacks', 'landscaping', 'parking', 'access'],
     },
+    layerLabels: {
+      generic: 'Base Controls',
+      use_specific: 'Zone Controls',
+      condition: 'Heritage',
+      precinct: 'Precinct Character',
+    },
   },
 
   leichhardt: {
@@ -85,6 +100,13 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       certifier: ['parking', 'setbacks', 'height', 'landscaping', 'building_form', 'heritage', 'access', 'trees'],
       planner: ['building_form', 'heritage', 'parking', 'landscaping', 'height', 'setbacks', 'trees'],
     },
+    layerLabels: {
+      generic: 'Universal',
+      use_specific: 'Zone',
+      condition: 'Heritage',
+      precinct: 'Neighbourhood',
+    },
+    hideLayers: ['use_specific'],
   },
 
   ashfield: {
@@ -129,6 +151,13 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       certifier: ['parking', 'height', 'trees', 'access', 'building_form', 'heritage', 'waste'],
       planner: ['building_form', 'heritage', 'trees', 'parking', 'access'],
     },
+    layerLabels: {
+      generic: 'Base Controls',
+      use_specific: 'Dev Type',
+      condition: 'Heritage',
+      precinct: 'Village Precinct',
+    },
+    hideLayers: ['use_specific'],
   },
 };
 
