@@ -551,7 +551,7 @@ export function ProvisionsByTopic({
                                         }}
                                       >
                                         <FileText className="h-3 w-3 mr-1" />
-                                        View PDF Page {pageNum}
+                                        View DCP page {pageNum}
                                       </Button>
                                     );
                                   })()}
