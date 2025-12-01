@@ -309,12 +309,6 @@ export function ProvisionsByTopic({
             </p>
           )}
 
-          {/* Dev Type Prompt for Ashfield */}
-          {council === 'ashfield' && (
-            <p className="text-sm font-medium text-blue-700 mt-2">
-              Select your development type below to filter relevant provisions.
-            </p>
-          )}
 
           {/* Layer Summary - Compact Inline with meaningful labels */}
           <div className="flex flex-wrap gap-2 text-xs">
