@@ -83,7 +83,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'leichhardt',
     name: 'Leichhardt',
     dcpCitation: 'Inner West Development Control Plan (Leichhardt) 2013',
-    dcpExplanation: 'This is a topic-centric DCP organised by theme. Most provisions apply universally regardless of zone. Development type dropdown is not available. Use topic filtering to navigate the high volume.\n\n• Part C "Place" (setbacks, heights, parking, landscaping) • Part D (energy) • Part E (water) • Part F (food) • Part G (26 Distinctive Neighbourhoods)\n\nHeritage: Controls are embedded within Part C "Place" rather than a separate chapter - heritage provisions are categorised by topic (character, streetscape, materials, etc.) across sections.',
+    dcpExplanation: 'This is a topic-centric DCP organised by theme. Most provisions apply universally regardless of zone. Development type dropdown is not available. Use topic filtering to navigate the high volume.\n\n• Part C "Place" (setbacks, heights, parking, landscaping) • Part D (energy) • Part E (water) • Part F (food) • Part G (26 Distinctive Neighbourhoods)\n\nHeritage: This DCP does not have a dedicated heritage chapter. Heritage provisions are embedded within Part C "Place - General Character Controls" and are categorised by topic such as character, streetscape, and building form rather than grouped under a heritage category. Look for heritage-related controls under both the Heritage and Character topic filters.',
     totalProvisions: 2648,
     primaryLayer: 'generic',
     zoneFilterEffective: false,
