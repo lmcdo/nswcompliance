@@ -294,7 +294,8 @@ async function queryLayer(
   }
 
   // Optional dev_type filter with hierarchical matching
-  if (filters.dev_type) {
+  // IMPORTANT: Only apply to use_specific layer - generic provisions apply to ALL dev types
+  if (filters.dev_type && layer === 'use_specific') {
     // Expand dev_type to include parent types (e.g., dwelling_addition_rear -> [dwelling_addition_rear, dwelling_addition, dwelling_house])
     // Include provisions tagged with 'ALL' (applies to all development types)
     const expandedTypes = expandDevTypeHierarchy(filters.dev_type);

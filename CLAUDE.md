@@ -31,71 +31,32 @@ When working on **provision extraction, compliance API, filtering, or enrichment
 - **ALWAYS use `db_safety_wrapper.py` for database connections**
 - **Database issues = STOP IMMEDIATELY**
 
-### CRITICAL: DUAL DATABASE ENVIRONMENT
-**The frontend and root project use DIFFERENT databases!**
+### SINGLE DATABASE: SUPABASE
+**All components now use Supabase as the single source of truth. No sync needed.**
 
-| Component | Database | Connection String |
-|-----------|----------|-------------------|
-| `frontend-nextjs/` | **LOCAL** | `postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning` |
-| Root `.env` scripts | **SUPABASE** | `SUPABASE_DB_URL` from `.env` |
+| Component | Database |
+|-----------|----------|
+| Frontend local dev | Supabase |
+| Production (Vercel) | Supabase |
+| Python scripts | Supabase |
 
-**When making database fixes:**
-1. **ALWAYS check which database the affected component uses**
-2. **Frontend issues = fix LOCAL database** (127.0.0.1)
-3. **Root script issues = fix SUPABASE database**
-4. **For deployment = sync BOTH databases**
-
-**Common mistake:** Running fix scripts with `SUPABASE_DB_URL` when the frontend uses LOCAL.
-
-**Quick check:**
-```python
-# To fix LOCAL (frontend):
-local_url = "postgresql://postgres:Onlyme123!@127.0.0.1:5432/nsw_planning"
-conn = psycopg2.connect(local_url)
-
-# To fix SUPABASE (production):
-supa_url = os.getenv('SUPABASE_DB_URL')
-conn = psycopg2.connect(supa_url)
-```
+Connection is configured in `.env` and `frontend-nextjs/.env.local`.
 
 ### Memory Aid for Claude:
-1. Check CLAUDE.md database section FIRST
-2. Run `./scripts/db_safety_check.sh` BEFORE any database work
-3. Use `from db_safety_wrapper import get_safe_connection` for ALL database operations
-4. Create backup BEFORE any changes
-5. Use timeouts on ALL operations
+1. All database operations go to Supabase directly
+2. No local PostgreSQL needed
+3. Changes are immediately visible in production
 
-### DEPLOYMENT & DATABASE SYNC (READ BEFORE DEPLOYING)
+### DEPLOYMENT (Code Only)
 - **FULL DOCS**: `DEPLOYMENT.md` - Complete deployment guide
 - **MIGRATIONS**: `migrations/` folder contains all schema changes
 
-#### Quick Deployment Checklist:
-1. **Before deploying code changes:**
-   ```bash
-   # Check local vs Supabase sync status
-   python scripts/compare_local_supabase.py
-   ```
+#### Deployment is just code:
+```bash
+git push  # Vercel auto-deploys
+```
 
-2. **Run migrations on Supabase:**
-   ```bash
-   psql $SUPABASE_DB_URL -f migrations/001_add_v2_columns.sql
-   ```
-
-3. **Sync enriched data (if v2_ columns changed):**
-   ```bash
-   python scripts/sync_v2_to_supabase.py
-   ```
-
-4. **Verify after deploy:**
-   ```bash
-   curl "https://your-app.vercel.app/api/provisions/for-property?zone=R2"
-   ```
-
-#### Environment Configuration:
-| Environment | Database | Config File |
-|------------|----------|-------------|
-| Local Dev | `localhost:5432/nsw_planning` | `.env`, `frontend-nextjs/.env.local` |
-| Production | Supabase pooler | `frontend-nextjs/.env.vercel.final`, Vercel dashboard |
+Database changes go directly to Supabase - no sync step needed.
 
 #### CI/CD Actions (Repeatable):
 - **Schema changes**: Add new migration to `migrations/`, run on both local and Supabase
