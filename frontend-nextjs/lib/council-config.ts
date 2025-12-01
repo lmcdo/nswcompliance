@@ -113,7 +113,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'ashfield',
     name: 'Ashfield',
     dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'This is a heritage-heavy DCP with a dedicated heritage chapter. Chapter D contains 11 urban village precincts with area-specific controls. Development type and zone filtering are not available for this Ashfield 2016 DCP.\n\n• Chapter F (controls for all development types, including dwelling houses, multi-dwelling housing, and residential flat buildings) • Chapter E1 (controls for heritage) • Chapter C (controls for sustainability) • Chapter D (controls for 11 urban village precincts)',
+    dcpExplanation: 'Ashfield 2016 DCP is a heritage-heavy DCP with a dedicated heritage chapter. Chapter D contains 11 urban village precincts with area-specific controls. Development type and zone filtering are not useful (so are not available) for this DCP.\n\n• Chapter F (controls for all development types, including dwelling houses, multi-dwelling housing, and residential flat buildings) • Chapter E1 (controls for heritage) • Chapter C (controls for sustainability) • Chapter D (controls for 11 urban village precincts)',
     totalProvisions: 1526,
     primaryLayer: 'condition',
     zoneFilterEffective: false,
