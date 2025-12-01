@@ -54,7 +54,7 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'marrickville',
     name: 'Marrickville',
     dcpCitation: 'Inner West Development Control Plan (Marrickville) 2011',
-    dcpExplanation: 'This is a zone-centric DCP - unlike the others, it has explicit chapters per zone type. Your zone is auto-detected from the address and filters results automatically. Development type dropdown is not available as provisions are organised by zone chapter instead. All 48 suburb precincts have local character controls.\n\n• Part 4.1 (R2 low density) • Part 4.2 (R3/R4 multi-dwelling) • Part 5 (business zones) • Part 6 (industrial) • Part 8 (heritage) • Part 9 (48 suburb precincts)\n\nHeritage: No dedicated heritage chapter - heritage provisions are categorised by topic (character, streetscape, fencing, signage, etc.) throughout the DCP.',
+    dcpExplanation: 'This is a zone-centric DCP - unlike the others, it has explicit chapters per zone type. Your zone is auto-detected from the address and filters results automatically. Development type dropdown is not available as provisions are organised by zone chapter instead. All 48 suburb precincts have local character controls.\n\n• Part 4.1 (R2 low density) • Part 4.2 (R3/R4 multi-dwelling) • Part 5 (business zones) • Part 6 (industrial) • Part 8 (heritage) • Part 9 (48 suburb precincts)\n\nHeritage (Part 8): This DCP has a dedicated heritage chapter with 545 provisions covering Heritage Conservation Areas and heritage items. Heritage provisions are organised into subcategories including building form, landscaping, setbacks, signage, and parking controls specific to heritage contexts.',
     totalProvisions: 1051,
     primaryLayer: 'precinct',
     zoneFilterEffective: true,
