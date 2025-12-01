@@ -218,11 +218,61 @@ export async function GET(request: NextRequest) {
   }
 }
 
+/**
+ * Query heritage provisions from dcp_general_requirements (LLM-extracted, curated data)
+ * Maps columns to match the UI's expected interface
+ */
+async function queryHeritageFromDcpGeneralRequirements(
+  client: any,
+  filters: PropertyFilters
+): Promise<any[]> {
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  let sql = `
+    SELECT
+      id,
+      COALESCE(verbatim_source_text, requirement_text) as provision_text,
+      'condition' as v2_dcp_layer,
+      part_name as v2_dcp_part,
+      INITCAP(REPLACE(category, '_', ' ')) as v2_topic,
+      'control' as v2_provision_type,
+      NULL as v2_precinct_id,
+      NULL as v2_marker,
+      NULL as v2_display_behavior,
+      pdf_page,
+      pdf_path as pdf_source_file,
+      pdf_page_image_url,
+      NULL as v2_heritage_type,
+      NULL as v2_heritage_element,
+      NULL as v2_heritage_hca
+    FROM dcp_general_requirements
+    WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
+  `;
+
+  // Filter by former council
+  if (filters.former_council) {
+    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
+    sql += ` AND former_council = $${paramIndex++}`;
+    params.push(councilName);
+  }
+
+  sql += ` ORDER BY part_name, id LIMIT 500`;
+
+  const result = await client.query(sql, params);
+  return result.rows;
+}
+
 async function queryLayer(
   client: any,
   layer: string,
   filters: PropertyFilters
 ): Promise<any[]> {
+  // For condition layer with heritage, use dcp_general_requirements (LLM-extracted data)
+  if (layer === 'condition' && filters.heritage) {
+    return queryHeritageFromDcpGeneralRequirements(client, filters);
+  }
+
   const params: any[] = [];
   let paramIndex = 1;
 
@@ -265,9 +315,8 @@ async function queryLayer(
   }
 
   if (layer === 'condition') {
-    // For condition layer, only include if property has that condition
+    // For condition layer (non-heritage), only include if property has that condition
     const conditions: string[] = [];
-    if (filters.heritage) conditions.push('heritage');
     if (filters.flood) conditions.push('flood');
     if (filters.bushfire) conditions.push('bushfire');
 
