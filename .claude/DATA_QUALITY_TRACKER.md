@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2025-11-29
-**Session:** DQ-14 Leichhardt PDF URL Coverage COMPLETE
+**Last Updated:** 2025-12-01
+**Session:** Two-Table Architecture Documentation
 
 ---
 
@@ -25,6 +25,40 @@
 | DQ-13: Leichhardt uncategorized topics | ✅ FIXED | P1 (was) |
 | DQ-14: Leichhardt PDF URL coverage | ✅ FIXED | P1 (was) |
 | DQ-15: Topic case inconsistency | ✅ FIXED | P2 (was) |
+
+---
+
+## Two-Table Architecture: Raw vs LLM-Curated
+
+**IMPORTANT: Do not assume low LLM coverage means incomplete extraction.**
+
+There are TWO provision data sources:
+
+1. **`regulatory_provisions`** (raw) - PDF paragraphs with regex-classified `v2_topic`
+   - Complete coverage (all PDF content)
+   - Lower quality (includes headers, intro text, cross-references)
+   - 43 unique topics
+
+2. **`dcp_general_requirements`** (LLM-curated) - Extracted actionable requirements with `category`
+   - Intentionally selective (only actionable development controls)
+   - Higher quality (distilled requirements)
+   - 64 unique categories
+
+**LLM Extraction is SELECTIVE by design:**
+- The LLM is instructed to "Extract ALL actionable development controls"
+- This EXCLUDES: headers, objectives, definitions, explanatory context, cross-references
+- A 20-30% extraction rate is NORMAL - most DCP text is not actionable
+
+**Coverage by council (as of 2025-12-01):**
+- Ashfield: 791 LLM / 1,579 raw = 50%
+- Marrickville: 1,338 LLM / 985 raw = 136% (expansion from multi-requirement paragraphs)
+- Leichhardt: 834 LLM / 2,989 raw = 28%
+
+**Leichhardt's 28% is NOT incomplete** - Part C Section 1 alone has 1,782 raw provisions but only 342 extracted requirements (19%). This is correct - most Part C content is objectives and context, not controls.
+
+**Current API usage:**
+- Heritage (condition layer): Uses LLM-curated `dcp_general_requirements`
+- All other queries: Uses raw `regulatory_provisions` with `v2_topic`
 
 ---
 
@@ -487,3 +521,21 @@ Always use `page_number` column for Part G PDF URLs.
 - IN1, IN2 (industrial)
 
 **Conclusion:** All 50 addresses return complete, accurate provision data with 100% PDF coverage.
+
+### Two-Table Architecture Clarification (2025-12-01)
+**Status:** DOCUMENTED
+
+**Issue:** Previous sessions incorrectly assumed Leichhardt's 28% LLM coverage meant incomplete extraction.
+
+**Reality:**
+- LLM extraction is INTENTIONALLY SELECTIVE - only extracts actionable development controls
+- 20-30% extraction rate is NORMAL - most DCP text is objectives, definitions, context
+- Leichhardt Part C Section 1: 1,782 raw → 342 LLM (19%) is CORRECT
+- Marrickville >100% is also correct - one paragraph can yield multiple requirements
+
+**Coverage (verified 2025-12-01):**
+- Ashfield: 791 LLM / 1,579 raw = 50%
+- Marrickville: 1,338 LLM / 985 raw = 136%
+- Leichhardt: 834 LLM / 2,989 raw = 28%
+
+**DO NOT** assume low percentage means extraction needs to be re-run.

@@ -5,6 +5,13 @@
  * that requires different UI/UX approaches for optimal professional use.
  */
 
+export interface CategoryGroup {
+  label: string;
+  categories: string[];  // LLM categories in this group
+  showSubcategories: boolean;  // Whether to show individual categories
+  priority: number;  // Display order (lower = higher priority)
+}
+
 export interface CouncilConfig {
   id: string;
   name: string;
@@ -36,6 +43,8 @@ export interface CouncilConfig {
   };
   // Hide layers with 0 or minimal provisions
   hideLayers?: ('generic' | 'use_specific' | 'condition' | 'precinct')[];
+  // Category groupings for UI display
+  categoryGroups: Record<string, CategoryGroup>;
 }
 
 /**
@@ -77,6 +86,62 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       condition: 'Heritage',
       precinct: 'Precinct Character',
     },
+    categoryGroups: {
+      heritage: {
+        label: 'Heritage',
+        categories: ['heritage', 'character'],
+        showSubcategories: false,
+        priority: 1,
+      },
+      building: {
+        label: 'Building Form',
+        categories: ['building_form', 'building_height'],
+        showSubcategories: false,
+        priority: 2,
+      },
+      setbacks: {
+        label: 'Setbacks',
+        categories: ['setbacks', 'setback_front'],
+        showSubcategories: false,
+        priority: 3,
+      },
+      landscaping: {
+        label: 'Landscaping',
+        categories: ['landscaping', 'biodiversity'],
+        showSubcategories: false,
+        priority: 4,
+      },
+      sustainability: {
+        label: 'Sustainability',
+        categories: ['sustainability', 'energy_efficiency', 'solar_access'],
+        showSubcategories: false,
+        priority: 5,
+      },
+      parking: {
+        label: 'Parking & Access',
+        categories: ['parking', 'accessibility', 'transport'],
+        showSubcategories: false,
+        priority: 6,
+      },
+      signage: {
+        label: 'Signage',
+        categories: ['signage'],
+        showSubcategories: false,
+        priority: 7,
+      },
+      water: {
+        label: 'Water & Stormwater',
+        categories: ['stormwater', 'water_management'],
+        showSubcategories: false,
+        priority: 8,
+      },
+      other: {
+        label: 'Other',
+        categories: ['other', 'subdivision', 'da_requirements', 'safety', 'fencing', 'environmental', 'land_use', 'health_wellbeing', 'streetscape', 'acoustic', 'amenity', 'privacy', 'location'],
+        showSubcategories: false,
+        priority: 99,
+      },
+    },
   },
 
   leichhardt: {
@@ -107,6 +172,74 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       precinct: 'Neighbourhood',
     },
     hideLayers: ['use_specific'],
+    categoryGroups: {
+      environmental: {
+        label: 'Environmental',
+        categories: ['contamination', 'water_management', 'stormwater', 'drainage', 'flood_management', 'environmental', 'biodiversity'],
+        showSubcategories: false,
+        priority: 1,
+      },
+      parking: {
+        label: 'Parking & Access',
+        categories: ['parking', 'accessibility'],
+        showSubcategories: false,
+        priority: 2,
+      },
+      waste: {
+        label: 'Waste',
+        categories: ['waste_management'],
+        showSubcategories: false,
+        priority: 3,
+      },
+      safety: {
+        label: 'Safety',
+        categories: ['safety'],
+        showSubcategories: false,
+        priority: 4,
+      },
+      landscaping: {
+        label: 'Landscaping & Trees',
+        categories: ['landscaping', 'tree_preservation', 'deep_soil', 'open_space'],
+        showSubcategories: false,
+        priority: 5,
+      },
+      character: {
+        label: 'Character & Heritage',
+        categories: ['character', 'heritage', 'streetscape'],
+        showSubcategories: false,
+        priority: 6,
+      },
+      building: {
+        label: 'Building',
+        categories: ['building_form', 'building_height', 'privacy', 'acoustic'],
+        showSubcategories: false,
+        priority: 7,
+      },
+      sustainability: {
+        label: 'Sustainability',
+        categories: ['sustainability', 'energy_efficiency', 'solar_access'],
+        showSubcategories: false,
+        priority: 8,
+      },
+      signage: {
+        label: 'Signage',
+        categories: ['signage'],
+        showSubcategories: false,
+        priority: 9,
+      },
+      setbacks: {
+        label: 'Setbacks',
+        categories: ['setbacks', 'setback_front', 'setback_side', 'setback_rear'],
+        showSubcategories: false,
+        priority: 10,
+      },
+      other: {
+        label: 'Other',
+        categories: ['other', 'da_requirements', 'social_impact', 'public_domain', 'health_wellbeing', 'subdivision', 'public_art', 'site_coverage', 'amenity'],
+        showSubcategories: false,
+        priority: 99,
+      },
+    },
   },
 
   ashfield: {
@@ -158,6 +291,80 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
       precinct: 'Village Precinct',
     },
     hideLayers: ['use_specific'],
+    categoryGroups: {
+      heritage: {
+        label: 'Heritage & Character',
+        categories: ['heritage', 'character', 'streetscape'],
+        showSubcategories: false,
+        priority: 1,
+      },
+      setbacks: {
+        label: 'Setbacks',
+        categories: ['setback_front', 'setback_side', 'setback_rear', 'setbacks'],
+        showSubcategories: true,  // Ashfield certifiers need front/side/rear distinction
+        priority: 2,
+      },
+      building: {
+        label: 'Building',
+        categories: ['building_form', 'building_height'],
+        showSubcategories: false,
+        priority: 3,
+      },
+      parking: {
+        label: 'Parking & Access',
+        categories: ['parking', 'accessibility'],
+        showSubcategories: false,
+        priority: 4,
+      },
+      landscaping: {
+        label: 'Landscaping & Trees',
+        categories: ['landscaping', 'tree_preservation'],
+        showSubcategories: false,
+        priority: 5,
+      },
+      safety: {
+        label: 'Safety & Privacy',
+        categories: ['safety', 'privacy', 'fencing'],
+        showSubcategories: false,
+        priority: 6,
+      },
+      waste: {
+        label: 'Waste',
+        categories: ['waste_management'],
+        showSubcategories: false,
+        priority: 7,
+      },
+      water: {
+        label: 'Water & Stormwater',
+        categories: ['stormwater', 'water_management'],
+        showSubcategories: false,
+        priority: 8,
+      },
+      sustainability: {
+        label: 'Sustainability',
+        categories: ['sustainability', 'solar_access'],
+        showSubcategories: false,
+        priority: 9,
+      },
+      signage: {
+        label: 'Signage',
+        categories: ['signage'],
+        showSubcategories: false,
+        priority: 10,
+      },
+      site: {
+        label: 'Site Controls',
+        categories: ['site_area', 'site_coverage', 'deep_soil', 'open_space'],
+        showSubcategories: false,
+        priority: 11,
+      },
+      other: {
+        label: 'Other',
+        categories: ['other', 'da_requirements', 'subdivision', 'acoustic', 'location', 'biodiversity', 'contamination', 'environmental', 'amenity'],
+        showSubcategories: false,
+        priority: 99,
+      },
+    },
   },
 };
 
@@ -254,3 +461,104 @@ export function sortTopicsByPriority(
     return a.localeCompare(b);
   });
 }
+
+/**
+ * Get category groups sorted by priority
+ */
+export function getSortedCategoryGroups(councilId: string | null): Array<{
+  key: string;
+  group: CategoryGroup;
+}> {
+  const config = getCouncilConfig(councilId);
+  return Object.entries(config.categoryGroups)
+    .map(([key, group]) => ({ key, group }))
+    .sort((a, b) => a.group.priority - b.group.priority);
+}
+
+/**
+ * Find which group a category belongs to
+ */
+export function getCategoryGroup(
+  category: string,
+  councilId: string | null
+): { groupKey: string; group: CategoryGroup } | null {
+  const config = getCouncilConfig(councilId);
+  const lowerCategory = category.toLowerCase();
+
+  for (const [groupKey, group] of Object.entries(config.categoryGroups)) {
+    if (group.categories.includes(lowerCategory)) {
+      return { groupKey, group };
+    }
+  }
+
+  // Default to 'other' group if not found
+  if (config.categoryGroups.other) {
+    return { groupKey: 'other', group: config.categoryGroups.other };
+  }
+
+  return null;
+}
+
+/**
+ * Group provisions by category group
+ */
+export function groupProvisionsByCategory<T extends { category?: string }>(
+  provisions: T[],
+  councilId: string | null
+): Record<string, { group: CategoryGroup; provisions: T[]; subcategories: Record<string, T[]> }> {
+  const config = getCouncilConfig(councilId);
+  const grouped: Record<string, { group: CategoryGroup; provisions: T[]; subcategories: Record<string, T[]> }> = {};
+
+  // Initialize all groups
+  for (const [groupKey, group] of Object.entries(config.categoryGroups)) {
+    grouped[groupKey] = { group, provisions: [], subcategories: {} };
+  }
+
+  // Assign provisions to groups
+  for (const provision of provisions) {
+    const category = (provision.category || 'other').toLowerCase();
+    const result = getCategoryGroup(category, councilId);
+
+    if (result) {
+      const { groupKey, group } = result;
+      grouped[groupKey].provisions.push(provision);
+
+      // Track subcategories if group shows them
+      if (group.showSubcategories) {
+        if (!grouped[groupKey].subcategories[category]) {
+          grouped[groupKey].subcategories[category] = [];
+        }
+        grouped[groupKey].subcategories[category].push(provision);
+      }
+    }
+  }
+
+  return grouped;
+}
+
+/**
+ * Category display labels (for subcategories)
+ */
+export const CATEGORY_LABELS: Record<string, string> = {
+  setback_front: 'Front Setback',
+  setback_side: 'Side Setback',
+  setback_rear: 'Rear Setback',
+  setbacks: 'General Setbacks',
+  building_form: 'Building Form',
+  building_height: 'Building Height',
+  tree_preservation: 'Tree Preservation',
+  waste_management: 'Waste Management',
+  water_management: 'Water Management',
+  solar_access: 'Solar Access',
+  site_area: 'Site Area',
+  site_coverage: 'Site Coverage',
+  deep_soil: 'Deep Soil',
+  open_space: 'Open Space',
+  da_requirements: 'DA Requirements',
+  health_wellbeing: 'Health & Wellbeing',
+  flood_management: 'Flood Management',
+  energy_efficiency: 'Energy Efficiency',
+  social_impact: 'Social Impact',
+  public_domain: 'Public Domain',
+  public_art: 'Public Art',
+};
