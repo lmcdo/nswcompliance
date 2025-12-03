@@ -408,7 +408,7 @@ export function ProvisionsByTopic({
 
         <CardContent className="p-4 space-y-4">
           {/* DCP Explanation - Clean Typography */}
-          {council && councilConfig.dcpExplanation && (
+          {councilConfig?.dcpExplanation && (
             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
               {councilConfig.dcpExplanation}
             </p>
