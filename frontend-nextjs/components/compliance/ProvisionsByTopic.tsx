@@ -631,17 +631,18 @@ export function ProvisionsByTopic({
                                             {/* HCA Provisions */}
                                             {isHcaExpanded && (
                                               <div className="p-2 space-y-2 bg-white">
-                                                {hcaProvisions.slice(0, 15).map((provision) => {
+                                                {hcaProvisions.slice(0, 15).map((provision, idx) => {
                                                   const layer = provision.layer || provision.v2_dcp_layer;
                                                   const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                                     layer === 'use_specific' ? 'border-l-sky-400' :
                                                     layer === 'condition' ? 'border-l-amber-400' :
                                                     layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                                  const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
 
                                                   return (
                                                     <div
                                                       key={provision.id}
-                                                      className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                                      className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
                                                     >
                                                       <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
                                                         <div className="flex items-center gap-2">
@@ -708,17 +709,18 @@ export function ProvisionsByTopic({
                                   ) : (
                                     /* Regular provisions list for non-heritage or small heritage parts */
                                     <>
-                                      {partProvisions.slice(0, 20).map((provision) => {
+                                      {partProvisions.slice(0, 20).map((provision, idx) => {
                                         const layer = provision.layer || provision.v2_dcp_layer;
                                         const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                           layer === 'use_specific' ? 'border-l-sky-400' :
                                           layer === 'condition' ? 'border-l-amber-400' :
                                           layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                        const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
 
                                         return (
                                           <div
                                             key={provision.id}
-                                            className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                            className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
                                           >
                                             <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
                                               <div className="flex items-center gap-2">
@@ -787,17 +789,18 @@ export function ProvisionsByTopic({
                     ) : (
                       // Small topic: Flat list (original behavior)
                       <>
-                        {provisions.slice(0, 20).map((provision) => {
+                        {provisions.slice(0, 20).map((provision, idx) => {
                           const layer = provision.layer || provision.v2_dcp_layer;
                           const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                             layer === 'use_specific' ? 'border-l-sky-400' :
                             layer === 'condition' ? 'border-l-amber-400' :
                             layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                          const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
 
                           return (
                             <div
                               key={provision.id}
-                              className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                              className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
                             >
                               <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
                                 <div className="flex items-center gap-2">
