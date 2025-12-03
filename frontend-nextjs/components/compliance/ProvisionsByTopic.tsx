@@ -11,7 +11,8 @@
  * - Expandable provision cards
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import useSWR from 'swr';
 import { ChevronDown, ChevronRight, FileText, MapPin, Building, Shield, Info, HelpCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -156,6 +157,15 @@ const DEV_TYPE_OPTIONS = [
 
 // Use imported COUNCIL_CONFIGS from council-config.ts
 
+// SWR fetcher with error handling
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to fetch provisions');
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error || 'Unknown error');
+  return json.data;
+};
+
 export function ProvisionsByTopic({
   zone,
   heritage = false,
@@ -165,15 +175,6 @@ export function ProvisionsByTopic({
   council,
   professionalMode = 'certifier',
 }: ProvisionsByTopicProps) {
-  const [data, setData] = useState<{
-    by_layer: LayerResult[];
-    by_topic: Record<string, Provision[]>;
-    summary: any;
-  } | null>(null);
-  // Store original topic counts (before any topic filtering) for stable pill display
-  const [originalTopicCounts, setOriginalTopicCounts] = useState<Record<string, number>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
   const [expandedDcpParts, setExpandedDcpParts] = useState<Set<string>>(new Set());
@@ -192,62 +193,53 @@ export function ProvisionsByTopic({
   const councilConfig: CouncilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
   const topicOrder = professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner;
 
-  // Reset original topic counts when address/zone/council changes
+  // Build API URL for SWR caching
+  // NOTE: selectedTopic is NOT included - we filter client-side for stable counts
+  const apiUrl = useMemo(() => {
+    const params = new URLSearchParams();
+    if (zone) params.set('zone', zone);
+    if (heritage) params.set('heritage', 'true');
+    if (flood) params.set('flood', 'true');
+    if (precinctId) params.set('precinct_id', precinctId);
+    if (selectedDevType) params.set('dev_type', selectedDevType);
+    if (council) params.set('former_council', council);
+    return `/api/provisions/for-property?${params}`;
+  }, [zone, heritage, flood, precinctId, selectedDevType, council]);
+
+  // SWR for cached data fetching - same URL = instant from cache
+  const { data, error, isLoading } = useSWR<{
+    by_layer: LayerResult[];
+    by_topic: Record<string, Provision[]>;
+    summary: any;
+  }>(apiUrl, fetcher, {
+    revalidateOnFocus: false,  // Don't refetch when window regains focus
+    dedupingInterval: 60000,   // Dedupe requests within 60 seconds
+    keepPreviousData: true,    // Show stale data while revalidating
+  });
+
+  // Compute topic counts from data (memoized for performance)
+  const originalTopicCounts = useMemo(() => {
+    if (!data?.by_topic) return {};
+    const counts: Record<string, number> = {};
+    Object.entries(data.by_topic).forEach(([topic, provisions]) => {
+      counts[topic] = (provisions as Provision[]).length;
+    });
+    return counts;
+  }, [data?.by_topic]);
+
+  // Reset selected topic when address changes
   useEffect(() => {
-    setOriginalTopicCounts({});
     setSelectedTopic('');
   }, [zone, heritage, flood, precinctId, council]);
 
+  // Auto-expand first 3 topics on initial load
   useEffect(() => {
-    async function fetchProvisions() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        // NOTE: We intentionally do NOT pass selectedTopic to the API
-        // Instead we fetch ALL provisions and filter client-side for display
-        // This ensures topic counts remain stable when user clicks different topics
-        const params = new URLSearchParams();
-        if (zone) params.set('zone', zone);
-        if (heritage) params.set('heritage', 'true');
-        if (flood) params.set('flood', 'true');
-        if (precinctId) params.set('precinct_id', precinctId);
-        if (selectedDevType) params.set('dev_type', selectedDevType);
-        // selectedTopic is NOT passed - filtering happens client-side
-        if (council) params.set('former_council', council);
-
-        const response = await fetch(`/api/provisions/for-property?${params}`);
-        if (!response.ok) throw new Error('Failed to fetch provisions');
-
-        const result = await response.json();
-        if (result.success) {
-          setData(result.data);
-          // Always store topic counts (API always returns unfiltered data now)
-          if (result.data.by_topic) {
-            const counts: Record<string, number> = {};
-            Object.entries(result.data.by_topic).forEach(([topic, provisions]) => {
-              counts[topic] = (provisions as Provision[]).length;
-            });
-            setOriginalTopicCounts(counts);
-          }
-          // Auto-expand first 3 topics (sorted by council priority)
-          const topics = Object.keys(result.data.by_topic || {});
-          const sortedTopics = sortTopicsByPriority(topics, topicOrder);
-          setExpandedTopics(new Set(sortedTopics.slice(0, 3)));
-        } else {
-          throw new Error(result.error || 'Unknown error');
-        }
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setLoading(false);
-      }
+    if (data?.by_topic && expandedTopics.size === 0) {
+      const topics = Object.keys(data.by_topic);
+      const sortedTopics = sortTopicsByPriority(topics, topicOrder);
+      setExpandedTopics(new Set(sortedTopics.slice(0, 3)));
     }
-
-    fetchProvisions();
-  // NOTE: selectedTopic is intentionally NOT in deps - we filter client-side
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zone, heritage, flood, precinctId, selectedDevType, council, topicOrder]);
+  }, [data?.by_topic, topicOrder, expandedTopics.size]);
 
   // Sort topics by professional priority
   function sortTopicsByPriority(topics: string[], priorityOrder: string[]): string[] {
@@ -355,7 +347,7 @@ export function ProvisionsByTopic({
     return part;
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="p-6">
@@ -373,7 +365,7 @@ export function ProvisionsByTopic({
     return (
       <Card>
         <CardContent className="p-6">
-          <p className="text-red-600">Error: {error}</p>
+          <p className="text-red-600">Error: {error.message}</p>
         </CardContent>
       </Card>
     );

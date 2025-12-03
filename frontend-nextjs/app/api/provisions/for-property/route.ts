@@ -180,7 +180,8 @@ export async function GET(request: NextRequest) {
         expanded_hierarchy: expandDevTypeHierarchy(filters.dev_type),
       } : undefined;
 
-      return NextResponse.json({
+      // Cache for 5 minutes on edge, 1 minute stale-while-revalidate
+      const response = NextResponse.json({
         success: true,
         data: {
           by_layer: results,
@@ -200,6 +201,8 @@ export async function GET(request: NextRequest) {
           api_version: 'v2_4layer_granular'
         }
       });
+      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+      return response;
 
     } finally {
       client.release();
