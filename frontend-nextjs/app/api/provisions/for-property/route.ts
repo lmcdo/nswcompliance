@@ -269,6 +269,16 @@ async function queryHeritageByHca(
     params.push(`%${councilName}%`);
   }
 
+  // Filter by precinct - only include general provisions or property's precinct
+  // Exclude Part 9 precinct-specific provisions for other precincts
+  if (filters.precinct_id) {
+    sql += ` AND (v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
+    params.push(filters.precinct_id);
+  } else {
+    // No precinct specified - exclude all precinct-specific provisions
+    sql += ` AND v2_precinct_id IS NULL`;
+  }
+
   sql += ` ORDER BY v2_dcp_part, id LIMIT 200`;
 
   const result = await client.query(sql, params);
