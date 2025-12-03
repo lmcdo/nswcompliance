@@ -363,12 +363,20 @@ export function StateLevelControls({
             </div>
             <p className="text-sm text-emerald-700 mt-1 ml-7">
               {isInDesignatedTOD
-                ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021'
-                : `Qualifying transport within regulatory thresholds (${
-                    nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= 800) ? 'rail ≤800m' :
-                    nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= 600) ? 'light rail ≤600m' :
-                    'bus ≤400m'
-                  })`
+                ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021.'
+                : (() => {
+                    const reasons: string[] = [];
+                    if (nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= 800)) {
+                      reasons.push('heavy rail station within 800m');
+                    }
+                    if (nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= 600)) {
+                      reasons.push('light rail stop within 600m');
+                    }
+                    if (nearbyTransport.some(s => s.type === 'bus' && s.distance <= 400 && (s.frequency === 'high' || s.frequency === 'medium'))) {
+                      reasons.push('frequent bus service within 400m');
+                    }
+                    return `Parking reductions may apply due to ${reasons.join(' and ')}.`;
+                  })()
               }
             </p>
           </CardHeader>
