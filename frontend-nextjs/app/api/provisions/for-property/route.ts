@@ -34,6 +34,7 @@ interface PropertyFilters {
   topic?: string;
   assessment_type?: 'CDC' | 'DA';  // CDC = quantitative only, DA = all
   former_council?: string;  // Former council name (Ashfield, Marrickville, Leichhardt)
+  hca?: string;  // Heritage Conservation Area slug (e.g., "summer_hill", "hca_1")
 }
 
 interface LayerResult {
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
       topic: searchParams.get('topic') || undefined,
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
       former_council: searchParams.get('former_council') || undefined,
+      hca: searchParams.get('hca') || undefined,
     };
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
@@ -222,6 +224,58 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * Query heritage provisions filtered by specific HCA from regulatory_provisions
+ * Returns provisions for the property's HCA + general heritage controls
+ */
+async function queryHeritageByHca(
+  client: any,
+  filters: PropertyFilters
+): Promise<any[]> {
+  const params: any[] = [];
+  let paramIndex = 1;
+
+  // Query regulatory_provisions for HCA-specific provisions
+  let sql = `
+    SELECT
+      id,
+      provision_text,
+      v2_dcp_layer,
+      v2_dcp_part,
+      v2_topic,
+      v2_provision_type,
+      v2_precinct_id,
+      v2_marker,
+      v2_display_behavior,
+      pdf_page,
+      pdf_source_file,
+      pdf_page_image_url,
+      v2_heritage_type,
+      v2_heritage_element,
+      v2_heritage_hca
+    FROM regulatory_provisions
+    WHERE v2_is_actionable = true
+      AND (LOWER(v2_topic) = 'heritage' OR v2_topic = 'Heritage')
+      AND (
+        v2_heritage_hca IS NULL  -- General heritage controls
+        OR v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
+      )
+  `;
+  params.push(filters.hca);
+
+  // Filter by former council
+  if (filters.former_council) {
+    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
+    sql += ` AND document_id ILIKE $${paramIndex++}`;
+    params.push(`%${councilName}%`);
+  }
+
+  sql += ` ORDER BY v2_dcp_part, id LIMIT 200`;
+
+  const result = await client.query(sql, params);
+  return result.rows;
+}
+
+/**
  * Query heritage provisions from dcp_general_requirements (LLM-extracted, curated data)
  * Maps columns to match the UI's expected interface
  */
@@ -271,10 +325,16 @@ async function queryLayer(
   layer: string,
   filters: PropertyFilters
 ): Promise<any[]> {
-  // For condition layer with heritage OR for Ashfield (heritage-focused DCP),
-  // use dcp_general_requirements (LLM-extracted heritage data)
+  // For condition layer with heritage, use appropriate source based on HCA filter
   const isAshfield = filters.former_council?.toLowerCase() === 'ashfield';
   if (layer === 'condition' && (filters.heritage || isAshfield)) {
+    // If specific HCA is provided, query regulatory_provisions filtered by that HCA
+    // This gives specific HCA provisions + general heritage provisions
+    if (filters.hca) {
+      return queryHeritageByHca(client, filters);
+    }
+    // Otherwise return general heritage provisions from dcp_general_requirements
+    // but limit to a smaller set (not 500+)
     return queryHeritageFromDcpGeneralRequirements(client, filters);
   }
 
@@ -310,6 +370,12 @@ async function queryLayer(
     const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
     sql += ` AND document_id ILIKE $${paramIndex++}`;
     params.push(`%${councilName}%`);
+  }
+
+  // When HCA filtering is active, exclude heritage provisions from non-condition layers
+  // Heritage provisions will come from queryHeritageByHca (condition layer) only
+  if (filters.hca && layer !== 'condition') {
+    sql += ` AND LOWER(v2_topic) != 'heritage'`;
   }
 
   // Layer-specific filtering

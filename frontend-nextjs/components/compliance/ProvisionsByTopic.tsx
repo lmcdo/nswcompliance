@@ -55,6 +55,7 @@ interface ProvisionsByTopicProps {
   council?: string;  // 'marrickville' | 'leichhardt' | 'ashfield'
   professionalMode?: 'certifier' | 'planner';
   hcaName?: string;  // Property's HCA name for filtering (e.g., "Summer Hill Central Heritage Conservation Area")
+  heritageItemNumber?: string;  // Heritage item number from Planning Portal (e.g., "HCA 26", "C26")
 }
 
 const TOPIC_ICONS: Record<string, any> = {
@@ -173,10 +174,26 @@ const fetcher = async (url: string) => {
  * - "Summer Hill Central Heritage Conservation Area" → "summer_hill"
  * - "Ashfield Heights Heritage Conservation Area" → "ashfield_heights"
  * - "Queen Street" → "queen_street"
+ * - "HCA 26" → "hca_26"
+ * - "C26" → "hca_26"
  */
 function hcaNameToSlug(hcaName: string): string {
   if (!hcaName) return '';
-  // Remove common suffixes
+  // Already in hca_XX format
+  if (/^hca_\d+$/i.test(hcaName)) {
+    return hcaName.toLowerCase();
+  }
+  // Handle "HCA 26" or "HCA26" format
+  const hcaMatch = hcaName.match(/^hca\s*(\d+)$/i);
+  if (hcaMatch) {
+    return `hca_${hcaMatch[1]}`;
+  }
+  // Handle "C26" format (common shorthand)
+  const cMatch = hcaName.match(/^c(\d+)$/i);
+  if (cMatch) {
+    return `hca_${cMatch[1]}`;
+  }
+  // Remove common suffixes and convert to slug
   let slug = hcaName
     .replace(/heritage conservation area/gi, '')
     .replace(/conservation area/gi, '')
@@ -188,6 +205,33 @@ function hcaNameToSlug(hcaName: string): string {
   return slug;
 }
 
+/**
+ * Convert heritageItemNumber (e.g., "HCA 26", "C26") to database format "hca_26"
+ */
+function heritageItemNumberToSlug(itemNumber: string): string {
+  if (!itemNumber) return '';
+  // Already in hca_XX format
+  if (/^hca_\d+$/i.test(itemNumber)) {
+    return itemNumber.toLowerCase();
+  }
+  // Handle "HCA 26" or "HCA26" format
+  const hcaMatch = itemNumber.match(/hca\s*(\d+)/i);
+  if (hcaMatch) {
+    return `hca_${hcaMatch[1]}`;
+  }
+  // Handle "C26" format
+  const cMatch = itemNumber.match(/^c(\d+)$/i);
+  if (cMatch) {
+    return `hca_${cMatch[1]}`;
+  }
+  // Handle just a number like "26"
+  const numMatch = itemNumber.match(/^(\d+)$/);
+  if (numMatch) {
+    return `hca_${numMatch[1]}`;
+  }
+  return '';
+}
+
 export function ProvisionsByTopic({
   zone,
   heritage = false,
@@ -197,6 +241,7 @@ export function ProvisionsByTopic({
   council,
   professionalMode = 'certifier',
   hcaName,
+  heritageItemNumber,
 }: ProvisionsByTopicProps) {
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
@@ -226,8 +271,20 @@ export function ProvisionsByTopic({
     if (precinctId) params.set('precinct_id', precinctId);
     if (selectedDevType) params.set('dev_type', selectedDevType);
     if (council) params.set('former_council', council);
+    // Pass HCA slug for server-side heritage filtering (only property's HCA + general controls)
+    // Prioritize heritageItemNumber (e.g., "HCA 26") as it's more reliable than name
+    let hcaSlug = '';
+    if (heritageItemNumber) {
+      hcaSlug = heritageItemNumberToSlug(heritageItemNumber);
+    }
+    if (!hcaSlug && hcaName) {
+      hcaSlug = hcaNameToSlug(hcaName);
+    }
+    if (hcaSlug) {
+      params.set('hca', hcaSlug);
+    }
     return `/api/provisions/for-property?${params}`;
-  }, [zone, heritage, flood, precinctId, selectedDevType, council]);
+  }, [zone, heritage, flood, precinctId, selectedDevType, council, hcaName, heritageItemNumber]);
 
   // SWR for cached data fetching - same URL = instant from cache
   const { data, error, isLoading } = useSWR<{
@@ -313,11 +370,16 @@ export function ProvisionsByTopic({
   };
 
   // Group provisions by DCP part for large topics
-  const groupByDcpPart = (provisions: Provision[]): Map<string, Provision[]> => {
+  // Takes topic name to avoid redundant groupings like "Heritage" under Heritage topic
+  const groupByDcpPart = (provisions: Provision[], topicName?: string): Map<string, Provision[]> => {
     const grouped = new Map<string, Provision[]>();
+    const topicLower = topicName?.toLowerCase().replace(/_/g, ' ') || '';
+
     provisions.forEach(p => {
       // Ensure v2_dcp_part is a valid string label
       let part = p.v2_dcp_part;
+      const partLower = (typeof part === 'string') ? part.toLowerCase() : '';
+
       if (part === null || part === undefined || part === '') {
         part = 'General Controls';
       } else if (typeof part !== 'string') {
@@ -325,9 +387,14 @@ export function ProvisionsByTopic({
       } else if (/^\d+$/.test(part)) {
         // Skip purely numeric values (data quality issue)
         part = 'General Controls';
-      } else if (part.toLowerCase() === 'unknown' || part.toLowerCase() === 'other') {
+      } else if (partLower === 'unknown' || partLower === 'other' || partLower === 'general controls') {
+        // Merge all generic labels into one
+        part = 'General Controls';
+      } else if (topicLower && partLower === topicLower) {
+        // Avoid redundant "Heritage" under Heritage topic
         part = 'General Controls';
       }
+
       if (!grouped.has(part)) {
         grouped.set(part, []);
       }
@@ -661,7 +728,7 @@ export function ProvisionsByTopic({
                     {provisions.length > DCP_PART_GROUPING_THRESHOLD ? (
                       // Large topic: Group by DCP Part with sub-accordions
                       <div className="space-y-2">
-                        {Array.from(groupByDcpPart(provisions)).map(([dcpPart, partProvisions]) => {
+                        {Array.from(groupByDcpPart(provisions, topic)).map(([dcpPart, partProvisions]) => {
                           const partKey = `${topic}-${dcpPart}`;
                           const isPartExpanded = expandedDcpParts.has(partKey);
 

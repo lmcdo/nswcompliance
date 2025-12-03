@@ -341,6 +341,7 @@ export default function AssessmentPage() {
                       hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
                         ? selectedProperty.heritage?.heritageItemName
                         : undefined}
+                      heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
                     />
                   </div>
                 )}
