@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig } from '@/lib/council-config';
-import { HeritageProvisions } from './HeritageProvisions';
+// HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
 
 interface Provision {
@@ -90,6 +90,34 @@ const LAYER_LABELS: Record<string, string> = {
   precinct: 'Precinct',
 };
 
+// Descriptive labels for DCP parts by council
+const DCP_PART_LABELS: Record<string, Record<string, string>> = {
+  ashfield: {
+    'Chapter A': 'Chapter A – Introduction & General',
+    'Chapter C': 'Chapter C – Sustainability',
+    'Chapter D': 'Chapter D – Village Precincts',
+    'Chapter E1': 'Chapter E1 – Heritage',
+    'Chapter F': 'Chapter F – Development Types',
+  },
+  marrickville: {
+    'Part 2': 'Part 2 – Signs & Advertising',
+    'Part 4.1': 'Part 4.1 – R2 Low Density',
+    'Part 4.2': 'Part 4.2 – R3/R4 Medium Density',
+    'Part 5': 'Part 5 – Business Zones',
+    'Part 6': 'Part 6 – Industrial Zones',
+    'Part 8': 'Part 8 – Heritage',
+    'Part 9': 'Part 9 – Suburb Precincts',
+  },
+  leichhardt: {
+    'Part C Section 1': 'Part C.1 – Place Controls',
+    'Part C Section 2': 'Part C.2 – Specific Areas',
+    'Part D': 'Part D – Energy',
+    'Part E': 'Part E – Water',
+    'Part F': 'Part F – Food Premises',
+    'Part G': 'Part G – Neighbourhoods',
+  },
+};
+
 /**
  * Granular development types for filtering.
  * Hierarchical structure: selecting a child includes parent provisions.
@@ -146,7 +174,14 @@ export function ProvisionsByTopic({
   const [error, setError] = useState<string | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
+  const [expandedDcpParts, setExpandedDcpParts] = useState<Set<string>>(new Set());
+  const [expandedHcas, setExpandedHcas] = useState<Set<string>>(new Set());
   const [selectedDevType, setSelectedDevType] = useState(initialDevType || '');
+
+  // Threshold for showing DCP part sub-grouping
+  const DCP_PART_GROUPING_THRESHOLD = 50;
+  // Threshold for showing HCA sub-grouping within heritage DCP parts
+  const HCA_GROUPING_THRESHOLD = 100;
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
   const [showInnerWestOverview, setShowInnerWestOverview] = useState(false);
@@ -227,6 +262,76 @@ export function ProvisionsByTopic({
       }
       return next;
     });
+  };
+
+  const toggleDcpPart = (partKey: string) => {
+    setExpandedDcpParts(prev => {
+      const next = new Set(prev);
+      if (next.has(partKey)) {
+        next.delete(partKey);
+      } else {
+        next.add(partKey);
+      }
+      return next;
+    });
+  };
+
+  // Group provisions by DCP part for large topics
+  const groupByDcpPart = (provisions: Provision[]): Map<string, Provision[]> => {
+    const grouped = new Map<string, Provision[]>();
+    provisions.forEach(p => {
+      const part = p.v2_dcp_part || 'Other';
+      if (!grouped.has(part)) {
+        grouped.set(part, []);
+      }
+      grouped.get(part)!.push(p);
+    });
+    // Sort by count descending
+    return new Map([...grouped.entries()].sort((a, b) => b[1].length - a[1].length));
+  };
+
+  // Group heritage provisions by HCA (Heritage Conservation Area)
+  const groupByHca = (provisions: Provision[]): Map<string, Provision[]> => {
+    const grouped = new Map<string, Provision[]>();
+    provisions.forEach(p => {
+      const hca = p.v2_heritage_hca || 'General Heritage Controls';
+      if (!grouped.has(hca)) {
+        grouped.set(hca, []);
+      }
+      grouped.get(hca)!.push(p);
+    });
+    // Sort: General first, then by count descending
+    return new Map([...grouped.entries()].sort((a, b) => {
+      if (a[0] === 'General Heritage Controls') return -1;
+      if (b[0] === 'General Heritage Controls') return 1;
+      return b[1].length - a[1].length;
+    }));
+  };
+
+  const toggleHca = (hcaKey: string) => {
+    setExpandedHcas(prev => {
+      const next = new Set(prev);
+      if (next.has(hcaKey)) {
+        next.delete(hcaKey);
+      } else {
+        next.add(hcaKey);
+      }
+      return next;
+    });
+  };
+
+  // Format HCA name for display
+  const formatHcaName = (hca: string): string => {
+    if (hca === 'General Heritage Controls') return hca;
+    return hca.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' HCA';
+  };
+
+  // Format DCP part with descriptive label
+  const formatDcpPart = (part: string): string => {
+    if (council && DCP_PART_LABELS[council]?.[part]) {
+      return DCP_PART_LABELS[council][part];
+    }
+    return part;
   };
 
   if (loading) {
@@ -461,133 +566,298 @@ export function ProvisionsByTopic({
 
             {isExpanded && (
               <CardContent className="pt-0" id={`topic-content-${topic}`}>
-                {topic === 'heritage' && council === 'ashfield' && (
-                  <HeritageProvisions provisions={provisions} />
-                )}
-                {!(topic === 'heritage' && council === 'ashfield') && (
-                  <div className="space-y-2">
-                    {(() => {
-                      // Group provisions by PDF page (extract from image URL as source of truth)
-                      const groupedByPage: { [page: number]: Provision[] } = {};
-                      const provisionsWithoutPage: Provision[] = [];
+                {/* HeritageProvisions removed - v2_heritage_type data not populated, using v2_dcp_part grouping instead */}
+                <div className="space-y-2">
+                    {provisions.length > DCP_PART_GROUPING_THRESHOLD ? (
+                      // Large topic: Group by DCP Part with sub-accordions
+                      <div className="space-y-2">
+                        {Array.from(groupByDcpPart(provisions)).map(([dcpPart, partProvisions]) => {
+                          const partKey = `${topic}-${dcpPart}`;
+                          const isPartExpanded = expandedDcpParts.has(partKey);
 
-                      provisions.slice(0, 20).forEach(prov => {
-                        // Use pdf_page field (corrected for offset) as primary source
-                        let pageNum: number | null = null;
-                        if (prov.pdf_page) {
-                          pageNum = prov.pdf_page;
-                        }
-                        // Fallback to URL only if pdf_page is missing
-                        // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
-                        if (!pageNum && prov.pdf_page_image_url) {
-                          const match = prov.pdf_page_image_url.match(/[/_]page_(\d+)\./);
-                          if (match) {
-                            pageNum = parseInt(match[1]);
-                          }
-                        }
-
-                        if (pageNum) {
-                          if (!groupedByPage[pageNum]) {
-                            groupedByPage[pageNum] = [];
-                          }
-                          groupedByPage[pageNum].push(prov);
-                        } else {
-                          provisionsWithoutPage.push(prov);
-                        }
-                      });
-
-                      // Sort page groups by page number
-                      const sortedPageGroups = Object.entries(groupedByPage)
-                        .sort(([pageA], [pageB]) => parseInt(pageA) - parseInt(pageB));
-
-                      // Flatten all provisions for cleaner rendering
-                      const allProvisions = [
-                        ...sortedPageGroups.flatMap(([, provs]) => provs),
-                        ...provisionsWithoutPage
-                      ];
-
-                      return (
-                        <div className="space-y-2">
-                          {allProvisions.map((provision) => {
-                            const layer = provision.layer || provision.v2_dcp_layer;
-                            const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                              layer === 'use_specific' ? 'border-l-sky-400' :
-                              layer === 'condition' ? 'border-l-amber-400' :
-                              layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-
-                            return (
-                              <div
-                                key={provision.id}
-                                className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                          return (
+                            <div key={partKey} className="border border-gray-200 rounded-lg overflow-hidden">
+                              {/* DCP Part Header */}
+                              <button
+                                onClick={() => toggleDcpPart(partKey)}
+                                className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors"
                               >
-                                {/* Card Header */}
-                                <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
-                                  <div className="flex items-center gap-2">
-                                    {provision.v2_marker && (
-                                      <span className="font-mono text-sm font-semibold text-slate-700">
-                                        {provision.v2_marker}
-                                      </span>
-                                    )}
-                                    <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
-                                      {LAYER_LABELS[layer] || layer}
-                                    </Badge>
-                                    {provision.v2_dcp_part && (
-                                      <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
-                                    )}
-                                  </div>
-                                  {provision.pdf_page_image_url && (() => {
-                                    const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                    return (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setViewingPdfImage({
-                                            url: provision.pdf_page_image_url!,
-                                            page: pageNum
-                                          });
-                                        }}
-                                      >
-                                        <FileText className="h-3 w-3 mr-1" />
-                                        View DCP page {pageNum}
-                                      </Button>
-                                    );
-                                  })()}
+                                <div className="flex items-center gap-2">
+                                  {isPartExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-slate-500" />
+                                  )}
+                                  <span className="font-medium text-sm text-slate-700">{formatDcpPart(dcpPart)}</span>
+                                  <Badge variant="secondary" className="text-xs">
+                                    {partProvisions.length}
+                                  </Badge>
                                 </div>
+                              </button>
 
-                                {/* Card Content */}
-                                <div className="px-4 py-3">
-                                  <div
-                                    className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
-                                    onClick={() => toggleProvision(provision.id)}
-                                  >
-                                    <FormattedProvisionText text={provision.provision_text} compact />
-                                  </div>
-                                  {provision.provision_text.length > 150 && (
-                                    <button
-                                      className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
-                                      onClick={() => toggleProvision(provision.id)}
-                                    >
-                                      {expandedProvisions.has(provision.id) ? '↑ Show less' : '↓ Show more'}
-                                    </button>
+                              {/* DCP Part Provisions */}
+                              {isPartExpanded && (
+                                <div className="p-2 space-y-2 bg-white">
+                                  {/* Heritage topics with large parts get HCA sub-grouping */}
+                                  {topic.toLowerCase() === 'heritage' && partProvisions.length > HCA_GROUPING_THRESHOLD ? (
+                                    <div className="space-y-2">
+                                      {Array.from(groupByHca(partProvisions)).map(([hca, hcaProvisions]) => {
+                                        const hcaKey = `${partKey}-${hca}`;
+                                        const isHcaExpanded = expandedHcas.has(hcaKey);
+
+                                        return (
+                                          <div key={hcaKey} className="border border-amber-200 rounded-lg overflow-hidden">
+                                            {/* HCA Header */}
+                                            <button
+                                              onClick={() => toggleHca(hcaKey)}
+                                              className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors"
+                                            >
+                                              <div className="flex items-center gap-2">
+                                                {isHcaExpanded ? (
+                                                  <ChevronDown className="h-3 w-3 text-amber-600" />
+                                                ) : (
+                                                  <ChevronRight className="h-3 w-3 text-amber-600" />
+                                                )}
+                                                <span className="font-medium text-xs text-amber-800">{formatHcaName(hca)}</span>
+                                                <Badge variant="secondary" className="text-[10px] bg-amber-100">
+                                                  {hcaProvisions.length}
+                                                </Badge>
+                                              </div>
+                                            </button>
+
+                                            {/* HCA Provisions */}
+                                            {isHcaExpanded && (
+                                              <div className="p-2 space-y-2 bg-white">
+                                                {hcaProvisions.slice(0, 15).map((provision) => {
+                                                  const layer = provision.layer || provision.v2_dcp_layer;
+                                                  const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                                    layer === 'use_specific' ? 'border-l-sky-400' :
+                                                    layer === 'condition' ? 'border-l-amber-400' :
+                                                    layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+
+                                                  return (
+                                                    <div
+                                                      key={provision.id}
+                                                      className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                                    >
+                                                      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
+                                                        <div className="flex items-center gap-2">
+                                                          {provision.v2_marker && (
+                                                            <span className="font-mono text-xs font-semibold text-slate-700">
+                                                              {provision.v2_marker}
+                                                            </span>
+                                                          )}
+                                                          <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
+                                                            {LAYER_LABELS[layer] || layer}
+                                                          </Badge>
+                                                        </div>
+                                                        {provision.pdf_page_image_url && (() => {
+                                                          const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                          return (
+                                                            <Button
+                                                              size="sm"
+                                                              variant="ghost"
+                                                              className="h-6 px-2 text-[10px] text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setViewingPdfImage({
+                                                                  url: provision.pdf_page_image_url!,
+                                                                  page: pageNum
+                                                                });
+                                                              }}
+                                                            >
+                                                              <FileText className="h-3 w-3 mr-1" />
+                                                              Page {pageNum}
+                                                            </Button>
+                                                          );
+                                                        })()}
+                                                      </div>
+                                                      <div className="px-3 py-2">
+                                                        <div
+                                                          className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                                          onClick={() => toggleProvision(provision.id)}
+                                                        >
+                                                          <FormattedProvisionText text={provision.provision_text} compact />
+                                                        </div>
+                                                        {provision.provision_text.length > 100 && (
+                                                          <button
+                                                            className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
+                                                            onClick={() => toggleProvision(provision.id)}
+                                                          >
+                                                            {expandedProvisions.has(provision.id) ? '↑ Less' : '↓ More'}
+                                                          </button>
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                                {hcaProvisions.length > 15 && (
+                                                  <p className="text-xs text-gray-500 text-center py-1">
+                                                    Showing 15 of {hcaProvisions.length} in {formatHcaName(hca)}
+                                                  </p>
+                                                )}
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    /* Regular provisions list for non-heritage or small heritage parts */
+                                    <>
+                                      {partProvisions.slice(0, 20).map((provision) => {
+                                        const layer = provision.layer || provision.v2_dcp_layer;
+                                        const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                          layer === 'use_specific' ? 'border-l-sky-400' :
+                                          layer === 'condition' ? 'border-l-amber-400' :
+                                          layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+
+                                        return (
+                                          <div
+                                            key={provision.id}
+                                            className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                          >
+                                            <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
+                                              <div className="flex items-center gap-2">
+                                                {provision.v2_marker && (
+                                                  <span className="font-mono text-sm font-semibold text-slate-700">
+                                                    {provision.v2_marker}
+                                                  </span>
+                                                )}
+                                                <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
+                                                  {LAYER_LABELS[layer] || layer}
+                                                </Badge>
+                                              </div>
+                                              {provision.pdf_page_image_url && (() => {
+                                                const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                return (
+                                                  <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      setViewingPdfImage({
+                                                        url: provision.pdf_page_image_url!,
+                                                        page: pageNum
+                                                      });
+                                                    }}
+                                                  >
+                                                    <FileText className="h-3 w-3 mr-1" />
+                                                    View DCP page {pageNum}
+                                                  </Button>
+                                                );
+                                              })()}
+                                            </div>
+                                            <div className="px-4 py-3">
+                                              <div
+                                                className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
+                                                onClick={() => toggleProvision(provision.id)}
+                                              >
+                                                <FormattedProvisionText text={provision.provision_text} compact />
+                                              </div>
+                                              {provision.provision_text.length > 150 && (
+                                                <button
+                                                  className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
+                                                  onClick={() => toggleProvision(provision.id)}
+                                                >
+                                                  {expandedProvisions.has(provision.id) ? '↑ Show less' : '↓ Show more'}
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                      {partProvisions.length > 20 && (
+                                        <p className="text-sm text-gray-500 text-center py-2">
+                                          Showing 20 of {partProvisions.length} provisions
+                                        </p>
+                                      )}
+                                    </>
                                   )}
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      // Small topic: Flat list (original behavior)
+                      <>
+                        {provisions.slice(0, 20).map((provision) => {
+                          const layer = provision.layer || provision.v2_dcp_layer;
+                          const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                            layer === 'use_specific' ? 'border-l-sky-400' :
+                            layer === 'condition' ? 'border-l-amber-400' :
+                            layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
 
-                    {provisions.length > 20 && (
-                      <p className="text-sm text-gray-500 text-center py-2">
-                        Showing 20 of {provisions.length} provisions
-                      </p>
+                          return (
+                            <div
+                              key={provision.id}
+                              className={`bg-white border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                            >
+                              <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
+                                <div className="flex items-center gap-2">
+                                  {provision.v2_marker && (
+                                    <span className="font-mono text-sm font-semibold text-slate-700">
+                                      {provision.v2_marker}
+                                    </span>
+                                  )}
+                                  <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
+                                    {LAYER_LABELS[layer] || layer}
+                                  </Badge>
+                                  {provision.v2_dcp_part && (
+                                    <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
+                                  )}
+                                </div>
+                                {provision.pdf_page_image_url && (() => {
+                                  const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                  return (
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setViewingPdfImage({
+                                          url: provision.pdf_page_image_url!,
+                                          page: pageNum
+                                        });
+                                      }}
+                                    >
+                                      <FileText className="h-3 w-3 mr-1" />
+                                      View DCP page {pageNum}
+                                    </Button>
+                                  );
+                                })()}
+                              </div>
+                              <div className="px-4 py-3">
+                                <div
+                                  className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
+                                  onClick={() => toggleProvision(provision.id)}
+                                >
+                                  <FormattedProvisionText text={provision.provision_text} compact />
+                                </div>
+                                {provision.provision_text.length > 150 && (
+                                  <button
+                                    className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
+                                    onClick={() => toggleProvision(provision.id)}
+                                  >
+                                    {expandedProvisions.has(provision.id) ? '↑ Show less' : '↓ Show more'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {provisions.length > 20 && (
+                          <p className="text-sm text-gray-500 text-center py-2">
+                            Showing 20 of {provisions.length} provisions
+                          </p>
+                        )}
+                      </>
                     )}
-                  </div>
-                )}
+                </div>
               </CardContent>
             )}
           </Card>
