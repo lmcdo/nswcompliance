@@ -440,28 +440,31 @@ export function ProvisionsByTopic({
           </div>
 
           {/* Topic Filter Pills */}
-          <div className="flex flex-wrap gap-1.5">
-            <button
-              onClick={() => setSelectedTopic('')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === ''
+          <div className="space-y-2">
+            <p className="text-xs text-slate-600">Choose topics to filter provisions for this address:</p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                onClick={() => setSelectedTopic('')}
+                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === ''
                   ? 'bg-slate-800 text-white shadow-sm'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                 }`}
-            >
-              All Topics
-            </button>
-            {councilConfig.suggestedTopics.map((topic) => (
-              <button
-                key={topic}
-                onClick={() => setSelectedTopic(topic)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === topic
-                    ? 'bg-slate-800 text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
               >
-                {TOPIC_LABELS[topic] || topic}
+                All Topics
               </button>
-            ))}
+              {councilConfig.suggestedTopics.map((topic) => (
+                <button
+                  key={topic}
+                  onClick={() => setSelectedTopic(topic)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === topic
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                >
+                  {TOPIC_LABELS[topic] || topic}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Dev Type selector or note */}
@@ -657,7 +660,7 @@ export function ProvisionsByTopic({
                                                             <Button
                                                               size="sm"
                                                               variant="ghost"
-                                                              className="h-6 px-2 text-[10px] text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                              className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
                                                               onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 setViewingPdfImage({
@@ -734,7 +737,7 @@ export function ProvisionsByTopic({
                                                   <Button
                                                     size="sm"
                                                     variant="ghost"
-                                                    className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                                    className="h-7 px-2 text-xs bg-teal-700 text-white hover:bg-teal-800"
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       setViewingPdfImage({
@@ -816,7 +819,7 @@ export function ProvisionsByTopic({
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                                      className="h-7 px-2 text-xs bg-teal-700 text-white hover:bg-teal-800"
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         setViewingPdfImage({

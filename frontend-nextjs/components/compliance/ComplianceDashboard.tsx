@@ -1046,15 +1046,12 @@ export function ComplianceDashboard({
           </CardHeader>
           {!collapsedSections.sepp && (
             <CardContent className="pt-4">
-            {/* Structured Requirements (100% Reliable) */}
+            {/* Structured SEPP Requirements */}
             {structuredRequirements.length > 0 && (
               <div className="mb-6">
                 <div className="mb-3 flex items-center gap-2">
                   <span className="text-sm font-semibold text-purple-900">
                     📋 Actionable Requirements
-                  </span>
-                  <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded">
-                    100% Reliable
                   </span>
                 </div>
                 <StructuredSeppRequirements

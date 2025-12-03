@@ -136,7 +136,6 @@ export function StateLevelControls({
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`${AuthorityColors.SEPP.bg.replace('50', '100')} ${AuthorityColors.SEPP.text.replace('700', '800')}`}>State Policy</Badge>
-              <Badge className="bg-green-100 text-green-800">100% Reliable</Badge>
             </div>
           </div>
           <p className={`text-sm ${AuthorityColors.SEPP.text} mt-1 ml-7`}>
