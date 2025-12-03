@@ -279,8 +279,8 @@ export default function AssessmentPage() {
             {selectedProperty && (
               <>
                 {/* Regulatory Tabs - teal theme */}
-                <div className="bg-white border rounded-lg shadow-sm mb-4">
-                  <div className="flex border-b" role="tablist" aria-label="Regulatory controls">
+                <div className="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
+                  <div className="flex" role="tablist" aria-label="Regulatory controls">
                     <button
                       role="tab"
                       id="tab-sepp-lep"
@@ -289,12 +289,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('sepp-lep')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
-                          ? 'border-b-2 border-teal-600 text-teal-700'
-                          : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
+                          ? 'bg-teal-700 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       <span className="block text-base font-bold">SEPP Provisions</span>
-                      <span className="text-xs text-gray-400 hidden sm:block">State Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-teal-100' : 'text-gray-400'}`}>State Controls</span>
                     </button>
                     <button
                       role="tab"
@@ -304,12 +304,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('dcp')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
-                          ? 'border-b-2 border-teal-600 text-teal-700'
-                          : 'text-gray-500 hover:text-gray-700 border-b-2 border-transparent'
+                          ? 'bg-teal-700 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       <span className="block text-base font-bold">DCP Provisions</span>
-                      <span className="text-xs text-gray-400 hidden sm:block">Council Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-gray-400'}`}>Council Controls</span>
                     </button>
                   </div>
                 </div>
