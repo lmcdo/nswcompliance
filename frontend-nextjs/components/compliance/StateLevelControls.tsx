@@ -15,7 +15,8 @@ import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
-import TODParkingCalculator from '@/components/tod/TODParkingCalculator';
+import { ADGSummaryCard } from './ADGSummaryCard';
+import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 
 interface StateLevelControlsProps {
   propertyData: any;
@@ -29,6 +30,22 @@ const APARTMENT_DEV_TYPES = [
   'shop_top_housing',
   'boarding_house',
   'mixed_use'
+];
+
+// Zones that typically permit apartment developments
+// ADG should show for these zones regardless of development type selection
+const APARTMENT_PERMITTING_ZONES = [
+  'R3',   // Medium Density Residential
+  'R4',   // High Density Residential
+  'B1',   // Neighbourhood Centre
+  'B2',   // Local Centre
+  'B3',   // Commercial Core
+  'B4',   // Mixed Use
+  'B5',   // Business Development
+  'B6',   // Enterprise Corridor
+  'MU1',  // Mixed Use (new naming)
+  'E1',   // Local Centre (new naming)
+  'E2',   // Commercial Centre (new naming)
 ];
 
 export function StateLevelControls({
@@ -94,6 +111,21 @@ export function StateLevelControls({
   const zone = propertyData?.constraints?.zone;
   const zoneDescription = propertyData?.constraints?.zoneDescription;
   const lga = propertyData?.constraints?.lga || 'Inner West';
+
+  // Show ADG if zone permits apartments (regardless of dev type selection)
+  const zonePrefix = zone?.split(' ')[0]?.toUpperCase();
+  const isApartmentZone = zonePrefix ? APARTMENT_PERMITTING_ZONES.includes(zonePrefix) : false;
+
+  // Show ADG section if either condition is true
+  const showADGSection = isApartmentDevelopment || isApartmentZone;
+
+  // Extract property coordinates for transport proximity
+  const propertyLat = propertyData?.geometry?.centroid?.lat ||
+                      propertyData?.centroid?.lat ||
+                      propertyData?.location?.lat;
+  const propertyLng = propertyData?.geometry?.centroid?.lng ||
+                      propertyData?.centroid?.lng ||
+                      propertyData?.location?.lng;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
@@ -220,42 +252,40 @@ export function StateLevelControls({
         )}
       </Card>
 
-      {/* ADG Section - Only for apartment developments */}
-      {isApartmentDevelopment && buildingHeight && buildingHeight > 0 && (
-        <Card className="border-pink-200 bg-pink-50/30">
+      {/* ADG Section - Shows for apartment zones OR apartment development types */}
+      {showADGSection && (
+        <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader
-            className="cursor-pointer hover:bg-pink-100/50 transition-colors"
+            className="cursor-pointer hover:bg-purple-100/50 transition-colors"
             onClick={() => toggleSection('adg')}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {collapsedSections.adg ? (
-                  <ChevronRight className="h-5 w-5 text-pink-600" />
+                  <ChevronRight className="h-5 w-5 text-purple-600" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-pink-600" />
+                  <ChevronDown className="h-5 w-5 text-purple-600" />
                 )}
-                <Building2 className="h-5 w-5 text-pink-600" />
-                <CardTitle className="text-lg text-pink-900">ADG Building Separation</CardTitle>
+                <Building2 className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg text-purple-900">Apartment Design Guide</CardTitle>
               </div>
-              <Badge className="bg-pink-100 text-pink-800">SEPP (Housing) 2021</Badge>
+              <Badge className="bg-purple-100 text-purple-800">SEPP (Housing) 2021</Badge>
             </div>
-            <p className="text-sm text-pink-700 mt-1 ml-7">
-              Apartment Design Guide - Statutory setback standards
+            <p className="text-sm text-purple-700 mt-1 ml-7">
+              Statutory Design Criteria for apartment developments
             </p>
           </CardHeader>
           {!collapsedSections.adg && (
             <CardContent className="pt-0">
-              <ADGBuildingSeparationTable
-                buildingHeight={buildingHeight}
-                developmentType={developmentType}
-              />
+              {/* ADG Summary Card - All Design Criteria */}
+              <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
             </CardContent>
           )}
         </Card>
       )}
 
-      {/* TOD Parking Section - Only for apartment developments */}
-      {isApartmentDevelopment && (
+      {/* TOD Parking Reductions - Simple reference table */}
+      {showADGSection && (
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardHeader
             className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
@@ -269,33 +299,89 @@ export function StateLevelControls({
                   <ChevronDown className="h-5 w-5 text-emerald-600" />
                 )}
                 <Car className="h-5 w-5 text-emerald-600" />
-                <CardTitle className="text-lg text-emerald-900">TOD Parking Calculator</CardTitle>
+                <CardTitle className="text-lg text-emerald-900">TOD Parking Reductions</CardTitle>
               </div>
               <Badge className="bg-emerald-100 text-emerald-800">Transit Oriented</Badge>
             </div>
             <p className="text-sm text-emerald-700 mt-1 ml-7">
-              Calculate parking reductions based on transport proximity
+              Parking reductions for sites near public transport
             </p>
           </CardHeader>
           {!collapsedSections.tod && (
-            <CardContent className="pt-0">
-              <TODParkingCalculator
-                developmentType={developmentType}
-                zoneCode={zone}
-                lga={lga}
-              />
+            <CardContent className="pt-0 space-y-4">
+              {/* Nearby Transport Detection */}
+              <div className="bg-white border border-emerald-100 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-emerald-800 mb-2">
+                  Transport Near This Property
+                </h4>
+                <NearbyTransportCard lat={propertyLat} lng={propertyLng} />
+              </div>
+
+              {/* Reference Table */}
+              <div>
+                <h4 className="text-xs font-semibold text-emerald-800 mb-2">
+                  TOD Parking Reduction Rates
+                </h4>
+                <p className="text-xs text-gray-600 mb-2">
+                  Reference rates for sites near frequent public transport.
+                </p>
+                <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-left text-gray-500 border-b">
+                    <th className="pb-2">Transport Type</th>
+                    <th className="pb-2">Distance</th>
+                    <th className="pb-2">Reduction</th>
+                  </tr>
+                </thead>
+                <tbody className="text-gray-700">
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5">Heavy Rail (train)</td>
+                    <td className="py-1.5">≤400m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">30%</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5">Heavy Rail</td>
+                    <td className="py-1.5">400-800m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">20%</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5">Light Rail</td>
+                    <td className="py-1.5">≤400m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">25%</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5">Light Rail</td>
+                    <td className="py-1.5">400-600m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">15%</td>
+                  </tr>
+                  <tr className="border-b border-gray-100">
+                    <td className="py-1.5">Bus (high freq)</td>
+                    <td className="py-1.5">≤400m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">15%</td>
+                  </tr>
+                  <tr>
+                    <td className="py-1.5">Bus (medium freq)</td>
+                    <td className="py-1.5">≤400m</td>
+                    <td className="py-1.5 font-medium text-emerald-700">10%</td>
+                  </tr>
+                </tbody>
+                </table>
+                <p className="text-xs text-gray-500 mt-2 italic">
+                  Multiple transport: +10% bonus. Max total: 50%. Check council DCP for specific requirements.
+                </p>
+              </div>
             </CardContent>
           )}
         </Card>
       )}
 
-      {/* Info for non-apartment developments */}
-      {!isApartmentDevelopment && (
+      {/* Info for zones that don't permit apartments */}
+      {!showADGSection && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
           <p>
-            <strong>Note:</strong> ADG Building Separation and TOD Parking Calculator are only
-            applicable to multi-dwelling housing, residential flat buildings, and similar apartment
-            developments.
+            <strong>Note:</strong> ADG Design Criteria and TOD Parking Calculator apply to
+            zones that permit apartment developments (R3, R4, B1-B6, MU1, E1-E2).
+            {zone && <span> Current zone: <strong>{zone}</strong></span>}
           </p>
         </div>
       )}
