@@ -110,12 +110,29 @@ export function StateLevelControls({
   }, [loadStructuredRequirements]);
 
   // Extract property coordinates for transport proximity
-  const propertyLat = propertyData?.geometry?.centroid?.lat ||
-                      propertyData?.centroid?.lat ||
-                      propertyData?.location?.lat;
-  const propertyLng = propertyData?.geometry?.centroid?.lng ||
-                      propertyData?.centroid?.lng ||
-                      propertyData?.location?.lng;
+  // Convert Web Mercator (x, y) to WGS84 (lat, lng) if needed
+  const getCoordinates = () => {
+    // Try WGS84 coordinates first
+    if (propertyData?.geometry?.centroid?.lat) {
+      return { lat: propertyData.geometry.centroid.lat, lng: propertyData.geometry.centroid.lng };
+    }
+    if (propertyData?.centroid?.lat) {
+      return { lat: propertyData.centroid.lat, lng: propertyData.centroid.lng };
+    }
+    if (propertyData?.location?.lat) {
+      return { lat: propertyData.location.lat, lng: propertyData.location.lng };
+    }
+    // Convert from Web Mercator if we have x/y
+    if (propertyData?.geometry?.x && propertyData?.geometry?.y) {
+      const x = propertyData.geometry.x;
+      const y = propertyData.geometry.y;
+      const lng = (x / 20037508.34) * 180;
+      const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+      return { lat, lng };
+    }
+    return { lat: undefined, lng: undefined };
+  };
+  const { lat: propertyLat, lng: propertyLng } = getCoordinates();
 
   // Fetch nearby transport data
   useEffect(() => {
@@ -469,9 +486,19 @@ export function StateLevelControls({
       {!showADGSection && (
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
           <p>
-            <strong>Note:</strong> ADG Design Criteria and TOD Parking Calculator apply to
-            zones that permit apartment developments (R3, R4, B1-B6, MU1, E1-E2).
+            <strong>Note:</strong> ADG Design Criteria apply to zones that permit apartment
+            developments (R3, R4, B1-B6, MU1, E1-E2).
             {zone && <span> Current zone: <strong>{zone}</strong></span>}
+          </p>
+        </div>
+      )}
+
+      {/* TOD info when no qualifying transport found */}
+      {!showTODSection && !showADGSection && propertyLat && propertyLng && !transportLoading && (
+        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
+          <p>
+            <strong>TOD:</strong> No public transport within regulatory thresholds
+            (800m rail, 600m light rail, 400m frequent bus) detected for this property.
           </p>
         </div>
       )}
