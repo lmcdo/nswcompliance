@@ -470,7 +470,10 @@ export function ProvisionsByTopic({
               >
                 All Topics
               </button>
-              {councilConfig.suggestedTopics.map((topic) => (
+              {/* Show ALL topics from the data, sorted by provision count */}
+              {Object.entries(data.by_topic)
+                .sort((a, b) => b[1].length - a[1].length)
+                .map(([topic, provisions]) => (
                 <button
                   key={topic}
                   onClick={() => setSelectedTopic(topic)}
@@ -479,7 +482,7 @@ export function ProvisionsByTopic({
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  {TOPIC_LABELS[topic] || topic}
+                  {TOPIC_LABELS[topic] || topic} <span className="text-slate-400">({provisions.length})</span>
                 </button>
               ))}
             </div>
