@@ -523,7 +523,7 @@ export function ProvisionsByTopic({
         return (
           <Card key={topic}>
             <CardHeader
-              className="cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors py-4 md:py-3 min-h-[56px] md:min-h-0"
+              className="cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors py-2 px-3"
               onClick={() => toggleTopic(topic)}
               role="button"
               aria-expanded={isExpanded}
@@ -537,14 +537,14 @@ export function ProvisionsByTopic({
               }}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   {isExpanded ? (
-                    <ChevronDown className="h-5 w-5 md:h-4 md:w-4" />
+                    <ChevronDown className="h-4 w-4" />
                   ) : (
-                    <ChevronRight className="h-5 w-5 md:h-4 md:w-4" />
+                    <ChevronRight className="h-4 w-4" />
                   )}
-                  <Icon className="h-5 w-5 md:h-4 md:w-4" />
-                  <span className="font-medium text-sm md:text-base">
+                  <Icon className="h-4 w-4" />
+                  <span className="font-medium text-sm">
                     {TOPIC_LABELS[topic] || topic}
                   </span>
                   <Badge variant="secondary" className="ml-2">
