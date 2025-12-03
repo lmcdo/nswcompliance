@@ -204,13 +204,16 @@ export function ProvisionsByTopic({
       setError(null);
 
       try {
+        // NOTE: We intentionally do NOT pass selectedTopic to the API
+        // Instead we fetch ALL provisions and filter client-side for display
+        // This ensures topic counts remain stable when user clicks different topics
         const params = new URLSearchParams();
         if (zone) params.set('zone', zone);
         if (heritage) params.set('heritage', 'true');
         if (flood) params.set('flood', 'true');
         if (precinctId) params.set('precinct_id', precinctId);
         if (selectedDevType) params.set('dev_type', selectedDevType);
-        if (selectedTopic) params.set('topic', selectedTopic);
+        // selectedTopic is NOT passed - filtering happens client-side
         if (council) params.set('former_council', council);
 
         const response = await fetch(`/api/provisions/for-property?${params}`);
@@ -219,9 +222,8 @@ export function ProvisionsByTopic({
         const result = await response.json();
         if (result.success) {
           setData(result.data);
-          // Store original topic counts on first fetch (no topic filter selected)
-          // This ensures pills show stable totals regardless of which topic is selected
-          if (!selectedTopic && result.data.by_topic) {
+          // Always store topic counts (API always returns unfiltered data now)
+          if (result.data.by_topic) {
             const counts: Record<string, number> = {};
             Object.entries(result.data.by_topic).forEach(([topic, provisions]) => {
               counts[topic] = (provisions as Provision[]).length;
@@ -243,7 +245,9 @@ export function ProvisionsByTopic({
     }
 
     fetchProvisions();
-  }, [zone, heritage, flood, precinctId, selectedDevType, selectedTopic, topicOrder]);
+  // NOTE: selectedTopic is intentionally NOT in deps - we filter client-side
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zone, heritage, flood, precinctId, selectedDevType, council, topicOrder]);
 
   // Sort topics by professional priority
   function sortTopicsByPriority(topics: string[], priorityOrder: string[]): string[] {
@@ -380,7 +384,11 @@ export function ProvisionsByTopic({
   // Sort topics by council-specific professional priority, not just count
   const topicEntries = Object.entries(data.by_topic || {});
   const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), topicOrder);
-  const topics = sortedTopicNames.map(name => {
+  // Filter by selectedTopic client-side (API returns all, we filter here)
+  const filteredTopicNames = selectedTopic
+    ? sortedTopicNames.filter(name => name === selectedTopic)
+    : sortedTopicNames;
+  const topics = filteredTopicNames.map(name => {
     const entry = topicEntries.find(([n]) => n === name);
     return entry || [name, []];
   }).filter(([, provisions]) => provisions.length > 0) as [string, Provision[]][];
@@ -450,30 +458,6 @@ export function ProvisionsByTopic({
           )}
 
 
-          {/* Layer Summary - Council-specific labels */}
-          <div className="flex flex-wrap gap-2 text-xs">
-            {(!councilConfig.hideLayers?.includes('generic')) && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded">
-                <span className="font-semibold">{data.summary?.layer_1_generic || 0}</span> {councilConfig.layerLabels?.generic || 'General'}
-              </span>
-            )}
-            {(!councilConfig.hideLayers?.includes('use_specific')) && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-sky-100 text-sky-700 rounded">
-                <span className="font-semibold">{data.summary?.layer_2_use_specific || 0}</span> {councilConfig.layerLabels?.use_specific || 'Zone'}
-              </span>
-            )}
-            {(data.summary?.layer_3_condition || 0) > 0 && (!councilConfig.hideLayers?.includes('condition')) && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded">
-                <span className="font-semibold">{data.summary?.layer_3_condition}</span> {councilConfig.layerLabels?.condition || 'Heritage'}
-              </span>
-            )}
-            {(!councilConfig.hideLayers?.includes('precinct')) && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded">
-                <span className="font-semibold">{data.summary?.layer_4_precinct || 0}</span> {councilConfig.layerLabels?.precinct || 'Precinct'}
-              </span>
-            )}
-          </div>
-
           {/* Topic Filter Pills */}
           <div className="space-y-2">
             <p className="text-xs text-slate-600">Choose topics to filter provisions for this address:</p>
@@ -487,23 +471,19 @@ export function ProvisionsByTopic({
               >
                 All Topics
               </button>
-              {/* Show ALL topics using original counts (stable, not affected by filtering) */}
-              {/* Fallback to data.by_topic counts if originalTopicCounts not yet populated */}
-              {(Object.keys(originalTopicCounts).length > 0
-                ? Object.entries(originalTopicCounts)
-                : Object.entries(data.by_topic || {}).map(([t, p]) => [t, (p as Provision[]).length] as [string, number])
-              )
-                .sort((a, b) => (b[1] as number) - (a[1] as number))
+              {/* Show ALL topics with stable counts (client-side filtering, API returns all) */}
+              {Object.entries(originalTopicCounts)
+                .sort((a, b) => b[1] - a[1])
                 .map(([topic, count]) => (
                 <button
                   key={topic}
-                  onClick={() => setSelectedTopic(topic as string)}
+                  onClick={() => setSelectedTopic(topic)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === topic
                       ? 'bg-slate-800 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  {TOPIC_LABELS[topic as string] || topic} <span className="text-slate-400">({count})</span>
+                  {TOPIC_LABELS[topic] || topic} ({count})
                 </button>
               ))}
             </div>
