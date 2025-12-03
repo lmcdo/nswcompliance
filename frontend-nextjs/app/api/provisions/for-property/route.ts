@@ -268,8 +268,10 @@ async function queryLayer(
   layer: string,
   filters: PropertyFilters
 ): Promise<any[]> {
-  // For condition layer with heritage, use dcp_general_requirements (LLM-extracted data)
-  if (layer === 'condition' && filters.heritage) {
+  // For condition layer with heritage OR for Ashfield (heritage-focused DCP),
+  // use dcp_general_requirements (LLM-extracted heritage data)
+  const isAshfield = filters.former_council?.toLowerCase() === 'ashfield';
+  if (layer === 'condition' && (filters.heritage || isAshfield)) {
     return queryHeritageFromDcpGeneralRequirements(client, filters);
   }
 
