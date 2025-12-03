@@ -170,6 +170,8 @@ export function ProvisionsByTopic({
     by_topic: Record<string, Provision[]>;
     summary: any;
   } | null>(null);
+  // Store original topic counts (before any topic filtering) for stable pill display
+  const [originalTopicCounts, setOriginalTopicCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
@@ -189,6 +191,12 @@ export function ProvisionsByTopic({
   // Get council config (default to marrickville if unknown)
   const councilConfig: CouncilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
   const topicOrder = professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner;
+
+  // Reset original topic counts when address/zone/council changes
+  useEffect(() => {
+    setOriginalTopicCounts({});
+    setSelectedTopic('');
+  }, [zone, heritage, flood, precinctId, council]);
 
   useEffect(() => {
     async function fetchProvisions() {
@@ -211,6 +219,15 @@ export function ProvisionsByTopic({
         const result = await response.json();
         if (result.success) {
           setData(result.data);
+          // Store original topic counts on first fetch (no topic filter selected)
+          // This ensures pills show stable totals regardless of which topic is selected
+          if (!selectedTopic && result.data.by_topic) {
+            const counts: Record<string, number> = {};
+            Object.entries(result.data.by_topic).forEach(([topic, provisions]) => {
+              counts[topic] = (provisions as Provision[]).length;
+            });
+            setOriginalTopicCounts(counts);
+          }
           // Auto-expand first 3 topics (sorted by council priority)
           const topics = Object.keys(result.data.by_topic || {});
           const sortedTopics = sortTopicsByPriority(topics, topicOrder);
@@ -470,19 +487,23 @@ export function ProvisionsByTopic({
               >
                 All Topics
               </button>
-              {/* Show ALL topics from the data, sorted by provision count */}
-              {Object.entries(data.by_topic)
-                .sort((a, b) => b[1].length - a[1].length)
-                .map(([topic, provisions]) => (
+              {/* Show ALL topics using original counts (stable, not affected by filtering) */}
+              {/* Fallback to data.by_topic counts if originalTopicCounts not yet populated */}
+              {(Object.keys(originalTopicCounts).length > 0
+                ? Object.entries(originalTopicCounts)
+                : Object.entries(data.by_topic || {}).map(([t, p]) => [t, (p as Provision[]).length] as [string, number])
+              )
+                .sort((a, b) => (b[1] as number) - (a[1] as number))
+                .map(([topic, count]) => (
                 <button
                   key={topic}
-                  onClick={() => setSelectedTopic(topic)}
+                  onClick={() => setSelectedTopic(topic as string)}
                   className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${selectedTopic === topic
                       ? 'bg-slate-800 text-white shadow-sm'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  {TOPIC_LABELS[topic] || topic} <span className="text-slate-400">({provisions.length})</span>
+                  {TOPIC_LABELS[topic as string] || topic} <span className="text-slate-400">({count})</span>
                 </button>
               ))}
             </div>

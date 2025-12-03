@@ -175,3 +175,4 @@ When evaluating data issues, answer these questions:
 - **Never interpret regulations** - only extract and apply exact clauses
 - **Never claim AI is interpreting regulations** - only retrieving exact clauses
 - **Only use constraints that map to existing data fields** in the app
+- dont use markdown tables in chat
