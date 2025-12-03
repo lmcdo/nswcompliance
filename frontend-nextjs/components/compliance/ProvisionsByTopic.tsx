@@ -419,7 +419,7 @@ export function ProvisionsByTopic({
                     term === 'Base Controls' || term === 'Universal' ? 'bg-slate-100 text-slate-700' :
                     term === 'Zone Controls' ? 'bg-sky-100 text-sky-700' :
                     term === 'Heritage' ? 'bg-amber-100 text-amber-700' :
-                    term === 'Precinct Character' || term === 'Village Precinct' || term === 'Neighbourhood' ? 'bg-emerald-100 text-emerald-700' :
+                    term === 'Precinct Character' || term === 'Village Precinct' || term === 'Distinct Neighbourhood' ? 'bg-emerald-100 text-emerald-700' :
                     'bg-gray-100 text-gray-700';
                   return (
                     <span key={i} className={`${colorClass} px-1.5 py-0.5 rounded text-xs font-medium`}>
