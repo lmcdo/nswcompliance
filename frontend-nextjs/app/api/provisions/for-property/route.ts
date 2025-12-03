@@ -382,10 +382,25 @@ async function queryLayer(
     params.push(`%${councilName}%`);
   }
 
-  // When HCA filtering is active, exclude heritage provisions from non-condition layers
-  // Heritage provisions will come from queryHeritageByHca (condition layer) only
-  if (filters.hca && layer !== 'condition') {
+  // Heritage filtering logic:
+  // 1. If property is NOT heritage (heritage=false), exclude heritage provisions entirely
+  // 2. If heritage=true with HCA, exclude heritage from non-condition layers (comes from queryHeritageByHca)
+  // 3. If heritage=true without HCA, include heritage but filter by precinct
+  if (!filters.heritage && layer !== 'condition') {
+    // Property is not heritage - exclude all heritage provisions
     sql += ` AND LOWER(v2_topic) != 'heritage'`;
+  } else if (filters.hca && layer !== 'condition') {
+    // Heritage with HCA - exclude from non-condition layers (handled by queryHeritageByHca)
+    sql += ` AND LOWER(v2_topic) != 'heritage'`;
+  } else if (filters.heritage && !filters.hca && layer !== 'condition') {
+    // Heritage without HCA - include but filter by precinct to avoid showing ALL precincts
+    if (filters.precinct_id) {
+      sql += ` AND (LOWER(v2_topic) != 'heritage' OR v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
+      params.push(filters.precinct_id);
+    } else {
+      // No precinct specified - only show non-precinct heritage provisions
+      sql += ` AND (LOWER(v2_topic) != 'heritage' OR v2_precinct_id IS NULL)`;
+    }
   }
 
   // Layer-specific filtering
