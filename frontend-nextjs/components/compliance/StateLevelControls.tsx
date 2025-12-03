@@ -55,11 +55,13 @@ export function StateLevelControls({
 }: StateLevelControlsProps) {
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
+  const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
+  const [transportLoading, setTransportLoading] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     sepp: false,
     lep: false,
     adg: false,
-    tod: true // TOD collapsed by default
+    tod: false // TOD expanded by default when shown
   });
 
   const isApartmentDevelopment = APARTMENT_DEV_TYPES.includes(developmentType);
@@ -107,6 +109,44 @@ export function StateLevelControls({
     loadStructuredRequirements();
   }, [loadStructuredRequirements]);
 
+  // Extract property coordinates for transport proximity
+  const propertyLat = propertyData?.geometry?.centroid?.lat ||
+                      propertyData?.centroid?.lat ||
+                      propertyData?.location?.lat;
+  const propertyLng = propertyData?.geometry?.centroid?.lng ||
+                      propertyData?.centroid?.lng ||
+                      propertyData?.location?.lng;
+
+  // Fetch nearby transport data
+  useEffect(() => {
+    if (!propertyLat || !propertyLng) {
+      setNearbyTransport([]);
+      return;
+    }
+
+    const fetchTransport = async () => {
+      setTransportLoading(true);
+      try {
+        const response = await fetch(
+          `/api/tod/transport-autocomplete?lat=${propertyLat}&lng=${propertyLng}&limit=15`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          // Filter to stops within 1km
+          const nearby = (data.suggestions || []).filter((s: any) => s.distance <= 1000);
+          setNearbyTransport(nearby);
+        }
+      } catch (err) {
+        console.error('Failed to fetch transport:', err);
+        setNearbyTransport([]);
+      } finally {
+        setTransportLoading(false);
+      }
+    };
+
+    fetchTransport();
+  }, [propertyLat, propertyLng]);
+
   // Extract zone and lot size data from propertyData
   const zone = propertyData?.constraints?.zone;
   const zoneDescription = propertyData?.constraints?.zoneDescription;
@@ -118,14 +158,6 @@ export function StateLevelControls({
 
   // Show ADG section if either condition is true
   const showADGSection = isApartmentDevelopment || isApartmentZone;
-
-  // Extract property coordinates for transport proximity
-  const propertyLat = propertyData?.geometry?.centroid?.lat ||
-                      propertyData?.centroid?.lat ||
-                      propertyData?.location?.lat;
-  const propertyLng = propertyData?.geometry?.centroid?.lng ||
-                      propertyData?.centroid?.lng ||
-                      propertyData?.location?.lng;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
@@ -139,6 +171,27 @@ export function StateLevelControls({
   );
   const lotSizeResult = lotSizeLayer?.results?.[0];
   const minimumLotSize = lotSizeResult?.['Minimum Lot Size'] || lotSizeResult?.['Lot Size'];
+
+  // Check for designated TOD layers from NSW Planning Portal (authoritative source)
+  const todSitesLayer = propertyData?.planningLayers?.find(
+    (layer: any) => layer.layerName === 'Transport Oriented Development Sites Map'
+  );
+  const acceleratedTodLayer = propertyData?.planningLayers?.find(
+    (layer: any) => layer.layerName === 'Accelerated TOD Precincts Rezoning Areas Map'
+  );
+  const isInDesignatedTOD = !!(todSitesLayer?.results?.length || acceleratedTodLayer?.results?.length);
+
+  // Check if any nearby transport qualifies for parking reductions (regulatory thresholds)
+  const hasQualifyingTransport = nearbyTransport.some(stop => {
+    if (stop.type === 'heavy_rail' && stop.distance <= 800) return true;
+    if (stop.type === 'light_rail' && stop.distance <= 600) return true;
+    if (stop.type === 'bus' && stop.distance <= 400 &&
+        (stop.frequency === 'high' || stop.frequency === 'medium')) return true;
+    return false;
+  });
+
+  // Show TOD section if property is in designated TOD OR has qualifying transport nearby
+  const showTODSection = isInDesignatedTOD || hasQualifyingTransport;
 
   if (!propertyData) {
     return (
@@ -284,8 +337,8 @@ export function StateLevelControls({
         </Card>
       )}
 
-      {/* TOD Parking Reductions - Simple reference table */}
-      {showADGSection && (
+      {/* TOD Parking Reductions - Shows when property has regulatory TOD relevance */}
+      {showTODSection && (
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardHeader
             className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
@@ -301,20 +354,49 @@ export function StateLevelControls({
                 <Car className="h-5 w-5 text-emerald-600" />
                 <CardTitle className="text-lg text-emerald-900">TOD Parking Reductions</CardTitle>
               </div>
-              <Badge className="bg-emerald-100 text-emerald-800">Transit Oriented</Badge>
+              <div className="flex items-center gap-2">
+                {isInDesignatedTOD && (
+                  <Badge className="bg-emerald-600 text-white">Designated TOD</Badge>
+                )}
+                <Badge className="bg-emerald-100 text-emerald-800">Transit Oriented</Badge>
+              </div>
             </div>
             <p className="text-sm text-emerald-700 mt-1 ml-7">
-              Parking reductions for sites near public transport
+              {isInDesignatedTOD
+                ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021'
+                : `Qualifying transport within regulatory thresholds (${
+                    nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= 800) ? 'rail ≤800m' :
+                    nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= 600) ? 'light rail ≤600m' :
+                    'bus ≤400m'
+                  })`
+              }
             </p>
           </CardHeader>
           {!collapsedSections.tod && (
             <CardContent className="pt-0 space-y-4">
+              {/* Designated TOD Precinct Info */}
+              {isInDesignatedTOD && (
+                <div className="bg-emerald-100 border border-emerald-300 rounded-lg p-3">
+                  <p className="text-sm font-medium text-emerald-900">
+                    This property is in a designated TOD precinct
+                  </p>
+                  <p className="text-xs text-emerald-700 mt-1">
+                    Special parking provisions may apply under SEPP (Housing) 2021
+                  </p>
+                </div>
+              )}
+
               {/* Nearby Transport Detection */}
               <div className="bg-white border border-emerald-100 rounded-lg p-3">
                 <h4 className="text-xs font-semibold text-emerald-800 mb-2">
-                  Transport Near This Property
+                  Qualifying Transport Near This Property
                 </h4>
-                <NearbyTransportCard lat={propertyLat} lng={propertyLng} />
+                <NearbyTransportCard
+                  lat={propertyLat}
+                  lng={propertyLng}
+                  preloadedStops={nearbyTransport}
+                  loading={transportLoading}
+                />
               </div>
 
               {/* Reference Table */}

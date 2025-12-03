@@ -20,6 +20,8 @@ interface TransportStop {
 interface NearbyTransportCardProps {
   lat?: number;
   lng?: number;
+  preloadedStops?: TransportStop[];
+  loading?: boolean;
   onTransportLoaded?: (stops: TransportStop[]) => void;
 }
 
@@ -54,19 +56,34 @@ function getReduction(type: string, distance: number, frequency: string): number
   return null;
 }
 
-export function NearbyTransportCard({ lat, lng, onTransportLoaded }: NearbyTransportCardProps) {
-  const [stops, setStops] = useState<TransportStop[]>([]);
-  const [loading, setLoading] = useState(false);
+export function NearbyTransportCard({
+  lat,
+  lng,
+  preloadedStops,
+  loading: externalLoading,
+  onTransportLoaded
+}: NearbyTransportCardProps) {
+  const [internalStops, setInternalStops] = useState<TransportStop[]>([]);
+  const [internalLoading, setInternalLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use preloaded stops if provided, otherwise fetch
+  const stops = preloadedStops ?? internalStops;
+  const loading = externalLoading ?? internalLoading;
+
   useEffect(() => {
+    // Skip fetching if preloaded stops are provided
+    if (preloadedStops !== undefined) {
+      return;
+    }
+
     if (!lat || !lng) {
-      setStops([]);
+      setInternalStops([]);
       return;
     }
 
     const fetchTransport = async () => {
-      setLoading(true);
+      setInternalLoading(true);
       setError(null);
       try {
         const response = await fetch(
@@ -82,18 +99,18 @@ export function NearbyTransportCard({ lat, lng, onTransportLoaded }: NearbyTrans
           .filter((s: TransportStop) => s.distance <= 1000)
           .slice(0, 10);
 
-        setStops(nearbyStops);
+        setInternalStops(nearbyStops);
         onTransportLoaded?.(nearbyStops);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load transport');
-        setStops([]);
+        setInternalStops([]);
       } finally {
-        setLoading(false);
+        setInternalLoading(false);
       }
     };
 
     fetchTransport();
-  }, [lat, lng, onTransportLoaded]);
+  }, [lat, lng, preloadedStops, onTransportLoaded]);
 
   // No coordinates provided
   if (!lat || !lng) {
