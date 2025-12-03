@@ -49,21 +49,21 @@ export default function AssessmentPage() {
       <RegulatoryCurrencyBanner />
 
       {/* Header */}
-      <header className="relative border-b bg-white shadow-sm">
-        <div className="absolute inset-y-0 left-0 w-5 bg-gradient-to-b from-teal-500 to-emerald-500" />
+      <header className="relative border-b bg-teal-50 shadow-sm">
+        <div className="absolute inset-y-0 left-0 w-5 bg-gradient-to-b from-teal-600 to-teal-700" />
         <div className="max-w-7xl mx-auto flex items-center gap-4 px-4 py-3 md:py-4 pl-6">
           {/* PlotDetect logo + name */}
           <div className="flex items-center gap-2">
             <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
-            <span className="text-base font-semibold text-gray-700">PlotDetect</span>
+            <span className="text-base font-semibold text-teal-800">PlotDetect</span>
           </div>
-          <div className="h-8 w-px bg-gray-200" />
+          <div className="h-8 w-px bg-teal-200" />
           {/* Page title */}
           <div className="flex-1">
-            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-900">
+            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-teal-800">
               NSW Planning Assessment
             </h1>
-            <p className="text-gray-500 text-xs hidden sm:block">
+            <p className="text-teal-600 text-xs hidden sm:block">
               Professional compliance assessment using real-time planning data
             </p>
           </div>

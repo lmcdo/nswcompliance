@@ -407,11 +407,29 @@ export function ProvisionsByTopic({
         </div>
 
         <CardContent className="p-4 space-y-4">
-          {/* DCP Explanation - Clean Typography */}
+          {/* DCP Explanation - Clean Typography with styled layer terms */}
           {councilConfig?.dcpExplanation && (
-            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
-              {councilConfig.dcpExplanation}
-            </p>
+            <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">
+              {councilConfig.dcpExplanation.split(/(\[[^\]]+\])/).map((part, i) => {
+                const match = part.match(/^\[(.+)\]$/);
+                if (match) {
+                  const term = match[1];
+                  // Map terms to badge colors matching the summary pills
+                  const colorClass =
+                    term === 'Base Controls' || term === 'Universal' ? 'bg-slate-100 text-slate-700' :
+                    term === 'Zone Controls' ? 'bg-sky-100 text-sky-700' :
+                    term === 'Heritage' ? 'bg-amber-100 text-amber-700' :
+                    term === 'Precinct Character' || term === 'Village Precinct' || term === 'Neighbourhood' ? 'bg-emerald-100 text-emerald-700' :
+                    'bg-gray-100 text-gray-700';
+                  return (
+                    <span key={i} className={`${colorClass} px-1.5 py-0.5 rounded text-xs font-medium`}>
+                      {term}
+                    </span>
+                  );
+                }
+                return <span key={i}>{part}</span>;
+              })}
+            </div>
           )}
 
 
