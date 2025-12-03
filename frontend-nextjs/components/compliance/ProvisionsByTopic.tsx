@@ -316,7 +316,18 @@ export function ProvisionsByTopic({
   const groupByDcpPart = (provisions: Provision[]): Map<string, Provision[]> => {
     const grouped = new Map<string, Provision[]>();
     provisions.forEach(p => {
-      const part = p.v2_dcp_part || 'Other';
+      // Ensure v2_dcp_part is a valid string label
+      let part = p.v2_dcp_part;
+      if (part === null || part === undefined || part === '') {
+        part = 'General Controls';
+      } else if (typeof part !== 'string') {
+        part = 'General Controls';
+      } else if (/^\d+$/.test(part)) {
+        // Skip purely numeric values (data quality issue)
+        part = 'General Controls';
+      } else if (part.toLowerCase() === 'unknown' || part.toLowerCase() === 'other') {
+        part = 'General Controls';
+      }
       if (!grouped.has(part)) {
         grouped.set(part, []);
       }
