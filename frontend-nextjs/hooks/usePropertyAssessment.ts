@@ -18,6 +18,11 @@ interface PropertyData {
   };
   heritage?: {
     isHeritage?: boolean;
+    heritageType?: string;
+    heritageItemName?: string;
+    heritageItemNumber?: string;
+    heritageClause?: string;
+    heritageSignificance?: string;
   };
   planningLayers?: any[];
 }

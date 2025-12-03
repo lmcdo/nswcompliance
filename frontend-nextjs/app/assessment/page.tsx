@@ -338,6 +338,9 @@ export default function AssessmentPage() {
                       precinctId={selectedProperty.constraints?.precinctId}
                       devType={developmentType}
                       council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
+                      hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
+                        ? selectedProperty.heritage?.heritageItemName
+                        : undefined}
                     />
                   </div>
                 )}

@@ -54,6 +54,7 @@ interface ProvisionsByTopicProps {
   devType?: string;
   council?: string;  // 'marrickville' | 'leichhardt' | 'ashfield'
   professionalMode?: 'certifier' | 'planner';
+  hcaName?: string;  // Property's HCA name for filtering (e.g., "Summer Hill Central Heritage Conservation Area")
 }
 
 const TOPIC_ICONS: Record<string, any> = {
@@ -166,6 +167,27 @@ const fetcher = async (url: string) => {
   return json.data;
 };
 
+/**
+ * Convert HCA name to slug format for matching against v2_heritage_hca in database.
+ * Examples:
+ * - "Summer Hill Central Heritage Conservation Area" → "summer_hill"
+ * - "Ashfield Heights Heritage Conservation Area" → "ashfield_heights"
+ * - "Queen Street" → "queen_street"
+ */
+function hcaNameToSlug(hcaName: string): string {
+  if (!hcaName) return '';
+  // Remove common suffixes
+  let slug = hcaName
+    .replace(/heritage conservation area/gi, '')
+    .replace(/conservation area/gi, '')
+    .replace(/heritage area/gi, '')
+    .replace(/central|north|south|east|west/gi, '')
+    .trim();
+  // Convert to snake_case
+  slug = slug.toLowerCase().replace(/\s+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return slug;
+}
+
 export function ProvisionsByTopic({
   zone,
   heritage = false,
@@ -174,6 +196,7 @@ export function ProvisionsByTopic({
   devType: initialDevType,
   council,
   professionalMode = 'certifier',
+  hcaName,
 }: ProvisionsByTopicProps) {
   const [expandedTopics, setExpandedTopics] = useState<Set<string>>(new Set());
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
@@ -341,10 +364,25 @@ export function ProvisionsByTopic({
 
   // Format DCP part with descriptive label
   const formatDcpPart = (part: string): string => {
+    // Handle empty/null part
+    if (!part || part === 'Other') return 'General Controls';
+
     if (council && DCP_PART_LABELS[council]?.[part]) {
       return DCP_PART_LABELS[council][part];
     }
     return part;
+  };
+
+  // Get layer label with fallback for unknown/null
+  const getLayerLabel = (layer: string | null | undefined): string => {
+    if (!layer || layer === 'unknown' || layer === 'null') return 'General';
+    return LAYER_LABELS[layer] || layer;
+  };
+
+  // Get layer color with fallback for unknown/null
+  const getLayerColor = (layer: string | null | undefined): string => {
+    if (!layer || layer === 'unknown' || layer === 'null') return LAYER_COLORS.generic;
+    return LAYER_COLORS[layer] || 'bg-gray-100';
   };
 
   if (isLoading) {
@@ -373,6 +411,24 @@ export function ProvisionsByTopic({
 
   if (!data) return null;
 
+  // Convert property's HCA name to slug for matching
+  const propertyHcaSlug = hcaName ? hcaNameToSlug(hcaName) : '';
+
+  // Filter heritage provisions to only show General + property's specific HCA
+  const filterHeritageProvisions = (provisions: Provision[]): Provision[] => {
+    if (!propertyHcaSlug) {
+      // No HCA specified - show all general heritage controls (null HCA) only
+      return provisions.filter(p => !p.v2_heritage_hca);
+    }
+    // Show: General (null HCA) + property's specific HCA
+    return provisions.filter(p =>
+      !p.v2_heritage_hca || // General heritage controls
+      p.v2_heritage_hca === propertyHcaSlug || // Exact match
+      p.v2_heritage_hca.includes(propertyHcaSlug) || // Partial match (e.g., "summer_hill" in "summer_hill_central")
+      propertyHcaSlug.includes(p.v2_heritage_hca) // Reverse partial match
+    );
+  };
+
   // Sort topics by council-specific professional priority, not just count
   const topicEntries = Object.entries(data.by_topic || {});
   const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), topicOrder);
@@ -382,8 +438,14 @@ export function ProvisionsByTopic({
     : sortedTopicNames;
   const topics = filteredTopicNames.map(name => {
     const entry = topicEntries.find(([n]) => n === name);
-    return entry || [name, []];
-  }).filter(([, provisions]) => provisions.length > 0) as [string, Provision[]][];
+    if (!entry) return [name, []];
+    const [topicName, provisions] = entry;
+    // Apply HCA filtering for heritage topic
+    const filteredProvisions = topicName.toLowerCase() === 'heritage'
+      ? filterHeritageProvisions(provisions as Provision[])
+      : provisions;
+    return [topicName, filteredProvisions];
+  }).filter(([, provisions]) => (provisions as Provision[]).length > 0) as [string, Provision[]][];
 
   return (
     <div className="space-y-4">
@@ -665,8 +727,8 @@ export function ProvisionsByTopic({
                                                               {provision.v2_marker}
                                                             </span>
                                                           )}
-                                                          <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
-                                                            {LAYER_LABELS[layer] || layer}
+                                                          <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                                            {getLayerLabel(layer)}
                                                           </Badge>
                                                         </div>
                                                         {provision.pdf_page_image_url && (() => {
@@ -743,8 +805,8 @@ export function ProvisionsByTopic({
                                                     {provision.v2_marker}
                                                   </span>
                                                 )}
-                                                <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
-                                                  {LAYER_LABELS[layer] || layer}
+                                                <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                                  {getLayerLabel(layer)}
                                                 </Badge>
                                               </div>
                                               {provision.pdf_page_image_url && (() => {
@@ -823,8 +885,8 @@ export function ProvisionsByTopic({
                                       {provision.v2_marker}
                                     </span>
                                   )}
-                                  <Badge className={`text-[10px] ${LAYER_COLORS[layer] || 'bg-gray-100'}`}>
-                                    {LAYER_LABELS[layer] || layer}
+                                  <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                    {getLayerLabel(layer)}
                                   </Badge>
                                   {provision.v2_dcp_part && (
                                     <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
