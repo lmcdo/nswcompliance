@@ -485,25 +485,8 @@ export function ProvisionsByTopic({
 
   if (!data) return null;
 
-  // Convert property's HCA name to slug for matching
-  const propertyHcaSlug = hcaName ? hcaNameToSlug(hcaName) : '';
-
-  // Filter heritage provisions to only show General + property's specific HCA
-  const filterHeritageProvisions = (provisions: Provision[]): Provision[] => {
-    if (!propertyHcaSlug) {
-      // No HCA specified - show all general heritage controls (null HCA) only
-      return provisions.filter(p => !p.v2_heritage_hca);
-    }
-    // Show: General (null HCA) + property's specific HCA
-    return provisions.filter(p =>
-      !p.v2_heritage_hca || // General heritage controls
-      p.v2_heritage_hca === propertyHcaSlug || // Exact match
-      p.v2_heritage_hca.includes(propertyHcaSlug) || // Partial match (e.g., "summer_hill" in "summer_hill_central")
-      propertyHcaSlug.includes(p.v2_heritage_hca) // Reverse partial match
-    );
-  };
-
   // Sort topics by council-specific professional priority, not just count
+  // Note: HCA filtering is now done server-side via the hca parameter
   const topicEntries = Object.entries(data.by_topic || {});
   const sortedTopicNames = sortTopicsByPriority(topicEntries.map(([name]) => name), topicOrder);
   // Filter by selectedTopic client-side (API returns all, we filter here)
@@ -513,12 +496,7 @@ export function ProvisionsByTopic({
   const topics = filteredTopicNames.map(name => {
     const entry = topicEntries.find(([n]) => n === name);
     if (!entry) return [name, []];
-    const [topicName, provisions] = entry;
-    // Apply HCA filtering for heritage topic
-    const filteredProvisions = topicName.toLowerCase() === 'heritage'
-      ? filterHeritageProvisions(provisions as Provision[])
-      : provisions;
-    return [topicName, filteredProvisions];
+    return entry;
   }).filter(([, provisions]) => (provisions as Provision[]).length > 0) as [string, Provision[]][];
 
   return (
