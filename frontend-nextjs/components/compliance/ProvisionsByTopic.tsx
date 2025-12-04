@@ -206,6 +206,24 @@ function hcaNameToSlug(hcaName: string): string {
 }
 
 /**
+ * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
+ * Only the LAST provision on each page should show the button (groups provisions on same page).
+ */
+function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
+  const pageToLastProvisionId = new Map<string, number>();
+
+  // Build map of page URL -> last provision ID on that page
+  for (const prov of provisions) {
+    if (prov.pdf_page_image_url) {
+      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
+    }
+  }
+
+  // Return set of IDs that should show the button
+  return new Set(pageToLastProvisionId.values());
+}
+
+/**
  * Convert heritageItemNumber (e.g., "HCA 26", "C26") to database format "hca_26"
  */
 function heritageItemNumberToSlug(itemNumber: string): string {
@@ -301,6 +319,17 @@ export function ProvisionsByTopic({
       counts[topic] = (provisions as Provision[]).length;
     });
     return counts;
+  }, [data?.by_topic]);
+
+  // Compute which provision IDs should show the PDF button (only last provision on each page)
+  const showPdfButtonIds = useMemo(() => {
+    if (!data?.by_topic) return new Set<number>();
+    // Flatten all provisions to compute page groupings
+    const allProvisions: Provision[] = [];
+    Object.values(data.by_topic).forEach((provisions) => {
+      allProvisions.push(...(provisions as Provision[]));
+    });
+    return getProvisionsWithPdfButton(allProvisions);
   }, [data?.by_topic]);
 
   // Reset selected topic when address changes
@@ -783,7 +812,7 @@ export function ProvisionsByTopic({
                                                             {getLayerLabel(layer)}
                                                           </Badge>
                                                         </div>
-                                                        {provision.pdf_page_image_url && (() => {
+                                                        {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                                           const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                           return (
                                                             <Button
@@ -861,7 +890,7 @@ export function ProvisionsByTopic({
                                                   {getLayerLabel(layer)}
                                                 </Badge>
                                               </div>
-                                              {provision.pdf_page_image_url && (() => {
+                                              {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                                 const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                 return (
                                                   <Button
@@ -944,7 +973,7 @@ export function ProvisionsByTopic({
                                     <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
                                   )}
                                 </div>
-                                {provision.pdf_page_image_url && (() => {
+                                {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                   const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                   return (
                                     <Button
