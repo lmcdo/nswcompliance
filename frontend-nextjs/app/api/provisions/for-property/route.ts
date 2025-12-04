@@ -520,29 +520,11 @@ async function queryLayer(
 }
 
 /**
- * Adjust PDF page URL for 0-indexed extraction.
- * PDF images were extracted with 0-based indexing:
- * - page_0.png = actual PDF page 1
- * - page_11.png = actual PDF page 12
- * So to get page 11, we need page_10.png (page_number - 1)
- *
- * Only applies to Leichhardt URLs (pattern: /pdf-pages/leichhardt-*/page_X.png)
- * Marrickville uses different extraction with correct 1-based indexing.
+ * Pass through PDF page URLs unchanged.
+ * The page numbers in URLs match the stored page_number values.
  */
 function adjustPdfPageUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-
-  // Only adjust Leichhardt URLs which have 0-indexed extraction
-  // Marrickville pattern: marr_*_page_X.png (1-indexed, don't adjust)
-  // Leichhardt pattern: /leichhardt-*/page_X.png (0-indexed, needs adjustment)
-  if (url.includes('/leichhardt-') && url.includes('/page_')) {
-    return url.replace(/\/page_(\d+)\.png$/, (match, pageNum) => {
-      const adjustedPage = Math.max(0, parseInt(pageNum) - 1);
-      return `/page_${adjustedPage}.png`;
-    });
-  }
-
-  return url;
+  return url || null;
 }
 
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
