@@ -219,11 +219,20 @@ export async function GET(request: NextRequest) {
         count: layer4.length
       });
 
-      const totalCount = results.reduce((sum, r) => sum + r.count, 0);
+      // Adjust PDF URLs in by_layer results (0-indexed extraction fix)
+      const adjustedResults = results.map(layer => ({
+        ...layer,
+        provisions: layer.provisions.map((p: any) => ({
+          ...p,
+          pdf_page_image_url: adjustPdfPageUrl(p.pdf_page_image_url)
+        }))
+      }));
+
+      const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
 
       // Group by topic for display
-      const byTopic = groupByTopic(results);
+      const byTopic = groupByTopic(adjustedResults);
 
       // Include dev_type hierarchy info if filtering by dev_type
       const devTypeInfo = filters.dev_type ? {
@@ -235,14 +244,14 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.json({
         success: true,
         data: {
-          by_layer: results,
+          by_layer: adjustedResults,
           by_topic: byTopic,
           summary: {
             total_provisions: totalCount,
-            layer_1_generic: results[0].count,
-            layer_2_use_specific: results[1].count,
-            layer_3_condition: results[2].count,
-            layer_4_precinct: results[3].count,
+            layer_1_generic: adjustedResults[0].count,
+            layer_2_use_specific: adjustedResults[1].count,
+            layer_3_condition: adjustedResults[2].count,
+            layer_4_precinct: adjustedResults[3].count,
           }
         },
         meta: {
@@ -510,6 +519,21 @@ async function queryLayer(
   return result.rows;
 }
 
+/**
+ * Adjust PDF page URL for 0-indexed extraction.
+ * PDF images were extracted with 0-based indexing:
+ * - page_0.png = actual PDF page 1
+ * - page_11.png = actual PDF page 12
+ * So to get page 11, we need page_10.png (page_number - 1)
+ */
+function adjustPdfPageUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  return url.replace(/page_(\d+)\.png$/, (match, pageNum) => {
+    const adjustedPage = Math.max(0, parseInt(pageNum) - 1);
+    return `page_${adjustedPage}.png`;
+  });
+}
+
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
   const byTopic: Record<string, any[]> = {};
 
@@ -523,6 +547,7 @@ function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
       }
       byTopic[topic].push({
         ...provision,
+        pdf_page_image_url: adjustPdfPageUrl(provision.pdf_page_image_url),
         layer: layer.layer
       });
     }

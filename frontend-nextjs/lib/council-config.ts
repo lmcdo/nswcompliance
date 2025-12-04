@@ -50,15 +50,13 @@ export interface CouncilConfig {
 /**
  * Inner West LGA Overview - shown as collapsible header for all Inner West addresses
  */
-export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct organizational approaches:
+export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct organizational approaches. Your address determines which former council's DCP applies.
 
-MARRICKVILLE (1,866 provisions) - Organized by development type with Part 2 Generic Provisions applying universally. Part 8 is a dedicated Heritage chapter. Part 9 covers 48 Precincts. Best filtered by topic.
+MARRICKVILLE (1,866 provisions) has chapters for residential, commercial, and industrial development, but the majority of provisions are in Part 2 Generic Provisions which apply universally regardless of development type. Heritage has a dedicated chapter (Part 8) covering 37 Heritage Conservation Areas. Precinct Character controls (Part 9) cover 48 suburb areas with desired future character statements. Use topic filters to navigate - development type filtering is not effective here.
 
-LEICHHARDT (3,355 provisions) - Topic-centric with the highest volume. Part C covers everything from parking to heritage to distinctive neighbourhoods. Use development type filter to narrow results - 73% of provisions specify applicable dev types.
+LEICHHARDT (3,355 provisions) is topic-centric with the highest provision count. Unlike Marrickville and Ashfield, the development type filter is effective here - selecting Commercial or Industrial hides approximately 2,000 residential-only provisions. Heritage provisions are distributed across multiple topics rather than consolidated in a dedicated chapter. The 26 Distinctive Neighbourhood controls provide character guidance for specific areas.
 
-ASHFIELD (1,892 provisions) - Heritage-focused with dedicated Chapter E1 for Heritage Conservation Areas. Chapter F covers development categories. 11 Village Precincts in Chapter D. Best filtered by topic.
-
-Your address determines which former council's DCP applies. All three DCPs use the topic filter as the primary way to navigate provisions.`;
+ASHFIELD (1,892 provisions) is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas including conservation principles, character assessment, building form, and materials guidance. Most provisions (69%) apply broadly to all development types, so development type filtering is not effective. The 11 Village Precinct controls cover urban village areas with local character guidance. Use topic filters to navigate.`;
 
 export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: {
