@@ -105,6 +105,30 @@ function expandDevTypeHierarchy(devType: string): string[] {
   return [devType];
 }
 
+/**
+ * Lookup db_slug from heritage_conservation_areas by h_id (Planning Portal C-code)
+ * Returns the db_slug that matches v2_heritage_hca in regulatory_provisions
+ */
+async function resolveHcaCode(client: any, hcaCode: string): Promise<string | null> {
+  // If already looks like a db_slug (e.g., "hca_35", "summer_hill"), return as-is
+  if (!hcaCode.match(/^[CA]\d+$/i)) {
+    return hcaCode;
+  }
+
+  const result = await client.query(
+    `SELECT db_slug FROM heritage_conservation_areas WHERE h_id = $1 LIMIT 1`,
+    [hcaCode.toUpperCase()]
+  );
+
+  if (result.rows.length > 0 && result.rows[0].db_slug) {
+    console.log(`[HCA Lookup] ${hcaCode} -> ${result.rows[0].db_slug}`);
+    return result.rows[0].db_slug;
+  }
+
+  console.log(`[HCA Lookup] ${hcaCode} -> no mapping found`);
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
@@ -132,6 +156,17 @@ export async function GET(request: NextRequest) {
     const client = await pool.connect();
 
     try {
+      // Resolve HCA code (e.g., "C98") to db_slug (e.g., "summer_hill")
+      if (filters.hca) {
+        const resolvedHca = await resolveHcaCode(client, filters.hca);
+        if (resolvedHca) {
+          filters.hca = resolvedHca;
+        } else {
+          // No mapping found - clear the filter to avoid false matches
+          filters.hca = undefined;
+        }
+      }
+
       const results: LayerResult[] = [];
 
       // Layer 1: Generic provisions (always include)

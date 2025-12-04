@@ -271,17 +271,13 @@ export function ProvisionsByTopic({
     if (precinctId) params.set('precinct_id', precinctId);
     if (selectedDevType) params.set('dev_type', selectedDevType);
     if (council) params.set('former_council', council);
-    // Pass HCA slug for server-side heritage filtering (only property's HCA + general controls)
-    // Prioritize heritageItemNumber (e.g., "HCA 26") as it's more reliable than name
-    let hcaSlug = '';
+    // Pass HCA code for server-side heritage filtering (only property's HCA + general controls)
+    // API will resolve C-code (e.g., "C67") to db_slug via heritage_conservation_areas table
     if (heritageItemNumber) {
-      hcaSlug = heritageItemNumberToSlug(heritageItemNumber);
-    }
-    if (!hcaSlug && hcaName) {
-      hcaSlug = hcaNameToSlug(hcaName);
-    }
-    if (hcaSlug) {
-      params.set('hca', hcaSlug);
+      params.set('hca', heritageItemNumber);
+    } else if (hcaName) {
+      // Fallback to name-based slug for properties without item number
+      params.set('hca', hcaNameToSlug(hcaName));
     }
     return `/api/provisions/for-property?${params}`;
   }, [zone, heritage, flood, precinctId, selectedDevType, council, hcaName, heritageItemNumber]);
