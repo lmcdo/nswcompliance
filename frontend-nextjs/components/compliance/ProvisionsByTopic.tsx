@@ -429,6 +429,13 @@ export function ProvisionsByTopic({
     return new Map([...grouped.entries()].sort((a, b) => b[1].length - a[1].length));
   };
 
+  // Get property's HCA slug for sorting and highlighting
+  const propertyHcaSlug = useMemo(() => {
+    if (heritageItemNumber) return heritageItemNumberToSlug(heritageItemNumber);
+    if (hcaName) return hcaNameToSlug(hcaName);
+    return '';
+  }, [heritageItemNumber, hcaName]);
+
   // Group heritage provisions by HCA (Heritage Conservation Area)
   const groupByHca = (provisions: Provision[]): Map<string, Provision[]> => {
     const grouped = new Map<string, Provision[]>();
@@ -439,12 +446,22 @@ export function ProvisionsByTopic({
       }
       grouped.get(hca)!.push(p);
     });
-    // Sort: General first, then by count descending
+    // Sort: Property's HCA first, then General, then by count descending
     return new Map([...grouped.entries()].sort((a, b) => {
+      // Property's specific HCA comes first
+      if (propertyHcaSlug && a[0] === propertyHcaSlug) return -1;
+      if (propertyHcaSlug && b[0] === propertyHcaSlug) return 1;
+      // Then General Heritage Controls
       if (a[0] === 'General Heritage Controls') return -1;
       if (b[0] === 'General Heritage Controls') return 1;
+      // Then by count descending
       return b[1].length - a[1].length;
     }));
+  };
+
+  // Check if HCA matches property's HCA (for highlighting)
+  const isPropertyHca = (hca: string): boolean => {
+    return propertyHcaSlug !== '' && hca === propertyHcaSlug;
   };
 
   const toggleHca = (hcaKey: string) => {
@@ -765,21 +782,25 @@ export function ProvisionsByTopic({
                                         const hcaKey = `${partKey}-${hca}`;
                                         const isHcaExpanded = expandedHcas.has(hcaKey);
 
+                                        const isThisPropertyHca = isPropertyHca(hca);
                                         return (
-                                          <div key={hcaKey} className="border border-amber-200 rounded-lg overflow-hidden">
+                                          <div key={hcaKey} className={`border rounded-lg overflow-hidden ${isThisPropertyHca ? 'border-teal-400 ring-2 ring-teal-200' : 'border-amber-200'}`}>
                                             {/* HCA Header */}
                                             <button
                                               onClick={() => toggleHca(hcaKey)}
-                                              className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors"
+                                              className={`w-full flex items-center justify-between px-3 py-2 transition-colors ${isThisPropertyHca ? 'bg-teal-50 hover:bg-teal-100' : 'bg-amber-50 hover:bg-amber-100'}`}
                                             >
                                               <div className="flex items-center gap-2">
                                                 {isHcaExpanded ? (
-                                                  <ChevronDown className="h-3 w-3 text-amber-600" />
+                                                  <ChevronDown className={`h-3 w-3 ${isThisPropertyHca ? 'text-teal-600' : 'text-amber-600'}`} />
                                                 ) : (
-                                                  <ChevronRight className="h-3 w-3 text-amber-600" />
+                                                  <ChevronRight className={`h-3 w-3 ${isThisPropertyHca ? 'text-teal-600' : 'text-amber-600'}`} />
                                                 )}
-                                                <span className="font-medium text-xs text-amber-800">{formatHcaName(hca)}</span>
-                                                <Badge variant="secondary" className="text-[10px] bg-amber-100">
+                                                <span className={`font-medium text-xs ${isThisPropertyHca ? 'text-teal-800' : 'text-amber-800'}`}>
+                                                  {isThisPropertyHca ? '★ ' : ''}{formatHcaName(hca)}
+                                                  {isThisPropertyHca ? ' (Your Property)' : ''}
+                                                </span>
+                                                <Badge variant="secondary" className={`text-[10px] ${isThisPropertyHca ? 'bg-teal-200 text-teal-800' : 'bg-amber-100'}`}>
                                                   {hcaProvisions.length}
                                                 </Badge>
                                               </div>
