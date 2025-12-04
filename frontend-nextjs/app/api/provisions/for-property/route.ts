@@ -520,11 +520,21 @@ async function queryLayer(
 }
 
 /**
- * Pass through PDF page URLs unchanged.
- * The page numbers in URLs match the stored page_number values.
+ * Adjust PDF page URL for Leichhardt's off-by-one extraction.
+ * Leichhardt: page_11.png shows page 12 content, so add 1 to URL page number.
+ * Marrickville/Ashfield: URLs are correct, pass through unchanged.
  */
 function adjustPdfPageUrl(url: string | null | undefined): string | null {
-  return url || null;
+  if (!url) return null;
+
+  // Only adjust Leichhardt URLs
+  if (url.includes('/leichhardt-') && url.includes('/page_')) {
+    return url.replace(/\/page_(\d+)\.png$/, (match, pageNum) => {
+      return `/page_${parseInt(pageNum) + 1}.png`;
+    });
+  }
+
+  return url;
 }
 
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
