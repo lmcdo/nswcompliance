@@ -88,6 +88,20 @@ const DEV_TYPE_HIERARCHY: Record<string, string[]> = {
   dwelling_house: ['dwelling_house'],
   boarding_house: ['boarding_house'],
   child_care_centre: ['child_care_centre'],
+
+  // Simplified category groupings (for Leichhardt dropdown)
+  residential: [
+    'dwelling_house', 'dual_occupancy', 'secondary_dwelling',
+    'multi_dwelling_housing', 'residential_flat_building', 'boarding_house',
+    'dwelling_addition', 'dwelling_house_new', 'dwelling_house_alteration'
+  ],
+  commercial: [
+    'commercial_premises', 'retail_premises', 'office_premises',
+    'food_and_drink_premises', 'shop_top_housing', 'child_care_centre'
+  ],
+  industrial: [
+    'industrial_development', 'warehouse', 'light_industry'
+  ],
 };
 
 /**
@@ -474,12 +488,12 @@ async function queryLayer(
   }
 
   // Optional dev_type filter with hierarchical matching
-  // IMPORTANT: Only apply to use_specific layer - generic provisions apply to ALL dev types
-  if (filters.dev_type && layer === 'use_specific') {
-    // Expand dev_type to include parent types (e.g., dwelling_addition_rear -> [dwelling_addition_rear, dwelling_addition, dwelling_house])
+  // Applies to ALL layers - provisions tagged with specific dev types or 'ALL' are included
+  if (filters.dev_type) {
+    // Expand dev_type to include related types (e.g., 'residential' -> all residential types)
     // Include provisions tagged with 'ALL' (applies to all development types)
     const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
-    sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[] OR 'ALL' = ANY(v2_applicable_dev_types))`;
+    sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[] OR 'ALL' = ANY(v2_applicable_dev_types) OR v2_applicable_dev_types IS NULL)`;
     params.push(expandedTypes);
   }
 

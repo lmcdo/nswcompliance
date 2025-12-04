@@ -50,25 +50,27 @@ export interface CouncilConfig {
 /**
  * Inner West LGA Overview - shown as collapsible header for all Inner West addresses
  */
-export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct approaches:
+export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct organizational approaches:
 
-• Marrickville - zone-centric, provisions organised by zone type, most filterable
-• Leichhardt - topic-centric, most provisions apply universally, highest volume
-• Ashfield - development-type focused, heritage-heavy, use dropdown to filter
+MARRICKVILLE (1,866 provisions) - Organized by development type with Part 2 Generic Provisions applying universally. Part 8 is a dedicated Heritage chapter. Part 9 covers 48 Precincts. Best filtered by topic.
 
-Your address determines which former council's DCP applies.`;
+LEICHHARDT (3,355 provisions) - Topic-centric with the highest volume. Part C covers everything from parking to heritage to distinctive neighbourhoods. Use development type filter to narrow results - 73% of provisions specify applicable dev types.
+
+ASHFIELD (1,892 provisions) - Heritage-focused with dedicated Chapter E1 for Heritage Conservation Areas. Chapter F covers development categories. 11 Village Precincts in Chapter D. Best filtered by topic.
+
+Your address determines which former council's DCP applies. All three DCPs use the topic filter as the primary way to navigate provisions.`;
 
 export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: {
     id: 'marrickville',
     name: 'Marrickville',
     dcpCitation: 'Inner West Development Control Plan (Marrickville) 2011',
-    dcpExplanation: 'Unlike the other Inner West DCPs, Marrickville is zone-centric with explicit chapters for each zone type.\n\n[Base Controls] apply to all development regardless of zone. (Your zone is auto-detected and filters results automatically.) [Zone Controls] are filtered to your specific zone. [Heritage] provisions apply to heritage items and Heritage Conservation Areas (Part 8 is a dedicated chapter). [Precinct Character] controls cover 48 suburb Precincts - all properties fall within a Precinct, with Base Controls applying where Precinct controls are silent.\n\n• Part 4.1 (R2 low density residential) • Part 4.2 (R3/R4 multi-dwelling) • Part 5 (business zones) • Part 6 (industrial) • Part 8 (heritage) • Part 9 (48 Precinct Character areas)',
-    totalProvisions: 1051,
-    primaryLayer: 'precinct',
-    zoneFilterEffective: true,
+    dcpExplanation: 'Marrickville DCP is organized by development type with separate chapters for residential (Part 4), commercial (Part 5), and industrial (Part 6). Your zone determines which chapter applies, but the majority of provisions are in Part 2 Generic Provisions which apply universally to all development.\n\n[Base Controls] (Part 2) cover 25 topics including parking, landscaping, solar access, and urban design. [Heritage] has a dedicated chapter (Part 8) with detailed controls for heritage items and 37 Heritage Conservation Areas - filtered to your property\'s HCA. [Precinct Character] controls (Part 9) cover 48 suburb Precincts with desired future character statements - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not available as provisions apply broadly by topic.',
+    totalProvisions: 1866,
+    primaryLayer: 'generic',
+    zoneFilterEffective: false,
     devTypeFilterEffective: false,
-    devTypeNote: 'For Marrickville Council DCP 2011, provisions apply broadly by topic rather than development type. For permitted uses in your zone, see the SEPP & LEP tab.',
+    devTypeNote: 'Marrickville provisions are organized by topic (Part 2) rather than development type. Your zone determines which Part applies but most controls are universal.',
     topicFilterRequired: false,
     warningThreshold: 300,
     resultGuidance: {
@@ -148,12 +150,16 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'leichhardt',
     name: 'Leichhardt',
     dcpCitation: 'Inner West Development Control Plan (Leichhardt) 2013',
-    dcpExplanation: 'Unlike Marrickville (zone-based) or Ashfield (heritage-focused), Leichhardt is topic-centric with the highest provision count. Most provisions are [Universal] controls that apply broadly. Use the topic buttons to filter.\n\n[Heritage] provisions cover heritage items and conservation areas but are distributed across topics rather than in a dedicated chapter - look under both Heritage and Character topics. [Distinct Neighbourhood] controls cover 26 Distinct Neighbourhoods - all properties fall within a Distinct Neighbourhood, with Universal controls applying where Neighbourhood controls are silent.\n\nDevelopment type and zone filtering are not available for this DCP.\n\n• Part C "Place" (setbacks, heights, parking, landscaping - largest section) • Part D (energy) • Part E (water) • Part F (food premises) • Part G (26 Distinct Neighbourhoods)',
-    totalProvisions: 2648,
+    dcpExplanation: 'Leichhardt DCP is topic-centric with the highest provision count (3,355). Part C "Place" is the main section covering residential provisions (Section 3), non-residential provisions (Section 4), and 26 Distinctive Neighbourhoods (Section 2).\n\n[Universal] controls in Part C Section 1 cover general topics like parking, landscaping, and heritage. [Residential] provisions in Section 3 cover site layout, solar access, privacy, and building design. [Distinct Neighbourhood] controls provide character guidance for 26 areas - filtered to your address.\n\n1. USE THE DROPDOWN TO FILTER BY PROJECT TYPE:\n• Residential = houses, apartments, granny flats, duplexes (~2,750 provisions)\n• Commercial = shops, offices, cafes, restaurants (~660 provisions)\n• Industrial = factories, warehouses (~780 provisions)\nSelecting Commercial or Industrial hides ~2,000 residential-only provisions. Selecting Residential only hides ~600 commercial/industrial provisions - most of this DCP is residential-focused.\n\n2. Select the topics you are interested in to further refine your search.',
+    totalProvisions: 3355,
     primaryLayer: 'generic',
     zoneFilterEffective: false,
-    devTypeFilterEffective: false,
-    devTypeNote: 'For Leichhardt Council DCP 2013, provisions apply universally by topic rather than development type. For permitted uses in your zone, see the SEPP & LEP tab.',
+    devTypeFilterEffective: true,
+    availableDevTypes: [
+      { id: 'residential', name: 'Residential (all types)', count: 2756 },
+      { id: 'commercial', name: 'Commercial / Retail', count: 660 },
+      { id: 'industrial', name: 'Industrial / Warehouse', count: 779 },
+    ],
     topicFilterRequired: true,
     warningThreshold: 200,
     resultGuidance: {
@@ -246,33 +252,12 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'ashfield',
     name: 'Ashfield',
     dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'Unlike Marrickville (zone-based) or Leichhardt (topic-centric), Ashfield is heritage-focused. This DCP has a dedicated heritage chapter (Chapter E1) with detailed Heritage Conservation Area controls.\n\n[Base Controls] apply to all development. [Heritage] controls cover heritage items and Heritage Conservation Areas with guidance on conservation principles, character, building form, and materials. [Village Precinct] controls cover 11 urban village areas - these are filtered to your address location, otherwise empty (in which case Base Controls apply).\n\nDevelopment type and zone filtering are not available for this DCP.\n\n• Chapter E1 (dedicated heritage chapter) • Chapter F (development types) • Chapter C (sustainability) • Chapter D (11 Village Precinct areas)',
-    totalProvisions: 1526,
+    dcpExplanation: 'Ashfield DCP is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas. Chapter F covers development categories and Chapter D provides guidance for 11 Village Precincts. Most provisions (69%) apply broadly across all development types.\n\n[Base Controls] in Chapter A cover general requirements. [Heritage] (Chapter E1) is the most detailed section with conservation principles, character assessment, building form, and materials guidance for each HCA - filtered to your property\'s HCA. [Village Precinct] controls (Chapter D) cover 11 urban village areas - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not effective as most provisions apply broadly.',
+    totalProvisions: 1892,
     primaryLayer: 'condition',
     zoneFilterEffective: false,
     devTypeFilterEffective: false,
-    availableDevTypes: [
-      { id: 'dwelling_house', name: 'Dwelling House', count: 57 },
-      { id: 'multi_dwelling_housing', name: 'Multi Dwelling Housing', count: 52 },
-      { id: 'residential_flat_building', name: 'Residential Flat Building', count: 49 },
-      { id: 'shop_top_housing', name: 'Shop Top Housing', count: 40 },
-      { id: 'food_and_drink_premises', name: 'Food & Drink Premises', count: 18 },
-      { id: 'take_away_food', name: 'Take Away Food', count: 18 },
-      { id: 'secondary_dwelling', name: 'Secondary Dwelling', count: 13 },
-      { id: 'neighbourhood_centre', name: 'Neighbourhood Centre', count: 12 },
-      { id: 'attached_dwelling', name: 'Attached Dwelling', count: 11 },
-      { id: 'manor_house', name: 'Manor House', count: 11 },
-      { id: 'neighbourhood_shop', name: 'Neighbourhood Shop', count: 11 },
-      { id: 'townhouse', name: 'Townhouse', count: 11 },
-      { id: 'business_park', name: 'Business Park', count: 5 },
-      { id: 'commercial_core', name: 'Commercial Core', count: 4 },
-      { id: 'shop', name: 'Shop', count: 4 },
-      { id: 'boarding_house', name: 'Boarding House', count: 3 },
-      { id: 'child_care_centre', name: 'Child Care Centre', count: 3 },
-      { id: 'student_accommodation', name: 'Student Accommodation', count: 3 },
-      { id: 'residential_care_facility', name: 'Residential Care Facility', count: 1 },
-      { id: 'seniors_housing', name: 'Seniors Housing', count: 1 },
-    ],
+    devTypeNote: 'Ashfield provisions apply broadly (69% tagged as ALL development types). Use topic filters instead.',
     topicFilterRequired: false,
     warningThreshold: 500,
     resultGuidance: {
