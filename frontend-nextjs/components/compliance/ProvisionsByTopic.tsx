@@ -207,21 +207,20 @@ function hcaNameToSlug(hcaName: string): string {
 
 /**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Only the FIRST provision on each page should show the button (groups provisions on same page).
- * Using FIRST ensures buttons appear even when we only show first N provisions.
+ * Only the LAST provision on each page should show the button (groups provisions on same page).
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
-  const pageToFirstProvisionId = new Map<string, number>();
+  const pageToLastProvisionId = new Map<string, number>();
 
-  // Build map of page URL -> first provision ID on that page
+  // Build map of page URL -> last provision ID on that page
   for (const prov of provisions) {
-    if (prov.pdf_page_image_url && !pageToFirstProvisionId.has(prov.pdf_page_image_url)) {
-      pageToFirstProvisionId.set(prov.pdf_page_image_url, prov.id);
+    if (prov.pdf_page_image_url) {
+      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
     }
   }
 
   // Return set of IDs that should show the button
-  return new Set(pageToFirstProvisionId.values());
+  return new Set(pageToLastProvisionId.values());
 }
 
 /**
@@ -862,7 +861,7 @@ export function ProvisionsByTopic({
                                                         >
                                                           <FormattedProvisionText text={provision.provision_text} compact />
                                                         </div>
-                                                        {provision.provision_text.length > 100 && (
+                                                        {provision.provision_text.length > 200 && (
                                                           <button
                                                             className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
                                                             onClick={() => toggleProvision(provision.id)}
@@ -940,7 +939,7 @@ export function ProvisionsByTopic({
                                               >
                                                 <FormattedProvisionText text={provision.provision_text} compact />
                                               </div>
-                                              {provision.provision_text.length > 150 && (
+                                              {provision.provision_text.length > 300 && (
                                                 <button
                                                   className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
                                                   onClick={() => toggleProvision(provision.id)}
@@ -1023,7 +1022,7 @@ export function ProvisionsByTopic({
                                 >
                                   <FormattedProvisionText text={provision.provision_text} compact />
                                 </div>
-                                {provision.provision_text.length > 150 && (
+                                {provision.provision_text.length > 300 && (
                                   <button
                                     className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
                                     onClick={() => toggleProvision(provision.id)}
