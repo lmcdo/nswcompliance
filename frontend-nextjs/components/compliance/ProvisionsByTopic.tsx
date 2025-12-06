@@ -207,20 +207,21 @@ function hcaNameToSlug(hcaName: string): string {
 
 /**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Only the LAST provision on each page should show the button (groups provisions on same page).
+ * Only the FIRST provision on each page should show the button (groups provisions on same page).
+ * Using FIRST ensures buttons appear even when we only show first N provisions.
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
-  const pageToLastProvisionId = new Map<string, number>();
+  const pageToFirstProvisionId = new Map<string, number>();
 
-  // Build map of page URL -> last provision ID on that page
+  // Build map of page URL -> first provision ID on that page
   for (const prov of provisions) {
-    if (prov.pdf_page_image_url) {
-      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
+    if (prov.pdf_page_image_url && !pageToFirstProvisionId.has(prov.pdf_page_image_url)) {
+      pageToFirstProvisionId.set(prov.pdf_page_image_url, prov.id);
     }
   }
 
   // Return set of IDs that should show the button
-  return new Set(pageToLastProvisionId.values());
+  return new Set(pageToFirstProvisionId.values());
 }
 
 /**
