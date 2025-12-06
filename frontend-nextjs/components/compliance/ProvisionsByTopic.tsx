@@ -849,7 +849,7 @@ export function ProvisionsByTopic({
                                                               }}
                                                             >
                                                               <FileText className="h-3 w-3 mr-1" />
-                                                              Page {pageNum}
+                                                              View DCP Page {pageNum}
                                                             </Button>
                                                           );
                                                         })()}
@@ -927,7 +927,7 @@ export function ProvisionsByTopic({
                                                     }}
                                                   >
                                                     <FileText className="h-3 w-3 mr-1" />
-                                                    View DCP page {pageNum}
+                                                    View DCP Page {pageNum}
                                                   </Button>
                                                 );
                                               })()}
@@ -1010,7 +1010,7 @@ export function ProvisionsByTopic({
                                       }}
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
-                                      View DCP page {pageNum}
+                                      View DCP Page {pageNum}
                                     </Button>
                                   );
                                 })()}
