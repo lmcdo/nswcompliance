@@ -328,21 +328,29 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
-                    <ProvisionsByTopic
-                      zone={selectedProperty.constraints?.zone}
-                      heritage={selectedProperty.heritage?.isHeritage || false}
-                      flood={selectedProperty.planningLayers?.some((l: any) =>
-                        l.layerName?.toLowerCase().includes('flood') &&
-                        l.results?.length > 0
-                      ) || false}
-                      precinctId={selectedProperty.constraints?.precinctId}
-                      devType={developmentType}
-                      council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
-                      hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
-                        ? selectedProperty.heritage?.heritageItemName
-                        : undefined}
-                      heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
-                    />
+                    {loading ? (
+                      <div className="bg-white border rounded-lg p-12 shadow-sm text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading DCP provisions...</p>
+                      </div>
+                    ) : (
+                      <ProvisionsByTopic
+                        key={selectedProperty.address}
+                        zone={selectedProperty.constraints?.zone}
+                        heritage={selectedProperty.heritage?.isHeritage || false}
+                        flood={selectedProperty.planningLayers?.some((l: any) =>
+                          l.layerName?.toLowerCase().includes('flood') &&
+                          l.results?.length > 0
+                        ) || false}
+                        precinctId={selectedProperty.constraints?.precinctId}
+                        devType={developmentType}
+                        council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
+                        hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
+                          ? selectedProperty.heritage?.heritageItemName
+                          : undefined}
+                        heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
+                      />
+                    )}
                   </div>
                 )}
               </>
