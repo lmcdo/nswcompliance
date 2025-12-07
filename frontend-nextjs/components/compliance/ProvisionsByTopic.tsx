@@ -532,6 +532,60 @@ export function ProvisionsByTopic({
   const [expandedHeritageTypes, setExpandedHeritageTypes] = useState<Set<string>>(new Set());
   // Track which heritage type groups show all provisions (no limit)
   const [showAllHeritageTypes, setShowAllHeritageTypes] = useState<Set<string>>(new Set());
+  // Track element filter per heritage type section (e.g., "hcaKey-control" -> "roof")
+  const [elementFilters, setElementFilters] = useState<Record<string, string>>({});
+
+  // Element labels for display
+  const ELEMENT_LABELS: Record<string, string> = {
+    roof: 'Roof',
+    fence: 'Fencing',
+    materials: 'Materials',
+    verandah: 'Verandah',
+    window: 'Windows',
+    facade: 'Facade',
+    chimney: 'Chimney',
+    door: 'Doors',
+    car_parking: 'Parking',
+    scale: 'Scale',
+    infill: 'Infill',
+    demolition: 'Demolition',
+    setback: 'Setbacks',
+    garden: 'Garden',
+    interior: 'Interior',
+  };
+
+  // Get unique elements from provisions with counts
+  const getElementCounts = (provisions: Provision[]): Map<string, number> => {
+    const counts = new Map<string, number>();
+    provisions.forEach(p => {
+      if (p.v2_heritage_element) {
+        p.v2_heritage_element.forEach(elem => {
+          counts.set(elem, (counts.get(elem) || 0) + 1);
+        });
+      }
+    });
+    // Sort by count descending
+    return new Map([...counts.entries()].sort((a, b) => b[1] - a[1]));
+  };
+
+  // Filter provisions by selected element
+  const filterByElement = (provisions: Provision[], element: string | undefined): Provision[] => {
+    if (!element) return provisions;
+    return provisions.filter(p =>
+      p.v2_heritage_element && p.v2_heritage_element.includes(element)
+    );
+  };
+
+  const setElementFilter = (typeKey: string, element: string | null) => {
+    setElementFilters(prev => {
+      if (element === null) {
+        const next = { ...prev };
+        delete next[typeKey];
+        return next;
+      }
+      return { ...prev, [typeKey]: element };
+    });
+  };
 
   const toggleHeritageType = (typeKey: string) => {
     setExpandedHeritageTypes(prev => {
@@ -923,9 +977,53 @@ export function ProvisionsByTopic({
                                                       </button>
 
                                                       {/* Heritage Type Provisions */}
-                                                      {isTypeExpanded && (
+                                                      {isTypeExpanded && (() => {
+                                                        const selectedElement = elementFilters[typeKey];
+                                                        const filteredProvisions = filterByElement(typeProvisions, selectedElement);
+                                                        const elementCounts = heritageType === 'control' ? getElementCounts(typeProvisions) : null;
+
+                                                        return (
                                                         <div className="p-2 space-y-1.5 bg-white">
-                                                          {typeProvisions.slice(0, actualLimit).map((provision, idx) => {
+                                                          {/* Element Filter - Only for Controls */}
+                                                          {heritageType === 'control' && elementCounts && elementCounts.size > 0 && (
+                                                            <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                                                              <p className="text-[10px] text-green-700 mb-1.5">
+                                                                <strong>Filter by element</strong> — provisions may apply to multiple elements
+                                                              </p>
+                                                              <div className="flex flex-wrap gap-1">
+                                                                <button
+                                                                  onClick={() => setElementFilter(typeKey, null)}
+                                                                  className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                    !selectedElement
+                                                                      ? 'bg-green-600 text-white'
+                                                                      : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                  }`}
+                                                                >
+                                                                  All ({typeProvisions.length})
+                                                                </button>
+                                                                {Array.from(elementCounts).slice(0, 10).map(([elem, count]) => (
+                                                                  <button
+                                                                    key={elem}
+                                                                    onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
+                                                                    className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                      selectedElement === elem
+                                                                        ? 'bg-green-600 text-white'
+                                                                        : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                    }`}
+                                                                  >
+                                                                    {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                  </button>
+                                                                ))}
+                                                              </div>
+                                                              {selectedElement && (
+                                                                <p className="text-[10px] text-green-600 mt-1.5 italic">
+                                                                  Showing {filteredProvisions.length} of {typeProvisions.length} — some may also appear under other elements
+                                                                </p>
+                                                              )}
+                                                            </div>
+                                                          )}
+
+                                                          {filteredProvisions.slice(0, isShowingAll ? filteredProvisions.length : displayLimit).map((provision, idx) => {
                                                             const layer = provision.layer || provision.v2_dcp_layer;
                                                             const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                                               layer === 'use_specific' ? 'border-l-sky-400' :
@@ -989,19 +1087,20 @@ export function ProvisionsByTopic({
                                                               </div>
                                                             );
                                                           })}
-                                                          {typeProvisions.length > displayLimit && (
+                                                          {filteredProvisions.length > displayLimit && (
                                                             <button
                                                               onClick={() => toggleShowAllHeritageType(typeKey)}
                                                               className={`w-full text-xs text-center py-2 rounded ${isShowingAll ? 'text-gray-500 hover:text-gray-700' : `${typeConfig.accent} font-medium hover:underline`}`}
                                                             >
                                                               {isShowingAll
                                                                 ? `↑ Show fewer (${displayLimit})`
-                                                                : `↓ Show all ${typeProvisions.length} ${typeConfig.label.toLowerCase()}`
+                                                                : `↓ Show all ${filteredProvisions.length} ${typeConfig.label.toLowerCase()}`
                                                               }
                                                             </button>
                                                           )}
                                                         </div>
-                                                      )}
+                                                        );
+                                                      })()}
                                                     </div>
                                                   );
                                                 })}
