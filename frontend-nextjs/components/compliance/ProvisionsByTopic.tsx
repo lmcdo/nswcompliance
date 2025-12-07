@@ -343,7 +343,7 @@ export function ProvisionsByTopic({
   }>(apiUrl, fetcher, {
     revalidateOnFocus: false,  // Don't refetch when window regains focus
     dedupingInterval: 60000,   // Dedupe requests within 60 seconds
-    keepPreviousData: true,    // Show stale data while revalidating
+    // Removed keepPreviousData to ensure loading state shows on new address
   });
 
   // Compute topic counts from data (memoized for performance)
