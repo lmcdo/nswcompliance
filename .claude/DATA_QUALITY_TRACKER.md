@@ -25,6 +25,8 @@
 | DQ-13: Leichhardt uncategorized topics | ✅ FIXED | P1 (was) |
 | DQ-14: Leichhardt PDF URL coverage | ✅ FIXED | P1 (was) |
 | DQ-15: Topic case inconsistency | ✅ FIXED | P2 (was) |
+| DQ-16: Heritage topic fragmentation | 🔄 IN PROGRESS | P1 |
+| DQ-17: Orphaned non-heritage provisions | ⏳ TODO | P2 |
 
 ---
 
@@ -539,3 +541,74 @@ Always use `page_number` column for Part G PDF URLs.
 - Leichhardt: 834 LLM / 2,989 raw = 28%
 
 **DO NOT** assume low percentage means extraction needs to be re-run.
+
+### DQ-16: Heritage Topic Fragmentation (2025-12-07)
+**Status:** 🔄 IN PROGRESS
+**Priority:** P1 - HIGH
+**Problem:** Ashfield Heritage chapter provisions split across multiple topics in UI
+
+**Evidence:**
+- User sees: Heritage (187), Character (80), Fencing (22), Streetscape (22), etc.
+- Reality: ALL 364 provisions are from Heritage chapter (part_name='Heritage')
+- The `category` field (subject matter) is being used as `v2_topic` in API response
+
+**Root Cause:**
+In `queryHeritageFromDcpGeneralRequirements()` (for-property/route.ts:363):
+```sql
+INITCAP(REPLACE(category, '_', ' ')) as v2_topic
+```
+This maps `category` (e.g., 'character', 'fencing') to `v2_topic` instead of using 'Heritage'.
+
+**Verified Content:** Sample provisions from Heritage chapter with category='character':
+- "Infill development must enhance character and respond positively to heritage..."
+- "Materials and finishes must avoid strong contrast with heritage items..."
+These are HERITAGE-SPECIFIC character rules, not general character rules.
+
+**Impact:**
+- User confusion: sees "Character: 80" separate from "Heritage: 187"
+- All 80 Character provisions are 100% from Heritage chapter
+- No provisions lost - just incorrectly categorized in UI
+
+**Fix Required:**
+1. Change API to return `'Heritage'` as v2_topic for all Heritage part provisions
+2. Add `category` as `v2_heritage_subcategory` for sub-grouping within Heritage
+3. Update UI to sub-group Heritage by subcategory
+
+### DQ-17: Orphaned Non-Heritage Provisions (2025-12-07)
+**Status:** ⏳ TODO
+**Priority:** P2 - MEDIUM
+**Problem:** 427 Ashfield provisions in `dcp_general_requirements` not returned by any API query
+
+**Evidence:**
+From `dcp_general_requirements` WHERE former_council='Ashfield':
+- Total: 791 provisions
+- Heritage part: 364 (returned by condition layer query)
+- Non-Heritage parts: 427 (NOT returned by any query)
+
+**Non-Heritage part breakdown:**
+- NULL: 212
+- Miscellaneous: 100
+- Sustainability: 49
+- Drive-In Take-Away: 18
+- Public Domain: 12
+- Multi Dwelling Housing: 11
+- Dwelling Houses: 8
+- Secondary Dwellings: 5
+- etc.
+
+**Root Cause:**
+The condition layer query `queryHeritageFromDcpGeneralRequirements` only returns:
+```sql
+WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
+```
+The other 427 provisions from non-Heritage parts are never queried.
+
+**Impact:**
+- 427 LLM-curated provisions invisible to users
+- These include controls for sustainability, accessibility, parking, etc.
+- May have overlap with `regulatory_provisions` raw data
+
+**Deferred:** Need to investigate whether these should be:
+1. Added to generic layer query
+2. Merged with regulatory_provisions
+3. Left as separate "curated controls" layer

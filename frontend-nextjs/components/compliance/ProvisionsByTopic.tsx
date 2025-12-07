@@ -37,6 +37,7 @@ interface Provision {
   v2_heritage_type?: 'control' | 'guidance' | 'character' | 'descriptive';
   v2_heritage_element?: string[];
   v2_heritage_hca?: string;
+  v2_heritage_subcategory?: string;  // For Heritage topic sub-grouping (character, fencing, etc.)
 }
 
 interface LayerResult {
@@ -496,6 +497,25 @@ export function ProvisionsByTopic({
   // Check if HCA matches property's HCA (for highlighting)
   const isPropertyHca = (hca: string): boolean => {
     return propertyHcaSlug !== '' && hca === propertyHcaSlug;
+  };
+
+  // Group heritage provisions by subcategory (character, fencing, heritage, etc.)
+  // Used for consolidated Heritage topic from condition layer
+  const groupByHeritageSubcategory = (provisions: Provision[]): Map<string, Provision[]> => {
+    const grouped = new Map<string, Provision[]>();
+    provisions.forEach(p => {
+      const subcat = p.v2_heritage_subcategory || 'Heritage';
+      if (!grouped.has(subcat)) {
+        grouped.set(subcat, []);
+      }
+      grouped.get(subcat)!.push(p);
+    });
+    // Sort: Heritage first, then by count descending
+    return new Map([...grouped.entries()].sort((a, b) => {
+      if (a[0] === 'Heritage') return -1;
+      if (b[0] === 'Heritage') return 1;
+      return b[1].length - a[1].length;
+    }));
   };
 
   const toggleHca = (hcaKey: string) => {
@@ -1015,8 +1035,103 @@ export function ProvisionsByTopic({
                               {/* DCP Part Provisions */}
                               {isPartExpanded && (
                                 <div className="p-2 space-y-2 bg-white">
-                                  {/* Heritage topics with large parts get HCA sub-grouping */}
+                                  {/* Heritage topics: check if provisions have subcategory (from condition layer) or HCA (from regulatory_provisions) */}
                                   {topic.toLowerCase() === 'heritage' && partProvisions.length > HCA_GROUPING_THRESHOLD ? (
+                                    // Check if provisions have subcategory (condition layer) vs HCA (regulatory_provisions)
+                                    partProvisions.some(p => p.v2_heritage_subcategory && p.v2_heritage_subcategory !== 'Heritage') ? (
+                                      // Subcategory grouping for consolidated Heritage provisions from condition layer
+                                      <div className="space-y-2">
+                                        {Array.from(groupByHeritageSubcategory(partProvisions)).map(([subcategory, subcatProvisions]) => {
+                                          const subcatKey = `${partKey}-subcat-${subcategory}`;
+                                          const isSubcatExpanded = expandedHcas.has(subcatKey);
+
+                                          return (
+                                            <div key={subcatKey} className="border rounded-lg overflow-hidden border-amber-200">
+                                              {/* Subcategory Header */}
+                                              <button
+                                                onClick={() => toggleHca(subcatKey)}
+                                                className="w-full flex items-center justify-between px-3 py-2 bg-amber-50 hover:bg-amber-100 transition-colors"
+                                              >
+                                                <div className="flex items-center gap-2">
+                                                  {isSubcatExpanded ? (
+                                                    <ChevronDown className="h-3 w-3 text-amber-600" />
+                                                  ) : (
+                                                    <ChevronRight className="h-3 w-3 text-amber-600" />
+                                                  )}
+                                                  <span className="font-medium text-xs text-amber-800">
+                                                    {subcategory}
+                                                  </span>
+                                                  <Badge variant="secondary" className="text-[10px]">
+                                                    {subcatProvisions.length}
+                                                  </Badge>
+                                                </div>
+                                              </button>
+
+                                              {/* Subcategory Provisions */}
+                                              {isSubcatExpanded && (
+                                                <div className="p-2 space-y-1.5 bg-white">
+                                                  {subcatProvisions.slice(0, 20).map((provision, idx) => {
+                                                    const layer = provision.layer || provision.v2_dcp_layer;
+                                                    const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                                      layer === 'use_specific' ? 'border-l-sky-400' :
+                                                      layer === 'condition' ? 'border-l-amber-400' :
+                                                      layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                                    const zebraStripe = idx % 2 === 1 ? 'bg-amber-50/50' : 'bg-white';
+                                                    const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url?.match(/page_(\d+)/)?.[1] || '0');
+
+                                                    return (
+                                                      <div
+                                                        key={provision.id}
+                                                        className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden ${layerBorderColor} border-l-4`}
+                                                      >
+                                                        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
+                                                          <div className="flex items-center gap-2">
+                                                            <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                                              {getLayerLabel(layer)}
+                                                            </Badge>
+                                                          </div>
+                                                          {provision.pdf_page_image_url && (
+                                                            <Button
+                                                              size="sm"
+                                                              variant="ghost"
+                                                              className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
+                                                              onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setViewingPdfImage({
+                                                                  url: provision.pdf_page_image_url!,
+                                                                  page: displayPage
+                                                                });
+                                                              }}
+                                                            >
+                                                              <FileText className="h-3 w-3 mr-1" />
+                                                              View DCP Page {displayPage}
+                                                            </Button>
+                                                          )}
+                                                        </div>
+                                                        <div className="px-3 py-2">
+                                                          <div
+                                                            className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                                            onClick={() => toggleProvision(provision.id)}
+                                                          >
+                                                            <FormattedProvisionText text={provision.provision_text} compact />
+                                                          </div>
+                                                        </div>
+                                                      </div>
+                                                    );
+                                                  })}
+                                                  {subcatProvisions.length > 20 && (
+                                                    <p className="text-xs text-gray-500 text-center py-1">
+                                                      Showing 20 of {subcatProvisions.length} provisions
+                                                    </p>
+                                                  )}
+                                                </div>
+                                              )}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                    // HCA grouping for regulatory_provisions heritage data
                                     <div className="space-y-2">
                                       {Array.from(groupByHca(partProvisions)).map(([hca, hcaProvisions]) => {
                                         const hcaKey = `${partKey}-${hca}`;
@@ -1329,6 +1444,7 @@ export function ProvisionsByTopic({
                                         );
                                       })}
                                     </div>
+                                    )
                                   ) : (
                                     /* Regular provisions list for non-heritage or small heritage parts */
                                     (() => {

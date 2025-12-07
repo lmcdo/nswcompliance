@@ -360,7 +360,10 @@ async function queryHeritageFromDcpGeneralRequirements(
       COALESCE(verbatim_source_text, requirement_text) as provision_text,
       'condition' as v2_dcp_layer,
       part_name as v2_dcp_part,
-      INITCAP(REPLACE(category, '_', ' ')) as v2_topic,
+      CASE
+        WHEN part_name = 'Heritage' THEN 'Heritage'
+        ELSE INITCAP(REPLACE(category, '_', ' '))
+      END as v2_topic,
       'control' as v2_provision_type,
       NULL as v2_precinct_id,
       NULL as v2_marker,
@@ -370,9 +373,10 @@ async function queryHeritageFromDcpGeneralRequirements(
       pdf_page_image_url,
       NULL as v2_heritage_type,
       NULL as v2_heritage_element,
-      NULL as v2_heritage_hca
+      NULL as v2_heritage_hca,
+      INITCAP(REPLACE(category, '_', ' ')) as v2_heritage_subcategory
     FROM dcp_general_requirements
-    WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
+    WHERE (category = 'heritage' OR part_name = 'Heritage')
   `;
 
   // Filter by former council
