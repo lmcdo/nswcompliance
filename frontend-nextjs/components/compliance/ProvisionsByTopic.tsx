@@ -1093,7 +1093,8 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                  // Use URL's page number so button matches what opens
+                                                                  const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
                                                                   return (
                                                                     <Button
                                                                       size="sm"
@@ -1297,7 +1298,8 @@ export function ProvisionsByTopic({
                                                 )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                // Use URL's page number so button matches what opens
+                                                const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
                                                 return (
                                                   <Button
                                                     size="sm"
@@ -1462,7 +1464,8 @@ export function ProvisionsByTopic({
                                   )}
                                 </div>
                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                  const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                  // Use URL's page number so button matches what opens
+                                  const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
                                   return (
                                     <Button
                                       size="sm"
