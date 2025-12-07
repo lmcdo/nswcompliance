@@ -595,10 +595,19 @@ export function ProvisionsByTopic({
   };
 
   // Filter provisions by selected element
+  // Format: "element" for multi-element, "single:element" for single-element only
   const filterByElement = (provisions: Provision[], element: string | undefined): Provision[] => {
     if (!element) return provisions;
     if (element === '_general') {
       return provisions.filter(p => !p.v2_heritage_element || p.v2_heritage_element.length === 0);
+    }
+    if (element.startsWith('single:')) {
+      const elem = element.replace('single:', '');
+      return provisions.filter(p =>
+        p.v2_heritage_element &&
+        p.v2_heritage_element.length === 1 &&
+        p.v2_heritage_element[0] === elem
+      );
     }
     return provisions.filter(p =>
       p.v2_heritage_element && p.v2_heritage_element.includes(element)
@@ -1041,19 +1050,22 @@ export function ProvisionsByTopic({
                                                                 <div className="mb-2">
                                                                   <p className="text-[9px] text-green-800 font-medium mb-1">One element only:</p>
                                                                   <div className="flex flex-wrap gap-1">
-                                                                    {Array.from(elementBreakdown.singleElement).map(([elem, count]) => (
-                                                                      <button
-                                                                        key={`single-${elem}`}
-                                                                        onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
-                                                                        className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
-                                                                          selectedElement === elem
-                                                                            ? 'bg-green-600 text-white'
-                                                                            : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
-                                                                        }`}
-                                                                      >
-                                                                        {ELEMENT_LABELS[elem] || elem} ({count})
-                                                                      </button>
-                                                                    ))}
+                                                                    {Array.from(elementBreakdown.singleElement).map(([elem, count]) => {
+                                                                      const filterKey = `single:${elem}`;
+                                                                      return (
+                                                                        <button
+                                                                          key={`single-${elem}`}
+                                                                          onClick={() => setElementFilter(typeKey, selectedElement === filterKey ? null : filterKey)}
+                                                                          className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                            selectedElement === filterKey
+                                                                              ? 'bg-green-600 text-white'
+                                                                              : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                          }`}
+                                                                        >
+                                                                          {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                        </button>
+                                                                      );
+                                                                    })}
                                                                   </div>
                                                                 </div>
                                                               )}
