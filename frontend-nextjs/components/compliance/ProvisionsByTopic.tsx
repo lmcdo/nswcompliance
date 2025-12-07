@@ -530,9 +530,23 @@ export function ProvisionsByTopic({
 
   // Track expanded heritage types within HCAs
   const [expandedHeritageTypes, setExpandedHeritageTypes] = useState<Set<string>>(new Set());
+  // Track which heritage type groups show all provisions (no limit)
+  const [showAllHeritageTypes, setShowAllHeritageTypes] = useState<Set<string>>(new Set());
 
   const toggleHeritageType = (typeKey: string) => {
     setExpandedHeritageTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(typeKey)) {
+        next.delete(typeKey);
+      } else {
+        next.add(typeKey);
+      }
+      return next;
+    });
+  };
+
+  const toggleShowAllHeritageType = (typeKey: string) => {
+    setShowAllHeritageTypes(prev => {
       const next = new Set(prev);
       if (next.has(typeKey)) {
         next.delete(typeKey);
@@ -878,6 +892,9 @@ export function ProvisionsByTopic({
                                                   const isTypeExpanded = heritageType === 'control' || expandedHeritageTypes.has(typeKey);
                                                   const displayLimit = heritageType === 'control' ? 15 : 5;
 
+                                                  const isShowingAll = showAllHeritageTypes.has(typeKey);
+                                                  const actualLimit = isShowingAll ? typeProvisions.length : displayLimit;
+
                                                   return (
                                                     <div key={typeKey} className={`border rounded-lg overflow-hidden ${typeConfig.border}`}>
                                                       {/* Heritage Type Header */}
@@ -908,7 +925,7 @@ export function ProvisionsByTopic({
                                                       {/* Heritage Type Provisions */}
                                                       {isTypeExpanded && (
                                                         <div className="p-2 space-y-1.5 bg-white">
-                                                          {typeProvisions.slice(0, displayLimit).map((provision, idx) => {
+                                                          {typeProvisions.slice(0, actualLimit).map((provision, idx) => {
                                                             const layer = provision.layer || provision.v2_dcp_layer;
                                                             const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                                               layer === 'use_specific' ? 'border-l-sky-400' :
@@ -973,9 +990,15 @@ export function ProvisionsByTopic({
                                                             );
                                                           })}
                                                           {typeProvisions.length > displayLimit && (
-                                                            <p className="text-xs text-gray-500 text-center py-1">
-                                                              Showing {displayLimit} of {typeProvisions.length} {typeConfig.label.toLowerCase()}
-                                                            </p>
+                                                            <button
+                                                              onClick={() => toggleShowAllHeritageType(typeKey)}
+                                                              className={`w-full text-xs text-center py-2 rounded ${isShowingAll ? 'text-gray-500 hover:text-gray-700' : `${typeConfig.accent} font-medium hover:underline`}`}
+                                                            >
+                                                              {isShowingAll
+                                                                ? `↑ Show fewer (${displayLimit})`
+                                                                : `↓ Show all ${typeProvisions.length} ${typeConfig.label.toLowerCase()}`
+                                                              }
+                                                            </button>
                                                           )}
                                                         </div>
                                                       )}
