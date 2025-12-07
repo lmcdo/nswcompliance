@@ -256,17 +256,15 @@ export class PropertyDataService {
  } catch (error) {
  console.error('Failed to get NSW Planning Portal data:', error);
 
- // Pass through descriptive errors from nsw-planning-portal.ts
- if (error instanceof Error && error.message.includes('NSW Planning Portal')) {
-   throw error;
+ // Don't return fallback data - throw error with clear message
+ if (error instanceof Error && error.message.includes('abort')) {
+   throw new Error('NSW Planning Portal API request timed out after 5 seconds. Please try again.');
  }
 
- // For 'Property not found' (null return from portal), give clear message
  if (error instanceof Error && error.message.includes('Property not found')) {
    throw new Error('Property not found in NSW Planning Portal. Please check the address.');
  }
 
- // Default error
  throw new Error('NSW Planning Portal API not responding. Please try again or check your internet connection.');
  }
  }
