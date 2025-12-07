@@ -953,6 +953,14 @@ export function ProvisionsByTopic({
                                         const isHcaExpanded = expandedHcas.has(hcaKey);
 
                                         const isThisPropertyHca = isPropertyHca(hca);
+
+                                        // Count by heritage type for upfront breakdown
+                                        const typeBreakdown = {
+                                          control: hcaProvisions.filter(p => p.v2_heritage_type === 'control').length,
+                                          character: hcaProvisions.filter(p => p.v2_heritage_type === 'character').length,
+                                          descriptive: hcaProvisions.filter(p => p.v2_heritage_type === 'descriptive' || !p.v2_heritage_type).length,
+                                        };
+
                                         return (
                                           <div key={hcaKey} className={`border rounded-lg overflow-hidden ${isThisPropertyHca ? 'border-teal-400 ring-2 ring-teal-200' : 'border-amber-200'}`}>
                                             {/* HCA Header */}
@@ -970,9 +978,23 @@ export function ProvisionsByTopic({
                                                   {isThisPropertyHca ? '★ ' : ''}{formatHcaName(hca)}
                                                   {isThisPropertyHca ? ' (Your Property)' : ''}
                                                 </span>
-                                                <Badge variant="secondary" className={`text-[10px] ${isThisPropertyHca ? 'bg-teal-200 text-teal-800' : 'bg-amber-100'}`}>
-                                                  {hcaProvisions.length}
-                                                </Badge>
+                                              </div>
+                                              <div className="flex items-center gap-1.5 text-[10px]">
+                                                {typeBreakdown.control > 0 && (
+                                                  <span className="px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                                    {typeBreakdown.control} controls
+                                                  </span>
+                                                )}
+                                                {typeBreakdown.character > 0 && (
+                                                  <span className="px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                                    {typeBreakdown.character} character
+                                                  </span>
+                                                )}
+                                                {typeBreakdown.descriptive > 0 && (
+                                                  <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                                    {typeBreakdown.descriptive} background
+                                                  </span>
+                                                )}
                                               </div>
                                             </button>
 
@@ -1148,10 +1170,12 @@ export function ProvisionsByTopic({
                                                             <>
                                                               {/* Only this element section */}
                                                               {splitResults.onlyThis.length > 0 && (
-                                                                <div className="mb-3">
-                                                                  <p className="text-[10px] font-medium text-green-700 mb-1.5 px-1">
-                                                                    {ELEMENT_LABELS[selectedElement] || selectedElement} only ({splitResults.onlyThis.length})
-                                                                  </p>
+                                                                <div className="mb-4">
+                                                                  <div className="bg-green-100 border border-green-300 rounded-md px-3 py-1.5 mb-2">
+                                                                    <p className="text-sm font-semibold text-green-800">
+                                                                      {ELEMENT_LABELS[selectedElement] || selectedElement} only ({splitResults.onlyThis.length})
+                                                                    </p>
+                                                                  </div>
                                                                   <div className="space-y-1.5">
                                                                     {splitResults.onlyThis.slice(0, isShowingAll ? splitResults.onlyThis.length : 10).map((p, idx) => renderProvision(p, idx, false))}
                                                                   </div>
@@ -1169,9 +1193,11 @@ export function ProvisionsByTopic({
                                                               {/* Plus other elements section */}
                                                               {splitResults.plusOthers.length > 0 && (
                                                                 <div>
-                                                                  <p className="text-[10px] font-medium text-amber-700 mb-1.5 px-1">
-                                                                    {ELEMENT_LABELS[selectedElement] || selectedElement} + other elements ({splitResults.plusOthers.length})
-                                                                  </p>
+                                                                  <div className="bg-amber-100 border border-amber-300 rounded-md px-3 py-1.5 mb-2">
+                                                                    <p className="text-sm font-semibold text-amber-800">
+                                                                      {ELEMENT_LABELS[selectedElement] || selectedElement} + other elements ({splitResults.plusOthers.length})
+                                                                    </p>
+                                                                  </div>
                                                                   <div className="space-y-1.5">
                                                                     {splitResults.plusOthers.slice(0, isShowingAll ? splitResults.plusOthers.length : 5).map((p, idx) => renderProvision(p, idx, true))}
                                                                   </div>
