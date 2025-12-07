@@ -988,8 +988,8 @@ export function ProvisionsByTopic({
                                                           {heritageType === 'control' && elementCounts && elementCounts.size > 0 && (
                                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
                                                               <p className="text-[10px] text-green-700 mb-2 leading-relaxed">
-                                                                These controls sometimes deal with one element only (e.g. "Original front fences - timber picket, low brick..."),
-                                                                sometimes several at once (e.g. "...roof cladding, loss of chimneys, alterations to windows..."),
+                                                                DCP Heritage controls: some deal with one element only (e.g. "Original front fences - timber picket, low brick..."),
+                                                                some cover several at once (e.g. "...roof cladding, loss of chimneys, alterations to windows..."),
                                                                 and some are general requirements.
                                                               </p>
                                                               <div className="flex flex-wrap gap-1">
