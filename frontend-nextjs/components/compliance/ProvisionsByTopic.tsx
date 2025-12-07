@@ -988,7 +988,7 @@ export function ProvisionsByTopic({
                                                           {heritageType === 'control' && elementCounts && elementCounts.size > 0 && (
                                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
                                                               <p className="text-[10px] text-green-700 mb-1.5">
-                                                                <strong>Filter by element</strong> — 60% of controls overlap multiple elements
+                                                                <strong>Filter by element</strong> — many controls cover multiple elements
                                                               </p>
                                                               <div className="flex flex-wrap gap-1">
                                                                 <button
@@ -1017,7 +1017,7 @@ export function ProvisionsByTopic({
                                                               </div>
                                                               {selectedElement && (
                                                                 <p className="text-[10px] text-green-600 mt-1.5">
-                                                                  Showing {filteredProvisions.length} provisions tagged "{ELEMENT_LABELS[selectedElement] || selectedElement}" (overlaps with other elements)
+                                                                  {filteredProvisions.length} controls mention {ELEMENT_LABELS[selectedElement] || selectedElement}
                                                                 </p>
                                                               )}
                                                             </div>
