@@ -988,7 +988,7 @@ export function ProvisionsByTopic({
                                                           {heritageType === 'control' && elementCounts && elementCounts.size > 0 && (
                                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
                                                               <p className="text-[10px] text-green-700 mb-1.5">
-                                                                <strong>Filter by element</strong> — many controls cover multiple elements
+                                                                Some controls are about one element only, others cover several at once.
                                                               </p>
                                                               <div className="flex flex-wrap gap-1">
                                                                 <button
