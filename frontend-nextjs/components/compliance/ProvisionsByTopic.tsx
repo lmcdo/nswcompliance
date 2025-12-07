@@ -568,46 +568,49 @@ export function ProvisionsByTopic({
     return new Map([...counts.entries()].sort((a, b) => b[1] - a[1]));
   };
 
-  // Get element breakdown: single-element, multi-element, and general provisions
-  const getElementBreakdown = (provisions: Provision[]) => {
-    const singleElement = new Map<string, number>();
-    const multiElement = new Map<string, number>();
+  // Get element totals (single + multi combined) and general count
+  const getElementTotals = (provisions: Provision[]) => {
+    const totals = new Map<string, number>();
     let generalCount = 0;
 
     provisions.forEach(p => {
       if (!p.v2_heritage_element || p.v2_heritage_element.length === 0) {
         generalCount++;
-      } else if (p.v2_heritage_element.length === 1) {
-        const elem = p.v2_heritage_element[0];
-        singleElement.set(elem, (singleElement.get(elem) || 0) + 1);
       } else {
         p.v2_heritage_element.forEach(elem => {
-          multiElement.set(elem, (multiElement.get(elem) || 0) + 1);
+          totals.set(elem, (totals.get(elem) || 0) + 1);
         });
       }
     });
 
     // Sort by count descending
-    const sortedSingle = new Map([...singleElement.entries()].sort((a, b) => b[1] - a[1]));
-    const sortedMulti = new Map([...multiElement.entries()].sort((a, b) => b[1] - a[1]));
+    const sorted = new Map([...totals.entries()].sort((a, b) => b[1] - a[1]));
+    return { totals: sorted, generalCount };
+  };
 
-    return { singleElement: sortedSingle, multiElement: sortedMulti, generalCount };
+  // Split filtered provisions into "only this element" and "this + others"
+  const splitByExclusivity = (provisions: Provision[], element: string) => {
+    const onlyThis: Provision[] = [];
+    const plusOthers: Provision[] = [];
+
+    provisions.forEach(p => {
+      if (p.v2_heritage_element && p.v2_heritage_element.includes(element)) {
+        if (p.v2_heritage_element.length === 1) {
+          onlyThis.push(p);
+        } else {
+          plusOthers.push(p);
+        }
+      }
+    });
+
+    return { onlyThis, plusOthers };
   };
 
   // Filter provisions by selected element
-  // Format: "element" for multi-element, "single:element" for single-element only
   const filterByElement = (provisions: Provision[], element: string | undefined): Provision[] => {
     if (!element) return provisions;
     if (element === '_general') {
       return provisions.filter(p => !p.v2_heritage_element || p.v2_heritage_element.length === 0);
-    }
-    if (element.startsWith('single:')) {
-      const elem = element.replace('single:', '');
-      return provisions.filter(p =>
-        p.v2_heritage_element &&
-        p.v2_heritage_element.length === 1 &&
-        p.v2_heritage_element[0] === elem
-      );
     }
     return provisions.filter(p =>
       p.v2_heritage_element && p.v2_heritage_element.includes(element)
@@ -1018,21 +1021,89 @@ export function ProvisionsByTopic({
                                                       {isTypeExpanded && (() => {
                                                         const selectedElement = elementFilters[typeKey];
                                                         const filteredProvisions = filterByElement(typeProvisions, selectedElement);
-                                                        const elementBreakdown = heritageType === 'control' ? getElementBreakdown(typeProvisions) : null;
+                                                        const elementTotals = heritageType === 'control' ? getElementTotals(typeProvisions) : null;
+
+                                                        // Split results if element selected (not "All" or "General")
+                                                        const shouldSplit = selectedElement && selectedElement !== '_general' && elementTotals;
+                                                        const splitResults = shouldSplit ? splitByExclusivity(typeProvisions, selectedElement) : null;
+
+                                                        // Helper to render a provision card
+                                                        const renderProvision = (provision: Provision, idx: number, showElementTags: boolean = false) => {
+                                                          const layer = provision.layer || provision.v2_dcp_layer;
+                                                          const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                                            layer === 'use_specific' ? 'border-l-sky-400' :
+                                                            layer === 'condition' ? 'border-l-amber-400' :
+                                                            layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                                          const zebraStripe = idx % 2 === 1 ? `${typeConfig.bg}` : 'bg-white';
+
+                                                          return (
+                                                            <div
+                                                              key={provision.id}
+                                                              className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                                            >
+                                                              <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                  {provision.v2_marker && (
+                                                                    <span className="font-mono text-xs font-semibold text-slate-700">
+                                                                      {provision.v2_marker}
+                                                                    </span>
+                                                                  )}
+                                                                  <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                                                    {getLayerLabel(layer)}
+                                                                  </Badge>
+                                                                  {showElementTags && provision.v2_heritage_element && provision.v2_heritage_element.length > 1 && (
+                                                                    <span className="text-[9px] text-gray-500">
+                                                                      [{provision.v2_heritage_element.map(e => ELEMENT_LABELS[e] || e).join(', ')}]
+                                                                    </span>
+                                                                  )}
+                                                                </div>
+                                                                {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
+                                                                  const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                  return (
+                                                                    <Button
+                                                                      size="sm"
+                                                                      variant="ghost"
+                                                                      className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
+                                                                      onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setViewingPdfImage({
+                                                                          url: provision.pdf_page_image_url!,
+                                                                          page: pageNum
+                                                                        });
+                                                                      }}
+                                                                    >
+                                                                      <FileText className="h-3 w-3 mr-1" />
+                                                                      View DCP Page {pageNum}
+                                                                    </Button>
+                                                                  );
+                                                                })()}
+                                                              </div>
+                                                              <div className="px-3 py-2">
+                                                                <div
+                                                                  className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                                                  onClick={() => toggleProvision(provision.id)}
+                                                                >
+                                                                  <FormattedProvisionText text={provision.provision_text} compact />
+                                                                </div>
+                                                                {provision.provision_text.length > 200 && (
+                                                                  <button
+                                                                    className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
+                                                                    onClick={() => toggleProvision(provision.id)}
+                                                                  >
+                                                                    {expandedProvisions.has(provision.id) ? '↑ Less' : '↓ More'}
+                                                                  </button>
+                                                                )}
+                                                              </div>
+                                                            </div>
+                                                          );
+                                                        };
 
                                                         return (
                                                         <div className="p-2 space-y-1.5 bg-white">
                                                           {/* Element Filter - Only for Controls */}
-                                                          {heritageType === 'control' && elementBreakdown && (
+                                                          {heritageType === 'control' && elementTotals && (
                                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
-                                                              <p className="text-[10px] text-green-700 mb-2 leading-relaxed">
-                                                                DCP Heritage controls: some deal with one element only (e.g. "Original front fences..."),
-                                                                some cover several at once (e.g. "...roof cladding, chimneys, windows..."),
-                                                                and some are general requirements.
-                                                              </p>
-
-                                                              {/* All button */}
-                                                              <div className="flex flex-wrap gap-1 mb-2">
+                                                              <div className="flex flex-wrap gap-1">
                                                                 <button
                                                                   onClick={() => setElementFilter(typeKey, null)}
                                                                   className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
@@ -1043,59 +1114,20 @@ export function ProvisionsByTopic({
                                                                 >
                                                                   All ({typeProvisions.length})
                                                                 </button>
-                                                              </div>
-
-                                                              {/* One element only */}
-                                                              {elementBreakdown.singleElement.size > 0 && (
-                                                                <div className="mb-2">
-                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">One element only:</p>
-                                                                  <div className="flex flex-wrap gap-1">
-                                                                    {Array.from(elementBreakdown.singleElement).map(([elem, count]) => {
-                                                                      const filterKey = `single:${elem}`;
-                                                                      return (
-                                                                        <button
-                                                                          key={`single-${elem}`}
-                                                                          onClick={() => setElementFilter(typeKey, selectedElement === filterKey ? null : filterKey)}
-                                                                          className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
-                                                                            selectedElement === filterKey
-                                                                              ? 'bg-green-600 text-white'
-                                                                              : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
-                                                                          }`}
-                                                                        >
-                                                                          {ELEMENT_LABELS[elem] || elem} ({count})
-                                                                        </button>
-                                                                      );
-                                                                    })}
-                                                                  </div>
-                                                                </div>
-                                                              )}
-
-                                                              {/* Several elements */}
-                                                              {elementBreakdown.multiElement.size > 0 && (
-                                                                <div className="mb-2">
-                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">Several elements (overlapping):</p>
-                                                                  <div className="flex flex-wrap gap-1">
-                                                                    {Array.from(elementBreakdown.multiElement).slice(0, 10).map(([elem, count]) => (
-                                                                      <button
-                                                                        key={`multi-${elem}`}
-                                                                        onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
-                                                                        className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
-                                                                          selectedElement === elem
-                                                                            ? 'bg-amber-500 text-white'
-                                                                            : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-100'
-                                                                        }`}
-                                                                      >
-                                                                        {ELEMENT_LABELS[elem] || elem} ({count})
-                                                                      </button>
-                                                                    ))}
-                                                                  </div>
-                                                                </div>
-                                                              )}
-
-                                                              {/* General */}
-                                                              {elementBreakdown.generalCount > 0 && (
-                                                                <div>
-                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">General requirements:</p>
+                                                                {Array.from(elementTotals.totals).map(([elem, count]) => (
+                                                                  <button
+                                                                    key={elem}
+                                                                    onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
+                                                                    className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                      selectedElement === elem
+                                                                        ? 'bg-green-600 text-white'
+                                                                        : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                    }`}
+                                                                  >
+                                                                    {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                  </button>
+                                                                ))}
+                                                                {elementTotals.generalCount > 0 && (
                                                                   <button
                                                                     onClick={() => setElementFilter(typeKey, selectedElement === '_general' ? null : '_general')}
                                                                     className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
@@ -1104,93 +1136,74 @@ export function ProvisionsByTopic({
                                                                         : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
                                                                     }`}
                                                                   >
-                                                                    General ({elementBreakdown.generalCount})
+                                                                    General ({elementTotals.generalCount})
                                                                   </button>
-                                                                </div>
-                                                              )}
-
-                                                              {selectedElement && (
-                                                                <p className="text-[10px] text-green-600 mt-2">
-                                                                  {filteredProvisions.length} controls shown
-                                                                </p>
-                                                              )}
+                                                                )}
+                                                              </div>
                                                             </div>
                                                           )}
 
-                                                          {filteredProvisions.slice(0, isShowingAll ? filteredProvisions.length : displayLimit).map((provision, idx) => {
-                                                            const layer = provision.layer || provision.v2_dcp_layer;
-                                                            const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                                                              layer === 'use_specific' ? 'border-l-sky-400' :
-                                                              layer === 'condition' ? 'border-l-amber-400' :
-                                                              layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                                                            const zebraStripe = idx % 2 === 1 ? `${typeConfig.bg}` : 'bg-white';
-
-                                                            return (
-                                                              <div
-                                                                key={provision.id}
-                                                                className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
-                                                              >
-                                                                <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
-                                                                  <div className="flex items-center gap-2">
-                                                                    {provision.v2_marker && (
-                                                                      <span className="font-mono text-xs font-semibold text-slate-700">
-                                                                        {provision.v2_marker}
-                                                                      </span>
-                                                                    )}
-                                                                    <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
-                                                                      {getLayerLabel(layer)}
-                                                                    </Badge>
+                                                          {/* Results - Split into sections if element selected */}
+                                                          {splitResults ? (
+                                                            <>
+                                                              {/* Only this element section */}
+                                                              {splitResults.onlyThis.length > 0 && (
+                                                                <div className="mb-3">
+                                                                  <p className="text-[10px] font-medium text-green-700 mb-1.5 px-1">
+                                                                    {ELEMENT_LABELS[selectedElement] || selectedElement} only ({splitResults.onlyThis.length})
+                                                                  </p>
+                                                                  <div className="space-y-1.5">
+                                                                    {splitResults.onlyThis.slice(0, isShowingAll ? splitResults.onlyThis.length : 10).map((p, idx) => renderProvision(p, idx, false))}
                                                                   </div>
-                                                                  {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                    const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                                                    return (
-                                                                      <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
-                                                                        onClick={(e) => {
-                                                                          e.stopPropagation();
-                                                                          setViewingPdfImage({
-                                                                            url: provision.pdf_page_image_url!,
-                                                                            page: pageNum
-                                                                          });
-                                                                        }}
-                                                                      >
-                                                                        <FileText className="h-3 w-3 mr-1" />
-                                                                        View DCP Page {pageNum}
-                                                                      </Button>
-                                                                    );
-                                                                  })()}
-                                                                </div>
-                                                                <div className="px-3 py-2">
-                                                                  <div
-                                                                    className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
-                                                                    onClick={() => toggleProvision(provision.id)}
-                                                                  >
-                                                                    <FormattedProvisionText text={provision.provision_text} compact />
-                                                                  </div>
-                                                                  {provision.provision_text.length > 200 && (
+                                                                  {splitResults.onlyThis.length > 10 && !isShowingAll && (
                                                                     <button
-                                                                      className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
-                                                                      onClick={() => toggleProvision(provision.id)}
+                                                                      onClick={() => toggleShowAllHeritageType(typeKey)}
+                                                                      className="w-full text-xs text-center py-1 text-green-600 hover:underline"
                                                                     >
-                                                                      {expandedProvisions.has(provision.id) ? '↑ Less' : '↓ More'}
+                                                                      Show all {splitResults.onlyThis.length}
                                                                     </button>
                                                                   )}
                                                                 </div>
+                                                              )}
+
+                                                              {/* Plus other elements section */}
+                                                              {splitResults.plusOthers.length > 0 && (
+                                                                <div>
+                                                                  <p className="text-[10px] font-medium text-amber-700 mb-1.5 px-1">
+                                                                    {ELEMENT_LABELS[selectedElement] || selectedElement} + other elements ({splitResults.plusOthers.length})
+                                                                  </p>
+                                                                  <div className="space-y-1.5">
+                                                                    {splitResults.plusOthers.slice(0, isShowingAll ? splitResults.plusOthers.length : 5).map((p, idx) => renderProvision(p, idx, true))}
+                                                                  </div>
+                                                                  {splitResults.plusOthers.length > 5 && !isShowingAll && (
+                                                                    <button
+                                                                      onClick={() => toggleShowAllHeritageType(typeKey)}
+                                                                      className="w-full text-xs text-center py-1 text-amber-600 hover:underline"
+                                                                    >
+                                                                      Show all {splitResults.plusOthers.length}
+                                                                    </button>
+                                                                  )}
+                                                                </div>
+                                                              )}
+                                                            </>
+                                                          ) : (
+                                                            /* Regular flat list for All or General */
+                                                            <>
+                                                              <div className="space-y-1.5">
+                                                                {filteredProvisions.slice(0, isShowingAll ? filteredProvisions.length : displayLimit).map((p, idx) => renderProvision(p, idx, false))}
                                                               </div>
-                                                            );
-                                                          })}
-                                                          {filteredProvisions.length > displayLimit && (
-                                                            <button
-                                                              onClick={() => toggleShowAllHeritageType(typeKey)}
-                                                              className={`w-full text-xs text-center py-2 rounded ${isShowingAll ? 'text-gray-500 hover:text-gray-700' : `${typeConfig.accent} font-medium hover:underline`}`}
-                                                            >
-                                                              {isShowingAll
-                                                                ? `↑ Show fewer (${displayLimit})`
-                                                                : `↓ Show all ${filteredProvisions.length} ${typeConfig.label.toLowerCase()}`
-                                                              }
-                                                            </button>
+                                                              {filteredProvisions.length > displayLimit && (
+                                                                <button
+                                                                  onClick={() => toggleShowAllHeritageType(typeKey)}
+                                                                  className={`w-full text-xs text-center py-2 rounded ${isShowingAll ? 'text-gray-500 hover:text-gray-700' : `${typeConfig.accent} font-medium hover:underline`}`}
+                                                                >
+                                                                  {isShowingAll
+                                                                    ? `↑ Show fewer (${displayLimit})`
+                                                                    : `↓ Show all ${filteredProvisions.length} ${typeConfig.label.toLowerCase()}`
+                                                                  }
+                                                                </button>
+                                                              )}
+                                                            </>
                                                           )}
                                                         </div>
                                                         );
