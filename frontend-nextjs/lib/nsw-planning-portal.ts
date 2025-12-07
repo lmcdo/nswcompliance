@@ -101,19 +101,19 @@ export class NSWPlanningPortalService {
  /**
  * Search for property by address using NSW Planning Portal
  * Returns the first matching result (follows same pattern as map-viewer project)
+ * Throws descriptive errors for timeout/network issues vs property not found
  */
  static async searchProperty(address: string): Promise<{ propId: number; address: string; GURASID: number } | null> {
  console.log('=== DEBUG: searchProperty ===');
  console.log('Address:', address);
  console.log('Encoded:', encodeURIComponent(address));
  console.log('URL:', `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=1`);
- 
- try {
+
  const encodedAddress = encodeURIComponent(address);
- 
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 5000); // 30 second timeout
- 
+ const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout (increased from 5s)
+
+ try {
  const response = await fetch(
  `${this.BASE_URL}/address?a=${encodedAddress}&noOfRecords=1`,
  {
@@ -124,34 +124,51 @@ export class NSWPlanningPortalService {
  }
  }
  );
- 
+
  clearTimeout(timeoutId);
- 
+
  console.log('Search response status:', response.status);
  console.log('Search response ok:', response.ok);
- 
+
+ if (response.status === 429) {
+ throw new Error('NSW Planning Portal rate limit exceeded. Please wait a moment and try again.');
+ }
+
  if (!response.ok) {
  const errorText = await response.text();
  console.log('Search error response:', errorText);
- throw new Error(`Address search failed: ${response.status}`);
+ throw new Error(`NSW Planning Portal error: ${response.status}`);
  }
- 
+
  const results = await response.json() as any[];
  console.log('Search results:', results);
  console.log('Results length:', results?.length);
- 
+
  if (!results || results.length === 0) {
  console.log('No results found');
- return null;
+ return null; // Actual property not found - return null
  }
- 
+
  console.log('Returning result:', results[0]);
- // Return the first result - NSW Planning Portal API handles the matching
  return results[0];
- 
+
  } catch (error) {
+ clearTimeout(timeoutId);
+
+ // Handle timeout specifically
+ if (error instanceof Error && error.name === 'AbortError') {
+ console.error('Property search timed out after 10 seconds');
+ throw new Error('NSW Planning Portal request timed out. Please try again.');
+ }
+
+ // Re-throw known errors (rate limit, portal errors)
+ if (error instanceof Error && error.message.includes('NSW Planning Portal')) {
+ throw error;
+ }
+
+ // Network or other errors
  console.error('Property search error:', error);
- return null;
+ throw new Error('Unable to connect to NSW Planning Portal. Please check your connection and try again.');
  }
  }
 
@@ -712,6 +729,13 @@ export class NSWPlanningPortalService {
 
  } catch (error) {
  console.error('Property compliance data error:', error);
+
+ // Re-throw descriptive errors from searchProperty (timeout, rate limit, network)
+ if (error instanceof Error && error.message.includes('NSW Planning Portal')) {
+ throw error;
+ }
+
+ // For 'Property not found' or other errors, return null
  return null;
  }
  }
