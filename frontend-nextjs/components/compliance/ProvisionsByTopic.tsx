@@ -535,8 +535,9 @@ export function ProvisionsByTopic({
   // Track element filter per heritage type section (e.g., "hcaKey-control" -> "roof")
   const [elementFilters, setElementFilters] = useState<Record<string, string>>({});
 
-  // Element labels for display
+  // Element labels for display (Heritage + Building Form)
   const ELEMENT_LABELS: Record<string, string> = {
+    // Heritage elements
     roof: 'Roof',
     fence: 'Fencing',
     materials: 'Materials',
@@ -552,6 +553,22 @@ export function ProvisionsByTopic({
     setback: 'Setbacks',
     garden: 'Garden',
     interior: 'Interior',
+    // Building Form elements
+    height: 'Height',
+    bulk: 'Bulk',
+    articulation: 'Articulation',
+    landscaping: 'Landscaping',
+    parking: 'Parking',
+    access: 'Access',
+    solar: 'Solar',
+    privacy: 'Privacy',
+    fencing: 'Fencing',
+    site_coverage: 'Site Coverage',
+    floor_space: 'Floor Space',
+    basement: 'Basement',
+    subdivision: 'Subdivision',
+    density: 'Density',
+    orientation: 'Orientation',
   };
 
   // Get unique elements from provisions with counts
@@ -1245,8 +1262,16 @@ export function ProvisionsByTopic({
                                     </div>
                                   ) : (
                                     /* Regular provisions list for non-heritage or small heritage parts */
-                                    <>
-                                      {partProvisions.slice(0, 20).map((provision, idx) => {
+                                    (() => {
+                                      const partFilterKey = `part-${partKey}`;
+                                      const selectedPartElement = elementFilters[partFilterKey];
+                                      const partElementTotals = topic.toLowerCase() === 'building form' ? getElementTotals(partProvisions) : null;
+                                      const partFilteredProvisions = filterByElement(partProvisions, selectedPartElement);
+                                      const partShouldSplit = selectedPartElement && selectedPartElement !== '_general' && partElementTotals;
+                                      const partSplitResults = partShouldSplit ? splitByExclusivity(partProvisions, selectedPartElement) : null;
+
+                                      // Helper to render a provision in this context
+                                      const renderPartProvision = (provision: Provision, idx: number, showTags: boolean = false) => {
                                         const layer = provision.layer || provision.v2_dcp_layer;
                                         const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                           layer === 'use_specific' ? 'border-l-sky-400' :
@@ -1260,7 +1285,7 @@ export function ProvisionsByTopic({
                                             className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
                                           >
                                             <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
-                                              <div className="flex items-center gap-2">
+                                              <div className="flex items-center gap-2 flex-wrap">
                                                 {provision.v2_marker && (
                                                   <span className="font-mono text-sm font-semibold text-slate-700">
                                                     {provision.v2_marker}
@@ -1269,6 +1294,11 @@ export function ProvisionsByTopic({
                                                 <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
                                                   {getLayerLabel(layer)}
                                                 </Badge>
+                                                {showTags && provision.v2_heritage_element && provision.v2_heritage_element.length > 1 && (
+                                                  <span className="text-[9px] text-gray-500">
+                                                    [{provision.v2_heritage_element.map(e => ELEMENT_LABELS[e] || e).join(', ')}]
+                                                  </span>
+                                                )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                                 const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
@@ -1309,13 +1339,95 @@ export function ProvisionsByTopic({
                                             </div>
                                           </div>
                                         );
-                                      })}
-                                      {partProvisions.length > 20 && (
-                                        <p className="text-sm text-gray-500 text-center py-2">
-                                          Showing 20 of {partProvisions.length} provisions
-                                        </p>
-                                      )}
-                                    </>
+                                      };
+
+                                      return (
+                                      <>
+                                        {/* Element Filter for Building Form */}
+                                        {topic.toLowerCase() === 'building form' && partElementTotals && partElementTotals.totals.size > 0 && (
+                                          <div className="mb-3 p-2 bg-blue-50 rounded-lg border border-blue-200">
+                                            <div className="flex flex-wrap gap-1">
+                                              <button
+                                                onClick={() => setElementFilter(partFilterKey, null)}
+                                                className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                  !selectedPartElement
+                                                    ? 'bg-blue-600 text-white'
+                                                    : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                                                }`}
+                                              >
+                                                All ({partProvisions.length})
+                                              </button>
+                                              {Array.from(partElementTotals.totals).map(([elem, count]) => (
+                                                <button
+                                                  key={elem}
+                                                  onClick={() => setElementFilter(partFilterKey, selectedPartElement === elem ? null : elem)}
+                                                  className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                    selectedPartElement === elem
+                                                      ? 'bg-blue-600 text-white'
+                                                      : 'bg-white text-blue-700 border border-blue-300 hover:bg-blue-100'
+                                                  }`}
+                                                >
+                                                  {ELEMENT_LABELS[elem] || elem} ({count})
+                                                </button>
+                                              ))}
+                                              {partElementTotals.generalCount > 0 && (
+                                                <button
+                                                  onClick={() => setElementFilter(partFilterKey, selectedPartElement === '_general' ? null : '_general')}
+                                                  className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                    selectedPartElement === '_general'
+                                                      ? 'bg-gray-500 text-white'
+                                                      : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
+                                                  }`}
+                                                >
+                                                  General ({partElementTotals.generalCount})
+                                                </button>
+                                              )}
+                                            </div>
+                                          </div>
+                                        )}
+
+                                        {/* Split results if element selected */}
+                                        {partSplitResults ? (
+                                          <>
+                                            {partSplitResults.onlyThis.length > 0 && (
+                                              <div className="mb-4">
+                                                <div className="bg-blue-100 border border-blue-300 rounded-md px-3 py-1.5 mb-2">
+                                                  <p className="text-sm font-semibold text-blue-800">
+                                                    {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} only ({partSplitResults.onlyThis.length})
+                                                  </p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  {partSplitResults.onlyThis.slice(0, 10).map((p, idx) => renderPartProvision(p, idx, false))}
+                                                </div>
+                                              </div>
+                                            )}
+                                            {partSplitResults.plusOthers.length > 0 && (
+                                              <div>
+                                                <div className="bg-amber-100 border border-amber-300 rounded-md px-3 py-1.5 mb-2">
+                                                  <p className="text-sm font-semibold text-amber-800">
+                                                    {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} + other elements ({partSplitResults.plusOthers.length})
+                                                  </p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                  {partSplitResults.plusOthers.slice(0, 5).map((p, idx) => renderPartProvision(p, idx, true))}
+                                                </div>
+                                              </div>
+                                            )}
+                                          </>
+                                        ) : (
+                                          /* Flat list */
+                                          <>
+                                            {partFilteredProvisions.slice(0, 20).map((provision, idx) => renderPartProvision(provision, idx, false))}
+                                            {partFilteredProvisions.length > 20 && (
+                                              <p className="text-sm text-gray-500 text-center py-2">
+                                                Showing 20 of {partFilteredProvisions.length} provisions
+                                              </p>
+                                            )}
+                                          </>
+                                        )}
+                                      </>
+                                      );
+                                    })()
                                   )}
                                 </div>
                               )}
