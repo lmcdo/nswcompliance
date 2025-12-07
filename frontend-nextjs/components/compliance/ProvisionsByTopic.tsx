@@ -482,6 +482,67 @@ export function ProvisionsByTopic({
     return hca.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') + ' HCA';
   };
 
+  // Heritage type labels and colors for layered display
+  const HERITAGE_TYPE_CONFIG: Record<string, { label: string; bg: string; border: string; accent: string }> = {
+    control: {
+      label: 'Controls',
+      bg: 'bg-green-50',
+      border: 'border-green-200',
+      accent: 'text-green-700'
+    },
+    character: {
+      label: 'Character Statements',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      accent: 'text-blue-700'
+    },
+    descriptive: {
+      label: 'Background Info',
+      bg: 'bg-gray-50',
+      border: 'border-gray-200',
+      accent: 'text-gray-600'
+    },
+  };
+
+  // Group heritage provisions by type within an HCA
+  const groupByHeritageType = (provisions: Provision[]): Map<string, Provision[]> => {
+    const grouped = new Map<string, Provision[]>();
+    // Ensure order: control first, then character, then descriptive
+    grouped.set('control', []);
+    grouped.set('character', []);
+    grouped.set('descriptive', []);
+
+    provisions.forEach(p => {
+      const type = p.v2_heritage_type || 'descriptive';
+      if (!grouped.has(type)) {
+        grouped.set(type, []);
+      }
+      grouped.get(type)!.push(p);
+    });
+
+    // Remove empty groups
+    for (const [type, provs] of grouped.entries()) {
+      if (provs.length === 0) grouped.delete(type);
+    }
+
+    return grouped;
+  };
+
+  // Track expanded heritage types within HCAs
+  const [expandedHeritageTypes, setExpandedHeritageTypes] = useState<Set<string>>(new Set());
+
+  const toggleHeritageType = (typeKey: string) => {
+    setExpandedHeritageTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(typeKey)) {
+        next.delete(typeKey);
+      } else {
+        next.add(typeKey);
+      }
+      return next;
+    });
+  };
+
   // Format DCP part with descriptive label
   const formatDcpPart = (part: string): string => {
     // Handle empty/null part
@@ -806,78 +867,121 @@ export function ProvisionsByTopic({
                                               </div>
                                             </button>
 
-                                            {/* HCA Provisions */}
+                                            {/* HCA Provisions - Grouped by Heritage Type */}
                                             {isHcaExpanded && (
                                               <div className="p-2 space-y-2 bg-white">
-                                                {hcaProvisions.slice(0, 15).map((provision, idx) => {
-                                                  const layer = provision.layer || provision.v2_dcp_layer;
-                                                  const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                                                    layer === 'use_specific' ? 'border-l-sky-400' :
-                                                    layer === 'condition' ? 'border-l-amber-400' :
-                                                    layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                                                  const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
+                                                {/* Group by heritage type: controls first, then character, then descriptive */}
+                                                {Array.from(groupByHeritageType(hcaProvisions)).map(([heritageType, typeProvisions]) => {
+                                                  const typeConfig = HERITAGE_TYPE_CONFIG[heritageType] || HERITAGE_TYPE_CONFIG.descriptive;
+                                                  const typeKey = `${hcaKey}-${heritageType}`;
+                                                  // Controls auto-expand, others collapsed by default
+                                                  const isTypeExpanded = heritageType === 'control' || expandedHeritageTypes.has(typeKey);
+                                                  const displayLimit = heritageType === 'control' ? 15 : 5;
 
                                                   return (
-                                                    <div
-                                                      key={provision.id}
-                                                      className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
-                                                    >
-                                                      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
+                                                    <div key={typeKey} className={`border rounded-lg overflow-hidden ${typeConfig.border}`}>
+                                                      {/* Heritage Type Header */}
+                                                      <button
+                                                        onClick={() => heritageType !== 'control' && toggleHeritageType(typeKey)}
+                                                        className={`w-full flex items-center justify-between px-3 py-1.5 ${typeConfig.bg} ${heritageType !== 'control' ? 'cursor-pointer hover:opacity-80' : ''}`}
+                                                      >
                                                         <div className="flex items-center gap-2">
-                                                          {provision.v2_marker && (
-                                                            <span className="font-mono text-xs font-semibold text-slate-700">
-                                                              {provision.v2_marker}
-                                                            </span>
+                                                          {heritageType !== 'control' && (
+                                                            isTypeExpanded ? (
+                                                              <ChevronDown className={`h-3 w-3 ${typeConfig.accent}`} />
+                                                            ) : (
+                                                              <ChevronRight className={`h-3 w-3 ${typeConfig.accent}`} />
+                                                            )
                                                           )}
-                                                          <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
-                                                            {getLayerLabel(layer)}
+                                                          <span className={`font-medium text-xs ${typeConfig.accent}`}>
+                                                            {heritageType === 'control' ? '✓ ' : ''}{typeConfig.label}
+                                                          </span>
+                                                          <Badge variant="secondary" className="text-[10px]">
+                                                            {typeProvisions.length}
                                                           </Badge>
                                                         </div>
-                                                        {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                          const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                                          return (
-                                                            <Button
-                                                              size="sm"
-                                                              variant="ghost"
-                                                              className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setViewingPdfImage({
-                                                                  url: provision.pdf_page_image_url!,
-                                                                  page: pageNum
-                                                                });
-                                                              }}
-                                                            >
-                                                              <FileText className="h-3 w-3 mr-1" />
-                                                              View DCP Page {pageNum}
-                                                            </Button>
-                                                          );
-                                                        })()}
-                                                      </div>
-                                                      <div className="px-3 py-2">
-                                                        <div
-                                                          className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
-                                                          onClick={() => toggleProvision(provision.id)}
-                                                        >
-                                                          <FormattedProvisionText text={provision.provision_text} compact />
-                                                        </div>
-                                                        {provision.provision_text.length > 200 && (
-                                                          <button
-                                                            className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
-                                                            onClick={() => toggleProvision(provision.id)}
-                                                          >
-                                                            {expandedProvisions.has(provision.id) ? '↑ Less' : '↓ More'}
-                                                          </button>
+                                                        {heritageType === 'control' && (
+                                                          <span className="text-[10px] text-green-600">Must comply</span>
                                                         )}
-                                                      </div>
+                                                      </button>
+
+                                                      {/* Heritage Type Provisions */}
+                                                      {isTypeExpanded && (
+                                                        <div className="p-2 space-y-1.5 bg-white">
+                                                          {typeProvisions.slice(0, displayLimit).map((provision, idx) => {
+                                                            const layer = provision.layer || provision.v2_dcp_layer;
+                                                            const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                                              layer === 'use_specific' ? 'border-l-sky-400' :
+                                                              layer === 'condition' ? 'border-l-amber-400' :
+                                                              layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                                            const zebraStripe = idx % 2 === 1 ? `${typeConfig.bg}` : 'bg-white';
+
+                                                            return (
+                                                              <div
+                                                                key={provision.id}
+                                                                className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                                              >
+                                                                <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
+                                                                  <div className="flex items-center gap-2">
+                                                                    {provision.v2_marker && (
+                                                                      <span className="font-mono text-xs font-semibold text-slate-700">
+                                                                        {provision.v2_marker}
+                                                                      </span>
+                                                                    )}
+                                                                    <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
+                                                                      {getLayerLabel(layer)}
+                                                                    </Badge>
+                                                                  </div>
+                                                                  {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
+                                                                    const pageNum = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                    return (
+                                                                      <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
+                                                                        onClick={(e) => {
+                                                                          e.stopPropagation();
+                                                                          setViewingPdfImage({
+                                                                            url: provision.pdf_page_image_url!,
+                                                                            page: pageNum
+                                                                          });
+                                                                        }}
+                                                                      >
+                                                                        <FileText className="h-3 w-3 mr-1" />
+                                                                        View DCP Page {pageNum}
+                                                                      </Button>
+                                                                    );
+                                                                  })()}
+                                                                </div>
+                                                                <div className="px-3 py-2">
+                                                                  <div
+                                                                    className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
+                                                                    onClick={() => toggleProvision(provision.id)}
+                                                                  >
+                                                                    <FormattedProvisionText text={provision.provision_text} compact />
+                                                                  </div>
+                                                                  {provision.provision_text.length > 200 && (
+                                                                    <button
+                                                                      className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
+                                                                      onClick={() => toggleProvision(provision.id)}
+                                                                    >
+                                                                      {expandedProvisions.has(provision.id) ? '↑ Less' : '↓ More'}
+                                                                    </button>
+                                                                  )}
+                                                                </div>
+                                                              </div>
+                                                            );
+                                                          })}
+                                                          {typeProvisions.length > displayLimit && (
+                                                            <p className="text-xs text-gray-500 text-center py-1">
+                                                              Showing {displayLimit} of {typeProvisions.length} {typeConfig.label.toLowerCase()}
+                                                            </p>
+                                                          )}
+                                                        </div>
+                                                      )}
                                                     </div>
                                                   );
                                                 })}
-                                                {hcaProvisions.length > 15 && (
-                                                  <p className="text-xs text-gray-500 text-center py-1">
-                                                    Showing 15 of {hcaProvisions.length} in {formatHcaName(hca)}
-                                                  </p>
-                                                )}
                                               </div>
                                             )}
                                           </div>
