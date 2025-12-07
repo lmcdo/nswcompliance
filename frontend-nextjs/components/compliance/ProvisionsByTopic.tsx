@@ -224,6 +224,39 @@ function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
 }
 
 /**
+ * Get page grouping info for provisions - which provisions share a PDF page
+ */
+function getPageGroupInfo(provisions: Provision[]): Map<number, { isFirst: boolean; isLast: boolean; pageUrl: string }> {
+  const result = new Map<number, { isFirst: boolean; isLast: boolean; pageUrl: string }>();
+  const pageGroups = new Map<string, number[]>();
+
+  // Group provision IDs by page URL
+  for (const prov of provisions) {
+    if (prov.pdf_page_image_url) {
+      if (!pageGroups.has(prov.pdf_page_image_url)) {
+        pageGroups.set(prov.pdf_page_image_url, []);
+      }
+      pageGroups.get(prov.pdf_page_image_url)!.push(prov.id);
+    }
+  }
+
+  // Mark first/last in each group
+  for (const [pageUrl, ids] of pageGroups.entries()) {
+    if (ids.length > 1) {
+      ids.forEach((id, idx) => {
+        result.set(id, {
+          isFirst: idx === 0,
+          isLast: idx === ids.length - 1,
+          pageUrl
+        });
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
  * Convert heritageItemNumber (e.g., "HCA 26", "C26") to database format "hca_26"
  */
 function heritageItemNumberToSlug(itemNumber: string): string {
@@ -1069,6 +1102,9 @@ export function ProvisionsByTopic({
                                                         const shouldSplit = selectedElement && selectedElement !== '_general' && elementTotals;
                                                         const splitResults = shouldSplit ? splitByExclusivity(typeProvisions, selectedElement) : null;
 
+                                                        // Get page grouping info for visual grouping
+                                                        const pageGroupInfo = getPageGroupInfo(typeProvisions);
+
                                                         // Helper to render a provision card
                                                         const renderProvision = (provision: Provision, idx: number, showElementTags: boolean = false) => {
                                                           const layer = provision.layer || provision.v2_dcp_layer;
@@ -1078,10 +1114,22 @@ export function ProvisionsByTopic({
                                                             layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
                                                           const zebraStripe = idx % 2 === 1 ? `${typeConfig.bg}` : 'bg-white';
 
+                                                          // Check if this provision is part of a multi-provision page group
+                                                          const groupInfo = pageGroupInfo.get(provision.id);
+                                                          const isInGroup = !!groupInfo;
+                                                          const isGroupStart = groupInfo?.isFirst;
+                                                          const isGroupEnd = groupInfo?.isLast;
+                                                          // Rounded corners: normal if not in group, top-only for first, bottom-only for last, none for middle
+                                                          const groupRounding = !isInGroup ? 'rounded-lg' :
+                                                            isGroupStart ? 'rounded-t-lg rounded-b-none' :
+                                                            isGroupEnd ? 'rounded-b-lg rounded-t-none' : 'rounded-none';
+                                                          // Remove bottom margin for grouped items except last
+                                                          const groupMargin = isInGroup && !isGroupEnd ? 'mb-0' : '';
+
                                                           return (
                                                             <div
                                                               key={provision.id}
-                                                              className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
+                                                              className={`${zebraStripe} border border-gray-200 ${groupRounding} overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4 ${groupMargin} ${isInGroup && !isGroupEnd ? 'border-b-0' : ''}`}
                                                             >
                                                               <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
                                                                 <div className="flex items-center gap-2 flex-wrap">
