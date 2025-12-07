@@ -34,7 +34,7 @@ interface Provision {
   pdf_page: number;
   pdf_page_image_url?: string;
   layer?: string;
-  v2_heritage_type?: 'control' | 'character' | 'descriptive';
+  v2_heritage_type?: 'control' | 'guidance' | 'character' | 'descriptive';
   v2_heritage_element?: string[];
   v2_heritage_hca?: string;
 }
@@ -490,6 +490,12 @@ export function ProvisionsByTopic({
       border: 'border-green-200',
       accent: 'text-green-700'
     },
+    guidance: {
+      label: 'Guidance',
+      bg: 'bg-blue-50',
+      border: 'border-blue-200',
+      accent: 'text-blue-700'
+    },
     character: {
       label: 'Character Statements',
       bg: 'bg-blue-50',
@@ -507,8 +513,9 @@ export function ProvisionsByTopic({
   // Group heritage provisions by type within an HCA
   const groupByHeritageType = (provisions: Provision[]): Map<string, Provision[]> => {
     const grouped = new Map<string, Provision[]>();
-    // Ensure order: control first, then character, then descriptive
+    // Ensure order: control first, then guidance/character, then descriptive
     grouped.set('control', []);
+    grouped.set('guidance', []);
     grouped.set('character', []);
     grouped.set('descriptive', []);
 
