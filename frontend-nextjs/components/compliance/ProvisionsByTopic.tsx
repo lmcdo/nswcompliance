@@ -207,19 +207,20 @@ function hcaNameToSlug(hcaName: string): string {
 
 /**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Shows button for ALL provisions that have a PDF URL (not just the last one per page).
+ * Only the LAST provision on each page should show the button (groups provisions on same page).
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
-  const ids = new Set<number>();
+  const pageToLastProvisionId = new Map<string, number>();
 
-  // Include all provisions that have a PDF URL
+  // Build map of page URL -> last provision ID on that page
   for (const prov of provisions) {
     if (prov.pdf_page_image_url) {
-      ids.add(prov.id);
+      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
     }
   }
 
-  return ids;
+  // Return set of IDs that should show the button
+  return new Set(pageToLastProvisionId.values());
 }
 
 /**
@@ -1505,21 +1506,36 @@ export function ProvisionsByTopic({
                         })}
                       </div>
                     ) : (
-                      // Small topic: Flat list (original behavior)
-                      <>
-                        {provisions.slice(0, 20).map((provision, idx) => {
-                          const layer = provision.layer || provision.v2_dcp_layer;
-                          const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                            layer === 'use_specific' ? 'border-l-sky-400' :
-                            layer === 'condition' ? 'border-l-amber-400' :
-                            layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                          const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
+                      // Small topic: Flat list with visual grouping for same-page provisions
+                      (() => {
+                        // Get page grouping info for visual grouping
+                        const pageGroupInfo = getPageGroupInfo(provisions.slice(0, 20));
 
-                          return (
-                            <div
-                              key={provision.id}
-                              className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4`}
-                            >
+                        return (
+                          <>
+                            {provisions.slice(0, 20).map((provision, idx) => {
+                              const layer = provision.layer || provision.v2_dcp_layer;
+                              const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
+                                layer === 'use_specific' ? 'border-l-sky-400' :
+                                layer === 'condition' ? 'border-l-amber-400' :
+                                layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                              const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
+
+                              // Check if this provision is part of a multi-provision page group
+                              const groupInfo = pageGroupInfo.get(provision.id);
+                              const isInGroup = !!groupInfo;
+                              const isGroupStart = groupInfo?.isFirst;
+                              const isGroupEnd = groupInfo?.isLast;
+                              // Rounded corners: normal if not in group, top-only for first, bottom-only for last, none for middle
+                              const groupRounding = !isInGroup ? 'rounded-lg' :
+                                isGroupStart ? 'rounded-t-lg rounded-b-none' :
+                                isGroupEnd ? 'rounded-b-lg rounded-t-none' : 'rounded-none';
+
+                              return (
+                                <div
+                                  key={provision.id}
+                                  className={`${zebraStripe} border border-gray-200 ${groupRounding} overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4 ${isInGroup && !isGroupEnd ? 'border-b-0 mb-0' : ''}`}
+                                >
                               <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
                                 <div className="flex items-center gap-2">
                                   {provision.v2_marker && (
@@ -1576,12 +1592,14 @@ export function ProvisionsByTopic({
                             </div>
                           );
                         })}
-                        {provisions.length > 20 && (
-                          <p className="text-sm text-gray-500 text-center py-2">
-                            Showing 20 of {provisions.length} provisions
-                          </p>
-                        )}
-                      </>
+                            {provisions.length > 20 && (
+                              <p className="text-sm text-gray-500 text-center py-2">
+                                Showing 20 of {provisions.length} provisions
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()
                     )}
                 </div>
               </CardContent>
