@@ -568,9 +568,38 @@ export function ProvisionsByTopic({
     return new Map([...counts.entries()].sort((a, b) => b[1] - a[1]));
   };
 
+  // Get element breakdown: single-element, multi-element, and general provisions
+  const getElementBreakdown = (provisions: Provision[]) => {
+    const singleElement = new Map<string, number>();
+    const multiElement = new Map<string, number>();
+    let generalCount = 0;
+
+    provisions.forEach(p => {
+      if (!p.v2_heritage_element || p.v2_heritage_element.length === 0) {
+        generalCount++;
+      } else if (p.v2_heritage_element.length === 1) {
+        const elem = p.v2_heritage_element[0];
+        singleElement.set(elem, (singleElement.get(elem) || 0) + 1);
+      } else {
+        p.v2_heritage_element.forEach(elem => {
+          multiElement.set(elem, (multiElement.get(elem) || 0) + 1);
+        });
+      }
+    });
+
+    // Sort by count descending
+    const sortedSingle = new Map([...singleElement.entries()].sort((a, b) => b[1] - a[1]));
+    const sortedMulti = new Map([...multiElement.entries()].sort((a, b) => b[1] - a[1]));
+
+    return { singleElement: sortedSingle, multiElement: sortedMulti, generalCount };
+  };
+
   // Filter provisions by selected element
   const filterByElement = (provisions: Provision[], element: string | undefined): Provision[] => {
     if (!element) return provisions;
+    if (element === '_general') {
+      return provisions.filter(p => !p.v2_heritage_element || p.v2_heritage_element.length === 0);
+    }
     return provisions.filter(p =>
       p.v2_heritage_element && p.v2_heritage_element.includes(element)
     );
@@ -980,19 +1009,21 @@ export function ProvisionsByTopic({
                                                       {isTypeExpanded && (() => {
                                                         const selectedElement = elementFilters[typeKey];
                                                         const filteredProvisions = filterByElement(typeProvisions, selectedElement);
-                                                        const elementCounts = heritageType === 'control' ? getElementCounts(typeProvisions) : null;
+                                                        const elementBreakdown = heritageType === 'control' ? getElementBreakdown(typeProvisions) : null;
 
                                                         return (
                                                         <div className="p-2 space-y-1.5 bg-white">
                                                           {/* Element Filter - Only for Controls */}
-                                                          {heritageType === 'control' && elementCounts && elementCounts.size > 0 && (
+                                                          {heritageType === 'control' && elementBreakdown && (
                                                             <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
                                                               <p className="text-[10px] text-green-700 mb-2 leading-relaxed">
-                                                                DCP Heritage controls: some deal with one element only (e.g. "Original front fences - timber picket, low brick..."),
-                                                                some cover several at once (e.g. "...roof cladding, loss of chimneys, alterations to windows..."),
+                                                                DCP Heritage controls: some deal with one element only (e.g. "Original front fences..."),
+                                                                some cover several at once (e.g. "...roof cladding, chimneys, windows..."),
                                                                 and some are general requirements.
                                                               </p>
-                                                              <div className="flex flex-wrap gap-1">
+
+                                                              {/* All button */}
+                                                              <div className="flex flex-wrap gap-1 mb-2">
                                                                 <button
                                                                   onClick={() => setElementFilter(typeKey, null)}
                                                                   className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
@@ -1003,23 +1034,72 @@ export function ProvisionsByTopic({
                                                                 >
                                                                   All ({typeProvisions.length})
                                                                 </button>
-                                                                {Array.from(elementCounts).slice(0, 10).map(([elem, count]) => (
+                                                              </div>
+
+                                                              {/* One element only */}
+                                                              {elementBreakdown.singleElement.size > 0 && (
+                                                                <div className="mb-2">
+                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">One element only:</p>
+                                                                  <div className="flex flex-wrap gap-1">
+                                                                    {Array.from(elementBreakdown.singleElement).map(([elem, count]) => (
+                                                                      <button
+                                                                        key={`single-${elem}`}
+                                                                        onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
+                                                                        className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                          selectedElement === elem
+                                                                            ? 'bg-green-600 text-white'
+                                                                            : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                        }`}
+                                                                      >
+                                                                        {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                      </button>
+                                                                    ))}
+                                                                  </div>
+                                                                </div>
+                                                              )}
+
+                                                              {/* Several elements */}
+                                                              {elementBreakdown.multiElement.size > 0 && (
+                                                                <div className="mb-2">
+                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">Several elements (overlapping):</p>
+                                                                  <div className="flex flex-wrap gap-1">
+                                                                    {Array.from(elementBreakdown.multiElement).slice(0, 10).map(([elem, count]) => (
+                                                                      <button
+                                                                        key={`multi-${elem}`}
+                                                                        onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
+                                                                        className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
+                                                                          selectedElement === elem
+                                                                            ? 'bg-amber-500 text-white'
+                                                                            : 'bg-white text-amber-700 border border-amber-300 hover:bg-amber-100'
+                                                                        }`}
+                                                                      >
+                                                                        {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                      </button>
+                                                                    ))}
+                                                                  </div>
+                                                                </div>
+                                                              )}
+
+                                                              {/* General */}
+                                                              {elementBreakdown.generalCount > 0 && (
+                                                                <div>
+                                                                  <p className="text-[9px] text-green-800 font-medium mb-1">General requirements:</p>
                                                                   <button
-                                                                    key={elem}
-                                                                    onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
+                                                                    onClick={() => setElementFilter(typeKey, selectedElement === '_general' ? null : '_general')}
                                                                     className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
-                                                                      selectedElement === elem
-                                                                        ? 'bg-green-600 text-white'
-                                                                        : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                      selectedElement === '_general'
+                                                                        ? 'bg-gray-500 text-white'
+                                                                        : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-100'
                                                                     }`}
                                                                   >
-                                                                    {ELEMENT_LABELS[elem] || elem} ({count})
+                                                                    General ({elementBreakdown.generalCount})
                                                                   </button>
-                                                                ))}
-                                                              </div>
+                                                                </div>
+                                                              )}
+
                                                               {selectedElement && (
-                                                                <p className="text-[10px] text-green-600 mt-1.5">
-                                                                  {filteredProvisions.length} controls mention {ELEMENT_LABELS[selectedElement] || selectedElement}
+                                                                <p className="text-[10px] text-green-600 mt-2">
+                                                                  {filteredProvisions.length} controls shown
                                                                 </p>
                                                               )}
                                                             </div>
