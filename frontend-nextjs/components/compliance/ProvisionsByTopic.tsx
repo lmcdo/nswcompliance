@@ -207,20 +207,19 @@ function hcaNameToSlug(hcaName: string): string {
 
 /**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Only the LAST provision on each page should show the button (groups provisions on same page).
+ * Shows button for ALL provisions that have a PDF URL (not just the last one per page).
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
-  const pageToLastProvisionId = new Map<string, number>();
+  const ids = new Set<number>();
 
-  // Build map of page URL -> last provision ID on that page
+  // Include all provisions that have a PDF URL
   for (const prov of provisions) {
     if (prov.pdf_page_image_url) {
-      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
+      ids.add(prov.id);
     }
   }
 
-  // Return set of IDs that should show the button
-  return new Set(pageToLastProvisionId.values());
+  return ids;
 }
 
 /**
@@ -324,7 +323,8 @@ export function ProvisionsByTopic({
     if (council) params.set('former_council', council);
     // Pass HCA code for server-side heritage filtering (only property's HCA + general controls)
     // API will resolve C-code (e.g., "C67") to db_slug via heritage_conservation_areas table
-    if (heritageItemNumber) {
+    // Only pass heritageItemNumber if it looks like an HCA code (C26, HCA 26, etc), not heritage items (I262)
+    if (heritageItemNumber && /^[CA]\d+$/i.test(heritageItemNumber)) {
       params.set('hca', heritageItemNumber);
     } else if (hcaName) {
       // Fallback to name-based slug for properties without item number
@@ -960,6 +960,21 @@ export function ProvisionsByTopic({
                       </span>
                     ))}
                   </span>
+                  {/* Control/Guidance breakdown for Building Form */}
+                  {topic.toLowerCase() === 'building_form' && (() => {
+                    const controlCount = provisions.filter(p => p.v2_heritage_type === 'control').length;
+                    const guidanceCount = provisions.filter(p => p.v2_heritage_type === 'guidance').length;
+                    if (controlCount > 0 || guidanceCount > 0) {
+                      return (
+                        <span className="text-xs text-gray-600 ml-2 hidden md:inline">
+                          {controlCount > 0 && <span className="text-green-700 font-medium">{controlCount} controls</span>}
+                          {controlCount > 0 && guidanceCount > 0 && <span className="mx-1">·</span>}
+                          {guidanceCount > 0 && <span className="text-blue-700">{guidanceCount} guidance</span>}
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             </CardHeader>
@@ -968,8 +983,9 @@ export function ProvisionsByTopic({
               <CardContent className="pt-0" id={`topic-content-${topic}`}>
                 {/* HeritageProvisions removed - v2_heritage_type data not populated, using v2_dcp_part grouping instead */}
                 <div className="space-y-2">
-                    {provisions.length > DCP_PART_GROUPING_THRESHOLD ? (
-                      // Large topic: Group by DCP Part with sub-accordions
+                    {/* Show grouped view for large topics OR for Building Form (which has control/guidance types) */}
+                    {(provisions.length > DCP_PART_GROUPING_THRESHOLD || topic.toLowerCase() === 'building_form') ? (
+                      // Large topic or Building Form: Group by DCP Part with sub-accordions
                       <div className="space-y-2">
                         {Array.from(groupByDcpPart(provisions, topic)).map(([dcpPart, partProvisions]) => {
                           const partKey = `${topic}-${dcpPart}`;
@@ -1148,8 +1164,8 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  // Use URL's page number so button matches what opens
-                                                                  const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
+                                                                  // Use pdf_page field (actual PDF page number) for display
+                                                                  const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                                   return (
                                                                     <Button
                                                                       size="sm"
@@ -1159,12 +1175,12 @@ export function ProvisionsByTopic({
                                                                         e.stopPropagation();
                                                                         setViewingPdfImage({
                                                                           url: provision.pdf_page_image_url!,
-                                                                          page: pageNum
+                                                                          page: displayPage
                                                                         });
                                                                       }}
                                                                     >
                                                                       <FileText className="h-3 w-3 mr-1" />
-                                                                      View DCP Page {pageNum}
+                                                                      View DCP Page {displayPage}
                                                                     </Button>
                                                                   );
                                                                 })()}
@@ -1353,8 +1369,8 @@ export function ProvisionsByTopic({
                                                 )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                // Use URL's page number so button matches what opens
-                                                const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
+                                                // Use pdf_page field (actual PDF page number) for display
+                                                const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                 return (
                                                   <Button
                                                     size="sm"
@@ -1364,12 +1380,12 @@ export function ProvisionsByTopic({
                                                       e.stopPropagation();
                                                       setViewingPdfImage({
                                                         url: provision.pdf_page_image_url!,
-                                                        page: pageNum
+                                                        page: displayPage
                                                       });
                                                     }}
                                                   >
                                                     <FileText className="h-3 w-3 mr-1" />
-                                                    View DCP Page {pageNum}
+                                                    View DCP Page {displayPage}
                                                   </Button>
                                                 );
                                               })()}
@@ -1519,8 +1535,9 @@ export function ProvisionsByTopic({
                                   )}
                                 </div>
                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                  // Use URL's page number so button matches what opens
-                                  const pageNum = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0') || provision.pdf_page;
+                                  // Use pdf_page field (actual PDF page number) for display
+                                  // The image URL may have a different page number due to extraction offset
+                                  const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                   return (
                                     <Button
                                       size="sm"
@@ -1530,12 +1547,12 @@ export function ProvisionsByTopic({
                                         e.stopPropagation();
                                         setViewingPdfImage({
                                           url: provision.pdf_page_image_url!,
-                                          page: pageNum
+                                          page: displayPage
                                         });
                                       }}
                                     >
                                       <FileText className="h-3 w-3 mr-1" />
-                                      View DCP Page {pageNum}
+                                      View DCP Page {displayPage}
                                     </Button>
                                   );
                                 })()}
