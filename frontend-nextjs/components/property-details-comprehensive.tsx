@@ -145,7 +145,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
 
  if (!propertyData || !propertyData.planningLayers || propertyData.planningLayers.length === 0) {
    return (
-     <Card className="shadow-sm">
+     <Card className="bg-gray-100 border-gray-200">
        <CardHeader>
          <CardTitle className="text-lg font-semibold flex items-center gap-2">
            <FileText className="h-5 w-5" />
@@ -182,7 +182,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  })
 
  return (
-   <Card className="shadow-sm">
+   <Card className="bg-gray-100 border-gray-200">
      <CardHeader className="cursor-pointer" onClick={() => setIsCardCollapsed(!isCardCollapsed)}>
        <CardTitle className="text-lg font-semibold flex items-center justify-between">
          <div className="flex items-center gap-2">
