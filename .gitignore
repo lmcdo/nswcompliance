@@ -321,7 +321,7 @@ frontend-nextjs/public/pdf.worker.min.mjs
 frontend-nextjs/public/pdfjs/
 
 # Frontend misc
-frontend-nextjs/vercel.json
+# vercel.json needs to be in git for region config
 
 # Scripts directory (working scripts)
 scripts/
