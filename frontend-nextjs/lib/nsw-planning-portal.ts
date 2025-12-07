@@ -101,17 +101,15 @@ export class NSWPlanningPortalService {
  /**
  * Search for property by address using NSW Planning Portal
  * Returns the first matching result (follows same pattern as map-viewer project)
- * Throws descriptive errors for timeout/network issues vs property not found
+ * Includes retry logic for transient failures (common with Vercel serverless)
  */
- static async searchProperty(address: string): Promise<{ propId: number; address: string; GURASID: number } | null> {
- console.log('=== DEBUG: searchProperty ===');
+ static async searchProperty(address: string, retryCount: number = 0): Promise<{ propId: number; address: string; GURASID: number } | null> {
+ console.log(`=== DEBUG: searchProperty (attempt ${retryCount + 1}) ===`);
  console.log('Address:', address);
- console.log('Encoded:', encodeURIComponent(address));
- console.log('URL:', `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=1`);
 
  const encodedAddress = encodeURIComponent(address);
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout (increased from 5s)
+ const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
  try {
  const response = await fetch(
@@ -120,7 +118,7 @@ export class NSWPlanningPortalService {
  signal: controller.signal,
  headers: {
  'Accept': 'application/json',
- 'User-Agent': 'ComplianceEngine/1.0'
+ 'User-Agent': 'Mozilla/5.0 ComplianceEngine/1.0'
  }
  }
  );
@@ -128,10 +126,22 @@ export class NSWPlanningPortalService {
  clearTimeout(timeoutId);
 
  console.log('Search response status:', response.status);
- console.log('Search response ok:', response.ok);
 
+ // Rate limit - retry after delay
  if (response.status === 429) {
+ if (retryCount < 2) {
+ console.log('Rate limited, waiting 3s before retry...');
+ await new Promise(resolve => setTimeout(resolve, 3000));
+ return this.searchProperty(address, retryCount + 1);
+ }
  throw new Error('NSW Planning Portal rate limit exceeded. Please wait a moment and try again.');
+ }
+
+ // Server errors - retry
+ if (response.status >= 500 && retryCount < 2) {
+ console.log(`Server error ${response.status}, retrying...`);
+ await new Promise(resolve => setTimeout(resolve, 2000));
+ return this.searchProperty(address, retryCount + 1);
  }
 
  if (!response.ok) {
@@ -141,34 +151,44 @@ export class NSWPlanningPortalService {
  }
 
  const results = await response.json() as any[];
- console.log('Search results:', results);
- console.log('Results length:', results?.length);
+ console.log('Search results count:', results?.length);
 
  if (!results || results.length === 0) {
- console.log('No results found');
- return null; // Actual property not found - return null
+ console.log('No results found for address');
+ return null;
  }
 
- console.log('Returning result:', results[0]);
+ console.log('Found property:', results[0].propId);
  return results[0];
 
  } catch (error) {
  clearTimeout(timeoutId);
 
- // Handle timeout specifically
+ // Handle timeout - retry once
  if (error instanceof Error && error.name === 'AbortError') {
- console.error('Property search timed out after 10 seconds');
- throw new Error('NSW Planning Portal request timed out. Please try again.');
+ console.error('Property search timed out');
+ if (retryCount < 2) {
+ console.log('Retrying after timeout...');
+ await new Promise(resolve => setTimeout(resolve, 1000));
+ return this.searchProperty(address, retryCount + 1);
+ }
+ throw new Error('NSW Planning Portal request timed out after multiple attempts. The service may be slow - please try again.');
  }
 
- // Re-throw known errors (rate limit, portal errors)
+ // Re-throw known errors
  if (error instanceof Error && error.message.includes('NSW Planning Portal')) {
  throw error;
  }
 
- // Network or other errors
- console.error('Property search error:', error);
- throw new Error('Unable to connect to NSW Planning Portal. Please check your connection and try again.');
+ // Network errors - retry
+ if (retryCount < 2) {
+ console.log('Network error, retrying...', error);
+ await new Promise(resolve => setTimeout(resolve, 2000));
+ return this.searchProperty(address, retryCount + 1);
+ }
+
+ console.error('Property search failed after retries:', error);
+ throw new Error('Unable to connect to NSW Planning Portal after multiple attempts. Please try again later.');
  }
  }
 
