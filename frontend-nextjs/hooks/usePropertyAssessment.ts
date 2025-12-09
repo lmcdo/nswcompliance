@@ -116,15 +116,12 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     console.log('Coordinates:', coordinates);
 
     // Use flushSync to force immediate render of loading state
-    // This prevents the "first click" issue where React batches updates
-    console.log(`[usePropertyAssessment] BEFORE flushSync, about to setLoading(true) at ${new Date().toISOString().slice(11, 23)}`);
     flushSync(() => {
       setSelectedAddress(address);
       setSelectedCoordinates(coordinates || null);
       setLoading(true);
       setError(null);
     });
-    console.log(`[usePropertyAssessment] AFTER flushSync at ${new Date().toISOString().slice(11, 23)}`);
 
     // Track start time for minimum loading duration
     const startTime = Date.now();

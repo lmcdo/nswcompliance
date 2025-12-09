@@ -20,8 +20,6 @@ const INNER_WEST_BOUNDS = {
 };
 
 export function PropertySearch({ onAddressSelect, loading = false, selectedAddress }: PropertySearchProps) {
-  // Debug: log loading state with timestamp
-  console.log(`[PropertySearch] loading = ${loading} at ${new Date().toISOString().slice(11, 23)}`);
 
   const [inputValue, setInputValue] = useState('');
   const [lgaError, setLgaError] = useState<string | null>(null);
@@ -112,17 +110,13 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
             // Validate: Only allow Inner West addresses
             const isInnerWest = lga.toLowerCase().includes('inner west');
 
-            if (isInnerWest) {
-              // Small delay to let dropdown close and UI settle before loading
-              setTimeout(() => {
-                onAddressSelect(address, coordinates);
-              }, 50);
-            } else {
+            if (!isInnerWest) {
               // Show error for non-Inner West addresses
               const lgaDisplay = lga || 'unknown area';
               setLgaError(`This address is in ${lgaDisplay}. Only Inner West LGA addresses are currently supported.`);
               console.warn(`Address rejected: ${address} is in ${lgaDisplay}, not Inner West`);
             }
+            // Don't auto-trigger - let user click the button to analyze
           }
         });
       }
