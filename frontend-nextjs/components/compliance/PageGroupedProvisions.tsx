@@ -150,12 +150,19 @@ export function PageGroupedProvisions({
   };
 
   // Apply max provisions limit if specified
-  let displayProvisions = provisions;
-  let limitedCount = 0;
-  if (maxProvisions && provisions.length > maxProvisions) {
-    displayProvisions = provisions.slice(0, maxProvisions);
-    limitedCount = provisions.length;
-  }
+  // useMemo to ensure stable reference when limit changes
+  const { displayProvisions, limitedCount } = useMemo(() => {
+    if (maxProvisions && provisions.length > maxProvisions) {
+      return {
+        displayProvisions: provisions.slice(0, maxProvisions),
+        limitedCount: provisions.length
+      };
+    }
+    return {
+      displayProvisions: provisions,
+      limitedCount: 0
+    };
+  }, [provisions, maxProvisions]);
 
   // Re-group after limiting
   const displayGroups = useMemo(
