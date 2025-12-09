@@ -119,6 +119,10 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     setLoading(true);
     setError(null);
 
+    // Track start time for minimum loading duration
+    const startTime = Date.now();
+    const MIN_LOADING_MS = 400; // Minimum loading time for UX feedback
+
     try {
       const url = `/api/property?address=${encodeURIComponent(address)}`;
       console.log('Fetching:', url);
@@ -148,6 +152,11 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
       setError(err instanceof Error ? err.message : 'Failed to load property');
       setSelectedProperty(null);
     } finally {
+      // Ensure minimum loading time for visible feedback
+      const elapsed = Date.now() - startTime;
+      if (elapsed < MIN_LOADING_MS) {
+        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_MS - elapsed));
+      }
       setLoading(false);
       console.log('=== handleAddressSelect COMPLETE ===');
     }
