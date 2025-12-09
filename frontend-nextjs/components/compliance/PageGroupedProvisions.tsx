@@ -243,6 +243,9 @@ export function PageGroupedProvisions({
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
                 <span className="text-sm text-gray-600">
+                  {group.dcpPart && (
+                    <span className="font-medium text-gray-700">{group.dcpPart} · </span>
+                  )}
                   {group.displayPageNumber ? (
                     <>Page {group.displayPageNumber}</>
                   ) : (
@@ -264,7 +267,7 @@ export function PageGroupedProvisions({
                   className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white hover:bg-teal-700 rounded transition-colors"
                 >
                   <FileText className="h-3 w-3" />
-                  View DCP Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
+                  View {group.dcpPart ? `${group.dcpPart} ` : 'DCP '}Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
                 </button>
               )}
             </div>
