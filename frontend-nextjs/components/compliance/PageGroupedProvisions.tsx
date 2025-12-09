@@ -205,14 +205,10 @@ export function PageGroupedProvisions({
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
                 <span className="text-sm text-gray-600">
-                  {group.pageNumber ? (
-                    <>Page {group.pageNumber}</>
-                  ) : (
-                    <>No page reference</>
+                  {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}
+                  {group.pageUrl && (
+                    <span className="text-gray-400 ml-1">· same PDF page</span>
                   )}
-                  <span className="text-gray-400 ml-1">
-                    · {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}
-                  </span>
                 </span>
               </div>
 

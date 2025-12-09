@@ -59,7 +59,7 @@ export function PdfImageModal({
 
   if (!isOpen || !imageUrl) return null;
 
-  const displayTitle = title || (pageNumber ? `PDF Page ${pageNumber}` : 'PDF Document');
+  const displayTitle = title || 'DCP Source Page';
   const resolvedUrl = getPdfImageUrl(imageUrl);
 
   return (
