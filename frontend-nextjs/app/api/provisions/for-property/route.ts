@@ -219,14 +219,9 @@ export async function GET(request: NextRequest) {
         count: layer4.length
       });
 
-      // Adjust PDF URLs in by_layer results (0-indexed extraction fix)
-      const adjustedResults = results.map(layer => ({
-        ...layer,
-        provisions: layer.provisions.map((p: any) => ({
-          ...p,
-          pdf_page_image_url: adjustPdfPageUrl(p.pdf_page_image_url)
-        }))
-      }));
+      // No URL adjustment needed - PDF files are correctly named
+      // page_N.png contains DCP page N+1 content (verified 2024-12-10)
+      const adjustedResults = results;
 
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
@@ -523,24 +518,6 @@ async function queryLayer(
   return result.rows;
 }
 
-/**
- * Adjust PDF page URL for Leichhardt's off-by-one extraction.
- * Leichhardt: page_11.png shows page 12 content, so add 1 to URL page number.
- * Marrickville/Ashfield: URLs are correct, pass through unchanged.
- */
-function adjustPdfPageUrl(url: string | null | undefined): string | null {
-  if (!url) return null;
-
-  // Only adjust Leichhardt URLs
-  if (url.includes('/leichhardt-') && url.includes('/page_')) {
-    return url.replace(/\/page_(\d+)\.png$/, (match, pageNum) => {
-      return `/page_${parseInt(pageNum) + 1}.png`;
-    });
-  }
-
-  return url;
-}
-
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
   const byTopic: Record<string, any[]> = {};
 
@@ -554,7 +531,6 @@ function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
       }
       byTopic[topic].push({
         ...provision,
-        pdf_page_image_url: adjustPdfPageUrl(provision.pdf_page_image_url),
         layer: layer.layer
       });
     }
