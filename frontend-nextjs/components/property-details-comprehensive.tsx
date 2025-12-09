@@ -182,11 +182,11 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  })
 
  return (
-   <Card className="bg-gray-100 border-gray-200">
+   <Card className="bg-teal-100 border-teal-300">
      <CardHeader className="cursor-pointer" onClick={() => setIsCardCollapsed(!isCardCollapsed)}>
-       <CardTitle className="text-lg font-semibold flex items-center justify-between">
+       <CardTitle className="text-lg font-semibold flex items-center justify-between text-teal-900">
          <div className="flex items-center gap-2">
-           <FileText className="h-5 w-5" />
+           <FileText className="h-5 w-5 text-teal-700" />
            NSW Planning Layers ({expectedLayers.length})
          </div>
          {isCardCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
