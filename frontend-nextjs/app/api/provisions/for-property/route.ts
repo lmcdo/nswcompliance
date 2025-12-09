@@ -371,7 +371,9 @@ async function queryHeritageFromDcpGeneralRequirements(
       NULL as v2_heritage_hca,
       INITCAP(REPLACE(category, '_', ' ')) as v2_heritage_subcategory
     FROM dcp_general_requirements
-    WHERE (category = 'heritage' OR part_name = 'Heritage')
+    WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
+    -- Exclude non-heritage sections that just mention heritage
+    AND (part_name IS NULL OR part_name NOT IN ('Energy Management', 'Waste Management', 'Landscaping and Open Spaces', 'Fencing'))
   `;
 
   // Filter by former council
