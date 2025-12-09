@@ -27,7 +27,7 @@ import { LayerBadges } from '@/lib/design-tokens';
  */
 const LEICHHARDT_PAGE_OFFSETS: Record<string, number> = {
   'Part C Section 1': 0,
-  'Part C Section 2': 110,
+  'Part C Section 2': 112,  // page 19 → DCP 131
   'Part D': 0,
   'Part E': 0,
   'Part F': 0,
