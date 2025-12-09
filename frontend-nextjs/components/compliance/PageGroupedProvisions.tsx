@@ -17,6 +17,38 @@ import { Badge } from '@/components/ui/badge';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { LayerBadges } from '@/lib/design-tokens';
 
+/**
+ * Page offsets for Leichhardt DCP parts.
+ * Each Part is a separate PDF with its own page numbering that corresponds
+ * to the original full DCP document. The offset converts pdf_page (0-based
+ * extract page) to the actual DCP page number shown in the PDF footer.
+ *
+ * Verified via OCR of PDF page footers on 2024-12-09.
+ */
+const LEICHHARDT_PAGE_OFFSETS: Record<string, number> = {
+  'Part C Section 1': 0,
+  'Part C Section 2': 110,
+  'Part D': 0,
+  'Part E': 0,
+  'Part F': 0,
+  'Part G': 1,
+};
+
+/**
+ * Get the actual DCP page number for display, applying council-specific offsets.
+ */
+function getDcpPageNumber(pdfPage: number | null | undefined, dcpPart?: string): number | null {
+  if (pdfPage == null) return null;
+
+  // Apply Leichhardt offset if applicable
+  if (dcpPart && LEICHHARDT_PAGE_OFFSETS[dcpPart] !== undefined) {
+    return pdfPage + LEICHHARDT_PAGE_OFFSETS[dcpPart];
+  }
+
+  // Default: assume pdf_page is already the correct DCP page
+  return pdfPage;
+}
+
 interface Provision {
   id: number;
   provision_text: string;
@@ -36,9 +68,11 @@ interface Provision {
 }
 
 interface PageGroup {
-  pageNumber: number | null;
+  pageNumber: number | null;      // Raw pdf_page from database
+  displayPageNumber: number | null; // Actual DCP page after applying offset
   pageUrl: string | null;
   provisions: Provision[];
+  dcpPart: string | null;         // For offset calculation
 }
 
 interface ThemeConfig {
@@ -85,7 +119,7 @@ const LAYER_LABELS: Record<string, string> = {
 };
 
 /**
- * Group provisions by PDF page
+ * Group provisions by PDF page and calculate display page numbers with offsets
  */
 function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
   const pageMap = new Map<string, PageGroup>();
@@ -95,10 +129,14 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
     if (prov.pdf_page_image_url) {
       const key = prov.pdf_page_image_url;
       if (!pageMap.has(key)) {
+        const dcpPart = prov.v2_dcp_part || null;
+        const rawPage = prov.pdf_page || null;
         pageMap.set(key, {
-          pageNumber: prov.pdf_page || null,
+          pageNumber: rawPage,
+          displayPageNumber: getDcpPageNumber(rawPage, dcpPart || undefined),
           pageUrl: prov.pdf_page_image_url,
-          provisions: []
+          provisions: [],
+          dcpPart: dcpPart,
         });
       }
       pageMap.get(key)!.provisions.push(prov);
@@ -107,13 +145,13 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
     }
   }
 
-  // Sort by page number
+  // Sort by display page number
   const groups = Array.from(pageMap.values())
-    .sort((a, b) => (a.pageNumber || 999) - (b.pageNumber || 999));
+    .sort((a, b) => (a.displayPageNumber || 999) - (b.displayPageNumber || 999));
 
   // Add ungrouped at end
   if (ungrouped.length > 0) {
-    groups.push({ pageNumber: null, pageUrl: null, provisions: ungrouped });
+    groups.push({ pageNumber: null, displayPageNumber: null, pageUrl: null, provisions: ungrouped, dcpPart: null });
   }
 
   return groups;
@@ -205,10 +243,14 @@ export function PageGroupedProvisions({
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
                 <span className="text-sm text-gray-600">
-                  {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}
-                  {group.pageUrl && (
-                    <span className="text-gray-400 ml-1">· same PDF page</span>
+                  {group.displayPageNumber ? (
+                    <>Page {group.displayPageNumber}</>
+                  ) : (
+                    <>No page reference</>
                   )}
+                  <span className="text-gray-400 ml-1">
+                    · {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}
+                  </span>
                 </span>
               </div>
 
@@ -217,12 +259,12 @@ export function PageGroupedProvisions({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onViewPdf(group.pageUrl!, group.pageNumber || 0);
+                    onViewPdf(group.pageUrl!, group.displayPageNumber || 0);
                   }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white hover:bg-teal-700 rounded transition-colors"
                 >
                   <FileText className="h-3 w-3" />
-                  View PDF
+                  View DCP Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
                 </button>
               )}
             </div>
