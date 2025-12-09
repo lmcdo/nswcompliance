@@ -3,13 +3,11 @@
  * Maps addresses to DCP precincts for location-specific controls using PostGIS geometric matching
  */
 
-import { Pool } from 'pg';
 import { getPropertyCoordinates } from './nsw-planning-portal';
+import { getPool } from './db';
 
-const pool = new Pool({
-  connectionString: process.env.SUPABASE_DB_URL || process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-});
+// Use shared database pool from db.ts for consistent connection handling
+const getDbPool = () => getPool();
 
 export interface PrecinctMapping {
   precinctId: string;        // Changed from precinctNumber for consistency with frontend
@@ -220,7 +218,7 @@ async function getPrecinctFromHeritageMapping(
       LIMIT 1
     `;
 
-    let result = await pool.query(query, [heritageItemName, lga]);
+    let result = await getDbPool().query(query, [heritageItemName, lga]);
 
     // If no exact match, try fuzzy matching (handles Planning Portal name variations)
     // e.g., "Haberfield HCA (nominated area of State significance)" matches "Haberfield HCA"
@@ -239,7 +237,7 @@ async function getPrecinctFromHeritageMapping(
         LIMIT 1
       `;
 
-      result = await pool.query(query, [heritageItemName, lga]);
+      result = await getDbPool().query(query, [heritageItemName, lga]);
       console.log(`[Precinct Service] Fuzzy match query returned ${result.rows.length} rows`);
     }
 
@@ -257,7 +255,7 @@ async function getPrecinctFromHeritageMapping(
       WHERE precinct_id = $1
       LIMIT 1
     `;
-    const nameResult = await pool.query(nameQuery, [mapping.precinct_id]);
+    const nameResult = await getDbPool().query(nameQuery, [mapping.precinct_id]);
     const precinctName = nameResult.rows[0]?.precinct_name || heritageItemName;
 
     return {
@@ -324,7 +322,7 @@ async function getPrecinctUsingPostGIS(
       LIMIT 1
     `;
 
-    const result = await pool.query(query, [coords.longitude, coords.latitude, lga]);
+    const result = await getDbPool().query(query, [coords.longitude, coords.latitude, lga]);
 
     if (result.rows.length === 0) {
       // Try finding nearest precinct within 500m (fallback for boundary edge cases)
@@ -397,7 +395,7 @@ async function findNearestPrecinct(
       LIMIT 1
     `;
 
-    const result = await pool.query(query, [longitude, latitude, lga]);
+    const result = await getDbPool().query(query, [longitude, latitude, lga]);
 
     if (result.rows.length === 0) {
       return null;
@@ -502,7 +500,7 @@ export async function getPrecinctProvisions(
       LIMIT 50
     `;
 
-    const result = await pool.query(query, [precinctId, lga]);
+    const result = await getDbPool().query(query, [precinctId, lga]);
     console.log(`[Precinct Service] Query returned ${result.rows.length} rows`);
 
     return result.rows;
