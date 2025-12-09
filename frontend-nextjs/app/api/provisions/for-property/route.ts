@@ -482,10 +482,17 @@ async function queryLayer(
     params.push(conditions);
   }
 
-  if (layer === 'precinct' && filters.precinct_id) {
-    // For precinct layer, filter by precinct ID
-    sql += ` AND v2_precinct_id = $${paramIndex++}`;
-    params.push(filters.precinct_id);
+  if (layer === 'precinct') {
+    if (filters.precinct_id) {
+      // For precinct layer, filter by precinct ID
+      console.log(`[4-Layer API] Precinct filter: v2_precinct_id = '${filters.precinct_id}'`);
+      sql += ` AND v2_precinct_id = $${paramIndex++}`;
+      params.push(filters.precinct_id);
+    } else {
+      // No precinct ID - exclude all precinct-specific provisions
+      console.log(`[4-Layer API] No precinct_id provided - excluding all precinct provisions`);
+      sql += ` AND v2_precinct_id IS NULL`;
+    }
   }
 
   // Optional topic filter (case-insensitive, handle underscore vs space)
