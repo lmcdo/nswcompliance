@@ -1626,9 +1626,13 @@ export function ProvisionsByTopic({
                                                     {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} only ({partSplitResults.onlyThis.length})
                                                   </p>
                                                 </div>
-                                                <div className="space-y-2">
-                                                  {partSplitResults.onlyThis.slice(0, 10).map((p, idx) => renderPartProvision(p, idx, false))}
-                                                </div>
+                                                <PageGroupedProvisions
+                                                  provisions={partSplitResults.onlyThis}
+                                                  expandedProvisions={expandedProvisions}
+                                                  onToggleProvision={toggleProvision}
+                                                  onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                  maxProvisions={20}
+                                                />
                                               </div>
                                             )}
                                             {partSplitResults.plusOthers.length > 0 && (
@@ -1638,22 +1642,25 @@ export function ProvisionsByTopic({
                                                     {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} + other elements ({partSplitResults.plusOthers.length})
                                                   </p>
                                                 </div>
-                                                <div className="space-y-2">
-                                                  {partSplitResults.plusOthers.slice(0, 5).map((p, idx) => renderPartProvision(p, idx, true))}
-                                                </div>
+                                                <PageGroupedProvisions
+                                                  provisions={partSplitResults.plusOthers}
+                                                  expandedProvisions={expandedProvisions}
+                                                  onToggleProvision={toggleProvision}
+                                                  onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                  maxProvisions={10}
+                                                />
                                               </div>
                                             )}
                                           </>
                                         ) : (
-                                          /* Flat list */
-                                          <>
-                                            {partFilteredProvisions.slice(0, 20).map((provision, idx) => renderPartProvision(provision, idx, false))}
-                                            {partFilteredProvisions.length > 20 && (
-                                              <p className="text-sm text-gray-500 text-center py-2">
-                                                Showing 20 of {partFilteredProvisions.length} provisions
-                                              </p>
-                                            )}
-                                          </>
+                                          /* Page-grouped provisions list */
+                                          <PageGroupedProvisions
+                                            provisions={partFilteredProvisions}
+                                            expandedProvisions={expandedProvisions}
+                                            onToggleProvision={toggleProvision}
+                                            onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                            maxProvisions={20}
+                                          />
                                         )}
                                       </>
                                       );
