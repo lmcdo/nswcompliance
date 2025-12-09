@@ -52,11 +52,13 @@ export interface CouncilConfig {
  */
 export const INNER_WEST_OVERVIEW = `Inner West Council was formed in 2016 from three former councils: Ashfield, Leichhardt, and Marrickville. Each retains its own DCP with distinct organizational approaches. Your address determines which former council's DCP applies.
 
-MARRICKVILLE (1,866 provisions) has chapters for residential, commercial, and industrial development, but the majority of provisions are in Part 2 Generic Provisions which apply universally regardless of development type. Heritage has a dedicated chapter (Part 8) covering 37 Heritage Conservation Areas. Precinct Character controls (Part 9) cover 48 suburb areas with desired future character statements. Use topic filters to navigate - development type filtering is not effective here.
+MARRICKVILLE (1,866 provisions) has chapters for residential, commercial, and industrial development, but the majority of provisions are in Part 2 Generic Provisions which apply universally. Heritage has a dedicated chapter (Part 8) covering 37 Heritage Conservation Areas. Precinct Character controls (Part 9) cover 48 suburb areas with desired future character statements.
 
-LEICHHARDT (3,355 provisions) is topic-centric with the highest provision count. Unlike Marrickville and Ashfield, the development type filter is effective here - selecting Commercial or Industrial hides approximately 2,000 residential-only provisions. Heritage provisions are distributed across multiple topics rather than consolidated in a dedicated chapter. The 26 Distinctive Neighbourhood controls provide character guidance for specific areas.
+LEICHHARDT (3,355 provisions) is topic-centric with the highest provision count. Heritage provisions are distributed across multiple topics rather than consolidated in a dedicated chapter. The 26 Distinctive Neighbourhood controls provide character guidance for specific areas. Use topic filters and DCP Part accordions to navigate.
 
-ASHFIELD (1,892 provisions) is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas including conservation principles, character assessment, building form, and materials guidance. Most provisions (69%) apply broadly to all development types, so development type filtering is not effective. The 11 Village Precinct controls cover urban village areas with local character guidance. Use topic filters to navigate.`;
+ASHFIELD (1,892 provisions) is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas including conservation principles, character assessment, building form, and materials guidance. The 11 Village Precinct controls cover urban village areas with local character guidance.
+
+All three DCPs use topic-based filtering. Select a topic to see relevant provisions grouped by DCP Part.`;
 
 export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
   marrickville: {
@@ -148,16 +150,12 @@ export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
     id: 'leichhardt',
     name: 'Leichhardt',
     dcpCitation: 'Inner West Development Control Plan (Leichhardt) 2013',
-    dcpExplanation: 'Unlike Marrickville (zone-based) or Ashfield (heritage-focused), Leichhardt is topic-centric with the highest provision count (3,355). Most provisions are [Universal] controls that apply broadly.\n\n[Heritage] provisions cover heritage items and conservation areas but are distributed across topics rather than in a dedicated chapter - look under both Heritage and Character topics. [Distinct Neighbourhood] controls cover 26 areas - filtered to your address, with Universal controls applying where Neighbourhood controls are silent.\n\nDCP STRUCTURE: Part C "Place" (setbacks, heights, parking, landscaping - largest section) • Part D (energy) • Part E (water) • Part F (food premises) • Part G (26 Distinct Neighbourhoods)\n\n1. USE THE DROPDOWN TO FILTER BY PROJECT TYPE:\n• Residential = houses, apartments, granny flats, duplexes (~2,750 provisions)\n• Commercial = shops, offices, cafes, restaurants (~660 provisions)\n• Industrial = factories, warehouses (~780 provisions)\nSelecting Commercial or Industrial hides ~2,000 residential-only provisions. Selecting Residential only hides ~600 commercial/industrial provisions - most of this DCP is residential-focused.\n\n2. Select the topics you are interested in to further refine your search.',
+    dcpExplanation: 'Leichhardt DCP is topic-centric with the highest provision count (3,355). Most provisions are [Universal] controls organized by topic.\n\n[Heritage] provisions are distributed across topics rather than in a dedicated chapter. [Distinct Neighbourhood] controls cover 26 areas - filtered to your address.\n\nDCP STRUCTURE: Part C "Place" (setbacks, heights, parking, landscaping) • Part D (energy) • Part E (water) • Part F (food premises) • Part G (26 Distinct Neighbourhoods)\n\nSelect topics to filter provisions. Use the DCP Part accordion to see controls organized by source section.',
     totalProvisions: 3355,
     primaryLayer: 'generic',
     zoneFilterEffective: false,
-    devTypeFilterEffective: true,
-    availableDevTypes: [
-      { id: 'residential', name: 'Residential (all types)', count: 2756 },
-      { id: 'commercial', name: 'Commercial / Retail', count: 660 },
-      { id: 'industrial', name: 'Industrial / Warehouse', count: 779 },
-    ],
+    devTypeFilterEffective: false,
+    devTypeNote: 'Leichhardt provisions are organized by topic. Use topic filters to navigate.',
     topicFilterRequired: true,
     warningThreshold: 200,
     resultGuidance: {
