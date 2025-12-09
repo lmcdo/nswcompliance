@@ -20,8 +20,8 @@ const INNER_WEST_BOUNDS = {
 };
 
 export function PropertySearch({ onAddressSelect, loading = false, selectedAddress }: PropertySearchProps) {
-  // Debug: log loading state on every render
-  console.log('[PropertySearch] loading =', loading);
+  // Debug: log loading state with timestamp
+  console.log(`[PropertySearch] loading = ${loading} at ${new Date().toISOString().slice(11, 23)}`);
 
   const [inputValue, setInputValue] = useState('');
   const [lgaError, setLgaError] = useState<string | null>(null);
