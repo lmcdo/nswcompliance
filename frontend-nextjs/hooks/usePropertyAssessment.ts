@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 
 interface PropertyData {
@@ -114,10 +115,14 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     console.log('Address:', address);
     console.log('Coordinates:', coordinates);
 
-    setSelectedAddress(address);
-    setSelectedCoordinates(coordinates || null);
-    setLoading(true);
-    setError(null);
+    // Use flushSync to force immediate render of loading state
+    // This prevents the "first click" issue where React batches updates
+    flushSync(() => {
+      setSelectedAddress(address);
+      setSelectedCoordinates(coordinates || null);
+      setLoading(true);
+      setError(null);
+    });
 
     // Track start time for minimum loading duration
     const startTime = Date.now();
