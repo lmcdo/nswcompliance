@@ -207,10 +207,50 @@ function hcaNameToSlug(hcaName: string): string {
 }
 
 /**
+ * Group provisions by PDF page for grouped rendering with page headers.
+ * Returns array of page groups, each with page info and provisions.
+ */
+interface PageGroup {
+  pageNumber: number | null;
+  pageUrl: string | null;
+  provisions: Provision[];
+}
+
+function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
+  const pageMap = new Map<string, { pageNumber: number | null; pageUrl: string; provisions: Provision[] }>();
+  const ungrouped: Provision[] = [];
+
+  for (const prov of provisions) {
+    if (prov.pdf_page_image_url) {
+      const key = prov.pdf_page_image_url;
+      if (!pageMap.has(key)) {
+        pageMap.set(key, {
+          pageNumber: prov.pdf_page || null,
+          pageUrl: prov.pdf_page_image_url,
+          provisions: []
+        });
+      }
+      pageMap.get(key)!.provisions.push(prov);
+    } else {
+      ungrouped.push(prov);
+    }
+  }
+
+  // Sort by page number, ungrouped at end
+  const groups = Array.from(pageMap.values())
+    .sort((a, b) => (a.pageNumber || 999) - (b.pageNumber || 999));
+
+  // Add ungrouped provisions at end if any
+  if (ungrouped.length > 0) {
+    groups.push({ pageNumber: null, pageUrl: null, provisions: ungrouped });
+  }
+
+  return groups;
+}
+
+/**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Shows button for ALL provisions that have a pdf_page_image_url.
- * Previous "only last provision on each page" logic was hiding buttons from provisions
- * when viewing a single topic (because the "last" provision might be in a different topic).
+ * Now only used as fallback - prefer page grouping with header buttons.
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
   const result = new Set<number>();
