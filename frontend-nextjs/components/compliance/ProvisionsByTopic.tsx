@@ -21,6 +21,7 @@ import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig } from '@/lib/council-config';
 // HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
+import { PageGroupedProvisions } from './PageGroupedProvisions';
 
 interface Provision {
   id: number;
@@ -1665,100 +1666,15 @@ export function ProvisionsByTopic({
                         })}
                       </div>
                     ) : (
-                      // Small topic: Flat list with visual grouping for same-page provisions
-                      (() => {
-                        // Get page grouping info for visual grouping
-                        const pageGroupInfo = getPageGroupInfo(provisions.slice(0, 20));
-
-                        return (
-                          <>
-                            {provisions.slice(0, 20).map((provision, idx) => {
-                              const layer = provision.layer || provision.v2_dcp_layer;
-                              const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                                layer === 'use_specific' ? 'border-l-sky-400' :
-                                layer === 'condition' ? 'border-l-amber-400' :
-                                layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                              const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
-
-                              // Check if this provision is part of a multi-provision page group
-                              const groupInfo = pageGroupInfo.get(provision.id);
-                              const isInGroup = !!groupInfo;
-                              const isGroupStart = groupInfo?.isFirst;
-                              const isGroupEnd = groupInfo?.isLast;
-                              // Rounded corners: normal if not in group, top-only for first, bottom-only for last, none for middle
-                              const groupRounding = !isInGroup ? 'rounded-lg' :
-                                isGroupStart ? 'rounded-t-lg rounded-b-none' :
-                                isGroupEnd ? 'rounded-b-lg rounded-t-none' : 'rounded-none';
-
-                              return (
-                                <div
-                                  key={provision.id}
-                                  className={`${zebraStripe} border border-gray-200 ${groupRounding} overflow-hidden transition-all hover:shadow-md ${layerBorderColor} border-l-4 ${isInGroup && !isGroupEnd ? 'border-b-0 mb-0' : ''}`}
-                                >
-                              <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
-                                <div className="flex items-center gap-2">
-                                  {provision.v2_marker && (
-                                    <span className="font-mono text-sm font-semibold text-slate-700">
-                                      {provision.v2_marker}
-                                    </span>
-                                  )}
-                                  <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
-                                    {getLayerLabel(layer)}
-                                  </Badge>
-                                  {provision.v2_dcp_part && (
-                                    <span className="text-xs text-gray-500">{provision.v2_dcp_part}</span>
-                                  )}
-                                </div>
-                                {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                  // Use pdf_page field (actual PDF page number) for display
-                                  // The image URL may have a different page number due to extraction offset
-                                  const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                  return (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-7 px-2 text-xs bg-teal-700 text-white hover:bg-teal-800"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setViewingPdfImage({
-                                          url: provision.pdf_page_image_url!,
-                                          page: displayPage
-                                        });
-                                      }}
-                                    >
-                                      <FileText className="h-3 w-3 mr-1" />
-                                      View DCP Page {displayPage}
-                                    </Button>
-                                  );
-                                })()}
-                              </div>
-                              <div className="px-4 py-3">
-                                <div
-                                  className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
-                                  onClick={() => toggleProvision(provision.id)}
-                                >
-                                  <FormattedProvisionText text={provision.provision_text} compact />
-                                </div>
-                                {provision.provision_text.length > 300 && (
-                                  <button
-                                    className="text-xs text-slate-500 hover:text-slate-700 mt-2 font-medium"
-                                    onClick={() => toggleProvision(provision.id)}
-                                  >
-                                    {expandedProvisions.has(provision.id) ? '↑ Show less' : '↓ Show more'}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                            {provisions.length > 20 && (
-                              <p className="text-sm text-gray-500 text-center py-2">
-                                Showing 20 of {provisions.length} provisions
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()
+                      // Small topic: Page-grouped provisions with collapsible page headers
+                      <PageGroupedProvisions
+                        provisions={provisions}
+                        expandedProvisions={expandedProvisions}
+                        onToggleProvision={toggleProvision}
+                        onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                        showDcpPart={true}
+                        maxProvisions={20}
+                      />
                     )}
                 </div>
               </CardContent>
