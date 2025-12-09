@@ -751,15 +751,10 @@ export function ProvisionsByTopic({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white border rounded-lg p-12 shadow-sm text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading DCP provisions...</p>
+      </div>
     );
   }
 
@@ -775,15 +770,10 @@ export function ProvisionsByTopic({
 
   if (!data) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="animate-pulse space-y-4">
-            <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
-            <div className="h-20 bg-gray-200 rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white border rounded-lg p-12 shadow-sm text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600 mx-auto mb-4"></div>
+        <p className="text-gray-600">Loading DCP provisions...</p>
+      </div>
     );
   }
 
