@@ -1111,63 +1111,23 @@ export function ProvisionsByTopic({
                                                 </div>
                                               </button>
 
-                                              {/* Subcategory Provisions */}
+                                              {/* Subcategory Provisions - Page grouped */}
                                               {isSubcatExpanded && (
-                                                <div className="p-2 space-y-1.5 bg-white">
-                                                  {subcatProvisions.slice(0, 20).map((provision, idx) => {
-                                                    const layer = provision.layer || provision.v2_dcp_layer;
-                                                    const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
-                                                      layer === 'use_specific' ? 'border-l-sky-400' :
-                                                      layer === 'condition' ? 'border-l-amber-400' :
-                                                      layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                                                    const zebraStripe = idx % 2 === 1 ? 'bg-amber-50/50' : 'bg-white';
-                                                    const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url?.match(/page_(\d+)/)?.[1] || '0');
-
-                                                    return (
-                                                      <div
-                                                        key={provision.id}
-                                                        className={`${zebraStripe} border border-gray-200 rounded-lg overflow-hidden ${layerBorderColor} border-l-4`}
-                                                      >
-                                                        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
-                                                          <div className="flex items-center gap-2">
-                                                            <Badge className={`text-[10px] ${getLayerColor(layer)}`}>
-                                                              {getLayerLabel(layer)}
-                                                            </Badge>
-                                                          </div>
-                                                          {provision.pdf_page_image_url && (
-                                                            <Button
-                                                              size="sm"
-                                                              variant="ghost"
-                                                              className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
-                                                              onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setViewingPdfImage({
-                                                                  url: provision.pdf_page_image_url!,
-                                                                  page: displayPage
-                                                                });
-                                                              }}
-                                                            >
-                                                              <FileText className="h-3 w-3 mr-1" />
-                                                              View DCP Page {displayPage}
-                                                            </Button>
-                                                          )}
-                                                        </div>
-                                                        <div className="px-3 py-2">
-                                                          <div
-                                                            className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
-                                                            onClick={() => toggleProvision(provision.id)}
-                                                          >
-                                                            <FormattedProvisionText text={provision.provision_text} compact />
-                                                          </div>
-                                                        </div>
-                                                      </div>
-                                                    );
-                                                  })}
-                                                  {subcatProvisions.length > 20 && (
-                                                    <p className="text-xs text-gray-500 text-center py-1">
-                                                      Showing 20 of {subcatProvisions.length} provisions
-                                                    </p>
-                                                  )}
+                                                <div className="p-2 bg-white">
+                                                  <PageGroupedProvisions
+                                                    provisions={subcatProvisions}
+                                                    expandedProvisions={expandedProvisions}
+                                                    onToggleProvision={toggleProvision}
+                                                    onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                    theme={{
+                                                      zebraStripeBg: 'bg-amber-50/50',
+                                                      zebraStripeAltBg: 'bg-white',
+                                                      borderColorClass: 'border-amber-200',
+                                                      textClampLines: 2,
+                                                      expandThreshold: 200,
+                                                    }}
+                                                    maxProvisions={20}
+                                                  />
                                                 </div>
                                               )}
                                             </div>
