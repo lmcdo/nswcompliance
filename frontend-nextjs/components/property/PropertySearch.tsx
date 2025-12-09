@@ -19,7 +19,7 @@ const INNER_WEST_BOUNDS = {
   east: 151.19    // Eastern boundary
 };
 
-export function PropertySearch({ onAddressSelect, loading, selectedAddress }: PropertySearchProps) {
+export function PropertySearch({ onAddressSelect, loading = false, selectedAddress }: PropertySearchProps) {
   const [inputValue, setInputValue] = useState('');
   const [lgaError, setLgaError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -238,11 +238,17 @@ export function PropertySearch({ onAddressSelect, loading, selectedAddress }: Pr
           <button
             type="submit"
             disabled={loading || !inputValue.trim()}
-            className="h-12 sm:h-10 px-6 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-medium text-base sm:text-sm rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed shadow-sm whitespace-nowrap"
+            className={`h-12 sm:h-10 px-6 min-w-[160px] font-medium text-base sm:text-sm rounded-lg transition-all shadow-sm whitespace-nowrap flex items-center justify-center ${
+              loading
+                ? 'bg-gray-400 text-white cursor-wait'
+                : !inputValue.trim()
+                ? 'bg-gray-400 text-white cursor-not-allowed'
+                : 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white'
+            }`}
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin inline" />
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Analyzing...
               </>
             ) : (
