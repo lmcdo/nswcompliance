@@ -113,7 +113,10 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
             const isInnerWest = lga.toLowerCase().includes('inner west');
 
             if (isInnerWest) {
-              onAddressSelect(address, coordinates);
+              // Small delay to let dropdown close and UI settle before loading
+              setTimeout(() => {
+                onAddressSelect(address, coordinates);
+              }, 50);
             } else {
               // Show error for non-Inner West addresses
               const lgaDisplay = lga || 'unknown area';
