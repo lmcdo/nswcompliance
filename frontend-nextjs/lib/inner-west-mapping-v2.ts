@@ -59,17 +59,38 @@ export function determineFormerCouncilArea(address: string, lga: string): string
 
   const addressLower = address.toLowerCase();
 
-  // Extract suburb: it's the word AFTER the street type (St, Rd, Ave, etc.)
-  // Example: "30 Croydon St Petersham 2049" → suburb is "Petersham"
+  // Extract suburb: words AFTER the street type, BEFORE the postcode
+  // Must handle multi-word suburbs like "Summer Hill", "Croydon Park", "Five Dock"
+  // Example: "30 Lackey Street Summer Hill 2130" → suburb is "summer hill"
   if (suburbMapping) {
-    const streetTypePattern = /\b(st|street|rd|road|ave|avenue|dr|drive|pl|place|ln|lane|ct|court|cres|crescent|pde|parade|hwy|highway|way|close|circuit|cct)\b\s+(\w+)/i;
+    // Capture everything after street type up to the postcode or end
+    const streetTypePattern = /\b(st|street|rd|road|ave|avenue|dr|drive|pl|place|ln|lane|ct|court|cres|crescent|pde|parade|hwy|highway|way|close|circuit|cct)\b\s+([a-z\s]+?)(?:\s+\d{4}|$)/i;
     const match = addressLower.match(streetTypePattern);
 
     if (match) {
-      const extractedSuburb = match[2].toLowerCase();
-      if (suburbMapping[extractedSuburb]) {
-        console.log(`[Inner West Mapping] Suburb extracted: ${extractedSuburb} → ${suburbMapping[extractedSuburb]}`);
-        return suburbMapping[extractedSuburb];
+      const extractedText = match[2].trim().toLowerCase();
+
+      // Try the full extracted text first (for multi-word suburbs like "summer hill")
+      if (suburbMapping[extractedText]) {
+        console.log(`[Inner West Mapping] Suburb extracted (full): ${extractedText} → ${suburbMapping[extractedText]}`);
+        return suburbMapping[extractedText];
+      }
+
+      // Try just the first two words (handles "Summer Hill NSW" → "summer hill")
+      const words = extractedText.split(/\s+/);
+      if (words.length >= 2) {
+        const twoWords = `${words[0]} ${words[1]}`;
+        if (suburbMapping[twoWords]) {
+          console.log(`[Inner West Mapping] Suburb extracted (two words): ${twoWords} → ${suburbMapping[twoWords]}`);
+          return suburbMapping[twoWords];
+        }
+      }
+
+      // Try just the first word (for single-word suburbs like "Petersham")
+      const firstWord = words[0];
+      if (suburbMapping[firstWord]) {
+        console.log(`[Inner West Mapping] Suburb extracted (first word): ${firstWord} → ${suburbMapping[firstWord]}`);
+        return suburbMapping[firstWord];
       }
     }
   }
