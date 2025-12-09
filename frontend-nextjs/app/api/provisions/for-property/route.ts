@@ -354,7 +354,7 @@ async function queryHeritageFromDcpGeneralRequirements(
       id,
       COALESCE(verbatim_source_text, requirement_text) as provision_text,
       'condition' as v2_dcp_layer,
-      part_name as v2_dcp_part,
+      COALESCE(part_number, part_name) as v2_dcp_part,
       CASE
         WHEN part_name = 'Heritage' THEN 'Heritage'
         ELSE INITCAP(REPLACE(category, '_', ' '))
