@@ -208,20 +208,21 @@ function hcaNameToSlug(hcaName: string): string {
 
 /**
  * Given an array of provisions, returns a Set of provision IDs that should show the PDF button.
- * Only the LAST provision on each page should show the button (groups provisions on same page).
+ * Shows button for ALL provisions that have a pdf_page_image_url.
+ * Previous "only last provision on each page" logic was hiding buttons from provisions
+ * when viewing a single topic (because the "last" provision might be in a different topic).
  */
 function getProvisionsWithPdfButton(provisions: Provision[]): Set<number> {
-  const pageToLastProvisionId = new Map<string, number>();
+  const result = new Set<number>();
 
-  // Build map of page URL -> last provision ID on that page
+  // Show PDF button for every provision that has a PDF page
   for (const prov of provisions) {
     if (prov.pdf_page_image_url) {
-      pageToLastProvisionId.set(prov.pdf_page_image_url, prov.id);
+      result.add(prov.id);
     }
   }
 
-  // Return set of IDs that should show the button
-  return new Set(pageToLastProvisionId.values());
+  return result;
 }
 
 /**
