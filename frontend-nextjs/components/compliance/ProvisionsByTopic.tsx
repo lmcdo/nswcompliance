@@ -1381,15 +1381,26 @@ export function ProvisionsByTopic({
                                                                       {ELEMENT_LABELS[selectedElement] || selectedElement} only ({splitResults.onlyThis.length})
                                                                     </p>
                                                                   </div>
-                                                                  <div className="space-y-1.5">
-                                                                    {splitResults.onlyThis.slice(0, isShowingAll ? splitResults.onlyThis.length : 10).map((p, idx) => renderProvision(p, idx, false))}
-                                                                  </div>
-                                                                  {splitResults.onlyThis.length > 10 && !isShowingAll && (
+                                                                  <PageGroupedProvisions
+                                                                    provisions={splitResults.onlyThis}
+                                                                    expandedProvisions={expandedProvisions}
+                                                                    onToggleProvision={toggleProvision}
+                                                                    onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                                    theme={{
+                                                                      zebraStripeBg: typeConfig.bg,
+                                                                      zebraStripeAltBg: 'bg-white',
+                                                                      borderColorClass: 'border-green-200',
+                                                                      textClampLines: 2,
+                                                                      expandThreshold: 200,
+                                                                    }}
+                                                                    maxProvisions={isShowingAll ? undefined : 10}
+                                                                  />
+                                                                  {splitResults.onlyThis.length > 10 && (
                                                                     <button
                                                                       onClick={() => toggleShowAllHeritageType(typeKey)}
                                                                       className="w-full text-xs text-center py-1 text-green-600 hover:underline"
                                                                     >
-                                                                      Show all {splitResults.onlyThis.length}
+                                                                      {isShowingAll ? '↑ Show fewer' : `Show all ${splitResults.onlyThis.length}`}
                                                                     </button>
                                                                   )}
                                                                 </div>
@@ -1403,15 +1414,26 @@ export function ProvisionsByTopic({
                                                                       {ELEMENT_LABELS[selectedElement] || selectedElement} + other elements ({splitResults.plusOthers.length})
                                                                     </p>
                                                                   </div>
-                                                                  <div className="space-y-1.5">
-                                                                    {splitResults.plusOthers.slice(0, isShowingAll ? splitResults.plusOthers.length : 5).map((p, idx) => renderProvision(p, idx, true))}
-                                                                  </div>
-                                                                  {splitResults.plusOthers.length > 5 && !isShowingAll && (
+                                                                  <PageGroupedProvisions
+                                                                    provisions={splitResults.plusOthers}
+                                                                    expandedProvisions={expandedProvisions}
+                                                                    onToggleProvision={toggleProvision}
+                                                                    onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                                    theme={{
+                                                                      zebraStripeBg: 'bg-amber-50/50',
+                                                                      zebraStripeAltBg: 'bg-white',
+                                                                      borderColorClass: 'border-amber-200',
+                                                                      textClampLines: 2,
+                                                                      expandThreshold: 200,
+                                                                    }}
+                                                                    maxProvisions={isShowingAll ? undefined : 5}
+                                                                  />
+                                                                  {splitResults.plusOthers.length > 5 && (
                                                                     <button
                                                                       onClick={() => toggleShowAllHeritageType(typeKey)}
                                                                       className="w-full text-xs text-center py-1 text-amber-600 hover:underline"
                                                                     >
-                                                                      Show all {splitResults.plusOthers.length}
+                                                                      {isShowingAll ? '↑ Show fewer' : `Show all ${splitResults.plusOthers.length}`}
                                                                     </button>
                                                                   )}
                                                                 </div>
@@ -1420,9 +1442,20 @@ export function ProvisionsByTopic({
                                                           ) : (
                                                             /* Regular flat list for All or General */
                                                             <>
-                                                              <div className="space-y-1.5">
-                                                                {filteredProvisions.slice(0, isShowingAll ? filteredProvisions.length : displayLimit).map((p, idx) => renderProvision(p, idx, false))}
-                                                              </div>
+                                                              <PageGroupedProvisions
+                                                                provisions={filteredProvisions}
+                                                                expandedProvisions={expandedProvisions}
+                                                                onToggleProvision={toggleProvision}
+                                                                onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
+                                                                theme={{
+                                                                  zebraStripeBg: typeConfig.bg,
+                                                                  zebraStripeAltBg: 'bg-white',
+                                                                  borderColorClass: typeConfig.border,
+                                                                  textClampLines: 2,
+                                                                  expandThreshold: 200,
+                                                                }}
+                                                                maxProvisions={isShowingAll ? undefined : displayLimit}
+                                                              />
                                                               {filteredProvisions.length > displayLimit && (
                                                                 <button
                                                                   onClick={() => toggleShowAllHeritageType(typeKey)}
