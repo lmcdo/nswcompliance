@@ -104,8 +104,19 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  const tocStructure = data.data.by_toc || {};
-  const totalProvisions = data.data.summary?.total_provisions || 0;
+  const tocStructure = data?.data?.by_toc || {};
+  const totalProvisions = data?.data?.summary?.total_provisions || 0;
+
+  // Safety check - if no TOC data, show message
+  if (!data?.data?.by_toc || Object.keys(tocStructure).length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-8 text-center text-gray-500">
+          No DCP provisions found for this property.
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Get provisions for selected part/section
   const getSelectedProvisions = (): any[] => {

@@ -115,7 +115,8 @@ function PartNode({
   onSelectPart,
   onSelectSection
 }: PartNodeProps) {
-  const sectionCount = Object.keys(part.sections).length;
+  const sections = part?.sections || {};
+  const sectionCount = Object.keys(sections).length;
   const hasMultipleSections = sectionCount > 1;
 
   return (
@@ -174,7 +175,7 @@ function PartNode({
       {/* Sections (if expanded) */}
       {isExpanded && hasMultipleSections && (
         <div className="ml-4 mt-0.5 border-l border-gray-200 pl-2">
-          {Object.entries(part.sections).map(([sectionId, section]) => (
+          {Object.entries(sections).map(([sectionId, section]) => (
             <SectionNode
               key={sectionId}
               section={section}
