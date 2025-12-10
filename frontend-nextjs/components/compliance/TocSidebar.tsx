@@ -72,9 +72,11 @@ export function TocSidebar({
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-3 border-b bg-gray-50">
-        <h3 className="text-sm font-semibold text-gray-700">DCP Structure</h3>
+        <h3 className="text-base font-bold text-gray-900">
+          {formerCouncil ? `${formerCouncil} DCP` : 'DCP'}
+        </h3>
         <p className="text-xs text-gray-500 mt-0.5">
-          {formerCouncil ? `${formerCouncil} DCP` : 'Select sections to view'}
+          DCP Structure
         </p>
       </div>
 
