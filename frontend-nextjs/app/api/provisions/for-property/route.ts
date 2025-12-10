@@ -15,6 +15,12 @@
  * - precinct_id: Precinct identifier (e.g., "12_", "G6", "Part 1")
  * - dev_type: Development type (optional)
  * - topic: Filter by topic (optional)
+ * - groupBy: "topic" (default) or "toc" - how to group results
+ *
+ * Response includes:
+ * - by_layer: provisions grouped by 4-layer model
+ * - by_topic: provisions grouped by topic (always included)
+ * - by_toc: provisions grouped by DCP structure (only if groupBy=toc)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -35,6 +41,7 @@ interface PropertyFilters {
   assessment_type?: 'CDC' | 'DA';  // CDC = quantitative only, DA = all
   former_council?: string;  // Former council name (Ashfield, Marrickville, Leichhardt)
   hca?: string;  // Heritage Conservation Area slug (e.g., "summer_hill", "hca_1")
+  groupBy?: 'topic' | 'toc';  // How to group results (default: topic)
 }
 
 interface LayerResult {
@@ -162,6 +169,7 @@ export async function GET(request: NextRequest) {
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
       former_council: searchParams.get('former_council') || undefined,
       hca: searchParams.get('hca') || undefined,
+      groupBy: (searchParams.get('groupBy') as 'topic' | 'toc') || 'topic',
     };
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
@@ -230,8 +238,11 @@ export async function GET(request: NextRequest) {
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
 
-      // Group by topic for display
+      // Group provisions based on groupBy parameter
       const byTopic = groupByTopic(adjustedResults);
+      const byToc = filters.groupBy === 'toc'
+        ? groupByTocStructure(adjustedResults, filters.former_council)
+        : undefined;
 
       // Include dev_type hierarchy info if filtering by dev_type
       const devTypeInfo = filters.dev_type ? {
@@ -245,6 +256,7 @@ export async function GET(request: NextRequest) {
         data: {
           by_layer: adjustedResults,
           by_topic: byTopic,
+          by_toc: byToc,
           summary: {
             total_provisions: totalCount,
             layer_1_generic: adjustedResults[0].count,
@@ -257,7 +269,7 @@ export async function GET(request: NextRequest) {
           filters_applied: filters,
           dev_type_hierarchy: devTypeInfo,
           response_time_ms: responseTime,
-          api_version: 'v2_4layer_granular'
+          api_version: 'v2_4layer_toc'
         }
       });
       response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
@@ -620,4 +632,138 @@ function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
   }
 
   return byTopic;
+}
+
+/**
+ * Group provisions by DCP TOC structure (Part → Section → Provisions)
+ * Handles Leichhardt Part C Section 1 specially by grouping via C markers
+ */
+interface TocSection {
+  section_id: string;
+  section_title: string;
+  provision_count: number;
+  provisions: any[];
+  sub_groups?: Record<string, TocSection>;  // For Leichhardt C markers
+}
+
+interface TocPart {
+  part_id: string;
+  part_name: string;
+  provision_count: number;
+  sections: Record<string, TocSection>;
+}
+
+function groupByTocStructure(
+  layers: LayerResult[],
+  formerCouncil?: string
+): Record<string, TocPart> {
+  const byToc: Record<string, TocPart> = {};
+
+  // Flatten all provisions from all layers
+  const allProvisions: any[] = [];
+  for (const layer of layers) {
+    for (const provision of layer.provisions) {
+      allProvisions.push({ ...provision, layer: layer.layer });
+    }
+  }
+
+  // Group by v2_dcp_part first
+  for (const provision of allProvisions) {
+    const partId = provision.v2_dcp_part || 'Other';
+    const partName = formatPartName(partId);
+
+    if (!byToc[partId]) {
+      byToc[partId] = {
+        part_id: partId,
+        part_name: partName,
+        provision_count: 0,
+        sections: {}
+      };
+    }
+
+    // Determine section ID from TOC or marker
+    let sectionId = provision.toc_section_number || 'unsectioned';
+    let sectionTitle = provision.toc_section_title || 'General';
+
+    // Special handling for Leichhardt Part C Section 1 - use C markers as sub-groups
+    const isLeichhardtPartC = formerCouncil?.toLowerCase() === 'leichhardt' &&
+      partId?.includes('Part C') && partId?.includes('Section 1');
+
+    if (isLeichhardtPartC && provision.v2_marker) {
+      // Use C marker as section for Leichhardt Part C Section 1
+      sectionId = provision.v2_marker;
+      sectionTitle = `Control ${provision.v2_marker}`;
+    }
+
+    if (!byToc[partId].sections[sectionId]) {
+      byToc[partId].sections[sectionId] = {
+        section_id: sectionId,
+        section_title: sectionTitle,
+        provision_count: 0,
+        provisions: []
+      };
+    }
+
+    byToc[partId].sections[sectionId].provisions.push(provision);
+    byToc[partId].sections[sectionId].provision_count++;
+    byToc[partId].provision_count++;
+  }
+
+  // Sort sections within each part by section_id
+  for (const partId of Object.keys(byToc)) {
+    const sortedSections: Record<string, TocSection> = {};
+    const sectionKeys = Object.keys(byToc[partId].sections).sort((a, b) => {
+      // Sort C markers numerically (C1, C2, C10, C11...)
+      if (a.startsWith('C') && b.startsWith('C')) {
+        const numA = parseInt(a.slice(1)) || 0;
+        const numB = parseInt(b.slice(1)) || 0;
+        return numA - numB;
+      }
+      // Sort numeric sections (2.10, 2.11...)
+      return a.localeCompare(b, undefined, { numeric: true });
+    });
+    for (const key of sectionKeys) {
+      sortedSections[key] = byToc[partId].sections[key];
+    }
+    byToc[partId].sections = sortedSections;
+  }
+
+  return byToc;
+}
+
+/**
+ * Format DCP part ID to readable name
+ */
+function formatPartName(partId: string): string {
+  if (!partId || partId === 'Other') return 'Other Provisions';
+
+  // Already formatted
+  if (partId.includes(':')) return partId;
+
+  // Common patterns
+  const patterns: Record<string, string> = {
+    'Part 2': 'Part 2: General Provisions',
+    'Part 4': 'Part 4: Residential Development',
+    'Part 4.1': 'Part 4.1: Low Density Residential',
+    'Part 4.2': 'Part 4.2: Multi-Dwelling Housing',
+    'Part 5': 'Part 5: Commercial Development',
+    'Part 6': 'Part 6: Industrial Development',
+    'Part 8': 'Part 8: Heritage',
+    'Part 9': 'Part 9: Precincts',
+    'Part C Section 1': 'Part C Section 1: General Controls',
+    'Part C Section 2': 'Part C Section 2: Distinctive Neighbourhoods',
+    'Part C Section 3': 'Part C Section 3: Residential',
+    'Part D': 'Part D: Energy',
+    'Part E': 'Part E: Water',
+    'Part F': 'Part F: Food',
+    'Part G': 'Part G: Neighbourhoods',
+    'Chapter A': 'Chapter A: Miscellaneous',
+    'Chapter B': 'Chapter B: Public Domain',
+    'Chapter C': 'Chapter C: Sustainability',
+    'Chapter D': 'Chapter D: Precincts',
+    'Chapter E1': 'Chapter E1: Heritage',
+    'Chapter F': 'Chapter F: Development Category',
+  };
+
+  return patterns[partId] || partId;
 }
