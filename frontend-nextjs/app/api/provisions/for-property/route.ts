@@ -184,7 +184,8 @@ export async function GET(request: NextRequest) {
       const results: LayerResult[] = [];
 
       // Layer 1: Generic provisions (always include)
-      const layer1 = await queryLayer(client, 'generic', filters);
+      const layer1Raw = await queryLayer(client, 'generic', filters);
+      const layer1 = await enrichWithTocSections(client, layer1Raw);
       results.push({
         layer: 'generic',
         layer_name: 'General Requirements',
@@ -193,7 +194,8 @@ export async function GET(request: NextRequest) {
       });
 
       // Layer 2: Use-specific provisions (zone-filtered)
-      const layer2 = await queryLayer(client, 'use_specific', filters);
+      const layer2Raw = await queryLayer(client, 'use_specific', filters);
+      const layer2 = await enrichWithTocSections(client, layer2Raw);
       results.push({
         layer: 'use_specific',
         layer_name: 'Zone-Specific Requirements',
@@ -202,7 +204,8 @@ export async function GET(request: NextRequest) {
       });
 
       // Layer 3: Condition provisions (heritage/flood filtered)
-      const layer3 = await queryLayer(client, 'condition', filters);
+      const layer3Raw = await queryLayer(client, 'condition', filters);
+      const layer3 = await enrichWithTocSections(client, layer3Raw);
       results.push({
         layer: 'condition',
         layer_name: 'Site Condition Requirements',
@@ -211,7 +214,8 @@ export async function GET(request: NextRequest) {
       });
 
       // Layer 4: Precinct provisions (location-filtered)
-      const layer4 = await queryLayer(client, 'precinct', filters);
+      const layer4Raw = await queryLayer(client, 'precinct', filters);
+      const layer4 = await enrichWithTocSections(client, layer4Raw);
       results.push({
         layer: 'precinct',
         layer_name: 'Precinct-Specific Requirements',
@@ -291,6 +295,7 @@ async function queryHeritageByHca(
   let sql = `
     SELECT
       id,
+      document_id,
       provision_text,
       v2_dcp_layer,
       v2_dcp_part,
@@ -342,6 +347,73 @@ async function queryHeritageByHca(
  * Query heritage provisions from dcp_general_requirements (LLM-extracted, curated data)
  * Maps columns to match the UI's expected interface
  */
+/**
+ * Enrich provisions with TOC section info (section_number, section_title)
+ * Uses document_id + pdf_page to find matching TOC entry
+ */
+async function enrichWithTocSections(
+  client: any,
+  provisions: any[]
+): Promise<any[]> {
+  if (provisions.length === 0) return provisions;
+
+  // Get unique document_id + pdf_page combinations
+  const docPages = provisions
+    .filter(p => p.pdf_page != null)
+    .map(p => ({ doc_id: p.document_id, page: p.pdf_page, id: p.id }));
+
+  if (docPages.length === 0) return provisions;
+
+  // Batch query TOC sections for all provisions
+  // Uses exact match OR fuzzy match (for IWLEP suffix variations)
+  const sql = `
+    WITH provision_pages AS (
+      SELECT DISTINCT document_id, pdf_page
+      FROM regulatory_provisions
+      WHERE id = ANY($1::int[])
+    )
+    SELECT DISTINCT ON (pp.document_id, pp.pdf_page)
+      pp.document_id,
+      pp.pdf_page,
+      t.section_number as toc_section_number,
+      t.section_title as toc_section_title
+    FROM provision_pages pp
+    LEFT JOIN dcp_table_of_contents t ON (
+      t.document_id = pp.document_id
+      OR t.document_id LIKE REGEXP_REPLACE(pp.document_id, '_with_IWLEP.*$', '') || '%'
+    )
+    AND pp.pdf_page >= t.page_start
+    AND (t.page_end IS NULL OR pp.pdf_page <= t.page_end)
+    ORDER BY pp.document_id, pp.pdf_page, t.page_start DESC
+  `;
+
+  const provisionIds = provisions.map(p => p.id);
+  const result = await client.query(sql, [provisionIds]);
+
+  // Create lookup map: "doc_id|page" -> TOC info
+  const tocMap = new Map<string, { section_number: string; section_title: string }>();
+  for (const row of result.rows) {
+    if (row.toc_section_number) {
+      const key = `${row.document_id}|${row.pdf_page}`;
+      tocMap.set(key, {
+        section_number: row.toc_section_number,
+        section_title: row.toc_section_title
+      });
+    }
+  }
+
+  // Enrich provisions with TOC info
+  return provisions.map(p => {
+    const key = `${p.document_id}|${p.pdf_page}`;
+    const tocInfo = tocMap.get(key);
+    return {
+      ...p,
+      toc_section_number: tocInfo?.section_number || null,
+      toc_section_title: tocInfo?.section_title || null
+    };
+  });
+}
+
 async function queryHeritageFromDcpGeneralRequirements(
   client: any,
   filters: PropertyFilters
@@ -352,6 +424,7 @@ async function queryHeritageFromDcpGeneralRequirements(
   let sql = `
     SELECT
       id,
+      NULL as document_id,
       COALESCE(verbatim_source_text, requirement_text) as provision_text,
       'condition' as v2_dcp_layer,
       COALESCE(part_number, part_name) as v2_dcp_part,
@@ -413,6 +486,7 @@ async function queryLayer(
   let sql = `
     SELECT
       id,
+      document_id,
       provision_text,
       v2_dcp_layer,
       v2_dcp_part,

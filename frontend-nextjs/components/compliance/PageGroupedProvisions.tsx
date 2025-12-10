@@ -65,6 +65,9 @@ interface Provision {
   v2_heritage_element?: string[];
   v2_heritage_hca?: string;
   v2_heritage_subcategory?: string;
+  // TOC section info (from dcp_table_of_contents)
+  toc_section_number?: string | null;
+  toc_section_title?: string | null;
 }
 
 interface PageGroup {
@@ -73,6 +76,9 @@ interface PageGroup {
   pageUrl: string | null;
   provisions: Provision[];
   dcpPart: string | null;         // For offset calculation
+  // TOC section info (from first provision with TOC data)
+  tocSectionNumber: string | null;
+  tocSectionTitle: string | null;
 }
 
 interface ThemeConfig {
@@ -137,7 +143,16 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
           pageUrl: prov.pdf_page_image_url,
           provisions: [],
           dcpPart: dcpPart,
+          tocSectionNumber: prov.toc_section_number || null,
+          tocSectionTitle: prov.toc_section_title || null,
         });
+      } else {
+        // If this provision has TOC info and the group doesn't, capture it
+        const group = pageMap.get(key)!;
+        if (!group.tocSectionNumber && prov.toc_section_number) {
+          group.tocSectionNumber = prov.toc_section_number;
+          group.tocSectionTitle = prov.toc_section_title || null;
+        }
       }
       pageMap.get(key)!.provisions.push(prov);
     } else {
@@ -151,7 +166,7 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
 
   // Add ungrouped at end
   if (ungrouped.length > 0) {
-    groups.push({ pageNumber: null, displayPageNumber: null, pageUrl: null, provisions: ungrouped, dcpPart: null });
+    groups.push({ pageNumber: null, displayPageNumber: null, pageUrl: null, provisions: ungrouped, dcpPart: null, tocSectionNumber: null, tocSectionTitle: null });
   }
 
   return groups;
@@ -243,13 +258,30 @@ export function PageGroupedProvisions({
                   <ChevronDown className="h-4 w-4 text-gray-500" />
                 )}
                 <span className="text-sm text-gray-600">
-                  {group.dcpPart && (
+                  {/* TOC Section info (if available) */}
+                  {group.tocSectionNumber && (
+                    <span className="font-semibold text-teal-700">{group.tocSectionNumber}</span>
+                  )}
+                  {group.tocSectionTitle && (
+                    <span className="font-medium text-gray-700 ml-1">
+                      {group.tocSectionTitle.length > 40
+                        ? group.tocSectionTitle.substring(0, 40) + '...'
+                        : group.tocSectionTitle}
+                    </span>
+                  )}
+                  {/* Separator after TOC info */}
+                  {(group.tocSectionNumber || group.tocSectionTitle) && (
+                    <span className="text-gray-400 mx-1">·</span>
+                  )}
+                  {/* DCP Part (if no TOC info) */}
+                  {!group.tocSectionNumber && group.dcpPart && (
                     <span className="font-medium text-gray-700">{group.dcpPart} · </span>
                   )}
+                  {/* Page number */}
                   {group.displayPageNumber ? (
-                    <>Page {group.displayPageNumber}</>
+                    <span className="text-gray-500">Page {group.displayPageNumber}</span>
                   ) : (
-                    <>No page reference</>
+                    <span className="text-gray-400">No page reference</span>
                   )}
                   <span className="text-gray-400 ml-1">
                     · {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}
