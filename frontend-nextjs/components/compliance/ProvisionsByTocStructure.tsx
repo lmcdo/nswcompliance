@@ -12,6 +12,7 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Filter } from 'lucide-react';
@@ -50,6 +51,7 @@ export function ProvisionsByTocStructure({
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
+  const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
 
   // Build API URL with groupBy=toc
   const params = new URLSearchParams();
@@ -189,15 +191,10 @@ export function ProvisionsByTocStructure({
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-teal-700 border-teal-300">
-                <FileText className="h-3 w-3 mr-1" />
-                {filteredProvisions.length} provisions
-              </Badge>
-              <Badge variant="outline" className="text-gray-600">
-                {totalProvisions} total
-              </Badge>
-            </div>
+            <Badge variant="outline" className="text-teal-700 border-teal-300">
+              <FileText className="h-3 w-3 mr-1" />
+              {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
+            </Badge>
           </div>
 
           {/* Topic filter chips */}
@@ -246,6 +243,7 @@ export function ProvisionsByTocStructure({
               formerCouncil={formerCouncil}
               showLayerBadges={true}
               maxProvisions={100}
+              onViewPdf={(url, page) => setPdfModal({ url, page })}
             />
           ) : (
             <div className="text-center py-12 text-gray-500">
@@ -263,6 +261,15 @@ export function ProvisionsByTocStructure({
           )}
         </div>
       </div>
+
+      {/* PDF Modal */}
+      <PdfImageModal
+        isOpen={!!pdfModal}
+        onClose={() => setPdfModal(null)}
+        imageUrl={pdfModal?.url}
+        pageNumber={pdfModal?.page}
+        title={selectedPart ? `${formerCouncil} DCP - ${selectedPart}` : undefined}
+      />
     </div>
   );
 }

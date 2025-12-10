@@ -287,24 +287,49 @@ function formatPartDisplay(partId: string): string {
 }
 
 /**
+ * Fix common UTF-8 encoding artifacts (mojibake)
+ */
+function sanitizeText(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(/â€"/g, '—')  // em-dash
+    .replace(/â€˜/g, "'")  // left single quote
+    .replace(/â€™/g, "'")  // right single quote
+    .replace(/â€œ/g, '"')  // left double quote
+    .replace(/â€\u009D/g, '"')  // right double quote
+    .replace(/â€¢/g, '•')  // bullet
+    .replace(/â€¦/g, '…')  // ellipsis
+    .replace(/Ã©/g, 'é')   // e-acute
+    .replace(/Ã¨/g, 'è')   // e-grave
+    .trim();
+}
+
+/**
  * Format section for display
  */
 function formatSectionDisplay(sectionId: string, sectionTitle: string): string {
-  // For C markers (Leichhardt), show marker + topic
+  const cleanTitle = sanitizeText(sectionTitle);
+
+  // For C markers (Leichhardt), show just the marker if title is redundant
   if (sectionId.startsWith('C') && sectionId.match(/^C\d+$/)) {
-    return `${sectionId}: ${sectionTitle.replace('Control ', '')}`;
+    const stripped = cleanTitle.replace(/^Control\s*/i, '');
+    // If title is just the marker (e.g., "C2" or "Control C2"), show only the marker
+    if (stripped === sectionId || stripped === '' || stripped.match(/^C\d+$/)) {
+      return sectionId;
+    }
+    return `${sectionId}: ${stripped}`;
   }
 
   // For numeric sections, show number + truncated title
   if (sectionId.match(/^\d/)) {
-    const shortTitle = sectionTitle.length > 25
-      ? sectionTitle.slice(0, 25) + '...'
-      : sectionTitle;
+    const shortTitle = cleanTitle.length > 25
+      ? cleanTitle.slice(0, 25) + '...'
+      : cleanTitle;
     return `${sectionId} ${shortTitle}`;
   }
 
   // Default: just the title
-  return sectionTitle.length > 30
-    ? sectionTitle.slice(0, 30) + '...'
-    : sectionTitle;
+  return cleanTitle.length > 30
+    ? cleanTitle.slice(0, 30) + '...'
+    : cleanTitle;
 }

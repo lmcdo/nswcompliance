@@ -49,6 +49,24 @@ function getDcpPageNumber(pdfPage: number | null | undefined, dcpPart?: string):
   return pdfPage;
 }
 
+/**
+ * Fix common UTF-8 encoding artifacts (mojibake)
+ */
+function sanitizeText(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/â€"/g, '—')  // em-dash
+    .replace(/â€˜/g, "'")  // left single quote
+    .replace(/â€™/g, "'")  // right single quote
+    .replace(/â€œ/g, '"')  // left double quote
+    .replace(/â€\u009D/g, '"')  // right double quote
+    .replace(/â€¢/g, '•')  // bullet
+    .replace(/â€¦/g, '…')  // ellipsis
+    .replace(/Ã©/g, 'é')   // e-acute
+    .replace(/Ã¨/g, 'è')   // e-grave
+    .trim();
+}
+
 interface Provision {
   id: number;
   provision_text: string;
@@ -289,11 +307,13 @@ export function PageGroupedProvisions({
                   {group.tocSectionNumber && (
                     <span className="font-semibold text-teal-700">{group.tocSectionNumber}</span>
                   )}
+                  {group.tocSectionNumber && group.tocSectionTitle && ' '}
                   {group.tocSectionTitle && (
-                    <span className="font-medium text-gray-700 ml-1">
-                      {group.tocSectionTitle.length > 40
-                        ? group.tocSectionTitle.substring(0, 40) + '...'
-                        : group.tocSectionTitle}
+                    <span className="font-medium text-gray-700">
+                      {(() => {
+                        const clean = sanitizeText(group.tocSectionTitle);
+                        return clean.length > 40 ? clean.substring(0, 40) + '...' : clean;
+                      })()}
                     </span>
                   )}
                   {/* Separator after TOC info */}
