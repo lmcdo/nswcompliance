@@ -91,13 +91,15 @@ interface ThemeConfig {
 
 interface PageGroupedProvisionsProps {
   provisions: Provision[];
-  expandedProvisions: Set<number>;
-  onToggleProvision: (id: number) => void;
-  onViewPdf: (url: string, page: number) => void;
+  expandedProvisions?: Set<number>;   // Optional - uses internal state if not provided
+  onToggleProvision?: (id: number) => void;  // Optional - uses internal toggle if not provided
+  onViewPdf?: (url: string, page: number) => void;  // Optional - opens in new tab if not provided
   theme?: Partial<ThemeConfig>;
   showMarkers?: boolean;
   showDcpPart?: boolean;
+  showLayerBadges?: boolean;    // Show layer badges (default: true)
   maxProvisions?: number;       // Limit display count (e.g., 20)
+  formerCouncil?: string;       // For PDF URL construction
 }
 
 // Default theme (teal, used by most paths)
@@ -174,13 +176,15 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
 
 export function PageGroupedProvisions({
   provisions,
-  expandedProvisions,
-  onToggleProvision,
-  onViewPdf,
+  expandedProvisions: externalExpandedProvisions,
+  onToggleProvision: externalToggleProvision,
+  onViewPdf: externalViewPdf,
   theme: themeOverrides,
   showMarkers = true,
   showDcpPart = false,
+  showLayerBadges = true,
   maxProvisions,
+  formerCouncil,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -189,6 +193,29 @@ export function PageGroupedProvisions({
 
   // Track expanded page groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // Internal state for expanded provisions (used when prop not provided)
+  const [internalExpandedProvisions, setInternalExpandedProvisions] = useState<Set<number>>(new Set());
+
+  // Use external props if provided, otherwise use internal state
+  const expandedProvisions = externalExpandedProvisions ?? internalExpandedProvisions;
+
+  const onToggleProvision = externalToggleProvision ?? ((id: number) => {
+    setInternalExpandedProvisions(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  });
+
+  const onViewPdf = externalViewPdf ?? ((url: string, page: number) => {
+    // Default: open PDF in new tab
+    window.open(url, '_blank');
+  });
 
   const toggleGroup = (key: string) => {
     setCollapsedGroups(prev => {
