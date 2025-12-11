@@ -52,9 +52,79 @@ export default function AssessmentPage() {
       {/* Regulatory Currency Warning Banner */}
       <RegulatoryCurrencyBanner />
 
+      {/* GLYPH PICKER - Choose one then tell me the number */}
+      <div className="bg-gray-100 p-4 border-b">
+        <p className="text-xs font-bold mb-3 text-gray-600">Pick an elegant curved glyph:</p>
+        <div className="flex gap-3 flex-wrap">
+          {/* 1. Swoosh */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q40 28 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">1. Swoosh</span>
+          </div>
+
+          {/* 2. Crescent */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L24 0 Q48 28 24 56 L0 56 Q20 28 0 0 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">2. Crescent</span>
+          </div>
+
+          {/* 3. Ribbon */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 C20 0 20 28 40 28 C20 28 20 56 0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">3. Ribbon</span>
+          </div>
+
+          {/* 4. Flourish */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L16 0 Q32 14 24 28 Q16 42 32 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">4. Flourish</span>
+          </div>
+
+          {/* 5. Sail */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 Q40 0 32 28 Q24 56 0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">5. Sail</span>
+          </div>
+
+          {/* 6. Teardrop */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L28 0 Q36 28 28 56 L0 56 Q8 28 0 0 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">6. Teardrop</span>
+          </div>
+
+          {/* 7. Leaf */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L8 0 Q40 28 8 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">7. Leaf</span>
+          </div>
+
+          {/* 8. Wave crest */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L16 0 C32 0 32 18 48 28 C32 38 32 56 16 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">8. Wave</span>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <header className="relative border-b bg-teal-50 shadow-sm overflow-hidden">
-        {/* Decorative glyph - architectural chevron */}
+        {/* Current: Chevron - will be replaced with your choice */}
         <svg
           className="absolute left-0 top-0 h-full w-8 text-teal-600"
           viewBox="0 0 32 64"
