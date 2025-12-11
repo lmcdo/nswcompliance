@@ -1,13 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'nsw_planning',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
-});
+import { getPool } from '@/lib/db';
 
 interface CapacityRequest {
   address: string;
@@ -40,6 +32,8 @@ export async function POST(request: NextRequest) {
 
     // Normalize LGA to title case
     const normalizedLGA = lga.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+
+    const pool = getPool();
 
     // 1. Get LEP height and FSR controls
     const lepControlsQuery = `

@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { getPool } from '@/lib/db';
 import { getSEPPCache, createCacheKey } from '@/lib/cache';
-
-// Database connection (PRP-A1 compliant)
-const pool = new Pool({
-  host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
-  database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
-  user: process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
-  password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-  statement_timeout: 30000  // 30 second timeout
-});
 
 interface StructuredRequirementsRequest {
   seppId: string;  // e.g. "sustainable_buildings_2022"
@@ -148,6 +137,7 @@ export async function POST(request: NextRequest) {
     console.log(`[Structured Requirements API] SQL:`, query);
     console.log(`[Structured Requirements API] Params:`, params);
 
+    const pool = getPool();
     const result = await pool.query(query, params);
 
     console.log(`[Structured Requirements API] Found ${result.rows.length} structured requirements`);
