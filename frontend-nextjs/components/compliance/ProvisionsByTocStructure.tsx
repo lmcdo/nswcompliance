@@ -17,6 +17,28 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Filter } from 'lucide-react';
 
+/**
+ * Fix common UTF-8 encoding artifacts (mojibake)
+ */
+function sanitizeText(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    .replace(/â€"/g, '—')
+    .replace(/â€˜/g, "'")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ/g, '"')
+    .replace(/â€\u009D/g, '"')
+    .replace(/â˜…/g, '★')
+    .replace(/Â²/g, '²')
+    .replace(/Â°/g, '°')
+    .replace(/â€¢/g, '•')
+    .replace(/â€¦/g, '…')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¨/g, 'è')
+    .replace(/^[â€"\s]+/, '')
+    .trim();
+}
+
 interface TocSection {
   section_id: string;
   section_title: string;
@@ -182,12 +204,12 @@ export function ProvisionsByTocStructure({
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedPart
-                  ? tocStructure[selectedPart]?.part_name || selectedPart
+                  ? sanitizeText(tocStructure[selectedPart]?.part_name) || selectedPart
                   : 'Select a section'}
               </h3>
               {selectedSection && (
                 <p className="text-sm text-gray-600">
-                  {tocStructure[selectedPart]?.sections[selectedSection]?.section_title}
+                  {sanitizeText(tocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
             </div>
