@@ -53,8 +53,25 @@ export default function AssessmentPage() {
       <RegulatoryCurrencyBanner />
 
       {/* Header */}
-      <header className="relative border-b bg-teal-50 shadow-sm">
-        <div className="absolute inset-y-0 left-0 w-5 bg-gradient-to-b from-teal-600 to-teal-700" />
+      <header className="relative border-b bg-teal-50 shadow-sm overflow-hidden">
+        {/* Decorative glyph - architectural chevron */}
+        <svg
+          className="absolute left-0 top-0 h-full w-8 text-teal-600"
+          viewBox="0 0 32 64"
+          fill="none"
+          preserveAspectRatio="none"
+        >
+          <path
+            d="M0 0 L24 0 L32 32 L24 64 L0 64 Z"
+            fill="currentColor"
+            className="opacity-90"
+          />
+          <path
+            d="M0 0 L16 0 L24 32 L16 64 L0 64 Z"
+            fill="currentColor"
+            className="opacity-100"
+          />
+        </svg>
         <div className="max-w-7xl mx-auto flex items-center gap-4 px-4 py-3 md:py-4 pl-6">
           {/* PlotDetect logo + name */}
           <div className="flex items-center gap-2">
