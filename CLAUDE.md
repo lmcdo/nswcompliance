@@ -162,6 +162,13 @@ When evaluating data issues, answer these questions:
 - **Deterministic processing only** - NO AI interpretation of regulations
 - Write **docstrings for every function** using the Google style
 
+### UI Copy & Labels
+- **Never truncate or elide words** in user-facing labels and descriptions
+- **Use full prose for human beings** - write complete, clear sentences
+- **BAD**: "429 in section", "558 total"
+- **GOOD**: "429 provisions in this section", "558 total provisions for this property"
+- Labels should be self-explanatory without requiring context or guesswork
+
 ### Documentation & Explainability
 - **Update `README.md`** when new features are added
 - **Comment non-obvious code** and ensure everything is understandable

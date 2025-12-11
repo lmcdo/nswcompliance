@@ -191,14 +191,14 @@ export function ProvisionsByTocStructure({
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-teal-700 border-teal-300">
-                <FileText className="h-3 w-3 mr-1" />
-                {filteredProvisions.length} in section
-              </Badge>
-              <Badge variant="outline" className="text-gray-500 border-gray-300">
-                {totalProvisions} total for property
-              </Badge>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-teal-700 font-medium">
+                {filteredProvisions.length} provisions in this section
+              </span>
+              <span className="text-gray-400">|</span>
+              <span className="text-gray-500">
+                {totalProvisions} total for this property
+              </span>
             </div>
           </div>
 
