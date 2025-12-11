@@ -112,12 +112,188 @@ export default function AssessmentPage() {
             <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">7. Leaf</span>
           </div>
 
-          {/* 8. Wave crest */}
+          {/* 8. Wave */}
           <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
             <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
               <path d="M0 0 L16 0 C32 0 32 18 48 28 C32 38 32 56 16 56 L0 56 Z" fill="#0d9488" />
             </svg>
             <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">8. Wave</span>
+          </div>
+
+          {/* 9. Spiral */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L12 0 Q36 8 32 28 Q28 48 8 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">9. Spiral</span>
+          </div>
+
+          {/* 10. Flame */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L12 0 Q24 14 16 28 Q8 42 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">10. Flame</span>
+          </div>
+
+          {/* 11. Fin */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L6 0 Q40 20 40 28 Q40 36 6 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">11. Fin</span>
+          </div>
+
+          {/* 12. Nouveau */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q8 14 24 28 Q40 42 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">12. Nouveau</span>
+          </div>
+
+          {/* 13. Brush */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L4 0 Q20 8 28 28 Q20 48 4 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">13. Brush</span>
+          </div>
+
+          {/* 14. Petal */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L8 0 Q32 0 32 28 Q32 56 8 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">14. Petal</span>
+          </div>
+
+          {/* 15. Hourglass */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L32 0 Q12 14 12 28 Q12 42 32 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">15. Hourglass</span>
+          </div>
+
+          {/* 16. Aurora */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-14" viewBox="0 0 56 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q40 10 30 20 Q20 30 40 40 Q30 50 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">16. Aurora</span>
+          </div>
+
+          {/* 17. Feather */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L4 0 Q16 10 20 28 Q16 46 4 56 L0 56 Q8 28 0 0 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">17. Feather</span>
+          </div>
+
+          {/* 18. Cloud */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q32 8 28 18 Q36 24 32 34 Q40 42 28 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">18. Cloud</span>
+          </div>
+
+          {/* 19. Ink */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L16 0 Q28 8 24 20 Q32 28 24 36 Q28 48 16 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">19. Ink</span>
+          </div>
+
+          {/* 20. Bow */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q4 14 4 28 Q4 42 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">20. Bow</span>
+          </div>
+
+          {/* 21. Paisley */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L16 0 Q40 4 36 28 Q32 52 8 56 L0 56 Q16 28 0 0 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">21. Paisley</span>
+          </div>
+
+          {/* 22. Fern */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L8 0 Q24 0 28 14 Q32 28 28 42 Q24 56 8 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">22. Fern</span>
+          </div>
+
+          {/* 23. Shell */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L12 0 Q48 12 40 28 Q32 44 12 56 L0 56 Q24 28 0 0 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">23. Shell</span>
+          </div>
+
+          {/* 24. Crest */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L24 0 Q36 14 28 28 Q20 42 28 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">24. Crest</span>
+          </div>
+
+          {/* 25. Billow */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q44 14 36 28 Q28 42 44 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">25. Billow</span>
+          </div>
+
+          {/* 26. Ripple */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L16 0 Q24 9 20 18 Q28 28 20 38 Q24 47 16 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">26. Ripple</span>
+          </div>
+
+          {/* 27. Torch */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L8 0 Q32 8 24 28 Q16 48 8 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">27. Torch</span>
+          </div>
+
+          {/* 28. Plume */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L12 0 Q36 4 32 18 Q28 32 36 46 Q24 56 12 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">28. Plume</span>
+          </div>
+
+          {/* 29. Scallop */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L20 0 Q32 14 24 28 Q32 42 20 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">29. Scallop</span>
+          </div>
+
+          {/* 30. Tulip */}
+          <div className="relative h-14 w-40 bg-teal-50 rounded border overflow-hidden">
+            <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
+              <path d="M0 0 L12 0 Q28 14 20 28 Q12 42 28 56 L0 56 Z" fill="#0d9488" />
+            </svg>
+            <span className="absolute bottom-0.5 right-1 text-[10px] text-gray-400">30. Tulip</span>
           </div>
         </div>
       </div>
