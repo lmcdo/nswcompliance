@@ -10,6 +10,36 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+/**
+ * Fix common UTF-8 encoding artifacts (mojibake)
+ */
+function sanitizeText(text: string | undefined | null): string {
+  if (!text) return '';
+  return text
+    // Em-dash
+    .replace(/â€"/g, '—')
+    .replace(/â€"}/g, '—')
+    // Quotes
+    .replace(/â€˜/g, "'")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ/g, '"')
+    .replace(/â€\u009D/g, '"')
+    // Symbols
+    .replace(/â˜…/g, '★')  // star
+    .replace(/Â²/g, '²')   // superscript 2
+    .replace(/Â°/g, '°')   // degree
+    .replace(/Â·/g, '·')   // middle dot
+    .replace(/â€¢/g, '•')  // bullet
+    .replace(/â€¦/g, '…')  // ellipsis
+    // Accented chars
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¨/g, 'è')
+    // Currency/special
+    .replace(/Â£/g, '£')
+    .replace(/â‚¬/g, '€')
+    .trim();
+}
+
 interface RequirementItem {
   [key: string]: string | boolean;
   legal_text?: string;
@@ -88,14 +118,14 @@ export function StructuredSeppRequirements({
         <div className="flex-1">
           {/* Display properties */}
           {entries.length === 1 ? (
-            <span>{entries[0][1]?.toString()}</span>
+            <span>{sanitizeText(entries[0][1]?.toString())}</span>
           ) : (
             <div>
               {entries.map(([key, value], i) => (
                 <div key={i} className="inline">
                   {i > 0 && <span className="mx-2 text-gray-400">|</span>}
-                  <span className="font-medium">{key}:</span>{' '}
-                  <span>{value?.toString()}</span>
+                  <span className="font-medium">{sanitizeText(key)}:</span>{' '}
+                  <span>{sanitizeText(value?.toString())}</span>
                 </div>
               ))}
             </div>
@@ -104,14 +134,14 @@ export function StructuredSeppRequirements({
           {/* Show legal text if available */}
           {legal_text && (
             <div className="mt-1 text-xs text-gray-600 italic bg-gray-50 border-l-2 border-gray-300 pl-2 py-1">
-              "{legal_text}"
+              "{sanitizeText(legal_text)}"
             </div>
           )}
 
           {/* Show citation (item-specific or category-level) */}
           {(legal_citation || categoryLegalCitation) && (
             <div className="mt-1 text-xs text-blue-700">
-              📎 {legal_citation || categoryLegalCitation}
+              📎 {sanitizeText(legal_citation || categoryLegalCitation)}
             </div>
           )}
         </div>
@@ -128,11 +158,11 @@ export function StructuredSeppRequirements({
           <Card key={reqIndex} className="border-purple-200 bg-purple-50/30">
             <CardHeader className="pb-3">
               <CardTitle className="text-base font-semibold text-purple-900">
-                {requirementData.title}
+                {sanitizeText(requirementData.title)}
               </CardTitle>
               {requirementData.description && (
                 <p className="text-xs text-gray-700 mt-1">
-                  {requirementData.description}
+                  {sanitizeText(requirementData.description)}
                 </p>
               )}
               <div className="text-xs text-gray-600 mt-1">
@@ -159,10 +189,10 @@ export function StructuredSeppRequirements({
                       )}
                       <div className="flex-1">
                         <div className="font-medium text-sm text-gray-900">
-                          {category.name}
+                          {sanitizeText(category.name)}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {category.reference}
+                          {sanitizeText(category.reference)}
                         </div>
                       </div>
                       <div className="text-xs text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
@@ -176,7 +206,7 @@ export function StructuredSeppRequirements({
                         {/* Show category legal citation */}
                         {category.legal_citation && (
                           <div className="mt-2 ml-6 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                            📎 {category.legal_citation}
+                            📎 {sanitizeText(category.legal_citation)}
                           </div>
                         )}
                         <ul className="mt-2 space-y-2 ml-6">
