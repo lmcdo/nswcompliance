@@ -198,6 +198,8 @@ interface SectionNodeProps {
 }
 
 function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
+  const display = formatSectionDisplay(section.section_id, section.section_title);
+
   return (
     <div
       className={cn(
@@ -208,10 +210,17 @@ function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
       onClick={onClick}
     >
       <FileText className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-      <span className="text-sm text-gray-700 truncate flex-1">
-        {formatSectionDisplay(section.section_id, section.section_title)}
-      </span>
-      <span className="text-xs text-gray-400">
+      <div className="flex-1 min-w-0">
+        <span className="text-xs font-medium text-gray-700 block truncate">
+          {display.primary}
+        </span>
+        {display.secondary && (
+          <span className="text-[10px] text-gray-500 block truncate">
+            {display.secondary}
+          </span>
+        )}
+      </div>
+      <span className="text-xs text-gray-400 flex-shrink-0">
         {section.provision_count}
       </span>
     </div>
@@ -292,44 +301,59 @@ function formatPartDisplay(partId: string): string {
 function sanitizeText(text: string): string {
   if (!text) return text;
   return text
-    .replace(/â€"/g, '—')  // em-dash
-    .replace(/â€˜/g, "'")  // left single quote
-    .replace(/â€™/g, "'")  // right single quote
-    .replace(/â€œ/g, '"')  // left double quote
-    .replace(/â€\u009D/g, '"')  // right double quote
-    .replace(/â€¢/g, '•')  // bullet
-    .replace(/â€¦/g, '…')  // ellipsis
-    .replace(/Ã©/g, 'é')   // e-acute
-    .replace(/Ã¨/g, 'è')   // e-grave
+    // Em-dash variations
+    .replace(/â€"/g, '—')
+    .replace(/\u00e2\u20ac\u201c/g, '—')
+    .replace(/\u00e2\u0080\u0094/g, '—')
+    // Quotes
+    .replace(/â€˜/g, "'")
+    .replace(/â€™/g, "'")
+    .replace(/â€œ/g, '"')
+    .replace(/â€\u009D/g, '"')
+    .replace(/\u00e2\u20ac\u0153/g, '"')
+    .replace(/\u00e2\u20ac\u009d/g, '"')
+    // Other
+    .replace(/â€¢/g, '•')
+    .replace(/â€¦/g, '…')
+    .replace(/Ã©/g, 'é')
+    .replace(/Ã¨/g, 'è')
+    // Clean up any remaining garbage at start
+    .replace(/^[â€"\s]+/, '')
     .trim();
 }
 
 /**
- * Format section for display
+ * Format section for display - returns object for flexible rendering
  */
-function formatSectionDisplay(sectionId: string, sectionTitle: string): string {
+function formatSectionDisplay(sectionId: string, sectionTitle: string): { primary: string; secondary?: string } {
   const cleanTitle = sanitizeText(sectionTitle);
 
-  // For C markers (Leichhardt), show just the marker if title is redundant
+  // For C markers (Leichhardt), show "Control N" as primary
   if (sectionId.startsWith('C') && sectionId.match(/^C\d+$/)) {
-    const stripped = cleanTitle.replace(/^Control\s*/i, '');
-    // If title is just the marker (e.g., "C2" or "Control C2"), show only the marker
-    if (stripped === sectionId || stripped === '' || stripped.match(/^C\d+$/)) {
-      return sectionId;
+    const num = sectionId.slice(1);
+    const stripped = cleanTitle.replace(/^Control\s*/i, '').replace(/^C\d+\s*/, '');
+
+    // If there's meaningful title text beyond just the marker
+    if (stripped && stripped !== sectionId && !stripped.match(/^C\d+$/) && stripped.length > 2) {
+      return {
+        primary: `Ctrl ${num}`,
+        secondary: stripped.length > 20 ? stripped.slice(0, 20) + '…' : stripped
+      };
     }
-    return `${sectionId}: ${stripped}`;
+    return { primary: `Control ${num}` };
   }
 
-  // For numeric sections, show number + truncated title
+  // For numeric sections, show number + title
   if (sectionId.match(/^\d/)) {
-    const shortTitle = cleanTitle.length > 25
-      ? cleanTitle.slice(0, 25) + '...'
+    const shortTitle = cleanTitle.length > 22
+      ? cleanTitle.slice(0, 22) + '…'
       : cleanTitle;
-    return `${sectionId} ${shortTitle}`;
+    return { primary: shortTitle || sectionId };
   }
 
-  // Default: just the title
-  return cleanTitle.length > 30
-    ? cleanTitle.slice(0, 30) + '...'
+  // Default: just the title (truncated)
+  const display = cleanTitle.length > 25
+    ? cleanTitle.slice(0, 25) + '…'
     : cleanTitle;
+  return { primary: display || sectionId };
 }
