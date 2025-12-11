@@ -191,10 +191,15 @@ export function ProvisionsByTocStructure({
                 </p>
               )}
             </div>
-            <Badge variant="outline" className="text-teal-700 border-teal-300">
-              <FileText className="h-3 w-3 mr-1" />
-              {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-teal-700 border-teal-300">
+                <FileText className="h-3 w-3 mr-1" />
+                {filteredProvisions.length} in section
+              </Badge>
+              <Badge variant="outline" className="text-gray-500 border-gray-300">
+                {totalProvisions} total for property
+              </Badge>
+            </div>
           </div>
 
           {/* Topic filter chips */}
