@@ -189,6 +189,38 @@ export function StateLevelControls({
   const lotSizeResult = lotSizeLayer?.results?.[0];
   const minimumLotSize = lotSizeResult?.['Minimum Lot Size'] || lotSizeResult?.['Lot Size'];
 
+  // Extract SEPP Sustainable Buildings layers from Planning Portal
+  const sustainableBuildingsLayers = propertyData?.planningLayers?.filter(
+    (layer: any) => layer.layerName?.includes('Sustainable Buildings') ||
+                   layer.results?.some((r: any) => r['EPI Name']?.includes('Sustainable Buildings'))
+  ) || [];
+
+  // Parse the layer data into meaningful info
+  const getSustainableBuildingsInfo = () => {
+    const info: { waterTarget?: string; climateZone?: string; basixArea?: string } = {};
+
+    for (const layer of sustainableBuildingsLayers) {
+      for (const result of layer.results || []) {
+        const mapType = result['Map Type'];
+        const classValue = result['Class'];
+        const label = result['Label'];
+
+        if (mapType === 'WAT' && classValue) {
+          info.waterTarget = classValue; // e.g., "40%"
+        }
+        if (mapType === 'CLM' && classValue) {
+          info.climateZone = classValue; // e.g., "56"
+        }
+        if (mapType === 'BAL' && (classValue || label)) {
+          info.basixArea = `Area ${classValue}${label ? ` (${label})` : ''}`; // e.g., "Area 5 (INNER WEST)"
+        }
+      }
+    }
+    return info;
+  };
+
+  const sustainableInfo = getSustainableBuildingsInfo();
+
   // Check for designated TOD layers from NSW Planning Portal (authoritative source)
   const todSitesLayer = propertyData?.planningLayers?.find(
     (layer: any) => layer.layerName === 'Transport Oriented Development Sites Map'
@@ -245,7 +277,34 @@ export function StateLevelControls({
           </p>
         </CardHeader>
         {!collapsedSections.sepp && (
-          <CardContent className="pt-0">
+          <CardContent className="pt-0 space-y-4">
+            {/* Planning Portal Source Layers */}
+            {(sustainableInfo.waterTarget || sustainableInfo.climateZone || sustainableInfo.basixArea) && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+                <div className="text-xs font-semibold text-purple-800 mb-2">
+                  📍 Applied from NSW Planning Portal
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {sustainableInfo.waterTarget && (
+                    <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
+                    </div>
+                  )}
+                  {sustainableInfo.climateZone && (
+                    <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                      🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
+                    </div>
+                  )}
+                  {sustainableInfo.basixArea && (
+                    <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                      🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Structured Requirements */}
             {loadingSepp ? (
               <div className="animate-pulse space-y-2">
                 <div className={`h-4 ${AuthorityColors.SEPP.bg.replace('50', '200')} rounded w-3/4`}></div>
@@ -260,6 +319,41 @@ export function StateLevelControls({
               <p className="text-sm text-gray-500 italic">
                 No structured SEPP requirements for this development type
               </p>
+            )}
+
+            {/* BASIX Energy & Thermal - Complex Calculations */}
+            {sustainableInfo.basixArea && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <div className="text-2xl">⚡</div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-green-900">BASIX Energy & Thermal Requirements</div>
+                    <p className="text-sm text-green-800 mt-1">
+                      Energy efficiency and thermal comfort targets for {sustainableInfo.basixArea} require
+                      detailed calculation through the official BASIX Certificate tool. Targets vary by
+                      building type, orientation, and materials.
+                    </p>
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <a
+                        href="https://www.basix.nsw.gov.au/iframe/basix-help/basix-help-single.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors"
+                      >
+                        🔗 Get BASIX Certificate
+                      </a>
+                      <a
+                        href="https://www.basix.nsw.gov.au/iframe/find-assessor.html"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded hover:bg-green-50 transition-colors"
+                      >
+                        👤 Find BASIX Assessor
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </CardContent>
         )}
