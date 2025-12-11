@@ -54,14 +54,14 @@ export default function AssessmentPage() {
 
       {/* Header */}
       <header className="relative border-b shadow-sm overflow-hidden flex">
-        {/* Tulip glyph */}
-        <div className="relative w-10 bg-teal-600 flex-shrink-0">
-          <svg className="absolute left-0 top-0 h-full w-10" viewBox="0 0 40 56" fill="none" preserveAspectRatio="none">
-            <path d="M0 0 L12 0 Q28 14 20 28 Q12 42 28 56 L0 56 Z" fill="#0d9488" />
+        {/* Tulip glyph - teal shape on white, curves into white logo area */}
+        <div className="relative flex-shrink-0 bg-white">
+          <svg className="h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
+            <path d="M0 0 L16 0 Q36 14 28 28 Q20 42 36 56 L0 56 Z" fill="#0d9488" />
           </svg>
         </div>
         {/* Logo + name on white */}
-        <div className="flex items-center gap-2 px-4 py-3 md:py-4 bg-white">
+        <div className="flex items-center gap-2 pr-4 py-3 md:py-4 bg-white">
           <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
           <span className="text-base font-semibold text-gray-900">PlotDetect</span>
         </div>
