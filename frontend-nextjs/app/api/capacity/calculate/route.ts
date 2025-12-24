@@ -173,6 +173,8 @@ async function getSetbacks(
   // STRATEGY: Precinct-specific → General provisions → Guidance fallback
   // This cascade ensures users get the most specific data available
 
+  const pool = getPool();
+
   // ========================================================================
   // STEP 1: Check for precinct-specific setbacks (MOST SPECIFIC)
   // ========================================================================
