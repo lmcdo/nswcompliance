@@ -287,7 +287,7 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Regulatory Tabs - teal theme */}
+                {/* Regulatory Tabs - SEPP purple, DCP green */}
                 <div className="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">
                     <button
@@ -298,12 +298,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('sepp-lep')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
-                          ? 'bg-teal-700 text-white'
+                          ? 'bg-purple-700 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       <span className="block text-base font-bold">SEPP Provisions</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-teal-100' : 'text-gray-400'}`}>State Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-purple-100' : 'text-gray-400'}`}>State Controls</span>
                     </button>
                     <button
                       role="tab"
@@ -313,12 +313,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('dcp')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
-                          ? 'bg-teal-700 text-white'
+                          ? 'bg-green-700 text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
                       <span className="block text-base font-bold">DCP Provisions</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-gray-400'}`}>Council Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-green-100' : 'text-gray-400'}`}>Council Controls</span>
                     </button>
                   </div>
                 </div>
