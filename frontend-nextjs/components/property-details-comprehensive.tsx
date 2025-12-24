@@ -209,6 +209,9 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
          // Determine color scheme based on layer type
          const isSEPP = layerName === 'Special Provisions'
 
+         // Display name mapping
+         const displayName = isSEPP ? 'SEPP Requirements' : layerName
+
          // Color scheme: SEPP/Special Provisions=Purple (matches "Applied from NSW Planning Portal"), LEP=Teal, N/A=Gray
          const colors = isPresent
            ? (isSEPP
@@ -226,7 +229,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                disabled={!isPresent}
              >
                <div className="flex items-start justify-between gap-2 w-full">
-                 <span className={`font-medium text-xs leading-tight flex-1 break-words ${colors.text}`}>{layerName}</span>
+                 <span className={`font-medium text-xs leading-tight flex-1 break-words ${colors.text}`}>{displayName}</span>
                  {isPresent ? (
                    <div className={`flex items-center justify-center h-6 w-6 rounded-full text-xs font-semibold flex-shrink-0 ${expandedLayers.has(layer.id) ? `${colors.circleActiveBg} text-white` : `${colors.circleBg} ${colors.circleText} border ${colors.circleBorder}`}`}>
                      {layer.results.length}

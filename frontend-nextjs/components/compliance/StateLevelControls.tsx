@@ -323,30 +323,30 @@ export function StateLevelControls({
 
             {/* BASIX Energy & Thermal - Complex Calculations */}
             {sustainableInfo.basixArea && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <div className="text-2xl">⚡</div>
                   <div className="flex-1">
-                    <div className="font-semibold text-green-900">BASIX Energy & Thermal Requirements</div>
-                    <p className="text-sm text-green-800 mt-1">
+                    <div className="font-semibold text-purple-900">BASIX Energy & Thermal Requirements</div>
+                    <p className="text-sm text-purple-800 mt-1">
                       Energy efficiency and thermal comfort targets for {sustainableInfo.basixArea} require
                       detailed calculation through the official BASIX Certificate tool. Targets vary by
                       building type, orientation, and materials.
                     </p>
                     <div className="flex flex-wrap gap-2 mt-3">
                       <a
-                        href="https://www.basix.nsw.gov.au/iframe/basix-help/basix-help-single.html"
+                        href="https://www.planningportal.nsw.gov.au/development-and-assessment/basix"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs bg-green-600 text-white px-3 py-1.5 rounded hover:bg-green-700 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs bg-purple-600 text-white px-3 py-1.5 rounded hover:bg-purple-700 transition-colors"
                       >
                         🔗 Get BASIX Certificate
                       </a>
                       <a
-                        href="https://www.basix.nsw.gov.au/iframe/find-assessor.html"
+                        href="https://www.planningportal.nsw.gov.au/basix/thermal-performance/simulation-method/accredited-assessors"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs bg-white text-green-700 border border-green-300 px-3 py-1.5 rounded hover:bg-green-50 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs bg-white text-purple-700 border border-purple-300 px-3 py-1.5 rounded hover:bg-purple-50 transition-colors"
                       >
                         👤 Find BASIX Assessor
                       </a>
