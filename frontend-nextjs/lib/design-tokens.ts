@@ -14,11 +14,11 @@ export const AuthorityColors = {
         hover: 'hover:bg-green-100',
     },
     SEPP: {
-        primary: '#d97706', // amber-600
-        border: 'border-amber-500',
-        bg: 'bg-amber-50',
-        text: 'text-amber-700',
-        hover: 'hover:bg-amber-100',
+        primary: '#9333ea', // purple-600
+        border: 'border-purple-500',
+        bg: 'bg-purple-50',
+        text: 'text-purple-700',
+        hover: 'hover:bg-purple-100',
     },
 } as const;
 

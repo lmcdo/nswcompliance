@@ -278,7 +278,7 @@ export function StateLevelControls({
         </CardHeader>
         {!collapsedSections.sepp && (
           <CardContent className="pt-0 space-y-4">
-            {/* Planning Portal Source Layers */}
+            {/* Planning Portal Source Layers - Purple shades for cohesion with left column Special Provisions */}
             {(sustainableInfo.waterTarget || sustainableInfo.climateZone || sustainableInfo.basixArea) && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                 <div className="text-xs font-semibold text-purple-800 mb-2">
@@ -286,17 +286,17 @@ export function StateLevelControls({
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {sustainableInfo.waterTarget && (
-                    <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-400">
                       💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
                     </div>
                   )}
                   {sustainableInfo.climateZone && (
-                    <div className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded">
+                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-500">
                       🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
                     </div>
                   )}
                   {sustainableInfo.basixArea && (
-                    <div className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">
+                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-600">
                       🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
                     </div>
                   )}

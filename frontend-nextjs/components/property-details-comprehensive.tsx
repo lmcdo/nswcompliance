@@ -209,10 +209,10 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
          // Determine color scheme based on layer type
          const isSEPP = layerName === 'Special Provisions'
 
-         // Color scheme: SEPP=Orange, LEP=Teal, N/A=Gray
+         // Color scheme: SEPP/Special Provisions=Purple (matches "Applied from NSW Planning Portal"), LEP=Teal, N/A=Gray
          const colors = isPresent
            ? (isSEPP
-             ? { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', circleBg: 'bg-orange-100', circleText: 'text-orange-700', circleBorder: 'border-orange-300', circleActiveBg: 'bg-orange-600' }
+             ? { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800', circleBg: 'bg-purple-100', circleText: 'text-purple-700', circleBorder: 'border-purple-300', circleActiveBg: 'bg-purple-600' }
              : { bg: 'bg-white', border: 'border-gray-200', text: 'text-teal-700', circleBg: 'bg-teal-50', circleText: 'text-teal-700', circleBorder: 'border-teal-200', circleActiveBg: 'bg-teal-600' })
            : { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-500', circleBg: '', circleText: '', circleBorder: '', circleActiveBg: '' }
 
@@ -221,7 +221,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              <Button
                variant="ghost"
                className="!flex w-full justify-between h-auto p-2 font-normal whitespace-normal text-left hover:opacity-90"
-               style={isPresent && isSEPP ? { backgroundColor: 'rgb(255 247 237)', backgroundImage: 'none' } as React.CSSProperties : {}}
+               style={isPresent && isSEPP ? { backgroundColor: 'rgb(250 245 255)', backgroundImage: 'none' } as React.CSSProperties : {}}
                onClick={() => layer && toggleLayer(layer.id)}
                disabled={!isPresent}
              >
@@ -238,9 +238,34 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
              </Button>
 
              {layer && expandedLayers.has(layer.id) && (
-               <div className="border-t bg-gray-50 p-2 space-y-2">
-                 {layer.results.map((result, idx) => (
+               <div className={`border-t p-2 space-y-2 ${isSEPP ? 'bg-purple-50' : 'bg-gray-50'}`}>
+                 {layer.results.map((result, idx) => {
+                   // For Special Provisions (SEPP), add matching labels from "Applied from NSW Planning Portal"
+                   const mapType = result['Map Type'];
+                   const classValue = result['Class'];
+                   const label = result['Label'];
+
+                   // Determine SEPP provision type for matching labels - purple shades for cohesion
+                   const getSeppLabel = () => {
+                     if (mapType === 'WAT') return { emoji: '💧', label: 'Water Target', color: 'bg-purple-100 text-purple-900 border-l-4 border-purple-400' };
+                     if (mapType === 'CLM') return { emoji: '🌡️', label: 'Climate Zone', color: 'bg-purple-100 text-purple-900 border-l-4 border-purple-500' };
+                     if (mapType === 'BAL') return { emoji: '🏠', label: 'BASIX', color: 'bg-purple-100 text-purple-900 border-l-4 border-purple-600' };
+                     if (mapType === 'TEW') return { emoji: '🔥', label: 'Thermal Energy', color: 'bg-purple-100 text-purple-900 border-l-4 border-purple-700' };
+                     return null;
+                   };
+                   const seppLabel = isSEPP ? getSeppLabel() : null;
+
+                   return (
                    <div key={idx} className="bg-white rounded-lg p-2 shadow-sm overflow-hidden">
+                     {/* SEPP Special Provisions: Show matching colored label */}
+                     {seppLabel && (
+                       <div className="mb-2">
+                         <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded ${seppLabel.color}`}>
+                           {seppLabel.emoji} {seppLabel.label}: <span className="font-bold">{classValue}{label ? ` (${label})` : ''}</span>
+                         </span>
+                       </div>
+                     )}
+
                      {/* Top row: Blue and Green pills stacked in top right corner */}
                      <div className="mb-2">
                        <div className="flex flex-col gap-1">
@@ -283,7 +308,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                            <span className="font-semibold text-gray-900">{result['Land Use']}</span>
                          </p>
                        )}
-                       {result['Class'] && (
+                       {!seppLabel && result['Class'] && (
                          <p>
                            <span className="text-gray-700">Class:</span>{' '}
                            <span className="font-semibold text-gray-900">{result['Class']}</span>
@@ -320,7 +345,8 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                        ))}
                      </div>
                    </div>
-                 ))}
+                   );
+                 })}
                </div>
              )}
            </div>
