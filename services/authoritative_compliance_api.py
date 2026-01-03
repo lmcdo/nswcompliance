@@ -184,14 +184,10 @@ class HierarchyResolver:
 
 class AuthoritativeComplianceAPI:
     """Main authoritative compliance API"""
-    
+
     def __init__(self):
-        self.db = psycopg2.connect(
-            host="localhost",
-            database="nsw_planning",
-            user="postgres",
-            password="postgres"
-        )
+        from .db_config import get_connection
+        self.db = get_connection()
         self.resolver = HierarchyResolver(self.db)
     
     def check_compliance(

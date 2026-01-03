@@ -16,6 +16,7 @@ import { LandUseZoningCard } from './LandUseZoningCard';
 import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { ADGSummaryCard } from './ADGSummaryCard';
+import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 
 interface StateLevelControlsProps {
@@ -60,6 +61,7 @@ export function StateLevelControls({
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     sepp: false,
     lep: false,
+    lmr: false,  // Housing SEPP LMR section
     adg: false,
     tod: false // TOD expanded by default when shown
   });
@@ -168,6 +170,28 @@ export function StateLevelControls({
   const zone = propertyData?.constraints?.zone;
   const zoneDescription = propertyData?.constraints?.zoneDescription;
   const lga = propertyData?.constraints?.lga || 'Inner West';
+
+  // Extract lot dimensions for Housing SEPP LMR eligibility
+  const propertyAreaStr = propertyData?.propertyArea;
+  const lotSize = propertyAreaStr
+    ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, ''))
+    : propertyData?.geometry?.area;
+
+  // Lot width - from geometry calculations or property data
+  const lotWidth = propertyData?.geometry?.frontageWidth
+    || propertyData?.geometry?.estimatedWidth
+    || propertyData?.constraints?.lotWidth
+    || 15; // Default estimate if not available
+
+  // Get station distance for TOD eligibility
+  const stationDistance = propertyData?.constraints?.todPrecinct?.stationDistance
+    || nearbyTransport.find(s => s.type === 'heavy_rail')?.distance;
+
+  // Check if property is in LMR area (residential zone)
+  const isLMRArea = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0]?.toUpperCase() || '');
+
+  // Show Housing SEPP LMR section for residential zones
+  const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
 
   // Show ADG if zone permits apartments (regardless of dev type selection)
   const zonePrefix = zone?.split(' ')[0]?.toUpperCase();
@@ -415,6 +439,43 @@ export function StateLevelControls({
           </CardContent>
         )}
       </Card>
+
+      {/* Housing SEPP LMR Section - Shows for residential zones with lot data */}
+      {showHousingSEPPSection && (
+        <Card className="border-emerald-200 bg-emerald-50/30">
+          <CardHeader
+            className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
+            onClick={() => toggleSection('lmr')}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {collapsedSections.lmr ? (
+                  <ChevronRight className="h-5 w-5 text-emerald-600" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-emerald-600" />
+                )}
+                <Building2 className="h-5 w-5 text-emerald-600" />
+                <CardTitle className="text-lg text-emerald-900">Multiple Occupancy Options</CardTitle>
+              </div>
+              <Badge className="bg-emerald-100 text-emerald-800">NSW Reforms</Badge>
+            </div>
+            <p className="text-sm text-emerald-700 mt-1 ml-7">
+              Duplexes, townhouses, apartments and other housing options under Low and Mid-Rise reforms
+            </p>
+          </CardHeader>
+          {!collapsedSections.lmr && (
+            <CardContent className="pt-0">
+              <HousingSEPPEligibilityCard
+                zoneCode={zone}
+                lotSize={lotSize}
+                lotWidth={lotWidth}
+                stationDistance={stationDistance}
+                isLMRArea={isLMRArea}
+              />
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* ADG Section - Shows for apartment zones OR apartment development types */}
       {showADGSection && (

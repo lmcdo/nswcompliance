@@ -8,11 +8,11 @@
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'nsw_planning',
-  user: 'postgres',
-  password: 'postgres'
+  host: process.env.PGHOST || process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.PGPORT || process.env.DATABASE_PORT || '5432'),
+  database: process.env.PGDATABASE || process.env.DATABASE_NAME || 'nsw_planning',
+  user: process.env.PGUSER || process.env.DATABASE_USER || 'postgres',
+  password: process.env.PGPASSWORD || process.env.DATABASE_PASSWORD || '',
 });
 
 export interface DCPSection {

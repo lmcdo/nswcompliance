@@ -12,14 +12,10 @@ from typing import Dict, List, Optional, Tuple
 
 class AuthoritativeMigrationChunk2:
     """Migrate existing provisions to authoritative schema with hierarchy resolution"""
-    
+
     def __init__(self):
-        self.pg_conn = psycopg2.connect(
-            host="localhost",
-            database="nsw_planning",
-            user="postgres",
-            password="postgres"
-        )
+        from .db_config import get_connection
+        self.pg_conn = get_connection()
         self.stats = {
             'provisions_migrated': 0,
             'tiers_created': 0,

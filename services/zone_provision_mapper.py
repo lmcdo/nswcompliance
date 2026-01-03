@@ -9,17 +9,13 @@ import re
 import json
 from typing import Dict, List, Set
 from datetime import datetime
+from .db_config import get_connection
 
 class ZoneProvisionMapper:
     """Maps regulatory provisions to appropriate zones"""
-    
+
     def __init__(self):
-        self.conn = psycopg2.connect(
-            host="localhost",
-            database="nsw_planning", 
-            user="postgres",
-            password="postgres"
-        )
+        self.conn = get_connection()
         
         # Available zones from zone tables
         self.available_zones = ['B1', 'B2', 'B4', 'R1', 'R2', 'R3', 'R4']
