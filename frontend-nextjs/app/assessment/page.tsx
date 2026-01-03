@@ -295,11 +295,11 @@ export default function AssessmentPage() {
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'sepp-lep'
                           ? 'bg-purple-700 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
                       <span className="block text-base font-bold">SEPP Provisions</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-purple-100' : 'text-gray-400'}`}>State Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-purple-100' : 'text-purple-400'}`}>State Controls</span>
                     </button>
                     <button
                       role="tab"
@@ -310,11 +310,11 @@ export default function AssessmentPage() {
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
                           ? 'bg-green-700 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                     >
                       <span className="block text-base font-bold">DCP Provisions</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-green-100' : 'text-gray-400'}`}>Council Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-green-100' : 'text-green-400'}`}>Council Controls</span>
                     </button>
                   </div>
                 </div>
