@@ -99,7 +99,7 @@ export default function AssessmentPage() {
           {/* Muted styling signals "reference context" vs dynamic right panel */}
           <div className="lg:col-span-1 space-y-4 md:space-y-6">
             <div className="bg-slate-100 border-l-4 border-l-slate-400 rounded-r-lg p-4 md:p-6">
-              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Property Context</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Site Planning Profile</p>
               <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-slate-800">Property Summary</h3>
 
               {loading && (
