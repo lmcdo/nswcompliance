@@ -95,10 +95,12 @@ export default function AssessmentPage() {
       {/* Main Content - 2 Column Layout (stacked on mobile) */}
       <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 md:py-6">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 md:gap-6">
-          {/* Left Panel - Property Card (1/4 width on desktop, full width on mobile) */}
+          {/* Left Panel - Static Property Context (1/4 width on desktop) */}
+          {/* Muted styling signals "reference context" vs dynamic right panel */}
           <div className="lg:col-span-1 space-y-4 md:space-y-6">
-            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 md:p-6">
-              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-teal-900">Property Summary</h3>
+            <div className="bg-slate-100 border-l-4 border-l-slate-400 rounded-r-lg p-4 md:p-6">
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Property Context</p>
+              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-slate-800">Property Summary</h3>
 
               {loading && (
                 <div className="animate-pulse space-y-3">
@@ -113,19 +115,19 @@ export default function AssessmentPage() {
               )}
 
               {!loading && !error && !selectedProperty && (
-                <p className="text-gray-600 text-sm">Enter an address to load property data</p>
+                <p className="text-slate-500 text-sm">Enter an address to load property data</p>
               )}
 
               {selectedProperty && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-gray-600">Address</label>
-                    <p className="font-medium text-sm">{selectedProperty.address}</p>
+                    <label className="text-xs text-slate-500">Address</label>
+                    <p className="font-medium text-sm text-slate-800">{selectedProperty.address}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-500">
+                      <label className="text-xs text-slate-500">
                         Zone
                       </label>
                       <span className="inline-block mt-1 px-2.5 py-1 rounded text-xs font-medium bg-sky-100 text-sky-700">
@@ -133,19 +135,19 @@ export default function AssessmentPage() {
                       </span>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-600">Area</label>
-                      <p className="font-medium text-sm">{selectedProperty.propertyArea || 'Unknown'}</p>
+                      <label className="text-xs text-slate-500">Area</label>
+                      <p className="font-medium text-sm text-slate-800">{selectedProperty.propertyArea || 'Unknown'}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm text-gray-600">LGA</label>
-                      <p className="font-medium text-sm">{selectedProperty.constraints?.lga || 'Unknown'}</p>
+                      <label className="text-xs text-slate-500">LGA</label>
+                      <p className="font-medium text-sm text-slate-800">{selectedProperty.constraints?.lga || 'Unknown'}</p>
                     </div>
                     <div>
-                      <label className="text-sm text-gray-600">Heritage</label>
-                      <p className="font-medium text-sm">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
+                      <label className="text-xs text-slate-500">Heritage</label>
+                      <p className="font-medium text-sm text-slate-800">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
                     </div>
                   </div>
 
@@ -272,19 +274,20 @@ export default function AssessmentPage() {
             )}
           </div>
 
-          {/* Right Panel - ComplianceDashboard with SEPP/LEP/DCP provisions (3/4 width) */}
-          <div className="lg:col-span-3">
+          {/* Right Panel - Dynamic Regulatory Requirements (3/4 width) */}
+          {/* Elevated styling signals "active working area" vs static left context */}
+          <div className="lg:col-span-3 lg:border-l-2 lg:border-l-slate-200 lg:pl-6">
             {!selectedProperty && (
-              <div className="bg-white border rounded-lg p-12 shadow-sm text-center">
-                <h3 className="text-lg font-medium mb-2 text-gray-500">No Property Selected</h3>
-                <p className="text-gray-600">Enter a property address to see compliance provisions</p>
+              <div className="bg-white border rounded-lg p-12 shadow-md text-center">
+                <h3 className="text-lg font-medium mb-2 text-slate-500">No Property Selected</h3>
+                <p className="text-slate-600">Enter a property address to see compliance provisions</p>
               </div>
             )}
 
             {selectedProperty && (
               <>
                 {/* Regulatory Tabs - SEPP purple, DCP green */}
-                <div className="bg-white border rounded-lg shadow-sm mb-4 overflow-hidden">
+                <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">
                     <button
                       role="tab"
