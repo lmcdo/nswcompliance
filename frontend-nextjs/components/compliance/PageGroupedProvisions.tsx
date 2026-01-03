@@ -278,6 +278,15 @@ export function PageGroupedProvisions({
     return LAYER_LABELS[layer] || layer;
   };
 
+  // Format topic for display (snake_case → Title Case)
+  const formatTopic = (topic: string | null | undefined): string => {
+    if (!topic) return 'General';
+    return topic
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   let globalIndex = 0;
 
   return (
@@ -375,9 +384,9 @@ export function PageGroupedProvisions({
                           </Badge>
                         )}
 
-                        {/* Layer Badge */}
+                        {/* Topic Badge (layer shown via left border color) */}
                         <Badge className={`text-xs shrink-0 ${getLayerColor(layer)}`}>
-                          {getLayerLabel(layer)}
+                          {formatTopic(provision.v2_topic)}
                         </Badge>
 
                         {/* DCP Part (optional) */}
