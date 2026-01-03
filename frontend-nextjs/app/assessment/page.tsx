@@ -98,9 +98,9 @@ export default function AssessmentPage() {
           {/* Left Panel - Static Property Context (1/4 width on desktop) */}
           {/* Muted styling signals "reference context" vs dynamic right panel */}
           <div className="lg:col-span-1 space-y-4 md:space-y-6">
-            <div className="bg-amber-50 border-l-4 border-l-amber-400 rounded-r-lg p-4 md:p-6">
-              <p className="text-xs font-medium text-amber-600 uppercase tracking-wide mb-1">The Property</p>
-              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-amber-900">Property Summary</h3>
+            <div className="bg-teal-50 border-l-4 border-l-teal-500 rounded-r-lg p-4 md:p-6">
+              <p className="text-xs font-medium text-teal-600 uppercase tracking-wide mb-1">The Property</p>
+              <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-teal-900">Property Summary</h3>
 
               {loading && (
                 <div className="animate-pulse space-y-3">
@@ -115,19 +115,19 @@ export default function AssessmentPage() {
               )}
 
               {!loading && !error && !selectedProperty && (
-                <p className="text-amber-700 text-sm">Enter an address to load property data</p>
+                <p className="text-teal-700 text-sm">Enter an address to load property data</p>
               )}
 
               {selectedProperty && (
                 <div className="space-y-3">
                   <div>
-                    <label className="text-xs text-amber-600">Address</label>
-                    <p className="font-medium text-sm text-amber-900">{selectedProperty.address}</p>
+                    <label className="text-xs text-teal-600">Address</label>
+                    <p className="font-medium text-sm text-teal-900">{selectedProperty.address}</p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-amber-600">
+                      <label className="text-xs text-teal-600">
                         Zone
                       </label>
                       <span className="inline-block mt-1 px-2.5 py-1 rounded text-xs font-medium bg-sky-100 text-sky-700">
@@ -135,19 +135,19 @@ export default function AssessmentPage() {
                       </span>
                     </div>
                     <div>
-                      <label className="text-xs text-amber-600">Area</label>
-                      <p className="font-medium text-sm text-amber-900">{selectedProperty.propertyArea || 'Unknown'}</p>
+                      <label className="text-xs text-teal-600">Area</label>
+                      <p className="font-medium text-sm text-teal-900">{selectedProperty.propertyArea || 'Unknown'}</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-xs text-amber-600">LGA</label>
-                      <p className="font-medium text-sm text-amber-900">{selectedProperty.constraints?.lga || 'Unknown'}</p>
+                      <label className="text-xs text-teal-600">LGA</label>
+                      <p className="font-medium text-sm text-teal-900">{selectedProperty.constraints?.lga || 'Unknown'}</p>
                     </div>
                     <div>
-                      <label className="text-xs text-amber-600">Heritage</label>
-                      <p className="font-medium text-sm text-amber-900">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
+                      <label className="text-xs text-teal-600">Heritage</label>
+                      <p className="font-medium text-sm text-teal-900">{selectedProperty.heritage?.isHeritage ? 'Yes' : 'No'}</p>
                     </div>
                   </div>
 
