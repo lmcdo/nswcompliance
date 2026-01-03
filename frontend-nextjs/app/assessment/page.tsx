@@ -7,13 +7,12 @@
  * - Left (1/4): Property search + NSW Planning API data (all layers with clickable URLs)
  * - Right (3/4): Tabbed view with:
  *   - Tab 1 "SEPP & LEP": State-level controls (StructuredSeppRequirements, LandUseZoning, ADG, TOD)
- *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTopic (4-layer model)
+ *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTocStructure (TOC-based view)
  */
 
-import React, { useState } from 'react';
-import { MapPin, LayoutList, FolderTree } from 'lucide-react';
+import React from 'react';
+import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
-import { ProvisionsByTopic } from '@/components/compliance/ProvisionsByTopic';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
@@ -43,9 +42,6 @@ export default function AssessmentPage() {
     buildingHeight,
     setBuildingHeight,
   } = useAssessmentUI();
-
-  // DCP view mode: 'topic' (existing) or 'toc' (new DCP structure view)
-  const [dcpViewMode, setDcpViewMode] = useState<'topic' | 'toc'>('toc');
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -334,71 +330,19 @@ export default function AssessmentPage() {
                   </div>
                 )}
 
-                {/* DCP Tab Content */}
+                {/* DCP Tab Content - Structure View Only */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
-                    {/* DCP View Mode Toggle */}
-                    <div className="flex items-center justify-end gap-2 mb-4">
-                      <span className="text-sm text-gray-500 mr-2">View:</span>
-                      <button
-                        onClick={() => setDcpViewMode('toc')}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                          dcpViewMode === 'toc'
-                            ? 'bg-teal-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                        title="View by DCP structure (Parts & Sections)"
-                      >
-                        <FolderTree className="h-4 w-4" />
-                        <span className="hidden sm:inline">Structure</span>
-                      </button>
-                      <button
-                        onClick={() => setDcpViewMode('topic')}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                          dcpViewMode === 'topic'
-                            ? 'bg-teal-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                        title="View by topic (Parking, Setbacks, etc.)"
-                      >
-                        <LayoutList className="h-4 w-4" />
-                        <span className="hidden sm:inline">Topic</span>
-                      </button>
-                    </div>
-
-                    {/* TOC Structure View (new) */}
-                    {dcpViewMode === 'toc' && (
-                      <ProvisionsByTocStructure
-                        key={`toc-${selectedProperty.address}`}
-                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                        zone={selectedProperty.constraints?.zone}
-                        heritage={selectedProperty.heritage?.isHeritage || false}
-                        hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
-                          ? selectedProperty.heritage?.heritageItemName
-                          : undefined}
-                        precinctId={selectedProperty.constraints?.precinctId}
-                      />
-                    )}
-
-                    {/* Topic View (existing) */}
-                    {dcpViewMode === 'topic' && (
-                      <ProvisionsByTopic
-                        key={`topic-${selectedProperty.address}`}
-                        zone={selectedProperty.constraints?.zone}
-                        heritage={selectedProperty.heritage?.isHeritage || false}
-                        flood={selectedProperty.planningLayers?.some((l: any) =>
-                          l.layerName?.toLowerCase().includes('flood') &&
-                          l.results?.length > 0
-                        ) || false}
-                        precinctId={selectedProperty.constraints?.precinctId}
-                        devType={developmentType}
-                        council={selectedProperty.constraints?.formerCouncil?.toLowerCase()}
-                        hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
-                          ? selectedProperty.heritage?.heritageItemName
-                          : undefined}
-                        heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
-                      />
-                    )}
+                    <ProvisionsByTocStructure
+                      key={`toc-${selectedProperty.address}`}
+                      formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                      zone={selectedProperty.constraints?.zone}
+                      heritage={selectedProperty.heritage?.isHeritage || false}
+                      hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
+                        ? selectedProperty.heritage?.heritageItemName
+                        : undefined}
+                      precinctId={selectedProperty.constraints?.precinctId}
+                    />
                   </div>
                 )}
               </>

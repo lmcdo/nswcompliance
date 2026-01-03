@@ -15,7 +15,8 @@ import { PageGroupedProvisions } from './PageGroupedProvisions';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 
 /**
  * Fix common UTF-8 encoding artifacts (mojibake)
@@ -74,6 +75,12 @@ export function ProvisionsByTocStructure({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
+  const [showAbout, setShowAbout] = useState(true); // Open by default
+
+  // Get council config
+  const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
+    ? COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
+    : null;
 
   // Build API URL with groupBy=toc
   const params = new URLSearchParams();
@@ -183,7 +190,44 @@ export function ProvisionsByTocStructure({
   };
 
   return (
-    <div className="flex h-[calc(100vh-200px)] min-h-[500px] border rounded-lg bg-white overflow-hidden">
+    <div className="space-y-4">
+      {/* About Inner West DCPs - Collapsible */}
+      {formerCouncil && (
+        <div className="bg-white border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setShowAbout(!showAbout)}
+            className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+          >
+            <HelpCircle className="h-4 w-4" />
+            <span className="font-medium">About Inner West DCPs</span>
+            {showAbout ? <ChevronDown className="h-4 w-4 ml-auto" /> : <ChevronRight className="h-4 w-4 ml-auto" />}
+          </button>
+          {showAbout && (
+            <div className="px-4 pb-4 border-t bg-slate-50">
+              {/* DCP Title Bar */}
+              {councilConfig && (
+                <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 -mx-4 mb-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-white" />
+                      <span className="font-semibold text-white text-sm">
+                        {councilConfig.dcpCitation}
+                      </span>
+                    </div>
+                    <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
+                      {totalProvisions} provisions
+                    </Badge>
+                  </div>
+                </div>
+              )}
+              <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{INNER_WEST_OVERVIEW}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main two-panel layout */}
+      <div className="flex h-[calc(100vh-280px)] min-h-[500px] border rounded-lg bg-white overflow-hidden">
       {/* Left: TOC Sidebar */}
       <div className="w-64 border-r bg-gray-50 flex-shrink-0 overflow-hidden">
         <TocSidebar
@@ -207,7 +251,7 @@ export function ProvisionsByTocStructure({
                   ? sanitizeText(tocStructure[selectedPart]?.part_name) || selectedPart
                   : 'Select a section'}
               </h3>
-              {selectedSection && (
+              {selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600">
                   {sanitizeText(tocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
@@ -269,6 +313,7 @@ export function ProvisionsByTocStructure({
               provisions={filteredProvisions}
               formerCouncil={formerCouncil}
               showLayerBadges={true}
+              showLegend={true}
               maxProvisions={100}
               onViewPdf={(url, page) => setPdfModal({ url, page })}
             />
@@ -297,6 +342,7 @@ export function ProvisionsByTocStructure({
         pageNumber={pdfModal?.page}
         title={selectedPart ? `${formerCouncil} DCP - ${selectedPart}` : undefined}
       />
+      </div>
     </div>
   );
 }

@@ -116,8 +116,9 @@ interface PageGroupedProvisionsProps {
   showMarkers?: boolean;
   showDcpPart?: boolean;
   showLayerBadges?: boolean;    // Show layer badges (default: true)
+  showLegend?: boolean;         // Show layer legend above results (default: false)
   maxProvisions?: number;       // Limit display count (e.g., 20)
-  formerCouncil?: string;       // For PDF URL construction
+  formerCouncil?: string;       // For council-specific layer labels
 }
 
 // Default theme (teal, used by most paths)
@@ -137,11 +138,34 @@ const LAYER_COLORS: Record<string, string> = {
   precinct: `${LayerBadges.precinct.bg} ${LayerBadges.precinct.text}`,
 };
 
+// Default labels (used when formerCouncil not specified)
 const LAYER_LABELS: Record<string, string> = {
-  generic: 'General',
+  generic: 'LGA-wide',
   use_specific: 'Zone-Specific',
   condition: 'Condition',
   precinct: 'Precinct',
+};
+
+// Council-specific layer labels for the "generic" layer
+const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
+  ashfield: {
+    generic: 'Ashfield-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Village Precinct',
+  },
+  leichhardt: {
+    generic: 'Leichhardt-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Distinct Neighbourhood',
+  },
+  marrickville: {
+    generic: 'Marrickville-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Precinct Character',
+  },
 };
 
 /**
@@ -192,6 +216,38 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
   return groups;
 }
 
+/**
+ * Inline legend showing layer colors and labels
+ */
+function LayerLegend({ formerCouncil }: { formerCouncil?: string }) {
+  const council = formerCouncil?.toLowerCase();
+  const labels = council && COUNCIL_LAYER_LABELS[council]
+    ? COUNCIL_LAYER_LABELS[council]
+    : LAYER_LABELS;
+
+  const layers = [
+    { key: 'generic', color: '#14b8a6' },    // teal
+    { key: 'use_specific', color: '#3b82f6' }, // blue
+    { key: 'condition', color: '#f59e0b' },  // amber
+    { key: 'precinct', color: '#8b5cf6' },   // purple
+  ];
+
+  return (
+    <div className="flex items-center gap-4 text-sm text-gray-600 py-2 px-3 bg-gray-50 rounded-lg mb-3">
+      <span className="font-medium text-gray-700">Layer Key:</span>
+      {layers.map(({ key, color }) => (
+        <div key={key} className="flex items-center gap-1.5">
+          <div
+            className="w-3 h-3 rounded-sm"
+            style={{ backgroundColor: color }}
+          />
+          <span>{labels[key]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function PageGroupedProvisions({
   provisions,
   expandedProvisions: externalExpandedProvisions,
@@ -201,6 +257,7 @@ export function PageGroupedProvisions({
   showMarkers = true,
   showDcpPart = false,
   showLayerBadges = true,
+  showLegend = false,
   maxProvisions,
   formerCouncil,
 }: PageGroupedProvisionsProps) {
@@ -274,7 +331,17 @@ export function PageGroupedProvisions({
   };
 
   const getLayerLabel = (layer: string | null | undefined): string => {
-    if (!layer || layer === 'unknown' || layer === 'null') return 'General';
+    if (!layer || layer === 'unknown' || layer === 'null') {
+      // Use council-specific label for generic layer
+      if (formerCouncil && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()]) {
+        return COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()].generic;
+      }
+      return LAYER_LABELS.generic;
+    }
+    // Use council-specific labels if available
+    if (formerCouncil && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()]) {
+      return COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()][layer] || LAYER_LABELS[layer] || layer;
+    }
     return LAYER_LABELS[layer] || layer;
   };
 
@@ -291,6 +358,9 @@ export function PageGroupedProvisions({
 
   return (
     <div className="space-y-3">
+      {/* Layer Legend - shown above results when enabled */}
+      {showLegend && <LayerLegend formerCouncil={formerCouncil} />}
+
       {displayGroups.map((group, groupIdx) => {
         const groupKey = group.pageUrl || `ungrouped-${groupIdx}`;
         const isCollapsed = collapsedGroups.has(groupKey);
@@ -379,15 +449,22 @@ export function PageGroupedProvisions({
                       <div className="flex items-start gap-2 mb-1">
                         {/* Marker Badge */}
                         {showMarkers && provision.v2_marker && (
-                          <Badge variant="outline" className="text-xs font-mono bg-white shrink-0">
+                          <Badge variant="outline" className="text-sm font-mono bg-white shrink-0">
                             {provision.v2_marker}
                           </Badge>
                         )}
 
-                        {/* Topic Badge (layer shown via left border color) */}
-                        <Badge className={`text-xs shrink-0 ${getLayerColor(layer)}`}>
-                          {formatTopic(provision.v2_topic)}
+                        {/* Layer Badge - council-specific label with larger font */}
+                        <Badge className={`text-sm font-medium shrink-0 ${getLayerColor(layer)}`}>
+                          {getLayerLabel(layer)}
                         </Badge>
+
+                        {/* Topic Badge - separate pill */}
+                        {provision.v2_topic && (
+                          <Badge variant="outline" className="text-sm shrink-0 bg-white border-gray-300 text-gray-700">
+                            {formatTopic(provision.v2_topic)}
+                          </Badge>
+                        )}
 
                         {/* DCP Part (optional) */}
                         {showDcpPart && provision.v2_dcp_part && (
