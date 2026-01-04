@@ -188,7 +188,9 @@ export function StateLevelControls({
     || nearbyTransport.find(s => s.type === 'heavy_rail')?.distance;
 
   // Check if property is in LMR area (residential zone)
-  const isLMRArea = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0]?.toUpperCase() || '');
+  // Zone may include colon (e.g., "R2: Low Density") - strip non-alphanumeric chars
+  const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+  const isLMRArea = ['R1', 'R2', 'R3', 'R4'].includes(zoneCode);
 
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
