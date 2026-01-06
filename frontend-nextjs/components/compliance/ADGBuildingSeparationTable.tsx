@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Info, ChevronDown, ExternalLink } from 'lucide-react';
+import { Info, ChevronDown, ExternalLink, FileImage } from 'lucide-react';
 
 interface ADGBuildingSeparationTableProps {
   buildingHeight: number;
@@ -34,6 +34,7 @@ interface ADGStandards {
     legal_status: string;
     url: string;
     page: number;
+    pdf_page_image_url?: string;
   };
   notes: string[];
 }
@@ -45,6 +46,7 @@ export function ADGBuildingSeparationTable({
   const [data, setData] = useState<ADGStandards | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [viewingPdfPage, setViewingPdfPage] = useState(false);
 
   useEffect(() => {
     const fetchADGStandards = async () => {
@@ -200,18 +202,57 @@ export function ADGBuildingSeparationTable({
           <strong className="text-gray-900">Legal Status:</strong>{' '}
           <span className="text-red-600 font-semibold">{data.source.legal_status}</span>
         </p>
-        <p>
+        <div className="flex items-center gap-3 pt-1">
+          {data.source.pdf_page_image_url && (
+            <button
+              onClick={() => setViewingPdfPage(true)}
+              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+            >
+              <FileImage className="h-3 w-3" />
+              View PDF Page {data.source.page}
+            </button>
+          )}
           <a
             href={data.source.url}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 underline"
           >
-            View Official PDF (Page {data.source.page})
+            Open Full PDF
             <ExternalLink className="h-3 w-3" />
           </a>
-        </p>
+        </div>
       </div>
+
+      {/* PDF Page Viewer Modal */}
+      {viewingPdfPage && data.source.pdf_page_image_url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => setViewingPdfPage(false)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
+            <div className="sticky top-0 bg-white border-b px-4 py-2 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">ADG Building Separation (3F-1)</h3>
+                <p className="text-xs text-gray-500">Page {data.source.page}</p>
+              </div>
+              <button
+                onClick={() => setViewingPdfPage(false)}
+                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={data.source.pdf_page_image_url}
+                alt={`ADG Page ${data.source.page}`}
+                className="w-full h-auto rounded shadow"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

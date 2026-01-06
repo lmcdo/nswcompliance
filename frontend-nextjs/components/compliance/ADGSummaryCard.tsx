@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ExternalLink, ChevronDown, ChevronUp, Building2, Info, AlertTriangle } from 'lucide-react';
+import { ExternalLink, ChevronDown, ChevronUp, Building2, Info, AlertTriangle, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ interface SummaryMetric {
   sectionCode: string;
   sourcePage: number;
   sourceUrl: string;
+  pdfPageImageUrl: string | null;
 }
 
 interface DocumentInfo {
@@ -52,6 +53,7 @@ interface SeparationTableData {
   rows: SeparationTableRow[];
   source_url: string;
   source_page: number;
+  pdf_page_image_url: string | null;
 }
 
 interface ADGSummaryData {
@@ -98,6 +100,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [separationTable, setSeparationTable] = useState<SeparationTableData | null>(null);
+  const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
 
   // Check if zone might restrict apartments (for warning display)
   const zonePrefix = zoneCode?.split(' ')[0]?.toUpperCase();
@@ -224,7 +227,11 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
         {/* Key Metrics */}
         <div className="space-y-2">
           {visibleMetrics.map((metric) => (
-            <MetricRow key={metric.criteriaId} metric={metric} />
+            <MetricRow
+              key={metric.criteriaId}
+              metric={metric}
+              onViewPdf={(pageNumber, url, label) => setViewingPdfPage({ pageNumber, url, label })}
+            />
           ))}
         </div>
 
@@ -256,17 +263,40 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
             <h4 className="text-xs font-semibold text-purple-800">
               Side/Rear Setbacks to Boundaries (3F-1)
             </h4>
-            {separationTable?.source_url && (
-              <a
-                href={`${separationTable.source_url}#page=${separationTable.source_page}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-0.5"
-              >
-                p.{separationTable.source_page}
-                <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            )}
+            <div className="flex items-center gap-2">
+              {separationTable?.pdf_page_image_url && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => setViewingPdfPage({
+                          pageNumber: separationTable.source_page,
+                          url: separationTable.pdf_page_image_url!,
+                          label: 'Building Separation (3F-1)'
+                        })}
+                        className="p-0.5 rounded hover:bg-purple-100 transition-colors"
+                      >
+                        <FileImage className="w-3.5 h-3.5 text-purple-500 hover:text-purple-700" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">View PDF page {separationTable.source_page}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+              {separationTable?.source_url && (
+                <a
+                  href={`${separationTable.source_url}#page=${separationTable.source_page}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-0.5"
+                >
+                  p.{separationTable.source_page}
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
+              )}
+            </div>
           </div>
           <p className="text-xs text-gray-500 mb-2">
             Min distance from windows/balconies to boundary
@@ -329,15 +359,46 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
           )}
         </div>
       </CardContent>
+
+      {/* PDF Page Viewer Modal */}
+      {viewingPdfPage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
+          onClick={() => setViewingPdfPage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
+            <div className="sticky top-0 bg-white border-b px-4 py-2 flex items-center justify-between z-10">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">{viewingPdfPage.label}</h3>
+                <p className="text-xs text-gray-500">ADG Page {viewingPdfPage.pageNumber}</p>
+              </div>
+              <button
+                onClick={() => setViewingPdfPage(null)}
+                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+              >
+                Close
+              </button>
+            </div>
+            <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={viewingPdfPage.url}
+                alt={`ADG Page ${viewingPdfPage.pageNumber}`}
+                className="w-full h-auto rounded shadow"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }
 
 interface MetricRowProps {
   metric: SummaryMetric;
+  onViewPdf?: (pageNumber: number, url: string, label: string) => void;
 }
 
-function MetricRow({ metric }: MetricRowProps) {
+function MetricRow({ metric, onViewPdf }: MetricRowProps) {
   const formatValue = () => {
     if (!metric.numericValue) return '';
 
@@ -407,6 +468,23 @@ function MetricRow({ metric }: MetricRowProps) {
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        {metric.pdfPageImageUrl && onViewPdf && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => onViewPdf(metric.sourcePage, metric.pdfPageImageUrl!, metric.label)}
+                  className="p-0.5 rounded hover:bg-purple-100 transition-colors"
+                >
+                  <FileImage className="w-3.5 h-3.5 text-purple-500 hover:text-purple-700" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="text-xs">View PDF page {metric.sourcePage}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <span className="text-sm font-semibold text-purple-700 font-mono">

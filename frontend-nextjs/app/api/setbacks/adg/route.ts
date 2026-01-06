@@ -136,7 +136,8 @@ export async function GET(request: NextRequest) {
         authority: 'SEPP (Housing) 2021',
         legal_status: 'STATUTORY',
         url: 'https://www.planning.nsw.gov.au/sites/default/files/2023-03/apartment-design-guide-part-3-siting-the-development.pdf',
-        page: 63
+        page: 63,
+        pdf_page_image_url: '/pdf-pages/adg/adg-part-3_page_63.png'
       },
       notes: [] as string[]
     };
