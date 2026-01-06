@@ -1,6 +1,6 @@
 "use client"
 
-import { Settings, User, Menu, CheckCircle } from "lucide-react"
+import { Settings, User, Menu, CheckCircle, Share2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PropertySearch } from "@/components/property/PropertySearch"
 import { useState } from "react"
@@ -74,6 +74,41 @@ export function Header() {
 
  {/* User profile and settings - pushed to far right */}
  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: 'auto' }}>
+ {/* Share Report button - Coming Soon */}
+ <div style={{ position: 'relative' }}>
+ <Button
+ variant="outline"
+ size="sm"
+ disabled
+ style={{
+ height: '36px',
+ borderRadius: '6px',
+ padding: '6px 12px',
+ opacity: 0.6,
+ cursor: 'not-allowed',
+ display: 'flex',
+ alignItems: 'center',
+ gap: '6px'
+ }}
+ >
+ <Share2 style={{ height: '16px', width: '16px' }} />
+ Share Report
+ </Button>
+ <span style={{
+ position: 'absolute',
+ top: '-8px',
+ right: '-8px',
+ backgroundColor: '#14b8a6',
+ color: 'white',
+ fontSize: '10px',
+ fontWeight: '500',
+ padding: '2px 6px',
+ borderRadius: '9999px',
+ whiteSpace: 'nowrap'
+ }}>
+ Coming Soon
+ </span>
+ </div>
  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
  <div style={{
  width: '32px',

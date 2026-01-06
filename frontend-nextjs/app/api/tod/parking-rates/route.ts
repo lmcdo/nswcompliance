@@ -144,11 +144,63 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // No authoritative source found - return not found (no hardcoded fallbacks)
+    // 3. Return DCP provision text even without numeric extraction
+    // Professionals read the actual provision - we provide the text + PDF source
+    if (lga) {
+      try {
+        // Query regulatory_provisions table (same as working DCP provisions API)
+        const provisionResult = await pool.query(`
+          SELECT
+            id,
+            section_header,
+            provision_text,
+            document_id,
+            provision_type,
+            pdf_page,
+            pdf_page_image_url
+          FROM regulatory_provisions
+          WHERE document_id ILIKE $1
+            AND (
+              provision_text ~* 'parking|car space|vehicle space'
+              OR section_header ~* 'parking'
+            )
+          ORDER BY
+            CASE
+              WHEN section_header ~* 'parking' THEN 0
+              WHEN provision_text ~* 'parking rate|spaces per' THEN 1
+              ELSE 2
+            END,
+            pdf_page
+          LIMIT 5
+        `, [`%${lga}%`]);
+
+        if (provisionResult.rows.length > 0) {
+          return NextResponse.json({
+            found: true,
+            has_numeric_rate: false,
+            provisions: provisionResult.rows.map(row => ({
+              id: row.id,
+              title: row.section_header,
+              text: row.provision_text,
+              pdf_page: row.pdf_page,
+              pdf_page_image_url: row.pdf_page_image_url,
+              document_id: row.document_id
+            })),
+            source: provisionResult.rows[0].document_id.replace(/_/g, ' '),
+            council: lga,
+            authority: 'DCP',
+            note: 'Parking requirements vary by development type and context. Review the provision text to determine applicable rate.'
+          });
+        }
+      } catch (provisionError) {
+        console.log('[Parking Rates API] Provision text query failed:', provisionError);
+      }
+    }
+
+    // No provisions found at all
     return NextResponse.json({
       found: false,
-      message: `No authoritative parking rate found for ${developmentType}${lga ? ` in ${lga}` : ''}. Check council DCP or SEPP (Housing) 2021 for specific requirements.`,
-      suggestion: 'Enter the parking rate manually from your council\'s DCP'
+      message: `No parking provisions found${lga ? ` for ${lga}` : ''}. The DCP may not be loaded or parking may be in a different section.`
     });
 
   } catch (error) {
