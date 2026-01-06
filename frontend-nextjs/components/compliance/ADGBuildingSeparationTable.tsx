@@ -3,6 +3,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Info, ChevronDown, ExternalLink, FileImage } from 'lucide-react';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface ADGBuildingSeparationTableProps {
   buildingHeight: number;
@@ -245,7 +246,7 @@ export function ADGBuildingSeparationTable({
             </div>
             <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]" onClick={(e) => e.stopPropagation()}>
               <img
-                src={data.source.pdf_page_image_url}
+                src={getPdfImageUrl(data.source.pdf_page_image_url) || data.source.pdf_page_image_url}
                 alt={`ADG Page ${data.source.page}`}
                 className="w-full h-auto rounded shadow"
               />

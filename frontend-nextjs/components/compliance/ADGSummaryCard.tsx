@@ -17,6 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface SummaryMetric {
   criteriaId: string;
@@ -381,7 +382,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
             </div>
             <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]" onClick={(e) => e.stopPropagation()}>
               <img
-                src={viewingPdfPage.url}
+                src={getPdfImageUrl(viewingPdfPage.url) || viewingPdfPage.url}
                 alt={`ADG Page ${viewingPdfPage.pageNumber}`}
                 className="w-full h-auto rounded shadow"
               />
