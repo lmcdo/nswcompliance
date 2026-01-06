@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { MapPin } from 'lucide-react';
+import { MapPin, Share2 } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
@@ -71,6 +71,19 @@ export default function AssessmentPage() {
             <p className="text-teal-600 text-xs hidden sm:block">
               Professional compliance assessment using real-time planning data
             </p>
+          </div>
+          {/* Share Report - Coming Soon */}
+          <div className="hidden sm:flex items-center relative">
+            <button
+              disabled
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              Share Report
+            </button>
+            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-500 text-white">
+              Soon
+            </span>
           </div>
           <div className="hidden sm:flex items-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-200 bg-emerald-50 text-emerald-700">
