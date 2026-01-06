@@ -170,7 +170,7 @@ tqdm==4.67.1
 transformers==4.55.3
 typer==0.16.1
 typing-inspection==0.4.1
-typing_extensions==4.14.1
+typing_extensions==4.15.0
 tzdata==2025.2
 ultralytics==8.3.184
 ultralytics-thop==2.0.16
