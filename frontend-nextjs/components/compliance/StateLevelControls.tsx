@@ -33,9 +33,11 @@ const APARTMENT_DEV_TYPES = [
   'mixed_use'
 ];
 
-// Zones that typically permit apartment developments
+// Zones that permit apartment developments (including LMR reforms)
 // ADG should show for these zones regardless of development type selection
 const APARTMENT_PERMITTING_ZONES = [
+  'R1',   // General Residential - now permits low-rise apartments under LMR reforms (July 2024)
+  'R2',   // Low Density Residential - now permits low-rise apartments under LMR reforms (July 2024)
   'R3',   // Medium Density Residential
   'R4',   // High Density Residential
   'B1',   // Neighbourhood Centre
