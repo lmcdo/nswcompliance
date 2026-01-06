@@ -1,36 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { getPool } from '@/lib/db';
 
-// Database connection
-const pool = new Pool({
-  host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || process.env.DATABASE_PORT || '5432'),
-  database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
-  user: process.env.DB_USER || process.env.DATABASE_USER || 'postgres',
-  password: process.env.DB_PASSWORD || process.env.DATABASE_PASSWORD || '',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
-  statement_timeout: 30000
-});
+/**
+ * TOD Parking Rates API
+ *
+ * Returns parking rates with source provenance:
+ * 1. First checks SEPP Housing standards (overrides local DCP)
+ * 2. Then checks council DCP provisions
+ * 3. Returns "not found" if no authoritative source - no hardcoded fallbacks
+ */
 
-// Default parking rates by development type (from common DCP standards)
-// These are fallbacks - actual rates should come from council DCPs
-const DEFAULT_PARKING_RATES: Record<string, { rate: number; source: string }> = {
-  'residential_flat': { rate: 1.0, source: 'Standard rate: 1 space per dwelling (varies by council DCP)' },
-  'residential_flat_building': { rate: 1.0, source: 'Standard rate: 1 space per dwelling (varies by council DCP)' },
-  'multi_dwelling': { rate: 1.0, source: 'Standard rate: 1 space per dwelling (varies by council DCP)' },
-  'multi_dwelling_housing': { rate: 1.0, source: 'Standard rate: 1 space per dwelling (varies by council DCP)' },
-  'shop_top_housing': { rate: 1.0, source: 'Standard rate: 1 space per dwelling (varies by council DCP)' },
-  'boarding_house': { rate: 0.5, source: 'Standard rate: 0.5 spaces per room (SEPP Housing 2021)' },
-  'dwelling_house': { rate: 1.0, source: 'Standard rate: 1 space per dwelling' },
-  'dual_occupancy': { rate: 1.0, source: 'Standard rate: 1 space per dwelling' },
-  'commercial': { rate: 0.033, source: 'Standard rate: 1 space per 30m² GFA (varies by council)' },
-  'retail': { rate: 0.025, source: 'Standard rate: 1 space per 40m² GFA (varies by council)' },
+// Map development types to SEPP Housing dwelling types
+const SEPP_DWELLING_TYPE_MAP: Record<string, string[]> = {
+  'residential_flat': ['residential_flat_building', 'rfb'],
+  'residential_flat_building': ['residential_flat_building', 'rfb'],
+  'multi_dwelling': ['multi_dwelling_housing', 'mdh'],
+  'multi_dwelling_housing': ['multi_dwelling_housing', 'mdh'],
+  'shop_top_housing': ['shop_top_housing'],
+  'boarding_house': ['boarding_house'],
+  'dual_occupancy': ['dual_occupancy'],
+  'dwelling_house': ['dwelling_house'],
+  'manor_house': ['manor_house'],
+  'townhouse': ['multi_dwelling_housing'],
+  'terrace': ['multi_dwelling_housing'],
 };
 
 /**
  * GET /api/tod/parking-rates
  *
- * Fetches parking rates from database or returns default rates
+ * Fetches parking rates from authoritative sources with provenance:
+ * 1. SEPP Housing standards (state-level, overrides DCP)
+ * 2. Council DCP provisions
+ *
  * Query params: zone, development_type, lga
  */
 export async function GET(request: NextRequest) {
@@ -47,55 +48,107 @@ export async function GET(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Try to find rate in database first
-    let dbRate = null;
+    const pool = getPool();
+
+    // 1. First check SEPP Housing standards (authoritative, overrides local DCP)
+    const seppDwellingTypes = SEPP_DWELLING_TYPE_MAP[developmentType] || [developmentType];
+
     try {
-      const result = await pool.query(`
-        SELECT parking_rate, source_document, notes
-        FROM parking_rates
-        WHERE development_type = $1
-        AND (zone_code = $2 OR zone_code IS NULL)
-        AND (lga = $3 OR lga IS NULL)
+      const seppResult = await pool.query(`
+        SELECT
+          standard_type,
+          numeric_value,
+          unit,
+          source_clause,
+          dwelling_type,
+          effective_date,
+          notes
+        FROM housing_sepp_standards
+        WHERE dwelling_type = ANY($1)
+          AND standard_type IN ('parking_per_dwelling', 'parking_rate', 'car_parking')
+          AND (is_current = true OR is_current IS NULL)
         ORDER BY
-          CASE WHEN zone_code IS NOT NULL AND lga IS NOT NULL THEN 1
-               WHEN zone_code IS NOT NULL THEN 2
-               WHEN lga IS NOT NULL THEN 3
-               ELSE 4 END
+          CASE WHEN dwelling_type = $2 THEN 0 ELSE 1 END,
+          effective_date DESC NULLS LAST
         LIMIT 1
-      `, [developmentType, zone, lga]);
+      `, [seppDwellingTypes, developmentType]);
 
-      if (result.rows.length > 0) {
-        dbRate = result.rows[0];
+      if (seppResult.rows.length > 0) {
+        const row = seppResult.rows[0];
+        return NextResponse.json({
+          found: true,
+          rate: parseFloat(row.numeric_value),
+          unit: row.unit || 'spaces',
+          source: `SEPP (Housing) 2021 ${row.source_clause}`,
+          source_clause: row.source_clause,
+          source_url: 'https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714',
+          dwelling_type: row.dwelling_type,
+          effective_date: row.effective_date,
+          notes: row.notes,
+          authority: 'SEPP',
+          sepp_override: true
+        });
       }
-    } catch (dbError) {
-      // Table might not exist - fall through to defaults
-      console.log('[Parking Rates API] Database query failed, using defaults:', dbError);
+    } catch (seppError) {
+      console.log('[Parking Rates API] SEPP query failed:', seppError);
     }
 
-    if (dbRate) {
-      return NextResponse.json({
-        found: true,
-        rate: parseFloat(dbRate.parking_rate),
-        source: dbRate.source_document || `${lga || 'Council'} DCP`,
-        notes: dbRate.notes
-      });
+    // 2. Check council DCP provisions for parking
+    if (lga) {
+      try {
+        const dcpResult = await pool.query(`
+          SELECT
+            rp.id,
+            rp.provision_title,
+            rp.requirement_text,
+            rp.numeric_value,
+            rp.unit,
+            rp.pdf_page,
+            rp.pdf_page_image_url,
+            d.dcp_name
+          FROM regulatory_provisions rp
+          JOIN dcps d ON rp.dcp_id = d.id
+          WHERE d.council_name ILIKE $1
+            AND (
+              rp.provision_title ILIKE '%parking%'
+              OR rp.subcategory ILIKE '%parking%'
+              OR rp.topic ILIKE '%parking%'
+            )
+            AND (
+              rp.development_type ILIKE $2
+              OR rp.development_type IS NULL
+            )
+            AND rp.numeric_value IS NOT NULL
+          ORDER BY
+            CASE WHEN rp.development_type IS NOT NULL THEN 0 ELSE 1 END,
+            rp.id
+          LIMIT 1
+        `, [`%${lga}%`, `%${developmentType.replace(/_/g, ' ')}%`]);
+
+        if (dcpResult.rows.length > 0) {
+          const row = dcpResult.rows[0];
+          return NextResponse.json({
+            found: true,
+            rate: parseFloat(row.numeric_value),
+            unit: row.unit || 'spaces',
+            source: `${row.dcp_name} - ${row.provision_title}`,
+            requirement_text: row.requirement_text,
+            pdf_page: row.pdf_page,
+            pdf_page_image_url: row.pdf_page_image_url,
+            authority: 'DCP',
+            sepp_override: false
+          });
+        }
+      } catch (dcpError) {
+        console.log('[Parking Rates API] DCP query failed:', dcpError);
+      }
     }
 
-    // Fall back to default rates
-    const defaultRate = DEFAULT_PARKING_RATES[developmentType];
-    if (defaultRate) {
-      return NextResponse.json({
-        found: true,
-        rate: defaultRate.rate,
-        source: defaultRate.source,
-        isDefault: true
-      });
-    }
-
-    // No rate found
+    // No authoritative source found - return not found (no hardcoded fallbacks)
     return NextResponse.json({
       found: false,
-      message: `No parking rate found for ${developmentType}. Check council DCP for specific requirements.`
+      message: `No authoritative parking rate found for ${developmentType}${lga ? ` in ${lga}` : ''}. Check council DCP or SEPP (Housing) 2021 for specific requirements.`,
+      suggestion: 'Enter the parking rate manually from your council\'s DCP'
     });
 
   } catch (error) {
