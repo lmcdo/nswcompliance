@@ -39,6 +39,21 @@ interface DocumentInfo {
   parts: Array<{ number: number; name: string; pages: string }>;
 }
 
+interface SeparationTableRow {
+  height_category: string;
+  height_range: string;
+  habitable_rooms: number;
+  non_habitable_rooms: number;
+}
+
+interface SeparationTableData {
+  section: string;
+  section_name: string;
+  rows: SeparationTableRow[];
+  source_url: string;
+  source_page: number;
+}
+
 interface ADGSummaryData {
   keyMetrics: SummaryMetric[];
   totalCriteria: number;
@@ -82,6 +97,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
+  const [separationTable, setSeparationTable] = useState<SeparationTableData | null>(null);
 
   // Check if zone might restrict apartments (for warning display)
   const zonePrefix = zoneCode?.split(' ')[0]?.toUpperCase();
@@ -111,6 +127,26 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
     };
 
     fetchSummary();
+  }, []);
+
+  // Fetch separation table data with source provenance
+  useEffect(() => {
+    const fetchSeparationTable = async () => {
+      try {
+        const response = await fetch('/api/adg/separation-table');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setSeparationTable(result.data);
+          }
+        }
+      } catch (err) {
+        // Silent fail - will use hardcoded fallback
+        console.warn('[ADGSummaryCard] Failed to fetch separation table:', err);
+      }
+    };
+
+    fetchSeparationTable();
   }, []);
 
   // Loading state
@@ -216,9 +252,22 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
 
         {/* Building Separation Table (Section 3F) */}
         <div className="mt-4 pt-3 border-t border-purple-100">
-          <h4 className="text-xs font-semibold text-purple-800 mb-2">
-            Side/Rear Setbacks to Boundaries (3F-1)
-          </h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-xs font-semibold text-purple-800">
+              Side/Rear Setbacks to Boundaries (3F-1)
+            </h4>
+            {separationTable?.source_url && (
+              <a
+                href={`${separationTable.source_url}#page=${separationTable.source_page}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-purple-600 hover:text-purple-800 flex items-center gap-0.5"
+              >
+                p.{separationTable.source_page}
+                <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+            )}
+          </div>
           <p className="text-xs text-gray-500 mb-2">
             Min distance from windows/balconies to boundary
           </p>
@@ -231,21 +280,33 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
               </tr>
             </thead>
             <tbody className="text-gray-700">
-              <tr>
-                <td className="py-0.5">Up to 12m</td>
-                <td className="py-0.5 font-medium">6m</td>
-                <td className="py-0.5">3m</td>
-              </tr>
-              <tr>
-                <td className="py-0.5">12-25m</td>
-                <td className="py-0.5 font-medium">9m</td>
-                <td className="py-0.5">4.5m</td>
-              </tr>
-              <tr>
-                <td className="py-0.5">Over 25m</td>
-                <td className="py-0.5 font-medium">12m</td>
-                <td className="py-0.5">6m</td>
-              </tr>
+              {separationTable?.rows ? (
+                separationTable.rows.map((row) => (
+                  <tr key={row.height_category}>
+                    <td className="py-0.5">{row.height_range}</td>
+                    <td className="py-0.5 font-medium">{row.habitable_rooms}m</td>
+                    <td className="py-0.5">{row.non_habitable_rooms}m</td>
+                  </tr>
+                ))
+              ) : (
+                <>
+                  <tr>
+                    <td className="py-0.5">Up to 12m</td>
+                    <td className="py-0.5 font-medium">6m</td>
+                    <td className="py-0.5">3m</td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5">12-25m</td>
+                    <td className="py-0.5 font-medium">9m</td>
+                    <td className="py-0.5">4.5m</td>
+                  </tr>
+                  <tr>
+                    <td className="py-0.5">Over 25m</td>
+                    <td className="py-0.5 font-medium">12m</td>
+                    <td className="py-0.5">6m</td>
+                  </tr>
+                </>
+              )}
             </tbody>
           </table>
         </div>
