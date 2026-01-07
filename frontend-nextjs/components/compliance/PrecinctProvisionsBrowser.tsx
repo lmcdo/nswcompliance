@@ -9,7 +9,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MapPin, FileText, ChevronDown, ChevronRight } from 'lucide-react';
+import { MapPin, FileText, FileImage, ChevronDown, ChevronRight } from 'lucide-react';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 
 interface PrecinctInfo {
@@ -304,12 +304,12 @@ export function PrecinctProvisionsBrowser({
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  console.log('[PrecinctProvisionsBrowser] PDF button clicked:', provision.pdf_page_image_url);
                                   setViewingPdfImage(provision.pdf_page_image_url || null);
                                 }}
-                                className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                                title="View PDF Page"
                               >
-                                📄 View PDF Page
+                                <FileImage className="w-5 h-5 text-blue-500 hover:text-blue-700" />
                               </button>
                             )}
                           </div>

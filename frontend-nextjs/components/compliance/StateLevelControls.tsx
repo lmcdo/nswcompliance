@@ -9,7 +9,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Scale, Building2, Car } from 'lucide-react';
+import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage } from 'lucide-react';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
 import { LandUseZoningCard } from './LandUseZoningCard';
@@ -67,6 +68,7 @@ export function StateLevelControls({
     adg: false,
     tod: false // TOD expanded by default when shown
   });
+  const [viewingTodPdf, setViewingTodPdf] = useState(false);
 
   const isApartmentDevelopment = APARTMENT_DEV_TYPES.includes(developmentType);
 
@@ -585,9 +587,18 @@ export function StateLevelControls({
 
               {/* Reference Table */}
               <div>
-                <h4 className="text-xs font-semibold text-emerald-800 mb-2">
-                  TOD Parking Reduction Rates
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-emerald-800">
+                    TOD Parking Reduction Rates
+                  </h4>
+                  <button
+                    onClick={() => setViewingTodPdf(true)}
+                    className="p-1.5 rounded hover:bg-emerald-100 transition-colors"
+                    title="View SEPP (Housing) 2021 - Accessible Area Definition"
+                  >
+                    <FileImage className="w-5 h-5 text-emerald-500 hover:text-emerald-700" />
+                  </button>
+                </div>
                 <p className="text-xs text-gray-600 mb-2">
                   Reference rates for sites near frequent public transport.
                 </p>
@@ -636,6 +647,14 @@ export function StateLevelControls({
                   Multiple transport: +10% bonus. Max total: 50%. Check council DCP for specific requirements.
                 </p>
               </div>
+
+              {/* TOD PDF Modal */}
+              <PdfImageModal
+                isOpen={viewingTodPdf}
+                imageUrl="/pdf-pages/sepp-housing/sepp-housing_page_115.png"
+                onClose={() => setViewingTodPdf(false)}
+                title="SEPP (Housing) 2021 - Accessible Area Definition"
+              />
             </CardContent>
           )}
         </Card>

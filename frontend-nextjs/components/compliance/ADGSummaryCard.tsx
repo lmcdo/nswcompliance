@@ -277,7 +277,7 @@ export function ADGSummaryCard({ developmentType, zoneCode, onViewAllCriteria }:
                         })}
                         className="p-0.5 rounded hover:bg-purple-100 transition-colors"
                       >
-                        <FileImage className="w-3.5 h-3.5 text-purple-500 hover:text-purple-700" />
+                        <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent side="top">
@@ -477,7 +477,7 @@ function MetricRow({ metric, onViewPdf }: MetricRowProps) {
                   onClick={() => onViewPdf(metric.sourcePage, metric.pdfPageImageUrl!, metric.label)}
                   className="p-0.5 rounded hover:bg-purple-100 transition-colors"
                 >
-                  <FileImage className="w-3.5 h-3.5 text-purple-500 hover:text-purple-700" />
+                  <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">

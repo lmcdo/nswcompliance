@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronRight, FileImage } from 'lucide-react';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { getProvisionDisplayTitle } from '@/lib/provision-title-utils';
 
@@ -137,18 +137,6 @@ export function DCPProvisionsBrowser({
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
-            // DEBUG: Check if pdf_page_image_url exists
-            console.log('[DCPProvisionsBrowser] API Response:', {
-              totalCount: data.data.totalCount,
-              provisionsCount: data.data.provisions.length,
-              firstProvision: data.data.provisions[0] ? {
-                id: data.data.provisions[0].id,
-                ref: data.data.provisions[0].ref_number,
-                hasPdfUrl: !!data.data.provisions[0].pdf_page_image_url,
-                pdfUrl: data.data.provisions[0].pdf_page_image_url
-              } : null
-            });
-
             // Append or replace based on offset
             if (offset === 0) {
               setProvisions(data.data.provisions);
@@ -547,26 +535,18 @@ export function DCPProvisionsBrowser({
                                 })}
                               </span>
                             </div>
-                            {(() => {
-                              console.log('[DCPProvisionsBrowser] Provision expanded:', {
-                                id: provision.id,
-                                ref: provision.ref_number,
-                                hasPdfUrl: !!provision.pdf_page_image_url,
-                                pdfUrl: provision.pdf_page_image_url
-                              });
-                              return provision.pdf_page_image_url && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    console.log('[DCPProvisionsBrowser] Opening PDF:', provision.pdf_page_image_url);
-                                    setViewingPdfImage(provision.pdf_page_image_url || null);
-                                  }}
-                                  className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                                >
-                                  📄 View PDF Page
-                                </button>
-                              );
-                            })()}
+                            {provision.pdf_page_image_url && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingPdfImage(provision.pdf_page_image_url || null);
+                                }}
+                                className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                                title={`View PDF page ${provision.pdf_page}`}
+                              >
+                                <FileImage className="w-5 h-5 text-blue-500 hover:text-blue-700" />
+                              </button>
+                            )}
                           </div>
                         </div>
                         <div

@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle, FileImage } from 'lucide-react';
 
 interface CategorizedRequirement {
   id: number;
@@ -295,16 +295,16 @@ export function CategorizedRequirementsCard({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Generate URLs for all pages in the range
                                 const pages = req.pdf_pages!.map(pageNum => ({
                                   pageNumber: pageNum,
                                   url: req.pdf_page_image_url!.replace(/_page_\d+\.png$/, `_page_${pageNum}.png`)
                                 }));
                                 setViewingPdfPages(pages);
                               }}
-                              className="px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                              className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                              title={`View PDF Page${req.pdf_pages.length > 1 ? 's ' + req.pdf_pages.join('-') : ' ' + req.pdf_pages[0]}`}
                             >
-                              📄 View PDF Page{req.pdf_pages.length > 1 ? 's ' + req.pdf_pages.join('-') : ' ' + req.pdf_pages[0]}
+                              <FileImage className="w-5 h-5 text-blue-500 hover:text-blue-700" />
                             </button>
                           )}
                         </div>
@@ -392,12 +392,12 @@ export function CategorizedRequirementsCard({
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          // For provisions, show single page
                                           setViewingPdfPages([{pageNumber: provision.page_number, url: provision.pdf_page_image_url}]);
                                         }}
-                                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                        className="p-1.5 rounded hover:bg-blue-100 transition-colors"
+                                        title={`View PDF Page ${provision.page_number}`}
                                       >
-                                        📄 View PDF Page {provision.page_number}
+                                        <FileImage className="w-5 h-5 text-blue-500 hover:text-blue-700" />
                                       </button>
                                     )}
                                   </div>

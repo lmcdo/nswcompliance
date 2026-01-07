@@ -207,10 +207,10 @@ export function ADGBuildingSeparationTable({
           {data.source.pdf_page_image_url && (
             <button
               onClick={() => setViewingPdfPage(true)}
-              className="inline-flex items-center gap-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+              className="p-1.5 rounded hover:bg-purple-100 transition-colors"
+              title={`View PDF Page ${data.source.page}`}
             >
-              <FileImage className="h-3 w-3" />
-              View PDF Page {data.source.page}
+              <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
             </button>
           )}
           <a

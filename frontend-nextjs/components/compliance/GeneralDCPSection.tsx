@@ -16,7 +16,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, FileText, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, FileImage, Info } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement, groupByCategory } from '@/lib/requirement-prioritization';
@@ -444,19 +444,16 @@ const CategorySection: React.FC<{
                             <div className="text-xs text-blue-800">
                               <span className="font-semibold">{hasMultiple ? `${requirements.length} requirements` : '1 requirement'}</span> from page {pdfPage}
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs bg-blue-600 text-white hover:bg-blue-700"
+                            <button
+                              className="p-1.5 rounded hover:bg-blue-200 transition-colors"
+                              title={`View PDF Page ${pdfPage}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('[PDF Button] Clicked! URL:', pdfUrl);
                                 setViewingPdfImage({ url: pdfUrl, page: pdfPage });
                               }}
                             >
-                              <FileText className="h-3 w-3 mr-1" />
-                              View PDF Page {pdfPage}
-                            </Button>
+                              <FileImage className="w-5 h-5 text-blue-600 hover:text-blue-800" />
+                            </button>
                           </div>
                         )}
                       </div>
@@ -535,19 +532,16 @@ const CategorySection: React.FC<{
                             <div className="text-xs text-green-800">
                               <span className="font-semibold">{hasMultiple ? `${requirements.length} requirements` : '1 requirement'}</span> from page {pdfPage}
                             </div>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs bg-green-600 text-white hover:bg-green-700"
+                            <button
+                              className="p-1.5 rounded hover:bg-green-200 transition-colors"
+                              title={`View PDF Page ${pdfPage}`}
                               onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('[PDF Button] Clicked! URL:', pdfUrl);
                                 setViewingPdfImage({ url: pdfUrl, page: pdfPage });
                               }}
                             >
-                              <FileText className="h-3 w-3 mr-1" />
-                              View PDF Page {pdfPage}
-                            </Button>
+                              <FileImage className="w-5 h-5 text-green-600 hover:text-green-800" />
+                            </button>
                           </div>
                         )}
                       </div>
