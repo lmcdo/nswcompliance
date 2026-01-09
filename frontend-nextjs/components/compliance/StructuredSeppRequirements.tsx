@@ -159,12 +159,18 @@ export function StructuredSeppRequirements({
       {requirements.map((req, reqIndex) => {
         const { requirementData, seppName, schedule, scheduleName, sourceProvisionId, pdfPageImageUrl, pdfPage } = req;
 
+        // Skip requirements with invalid data structure
+        if (!requirementData || !requirementData.categories || !Array.isArray(requirementData.categories)) {
+          console.warn('[StructuredSeppRequirements] Skipping requirement with invalid data:', req.id || reqIndex);
+          return null;
+        }
+
         return (
           <Card key={reqIndex} className="border-purple-200 bg-purple-50/30">
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between gap-2">
                 <CardTitle className="text-base font-semibold text-purple-900">
-                  {sanitizeText(requirementData.title)}
+                  {sanitizeText(requirementData?.title)}
                 </CardTitle>
                 {pdfPageImageUrl && (
                   <button
@@ -176,9 +182,9 @@ export function StructuredSeppRequirements({
                   </button>
                 )}
               </div>
-              {requirementData.description && (
+              {requirementData?.description && (
                 <p className="text-xs text-gray-700 mt-1">
-                  {sanitizeText(requirementData.description)}
+                  {sanitizeText(requirementData?.description)}
                 </p>
               )}
               <div className="text-xs text-gray-600 mt-1">
@@ -187,7 +193,7 @@ export function StructuredSeppRequirements({
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Requirement Categories */}
-              {requirementData.categories.map((category, catIndex) => {
+              {requirementData?.categories?.map((category, catIndex) => {
                 const categoryKey = `${reqIndex}-${catIndex}`;
                 const isExpanded = expandedCategories.has(categoryKey);
 
