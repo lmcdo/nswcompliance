@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronRight, CheckCircle2, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 /**
  * Fix common UTF-8 encoding artifacts (mojibake)
@@ -167,7 +168,7 @@ export function StructuredSeppRequirements({
                 </CardTitle>
                 {pdfPageImageUrl && (
                   <button
-                    onClick={() => setViewingPdfImage(pdfPageImageUrl)}
+                    onClick={() => setViewingPdfImage(getPdfImageUrl(pdfPageImageUrl))}
                     className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
                     title={`View PDF page ${pdfPage || ''}`}
                   >
