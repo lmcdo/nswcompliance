@@ -59,6 +59,7 @@ interface RequirementData {
   title: string;
   description?: string;
   categories: RequirementCategory[];
+  pdf_references?: Array<{page: number; section: string; description: string; url: string}>;
 }
 
 interface StructuredRequirement {
@@ -172,6 +173,7 @@ export function StructuredSeppRequirements({
                 <CardTitle className="text-base font-semibold text-purple-900">
                   {sanitizeText(requirementData?.title)}
                 </CardTitle>
+                {/* PDF Page Links */}
                 {pdfPageImageUrl && (
                   <button
                     onClick={() => setViewingPdfImage(getPdfImageUrl(pdfPageImageUrl))}
@@ -180,6 +182,21 @@ export function StructuredSeppRequirements({
                   >
                     <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
                   </button>
+                )}
+                {/* Multiple PDF references (for contamination, etc.) */}
+                {requirementData?.pdf_references && requirementData.pdf_references.length > 0 && (
+                  <div className="flex gap-1">
+                    {requirementData.pdf_references.map((ref: any, refIndex: number) => (
+                      <button
+                        key={refIndex}
+                        onClick={() => setViewingPdfImage(ref.url)}
+                        className="px-2 py-1 text-xs rounded hover:bg-purple-100 transition-colors flex-shrink-0 border border-purple-300"
+                        title={ref.description}
+                      >
+                        📄 p{ref.page}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
               {requirementData?.description && (
