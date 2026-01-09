@@ -590,8 +590,50 @@ export function StateLevelControls({
           </CardHeader>
           {!collapsedSections.adg && (
             <CardContent className="pt-0">
-              {/* ADG Summary Card - All Design Criteria */}
-              <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+              {/* Dynamic ADG Requirements from Planning Portal SEPP Detection */}
+              {loadingAdg ? (
+                <div className="animate-pulse space-y-2">
+                  <div className="h-4 bg-indigo-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-indigo-200 rounded w-1/2"></div>
+                </div>
+              ) : adgRequirements.length > 0 ? (
+                <div className="space-y-4">
+                  <div className="text-sm text-gray-600 mb-3">
+                    Showing {adgRequirements.length} high-value design criteria
+                  </div>
+                  {adgRequirements.map((req: any) => (
+                    <div key={req.criteriaId} className="border-l-4 border-indigo-300 pl-4 py-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="font-semibold text-indigo-900">
+                            {req.criteriaId}: {req.requirementSummary || req.requirement_summary}
+                          </div>
+                          {req.numericValue && (
+                            <div className="text-sm text-gray-700 mt-1">
+                              Value: <span className="font-medium">{req.numericValue} {req.numericUnit}</span>
+                            </div>
+                          )}
+                        </div>
+                        {req.sourcePage && (
+                          <button
+                            onClick={() => setViewingPdfPage({
+                              pageNumber: req.sourcePage,
+                              url: `/pdf-pages/adg-part3/page-${req.sourcePage}.png`,
+                              label: `ADG ${req.criteriaId}`
+                            })}
+                            className="ml-3 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                          >
+                            <FileImage className="w-3 h-3" />
+                            p.{req.sourcePage}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+              )}
             </CardContent>
           )}
         </Card>
