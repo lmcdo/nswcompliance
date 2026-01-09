@@ -84,10 +84,32 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  const origin = request.headers.get('origin');
+
+  // Handle CORS preflight requests
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, Authorization',
+        'Access-Control-Max-Age': '86400',
+      },
+    });
+  }
+
   // Skip auth for public routes
   const isPublicRoute = PUBLIC_ROUTES.some(route => pathname.startsWith(route));
   if (isPublicRoute) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    // Add CORS headers for public routes
+    if (origin) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+      response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key, Authorization');
+    }
+    return response;
   }
 
   // Rate limiting
@@ -119,11 +141,18 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Add security headers
+  // Add security and CORS headers
   const response = NextResponse.next();
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-XSS-Protection', '1; mode=block');
+
+  // Add CORS headers
+  if (origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin);
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, x-api-key, Authorization');
+  }
 
   return response;
 }
