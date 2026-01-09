@@ -474,7 +474,7 @@ export function StateLevelControls({
 
             {/* Contamination Assessment Requirements - SEPP Resilience & Hazards 2021 Chapter 4 */}
             {(applicableSepps.includes('SEPP_RESILIENCE_HAZARDS_2021') || ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'B4', 'MU1', 'E3', 'B3'].includes(zoneCode)) && 
-             structuredRequirements.some(req => req.seppId === 'resilience_hazards_2021') && (
+             (
               <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <div className="text-2xl">⚠️</div>
