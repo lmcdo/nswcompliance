@@ -50,22 +50,6 @@ function qualifiesForTOD(type: string, distance: number, frequency: string): boo
   return false;
 }
 
-// Calculate parking reduction percentage based on transport type and distance
-// Note: Actual reduction rates must be verified with council DCP
-function getReduction(type: string, distance: number, frequency: string): number | null {
-  if (!qualifiesForTOD(type, distance, frequency)) return null;
-  
-  // Indicative reduction rates (must be verified with council DCP)
-  if (type === 'heavy_rail' && distance <= 400) return 20;
-  if (type === 'heavy_rail' && distance <= 800) return 15;
-  if (type === 'light_rail' && distance <= 400) return 15;
-  if (type === 'light_rail' && distance <= 600) return 10;
-  if (type === 'bus' && distance <= 200 && frequency === 'high') return 10;
-  if (type === 'bus' && distance <= 400 && frequency === 'high') return 5;
-  
-  return null;
-}
-
 export function NearbyTransportCard({
   lat,
   lng,
@@ -167,20 +151,8 @@ export function NearbyTransportCard({
     return acc;
   }, {} as Record<string, TransportStop[]>);
 
-  // Calculate max reduction
-  const reductions = stops
-    .map(s => getReduction(s.type, s.distance, s.frequency))
-    .filter((r): r is number => r !== null);
-  const maxReduction = reductions.length > 0 ? Math.max(...reductions) : 0;
-
-  // Bonus for multiple transport types within range
-  const typesWithReduction = new Set(
-    stops
-      .filter(s => qualifiesForTOD(s.type, s.distance, s.frequency))
-      .map(s => s.type)
-  );
-  const multiTransportBonus = typesWithReduction.size > 1 ? 10 : 0;
-  const totalReduction = Math.min(maxReduction + multiTransportBonus, 50);
+  // Note: Actual parking reduction rates come from council DCP provisions
+  // See DCP Provisions tab for council-specific TOD parking requirements
 
   return (
     <div className="space-y-3">
