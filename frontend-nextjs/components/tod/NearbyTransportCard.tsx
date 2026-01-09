@@ -154,6 +154,11 @@ export function NearbyTransportCard({
   // Note: Actual parking reduction rates come from council DCP provisions
   // See DCP Provisions tab for council-specific TOD parking requirements
 
+  // Check if any transport qualifies for TOD
+  const hasQualifyingTransport = stops.some(stop =>
+    qualifiesForTOD(stop.type, stop.distance, stop.frequency)
+  );
+
   return (
     <div className="space-y-3">
       {/* Summary */}
