@@ -927,7 +927,6 @@ export function StateLevelControls({
                       <FileImage className="h-5 w-5" />
                     </button>
                   </div>
-
                 {/* In-Fill Affordable Housing */}
                 <div className="bg-white border border-emerald-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
@@ -1039,7 +1038,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 115,
-                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-115_accessible_area_def.png',
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_115.png',
                         label: 'SEPP (Housing) 2021 - Accessible Area Definition'
                       })}
                       className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
