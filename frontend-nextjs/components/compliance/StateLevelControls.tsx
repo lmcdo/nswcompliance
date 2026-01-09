@@ -83,12 +83,21 @@ export function StateLevelControls({
   };
 
   // SEPP ID mapping: Planning Portal → Database
+  // Note: Only sustainable_buildings_2022 currently has structured requirements in DB
+  // Housing SEPP uses separate sepp_adg_requirements table
+  // Others detected but no structured data available yet
   const SEPP_MAPPING: Record<string, string> = {
     'SEPP_HOUSING_2021': 'housing_2021',
     'SEPP_65': 'housing_2021',  // Old numbering, same SEPP
     'SEPP_SUSTAINABLE_BUILDINGS': 'sustainable_buildings_2022',
     'SEPP_SUSTAINABLE_BUILDINGS_2022': 'sustainable_buildings_2022',
     'SEPP_RESILIENCE_HAZARDS_2021': 'resilience_hazards_2021',
+    'SEPP_PLANNING_SYSTEMS_2021': 'planning_systems_2021',
+    'SEPP_TRANSPORT_INFRASTRUCTURE_2021': 'transport_infrastructure_2021',
+    'SEPP_BIODIVERSITY_CONSERVATION_2017': 'biodiversity_conservation_2017',
+    'SEPP_PRIMARY_PRODUCTION_2021': 'primary_production_2021',
+    'SEPP_INDUSTRY_EMPLOYMENT_2021': 'industry_employment_2021',
+    'SEPP_EXEMPT_COMPLYING_2008': 'exempt_complying_2008',
   };
 
   // Load ADG requirements when SEPP Housing 2021 detected
@@ -390,6 +399,25 @@ export function StateLevelControls({
         </CardHeader>
         {!collapsedSections.sepp && (
           <CardContent className="pt-0 space-y-4">
+            {/* Show ALL detected SEPPs from Planning Portal */}
+            {propertyData?.constraints?.applicableSepps && propertyData.constraints.applicableSepps.length > 0 && (
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                <div className="text-sm font-semibold text-purple-900 mb-2">
+                  Applicable State Policies (from Planning Portal)
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {propertyData.constraints.applicableSepps.map((sepp: string) => (
+                    <div key={sepp} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded border border-purple-300">
+                      {sepp.replace(/_/g, ' ')}
+                    </div>
+                  ))}
+                </div>
+                <div className="text-xs text-purple-700 mt-2">
+                  Structured requirements available for: Sustainable Buildings, Housing (ADG)
+                </div>
+              </div>
+            )}
+            
             {/* Planning Portal Source Layers - Purple shades for cohesion with left column Special Provisions */}
             {(sustainableInfo.waterTarget || sustainableInfo.climateZone || sustainableInfo.basixArea) && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
