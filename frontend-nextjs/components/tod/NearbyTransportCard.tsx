@@ -41,19 +41,13 @@ const transportLabels: Record<string, string> = {
   ferry: 'Ferry',
 };
 
-// TOD reduction thresholds
-function getReduction(type: string, distance: number, frequency: string): number | null {
-  if (type === 'heavy_rail') {
-    if (distance <= 400) return 30;
-    if (distance <= 800) return 20;
-  } else if (type === 'light_rail') {
-    if (distance <= 400) return 25;
-    if (distance <= 600) return 15;
-  } else if (type === 'bus' && distance <= 400) {
-    if (frequency === 'high') return 15;
-    if (frequency === 'medium') return 10;
-  }
-  return null;
+// Check if transport qualifies for TOD consideration (within regulatory thresholds)
+// Parking reduction rates must be verified with council DCP
+function qualifiesForTOD(type: string, distance: number, frequency: string): boolean {
+  if (type === 'heavy_rail' && distance <= 800) return true;
+  if (type === 'light_rail' && distance <= 600) return true;
+  if (type === 'bus' && distance <= 400 && (frequency === 'high' || frequency === 'medium')) return true;
+  return false;
 }
 
 export function NearbyTransportCard({
@@ -166,7 +160,7 @@ export function NearbyTransportCard({
   // Bonus for multiple transport types within range
   const typesWithReduction = new Set(
     stops
-      .filter(s => getReduction(s.type, s.distance, s.frequency) !== null)
+      .filter(s => qualifiesForTOD(s.type, s.distance, s.frequency))
       .map(s => s.type)
   );
   const multiTransportBonus = typesWithReduction.size > 1 ? 10 : 0;
@@ -182,9 +176,9 @@ export function NearbyTransportCard({
             {stops.length} transport option{stops.length !== 1 ? 's' : ''} nearby
           </span>
         </div>
-        {totalReduction > 0 && (
+        {hasQualifyingTransport && (
           <div className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded text-xs font-medium">
-            Up to {totalReduction}% parking reduction
+            TOD eligible
           </div>
         )}
       </div>
@@ -203,7 +197,7 @@ export function NearbyTransportCard({
               </div>
               <div className="space-y-1">
                 {typeStops.slice(0, 3).map((stop) => {
-                  const reduction = getReduction(stop.type, stop.distance, stop.frequency);
+                  const qualifies = qualifiesForTOD(stop.type, stop.distance, stop.frequency);
                   return (
                     <div
                       key={stop.id}
@@ -214,9 +208,9 @@ export function NearbyTransportCard({
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-gray-500">{stop.distance}m</span>
-                        {reduction && (
-                          <span className="text-emerald-600 font-medium">
-                            -{reduction}%
+                        {qualifies && (
+                          <span className="text-emerald-600 font-medium text-[10px]">
+                            TOD
                           </span>
                         )}
                       </div>
@@ -234,10 +228,10 @@ export function NearbyTransportCard({
         })}
       </div>
 
-      {/* Bonus note */}
-      {multiTransportBonus > 0 && (
-        <p className="text-xs text-emerald-600 italic">
-          +10% bonus for multiple transport types
+      {/* DCP Reference Note */}
+      {hasQualifyingTransport && (
+        <p className="text-xs text-gray-500 italic">
+          Refer to council DCP for parking reduction rates
         </p>
       )}
     </div>

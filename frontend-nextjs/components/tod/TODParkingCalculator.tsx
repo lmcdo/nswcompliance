@@ -71,26 +71,26 @@ export default function TODParkingCalculator({
 
  if (service.type === 'heavy_rail') {
  if (service.distance <= 400) {
- reductionPercent = 30;
+ reductionPercent = 0 // Set by council DCP;
  description = `Heavy rail within 400m (${service.name})`;
  } else if (service.distance <= 800) {
- reductionPercent = 20;
+ reductionPercent = 0 // Set by council DCP;
  description = `Heavy rail within 800m (${service.name})`;
  }
  } else if (service.type === 'light_rail') {
  if (service.distance <= 400) {
- reductionPercent = 25;
+ reductionPercent = 0 // Set by council DCP;
  description = `Light rail within 400m (${service.name})`;
  } else if (service.distance <= 600) {
- reductionPercent = 15;
+ reductionPercent = 0 // Set by council DCP;
  description = `Light rail within 600m (${service.name})`;
  }
  } else if (service.type === 'bus') {
  if (service.frequency === 'high' && service.distance <= 400) {
- reductionPercent = 15;
+ reductionPercent = 0 // Set by council DCP;
  description = `High frequency bus within 400m (${service.name})`;
  } else if (service.frequency === 'medium' && service.distance <= 400) {
- reductionPercent = 10;
+ reductionPercent = 0 // Set by council DCP;
  description = `Medium frequency bus within 400m (${service.name})`;
  }
  }
@@ -107,7 +107,7 @@ export default function TODParkingCalculator({
 
  // Multiple transport bonus (max 50% total reduction)
  if (reductionFactors.length > 1) {
- const bonus = Math.min(10, 50 - totalReduction);
+ const bonus = Math.min(0 // Bonus must be set by council DCP, 50 - totalReduction);
  if (bonus > 0) {
  reductionFactors.push({
  type: 'multiple_transport',
