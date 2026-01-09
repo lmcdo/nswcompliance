@@ -60,6 +60,15 @@ interface RequirementData {
   description?: string;
   categories: RequirementCategory[];
   pdf_references?: Array<{page: number; section: string; description: string; url: string}>;
+  feasibility_note?: {
+    heading: string;
+    content: string;
+    resources: Array<{
+      label: string;
+      url: string;
+      description: string;
+    }>;
+  };
 }
 
 interface StructuredRequirement {
@@ -92,6 +101,7 @@ export function StructuredSeppRequirements({
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set(['0-0']) // Auto-expand first category
   );
+  const [expandedFeasibility, setExpandedFeasibility] = useState<Set<string>>(new Set());
   const [showFullLegalText, setShowFullLegalText] = useState(false);
   const [viewingPdfImage, setViewingPdfImage] = useState<string | null>(null);
 
@@ -258,6 +268,56 @@ export function StructuredSeppRequirements({
                   </div>
                 );
               })}
+
+
+              {/* Feasibility Note - Collapsible, Unobtrusive */}
+              {requirementData?.feasibility_note && (
+                <div className="mt-4 border-t border-gray-200 pt-3">
+                  <button
+                    onClick={() => {
+                      const key = `feasibility-${reqIndex}`;
+                      setExpandedFeasibility(prev => {
+                        const next = new Set(prev);
+                        if (next.has(key)) {
+                          next.delete(key);
+                        } else {
+                          next.add(key);
+                        }
+                        return next;
+                      });
+                    }}
+                    className="flex items-center gap-2 text-xs text-gray-600 hover:text-gray-800 transition-colors"
+                  >
+                    {expandedFeasibility.has(`feasibility-${reqIndex}`) ? (
+                      <ChevronDown className="w-3 h-3" />
+                    ) : (
+                      <ChevronRight className="w-3 h-3" />
+                    )}
+                    <span className="font-medium">{requirementData.feasibility_note.heading}</span>
+                  </button>
+                  
+                  {expandedFeasibility.has(`feasibility-${reqIndex}`) && (
+                    <div className="mt-2 ml-5 text-xs text-gray-700 space-y-2">
+                      <p className="leading-relaxed">{requirementData.feasibility_note.content}</p>
+                      <div className="space-y-1 pt-1">
+                        {requirementData.feasibility_note.resources.map((resource, idx) => (
+                          <div key={idx}>
+                            <a
+                              href={resource.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+                              title={resource.description}
+                            >
+                              🔗 {resource.label}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* How to Use This Section */}
               {!compact && (
