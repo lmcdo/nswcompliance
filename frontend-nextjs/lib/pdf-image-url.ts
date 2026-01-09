@@ -12,6 +12,11 @@ const R2_PUBLIC_URL = process.env.NEXT_PUBLIC_R2_URL || 'https://pub-7f3b945f2f0
 export function getPdfImageUrl(relativePath: string | undefined | null): string | null {
   if (!relativePath) return null;
 
+  // If already an absolute URL (starts with http:// or https://), return as-is
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+
   // In production (Vercel or custom domain), prefix with R2 URL
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
