@@ -1,12 +1,20 @@
 # PlotDetect CLAUDE.md - Standing Rules
 
 ## Database Safety (NON-NEGOTIABLE)
-- Run `./scripts/db_safety_check.sh` BEFORE any database work
+- **Read DB_SCHEMA.md FIRST** before any database work to understand table structure
+- Run `./scripts/db_safety_check.sh` BEFORE any database operation
 - Create backup before ANY database operation
 - NEVER run queries without WHERE clauses on main tables
 - Use timeouts (30 seconds max)
 - Database issues = STOP IMMEDIATELY
 - **Single database: Supabase** (no sync needed, changes visible in production immediately)
+
+## Database Quick Reference
+- **Always check DB_SCHEMA.md** before writing queries
+- 58 tables, 47,818 provisions in `regulatory_provisions`
+- Use `v2_precinct_id` (102 precincts), NOT `dcp_precinct_provisions` (legacy, incomplete)
+- SEPP Housing 2021: 241 provisions in `regulatory_provisions`, query by document_id
+- Full schema details in DB_SCHEMA_RAW.txt
 
 ## Data Integrity (NON-NEGOTIABLE)
 - **NEVER create fake, placeholder, or "approximate" data**
@@ -48,6 +56,7 @@
 - Virtual env: `venv_linux`
 
 ## Reference Docs (read when relevant, not every session)
+- `DB_SCHEMA.md` - Database structure quick reference (READ BEFORE DB WORK)
 - `.claude/prp/INDEX.md` - Architecture overview
 - `.claude/DATA_QUALITY_TRACKER.md` - DQ issues and fixes
 - `DEPLOYMENT.md` - Deploy guide
