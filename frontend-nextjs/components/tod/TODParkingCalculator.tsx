@@ -107,7 +107,7 @@ export default function TODParkingCalculator({
 
  // Multiple transport bonus (max 50% total reduction)
  if (reductionFactors.length > 1) {
- const bonus = Math.min(0 // Bonus must be set by council DCP, 50 - totalReduction);
+const bonus = Math.min(50 - totalReduction, 0); // Bonus must be set by council DCP
  if (bonus > 0) {
  reductionFactors.push({
  type: 'multiple_transport',
