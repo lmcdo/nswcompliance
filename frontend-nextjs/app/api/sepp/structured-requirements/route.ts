@@ -30,6 +30,8 @@ interface StructuredRequirement {
     categories: RequirementCategory[];
   };
   sourceProvisionId: number | null;
+  pdfPageImageUrl: string | null;
+  pdfPage: number | null;
 }
 
 /**
@@ -106,22 +108,25 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Structured Requirements API] Development category: ${developmentCategory}`);
 
-    // Build query
+    // Build query with LEFT JOIN to get PDF URLs
     let query = `
       SELECT
-        id,
-        sepp_id,
-        sepp_name,
-        schedule,
-        schedule_name,
-        section,
-        section_name,
-        development_type_category,
-        requirement_data,
-        source_provision_id
-      FROM sepp_structured_requirements
-      WHERE sepp_id = $1
-      AND development_type_category = $2
+        ssr.id,
+        ssr.sepp_id,
+        ssr.sepp_name,
+        ssr.schedule,
+        ssr.schedule_name,
+        ssr.section,
+        ssr.section_name,
+        ssr.development_type_category,
+        ssr.requirement_data,
+        ssr.source_provision_id,
+        rp.pdf_page_image_url,
+        rp.pdf_page
+      FROM sepp_structured_requirements ssr
+      LEFT JOIN regulatory_provisions rp ON ssr.source_provision_id = rp.id
+      WHERE ssr.sepp_id = $1
+      AND ssr.development_type_category = $2
     `;
 
     const params: any[] = [seppId, developmentCategory];
@@ -167,7 +172,9 @@ export async function POST(request: NextRequest) {
       sectionName: row.section_name,
       developmentTypeCategory: row.development_type_category,
       requirementData: row.requirement_data,
-      sourceProvisionId: row.source_provision_id
+      sourceProvisionId: row.source_provision_id,
+      pdfPageImageUrl: row.pdf_page_image_url,
+      pdfPage: row.pdf_page
     }));
 
     const processingTime = Date.now() - startTime;

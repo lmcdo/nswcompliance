@@ -7,8 +7,9 @@
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, CheckCircle2, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 
 /**
  * Fix common UTF-8 encoding artifacts (mojibake)
@@ -70,6 +71,8 @@ interface StructuredRequirement {
   developmentTypeCategory: string;
   requirementData: RequirementData;
   sourceProvisionId: number | null;
+  pdfPageImageUrl: string | null;
+  pdfPage: number | null;
 }
 
 interface StructuredSeppRequirementsProps {
@@ -88,6 +91,7 @@ export function StructuredSeppRequirements({
     new Set(['0-0']) // Auto-expand first category
   );
   const [showFullLegalText, setShowFullLegalText] = useState(false);
+  const [viewingPdfImage, setViewingPdfImage] = useState<string | null>(null);
 
   if (requirements.length === 0) {
     return null;
@@ -152,14 +156,25 @@ export function StructuredSeppRequirements({
   return (
     <div className="space-y-4">
       {requirements.map((req, reqIndex) => {
-        const { requirementData, seppName, schedule, scheduleName, sourceProvisionId } = req;
+        const { requirementData, seppName, schedule, scheduleName, sourceProvisionId, pdfPageImageUrl, pdfPage } = req;
 
         return (
           <Card key={reqIndex} className="border-purple-200 bg-purple-50/30">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold text-purple-900">
-                {sanitizeText(requirementData.title)}
-              </CardTitle>
+              <div className="flex items-start justify-between gap-2">
+                <CardTitle className="text-base font-semibold text-purple-900">
+                  {sanitizeText(requirementData.title)}
+                </CardTitle>
+                {pdfPageImageUrl && (
+                  <button
+                    onClick={() => setViewingPdfImage(pdfPageImageUrl)}
+                    className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                    title={`View PDF page ${pdfPage || ''}`}
+                  >
+                    <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
+                  </button>
+                )}
+              </div>
               {requirementData.description && (
                 <p className="text-xs text-gray-700 mt-1">
                   {sanitizeText(requirementData.description)}
@@ -237,6 +252,14 @@ export function StructuredSeppRequirements({
           </Card>
         );
       })}
+
+      {/* PDF Image Modal */}
+      <PdfImageModal
+        isOpen={!!viewingPdfImage}
+        imageUrl={viewingPdfImage}
+        onClose={() => setViewingPdfImage(null)}
+        title="SEPP Requirement"
+      />
     </div>
   );
 }

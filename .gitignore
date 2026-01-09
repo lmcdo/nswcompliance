@@ -351,3 +351,4 @@ table_*.html
 nsw-compliance-engine-frontend@*
 "version"
 'version'
+.aider*

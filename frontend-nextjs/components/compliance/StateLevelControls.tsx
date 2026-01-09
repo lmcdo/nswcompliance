@@ -61,6 +61,7 @@ export function StateLevelControls({
   const [loadingSepp, setLoadingSepp] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
   const [transportLoading, setTransportLoading] = useState(false);
+  const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     sepp: false,
     lep: false,
@@ -68,7 +69,6 @@ export function StateLevelControls({
     adg: false,
     tod: false // TOD expanded by default when shown
   });
-  const [viewingTodPdf, setViewingTodPdf] = useState(false);
 
   const isApartmentDevelopment = APARTMENT_DEV_TYPES.includes(developmentType);
 
@@ -82,7 +82,7 @@ export function StateLevelControls({
 
   // Load structured SEPP requirements
   const loadStructuredRequirements = useCallback(async () => {
-    if (!developmentType) return;
+    if (!developmentType || !propertyData) return;
 
     setLoadingSepp(true);
     try {
@@ -109,7 +109,7 @@ export function StateLevelControls({
     } finally {
       setLoadingSepp(false);
     }
-  }, [developmentType]);
+  }, [developmentType, propertyData]);
 
   useEffect(() => {
     loadStructuredRequirements();
@@ -585,76 +585,164 @@ export function StateLevelControls({
                 />
               </div>
 
-              {/* Reference Table */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
+              {/* SEPP Parking Provisions */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
                   <h4 className="text-xs font-semibold text-emerald-800">
-                    TOD Parking Reduction Rates
+                    SEPP (Housing) 2021 Parking Provisions
                   </h4>
-                  <button
-                    onClick={() => setViewingTodPdf(true)}
-                    className="p-1.5 rounded hover:bg-emerald-100 transition-colors"
-                    title="View SEPP (Housing) 2021 - Accessible Area Definition"
-                  >
-                    <FileImage className="w-5 h-5 text-emerald-500 hover:text-emerald-700" />
-                  </button>
                 </div>
-                <p className="text-xs text-gray-600 mb-2">
-                  Reference rates for sites near frequent public transport.
-                </p>
-                <table className="w-full text-xs">
-                <thead>
-                  <tr className="text-left text-gray-500 border-b">
-                    <th className="pb-2">Transport Type</th>
-                    <th className="pb-2">Distance</th>
-                    <th className="pb-2">Reduction</th>
-                  </tr>
-                </thead>
-                <tbody className="text-gray-700">
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5">Heavy Rail (train)</td>
-                    <td className="py-1.5">≤400m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">30%</td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5">Heavy Rail</td>
-                    <td className="py-1.5">400-800m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">20%</td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5">Light Rail</td>
-                    <td className="py-1.5">≤400m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">25%</td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5">Light Rail</td>
-                    <td className="py-1.5">400-600m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">15%</td>
-                  </tr>
-                  <tr className="border-b border-gray-100">
-                    <td className="py-1.5">Bus (high freq)</td>
-                    <td className="py-1.5">≤400m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">15%</td>
-                  </tr>
-                  <tr>
-                    <td className="py-1.5">Bus (medium freq)</td>
-                    <td className="py-1.5">≤400m</td>
-                    <td className="py-1.5 font-medium text-emerald-700">10%</td>
-                  </tr>
-                </tbody>
-                </table>
-                <p className="text-xs text-gray-500 mt-2 italic">
-                  Multiple transport: +10% bonus. Max total: 50%. Check council DCP for specific requirements.
-                </p>
+
+                {/* Boarding House Parking */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Boarding Houses</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>In accessible area:</strong> 0.2 parking spaces per boarding room
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        <strong>Otherwise:</strong> 0.5 parking spaces per boarding room
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 24 - Non-discretionary development standards
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 11,
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_11.png',
+                        label: 'SEPP (Housing) 2021 - Boarding House Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Co-Living Parking */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Co-Living Housing</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>In accessible area:</strong> 0.2 parking spaces per private room
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        <strong>Otherwise:</strong> 0.5 parking spaces per private room
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 68 - Non-discretionary development standards
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 32,
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_32.png',
+                        label: 'SEPP (Housing) 2021 - Co-Living Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Build-to-Rent Housing */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Build-to-Rent Housing</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>In accessible area:</strong>
+                      </p>
+                      <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
+                        <li>• 1 bedroom: 0.2 parking spaces per dwelling</li>
+                        <li>• 2 bedrooms: 0.5 parking spaces per dwelling</li>
+                        <li>• 3+ bedrooms: 1 parking space per dwelling</li>
+                      </ul>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 74 - Non-discretionary development standards
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 35,
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_35.png',
+                        label: 'SEPP (Housing) 2021 - Build-to-Rent Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Affordable Housing / LHAC */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Affordable Housing in TOD Areas</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>In accessible area:</strong>
+                      </p>
+                      <ul className="text-xs text-gray-700 ml-3 mt-1 space-y-0.5">
+                        <li>• 1 bedroom: 0.4 parking spaces per dwelling</li>
+                        <li>• 2 bedrooms: 0.5 parking spaces per dwelling</li>
+                        <li>• 3+ bedrooms: 1 parking space per dwelling</li>
+                      </ul>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 42 - Low and mid rise housing
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 18,
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_18.png',
+                        label: 'SEPP (Housing) 2021 - Affordable Housing Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Market-Rate Apartments */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-gray-900">Residential Flat Buildings & Apartments</p>
+                  <p className="text-xs text-gray-700 mt-1">
+                    Parking rates determined by <strong>council DCP</strong>. SEPP (Housing) 2021 refers to ADG Part 3J, which defers to local planning controls.
+                  </p>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Check the <strong>DCP Provisions</strong> tab for {lga} parking requirements.
+                  </p>
+                </div>
+
+                {/* Accessible Area Definition */}
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-xs font-semibold text-emerald-900">What is an "Accessible Area"?</p>
+                      <p className="text-xs text-emerald-800 mt-1">
+                        Land within <strong>800m walking distance</strong> of a public entrance to a railway, metro or light rail station (Schedule 11)
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 115,
+                        url: '/pdf-pages/sepp-housing/sepp-housing_page_115.png',
+                        label: 'SEPP (Housing) 2021 - Accessible Area Definition'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              {/* TOD PDF Modal */}
-              <PdfImageModal
-                isOpen={viewingTodPdf}
-                imageUrl="/pdf-pages/sepp-housing/sepp-housing_page_115.png"
-                onClose={() => setViewingTodPdf(false)}
-                title="SEPP (Housing) 2021 - Accessible Area Definition"
-              />
             </CardContent>
           )}
         </Card>
@@ -680,6 +768,15 @@ export function StateLevelControls({
           </p>
         </div>
       )}
+
+      {/* PDF Image Modal */}
+      <PdfImageModal
+        isOpen={!!viewingPdfPage}
+        onClose={() => setViewingPdfPage(null)}
+        imageUrl={viewingPdfPage?.url || null}
+        pageNumber={viewingPdfPage?.pageNumber}
+        title={viewingPdfPage?.label}
+      />
     </div>
   );
 }

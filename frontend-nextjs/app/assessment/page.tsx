@@ -57,10 +57,15 @@ export default function AssessmentPage() {
           </svg>
         </div>
         {/* Logo + name on white */}
-        <div className="flex items-center gap-2 pr-4 py-3 md:py-4 bg-white">
+        <a
+          href="https://plotdetect.com.au/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 pr-4 py-3 md:py-4 bg-white hover:opacity-80 transition-opacity"
+        >
           <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
           <span className="text-base font-semibold text-gray-900">PlotDetect</span>
-        </div>
+        </a>
         {/* Rest of header in teal */}
         <div className="flex-1 bg-teal-50 flex items-center gap-4 px-4 py-3 md:py-4">
           {/* Page title */}

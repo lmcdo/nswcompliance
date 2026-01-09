@@ -1,0 +1,49 @@
+# Large data files
+*.db
+*.geojson
+*.gpkg
+
+# Backups
+backups/
+output/
+
+# Python
+venv/
+venv_linux/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Environment
+.env.local
+.env.*.local
+
+# Testing
+.pytest_cache/
+tests/
+*.test.ts
+*.test.tsx
+*.test.js
+*.test.jsx
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+logs/
+
+# Temporary
+tmp/
+temp/
+*.tmp
