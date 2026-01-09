@@ -1,0 +1,1120 @@
+=== ALL TABLES (58) ===
+
+## categorization_validation
+Rows: 0
+Columns (16):
+  - id (integer) NOT NULL DEFAULT nextval('categorization_validation_id_seq'::regclass)
+  - provision_id (integer) NULL
+  - provision_text (text) NULL
+  - document_id (text) NULL
+  - llm_category (text) NULL
+  - llm_subcategory (text) NULL
+  - llm_confidence (text) NULL
+  - llm_reasoning (text) NULL
+  - expert_category (text) NULL
+  - expert_subcategory (text) NULL
+  - validation_status (text) NULL
+  - expert_notes (text) NULL
+  - correction_applied (boolean) NULL DEFAULT false
+  - expert_reviewed_by (text) NULL
+  - expert_reviewed_at (timestamp without time zone) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## contextual_guidance_real
+Rows: 6655
+Columns (9):
+  - id (text) NOT NULL
+  - document_id (text) NULL
+  - guidance_type (text) NULL
+  - guidance_title (text) NULL
+  - guidance_text (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+  - category (text) NULL
+
+## control_codes
+Rows: 6624
+Columns (9):
+  - id (integer) NOT NULL DEFAULT nextval('control_codes_id_seq'::regclass)
+  - code (text) NOT NULL
+  - provision_id (integer) NOT NULL
+  - code_group (text) NULL
+  - control_type (text) NULL
+  - sequence_number (integer) NULL
+  - is_range_start (boolean) NULL DEFAULT false
+  - is_range_end (boolean) NULL DEFAULT false
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## cross_reference_index
+Rows: 2111
+Columns (12):
+  - id (integer) NOT NULL DEFAULT nextval('cross_reference_index_id_seq'::regclass)
+  - source_provision_id (integer) NOT NULL
+  - reference_type (text) NOT NULL
+  - reference_number (text) NOT NULL
+  - reference_text (text) NULL
+  - target_provision_id (integer) NULL
+  - resolution_status (text) NULL DEFAULT 'unresolved'::text
+  - resolution_confidence (real) NULL DEFAULT 0.0
+  - is_mandatory (boolean) NULL DEFAULT false
+  - context_snippet (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+
+## dcp_base_requirements
+Rows: 0
+Columns (26):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_base_requirements_id_seq'::regclass)
+  - lga (text) NOT NULL
+  - zone (text) NULL
+  - development_type (text) NULL
+  - category (text) NOT NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NOT NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - source_provision_ids (ARRAY) NULL
+  - source_document_ids (ARRAY) NULL
+  - pdf_pages (ARRAY) NULL
+  - extraction_context (jsonb) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - has_conditionals (boolean) NULL DEFAULT false
+  - conditional_text (text) NULL
+  - validated (boolean) NULL DEFAULT false
+  - validated_by (text) NULL
+  - validated_at (timestamp without time zone) NULL
+  - validation_notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+  - processing_version (text) NULL
+
+## dcp_general_provisions
+Rows: 1172
+Columns (18):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_general_provisions_id_seq'::regclass)
+  - lga (text) NOT NULL
+  - dcp_chapter (text) NOT NULL
+  - part_number (text) NOT NULL
+  - part_name (text) NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - section_header (text) NULL
+  - provision_text (text) NOT NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - display_order (integer) NULL
+  - document_id (text) NULL
+  - pdf_path (text) NULL
+  - pdf_page (integer) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+  - pdf_page_image_url (text) NULL
+
+## dcp_general_provisions_backup_r1_fix
+Rows: 130
+Columns (18):
+  - id (integer) NULL
+  - lga (text) NULL
+  - dcp_chapter (text) NULL
+  - part_number (text) NULL
+  - part_name (text) NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - section_header (text) NULL
+  - provision_text (text) NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - display_order (integer) NULL
+  - document_id (text) NULL
+  - pdf_path (text) NULL
+  - pdf_page (integer) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - pdf_page_image_url (text) NULL
+
+## dcp_general_provisions_corrupted_f1_backup
+Rows: 7
+Columns (18):
+  - id (integer) NULL
+  - lga (text) NULL
+  - dcp_chapter (text) NULL
+  - part_number (text) NULL
+  - part_name (text) NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - section_header (text) NULL
+  - provision_text (text) NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - display_order (integer) NULL
+  - document_id (text) NULL
+  - pdf_path (text) NULL
+  - pdf_page (integer) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - pdf_page_image_url (text) NULL
+
+## dcp_general_requirements
+Rows: 3158
+Columns (60):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_general_requirements_id_seq'::regclass)
+  - lga (text) NOT NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - category (text) NOT NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NOT NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - has_conditionals (boolean) NULL DEFAULT false
+  - conditional_text (text) NULL
+  - source_provision_ids (ARRAY) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - extraction_context (jsonb) NULL
+  - processing_version (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+  - verbatim_source_text (text) NULL
+  - pdf_page (integer) NULL
+  - pdf_page_image_url (text) NULL
+  - pdf_path (text) NULL
+  - part_number (text) NULL
+  - part_name (text) NULL
+  - primary_source_provision_id (integer) NULL
+  - dcp_chapter (character varying) NULL
+  - former_council (character varying) NULL
+  - objective (text) NULL
+  - performance_criteria (text) NULL
+  - heritage_context (text) NULL
+  - allows_alternative_solutions (boolean) NULL DEFAULT false
+  - alternative_solutions_criteria (text) NULL
+  - references_figure (boolean) NULL DEFAULT false
+  - figure_number (text) NULL
+  - figure_description (text) NULL
+  - figure_page (integer) NULL
+  - references_section (boolean) NULL DEFAULT false
+  - section_reference (text) NULL
+  - section_title (text) NULL
+  - references_lep (boolean) NULL DEFAULT false
+  - lep_document (text) NULL
+  - lep_clause (text) NULL
+  - lep_map_type (text) NULL
+  - references_sepp (boolean) NULL DEFAULT false
+  - sepp_name (text) NULL
+  - sepp_clause (text) NULL
+  - references_table (boolean) NULL DEFAULT false
+  - table_location (text) NULL
+  - table_page (integer) NULL
+  - evidence_type (text) NULL
+  - up_votes (integer) NULL DEFAULT 0
+  - down_votes (integer) NULL DEFAULT 0
+  - vote_score (numeric) NULL DEFAULT 0
+  - last_vote_updated (timestamp without time zone) NULL
+  - user_category (character varying) NULL
+  - priority_level (integer) NULL DEFAULT 2
+  - section_type (character varying) NULL
+  - display_in_ui (boolean) NULL DEFAULT true
+
+## dcp_general_requirements_backup_20251030
+Rows: 555
+Columns (28):
+  - id (integer) NULL
+  - lga (text) NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - category (text) NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - has_conditionals (boolean) NULL
+  - conditional_text (text) NULL
+  - source_provision_ids (ARRAY) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - extraction_context (jsonb) NULL
+  - processing_version (text) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - verbatim_source_text (text) NULL
+  - pdf_page (integer) NULL
+  - pdf_page_image_url (text) NULL
+  - pdf_path (text) NULL
+  - part_number (text) NULL
+  - part_name (text) NULL
+  - primary_source_provision_id (integer) NULL
+  - dcp_chapter (character varying) NULL
+
+## dcp_general_requirements_old_broad_linking
+Rows: 189
+Columns (20):
+  - id (integer) NULL
+  - lga (text) NULL
+  - applicable_zones (ARRAY) NULL
+  - development_types (ARRAY) NULL
+  - category (text) NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - has_conditionals (boolean) NULL
+  - conditional_text (text) NULL
+  - source_provision_ids (ARRAY) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - extraction_context (jsonb) NULL
+  - processing_version (text) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+
+## dcp_precinct_boundaries
+Rows: 90
+Columns (18):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_precinct_boundaries_id_seq'::regclass)
+  - precinct_id (text) NOT NULL
+  - precinct_name (text) NOT NULL
+  - lga (text) NOT NULL
+  - former_council (text) NULL
+  - centroid (USER-DEFINED) NULL
+  - source_document (text) NULL
+  - extraction_method (text) NULL
+  - confidence_score (double precision) NULL DEFAULT 1.0
+  - boundary_description (text) NULL
+  - area_sqm (double precision) NULL
+  - perimeter_m (double precision) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+  - boundary_text (text) NULL
+  - geocoding_source (text) NULL
+  - boundary (USER-DEFINED) NULL
+  - precinct_number (text) NULL
+
+## dcp_precinct_boundaries_backup_20251109_152059
+Rows: 85
+Columns (18):
+  - id (integer) NULL
+  - precinct_id (text) NULL
+  - precinct_name (text) NULL
+  - lga (text) NULL
+  - former_council (text) NULL
+  - centroid (USER-DEFINED) NULL
+  - source_document (text) NULL
+  - extraction_method (text) NULL
+  - confidence_score (double precision) NULL
+  - boundary_description (text) NULL
+  - area_sqm (double precision) NULL
+  - perimeter_m (double precision) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - boundary_text (text) NULL
+  - geocoding_source (text) NULL
+  - boundary (USER-DEFINED) NULL
+  - precinct_number (text) NULL
+
+## dcp_precinct_boundaries_backup_polygon
+Rows: 46
+Columns (17):
+  - id (integer) NULL
+  - precinct_id (text) NULL
+  - precinct_name (text) NULL
+  - lga (text) NULL
+  - former_council (text) NULL
+  - boundary (USER-DEFINED) NULL
+  - centroid (USER-DEFINED) NULL
+  - source_document (text) NULL
+  - extraction_method (text) NULL
+  - confidence_score (double precision) NULL
+  - boundary_description (text) NULL
+  - area_sqm (double precision) NULL
+  - perimeter_m (double precision) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - boundary_text (text) NULL
+  - geocoding_source (text) NULL
+
+## dcp_precinct_boundaries_backup_rename_20251109_153810
+Rows: 5
+Columns (18):
+  - id (integer) NULL
+  - precinct_id (text) NULL
+  - precinct_name (text) NULL
+  - lga (text) NULL
+  - former_council (text) NULL
+  - centroid (USER-DEFINED) NULL
+  - source_document (text) NULL
+  - extraction_method (text) NULL
+  - confidence_score (double precision) NULL
+  - boundary_description (text) NULL
+  - area_sqm (double precision) NULL
+  - perimeter_m (double precision) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - boundary_text (text) NULL
+  - geocoding_source (text) NULL
+  - boundary (USER-DEFINED) NULL
+  - precinct_number (text) NULL
+
+## dcp_precinct_metadata
+Rows: 0
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_precinct_metadata_id_seq'::regclass)
+  - precinct_id (text) NOT NULL
+  - precinct_name (text) NOT NULL
+  - lga (text) NOT NULL
+  - description (text) NULL
+  - desired_character (text) NULL
+  - boundary_streets (ARRAY) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## dcp_precinct_provisions
+Rows: 117
+Columns (15):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_precinct_provisions_id_seq'::regclass)
+  - precinct_id (text) NOT NULL
+  - precinct_name (text) NOT NULL
+  - lga (text) NOT NULL
+  - provision_text (text) NOT NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - section_header (text) NULL
+  - parent_provision_id (integer) NULL
+  - pdf_page (integer) NULL
+  - display_order (integer) NULL DEFAULT 999
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - document_id (text) NULL
+  - pdf_path (text) NULL
+  - pdf_page_image_url (text) NULL
+
+## dcp_precinct_requirements
+Rows: 1708
+Columns (35):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_precinct_requirements_id_seq'::regclass)
+  - precinct_id (text) NOT NULL
+  - precinct_name (text) NULL
+  - lga (text) NOT NULL
+  - category (text) NOT NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NOT NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - overrides_base_requirement_id (integer) NULL
+  - supplements_base (boolean) NULL DEFAULT true
+  - source_provision_ids (ARRAY) NULL
+  - source_document_ids (ARRAY) NULL
+  - pdf_pages (ARRAY) NULL
+  - extraction_context (jsonb) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - has_conditionals (boolean) NULL DEFAULT false
+  - conditional_text (text) NULL
+  - validated (boolean) NULL DEFAULT false
+  - validated_by (text) NULL
+  - validated_at (timestamp without time zone) NULL
+  - validation_notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+  - processing_version (text) NULL
+  - pdf_page_image_url (text) NULL
+  - primary_source_provision_id (integer) NULL
+  - verbatim_source_text (text) NULL
+  - precinct_number (text) NULL
+  - allows_alternative_solutions (boolean) NULL DEFAULT false
+  - alternative_solutions_criteria (text) NULL
+  - evidence_type (text) NULL
+
+## dcp_precinct_requirements_backup_page_fix
+Rows: 265
+Columns (35):
+  - id (integer) NULL
+  - precinct_id (text) NULL
+  - precinct_name (text) NULL
+  - lga (text) NULL
+  - category (text) NULL
+  - subcategory (text) NULL
+  - requirement_text (text) NULL
+  - value_numeric (numeric) NULL
+  - value_min (numeric) NULL
+  - value_max (numeric) NULL
+  - unit (text) NULL
+  - overrides_base_requirement_id (integer) NULL
+  - supplements_base (boolean) NULL
+  - source_provision_ids (ARRAY) NULL
+  - source_document_ids (ARRAY) NULL
+  - pdf_pages (ARRAY) NULL
+  - extraction_context (jsonb) NULL
+  - confidence (text) NULL
+  - confidence_score (numeric) NULL
+  - has_conditionals (boolean) NULL
+  - conditional_text (text) NULL
+  - validated (boolean) NULL
+  - validated_by (text) NULL
+  - validated_at (timestamp without time zone) NULL
+  - validation_notes (text) NULL
+  - created_at (timestamp without time zone) NULL
+  - updated_at (timestamp without time zone) NULL
+  - processing_version (text) NULL
+  - pdf_page_image_url (text) NULL
+  - primary_source_provision_id (integer) NULL
+  - verbatim_source_text (text) NULL
+  - precinct_number (text) NULL
+  - allows_alternative_solutions (boolean) NULL
+  - alternative_solutions_criteria (text) NULL
+  - evidence_type (text) NULL
+
+## dcp_table_of_contents
+Rows: 676
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('dcp_table_of_contents_id_seq'::regclass)
+  - document_id (text) NOT NULL
+  - section_number (text) NOT NULL
+  - section_title (text) NOT NULL
+  - page_start (integer) NOT NULL
+  - page_end (integer) NULL
+  - part_number (integer) NULL
+  - depth (integer) NOT NULL
+  - parent_section (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## development_controls
+Rows: 960
+Columns (11):
+  - id (integer) NOT NULL DEFAULT nextval('development_controls_id_seq'::regclass)
+  - provision_id (integer) NULL
+  - control_type (text) NULL
+  - control_subtype (text) NULL
+  - value_numeric (numeric) NULL
+  - value_text (text) NULL
+  - unit (text) NULL
+  - zone_applicable (text) NULL
+  - conditions (text) NULL
+  - confidence_score (numeric) NULL
+  - extraction_method (text) NULL
+
+## development_pathways
+Rows: 1
+Columns (9):
+  - id (integer) NOT NULL DEFAULT nextval('development_pathways_id_seq'::regclass)
+  - development_type (text) NULL
+  - zone (text) NULL
+  - qualification_criteria (text) NULL
+  - pathway_type (text) NULL
+  - confidence_score (text) NULL
+  - source_provision_ids (text) NULL
+  - manual_verified (text) NULL
+  - created_timestamp (text) NULL
+
+## development_permissions
+Rows: 246
+Columns (11):
+  - id (integer) NOT NULL DEFAULT nextval('development_permissions_id_seq'::regclass)
+  - zone (text) NULL
+  - development_type (text) NULL
+  - permission_status (text) NULL
+  - conditions (text) NULL
+  - source_provision_id (text) NULL
+  - lep_name (text) NULL
+  - extraction_method (text) NULL
+  - confidence_score (text) NULL
+  - created_at (text) NULL
+  - source_type (text) NULL
+
+## document_id_backup
+Rows: 47818
+Columns (3):
+  - id (integer) NULL
+  - document_id (text) NULL
+  - original_document_id (text) NULL
+
+## documents
+Rows: 446
+Columns (16):
+  - id (text) NOT NULL
+  - pdf_name (text) NULL
+  - document_type (text) NULL
+  - document_area (text) NULL
+  - pdf_path (text) NULL
+  - char_count (integer) NULL
+  - word_count (integer) NULL
+  - total_regulatory_refs (text) NULL
+  - extraction_timestamp (text) NULL
+  - full_text (text) NULL
+  - regulation_year (integer) NULL
+  - amendment_reference (text) NULL
+  - amendment_date (date) NULL
+  - source_url (text) NULL
+  - last_verified_date (date) NULL DEFAULT CURRENT_DATE
+  - version_status (text) NULL DEFAULT 'unverified'::text
+
+## heritage_conservation_areas
+Rows: 2039
+Columns (22):
+  - id (integer) NOT NULL DEFAULT nextval('heritage_conservation_areas_id_seq'::regclass)
+  - objectid (integer) NOT NULL
+  - h_id (character varying) NULL
+  - h_name (text) NULL
+  - significance (text) NULL
+  - legislative_clause (text) NULL
+  - lay_class (character varying) NULL
+  - epi_name (text) NULL
+  - lga_name (character varying) NULL
+  - published_date (timestamp without time zone) NULL
+  - commenced_date (timestamp without time zone) NULL
+  - currency_date (timestamp without time zone) NULL
+  - amendment (text) NULL
+  - pco_ref_key (character varying) NULL
+  - epi_type (character varying) NULL
+  - geometry_json (jsonb) NULL
+  - bbox_min_x (numeric) NULL
+  - bbox_min_y (numeric) NULL
+  - bbox_max_x (numeric) NULL
+  - bbox_max_y (numeric) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+  - db_slug (character varying) NULL
+
+## housing_sepp_standards
+Rows: 33
+Columns (18):
+  - id (integer) NOT NULL DEFAULT nextval('housing_sepp_standards_id_seq'::regclass)
+  - development_type (character varying) NOT NULL
+  - standard_type (character varying) NOT NULL
+  - numeric_value (numeric) NULL
+  - unit (character varying) NULL
+  - applicable_zones (ARRAY) NULL
+  - requires_lmr_area (boolean) NULL DEFAULT false
+  - source_clause (character varying) NULL
+  - source_provision_id (integer) NULL
+  - source_document (text) NULL
+  - legislation_url (text) NULL
+  - effective_date (date) NULL
+  - verified_at (timestamp without time zone) NULL
+  - verified_by (text) NULL
+  - verification_notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+  - pdf_page (integer) NULL
+  - pdf_page_image_url (text) NULL
+
+## kg_entities
+Rows: 16
+Columns (11):
+  - id (integer) NOT NULL DEFAULT nextval('kg_entities_id_seq'::regclass)
+  - entity_type (text) NULL
+  - entity_name (text) NULL
+  - entity_description (text) NULL
+  - document_id (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+  - original_ref_type (text) NULL
+  - original_ref_id (text) NULL
+  - extraction_timestamp (text) NULL
+
+## kg_relationships
+Rows: 17
+Columns (14):
+  - id (integer) NOT NULL DEFAULT nextval('kg_relationships_id_seq'::regclass)
+  - subject_text (text) NULL
+  - predicate (text) NULL
+  - object_text (text) NULL
+  - subject_entity_id (integer) NULL
+  - object_entity_id (integer) NULL
+  - relationship_context (text) NULL
+  - document_id (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - confidence_score (numeric) NULL
+  - original_ref_type (text) NULL
+  - original_ref_id (text) NULL
+  - extraction_timestamp (text) NULL
+
+## kg_relationships_from_refs
+Rows: 2294
+Columns (8):
+  - id (text) NULL
+  - document_id (text) NULL
+  - relationship_type (text) NULL
+  - relationship_context (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - relationship_summary (text) NULL
+  - category (text) NULL
+
+## lep_development_type_clauses
+Rows: 29
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('lep_development_type_clauses_id_seq'::regclass)
+  - lga (character varying) NOT NULL
+  - clause_number (character varying) NOT NULL
+  - clause_title (text) NOT NULL
+  - development_type (character varying) NULL
+  - requirements (jsonb) NULL
+  - applies_to_zones (jsonb) NULL
+  - full_text (text) NULL
+  - source_provision_id (integer) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## lep_land_use_table
+Rows: 390
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('lep_land_use_table_id_seq'::regclass)
+  - zone (character varying) NOT NULL
+  - zone_name (character varying) NOT NULL
+  - lga (character varying) NOT NULL
+  - development_type (character varying) NOT NULL
+  - permissibility (character varying) NOT NULL
+  - notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## permissibility_analysis
+Rows: 958
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('permissibility_analysis_id_seq'::regclass)
+  - provision_id (text) NULL
+  - zone (text) NULL
+  - pattern_type (text) NULL
+  - extracted_text (text) NULL
+  - development_types (text) NULL
+  - permission_status (text) NULL
+  - confidence_score (text) NULL
+  - document_id (text) NULL
+  - created_at (text) NULL
+
+## precinct_boundaries
+Rows: 11
+Columns (7):
+  - precinct_id (character varying) NOT NULL
+  - precinct_name (character varying) NULL
+  - lga (character varying) NULL
+  - former_council (character varying) NULL
+  - geometry (USER-DEFINED) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+  - updated_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+
+## provision_applicability
+Rows: 6078
+Columns (11):
+  - id (integer) NOT NULL DEFAULT nextval('provision_applicability_id_seq'::regclass)
+  - provision_id (integer) NOT NULL
+  - applies_to_zone (text) NULL
+  - applies_to_all_zones (boolean) NULL DEFAULT false
+  - applies_to_lga (text) NULL
+  - applies_state_wide (boolean) NULL DEFAULT false
+  - excluded_zones (ARRAY) NULL
+  - applicability_source (text) NULL
+  - confidence_score (real) NULL DEFAULT 1.0
+  - notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## provision_diagrams
+Rows: 0
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('provision_diagrams_id_seq'::regclass)
+  - provision_id (integer) NOT NULL
+  - visual_element_id (text) NOT NULL
+  - diagram_number (text) NULL
+  - is_required (boolean) NULL DEFAULT true
+  - link_method (text) NULL
+  - confidence_score (real) NULL DEFAULT 0.0
+  - manually_verified (boolean) NULL DEFAULT false
+  - notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## quality_metrics
+Rows: 6
+Columns (7):
+  - id (integer) NOT NULL DEFAULT nextval('quality_metrics_id_seq'::regclass)
+  - metric_name (text) NULL
+  - metric_value (text) NULL
+  - target_value (text) NULL
+  - status (text) NULL
+  - details (text) NULL
+  - measured_at (text) NULL
+
+## quantitative_standards
+Rows: 281
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('quantitative_standards_id_seq'::regclass)
+  - provision_id (integer) NULL
+  - numeric_value (numeric) NULL
+  - unit (text) NULL
+  - qualifier (text) NULL
+  - context (text) NULL
+  - confidence_score (numeric) NULL
+  - raw_text (text) NULL
+  - manual_verified (text) NULL
+  - created_timestamp (text) NULL
+
+## regulatory_provisions
+Rows: 47818
+Columns (51):
+  - id (integer) NOT NULL DEFAULT nextval('regulatory_provisions_id_seq'::regclass)
+  - document_id (text) NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - provision_text (text) NULL
+  - zone (text) NULL
+  - development_type (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+  - original_id (text) NULL
+  - created_at (text) NULL
+  - domain_classification (text) NULL
+  - classification_confidence (text) NULL
+  - cross_contamination_checked (text) NULL
+  - prp_k1_enhanced (text) NULL
+  - migration_id (text) NULL
+  - zone_confidence (text) NULL
+  - zone_inference_method (text) NULL
+  - full_text_length (integer) NULL
+  - extraction_method (text) NULL
+  - last_updated (timestamp without time zone) NULL DEFAULT now()
+  - is_canonical (boolean) NULL DEFAULT true
+  - canonical_provision_id (integer) NULL
+  - text_hash (text) NULL
+  - migration_phase (text) NULL
+  - cross_reference_text (text) NULL
+  - provision_category (text) NULL
+  - display_priority (integer) NULL DEFAULT 5
+  - is_mandatory (boolean) NULL DEFAULT true
+  - provision_tsv (tsvector) NULL
+  - pdf_page (integer) NULL
+  - pdf_source_file (text) NULL
+  - pdf_extra (jsonb) NULL DEFAULT '{}'::jsonb
+  - pdf_page_image_url (text) NULL
+  - page_range (ARRAY) NULL
+  - v2_is_actionable (boolean) NULL DEFAULT false
+  - v2_dcp_layer (text) NULL
+  - v2_dcp_part (text) NULL
+  - v2_topic (text) NULL
+  - v2_provision_type (text) NULL
+  - v2_precinct_id (text) NULL
+  - v2_marker (text) NULL
+  - v2_display_behavior (text) NULL
+  - v2_applicable_zones (ARRAY) NULL
+  - v2_applicable_dev_types (ARRAY) NULL
+  - v2_site_condition_required (text) NULL
+  - v2_has_numeric_value (boolean) NULL DEFAULT false
+  - v2_heritage_type (text) NULL
+  - v2_heritage_element (ARRAY) NULL
+  - v2_heritage_hca (text) NULL
+
+## regulatory_provisions_clean
+Rows: 9364
+Columns (9):
+  - id (text) NULL
+  - document_id (text) NULL
+  - provision_type (text) NULL
+  - ref_number (text) NULL
+  - provision_text (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+  - category (text) NULL
+
+## regulatory_refs
+Rows: 2698
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('regulatory_refs_id_seq'::regclass)
+  - document_id (text) NULL
+  - ref_type (text) NULL
+  - ref_number (text) NULL
+  - ref_context (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+
+## regulatory_refs_core
+Rows: 762
+Columns (8):
+  - id (text) NULL
+  - document_id (text) NULL
+  - ref_type (text) NULL
+  - ref_number (text) NULL
+  - ref_context (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - text_level (text) NULL
+
+## requirement_categories
+Rows: 10
+Columns (11):
+  - id (integer) NOT NULL DEFAULT nextval('requirement_categories_id_seq'::regclass)
+  - category (text) NOT NULL
+  - subcategories (ARRAY) NULL
+  - display_name (text) NULL
+  - description (text) NULL
+  - positive_keywords (ARRAY) NULL
+  - negative_keywords (ARRAY) NULL
+  - min_recall_threshold (numeric) NULL DEFAULT 0.90
+  - min_precision_threshold (numeric) NULL DEFAULT 0.95
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+
+## requirement_metrics
+Rows: 0
+Columns (6):
+  - requirement_id (text) NOT NULL
+  - correct_votes (integer) NULL DEFAULT 0
+  - incorrect_votes (integer) NULL DEFAULT 0
+  - total_votes (integer) NULL DEFAULT 0
+  - accuracy_score (numeric) NULL
+  - last_updated (timestamp without time zone) NULL DEFAULT now()
+
+## requirement_review_queue
+Rows: 0
+Columns (9):
+  - id (integer) NOT NULL DEFAULT nextval('requirement_review_queue_id_seq'::regclass)
+  - requirement_id (text) NOT NULL
+  - issue_count (integer) NOT NULL
+  - avg_urgency (numeric) NOT NULL
+  - flagged_at (timestamp without time zone) NULL DEFAULT now()
+  - status (character varying) NULL DEFAULT 'pending'::character varying
+  - assigned_to (character varying) NULL
+  - reviewed_at (timestamp without time zone) NULL
+  - review_notes (text) NULL
+
+## requirement_votes
+Rows: 1
+Columns (7):
+  - id (integer) NOT NULL DEFAULT nextval('requirement_votes_id_seq'::regclass)
+  - requirement_id (text) NOT NULL
+  - property_address (text) NOT NULL
+  - vote_type (character varying) NOT NULL
+  - user_agent (text) NULL
+  - ip_address (inet) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+
+## sepp_adg_requirements
+Rows: 23
+Columns (28):
+  - id (integer) NOT NULL DEFAULT nextval('sepp_adg_requirements_id_seq'::regclass)
+  - section_code (character varying) NOT NULL
+  - section_name (character varying) NOT NULL
+  - criteria_number (integer) NULL
+  - criteria_id (character varying) NOT NULL
+  - requirement_type (character varying) NOT NULL
+  - requirement_text (text) NOT NULL
+  - requirement_summary (character varying) NULL
+  - has_numeric_standard (boolean) NULL DEFAULT false
+  - numeric_value (numeric) NULL
+  - numeric_unit (character varying) NULL
+  - numeric_comparator (character varying) NULL
+  - secondary_value (numeric) NULL
+  - secondary_unit (character varying) NULL
+  - metric_category (character varying) NULL
+  - applies_to (ARRAY) NULL
+  - building_height_category (character varying) NULL
+  - source_pdf (character varying) NOT NULL
+  - source_page (integer) NOT NULL
+  - source_url (text) NULL
+  - legal_status (character varying) NULL DEFAULT 'statutory'::character varying
+  - authority_reference (character varying) NULL DEFAULT 'SEPP (Housing) 2021'::character varying
+  - manual_verified (boolean) NULL DEFAULT false
+  - verified_by (character varying) NULL
+  - verified_at (timestamp with time zone) NULL
+  - created_at (timestamp with time zone) NULL DEFAULT now()
+  - updated_at (timestamp with time zone) NULL DEFAULT now()
+  - pdf_page_image_url (text) NULL
+
+## sepp_lep_overrides
+Rows: 91
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('sepp_lep_overrides_id_seq'::regclass)
+  - sepp_provision_id (integer) NULL
+  - lep_clause_reference (text) NULL
+  - override_type (text) NULL
+  - confidence_score (numeric) NULL
+  - extracted_text (text) NULL
+  - manual_verified (text) NULL
+  - created_timestamp (text) NULL
+
+## sepp_structured_requirements
+Rows: 3
+Columns (12):
+  - id (integer) NOT NULL DEFAULT nextval('sepp_structured_requirements_id_seq'::regclass)
+  - sepp_id (text) NOT NULL
+  - sepp_name (text) NOT NULL
+  - schedule (text) NOT NULL
+  - schedule_name (text) NOT NULL
+  - section (text) NULL
+  - section_name (text) NULL
+  - development_type_category (text) NOT NULL
+  - requirement_data (jsonb) NOT NULL
+  - source_provision_id (integer) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - updated_at (timestamp without time zone) NULL DEFAULT now()
+
+## setback_rules
+Rows: 14
+Columns (29):
+  - id (integer) NOT NULL DEFAULT nextval('setback_rules_id_seq'::regclass)
+  - provision_id (integer) NULL
+  - ref_number (text) NULL
+  - boundary_type (text) NOT NULL
+  - storey_level (text) NOT NULL DEFAULT 'all'::text
+  - building_element (text) NOT NULL DEFAULT 'main_dwelling'::text
+  - zone (ARRAY) NULL
+  - development_type (ARRAY) NULL
+  - site_condition (ARRAY) NULL
+  - lga (text) NULL
+  - setback_meters (numeric) NOT NULL
+  - setback_meters_max (numeric) NULL
+  - qualifier (text) NOT NULL DEFAULT 'minimum'::text
+  - measurement_from (text) NULL DEFAULT 'boundary'::text
+  - can_overhang (boolean) NULL DEFAULT false
+  - overhang_meters (numeric) NULL
+  - exceptions (text) NULL
+  - document_type (text) NOT NULL
+  - document_name (text) NULL
+  - priority (integer) NOT NULL
+  - source_text (text) NOT NULL
+  - rationale (text) NULL
+  - extraction_confidence (numeric) NULL DEFAULT 1.0
+  - manual_verified (boolean) NULL DEFAULT false
+  - extraction_method (text) NULL
+  - extraction_timestamp (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+  - notes (text) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+  - updated_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+
+## spatial_ref_sys
+Rows: 8500
+Columns (5):
+  - srid (integer) NOT NULL
+  - auth_name (character varying) NULL
+  - auth_srid (integer) NULL
+  - srtext (character varying) NULL
+  - proj4text (character varying) NULL
+
+## table_parsing_results
+Rows: 63
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('table_parsing_results_id_seq'::regclass)
+  - provision_id (text) NULL
+  - zone (text) NULL
+  - table_type (text) NULL
+  - permissions_extracted (text) NULL
+  - parsing_status (text) NULL
+  - error_message (text) NULL
+  - created_at (text) NULL
+
+## user_feedback
+Rows: 5
+Columns (16):
+  - id (integer) NOT NULL DEFAULT nextval('user_feedback_id_seq'::regclass)
+  - type (character varying) NOT NULL
+  - property_address (text) NOT NULL
+  - section (character varying) NULL
+  - description (text) NOT NULL
+  - user_type (character varying) NOT NULL
+  - severity (character varying) NOT NULL
+  - contact_email (character varying) NULL
+  - context_data (jsonb) NULL
+  - user_agent (text) NULL
+  - ip_address (inet) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT now()
+  - resolved (boolean) NULL DEFAULT false
+  - resolution_notes (text) NULL
+  - resolved_at (timestamp without time zone) NULL
+  - resolved_by (character varying) NULL
+
+## verification_tests
+Rows: 17
+Columns (10):
+  - id (integer) NOT NULL DEFAULT nextval('verification_tests_id_seq'::regclass)
+  - test_type (text) NULL
+  - test_name (text) NULL
+  - input_parameters (text) NULL
+  - expected_result (text) NULL
+  - actual_result (text) NULL
+  - test_status (text) NULL
+  - execution_time_ms (text) NULL
+  - error_message (text) NULL
+  - executed_at (text) NULL
+
+## verified_compliance_rules
+Rows: 6
+Columns (25):
+  - id (integer) NOT NULL DEFAULT nextval('verified_compliance_rules_id_seq'::regclass)
+  - rule_id (text) NULL
+  - jurisdiction (text) NULL
+  - authority (text) NULL
+  - lga (text) NULL
+  - zones (text) NULL
+  - former_council (text) NULL
+  - requirement_type (text) NULL
+  - requirement_subtype (text) NULL
+  - operator (text) NULL
+  - value_numeric (text) NULL
+  - units (text) NULL
+  - context (text) NULL
+  - confidence (text) NULL
+  - source_document (text) NULL
+  - source_section (text) NULL
+  - source_clause (text) NULL
+  - source_url (text) NULL
+  - effective_date (text) NULL
+  - priority (text) NULL
+  - extraction_method (text) NULL
+  - quality_score (text) NULL
+  - extracted_at (text) NULL
+  - source_file (text) NULL
+  - created_at (text) NULL
+
+## visual_elements
+Rows: 1473
+Columns (8):
+  - id (integer) NOT NULL DEFAULT nextval('visual_elements_id_seq'::regclass)
+  - provision_id (text) NULL
+  - visual_type (text) NULL
+  - visual_path (text) NULL
+  - visual_description (text) NULL
+  - page_number (text) NULL
+  - autoschema_source (text) NULL
+  - langextract_source (text) NULL
+
+## visual_elements_real
+Rows: 3017
+Columns (8):
+  - id (text) NOT NULL
+  - document_id (text) NULL
+  - visual_type (text) NULL
+  - visual_description (text) NULL
+  - page_number (text) NULL
+  - section_header (text) NULL
+  - visual_caption (text) NULL
+  - category (text) NULL
+
+## zone_setback_rules_comprehensive_archived
+Rows: 0
+Columns (16):
+  - id (integer) NOT NULL DEFAULT nextval('zone_setback_rules_comprehensive_id_seq'::regclass)
+  - rule_id (character varying) NULL
+  - zone (character varying) NOT NULL
+  - council (character varying) NULL
+  - boundary_type (character varying) NULL
+  - base_value (numeric) NULL
+  - unit (character varying) NULL DEFAULT 'metres'::character varying
+  - operator (character varying) NULL DEFAULT '>='::character varying
+  - authority_type (character varying) NULL
+  - precedence_level (integer) NULL
+  - conditions (text) NULL
+  - source_document (text) NULL
+  - source_clause (text) NULL
+  - source_file (text) NULL
+  - confidence (numeric) NULL
+  - created_at (timestamp without time zone) NULL DEFAULT CURRENT_TIMESTAMP
+
