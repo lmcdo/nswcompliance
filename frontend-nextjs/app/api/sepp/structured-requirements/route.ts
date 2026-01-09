@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
       FROM sepp_structured_requirements ssr
       LEFT JOIN regulatory_provisions rp ON ssr.source_provision_id = rp.id
       WHERE ssr.sepp_id = $1
-      AND ssr.development_type_category = $2
+      AND (ssr.sepp_id = 'resilience_hazards_2021' OR ssr.development_type_category = $2)
     `;
 
     const params: any[] = [seppId, developmentCategory];
