@@ -58,7 +58,9 @@ export function StateLevelControls({
   buildingHeight
 }: StateLevelControlsProps) {
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
+  const [adgRequirements, setAdgRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
+  const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
   const [transportLoading, setTransportLoading] = useState(false);
   const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
@@ -80,29 +82,102 @@ export function StateLevelControls({
     }));
   };
 
-  // Load structured SEPP requirements
-  const loadStructuredRequirements = useCallback(async () => {
-    if (!developmentType || !propertyData) return;
+  // SEPP ID mapping: Planning Portal → Database
+  const SEPP_MAPPING: Record<string, string> = {
+    'SEPP_HOUSING_2021': 'housing_2021',
+    'SEPP_65': 'housing_2021',  // Old numbering, same SEPP
+    'SEPP_SUSTAINABLE_BUILDINGS': 'sustainable_buildings_2022',
+    'SEPP_SUSTAINABLE_BUILDINGS_2022': 'sustainable_buildings_2022',
+    'SEPP_RESILIENCE_HAZARDS_2021': 'resilience_hazards_2021',
+  };
 
-    setLoadingSepp(true);
+  // Load ADG requirements when SEPP Housing 2021 detected
+  const loadADGRequirements = useCallback(async () => {
+    if (!developmentType) return;
+
+    const applicableSepps = propertyData?.constraints?.applicableSepps || [];
+    console.log('[StateLevelControls] Applicable SEPPs from portal:', applicableSepps);
+
+    // Check if Housing SEPP applies
+    const hasHousingSEPP = applicableSepps.some((sepp: string) => 
+      sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
+    );
+
+    if (!hasHousingSEPP) {
+      setAdgRequirements([]);
+      return;
+    }
+
+    setLoadingAdg(true);
     try {
-      const response = await fetch('/api/sepp/structured-requirements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          seppId: 'sustainable_buildings_2022',
-          developmentType: developmentType
-        })
+      console.log('[StateLevelControls] Fetching ADG requirements (Housing SEPP detected)');
+      const response = await fetch(`/api/adg/requirements`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.success && data.data.hasStructuredRequirements) {
-          setStructuredRequirements(data.data.requirements);
-        } else {
-          setStructuredRequirements([]);
+        if (data.success && data.data) {
+          // Filter high-value requirements
+          const keyRequirements = data.data.filter((r: any) => 
+            ['4A-1', '4D-1', '4E-1', '4B-1', '4C-1', '4F-1', '4G-1', '3F-1'].includes(r.criteriaId)
+          );
+          setAdgRequirements(keyRequirements);
+          console.log(`[StateLevelControls] Loaded ${keyRequirements.length} ADG requirements`);
         }
       }
+    } catch (error) {
+      console.error('[StateLevelControls] Failed to fetch ADG requirements:', error);
+      setAdgRequirements([]);
+    } finally {
+      setLoadingAdg(false);
+    }
+  }, [developmentType, propertyData]);
+
+  // Load structured SEPP requirements (dynamic based on portal detection)
+  const loadStructuredRequirements = useCallback(async () => {
+    if (!developmentType || !propertyData) return;
+
+    const applicableSepps = propertyData?.constraints?.applicableSepps || [];
+    console.log('[StateLevelControls] Detected SEPPs:', applicableSepps);
+
+    // Map portal SEPP IDs to database IDs
+    const dbSeppIds = applicableSepps
+      .map((portalId: string) => SEPP_MAPPING[portalId])
+      .filter(Boolean);
+
+    if (dbSeppIds.length === 0) {
+      console.log('[StateLevelControls] No structured SEPPs detected');
+      setStructuredRequirements([]);
+      return;
+    }
+
+    setLoadingSepp(true);
+    try {
+      // Fetch requirements for each detected SEPP
+      const results: any[] = [];
+      for (const seppId of dbSeppIds) {
+        console.log(`[StateLevelControls] Fetching requirements for ${seppId}`);
+        const response = await fetch('/api/sepp/structured-requirements', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            seppId,
+            developmentType: developmentType
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.hasStructuredRequirements) {
+            results.push(...data.data.requirements);
+          }
+        }
+      }
+
+      setStructuredRequirements(results);
+      console.log(`[StateLevelControls] Loaded ${results.length} structured requirements`);
     } catch (error) {
       console.error('[StateLevelControls] Failed to fetch SEPP requirements:', error);
       setStructuredRequirements([]);
@@ -114,6 +189,11 @@ export function StateLevelControls({
   useEffect(() => {
     loadStructuredRequirements();
   }, [loadStructuredRequirements]);
+
+  useEffect(() => {
+    loadADGRequirements();
+  }, [loadADGRequirements]);
+
 
   // Extract property coordinates for transport proximity
   // Convert Web Mercator (x, y) to WGS84 (lat, lng) if needed
@@ -199,12 +279,14 @@ export function StateLevelControls({
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
 
-  // Show ADG if zone permits apartments (regardless of dev type selection)
-  const zonePrefix = zone?.split(' ')[0]?.toUpperCase();
-  const isApartmentZone = zonePrefix ? APARTMENT_PERMITTING_ZONES.includes(zonePrefix) : false;
-
-  // Show ADG section if either condition is true
-  const showADGSection = isApartmentDevelopment || isApartmentZone;
+  // Show ADG based on SEPP Housing 2021 detection (dynamic from planning portal)
+  const applicableSepps = propertyData?.constraints?.applicableSepps || [];
+  const hasHousingSEPP = applicableSepps.some((sepp: string) => 
+    sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
+  );
+  
+  // Show ADG section if Housing SEPP applies OR if it's apartment development OR if we fetched ADG requirements
+  const showADGSection = hasHousingSEPP || isApartmentDevelopment || adgRequirements.length > 0;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
