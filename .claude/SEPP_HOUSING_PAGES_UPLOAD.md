@@ -1,4 +1,4 @@
-# SEPP Housing 2021 PDF Pages - Upload Instructions
+# SEPP Housing 2021 PDF Pages - Upload Complete
 
 ## ✅ Extracted Pages
 
@@ -15,47 +15,37 @@ Successfully extracted 4 pages from SEPP Housing 2021 PDF:
 
 Local: `scripts/sepp-housing-2021-pages/`
 Public (gitignored): `frontend-nextjs/public/pdf-pages/sepp-housing-2021/`
+R2 Storage: `nsw-planning-pdfs/pdf-pages/sepp-housing-2021/`
 
-## ⚠️ Upload Required
+## ✅ R2 Upload Complete
 
-PDF pages are in .gitignore (too large for git). Need to upload to R2 storage.
+All 4 PDF pages successfully uploaded to R2 storage on 2026-01-10 using `upload_sepp_housing_2021_pages.py`
 
-### R2 Upload Process
+**Upload Method**: Python boto3 script with R2 credentials from `.env`
+```bash
+python upload_sepp_housing_2021_pages.py
+```
 
-Current rclone config has read-only access. To upload:
+**Results**:
+- Bucket: `nsw-planning-pdfs`
+- Total uploaded: 4 files (1.1 MB)
+- Status: All files uploaded successfully
 
-1. **Option A: Use Cloudflare Dashboard**
-   - Go to Cloudflare R2 bucket: `plotdetect-public`
-   - Navigate to `pdf-pages/sepp-housing-2021/`
-   - Upload the 4 PNG files manually
+## 🌐 Live URLs
 
-2. **Option B: Configure rclone write access**
-   ```bash
-   rclone config update r2
-   # Update with write-enabled API token
-   ```
-
-3. **Option C: Use wrangler CLI**
-   ```bash
-   wrangler r2 object put plotdetect-public/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png \
-     --file scripts/sepp-housing-2021-pages/page-35_infill_affordable.png
-   ```
-
-### Target URLs
-
-After upload, pages will be available at:
+Pages are publicly accessible at:
 - `https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png`
 - `https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-47_seniors_independent.png`
 - `https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-72_tod_affordable.png`
 - `https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-115_accessible_area_def.png`
 
-OR use local public path (for development):
+Local development path (works in Next.js public directory):
 - `/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png`
 
 ## 🔧 Next Steps
 
 1. ✅ Extract pages (DONE)
-2. ⏳ Upload to R2 (NEEDS R2 CREDENTIALS)
+2. ✅ Upload to R2 (DONE)
 3. ⏳ Add to StateLevelControls.tsx
 4. ⏳ Test in frontend
 

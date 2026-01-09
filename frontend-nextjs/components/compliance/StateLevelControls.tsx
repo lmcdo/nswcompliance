@@ -927,6 +927,63 @@ export function StateLevelControls({
                       <FileImage className="h-5 w-5" />
                     </button>
                   </div>
+
+                {/* In-Fill Affordable Housing */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">In-Fill Affordable Housing</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>In accessible area:</strong> 0.2 parking spaces per dwelling
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        <strong>Otherwise:</strong> 0.5 parking spaces per dwelling
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 19 - In-fill affordable housing
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 35,
+                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png',
+                        label: 'SEPP (Housing) 2021 - In-Fill Affordable Housing Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Seniors Independent Living */}
+                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-gray-900">Seniors Independent Living</p>
+                      <p className="text-xs text-gray-700 mt-1">
+                        <strong>Social housing:</strong> 1 parking space per 5 dwellings
+                      </p>
+                      <p className="text-xs text-gray-700">
+                        <strong>Other seniors housing:</strong> 0.5 parking spaces per bedroom
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2">
+                        SEPP (Housing) 2021, Clause 24 - Boarding houses and seniors housing
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setViewingPdfPage({
+                        pageNumber: 47,
+                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-47_seniors_independent.png',
+                        label: 'SEPP (Housing) 2021 - Seniors Independent Living Parking'
+                      })}
+                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                    >
+                      <FileImage className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+
                 </div>
 
                 {/* Affordable Housing / LHAC */}
@@ -982,7 +1039,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 115,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_115.png',
+                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-115_accessible_area_def.png',
                         label: 'SEPP (Housing) 2021 - Accessible Area Definition'
                       })}
                       className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
