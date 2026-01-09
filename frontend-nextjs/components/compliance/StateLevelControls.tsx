@@ -156,6 +156,17 @@ export function StateLevelControls({
       .map((portalId: string) => SEPP_MAPPING[portalId])
       .filter(Boolean);
 
+    // Force-fetch contamination requirements for industrial zones
+    // Planning Portal only detects EPA investigation areas, not zone-based risk
+    const zone = propertyData?.constraints?.zone;
+    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+    const isIndustrialZone = ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'B4', 'MU1', 'E3', 'B3'].includes(zoneCode);
+    
+    if (isIndustrialZone && !dbSeppIds.includes('resilience_hazards_2021')) {
+      console.log(`[StateLevelControls] Industrial zone ${zoneCode} detected - force-fetching contamination requirements`);
+      dbSeppIds.push('resilience_hazards_2021');
+    }
+
     if (dbSeppIds.length === 0) {
       console.log('[StateLevelControls] No structured SEPPs detected');
       setStructuredRequirements([]);
@@ -462,7 +473,7 @@ export function StateLevelControls({
             )}
 
             {/* Contamination Assessment Requirements - SEPP Resilience & Hazards 2021 Chapter 4 */}
-            {(applicableSepps.includes('SEPP_RESILIENCE_HAZARDS_2021') || ['IN1', 'IN2', 'B5', 'B6', 'B7'].includes(zoneCode)) && 
+            {(applicableSepps.includes('SEPP_RESILIENCE_HAZARDS_2021') || ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'B4', 'MU1', 'E3', 'B3'].includes(zoneCode)) && 
              structuredRequirements.some(req => req.seppId === 'resilience_hazards_2021') && (
               <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
                 <div className="flex items-start gap-3">
@@ -470,14 +481,15 @@ export function StateLevelControls({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <div className="font-semibold text-orange-900">Contamination Investigation Likely Required</div>
-                      {['IN1', 'IN2', 'B5', 'B6', 'B7'].includes(zoneCode) && (
+                      {['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'B4', 'MU1', 'E3', 'B3'].includes(zoneCode) && (
                         <span className="text-xs bg-orange-600 text-white px-2 py-0.5 rounded font-semibold">HIGH RISK ZONE</span>
                       )}
                     </div>
                     
                     <p className="text-sm text-orange-800 mb-3">
                       Property is in {zone} zone. SEPP Resilience & Hazards 2021 Chapter 4 requires contamination
-                      consideration before development approval, especially for conversions to residential/sensitive uses.
+                      consideration before development approval. Industrial and mixed-use zones have elevated risk due to
+                      historical land use. Investigation mandatory for conversions to residential/sensitive uses.
                     </p>
 
                     {/* Cost & Timeline Impact */}
