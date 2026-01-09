@@ -50,6 +50,22 @@ function qualifiesForTOD(type: string, distance: number, frequency: string): boo
   return false;
 }
 
+// Calculate parking reduction percentage based on transport type and distance
+// Note: Actual reduction rates must be verified with council DCP
+function getReduction(type: string, distance: number, frequency: string): number | null {
+  if (!qualifiesForTOD(type, distance, frequency)) return null;
+  
+  // Indicative reduction rates (must be verified with council DCP)
+  if (type === 'heavy_rail' && distance <= 400) return 20;
+  if (type === 'heavy_rail' && distance <= 800) return 15;
+  if (type === 'light_rail' && distance <= 400) return 15;
+  if (type === 'light_rail' && distance <= 600) return 10;
+  if (type === 'bus' && distance <= 200 && frequency === 'high') return 10;
+  if (type === 'bus' && distance <= 400 && frequency === 'high') return 5;
+  
+  return null;
+}
+
 export function NearbyTransportCard({
   lat,
   lng,
