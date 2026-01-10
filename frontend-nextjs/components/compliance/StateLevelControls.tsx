@@ -450,6 +450,7 @@ export function StateLevelControls({
                 </div>
                 <div className="space-y-2">
                   {sustainableInfo.waterTarget && (
+                    <>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-400 flex-1">
                         💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
@@ -467,8 +468,10 @@ export function StateLevelControls({
                       </button>
                     </div>
                     <div className="text-xs text-purple-700 ml-2">40% reduction from baseline water use via efficient fixtures</div>
+                    </>
                   )}
                   {sustainableInfo.climateZone && (
+                    <>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-500 flex-1">
                         🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
@@ -486,8 +489,10 @@ export function StateLevelControls({
                       </button>
                     </div>
                     <div className="text-xs text-purple-700 ml-2">Zone 56 = Sydney Metropolitan - moderate climate with specific energy/thermal targets</div>
+                    </>
                   )}
                   {sustainableInfo.basixArea && (
+                    <>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-600 flex-1">
                         🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
@@ -505,6 +510,7 @@ export function StateLevelControls({
                       </button>
                     </div>
                     <div className="text-xs text-purple-700 ml-2">Area 5 (Inner West) - specific thermal comfort and energy targets for this LGA</div>
+                    </>
                   )}
                 </div>
               </div>
