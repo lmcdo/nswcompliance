@@ -300,7 +300,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                        {result['Floor Space Ratio'] && (
                          <p>
                            <span className="text-gray-700">Floor Space Ratio:</span>{' '}
-                           <span className="font-semibold text-gray-900">{result['Floor Space Ratio']}:1 <span className="text-xs text-gray-600">(sq m floor area per sq m site)</span></span>
+                           <span className="font-semibold text-gray-900">{result['Floor Space Ratio']}:1 sq metres</span>
                          </p>
                        )}
                        {result['Zone'] && (
