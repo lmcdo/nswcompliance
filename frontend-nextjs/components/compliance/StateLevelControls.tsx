@@ -485,9 +485,9 @@ export function StateLevelControls({
                       </div>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: 16,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
-                          label: 'SEPP Sustainable Buildings - Water Requirements'
+                          pageNumber: 13,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_13.png',
+                          label: 'Schedule 1: Water Fixtures & Flow Rates'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
                         title="View SEPP page for water requirements"
@@ -506,9 +506,9 @@ export function StateLevelControls({
                       </div>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: 16,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
-                          label: 'SEPP Sustainable Buildings - Climate Zones'
+                          pageNumber: 9,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_9.png',
+                          label: 'Climate Zones Map'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
                         title="View SEPP page for climate zones"
@@ -527,9 +527,9 @@ export function StateLevelControls({
                       </div>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: 16,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
-                          label: 'SEPP Sustainable Buildings - BASIX Areas'
+                          pageNumber: 11,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_11.png',
+                          label: 'BASIX Areas & LGA Map'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
                         title="View SEPP page for BASIX areas"
@@ -568,7 +568,20 @@ export function StateLevelControls({
                 <div className="flex items-start gap-3">
                   <div className="text-2xl">⚡</div>
                   <div className="flex-1">
-                    <div className="font-semibold text-purple-900">BASIX Energy & Thermal Requirements</div>
+                    <div className="flex items-center justify-between">
+                      <div className="font-semibold text-purple-900">BASIX Energy & Thermal Requirements</div>
+                      <button
+                        onClick={() => setViewingPdfPage({
+                          pageNumber: 14,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_14.png',
+                          label: 'Schedule 2: Energy & Thermal Standards'
+                        })}
+                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                        title="View Schedule 2 energy and thermal standards"
+                      >
+                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
+                      </button>
+                    </div>
                     <p className="text-sm text-purple-800 mt-1">
                       Energy efficiency and thermal comfort targets for {sustainableInfo.basixArea} require
                       detailed calculation through the official BASIX Certificate tool. Targets vary by
