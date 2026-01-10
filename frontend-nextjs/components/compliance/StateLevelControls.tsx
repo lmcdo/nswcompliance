@@ -100,12 +100,24 @@ export function StateLevelControls({
     'SEPP_EXEMPT_COMPLYING_2008': 'exempt_complying_2008',
   };
 
-  // Load ADG requirements when SEPP Housing 2021 detected
+  // Load ADG requirements when SEPP Housing 2021 detected AND zone permits residential
   const loadADGRequirements = useCallback(async () => {
     if (!developmentType) return;
 
     const applicableSepps = propertyData?.constraints?.applicableSepps || [];
     console.log('[StateLevelControls] Applicable SEPPs from portal:', applicableSepps);
+
+    // Check zone permits residential
+    const zone = propertyData?.constraints?.zone;
+    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+    const residentialZones = ['R1', 'R2', 'R3', 'R4', 'R5', 'B1', 'B2', 'B4', 'MU1', 'RU5'];
+    const permitsResidential = residentialZones.includes(zoneCode);
+
+    if (!permitsResidential) {
+      console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - skipping ADG`);
+      setAdgRequirements([]);
+      return;
+    }
 
     // Check if Housing SEPP applies
     const hasHousingSEPP = applicableSepps.some((sepp: string) => 
@@ -151,17 +163,33 @@ export function StateLevelControls({
     const applicableSepps = propertyData?.constraints?.applicableSepps || [];
     console.log('[StateLevelControls] Detected SEPPs:', applicableSepps);
 
+    // Get zone information for filtering
+    const zone = propertyData?.constraints?.zone;
+    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+    
+    // Define zones that permit residential development
+    const residentialZones = ['R1', 'R2', 'R3', 'R4', 'R5', 'B1', 'B2', 'B4', 'MU1', 'RU5'];
+    const industrialZones = ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'E3', 'B3'];
+    
+    const permitsResidential = residentialZones.includes(zoneCode);
+    const isIndustrialZone = industrialZones.includes(zoneCode);
+    
     // Map portal SEPP IDs to database IDs
-    const dbSeppIds = applicableSepps
+    let dbSeppIds = applicableSepps
       .map((portalId: string) => SEPP_MAPPING[portalId])
       .filter(Boolean);
+    
+    // Filter out residential-only SEPPs if zone doesn't permit residential
+    if (!permitsResidential) {
+      const beforeFilter = dbSeppIds.length;
+      dbSeppIds = dbSeppIds.filter(seppId => seppId !== 'housing_2021');
+      if (beforeFilter > dbSeppIds.length) {
+        console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - excluding Housing SEPP (ADG, Secondary Dwellings)`);
+      }
+    }
 
     // Force-fetch contamination requirements for industrial zones
     // Planning Portal only detects EPA investigation areas, not zone-based risk
-    const zone = propertyData?.constraints?.zone;
-    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-    const isIndustrialZone = ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'B4', 'MU1', 'E3', 'B3'].includes(zoneCode);
-    
     if (isIndustrialZone && !dbSeppIds.includes('resilience_hazards_2021')) {
       console.log(`[StateLevelControls] Industrial zone ${zoneCode} detected - force-fetching contamination requirements`);
       dbSeppIds.push('resilience_hazards_2021');
