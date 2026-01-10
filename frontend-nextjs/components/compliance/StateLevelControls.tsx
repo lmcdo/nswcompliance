@@ -59,6 +59,7 @@ export function StateLevelControls({
 }: StateLevelControlsProps) {
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
   const [adgRequirements, setAdgRequirements] = useState<any[]>([]);
+  const [adgStructuredRequirements, setAdgStructuredRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
@@ -153,6 +154,30 @@ export function StateLevelControls({
       setAdgRequirements([]);
     } finally {
       setLoadingAdg(false);
+    // Also load ADG structured requirements (Phase 4a)
+    try {
+      const structuredResponse = await fetch('/api/sepp/structured-requirements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          seppId: 'housing_2021',
+          developmentType,
+          schedule: 'apartment_design_guide'
+        })
+      });
+
+      if (structuredResponse.ok) {
+        const structuredData = await structuredResponse.json();
+        if (structuredData.success && structuredData.data?.requirements) {
+          setAdgStructuredRequirements(structuredData.data.requirements);
+          console.log(`[StateLevelControls] Loaded ${structuredData.data.requirements.length} ADG structured requirements`);
+        }
+      }
+    } catch (error) {
+      console.error('[StateLevelControls] Failed to fetch ADG structured requirements:', error);
+      setAdgStructuredRequirements([]);
+    }
+
     }
   }, [developmentType, propertyData]);
 
@@ -772,7 +797,18 @@ export function StateLevelControls({
                   ))}
                 </div>
               ) : (
-                <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+                <>
+                  <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+                  {adgStructuredRequirements.length > 0 && (
+                    <div className="mt-4">
+                      <StructuredSeppRequirements
+                        requirements={adgStructuredRequirements}
+                        compact={false}
+                        onViewFullText={() => {}}
+                      />
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           )}
