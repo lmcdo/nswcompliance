@@ -416,15 +416,25 @@ export function StateLevelControls({
                 <div className="text-sm font-semibold text-purple-900 mb-2">
                   Applicable State Policies (from Planning Portal)
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {propertyData.constraints.applicableSepps.map((sepp: string) => (
-                    <div key={sepp} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded border border-purple-300">
-                      {sepp.replace(/_/g, ' ')}
-                    </div>
-                  ))}
+                <div className="space-y-1">
+                  {propertyData.constraints.applicableSepps.map((sepp: string) => {
+                    const fullName = sepp === 'SEPP_SUSTAINABLE_BUILDINGS_2022' || sepp === 'SEPP_SUSTAINABLE_BUILDINGS' 
+                      ? 'State Environmental Planning Policy (Sustainable Buildings) 2022'
+                      : sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
+                      ? 'State Environmental Planning Policy (Housing) 2021'
+                      : sepp === 'SEPP_RESILIENCE_HAZARDS_2021'
+                      ? 'State Environmental Planning Policy (Resilience and Hazards) 2021'
+                      : sepp.replace(/_/g, ' ');
+                    
+                    return (
+                      <div key={sepp} className="text-xs text-purple-900">
+                        • {fullName}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="text-xs text-purple-700 mt-2">
-                  Structured requirements available for: Sustainable Buildings, Housing (ADG), Resilience & Hazards (Contamination)
+                  Structured requirements available for: State Environmental Planning Policy (Sustainable Buildings) 2022, State Environmental Planning Policy (Housing) 2021 including Apartment Design Guide, State Environmental Planning Policy (Resilience and Hazards) 2021 Chapter 4 Contamination, State Environmental Planning Policy (Housing) 2021 Section 26 Secondary Dwellings
                 </div>
               </div>
             )}
@@ -435,20 +445,59 @@ export function StateLevelControls({
                 <div className="text-xs font-semibold text-purple-800 mb-2">
                   📍 Applied from NSW Planning Portal
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="space-y-2">
                   {sustainableInfo.waterTarget && (
-                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-400">
-                      💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-400 flex-1">
+                        💧 Water Target: <span className="font-bold">{sustainableInfo.waterTarget}</span>
+                      </div>
+                      <button
+                        onClick={() => setViewingPdfPage({
+                          pageNumber: 16,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
+                          label: 'SEPP Sustainable Buildings - Water Requirements'
+                        })}
+                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                        title="View SEPP page for water requirements"
+                      >
+                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
+                      </button>
                     </div>
                   )}
                   {sustainableInfo.climateZone && (
-                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-500">
-                      🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-500 flex-1">
+                        🌡️ Climate Zone: <span className="font-bold">{sustainableInfo.climateZone}</span>
+                      </div>
+                      <button
+                        onClick={() => setViewingPdfPage({
+                          pageNumber: 16,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
+                          label: 'SEPP Sustainable Buildings - Climate Zones'
+                        })}
+                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                        title="View SEPP page for climate zones"
+                      >
+                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
+                      </button>
                     </div>
                   )}
                   {sustainableInfo.basixArea && (
-                    <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-600">
-                      🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-600 flex-1">
+                        🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
+                      </div>
+                      <button
+                        onClick={() => setViewingPdfPage({
+                          pageNumber: 16,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/page-16.png',
+                          label: 'SEPP Sustainable Buildings - BASIX Areas'
+                        })}
+                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
+                        title="View SEPP page for BASIX areas"
+                      >
+                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
+                      </button>
                     </div>
                   )}
                 </div>

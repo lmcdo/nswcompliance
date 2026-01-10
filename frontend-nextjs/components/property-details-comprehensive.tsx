@@ -139,7 +139,11 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  }
 
  const getSecondaryFields = (result: any) => {
- const exclude = ['Zone', 'Maximum Building Height', 'Floor Space Ratio', 'Land Use', 'Legislative Clause', 'Class', 'Canopy %', 'Type', 'title']
+ const exclude = [
+    'Zone', 'Maximum Building Height', 'Floor Space Ratio', 'Land Use', 'Legislative Clause', 'Class', 'Canopy %', 'Type', 'title',
+    // Remove unhelpful metadata
+    'Commenced Date', 'Currency Date', 'EPI Type', 'LGA Name', 'Published Date'
+  ]
  return Object.entries(result).filter(([key, value]) => !exclude.includes(key) && value !== null && value !== undefined && value !== '')
  }
 
