@@ -352,3 +352,4 @@ nsw-compliance-engine-frontend@*
 "version"
 'version'
 .aider*
+frontend-nextjs/.wrangler/
