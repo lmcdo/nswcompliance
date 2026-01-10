@@ -385,7 +385,7 @@ export function StateLevelControls({
   return (
     <div className="space-y-4">
       {/* SEPP Section */}
-      <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}/30`}>
+      <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}`}>
         <CardHeader
           className={`cursor-pointer ${AuthorityColors.SEPP.hover.replace('100', '100/50')} transition-colors`}
           onClick={() => toggleSection('sepp')}
