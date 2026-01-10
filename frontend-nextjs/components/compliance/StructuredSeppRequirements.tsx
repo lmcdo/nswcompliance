@@ -43,9 +43,13 @@ function sanitizeText(text: string | undefined | null): string {
 }
 
 interface RequirementItem {
-  [key: string]: string | boolean;
+  [key: string]: string | boolean | object;
   legal_text?: string;
   legal_citation?: string;
+  resource?: {
+    label: string;
+    url: string;
+  };
 }
 
 interface RequirementCategory {
@@ -124,8 +128,8 @@ export function StructuredSeppRequirements({
 
   // Render a single requirement item as bullet point
   const renderRequirementItem = (item: RequirementItem, index: number, categoryLegalCitation?: string) => {
-    // Extract legal_text and legal_citation separately
-    const { legal_text, legal_citation, ...displayProps } = item;
+    // Extract special fields separately
+    const { legal_text, legal_citation, resource, ...displayProps } = item;
     const entries = Object.entries(displayProps);
 
     return (
@@ -151,6 +155,20 @@ export function StructuredSeppRequirements({
           {legal_text && (
             <div className="mt-1 text-xs text-gray-600 italic bg-gray-50 border-l-2 border-gray-300 pl-2 py-1">
               "{sanitizeText(legal_text)}"
+            </div>
+          )}
+
+          {/* Show inline resource link if available */}
+          {resource && (
+            <div className="mt-1">
+              <a
+                href={resource.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
+              >
+                🔗 {resource.label}
+              </a>
             </div>
           )}
 
@@ -200,10 +218,11 @@ export function StructuredSeppRequirements({
                       <button
                         key={refIndex}
                         onClick={() => setViewingPdfImage(ref.url)}
-                        className="px-2 py-1 text-xs rounded hover:bg-purple-100 transition-colors flex-shrink-0 border border-purple-300"
+                        className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
                         title={ref.description}
                       >
-                        📄 p{ref.page}
+                        <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
+                        <span className="sr-only">p{ref.page}</span>
                       </button>
                     ))}
                   </div>
