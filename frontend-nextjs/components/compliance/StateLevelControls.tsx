@@ -442,8 +442,11 @@ export function StateLevelControls({
             {/* Planning Portal Source Layers - Purple shades for cohesion with left column Special Provisions */}
             {(sustainableInfo.waterTarget || sustainableInfo.climateZone || sustainableInfo.basixArea) && (
               <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <div className="text-xs font-semibold text-purple-800 mb-2">
+                <div className="text-xs font-semibold text-purple-800 mb-1">
                   📍 Applied from NSW Planning Portal
+                </div>
+                <div className="text-xs text-purple-700 mb-2 italic">
+                  BASIX sustainability requirements determined by location and climate zone
                 </div>
                 <div className="space-y-2">
                   {sustainableInfo.waterTarget && (
