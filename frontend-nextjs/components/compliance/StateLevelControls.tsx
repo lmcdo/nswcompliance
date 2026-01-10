@@ -525,17 +525,15 @@ export function StateLevelControls({
                       <div className="text-xs bg-purple-100 text-purple-900 px-2 py-1 rounded border-l-4 border-purple-600 flex-1">
                         🏠 BASIX: <span className="font-bold">{sustainableInfo.basixArea}</span>
                       </div>
-                      <button
-                        onClick={() => setViewingPdfPage({
-                          pageNumber: 11,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_11.png',
-                          label: 'BASIX Areas & LGA Map'
-                        })}
+                      <a
+                        href="https://www.planningportal.nsw.gov.au/publications/environmental-planning-instruments/state-environmental-planning-policy-sustainable-buildings-2022"
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View SEPP page for BASIX areas"
+                        title="View BASIX maps on NSW Planning Portal"
                       >
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
-                      </button>
+                      </a>
                     </div>
                     <div className="text-xs text-purple-700 ml-2">Area 5 (Inner West) - specific thermal comfort and energy targets for this LGA</div>
                     </>
