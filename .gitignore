@@ -323,8 +323,14 @@ frontend-nextjs/public/pdfjs/
 # Frontend misc
 # vercel.json needs to be in git for region config
 
-# Scripts directory (working scripts)
+# Scripts directory (working scripts) - EXCEPT Phase 3+ SEPP utilities
 scripts/
+!scripts/r2_pdf_uploader.py
+!scripts/validate_requirement_data.py
+!scripts/validate_pdf_coverage.py
+!scripts/README.md
+!scripts/templates/
+!scripts/templates/sepp_requirement_template.json
 
 # PRP checkpoint working files
 prp_checkpoints/*.py

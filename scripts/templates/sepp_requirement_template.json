@@ -1,0 +1,76 @@
+{
+  "title": "[SEPP Name] - [Section Name]",
+  "description": "Optional: Brief context about what this SEPP provision covers",
+  "categories": [
+    {
+      "name": "Category Name (e.g., 'When Investigation is Mandatory')",
+      "reference": "SEPP [Name] [Year], Section X.X",
+      "legal_citation": "Optional: Full legal text at category level if it applies to all requirements",
+      "requirements": [
+        {
+          "requirement": "Description of requirement",
+          "standard": "Specific standard or threshold",
+          "legal_text": "Optional: Exact quote from legislation",
+          "legal_citation": "Optional: Item-specific citation if different from category"
+        },
+        {
+          "trigger": "Condition that triggers this requirement",
+          "requirement": "What must be done when triggered"
+        }
+      ]
+    }
+  ],
+  "pdf_references": [
+    {
+      "page": 20,
+      "section": "X.X",
+      "description": "Brief description of what this section contains",
+      "url": "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-name/page-20.png"
+    }
+  ],
+  "feasibility_note": {
+    "heading": "Feasibility Considerations",
+    "content": "Generic guidance about feasibility considerations. NO specific costs or timelines. Keep generic and site-dependent language.",
+    "resources": [
+      {
+        "label": "Short link label",
+        "url": "https://planning.nsw.gov.au/...",
+        "description": "Description of what this resource provides"
+      }
+    ]
+  },
+  "_instructions": {
+    "_DO_NOT_INCLUDE_IN_DATABASE": "This _instructions key should be deleted before database insert",
+    "brand_safety_rules": [
+      "NO cost estimates in categories (only in feasibility_note if authoritative source)",
+      "NO timeline estimates in categories (only in feasibility_note if authoritative source)",
+      "NO AI interpretation - extract EXACT clauses only",
+      "Requirements must be key-value pairs with flexible keys",
+      "PDF references must be sorted by page number",
+      "All URLs must be absolute R2 URLs",
+      "feasibility_note is OPTIONAL - only include if relevant guidance exists"
+    ],
+    "category_examples": [
+      {
+        "good": {
+          "name": "When Investigation is Mandatory",
+          "requirements": [
+            {
+              "trigger": "Change from industrial to residential use",
+              "requirement": "Preliminary investigation mandatory"
+            }
+          ]
+        },
+        "bad": {
+          "name": "Cost Impact",
+          "requirements": [
+            {
+              "cost_range": "$8,000 - $15,000",
+              "timeline": "4-6 weeks"
+            }
+          ]
+        }
+      }
+    ]
+  }
+}
