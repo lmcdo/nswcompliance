@@ -60,6 +60,7 @@ export function StateLevelControls({
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
   const [adgRequirements, setAdgRequirements] = useState<any[]>([]);
   const [adgStructuredRequirements, setAdgStructuredRequirements] = useState<any[]>([]);
+  const [transportRequirements, setTransportRequirements] = useState<any[]>([]);
   const [loadingSepp, setLoadingSepp] = useState(false);
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
@@ -230,6 +231,8 @@ export function StateLevelControls({
     try {
       // Fetch requirements for each detected SEPP
       const results: any[] = [];
+      const transportResults: any[] = [];
+
       for (const seppId of dbSeppIds) {
         console.log(`[StateLevelControls] Fetching requirements for ${seppId}`);
         const response = await fetch('/api/sepp/structured-requirements', {
@@ -244,16 +247,23 @@ export function StateLevelControls({
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.data.hasStructuredRequirements) {
-            results.push(...data.data.requirements);
+            // Separate transport infrastructure for dedicated section
+            if (seppId === 'transport_infrastructure_2021') {
+              transportResults.push(...data.data.requirements);
+            } else {
+              results.push(...data.data.requirements);
+            }
           }
         }
       }
 
       setStructuredRequirements(results);
-      console.log(`[StateLevelControls] Loaded ${results.length} structured requirements`);
+      setTransportRequirements(transportResults);
+      console.log(`[StateLevelControls] Loaded ${results.length} structured requirements, ${transportResults.length} transport requirements`);
     } catch (error) {
       console.error('[StateLevelControls] Failed to fetch SEPP requirements:', error);
       setStructuredRequirements([]);
+      setTransportRequirements([]);
     } finally {
       setLoadingSepp(false);
     }
@@ -635,6 +645,29 @@ export function StateLevelControls({
           </CardContent>
         )}
       </Card>
+
+
+      {/* Transport Infrastructure Section - Shows when SEPP_TRANSPORT_INFRASTRUCTURE_2021 detected */}
+      {transportRequirements.length > 0 && (
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-orange-600" />
+              <CardTitle className="text-lg text-orange-900">Transport Infrastructure Requirements</CardTitle>
+            </div>
+            <Badge className="bg-orange-100 text-orange-800 mt-2">SEPP (Transport and Infrastructure) 2021</Badge>
+            <p className="text-sm text-orange-700 mt-2">
+              Requirements for development near railway corridors, classified roads, and aviation facilities
+            </p>
+          </CardHeader>
+          <CardContent>
+            <StructuredSeppRequirements
+              requirements={transportRequirements}
+              compact={false}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* LEP Section */}
       <Card className={`${AuthorityColors.LEP.border.replace('500', '200')} ${AuthorityColors.LEP.bg}/30`}>
