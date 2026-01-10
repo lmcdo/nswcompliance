@@ -351,6 +351,25 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                          </div>
                        ))}
                      </div>
+
+                    {/* Inline contextual link based on keywords */}
+                    {(layerName.toLowerCase().includes('acid') || 
+                      layerName.toLowerCase().includes('sulfate') || 
+                      layerName.toLowerCase().includes('contamination') ||
+                      result['Class']?.toLowerCase().includes('acid') ||
+                      JSON.stringify(result).toLowerCase().includes('acid sulfate')) && (
+                      <div className="mt-2 pt-2 border-t border-gray-200">
+                        <a
+                          href="https://www.planning.nsw.gov.au/policy-and-legislation/environment/acid-sulfate-soils"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 text-xs text-teal-700 hover:text-teal-900 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Check Acid Sulfate Soils Map
+                        </a>
+                      </div>
+                    )}
                    </div>
                    );
                  })}
