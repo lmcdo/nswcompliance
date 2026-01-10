@@ -485,12 +485,12 @@ export function StateLevelControls({
                       </div>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: 13,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_13.png',
-                          label: 'Schedule 1: Water Fixtures & Flow Rates'
+                          pageNumber: 11,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_11.png',
+                          label: 'Schedule 2: Water Fixtures (Toilets, Showers, Taps)'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View SEPP page for water requirements"
+                        title="View Schedule 2 water fixture standards"
                       >
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
@@ -508,10 +508,10 @@ export function StateLevelControls({
                         onClick={() => setViewingPdfPage({
                           pageNumber: 9,
                           url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_9.png',
-                          label: 'Climate Zones Map'
+                          label: 'Table 3: Thermal Performance by Climate Zone'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View SEPP page for climate zones"
+                        title="View thermal performance standards for climate zone"
                       >
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
@@ -572,12 +572,12 @@ export function StateLevelControls({
                       <div className="font-semibold text-purple-900">BASIX Energy & Thermal Requirements</div>
                       <button
                         onClick={() => setViewingPdfPage({
-                          pageNumber: 14,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_14.png',
-                          label: 'Schedule 2: Energy & Thermal Standards'
+                          pageNumber: 13,
+                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_13.png',
+                          label: 'Insulation Standards (Floors/Ceilings R-values)'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
-                        title="View Schedule 2 energy and thermal standards"
+                        title="View insulation R-value standards"
                       >
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
