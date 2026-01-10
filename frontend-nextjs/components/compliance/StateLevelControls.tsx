@@ -466,6 +466,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
+                    <div className="text-xs text-purple-700 ml-2">40% reduction from baseline water use via efficient fixtures</div>
                   )}
                   {sustainableInfo.climateZone && (
                     <div className="flex items-center justify-between gap-2">
@@ -484,6 +485,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
+                    <div className="text-xs text-purple-700 ml-2">Zone 56 = Sydney Metropolitan - moderate climate with specific energy/thermal targets</div>
                   )}
                   {sustainableInfo.basixArea && (
                     <div className="flex items-center justify-between gap-2">
@@ -502,6 +504,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
+                    <div className="text-xs text-purple-700 ml-2">Area 5 (Inner West) - specific thermal comfort and energy targets for this LGA</div>
                   )}
                 </div>
               </div>
