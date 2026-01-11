@@ -13,6 +13,7 @@ import {
 } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
+import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
 
 // Re-export TOD/HIA interfaces for use in components
 export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
@@ -215,6 +216,46 @@ export class PropertyDataService {
  } catch (error) {
    console.log('[PropertyDataService] Former council mapping failed:', error);
  }
+
+
+    // Match site-specific Part 6 LEP clauses (based on address and heritage item)
+    try {
+      const siteSpecificClauseNumbers = getSiteSpecificClauses(propertyData.address);
+      
+      // Special case: Haberfield Heritage Conservation Area (C54) -> Clause 6.20
+      if (constraints.heritage && constraints.heritageItemNumber === 'C54') {
+        if (!siteSpecificClauseNumbers.includes('6.20')) {
+          siteSpecificClauseNumbers.push('6.20');
+          console.log('[PropertyDataService] Added Clause 6.20 for Haberfield HCA (C54)');
+        }
+      }
+      
+      if (siteSpecificClauseNumbers.length > 0) {
+        console.log(`[PropertyDataService] Found ${siteSpecificClauseNumbers.length} site-specific Part 6 clause(s): ${siteSpecificClauseNumbers.join(', ')}`);
+        
+        // Initialize localProvisions array if not exists
+        if (!constraints.localProvisions) {
+          constraints.localProvisions = [];
+        }
+        
+        // Add each site-specific clause as a LocalProvision
+        for (const clauseNumber of siteSpecificClauseNumbers) {
+          const details = getSiteSpecificProvisionDetails(clauseNumber);
+          if (details) {
+            constraints.localProvisions.push({
+              title: details.title,
+              clauseNumber: clauseNumber,
+              pageNumber: details.pageNumber,
+              mapType: 'Site-Specific',
+              legislationUrl: constraints.heritageLegislationUrl,
+              epiName: constraints.lga ? `${constraints.lga} Local Environmental Plan 2022` : undefined
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.log('[PropertyDataService] Site-specific clause matching failed:', error);
+    }
 
  // Route applicable SEPPs
  const seppRouter = new SeppRouter();

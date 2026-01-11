@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-type ViewMode = 'sepp-lep' | 'dcp';
+type ViewMode = 'sepp' | 'lep' | 'dcp';
 
 interface UseAssessmentUIReturn {
   // View mode
@@ -24,7 +24,7 @@ interface UseAssessmentUIReturn {
  * Handles view mode tabs, modal visibility, and building height input.
  */
 export function useAssessmentUI(): UseAssessmentUIReturn {
-  const [viewMode, setViewMode] = useState<ViewMode>('sepp-lep');
+  const [viewMode, setViewMode] = useState<ViewMode>('sepp');
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
 

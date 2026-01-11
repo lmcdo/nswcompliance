@@ -15,6 +15,8 @@ import { MapPin, Share2 } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
+import { LepControls } from '@/components/compliance/LepControls';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
@@ -304,23 +306,38 @@ export default function AssessmentPage() {
 
             {selectedProperty && (
               <>
-                {/* Regulatory Tabs - SEPP purple, DCP green */}
+                {/* Regulatory Tabs - SEPP purple, LEP amber, DCP green */}
                 <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
                   <div className="flex" role="tablist" aria-label="Regulatory controls">
                     <button
                       role="tab"
-                      id="tab-sepp-lep"
-                      aria-selected={viewMode === 'sepp-lep'}
-                      aria-controls="panel-sepp-lep"
-                      onClick={() => setViewMode('sepp-lep')}
+                      id="tab-sepp"
+                      aria-selected={viewMode === 'sepp'}
+                      aria-controls="panel-sepp"
+                      onClick={() => setViewMode('sepp')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
-                        viewMode === 'sepp-lep'
+                        viewMode === 'sepp'
                           ? 'bg-purple-700 text-white'
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">SEPP Provisions</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp-lep' ? 'text-purple-100' : 'text-purple-400'}`}>State Controls</span>
+                      <span className="block text-base font-bold">SEPP</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'sepp' ? 'text-purple-100' : 'text-purple-400'}`}>State Planning Policies</span>
+                    </button>
+                    <button
+                      role="tab"
+                      id="tab-lep"
+                      aria-selected={viewMode === 'lep'}
+                      aria-controls="panel-lep"
+                      onClick={() => setViewMode('lep')}
+                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
+                        viewMode === 'lep'
+                          ? 'bg-amber-700 text-white'
+                          : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                      }`}
+                    >
+                      <span className="block text-base font-bold">LEP</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-amber-100' : 'text-amber-400'}`}>Local Environmental Plan</span>
                     </button>
                     <button
                       role="tab"
@@ -334,20 +351,32 @@ export default function AssessmentPage() {
                           : 'bg-green-50 text-green-700 hover:bg-green-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">DCP Provisions</span>
+                      <span className="block text-base font-bold">DCP</span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-green-100' : 'text-green-400'}`}>Council Controls</span>
                     </button>
                   </div>
                 </div>
 
-                {/* SEPP & LEP Tab Content */}
-                {viewMode === 'sepp-lep' && (
-                  <div role="tabpanel" id="panel-sepp-lep" aria-labelledby="tab-sepp-lep">
+                {/* SEPP Tab Content */}
+                {viewMode === 'sepp' && (
+                  <div role="tabpanel" id="panel-sepp" aria-labelledby="tab-sepp">
                     <StateLevelControls
                       propertyData={selectedProperty}
                       developmentType={developmentType}
                       buildingHeight={buildingHeight || undefined}
                     />
+                  </div>
+                )}
+
+                {/* LEP Tab Content */}
+                {viewMode === 'lep' && (
+                  <div role="tabpanel" id="panel-lep" aria-labelledby="tab-lep">
+                    <ErrorBoundary fallbackTitle="Error loading LEP provisions">
+                      <LepControls
+                        planningLayers={selectedProperty.planningLayers || []}
+                        constraints={selectedProperty.constraints}
+                      />
+                    </ErrorBoundary>
                   </div>
                 )}
 

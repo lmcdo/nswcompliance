@@ -4,6 +4,7 @@
  */
 
 import { getRoadClassifications, type RoadClassification } from './road-classification-service';
+import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
 
 export interface NSWPropertyData {
  propId: number;
@@ -45,6 +46,25 @@ export interface PlanningConstraints {
  todPrecinct?: TODPrecinctInfo;
  acceleratedTOD?: AcceleratedTODInfo;
  hiaArea?: HIAInfo;
+
+ // Phase 6: Local Provisions (LEP Schedule 7)
+ localProvisions?: LocalProvision[];
+}
+
+/**
+ * Local Provision (LEP Part 6 Additional Local Provisions)
+ * Special Entertainment Precincts, affordable housing, site-specific provisions
+ */
+export interface LocalProvision {
+ class?: string;
+ epiName?: string;
+ title: string;
+ description?: string;
+ legislationUrl?: string;
+ mapType?: string; // e.g., "SEP", "LAM", "KSM"
+ clauseNumber?: string; // e.g., "6.32"
+ provisionText?: string; // Full clause text from LEP
+ pageNumber?: number; // Page number in LEP PDF
 }
 
 /**
@@ -535,6 +555,41 @@ export class NSWPlanningPortalService {
  };
  console.log('HIA area extracted:', constraints.hiaArea);
  break;
+
+			case 'Local Provisions':
+				if (process.env.NODE_ENV === 'development') {
+					console.log('Extracting Local Provisions:', result);
+				}
+				if (!constraints.localProvisions) {
+					constraints.localProvisions = [];
+				}
+				
+				// Extract Map Type and get clause numbers
+				const mapType = result['Map Type'];
+				const clauseNumbers = mapType ? getClauseNumbersForMapType(mapType) : [];
+				
+				// Store basic info from Planning Portal
+				const localProvision: LocalProvision = {
+					class: result['Class'],
+					epiName: result['EPI Name'],
+					title: result['title'] || result['Title'],
+					description: result['Description'],
+					legislationUrl: result['legislationUrl'],
+					mapType: mapType,
+					clauseNumber: clauseNumbers[0] // Use first clause if multiple
+				};
+				
+				// Provision text and page will be fetched on-demand via API
+				constraints.localProvisions.push(localProvision);
+				
+				if (process.env.NODE_ENV === 'development') {
+					console.log('Local Provisions extracted:', {
+						...localProvision,
+						clauseNumbers
+					});
+				}
+				break;
+
  // ===== END PHASE 5 =====
  }
  });

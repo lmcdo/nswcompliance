@@ -669,63 +669,6 @@ export function StateLevelControls({
         </Card>
       )}
 
-      {/* LEP Section */}
-      <Card className={`${AuthorityColors.LEP.border.replace('500', '200')} ${AuthorityColors.LEP.bg}/30`}>
-        <CardHeader
-          className={`cursor-pointer ${AuthorityColors.LEP.hover.replace('100', '100/50')} transition-colors`}
-          onClick={() => toggleSection('lep')}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {collapsedSections.lep ? (
-                <ChevronRight className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
-              ) : (
-                <ChevronDown className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
-              )}
-              <Building2 className={`h-5 w-5 ${AuthorityColors.LEP.text.replace('700', '600')}`} />
-              <CardTitle className={`text-lg ${AuthorityColors.LEP.text.replace('700', '900')}`}>LEP Controls</CardTitle>
-            </div>
-            <Badge className={`${AuthorityColors.LEP.bg.replace('50', '100')} ${AuthorityColors.LEP.text.replace('700', '800')}`}>Local Environmental Plan</Badge>
-          </div>
-          <p className={`text-sm ${AuthorityColors.LEP.text} mt-1 ml-7`}>
-            Zoning, land use permissibility, and lot size requirements
-          </p>
-        </CardHeader>
-        {!collapsedSections.lep && (
-          <CardContent className="pt-0 space-y-4">
-            {/* Land Use Zoning */}
-            {zone && (
-              <LandUseZoningCard
-                zone={zone}
-                zoneDescription={zoneDescription}
-                lga={lga}
-                legislationUrl={zoneResult?.['legislationUrl']}
-                epiName={zoneResult?.['EPI Name']}
-                amendment={zoneResult?.['Amendment']}
-                legislativeClause={zoneResult?.['Legislative Clause']}
-              />
-            )}
-
-            {/* Minimum Lot Size */}
-            {minimumLotSize && (
-              <MinimumLotSizeCard
-                minimumSize={parseFloat(minimumLotSize)}
-                unit={lotSizeResult?.['Units'] || 'm²'}
-                epiName={lotSizeResult?.['EPI Name']}
-                amendment={lotSizeResult?.['Amendment']}
-                legislativeClause={lotSizeResult?.['Legislative Clause'] || 'Clause 4.1'}
-              />
-            )}
-
-            {!zone && !minimumLotSize && (
-              <p className="text-sm text-gray-500 italic">
-                No LEP data available for this property
-              </p>
-            )}
-          </CardContent>
-        )}
-      </Card>
-
       {/* Housing SEPP LMR Section - Shows for residential zones with lot data */}
       {showHousingSEPPSection && (
         <Card className="border-emerald-200 bg-emerald-50/30">
