@@ -42,12 +42,16 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
 
         try {
           const response = await fetch(`/api/lep/provisions?clause=${encodeURIComponent(clauseNumber)}`);
+          console.log(`[LocalProvisionsCard] Fetching clause ${clauseNumber}, status: ${response.status}`);
           if (response.ok) {
             const data = await response.json();
+            console.log(`[LocalProvisionsCard] Received data for clause ${clauseNumber}:`, data);
             setProvisionDetails({
               ...provisionDetails,
               [provisionKey]: data
             });
+          } else {
+            console.error(`[LocalProvisionsCard] API returned ${response.status} for clause ${clauseNumber}`);
           }
         } catch (error) {
           console.error('Error fetching provision:', error);
@@ -151,15 +155,34 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                         </div>
                       ) : detail ? (
                         <div className="space-y-2">
-                          <h5 className="font-semibold text-sm text-amber-900">
-                            {detail.clauseTitle}
-                          </h5>
+                          {detail.clauseTitle && (
+                            <h5 className="font-semibold text-sm text-amber-900">
+                              {detail.clauseTitle}
+                            </h5>
+                          )}
                           <div className="text-sm text-gray-700 whitespace-pre-wrap">
                             {detail.provisionText}
                           </div>
+                          {detail.pageNumber && (
+                            <p className="text-xs text-gray-500 mt-2">
+                              Page {detail.pageNumber}
+                            </p>
+                          )}
                         </div>
                       ) : (
-                        <p className="text-sm text-muted-foreground">Provision text not available</p>
+                        <div className="text-sm text-gray-600">
+                          <p className="mb-2">
+                            Provision text is being extracted. View the full clause in the LEP document:
+                          </p>
+                          <a
+                            href={clauseUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-amber-700 hover:text-amber-900 underline font-medium"
+                          >
+                            View Clause {provision.clauseNumber} in LEP →
+                          </a>
+                        </div>
                       )}
                     </div>
                   )}
