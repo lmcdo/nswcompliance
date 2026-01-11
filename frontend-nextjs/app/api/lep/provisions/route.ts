@@ -25,18 +25,21 @@ export async function GET(request: NextRequest) {
     // Open database
     const db = new Database(DB_PATH, { readonly: true });
 
-    // Query provision
+    // Query provision - search all Inner West LEP documents, prioritize Part 6 and longest text
     const provision = db.prepare(`
-      SELECT 
+      SELECT
         ref_number as clauseNumber,
         section_header as clauseTitle,
         provision_text as provisionText,
         page_number as pageNumber
       FROM regulatory_provisions
-      WHERE document_id = ?
+      WHERE document_id LIKE 'Inner_West_Local_Environmental_Plan_2022%'
         AND ref_number = ?
+      ORDER BY
+        CASE WHEN document_id = ? THEN 0 ELSE 1 END,
+        LENGTH(provision_text) DESC
       LIMIT 1
-    `).get(DOCUMENT_ID, clauseNumber);
+    `).get(clauseNumber, DOCUMENT_ID);
 
     db.close();
 
