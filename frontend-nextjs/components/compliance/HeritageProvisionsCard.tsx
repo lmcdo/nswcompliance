@@ -146,15 +146,6 @@ export function HeritageProvisionsCard({
                 <div className="mt-3 p-3 bg-white rounded-md border border-blue-200">
                   {loading ? (
                     <p className="text-sm text-muted-foreground">Loading provision text...</p>
-                  ) : provisionDetail ? (
-                    <div className="space-y-2">
-                      <h5 className="font-semibold text-sm text-blue-900">
-                        {provisionDetail.clauseTitle}
-                      </h5>
-                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {provisionDetail.provisionText}
-                      </div>
-                    </div>
                   ) : clauseNumber === '5.10' ? (
                     <div className="space-y-2">
                       <h5 className="font-semibold text-sm text-blue-900">
@@ -163,11 +154,20 @@ export function HeritageProvisionsCard({
                       <p className="text-sm text-gray-700 mb-2">
                         View the full heritage conservation provision from Inner West LEP 2022:
                       </p>
-                      <img 
-                        src="/pdf-pages/iwlep_heritage_clause_5_10_page_50.png" 
+                      <img
+                        src="/pdf-pages/iwlep_heritage_clause_5_10_page_50.png"
                         alt="Clause 5.10 Heritage conservation - Page 50"
                         className="w-full border border-blue-200 rounded"
                       />
+                    </div>
+                  ) : provisionDetail && provisionDetail.provisionText && provisionDetail.provisionText.length > 100 ? (
+                    <div className="space-y-2">
+                      <h5 className="font-semibold text-sm text-blue-900">
+                        {provisionDetail.clauseTitle}
+                      </h5>
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {provisionDetail.provisionText}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Provision text not available</p>
