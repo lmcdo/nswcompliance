@@ -8,7 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
@@ -145,7 +145,8 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  const tocStructure = data?.data?.by_toc || {};
+  // Memoize tocStructure to prevent infinite re-renders from object recreation
+  const tocStructure = useMemo(() => data?.data?.by_toc || {}, [data?.data?.by_toc]);
   const totalProvisions = data?.data?.summary?.total_provisions || 0;
 
   // Safety check - if no TOC data, show message
@@ -201,7 +202,7 @@ export function ProvisionsByTocStructure({
   }), [selectedProvisions]);
 
   // Helper to auto-select layer if only one has provisions
-  const autoSelectLayer = (provisions: any[]) => {
+  const autoSelectLayer = useCallback((provisions: any[]) => {
     const counts = {
       generic: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
       use_specific: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
@@ -214,9 +215,9 @@ export function ProvisionsByTocStructure({
     } else {
       setLayerFilter(null);
     }
-  };
+  }, []); // No dependencies - uses setState which is stable
 
-  const handleSelectPart = (partId: string) => {
+  const handleSelectPart = useCallback((partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
     setTopicFilter(null);
@@ -226,9 +227,9 @@ export function ProvisionsByTocStructure({
       const partProvisions = Object.values(tocStructure[partId].sections).flatMap(s => s.provisions);
       autoSelectLayer(partProvisions);
     }
-  };
+  }, [tocStructure, autoSelectLayer]);
 
-  const handleSelectSection = (partId: string, sectionId: string) => {
+  const handleSelectSection = useCallback((partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
     setTopicFilter(null);
@@ -238,7 +239,7 @@ export function ProvisionsByTocStructure({
       const sectionProvisions = tocStructure[partId].sections[sectionId].provisions;
       autoSelectLayer(sectionProvisions);
     }
-  };
+  }, [tocStructure, autoSelectLayer]);
 
   return (
     <div className="space-y-4">
