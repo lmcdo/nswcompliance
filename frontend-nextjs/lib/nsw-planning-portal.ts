@@ -5,6 +5,7 @@
 
 import { getRoadClassifications, type RoadClassification } from './road-classification-service';
 import { getClauseNumbersForMapType } from './lep-local-provisions-mapping';
+import { getKeySitesProvision } from './key-sites-map-provisions';
 
 export interface NSWPropertyData {
  propId: number;
@@ -610,10 +611,8 @@ export class NSWPlanningPortalService {
 					}
 				}
 
-				// Import Key Sites Map provisions for page numbers
-				const { getKeySitesProvision } = await import('./key-sites-map-provisions');
-
 				// Create a provision for each clause
+				// Page numbers come from getKeySitesProvision imported at top
 				for (const clauseNum of extractedClauses) {
 					const ksmProvision = getKeySitesProvision(clauseNum);
 					const provision: LocalProvision = {
