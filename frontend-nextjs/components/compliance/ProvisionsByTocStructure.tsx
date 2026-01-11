@@ -215,7 +215,7 @@ export function ProvisionsByTocStructure({
                       </span>
                     </div>
                     <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
-                      {totalProvisions} provisions
+                      {totalProvisions} provisions applicable to this address
                     </Badge>
                   </div>
                 </div>
@@ -268,7 +268,7 @@ export function ProvisionsByTocStructure({
             </div>
           </div>
 
-          {/* Topic filter chips */}
+          {/* Topic filter chips - show all topics */}
           {availableTopics.length > 1 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <Filter className="h-3.5 w-3.5 text-gray-400" />
@@ -282,7 +282,7 @@ export function ProvisionsByTocStructure({
               >
                 All
               </button>
-              {availableTopics.slice(0, 8).map(topic => (
+              {availableTopics.map(topic => (
                 <button
                   key={topic}
                   onClick={() => setTopicFilter(
@@ -297,11 +297,6 @@ export function ProvisionsByTocStructure({
                   {topic}
                 </button>
               ))}
-              {availableTopics.length > 8 && (
-                <span className="text-xs text-gray-400">
-                  +{availableTopics.length - 8} more
-                </span>
-              )}
             </div>
           )}
         </div>
