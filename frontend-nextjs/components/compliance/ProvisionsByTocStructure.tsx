@@ -159,8 +159,8 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  // Get provisions for selected part/section
-  const getSelectedProvisions = (): any[] => {
+  // Get provisions for selected part/section (memoized to prevent infinite re-renders)
+  const selectedProvisions = useMemo(() => {
     if (!selectedPart || !tocStructure[selectedPart]) return [];
 
     const part = tocStructure[selectedPart];
@@ -171,9 +171,7 @@ export function ProvisionsByTocStructure({
 
     // Return all provisions for the part
     return Object.values(part.sections).flatMap(s => s.provisions);
-  };
-
-  const selectedProvisions = getSelectedProvisions();
+  }, [selectedPart, selectedSection, tocStructure]);
 
   // Apply topic filter if set
   let filteredProvisions = topicFilter
@@ -202,27 +200,44 @@ export function ProvisionsByTocStructure({
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
   }), [selectedProvisions]);
 
-  // Auto-select layer if only one layer has provisions
-  useEffect(() => {
-    const nonZeroLayers = Object.entries(layerCounts).filter(([_, count]) => count > 0);
-    if (nonZeroLayers.length === 1 && !layerFilter) {
-      // Only one layer has provisions, auto-select it
+  // Helper to auto-select layer if only one has provisions
+  const autoSelectLayer = (provisions: any[]) => {
+    const counts = {
+      generic: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+      use_specific: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+      condition: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+      precinct: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+    };
+    const nonZeroLayers = Object.entries(counts).filter(([_, count]) => count > 0);
+    if (nonZeroLayers.length === 1) {
       setLayerFilter(nonZeroLayers[0][0]);
+    } else {
+      setLayerFilter(null);
     }
-  }, [selectedPart, selectedSection, layerCounts, layerFilter]);
+  };
 
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
     setTopicFilter(null);
-    setLayerFilter(null); // Reset layer filter when changing parts
+
+    // Auto-select layer for this part
+    if (tocStructure[partId]) {
+      const partProvisions = Object.values(tocStructure[partId].sections).flatMap(s => s.provisions);
+      autoSelectLayer(partProvisions);
+    }
   };
 
   const handleSelectSection = (partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
     setTopicFilter(null);
-    setLayerFilter(null); // Reset layer filter when changing sections
+
+    // Auto-select layer for this section
+    if (tocStructure[partId]?.sections[sectionId]) {
+      const sectionProvisions = tocStructure[partId].sections[sectionId].provisions;
+      autoSelectLayer(sectionProvisions);
+    }
   };
 
   return (
