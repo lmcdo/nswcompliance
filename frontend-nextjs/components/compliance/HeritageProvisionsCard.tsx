@@ -69,8 +69,9 @@ export function HeritageProvisionsCard({
     }
   };
 
+  // NSW legislation URLs use sec. format for direct clause linking
   const clauseUrl = heritageLegislationUrl && clauseNumber
-    ? heritageLegislationUrl + '#cl-' + clauseNumber.replace('.', '-')
+    ? `${heritageLegislationUrl}#sec.${clauseNumber}`
     : heritageLegislationUrl;
 
   const cardColor = isHCA ? 'border-blue-300' : isStateHeritage ? 'border-red-300' : 'border-blue-300';

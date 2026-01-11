@@ -78,8 +78,9 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           const detail = provisionDetails[uniqueKey];
           const isLoading = loading[uniqueKey];
 
+          // NSW legislation URLs use sec. format for direct clause linking
           const clauseUrl = provision.legislationUrl && provision.clauseNumber
-            ? `${provision.legislationUrl}#cl-${provision.clauseNumber.replace('.', '-')}`
+            ? `${provision.legislationUrl}#sec.${provision.clauseNumber}`
             : provision.legislationUrl;
 
           return (
