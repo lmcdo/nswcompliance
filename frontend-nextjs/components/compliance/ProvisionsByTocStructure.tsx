@@ -263,9 +263,9 @@ export function ProvisionsByTocStructure({
       )}
 
       {/* Main two-panel layout */}
-      <div className="flex h-[calc(100vh-280px)] min-h-[500px] border rounded-lg bg-white overflow-hidden">
+      <div className="flex border rounded-lg bg-white overflow-hidden">
       {/* Left: TOC Sidebar */}
-      <div className="w-64 border-r bg-gray-50 flex-shrink-0 overflow-hidden">
+      <div className="w-64 border-r bg-gray-50 flex-shrink-0">
         <TocSidebar
           tocStructure={tocStructure}
           selectedPart={selectedPart}
@@ -277,7 +277,7 @@ export function ProvisionsByTocStructure({
       </div>
 
       {/* Right: Provisions content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
         <div className="p-4 border-b bg-white">
           <div className="flex items-center justify-between">
@@ -387,7 +387,7 @@ export function ProvisionsByTocStructure({
         </div>
 
         {/* Provisions list */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="p-4">
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions
               provisions={filteredProvisions}
