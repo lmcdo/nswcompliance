@@ -8,7 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
@@ -195,12 +195,12 @@ export function ProvisionsByTocStructure({
   )].sort();
 
   // Count provisions by layer for the current selection
-  const layerCounts = {
+  const layerCounts = useMemo(() => ({
     generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
     use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
     condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-  };
+  }), [selectedProvisions]);
 
   // Auto-select layer if only one layer has provisions
   useEffect(() => {
