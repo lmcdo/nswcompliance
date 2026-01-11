@@ -166,6 +166,21 @@ export function ProvisionsByTocStructure({
 
   const selectedProvisions = getSelectedProvisions();
 
+  // Debug: Log available layer values
+  const availableLayers = [...new Set(
+    selectedProvisions.map(p => p.v2_dcp_layer || p.layer).filter(Boolean)
+  )];
+  console.log('[ProvisionsByTocStructure] Available layers:', availableLayers);
+  console.log('[ProvisionsByTocStructure] Current layerFilter:', layerFilter);
+  console.log('[ProvisionsByTocStructure] Sample provisions with layers:',
+    selectedProvisions.slice(0, 3).map(p => ({
+      id: p.id,
+      v2_dcp_layer: p.v2_dcp_layer,
+      layer: p.layer,
+      text: p.provision_text?.substring(0, 50)
+    }))
+  );
+
   // Apply topic filter if set
   let filteredProvisions = topicFilter
     ? selectedProvisions.filter(p =>
@@ -175,9 +190,16 @@ export function ProvisionsByTocStructure({
 
   // Apply layer filter if set
   if (layerFilter) {
-    filteredProvisions = filteredProvisions.filter(p =>
-      (p.v2_dcp_layer || p.layer) === layerFilter
-    );
+    console.log('[ProvisionsByTocStructure] Filtering by layer:', layerFilter);
+    filteredProvisions = filteredProvisions.filter(p => {
+      const provisionLayer = p.v2_dcp_layer || p.layer;
+      const matches = provisionLayer === layerFilter;
+      if (!matches && selectedProvisions.indexOf(p) < 3) {
+        console.log(`[ProvisionsByTocStructure] Provision ${p.id} layer '${provisionLayer}' != filter '${layerFilter}'`);
+      }
+      return matches;
+    });
+    console.log('[ProvisionsByTocStructure] Filtered to', filteredProvisions.length, 'provisions');
   }
 
   // Get unique topics for filter chips
