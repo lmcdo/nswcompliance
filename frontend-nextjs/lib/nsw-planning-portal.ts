@@ -563,11 +563,11 @@ export class NSWPlanningPortalService {
 				if (!constraints.localProvisions) {
 					constraints.localProvisions = [];
 				}
-				
+
 				// Extract Map Type and get clause numbers
 				const mapType = result['Map Type'];
 				const clauseNumbers = mapType ? getClauseNumbersForMapType(mapType) : [];
-				
+
 				// Store basic info from Planning Portal
 				const localProvision: LocalProvision = {
 					class: result['Class'],
@@ -578,15 +578,53 @@ export class NSWPlanningPortalService {
 					mapType: mapType,
 					clauseNumber: clauseNumbers[0] // Use first clause if multiple
 				};
-				
+
 				// Provision text and page will be fetched on-demand via API
 				constraints.localProvisions.push(localProvision);
-				
+
 				if (process.env.NODE_ENV === 'development') {
 					console.log('Local Provisions extracted:', {
 						...localProvision,
 						clauseNumbers
 					});
+				}
+				break;
+
+			case 'Key Sites Map':
+			case 'Additional Permitted Uses Map':
+				if (process.env.NODE_ENV === 'development') {
+					console.log(`Extracting ${layer.layerName}:`, result);
+				}
+				if (!constraints.localProvisions) {
+					constraints.localProvisions = [];
+				}
+
+				// Parse Legislative Clause field (e.g., "Clauses 4.3C, 4.4, 6.14, 6.15")
+				const legislativeClause = result['Legislative Clause'];
+				let extractedClauses: string[] = [];
+				if (legislativeClause) {
+					// Extract clause numbers from text like "Clauses 4.3C, 4.4, 6.14, 6.15" or "Clause 6.14"
+					const matches = legislativeClause.match(/(\d+\.\d+[A-Z]?)/g);
+					if (matches) {
+						extractedClauses = matches;
+					}
+				}
+
+				// Create a provision for each clause
+				for (const clauseNum of extractedClauses) {
+					const provision: LocalProvision = {
+						class: result['Class'] || result['Label'],
+						epiName: result['EPI Name'],
+						title: `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`,
+						legislationUrl: result['legislationUrl'],
+						mapType: layer.layerName === 'Key Sites Map' ? 'KSM' : 'APU',
+						clauseNumber: clauseNum
+					};
+					constraints.localProvisions.push(provision);
+				}
+
+				if (process.env.NODE_ENV === 'development') {
+					console.log(`${layer.layerName} provisions added:`, extractedClauses.length);
 				}
 				break;
 

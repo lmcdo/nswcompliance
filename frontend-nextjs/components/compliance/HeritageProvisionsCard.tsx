@@ -69,10 +69,8 @@ export function HeritageProvisionsCard({
     }
   };
 
-  // NSW legislation URLs use sec. format for direct clause linking
-  const clauseUrl = heritageLegislationUrl && clauseNumber
-    ? `${heritageLegislationUrl}#sec.${clauseNumber}`
-    : heritageLegislationUrl;
+  // Link to base LEP document - NSW legislation site doesn't support reliable clause anchors
+  const clauseUrl = heritageLegislationUrl;
 
   const cardColor = isHCA ? 'border-blue-300' : isStateHeritage ? 'border-red-300' : 'border-blue-300';
   const bgColor = isHCA ? 'bg-blue-50/50' : isStateHeritage ? 'bg-red-50/50' : 'bg-blue-50/50';
