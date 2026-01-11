@@ -166,21 +166,6 @@ export function ProvisionsByTocStructure({
 
   const selectedProvisions = getSelectedProvisions();
 
-  // Debug: Log available layer values
-  const availableLayers = [...new Set(
-    selectedProvisions.map(p => p.v2_dcp_layer || p.layer).filter(Boolean)
-  )];
-  console.log('[ProvisionsByTocStructure] Available layers:', availableLayers);
-  console.log('[ProvisionsByTocStructure] Current layerFilter:', layerFilter);
-  console.log('[ProvisionsByTocStructure] Sample provisions with layers:',
-    selectedProvisions.slice(0, 3).map(p => ({
-      id: p.id,
-      v2_dcp_layer: p.v2_dcp_layer,
-      layer: p.layer,
-      text: p.provision_text?.substring(0, 50)
-    }))
-  );
-
   // Apply topic filter if set
   let filteredProvisions = topicFilter
     ? selectedProvisions.filter(p =>
@@ -190,22 +175,23 @@ export function ProvisionsByTocStructure({
 
   // Apply layer filter if set
   if (layerFilter) {
-    console.log('[ProvisionsByTocStructure] Filtering by layer:', layerFilter);
-    filteredProvisions = filteredProvisions.filter(p => {
-      const provisionLayer = p.v2_dcp_layer || p.layer;
-      const matches = provisionLayer === layerFilter;
-      if (!matches && selectedProvisions.indexOf(p) < 3) {
-        console.log(`[ProvisionsByTocStructure] Provision ${p.id} layer '${provisionLayer}' != filter '${layerFilter}'`);
-      }
-      return matches;
-    });
-    console.log('[ProvisionsByTocStructure] Filtered to', filteredProvisions.length, 'provisions');
+    filteredProvisions = filteredProvisions.filter(p =>
+      (p.v2_dcp_layer || p.layer) === layerFilter
+    );
   }
 
   // Get unique topics for filter chips
   const availableTopics = [...new Set(
     selectedProvisions.map(p => p.v2_topic).filter(Boolean)
   )].sort();
+
+  // Count provisions by layer for the current selection
+  const layerCounts = {
+    generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+    use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+    condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+    precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+  };
 
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
@@ -350,24 +336,33 @@ export function ProvisionsByTocStructure({
               { key: 'use_specific', color: '#3b82f6', label: 'Zone-Specific' },
               { key: 'condition', color: '#f59e0b', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Heritage' : 'Condition' },
               { key: 'precinct', color: '#8b5cf6', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Distinct Neighbourhood' : 'Precinct' },
-            ].map(({ key, color, label }) => (
-              <button
-                key={key}
-                onClick={() => setLayerFilter(layerFilter === key ? null : key)}
-                className={`flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full transition-colors ${
-                  layerFilter === key
-                    ? 'bg-gray-800 text-white ring-2 ring-offset-1'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                style={layerFilter === key ? { ringColor: color } : undefined}
-              >
-                <div
-                  className="w-2.5 h-2.5 rounded-sm"
-                  style={{ backgroundColor: color }}
-                />
-                {label}
-              </button>
-            ))}
+            ].map(({ key, color, label }) => {
+              const count = layerCounts[key as keyof typeof layerCounts] || 0;
+              const hasProvisions = count > 0;
+
+              return (
+                <button
+                  key={key}
+                  onClick={() => hasProvisions && setLayerFilter(layerFilter === key ? null : key)}
+                  disabled={!hasProvisions}
+                  className={`flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full transition-colors ${
+                    !hasProvisions
+                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
+                      : layerFilter === key
+                      ? 'bg-gray-800 text-white ring-2 ring-offset-1'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                  style={layerFilter === key ? { ringColor: color } : undefined}
+                  title={!hasProvisions ? 'No provisions with this layer in selected section' : undefined}
+                >
+                  <div
+                    className="w-2.5 h-2.5 rounded-sm"
+                    style={{ backgroundColor: hasProvisions ? color : '#d1d5db' }}
+                  />
+                  {label} ({count})
+                </button>
+              );
+            })}
           </div>
         </div>
 
