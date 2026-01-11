@@ -8,7 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
@@ -145,8 +145,7 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  // Memoize tocStructure to prevent infinite re-renders from object recreation
-  const tocStructure = useMemo(() => data?.data?.by_toc || {}, [data?.data?.by_toc]);
+  const tocStructure = data?.data?.by_toc || {};
   const totalProvisions = data?.data?.summary?.total_provisions || 0;
 
   // Safety check - if no TOC data, show message
@@ -160,8 +159,8 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  // Get provisions for selected part/section (memoized to prevent infinite re-renders)
-  const selectedProvisions = useMemo(() => {
+  // Get provisions for selected part/section
+  const getSelectedProvisions = (): any[] => {
     if (!selectedPart || !tocStructure[selectedPart]) return [];
 
     const part = tocStructure[selectedPart];
@@ -172,7 +171,9 @@ export function ProvisionsByTocStructure({
 
     // Return all provisions for the part
     return Object.values(part.sections).flatMap(s => s.provisions);
-  }, [selectedPart, selectedSection, tocStructure]);
+  };
+
+  const selectedProvisions = getSelectedProvisions();
 
   // Apply topic filter if set
   let filteredProvisions = topicFilter
@@ -194,52 +195,26 @@ export function ProvisionsByTocStructure({
   )].sort();
 
   // Count provisions by layer for the current selection
-  const layerCounts = useMemo(() => ({
+  const layerCounts = {
     generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
     use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
     condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-  }), [selectedProvisions]);
+  };
 
-  // Helper to auto-select layer if only one has provisions
-  const autoSelectLayer = useCallback((provisions: any[]) => {
-    const counts = {
-      generic: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
-      use_specific: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
-      condition: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
-      precinct: provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-    };
-    const nonZeroLayers = Object.entries(counts).filter(([_, count]) => count > 0);
-    if (nonZeroLayers.length === 1) {
-      setLayerFilter(nonZeroLayers[0][0]);
-    } else {
-      setLayerFilter(null);
-    }
-  }, []); // No dependencies - uses setState which is stable
-
-  const handleSelectPart = useCallback((partId: string) => {
+  const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
     setTopicFilter(null);
+    setLayerFilter(null); // Reset layer filter when changing parts
+  };
 
-    // Auto-select layer for this part
-    if (tocStructure[partId]) {
-      const partProvisions = Object.values(tocStructure[partId].sections).flatMap(s => s.provisions);
-      autoSelectLayer(partProvisions);
-    }
-  }, [tocStructure, autoSelectLayer]);
-
-  const handleSelectSection = useCallback((partId: string, sectionId: string) => {
+  const handleSelectSection = (partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
     setTopicFilter(null);
-
-    // Auto-select layer for this section
-    if (tocStructure[partId]?.sections[sectionId]) {
-      const sectionProvisions = tocStructure[partId].sections[sectionId].provisions;
-      autoSelectLayer(sectionProvisions);
-    }
-  }, [tocStructure, autoSelectLayer]);
+    setLayerFilter(null); // Reset layer filter when changing sections
+  };
 
   return (
     <div className="space-y-4">
