@@ -124,15 +124,15 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
 /**
  * Get provision details for a Key Sites Map clause
  */
-export function getKeyS itesProvision(clauseNumber: string): KeySitesProvision | undefined {
+export function getKeySitesProvision(clauseNumber: string): KeySitesProvision | undefined {
   return KEY_SITES_PROVISIONS.find(p => p.clauseNumber === clauseNumber);
 }
 
 /**
  * Get page number for a Key Sites Map clause
  */
-export function getKeyS itesPageNumber(clauseNumber: string): number | undefined {
-  return getKeyS itesProvision(clauseNumber)?.pageNumber;
+export function getKeySitesPageNumber(clauseNumber: string): number | undefined {
+  return getKeySitesProvision(clauseNumber)?.pageNumber;
 }
 
 /**

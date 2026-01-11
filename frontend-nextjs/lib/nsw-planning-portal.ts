@@ -611,11 +611,11 @@ export class NSWPlanningPortalService {
 				}
 
 				// Import Key Sites Map provisions for page numbers
-				const { getKeyS itesProvision } = await import('./key-sites-map-provisions');
+				const { getKeySitesProvision } = await import('./key-sites-map-provisions');
 
 				// Create a provision for each clause
 				for (const clauseNum of extractedClauses) {
-					const ksmProvision = getKeyS itesProvision(clauseNum);
+					const ksmProvision = getKeySitesProvision(clauseNum);
 					const provision: LocalProvision = {
 						class: result['Class'] || result['Label'],
 						epiName: result['EPI Name'],
