@@ -24,19 +24,19 @@ export const AuthorityColors = {
 
 export const LayerBadges = {
     generic: {
-        bg: 'bg-slate-500',
+        bg: 'bg-teal-500',  // #14b8a6 - matches legend and border
         text: 'text-white',
     },
     use_specific: {
-        bg: 'bg-sky-500',
+        bg: 'bg-blue-500',  // #3b82f6 - matches legend and border
         text: 'text-white',
     },
     condition: {
-        bg: 'bg-amber-500',
+        bg: 'bg-amber-500',  // #f59e0b - matches legend and border
         text: 'text-white',
     },
     precinct: {
-        bg: 'bg-emerald-500',
+        bg: 'bg-purple-500',  // #8b5cf6 - matches legend and border
         text: 'text-white',
     },
 } as const;

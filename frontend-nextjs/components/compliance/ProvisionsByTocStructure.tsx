@@ -74,6 +74,7 @@ export function ProvisionsByTocStructure({
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
+  const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(true); // Open by default
 
@@ -166,11 +167,18 @@ export function ProvisionsByTocStructure({
   const selectedProvisions = getSelectedProvisions();
 
   // Apply topic filter if set
-  const filteredProvisions = topicFilter
+  let filteredProvisions = topicFilter
     ? selectedProvisions.filter(p =>
         p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
       )
     : selectedProvisions;
+
+  // Apply layer filter if set
+  if (layerFilter) {
+    filteredProvisions = filteredProvisions.filter(p =>
+      (p.v2_dcp_layer || p.layer) === layerFilter
+    );
+  }
 
   // Get unique topics for filter chips
   const availableTopics = [...new Set(
@@ -272,6 +280,7 @@ export function ProvisionsByTocStructure({
           {availableTopics.length > 1 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <Filter className="h-3.5 w-3.5 text-gray-400" />
+              <span className="text-xs text-gray-500 font-medium">Topics:</span>
               <button
                 onClick={() => setTopicFilter(null)}
                 className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
@@ -299,6 +308,45 @@ export function ProvisionsByTocStructure({
               ))}
             </div>
           )}
+
+          {/* Layer filter - clickable legend */}
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <Filter className="h-3.5 w-3.5 text-gray-400" />
+            <span className="text-xs text-gray-500 font-medium">Layers:</span>
+            <button
+              onClick={() => setLayerFilter(null)}
+              className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
+                !layerFilter
+                  ? 'bg-teal-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All
+            </button>
+            {[
+              { key: 'generic', color: '#14b8a6', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Leichhardt-wide' : 'LGA-wide' },
+              { key: 'use_specific', color: '#3b82f6', label: 'Zone-Specific' },
+              { key: 'condition', color: '#f59e0b', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Heritage' : 'Condition' },
+              { key: 'precinct', color: '#8b5cf6', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Distinct Neighbourhood' : 'Precinct' },
+            ].map(({ key, color, label }) => (
+              <button
+                key={key}
+                onClick={() => setLayerFilter(layerFilter === key ? null : key)}
+                className={`flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full transition-colors ${
+                  layerFilter === key
+                    ? 'bg-gray-800 text-white ring-2 ring-offset-1'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+                style={layerFilter === key ? { ringColor: color } : undefined}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-sm"
+                  style={{ backgroundColor: color }}
+                />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Provisions list */}
