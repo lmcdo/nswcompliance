@@ -49,8 +49,8 @@ function fixOcrSpacing(text: string): string {
   fixed = fixed.replace(/Ã¨/g, 'è');   // e-grave
 
   // Fix smart quotes to regular quotes
-  fixed = fixed.replace(/['']/g, "'");
-  fixed = fixed.replace(/[""]/g, '"');
+  fixed = fixed.replace(/[\u2018\u2019]/g, "'");
+  fixed = fixed.replace(/[\u201C\u201D]/g, '"');
 
   // ===== FIX SPACING ARTIFACTS =====
 

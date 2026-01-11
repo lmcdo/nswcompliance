@@ -71,8 +71,8 @@ function sanitizeText(text: string | null | undefined): string {
     .replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m')  // "1 8 0 m m $" -> "180mm"
     .replace(/\s+\$/g, '')  // Remove trailing "$" artifacts
     .replace(/,\s*#\s*/g, ', ')  // ", #" -> ", "
-    .replace(/[''""]/g, (match) => {  // Smart quotes to regular quotes
-      return match === ''' || match === ''' ? "'" : '"';
+    .replace(/[\u2018\u2019\u201C\u201D]/g, (match) => {  // Smart quotes to regular quotes
+      return match === '\u2018' || match === '\u2019' ? "'" : '"';
     })
     .replace(/·/g, ' · ')  // Fix middle dot spacing
     .replace(/\s{2,}/g, ' ')  // Multiple spaces to single
