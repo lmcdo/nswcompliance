@@ -139,20 +139,6 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                     <div className="mt-3 p-3 bg-white rounded-md border border-amber-200">
                       {isLoading ? (
                         <p className="text-sm text-muted-foreground">Loading provision text...</p>
-                      ) : provision.mapType === 'Site-Specific' && provision.clauseNumber ? (
-                        <div className="space-y-2">
-                          <h5 className="font-semibold text-sm text-amber-900">
-                            {provision.title}
-                          </h5>
-                          <p className="text-sm text-gray-700 mb-2">
-                            View the full site-specific provision from Inner West LEP 2022:
-                          </p>
-                          <img 
-                            src={`/pdf-pages/iwlep_site_specific_clause_${provision.clauseNumber.replace('.', '_')}_page_${provision.pageNumber}.png`}
-                            alt={`Clause ${provision.clauseNumber} - Page ${provision.pageNumber}`}
-                            className="w-full border border-amber-200 rounded"
-                          />
-                        </div>
                       ) : detail ? (
                         <div className="space-y-2">
                           {detail.clauseTitle && (
@@ -168,6 +154,20 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                               Page {detail.pageNumber}
                             </p>
                           )}
+                        </div>
+                      ) : provision.mapType === 'Site-Specific' && provision.clauseNumber && provision.pageNumber ? (
+                        <div className="space-y-2">
+                          <h5 className="font-semibold text-sm text-amber-900">
+                            {provision.title}
+                          </h5>
+                          <p className="text-sm text-gray-700 mb-2">
+                            View the full site-specific provision from Inner West LEP 2022:
+                          </p>
+                          <img
+                            src={`/pdf-pages/iwlep_site_specific_clause_${provision.clauseNumber.replace('.', '_')}_page_${provision.pageNumber}.png`}
+                            alt={`Clause ${provision.clauseNumber} - Page ${provision.pageNumber}`}
+                            className="w-full border border-amber-200 rounded"
+                          />
                         </div>
                       ) : (
                         <div className="text-sm text-gray-600">
