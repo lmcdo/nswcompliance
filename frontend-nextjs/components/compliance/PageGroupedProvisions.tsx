@@ -64,6 +64,19 @@ function sanitizeText(text: string | null | undefined): string {
     .replace(/â€¦/g, '…')  // ellipsis
     .replace(/Ã©/g, 'é')   // e-acute
     .replace(/Ã¨/g, 'è')   // e-grave
+    .replace(/â˜…/g, '★')  // star
+    .replace(/Â²/g, '²')   // superscript 2
+    .replace(/Â°/g, '°')   // degree
+    // Fix spacing artifacts in numbers
+    .replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m')  // "1 8 0 m m $" -> "180mm"
+    .replace(/\s+\$/g, '')  // Remove trailing "$" artifacts
+    .replace(/,\s*#\s*/g, ', ')  // ", #" -> ", "
+    .replace(/[''""]/g, (match) => {  // Smart quotes to regular quotes
+      return match === ''' || match === ''' ? "'" : '"';
+    })
+    .replace(/·/g, ' · ')  // Fix middle dot spacing
+    .replace(/\s{2,}/g, ' ')  // Multiple spaces to single
+    .replace(/^[â€"\s]+/, '')  // Remove leading artifacts
     .trim();
 }
 

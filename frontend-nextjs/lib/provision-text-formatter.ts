@@ -42,6 +42,29 @@ function fixOcrSpacing(text: string): string {
   fixed = fixed.replace(/Â /g, ' ');   // Non-breaking space artifact
   fixed = fixed.replace(/Â·/g, '·');   // Middle dot
   fixed = fixed.replace(/â€¦/g, '…');  // ELLIPSIS
+  fixed = fixed.replace(/â˜…/g, '★');  // Star
+  fixed = fixed.replace(/Â²/g, '²');   // Superscript 2
+  fixed = fixed.replace(/Â°/g, '°');   // Degree symbol
+  fixed = fixed.replace(/Ã©/g, 'é');   // e-acute
+  fixed = fixed.replace(/Ã¨/g, 'è');   // e-grave
+
+  // Fix smart quotes to regular quotes
+  fixed = fixed.replace(/['']/g, "'");
+  fixed = fixed.replace(/[""]/g, '"');
+
+  // ===== FIX SPACING ARTIFACTS =====
+
+  // Fix number spacing artifacts: "1 8 0 m m $" → "180mm"
+  fixed = fixed.replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m');
+
+  // Remove trailing "$" artifacts
+  fixed = fixed.replace(/\s+\$/g, '');
+
+  // Fix ", #" artifacts
+  fixed = fixed.replace(/,\s*#\s*/g, ', ');
+
+  // Multiple spaces to single space
+  fixed = fixed.replace(/\s{2,}/g, ' ');
 
   // ===== FIX LATEX ARTIFACTS =====
 
