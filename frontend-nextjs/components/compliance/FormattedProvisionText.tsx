@@ -16,19 +16,29 @@ interface FormattedProvisionTextProps {
   text: string;
   className?: string;
   compact?: boolean; // Reduced spacing for inline display
+  stripMarker?: string; // If provided, strip this marker from start of text (e.g., "C9")
 }
 
 export function FormattedProvisionText({
   text,
   className = '',
-  compact = false
+  compact = false,
+  stripMarker
 }: FormattedProvisionTextProps) {
-  const elements = useMemo(() => parseProvisionText(text), [text]);
+  // Strip the marker from the beginning of text if it's already shown as a badge
+  const processedText = useMemo(() => {
+    if (!stripMarker) return text;
+    // Pattern: marker at start, possibly with space, followed by content
+    const markerPattern = new RegExp(`^\\s*${stripMarker}\\s+`, 'i');
+    return text.replace(markerPattern, '');
+  }, [text, stripMarker]);
+
+  const elements = useMemo(() => parseProvisionText(processedText), [processedText]);
 
   if (!elements || elements.length === 0) {
     return (
       <p className={`text-sm text-gray-700 whitespace-pre-wrap ${className}`}>
-        {text}
+        {processedText}
       </p>
     );
   }

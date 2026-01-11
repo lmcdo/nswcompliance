@@ -494,7 +494,11 @@ export function PageGroupedProvisions({
                         }`}
                         onClick={() => onToggleProvision(provision.id)}
                       >
-                        <FormattedProvisionText text={provision.provision_text} compact />
+                        <FormattedProvisionText
+                          text={provision.provision_text}
+                          compact
+                          stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
+                        />
                       </div>
 
                       {/* Expand/Collapse Button */}
