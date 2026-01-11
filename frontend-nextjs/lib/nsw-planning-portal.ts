@@ -610,15 +610,20 @@ export class NSWPlanningPortalService {
 					}
 				}
 
+				// Import Key Sites Map provisions for page numbers
+				const { getKeyS itesProvision } = await import('./key-sites-map-provisions');
+
 				// Create a provision for each clause
 				for (const clauseNum of extractedClauses) {
+					const ksmProvision = getKeyS itesProvision(clauseNum);
 					const provision: LocalProvision = {
 						class: result['Class'] || result['Label'],
 						epiName: result['EPI Name'],
-						title: `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`,
+						title: ksmProvision?.title || `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`,
 						legislationUrl: result['legislationUrl'],
 						mapType: layer.layerName === 'Key Sites Map' ? 'KSM' : 'APU',
-						clauseNumber: clauseNum
+						clauseNumber: clauseNum,
+						pageNumber: ksmProvision?.pageNumber
 					};
 					constraints.localProvisions.push(provision);
 				}

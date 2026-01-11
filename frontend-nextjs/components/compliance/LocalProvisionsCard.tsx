@@ -155,18 +155,29 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                             </p>
                           )}
                         </div>
-                      ) : provision.mapType === 'Site-Specific' && provision.clauseNumber && provision.pageNumber ? (
+                      ) : (provision.mapType === 'Site-Specific' || provision.mapType === 'KSM') && provision.clauseNumber && provision.pageNumber ? (
                         <div className="space-y-2">
                           <h5 className="font-semibold text-sm text-amber-900">
                             {provision.title}
                           </h5>
                           <p className="text-sm text-gray-700 mb-2">
-                            View the full site-specific provision from Inner West LEP 2022:
+                            View the full provision from Inner West LEP 2022:
                           </p>
                           <img
-                            src={`/pdf-pages/iwlep_site_specific_clause_${provision.clauseNumber.replace('.', '_')}_page_${provision.pageNumber}.png`}
+                            src={`/pdf-pages/iwlep_clause_${provision.clauseNumber.replace('.', '_')}_page_${provision.pageNumber}.png`}
                             alt={`Clause ${provision.clauseNumber} - Page ${provision.pageNumber}`}
                             className="w-full border border-amber-200 rounded"
+                            onError={(e) => {
+                              // If image fails to load, hide it and show fallback text
+                              e.currentTarget.style.display = 'none';
+                              const parent = e.currentTarget.parentElement;
+                              if (parent) {
+                                const fallback = document.createElement('div');
+                                fallback.className = 'text-sm text-gray-600 mt-2';
+                                fallback.innerHTML = `<p class="mb-2">PDF image not yet extracted. View the full clause in the LEP document:</p><a href="${clauseUrl}" target="_blank" rel="noopener noreferrer" class="text-amber-700 hover:text-amber-900 underline font-medium">View Clause ${provision.clauseNumber} in LEP →</a>`;
+                                parent.appendChild(fallback);
+                              }
+                            }}
                           />
                         </div>
                       ) : (
