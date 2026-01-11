@@ -46,9 +46,17 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           if (response.ok) {
             const data = await response.json();
             console.log(`[LocalProvisionsCard] Received data for clause ${clauseNumber}:`, data);
+
+            // Use pageNumber from provision object if API returns null
+            // (Planning Portal extraction sets pageNumber from KSM mapping, but DB may have null)
+            const pageNumber = data.pageNumber || provision.pageNumber;
+
             setProvisionDetails({
               ...provisionDetails,
-              [provisionKey]: data
+              [provisionKey]: {
+                ...data,
+                pageNumber
+              }
             });
           } else {
             console.error(`[LocalProvisionsCard] API returned ${response.status} for clause ${clauseNumber}`);
@@ -118,9 +126,9 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                         Clause {provision.clauseNumber}
                       </Badge>
                     )}
-                    {detail?.pageNumber && (
+                    {(detail?.pageNumber || provision.pageNumber) && (
                       <Badge variant="outline" className="text-xs bg-white">
-                        Page {detail.pageNumber}
+                        Page {detail?.pageNumber || provision.pageNumber}
                       </Badge>
                     )}
                     {provision.class && (
