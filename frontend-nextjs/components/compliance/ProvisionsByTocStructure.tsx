@@ -36,6 +36,15 @@ function sanitizeText(text: string | undefined | null): string {
     .replace(/â€¦/g, '…')
     .replace(/Ã©/g, 'é')
     .replace(/Ã¨/g, 'è')
+    // Fix spacing artifacts in numbers
+    .replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m')  // "1 8 0 m m $" -> "180mm"
+    .replace(/\s+\$/g, '')  // Remove trailing "$" artifacts
+    .replace(/,\s*#\s*/g, ', ')  // ", #" -> ", "
+    .replace(/[''""]/g, (match) => {  // Smart quotes to regular quotes
+      return match === ''' || match === ''' ? "'" : '"';
+    })
+    .replace(/·/g, ' · ')  // Fix middle dot spacing
+    .replace(/\s{2,}/g, ' ')  // Multiple spaces to single
     .replace(/^[â€"\s]+/, '')
     .trim();
 }
@@ -193,16 +202,27 @@ export function ProvisionsByTocStructure({
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
   };
 
+  // Auto-select layer if only one layer has provisions
+  useEffect(() => {
+    const nonZeroLayers = Object.entries(layerCounts).filter(([_, count]) => count > 0);
+    if (nonZeroLayers.length === 1 && !layerFilter) {
+      // Only one layer has provisions, auto-select it
+      setLayerFilter(nonZeroLayers[0][0]);
+    }
+  }, [selectedPart, selectedSection, layerCounts, layerFilter]);
+
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
     setTopicFilter(null);
+    setLayerFilter(null); // Reset layer filter when changing parts
   };
 
   const handleSelectSection = (partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
     setTopicFilter(null);
+    setLayerFilter(null); // Reset layer filter when changing sections
   };
 
   return (
