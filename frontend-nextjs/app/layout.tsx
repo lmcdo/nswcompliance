@@ -11,11 +11,12 @@ import { PostHogProvider } from '@/components/providers/PostHogProvider';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
- title: 'NSW Planning Compliance Engine',
+ title: 'PlotDetect - NSW Planning Compliance Engine',
  description: 'Precision planning compliance analysis with intelligent reasoning',
  keywords: 'NSW planning, compliance, setbacks, development assessment, heritage, FSR',
  icons: {
- icon: '/favicon.ico',
+ icon: '/plotdetect-logo.png',
+ apple: '/plotdetect-logo.png',
  },
 };
 
