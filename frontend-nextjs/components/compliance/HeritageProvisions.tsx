@@ -186,7 +186,7 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                               className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                               onClick={() => toggleProvision(provision.id)}
                             >
-                              <FormattedProvisionText text={provision.provision_text} compact />
+                              <FormattedProvisionText text={provision.provision_text} compact skipHeadings />
                             </div>
                             {provision.provision_text.length > 150 && (
                               <button
@@ -230,7 +230,7 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                           </Badge>
                         ))}
                       </div>
-                      <FormattedProvisionText text={provision.provision_text} compact />
+                      <FormattedProvisionText text={provision.provision_text} compact skipHeadings />
                     </div>
                   ))}
 

@@ -501,6 +501,7 @@ export function PageGroupedProvisions({
                             text={provision.provision_text}
                             compact
                             stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
+                            skipHeadings
                           />
                         ) : (
                           <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>

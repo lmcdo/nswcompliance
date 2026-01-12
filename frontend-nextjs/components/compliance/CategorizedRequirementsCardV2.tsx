@@ -443,7 +443,7 @@ export function CategorizedRequirementsCard({
 
                                   {/* Provision Text */}
                                   <div className="text-sm text-gray-700">
-                                    <FormattedProvisionText text={provision.provision_text} compact />
+                                    <FormattedProvisionText text={provision.provision_text} compact skipHeadings />
                                   </div>
 
                                   {/* Provision Footer */}

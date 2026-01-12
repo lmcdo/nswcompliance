@@ -133,12 +133,18 @@ function extractControlMarkers(text: string): string[] {
   return markers ? [...new Set(markers)] : [];
 }
 
+export interface ParseOptions {
+  /** Skip heading detection - useful when provisions are already under TOC structure */
+  skipHeadings?: boolean;
+}
+
 /**
  * Parse provision text into structured elements
  */
-export function parseProvisionText(rawText: string): FormattedElement[] {
+export function parseProvisionText(rawText: string, options?: ParseOptions): FormattedElement[] {
   if (!rawText) return [];
 
+  const { skipHeadings = false } = options || {};
   const elements: FormattedElement[] = [];
 
   // Fix OCR spacing errors first
@@ -161,19 +167,21 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
     line = line.trim();
     if (!line) continue;
 
-    // Check for section heading at start
-    const section = extractSectionNumber(line);
-    if (section && elements.length === 0) {
-      elements.push({
-        type: 'heading',
-        content: `${section.number} ${section.title}`,
-        level: section.number.split('.').length
-      });
-      // Remove the heading from the line for further processing
-      // Use the extracted section info, not a separate regex
-      const headingText = `${section.number} ${section.title}`;
-      line = line.slice(headingText.length).trim();
-      if (!line) continue;
+    // Check for section heading at start (only if not skipping headings)
+    if (!skipHeadings) {
+      const section = extractSectionNumber(line);
+      if (section && elements.length === 0) {
+        elements.push({
+          type: 'heading',
+          content: `${section.number} ${section.title}`,
+          level: section.number.split('.').length
+        });
+        // Remove the heading from the line for further processing
+        // Use the extracted section info, not a separate regex
+        const headingText = `${section.number} ${section.title}`;
+        line = line.slice(headingText.length).trim();
+        if (!line) continue;
+      }
     }
 
     // Check for "Controls" or "Objectives" section marker

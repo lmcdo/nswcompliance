@@ -10,20 +10,22 @@
  */
 
 import React, { useMemo } from 'react';
-import { parseProvisionText, FormattedElement, getElementClasses } from '@/lib/provision-text-formatter';
+import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions } from '@/lib/provision-text-formatter';
 
 interface FormattedProvisionTextProps {
   text: string;
   className?: string;
   compact?: boolean; // Reduced spacing for inline display
   stripMarker?: string; // If provided, strip this marker from start of text (e.g., "C9")
+  skipHeadings?: boolean; // Skip bold heading detection - useful when under TOC structure
 }
 
 export function FormattedProvisionText({
   text,
   className = '',
   compact = false,
-  stripMarker
+  stripMarker,
+  skipHeadings = false
 }: FormattedProvisionTextProps) {
   // Strip the marker from the beginning of text if it's already shown as a badge
   const processedText = useMemo(() => {
@@ -33,7 +35,7 @@ export function FormattedProvisionText({
     return text.replace(markerPattern, '');
   }, [text, stripMarker]);
 
-  const elements = useMemo(() => parseProvisionText(processedText), [processedText]);
+  const elements = useMemo(() => parseProvisionText(processedText, { skipHeadings }), [processedText, skipHeadings]);
 
   if (!elements || elements.length === 0) {
     return (
