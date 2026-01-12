@@ -245,6 +245,26 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
 }
 
 /**
+ * Legend for Control/Objective markers (C1, O1, etc.)
+ * Only shown when provisions contain these DCP markers
+ */
+function MarkerLegend() {
+  return (
+    <div className="flex items-center gap-4 text-xs text-gray-600 py-1.5 px-3 bg-purple-50 border border-purple-100 rounded-lg mb-3">
+      <span className="font-medium text-purple-700">DCP Markers:</span>
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">C</span>
+        <span>Control (development requirement)</span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">O</span>
+        <span>Objective (design goal)</span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Inline legend showing layer colors and labels
  */
 function LayerLegend({ formerCouncil }: { formerCouncil?: string }) {
@@ -384,8 +404,17 @@ export function PageGroupedProvisions({
 
   let globalIndex = 0;
 
+  // Check if any provisions have C/O markers
+  const hasMarkers = useMemo(() =>
+    showMarkers && provisions.some(p => p.v2_marker && /^[CO]\d+$/.test(p.v2_marker)),
+    [provisions, showMarkers]
+  );
+
   return (
     <div className="space-y-3">
+      {/* Marker Legend - shown only when provisions have C/O markers */}
+      {hasMarkers && <MarkerLegend />}
+
       {/* Layer Legend - shown above results when enabled */}
       {showLegend && <LayerLegend formerCouncil={formerCouncil} />}
 
