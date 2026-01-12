@@ -413,14 +413,14 @@ export function ProvisionsByTocStructure({
           {/* Marker key - explains C1/O1 badges (only show if markers exist) */}
           {hasMarkers && (
             <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-              <span className="font-medium">Markers:</span>
+              <span className="italic">Some provisions include DCP reference codes:</span>
               <span className="flex items-center gap-1">
-                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">C1</span>
-                <span>= Control (requirement)</span>
+                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">C</span>
+                <span>= Control</span>
               </span>
               <span className="flex items-center gap-1">
-                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">O1</span>
-                <span>= Objective (goal)</span>
+                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">O</span>
+                <span>= Objective</span>
               </span>
             </div>
           )}
