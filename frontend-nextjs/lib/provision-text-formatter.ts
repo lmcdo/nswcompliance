@@ -130,7 +130,7 @@ function extractSectionNumber(text: string): { number: string; title: string } |
  */
 function extractControlMarkers(text: string): string[] {
   const markers = text.match(/\b([CO]\d+)\b/g);
-  return markers ? [...new Set(markers)] : [];
+  return markers ? Array.from(new Set(markers)) : [];
 }
 
 export interface ParseOptions {
@@ -204,11 +204,9 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
         content: currentControlMarker,
         marker: currentControlMarker
       });
-      elements.push({
-        type: 'control-text',
-        content: controlMatch[2],
-        marker: currentControlMarker
-      });
+      // Process rest of line for possible inline lists
+      const textElements = processTextWithPossibleLists(controlMatch[2], 'control-text', currentControlMarker);
+      elements.push(...textElements);
       continue;
     }
 
@@ -230,11 +228,10 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
             marker: part
           });
         } else {
-          elements.push({
-            type: currentControlMarker ? 'control-text' : 'paragraph',
-            content: part,
-            marker: currentControlMarker || undefined
-          });
+          // Process part for possible inline lists
+          const textType = currentControlMarker ? 'control-text' : 'paragraph';
+          const textElements = processTextWithPossibleLists(part, textType, currentControlMarker || undefined);
+          elements.push(...textElements);
         }
       }
       continue;
@@ -265,30 +262,10 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
       continue;
     }
 
-    // Check for inline list items (i. text; ii. text; iii. text) or (1. text 2. text)
-    const inlineListItems = splitInlineList(line);
-    if (inlineListItems && inlineListItems.length >= 2) {
-      for (const item of inlineListItems) {
-        // Extract the marker (i., ii., a., b., 1., 2., etc.)
-        const markerMatch = item.match(/^((?:\d+|i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
-        const marker = markerMatch ? markerMatch[1] : '•';
-        const content = markerMatch ? item.slice(markerMatch[0].length) : item;
-
-        elements.push({
-          type: 'list-item',
-          content: content.trim(),
-          marker: marker
-        });
-      }
-      continue;
-    }
-
-    // Default: regular paragraph
-    elements.push({
-      type: currentControlMarker ? 'control-text' : 'paragraph',
-      content: line,
-      marker: currentControlMarker || undefined
-    });
+    // Default: regular paragraph - but check for inline lists first
+    const textType = currentControlMarker ? 'control-text' : 'paragraph';
+    const textElements = processTextWithPossibleLists(line, textType, currentControlMarker || undefined);
+    elements.push(...textElements);
   }
 
   // If no structure was detected, try to parse as continuous text
@@ -305,63 +282,173 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
  * - "i. First ii. Second iii. Third" (space-separated roman numerals)
  * - "a. First b. Second c. Third" (space-separated letters)
  * - "1. First 2. Second 3. Third" (numbered lists)
+ * - "text: 1. First; 2. Second" (numbered with intro text)
  * Returns array of items if list detected, otherwise null
  */
 function splitInlineList(text: string): string[] | null {
-  // Pattern for numbered lists: "1. text 2. text 3. text"
-  // Look for at least 2 numbered markers
-  const numberPattern = /(?:^|\s)(\d+)\.\s+/g;
-  const numberMatches = text.match(numberPattern);
+  // Helper to collect all regex matches with positions
+  function getAllMatches(regex: RegExp, str: string): Array<{ match: RegExpExecArray; index: number }> {
+    const results: Array<{ match: RegExpExecArray; index: number }> = [];
+    let m: RegExpExecArray | null;
+    const re = new RegExp(regex.source, regex.flags);
+    while ((m = re.exec(str)) !== null) {
+      results.push({ match: m, index: m.index });
+    }
+    return results;
+  }
 
-  if (numberMatches && numberMatches.length >= 2) {
-    // Split on numbered markers, keeping the marker with the content
-    // Use lookbehind to split before the number while preserving it
-    const parts = text.split(/(?=(?:^|\s)\d+\.\s+)/);
-    const cleanParts = parts.map(p => p.trim()).filter(p => p.length > 0 && /^\d+\./.test(p));
-    if (cleanParts.length >= 2) {
-      return cleanParts;
+  // Pattern for numbered lists: "1. text 2. text" or "text: 1. text; 2. text"
+  // Match numbered markers like " 1. " or "; 1. " or ": 1. "
+  const numberPattern = /(?:^|[;:\s])(\d+)\.\s/g;
+  const numberMatches = getAllMatches(numberPattern, text);
+
+  if (numberMatches.length >= 2) {
+    // Find positions of all numbered markers
+    const positions: number[] = [];
+    for (const { match, index } of numberMatches) {
+      // Position of the digit (not the preceding char)
+      const digitPos = index + match[0].indexOf(match[1]);
+      positions.push(digitPos);
+    }
+
+    // Split at each position
+    const parts: string[] = [];
+    let lastPos = 0;
+    for (let i = 0; i < positions.length; i++) {
+      const pos = positions[i];
+      if (pos > lastPos) {
+        const before = text.slice(lastPos, pos).trim();
+        if (before && !before.match(/^\d+\.?\s*$/)) {
+          // Intro text before first number - skip it for list items
+          if (i === 0 && !before.match(/^\d+\./)) {
+            // This is intro text, don't include as list item
+          } else if (before.match(/^\d+\./)) {
+            parts.push(before);
+          }
+        }
+      }
+      lastPos = pos;
+    }
+    // Add the last part
+    const lastPart = text.slice(lastPos).trim();
+    if (lastPart) parts.push(lastPart);
+
+    if (parts.length >= 2) {
+      return parts;
     }
   }
 
   // Pattern for roman numerals (i., ii., iii., iv., v., vi., etc.)
-  const romanPattern = /\b(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s+/gi;
-  const romanMatches = text.match(romanPattern);
+  // Match patterns like " i. " or "; i. " or ": i. " or "and i. "
+  const romanPattern = /(?:^|[;:\s]|and\s)(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s/gi;
+  const romanMatches = getAllMatches(romanPattern, text);
 
-  if (romanMatches && romanMatches.length >= 2) {
-    // First try semicolon-separated
-    const semicolonParts = text.split(/;\s*(?=(?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s)/i);
-    if (semicolonParts.length >= 2) {
-      return semicolonParts.map(p => p.trim()).filter(p => p.length > 0);
+  if (romanMatches.length >= 2) {
+    // Find positions of all roman numeral markers
+    const positions: number[] = [];
+    for (const { match, index } of romanMatches) {
+      const romanNumeral = match[1];
+      const digitPos = index + match[0].indexOf(romanNumeral);
+      positions.push(digitPos);
     }
 
-    // Otherwise split directly on roman numeral markers
-    // This handles "i. text ii. text iii. text" without semicolons
-    const parts = text.split(/(?=\b(?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s+)/i);
+    // Split at each position
+    const parts: string[] = [];
+    let lastPos = 0;
+    for (let i = 0; i < positions.length; i++) {
+      const pos = positions[i];
+      if (pos > lastPos && i > 0) {
+        const part = text.slice(lastPos, pos).trim();
+        // Remove trailing "and" or ";" from previous part
+        const cleanPart = part.replace(/[;,]\s*$/, '').replace(/\s+and\s*$/, '').trim();
+        if (cleanPart) parts.push(cleanPart);
+      }
+      lastPos = pos;
+    }
+    // Add the last part
+    const lastPart = text.slice(lastPos).trim();
+    if (lastPart) parts.push(lastPart);
+
     if (parts.length >= 2) {
-      return parts.map(p => p.trim()).filter(p => p.length > 0);
+      return parts;
     }
   }
 
   // Pattern for letter lists: "a. text b. text c. text" or "(a) text (b) text"
-  const letterPattern = /(?:\([a-z]\)|[a-z]\.)\s+/gi;
-  const letterMatches = text.match(letterPattern);
+  const letterPattern = /(?:^|[;:\s])(?:\([a-z]\)|[a-z]\.)\s/gi;
+  const letterMatches = getAllMatches(letterPattern, text);
 
-  if (letterMatches && letterMatches.length >= 2) {
-    // First try semicolon-separated
-    const semicolonParts = text.split(/;\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
-    if (semicolonParts.length >= 2) {
-      return semicolonParts.map(p => p.trim()).filter(p => p.length > 0);
+  if (letterMatches.length >= 2) {
+    // Similar position-based splitting
+    const positions: number[] = [];
+    for (const { match, index } of letterMatches) {
+      // Find position of the letter marker
+      const letterMatch = match[0].match(/\([a-z]\)|[a-z]\./i);
+      if (letterMatch) {
+        const digitPos = index + match[0].indexOf(letterMatch[0]);
+        positions.push(digitPos);
+      }
     }
 
-    // Otherwise split on letter markers (but be careful not to split on abbreviations)
-    // Only split if the letter is preceded by sentence-ending punctuation or start
-    const parts = text.split(/(?<=[.;:])\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
+    const parts: string[] = [];
+    let lastPos = 0;
+    for (let i = 0; i < positions.length; i++) {
+      const pos = positions[i];
+      if (pos > lastPos && i > 0) {
+        const part = text.slice(lastPos, pos).trim();
+        const cleanPart = part.replace(/[;,]\s*$/, '').trim();
+        if (cleanPart) parts.push(cleanPart);
+      }
+      lastPos = pos;
+    }
+    const lastPart = text.slice(lastPos).trim();
+    if (lastPart) parts.push(lastPart);
+
     if (parts.length >= 2) {
-      return parts.map(p => p.trim()).filter(p => p.length > 0);
+      return parts;
     }
   }
 
   return null;
+}
+
+/**
+ * Process text that may contain inline lists, returning formatted elements.
+ * Used for control-text and paragraphs that might have embedded lists.
+ */
+function processTextWithPossibleLists(
+  text: string,
+  type: 'control-text' | 'paragraph',
+  marker?: string
+): FormattedElement[] {
+  const elements: FormattedElement[] = [];
+
+  // Try to split into inline list items
+  const listItems = splitInlineList(text);
+
+  if (listItems && listItems.length >= 2) {
+    for (const item of listItems) {
+      // Extract the marker (1., 2., i., ii., a., b., etc.)
+      const markerMatch = item.match(/^((?:\d+|i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
+      const itemMarker = markerMatch ? markerMatch[1] : '•';
+      const content = markerMatch ? item.slice(markerMatch[0].length) : item;
+
+      elements.push({
+        type: 'list-item',
+        content: content.trim(),
+        marker: itemMarker
+      });
+    }
+  } else {
+    // No inline list detected, add as single element
+    elements.push({
+      type,
+      content: text,
+      marker
+    });
+  }
+
+  return elements;
 }
 
 /**
