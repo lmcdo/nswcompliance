@@ -17,118 +17,11 @@ export interface PrecinctMapping {
   lga: string;
   formerCouncil?: string;    // Former council area (Ashfield, Marrickville, Leichhardt)
   confidenceScore?: number;
-  matchMethod?: 'geometric' | 'fallback' | 'hardcoded';
+  matchMethod?: 'geometric' | 'heritage_mapping';
 }
 
-/**
- * Marrickville precinct street mappings
- * Extracted from DCP boundary descriptions
- */
-const MARRICKVILLE_PRECINCT_STREETS: Record<string, string[]> = {
-  '9_1': ['West Street', 'Thomas Street'],
-  '9_3': ['Crystal Street', 'Parramatta Road', 'Kingston Road'],
-  '9_4': ['Parramatta Road', 'Church Street'],
-  '9_8': ['Liberty Street', 'Station Street', 'Enmore Road'],
-  '9_9': ['Stanmore Road', 'Enmore Road', 'Albert Street'],
-  '9_10': ['Old Canterbury Road', 'Constitution Road'],
-  '9_11': ['New Canterbury Road'],
-  '9_18': ['Wardell Road', 'Marrickville Road', 'New Canterbury Road'],
-  '9_20': ['Livingstone Road', 'Sydenham Road', 'Victoria Road'],
-  '9_21': ['Livingstone Road', 'Marrickville Road', 'Wardell Road'],
-  '9_23': ['Livingstone Road', 'Arthur Street', 'Petersham Road'],
-  '9_24': ['Meeks Road'],
-  '9_26': ['Barwon Park Road', 'Campbell Street'],
-  '9_27': ['Campbell Street', 'Albert Street'],
-  '9_28': ['Illawarra Road', 'Hill Street', 'Wallace Street'],  // South section
-  '9_29': ['Harnett Avenue', 'Illawarra Road', 'Hill Street', 'Livingstone Road'],
-  '9_30': ['Illawarra Road', 'Carrington Road', 'Renwick Street', 'Warren Road', 'Excelsior Parade'],  // The Warren
-  '9_32': ['Collins Street', 'Union Street'],
-  '9_33': ['Campbell Street', 'Holbeach Avenue'],
-  '9_34': ['Smith Street', 'Holbeach Avenue'],
-  '9_37': ['King Street', 'Enmore Road'],  // Commercial precinct
-  '9_38': ['Dulwich Hill'],  // Commercial precinct
-  '9_39': ['Victoria Road', 'Murray Street', 'Edgeware Road'],
-  '9_42': ['Parramatta Road', 'Derby Street', 'Australia Street'],
-  '9_43': ['Edinburgh Road', 'Meeks Road', 'Fitzroy Street'],
-  '9_44': ['Way Street'],
-  '9_45': ['Gill Street', 'Old Canterbury Road', 'Longport Street'],
-  '9_47': ['Addison Road', 'Fitzroy Street', 'Sydenham Road']
-};
-
-/**
- * Map address to Marrickville precinct
- */
-function getMarrickvillePrecinct(address: string): PrecinctMapping | null {
-  const addressLower = address.toLowerCase();
-
-  // Check each precinct's streets
-  for (const [precinctNum, streets] of Object.entries(MARRICKVILLE_PRECINCT_STREETS)) {
-    for (const street of streets) {
-      if (addressLower.includes(street.toLowerCase())) {
-        // Special handling for Illawarra Road - appears in multiple precincts
-        if (street === 'Illawarra Road') {
-          // Check street number to determine which precinct
-          const numberMatch = address.match(/(\d+)\s+Illawarra/i);
-          if (numberMatch) {
-            const streetNum = parseInt(numberMatch[1]);
-            // Precinct 30 (The Warren) is roughly 200-400 Illawarra Road
-            // Precinct 28 is southern section
-            // Precinct 29 is middle section
-            if (streetNum >= 200 && streetNum <= 400) {
-              return {
-                precinctId: '9_30',
-                precinctNumber: '9_30',
-                precinctName: 'The Warren',
-                documentId: 'Marrickville_DCP_2011___9_30_The_Warren',
-                lga: 'Marrickville',
-                formerCouncil: 'Marrickville'
-              };
-            } else if (streetNum < 200) {
-              return {
-                precinctId: '9_29',
-                precinctNumber: '9_29',
-                precinctName: 'South Western Marrickville',
-                documentId: 'Marrickville_DCP_2011___9_29_South_Western_Marrickville',
-                lga: 'Marrickville',
-                formerCouncil: 'Marrickville'
-              };
-            } else {
-              return {
-                precinctId: '9_28',
-                precinctNumber: '9_28',
-                precinctName: 'Cooks River West',
-                documentId: 'Marrickville_DCP_2011___9_28_Cooks_River_West',
-                lga: 'Marrickville',
-                formerCouncil: 'Marrickville'
-              };
-            }
-          }
-        }
-
-        // Return the first matching precinct
-        const precinctNames: Record<string, string> = {
-          '9_30': 'The Warren',
-          '9_37': 'King Street and Enmore Road Commercial',
-          '9_38': 'Dulwich Hill Commercial',
-          '9_28': 'Cooks River West',
-          '9_29': 'South Western Marrickville'
-          // Add more as needed
-        };
-
-        return {
-          precinctId: precinctNum,
-          precinctNumber: precinctNum,
-          precinctName: precinctNames[precinctNum] || `Precinct ${precinctNum}`,
-          documentId: `Marrickville_DCP_2011___${precinctNum}_${precinctNames[precinctNum]?.replace(/ /g, '_') || ''}`,
-          lga: 'Marrickville',
-          formerCouncil: 'Marrickville'
-        };
-      }
-    }
-  }
-
-  return null;
-}
+// REMOVED: Hardcoded street mappings - Use PostGIS spatial matching instead
+// PostGIS provides accurate geometric matching from dcp_precinct_boundaries table
 
 /**
  * Get DCP precinct for an address using PostGIS geometric matching
@@ -160,35 +53,15 @@ export async function getPrecinctForAddress(
       console.log('[Precinct Service] Heritage mapping found no match, falling back to PostGIS');
     }
 
-    // Strategy 2: PostGIS Geometric Matching (PRIMARY METHOD for non-HCA addresses)
+    // Strategy 2: PostGIS Geometric Matching (PRIMARY METHOD - uses dcp_precinct_boundaries)
     const geometricMatch = await getPrecinctUsingPostGIS(address, lga, coordinates);
     if (geometricMatch) {
       console.log('[Precinct Service] Matched using PostGIS:', geometricMatch.precinctNumber);
       return geometricMatch;
     }
 
-    // Strategy 3: Hardcoded Street Name Matching (FALLBACK for areas without PostGIS boundaries)
-    console.log('[Precinct Service] PostGIS match failed, trying hardcoded fallback...');
-    const lgaLower = lga.toLowerCase();
-
-    // Inner West LGA includes Marrickville, Ashfield, and Leichhardt
-    // Check if address is in Marrickville area (postcode 2204 or contains "marrickville")
-    if (lgaLower.includes('marrickville') ||
-        (lgaLower.includes('inner west') &&
-         (address.toLowerCase().includes('marrickville') || address.includes('2204')))) {
-      const fallbackMatch = getMarrickvillePrecinct(address);
-      if (fallbackMatch) {
-        console.log('[Precinct Service] Matched using hardcoded fallback:', fallbackMatch.precinctNumber);
-        return {
-          ...fallbackMatch,
-          confidenceScore: 0.6,
-          matchMethod: 'hardcoded'
-        };
-      }
-    }
-
-    // No match found
-    console.log('[Precinct Service] No precinct match found');
+    // No match found - PostGIS is the only source of truth for precinct matching
+    console.log('[Precinct Service] No precinct match found in PostGIS boundaries');
     return null;
 
   } catch (error) {
@@ -266,7 +139,7 @@ async function getPrecinctFromHeritageMapping(
       lga: mapping.lga,
       formerCouncil: getFormerCouncilFromPrecinctId(mapping.precinct_id),
       confidenceScore: 0.9, // High confidence for direct heritage mapping
-      matchMethod: 'fallback' as const
+      matchMethod: 'heritage_mapping' as const
     };
   } catch (error) {
     console.error('[Precinct Service] Heritage mapping ERROR:', error);

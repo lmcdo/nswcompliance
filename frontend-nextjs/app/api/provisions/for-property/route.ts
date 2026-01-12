@@ -52,6 +52,31 @@ interface LayerResult {
 }
 
 /**
+ * Normalize precinct ID format for database lookup
+ *
+ * Precinct service returns formats like: 9_29, 9_13, 9_30 (chapter_section for Marrickville)
+ * Database uses formats like: 29_, 13_, 30_ (just section_)
+ *
+ * For Marrickville (chapter 9), convert 9_XX to XX_
+ * For other councils (Ashfield, Leichhardt), pass through as-is
+ */
+function normalizePrecinctId(precinctId: string): string {
+  if (!precinctId) return precinctId;
+
+  // Marrickville chapter 9 format: 9_XX -> XX_
+  const marrickvilleMatch = precinctId.match(/^9_(\d+)$/);
+  if (marrickvilleMatch) {
+    const normalized = `${marrickvilleMatch[1]}_`;
+    console.log(`[Precinct Normalization] Marrickville: ${precinctId} -> ${normalized}`);
+    return normalized;
+  }
+
+  // Ashfield format: Part 1, Part 2, etc. - pass through
+  // Leichhardt format: C2.X.X.X, G1, etc. - pass through
+  return precinctId;
+}
+
+/**
  * Dev type hierarchy for granular filtering (WITHOUT 'ALL' tag).
  * Generic provisions (tagged 'ALL') come from Layer 1 (v2_dcp_layer='generic'),
  * not from dev_type matching. This prevents 85% of provisions matching everything.
@@ -163,7 +188,7 @@ export async function GET(request: NextRequest) {
       heritage: searchParams.get('heritage') === 'true',
       flood: searchParams.get('flood') === 'true',
       bushfire: searchParams.get('bushfire') === 'true',
-      precinct_id: searchParams.get('precinct_id') || undefined,
+      precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
       dev_type: searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
