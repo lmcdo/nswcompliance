@@ -628,8 +628,8 @@ The two-table architecture is intentional separation of concerns:
 **No action required.** Architecture is correct.
 
 ### DQ-18: Marrickville pdf_page Field (2026-01-12)
-**Status:** ✅ CORRECT (relative page numbers are intentional)
-**Priority:** N/A - Not a bug
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
 
 **Understanding:**
 - Marrickville DCP was split into 19+ separate PDF files by section
@@ -645,7 +645,51 @@ The two-table architecture is intentional separation of concerns:
 4. Formula: `relative_page = url_page - section_min_page + 1`
 5. 1,671 provisions corrected back to relative numbering
 
+**Part 4.1 Specific Issue (2026-01-12):**
+- Part 4.1 Zone-Specific provisions showed wrong page numbers (e.g., "Page 5" when PDF footer showed "Page 1")
+- Root cause: URL filename truncation created two groups (`_4.1_Low_Density_Res` vs `_4.1_Low_Density_Resid`)
+- Each group calculated separate min_url, giving wrong offsets for the truncated variant
+- Additional issue: TOC pages (url pages 3-6) were included in min calculation, but actual content starts at page 7
+
+**Fix Applied:**
+1. `DQ18_fix_by_section_number.py` - Groups by section number (e.g., "4_1") instead of URL filename
+2. `DQ18_fix_exclude_toc.py` - Excludes TOC pages (containing "........") from min calculation
+3. `DQ18_fix_part41_direct.py` - Direct fix using confirmed data: page_7.png = PDF page 1
+   - MIN_CONTENT_URL = 7 (user confirmed from PDF footer inspection)
+   - TOC pages (url 3-6) set to pdf_page = 1
+   - Content pages: `pdf_page = url_page - 7 + 1`
+
+**Verification:**
+- url_page=7 → pdf_page=1 ✓
+- UI now shows correct page numbers matching PDF footers
+
+**Fix Scripts:** `scripts/fixes/DQ18_*.py`
+
 **Current State:**
 - `pdf_page` = relative page within each section PDF (correct for display)
 - Images load from URL with absolute pages (correct rendering)
 - UI shows "View Part 2 Page 1" for first page of each section (correct)
+
+### Provision Text Formatting Enhancement (2026-01-12)
+**Status:** ✅ IMPLEMENTED
+**File:** `frontend-nextjs/lib/provision-text-formatter.ts`
+
+**Issue:** Numbered lists (1. text 2. text 3. text) not being rendered as list items in provision display
+
+**Fix Applied:**
+Added numbered list detection to `splitInlineList()` function:
+```typescript
+// Pattern for numbered lists: "1. text 2. text 3. text"
+const numberPattern = /(?:^|\s)(\d+)\.\s+/g;
+const numberMatches = text.match(numberPattern);
+
+if (numberMatches && numberMatches.length >= 2) {
+  const parts = text.split(/(?=(?:^|\s)\d+\.\s+)/);
+  const cleanParts = parts.map(p => p.trim()).filter(p => p.length > 0 && /^\d+\./.test(p));
+  if (cleanParts.length >= 2) {
+    return cleanParts;
+  }
+}
+```
+
+**Result:** Numbered lists now render as proper list items alongside roman numerals (i., ii.) and letters (a., b.)

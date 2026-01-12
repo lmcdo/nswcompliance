@@ -304,9 +304,25 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
  * - "i. First; ii. Second; iii. Third" (semicolon-separated)
  * - "i. First ii. Second iii. Third" (space-separated roman numerals)
  * - "a. First b. Second c. Third" (space-separated letters)
+ * - "1. First 2. Second 3. Third" (numbered lists)
  * Returns array of items if list detected, otherwise null
  */
 function splitInlineList(text: string): string[] | null {
+  // Pattern for numbered lists: "1. text 2. text 3. text"
+  // Look for at least 2 numbered markers
+  const numberPattern = /(?:^|\s)(\d+)\.\s+/g;
+  const numberMatches = text.match(numberPattern);
+
+  if (numberMatches && numberMatches.length >= 2) {
+    // Split on numbered markers, keeping the marker with the content
+    // Use lookbehind to split before the number while preserving it
+    const parts = text.split(/(?=(?:^|\s)\d+\.\s+)/);
+    const cleanParts = parts.map(p => p.trim()).filter(p => p.length > 0 && /^\d+\./.test(p));
+    if (cleanParts.length >= 2) {
+      return cleanParts;
+    }
+  }
+
   // Pattern for roman numerals (i., ii., iii., iv., v., vi., etc.)
   const romanPattern = /\b(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s+/gi;
   const romanMatches = text.match(romanPattern);
