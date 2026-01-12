@@ -1284,8 +1284,8 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  // Use pdf_page field (actual PDF page number) for display
-                                                                  const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                  // Extract page from URL only - no fallbacks
+                                                                  const displayPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                                   return (
                                                                     <Button
                                                                       size="sm"
@@ -1523,8 +1523,8 @@ export function ProvisionsByTopic({
                                                 )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                // Use pdf_page field (actual PDF page number) for display
-                                                const displayPage = provision.pdf_page || parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                // Extract page from URL only - no fallbacks
+                                                const displayPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
                                                 return (
                                                   <Button
                                                     size="sm"

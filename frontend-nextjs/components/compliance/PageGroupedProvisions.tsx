@@ -35,18 +35,31 @@ const LEICHHARDT_PAGE_OFFSETS: Record<string, number> = {
 };
 
 /**
- * Get the actual DCP page number for display, applying council-specific offsets.
+ * Extract page number from PDF image URL.
+ * URLs follow pattern: ...page_N.png where N is the page number.
  */
-function getDcpPageNumber(pdfPage: number | null | undefined, dcpPart?: string): number | null {
-  if (pdfPage == null) return null;
+function extractPageFromUrl(url: string | null | undefined): number | null {
+  if (!url) return null;
+  const match = url.match(/page_(\d+)\./);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Get the actual DCP page number for display, applying council-specific offsets.
+ * Uses page number from URL only (pdf_page field is unreliable).
+ */
+function getDcpPageNumber(pdfUrl?: string | null, dcpPart?: string): number | null {
+  // Extract page from URL only - no fallbacks
+  const basePage = extractPageFromUrl(pdfUrl);
+
+  if (basePage == null) return null;
 
   // Apply Leichhardt offset if applicable
   if (dcpPart && LEICHHARDT_PAGE_OFFSETS[dcpPart] !== undefined) {
-    return pdfPage + LEICHHARDT_PAGE_OFFSETS[dcpPart];
+    return basePage + LEICHHARDT_PAGE_OFFSETS[dcpPart];
   }
 
-  // Default: assume pdf_page is already the correct DCP page
-  return pdfPage;
+  return basePage;
 }
 
 /**
@@ -193,10 +206,9 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
       const key = prov.pdf_page_image_url;
       if (!pageMap.has(key)) {
         const dcpPart = prov.v2_dcp_part || null;
-        const rawPage = prov.pdf_page || null;
         pageMap.set(key, {
-          pageNumber: rawPage,
-          displayPageNumber: getDcpPageNumber(rawPage, dcpPart || undefined),
+          pageNumber: extractPageFromUrl(prov.pdf_page_image_url),
+          displayPageNumber: getDcpPageNumber(prov.pdf_page_image_url, dcpPart || undefined),
           pageUrl: prov.pdf_page_image_url,
           provisions: [],
           dcpPart: dcpPart,
