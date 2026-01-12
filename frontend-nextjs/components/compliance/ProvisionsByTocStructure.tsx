@@ -231,6 +231,9 @@ export function ProvisionsByTocStructure({
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
   };
 
+  // Check if any provisions have C/O markers
+  const hasMarkers = selectedProvisions.some(p => p.v2_marker);
+
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
@@ -406,6 +409,21 @@ export function ProvisionsByTocStructure({
               );
             })}
           </div>
+
+          {/* Marker key - explains C1/O1 badges (only show if markers exist) */}
+          {hasMarkers && (
+            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+              <span className="font-medium">Markers:</span>
+              <span className="flex items-center gap-1">
+                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">C1</span>
+                <span>= Control (requirement)</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">O1</span>
+                <span>= Objective (goal)</span>
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Provisions list */}
