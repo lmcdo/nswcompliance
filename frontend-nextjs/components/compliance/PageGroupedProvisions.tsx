@@ -412,8 +412,8 @@ export function PageGroupedProvisions({
                   {(group.tocSectionNumber || group.tocSectionTitle) && (
                     <span className="text-gray-400 mx-1">·</span>
                   )}
-                  {/* DCP Part (if no TOC info) */}
-                  {!group.tocSectionNumber && group.dcpPart && (
+                  {/* DCP Part (if no TOC info) - skip if "unknown" */}
+                  {!group.tocSectionNumber && group.dcpPart && group.dcpPart !== 'unknown' && (
                     <span className="font-medium text-gray-700">{group.dcpPart} · </span>
                   )}
                   {/* Page number */}
@@ -438,7 +438,7 @@ export function PageGroupedProvisions({
                   className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white hover:bg-teal-700 rounded transition-colors"
                 >
                   <FileText className="h-3 w-3" />
-                  View {group.dcpPart ? `${group.dcpPart} ` : 'DCP '}Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
+                  View {group.dcpPart && group.dcpPart !== 'unknown' ? `${group.dcpPart} ` : 'DCP '}Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
                 </button>
               )}
             </div>

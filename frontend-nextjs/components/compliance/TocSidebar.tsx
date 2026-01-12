@@ -323,6 +323,11 @@ const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
 function formatPartDisplay(partId: string): { label: string; desc?: string } {
   if (!partId) return { label: 'Other' };
 
+  // Handle "unknown" gracefully
+  if (partId === 'unknown' || partId === 'Unknown') {
+    return { label: 'General', desc: 'Miscellaneous Provisions' };
+  }
+
   // Check for known part with description
   if (PART_DESCRIPTIONS[partId]) {
     return PART_DESCRIPTIONS[partId];
