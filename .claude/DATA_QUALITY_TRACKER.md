@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2025-12-01
-**Session:** Two-Table Architecture Documentation
+**Last Updated:** 2026-01-12
+**Session:** Marrickville Page Number Fix
 
 ---
 
@@ -27,6 +27,7 @@
 | DQ-15: Topic case inconsistency | ✅ FIXED | P2 (was) |
 | DQ-16: Heritage topic fragmentation | ✅ FIXED | P1 (was) |
 | DQ-17: "Orphaned" non-heritage provisions | ✅ NOT ORPHANED | N/A |
+| DQ-18: Marrickville pdf_page mismatch | ✅ FIXED | P1 (was) |
 
 ---
 
@@ -625,3 +626,35 @@ The two-table architecture is intentional separation of concerns:
 - LLM table → calculations (clean values)
 
 **No action required.** Architecture is correct.
+
+### DQ-18: Marrickville pdf_page Mismatch (2026-01-12)
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
+**Issue:** `pdf_page` field had relative page numbers (per split PDF file), but `pdf_page_image_url` had correct absolute page numbers
+
+**Root Cause:**
+- Marrickville DCP was split into 19+ separate PDF files by section
+- Initial extraction treated each file independently → page numbers started at 1 for each file
+- PNG image URLs were generated with absolute positioning (correct)
+- Result: `pdf_page=5` but URL contains `page_9.png` for many provisions
+
+**Impact:**
+- UI showed "Page 1" for provisions from multiple different pages
+- PDF image didn't match the provision content displayed
+- 1,753 provisions affected (94% of Marrickville provisions with URLs)
+
+**Fix Applied:**
+- Created `scripts/fixes/DQ18_fix_marrickville_page_numbers.py`
+- Extracted correct page number from URL using regex: `/page_(\d+)\./`
+- Updated `pdf_page` field to match URL-extracted value
+- Fixed 1,753 provisions
+
+**Verification:**
+```sql
+-- After fix: 0 mismatches
+SELECT COUNT(*) FROM regulatory_provisions
+WHERE document_id LIKE '%Marrickville%'
+  AND pdf_page_image_url IS NOT NULL
+  AND pdf_page != CAST(SUBSTRING(pdf_page_image_url FROM 'page_([0-9]+)\.') AS INTEGER);
+-- Result: 0
+```
