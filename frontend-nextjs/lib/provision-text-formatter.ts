@@ -265,12 +265,12 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
       continue;
     }
 
-    // Check for inline list items (i. text; ii. text; iii. text)
+    // Check for inline list items (i. text; ii. text; iii. text) or (1. text 2. text)
     const inlineListItems = splitInlineList(line);
     if (inlineListItems && inlineListItems.length >= 2) {
       for (const item of inlineListItems) {
-        // Extract the marker (i., ii., a., b., etc.)
-        const markerMatch = item.match(/^((?:i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
+        // Extract the marker (i., ii., a., b., 1., 2., etc.)
+        const markerMatch = item.match(/^((?:\d+|i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
         const marker = markerMatch ? markerMatch[1] : '•';
         const content = markerMatch ? item.slice(markerMatch[0].length) : item;
 
@@ -293,7 +293,7 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
 
   // If no structure was detected, try to parse as continuous text
   if (elements.length <= 1 && text.length > 200) {
-    return parseUnstructuredText(text);
+    return parseUnstructuredText(text, { skipHeadings });
   }
 
   return elements;
@@ -368,27 +368,30 @@ function splitInlineList(text: string): string[] | null {
  * Parse unstructured continuous text (common with OCR'd documents)
  * Splits into logical paragraphs based on content patterns
  */
-function parseUnstructuredText(text: string): FormattedElement[] {
+function parseUnstructuredText(text: string, options?: ParseOptions): FormattedElement[] {
+  const { skipHeadings = false } = options || {};
   const elements: FormattedElement[] = [];
 
-  // Try to extract section heading from start
-  const section = extractSectionNumber(text);
-  if (section) {
-    elements.push({
-      type: 'heading',
-      content: `${section.number} ${section.title}`,
-      level: section.number.split('.').length
-    });
-  }
+  // Try to extract section heading from start (only if not skipping headings)
+  if (!skipHeadings) {
+    const section = extractSectionNumber(text);
+    if (section) {
+      elements.push({
+        type: 'heading',
+        content: `${section.number} ${section.title}`,
+        level: section.number.split('.').length
+      });
+    }
 
-  // Extract control markers
-  const markers = extractControlMarkers(text);
-  if (markers.length > 0) {
-    elements.push({
-      type: 'subheading',
-      content: 'Controls',
-      level: 3
-    });
+    // Extract control markers
+    const markers = extractControlMarkers(text);
+    if (markers.length > 0) {
+      elements.push({
+        type: 'subheading',
+        content: 'Controls',
+        level: 3
+      });
+    }
   }
 
   // Split text into sentences/logical chunks

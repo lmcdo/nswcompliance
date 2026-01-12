@@ -159,7 +159,8 @@ export function FormattedProvisionText({
  * Simple inline variant for compact displays
  */
 export function FormattedProvisionTextInline({ text }: { text: string }) {
-  const elements = useMemo(() => parseProvisionText(text), [text]);
+  // Always skip headings for inline display - provision text shouldn't have bold headings
+  const elements = useMemo(() => parseProvisionText(text, { skipHeadings: true }), [text]);
 
   if (!elements || elements.length === 0) {
     return <span className="text-sm text-gray-700">{text}</span>;
