@@ -18,6 +18,35 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 
+// Council-specific layer labels (must match PageGroupedProvisions.tsx)
+const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
+  ashfield: {
+    generic: 'Ashfield-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Village Precinct',
+  },
+  leichhardt: {
+    generic: 'Leichhardt-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Distinct Neighbourhood',
+  },
+  marrickville: {
+    generic: 'Marrickville-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Precinct Character',
+  },
+};
+
+const DEFAULT_LAYER_LABELS: Record<string, string> = {
+  generic: 'LGA-wide',
+  use_specific: 'Zone-Specific',
+  condition: 'Condition',
+  precinct: 'Precinct',
+};
+
 /**
  * Fix common UTF-8 encoding artifacts (mojibake)
  */
@@ -343,11 +372,13 @@ export function ProvisionsByTocStructure({
               All
             </button>
             {[
-              { key: 'generic', color: '#14b8a6', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Leichhardt-wide' : 'LGA-wide' },
-              { key: 'use_specific', color: '#3b82f6', label: 'Zone-Specific' },
-              { key: 'condition', color: '#f59e0b', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Heritage' : 'Condition' },
-              { key: 'precinct', color: '#8b5cf6', label: formerCouncil?.toLowerCase() === 'leichhardt' ? 'Distinct Neighbourhood' : 'Precinct' },
-            ].map(({ key, color, label }) => {
+              { key: 'generic', color: '#14b8a6' },
+              { key: 'use_specific', color: '#3b82f6' },
+              { key: 'condition', color: '#f59e0b' },
+              { key: 'precinct', color: '#8b5cf6' },
+            ].map(({ key, color }) => {
+              const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
+              const label = councilLabels ? councilLabels[key] : DEFAULT_LAYER_LABELS[key];
               const count = layerCounts[key as keyof typeof layerCounts] || 0;
               const hasProvisions = count > 0;
 
