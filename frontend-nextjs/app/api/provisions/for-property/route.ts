@@ -551,7 +551,8 @@ async function queryLayer(
   // Layer-specific filtering
   if (layer === 'use_specific' && filters.zone) {
     // For use-specific layer, filter by zone applicability
-    sql += ` AND (v2_applicable_zones IS NULL OR $${paramIndex++} = ANY(v2_applicable_zones))`;
+    // Include provisions where: zone is NULL (universal), zone matches, OR 'ALL' is in zones
+    sql += ` AND (v2_applicable_zones IS NULL OR $${paramIndex++} = ANY(v2_applicable_zones) OR 'ALL' = ANY(v2_applicable_zones))`;
     params.push(filters.zone);
   }
 
