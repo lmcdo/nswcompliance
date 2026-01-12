@@ -163,10 +163,24 @@ function PartNode({
           <Folder className="h-4 w-4 text-teal-600 flex-shrink-0" />
         )}
 
-        {/* Part name */}
-        <span className="text-sm font-medium text-gray-800 truncate flex-1">
-          {formatPartDisplay(part.part_id)}
-        </span>
+        {/* Part name with description */}
+        <div className="flex-1 min-w-0">
+          {(() => {
+            const { label, desc } = formatPartDisplay(part.part_id);
+            return (
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-sm font-medium text-gray-800 whitespace-nowrap">
+                  {label}
+                </span>
+                {desc && (
+                  <span className="text-xs text-gray-500 truncate">
+                    {desc}
+                  </span>
+                )}
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Count badge */}
         <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
@@ -274,15 +288,47 @@ function getPartOrder(partId: string): number {
 }
 
 /**
- * Format part ID for display (shorter version for sidebar)
+ * Part descriptions for councils (concise labels for sidebar)
  */
-function formatPartDisplay(partId: string): string {
-  if (!partId) return 'Other';
+const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
+  // Marrickville DCP
+  'Part 2': { label: 'Part 2', desc: 'Site Planning' },
+  'Part 4.1': { label: 'Part 4.1', desc: 'Dwelling Houses' },
+  'Part 4.2': { label: 'Part 4.2', desc: 'Dual Occupancy' },
+  'Part 5': { label: 'Part 5', desc: 'Residential Flat Buildings' },
+  'Part 6': { label: 'Part 6', desc: 'Mixed Use & Commercial' },
+  'Part 8': { label: 'Part 8', desc: 'Heritage' },
+  'Part 9': { label: 'Part 9', desc: 'Precinct Character' },
+  // Leichhardt
+  'Part C Section 1': { label: 'Part C.1', desc: 'General Controls' },
+  'Part C Section 2': { label: 'Part C.2', desc: 'Resource Recovery' },
+  'Part D': { label: 'Part D', desc: 'Character Areas' },
+  'Part E': { label: 'Part E', desc: 'Water Management' },
+  'Part G Section 1': { label: 'Part G.1', desc: 'Norton St Precinct' },
+  // Ashfield
+  'Chapter A': { label: 'Chapter A', desc: 'General Controls' },
+  'Chapter C': { label: 'Chapter C', desc: 'Residential' },
+  'Chapter D': { label: 'Chapter D', desc: 'Village Precincts' },
+  'Chapter E1': { label: 'Chapter E1', desc: 'Heritage' },
+  'Chapter F': { label: 'Chapter F', desc: 'Dev Categories' },
+  'Chapter F Part 1': { label: 'Ch F.1', desc: 'Dual Occ & Multi' },
+  'Chapter F Part 5': { label: 'Ch F.5', desc: 'Residential Flat' },
+  'Chapter F Part 7': { label: 'Ch F.7', desc: 'Other Uses' },
+};
 
-  // Already short enough
-  if (partId.length < 20) return partId;
+/**
+ * Format part ID for display (shorter version for sidebar)
+ * Returns { label, desc } for two-line display
+ */
+function formatPartDisplay(partId: string): { label: string; desc?: string } {
+  if (!partId) return { label: 'Other' };
 
-  // Shorten common patterns
+  // Check for known part with description
+  if (PART_DESCRIPTIONS[partId]) {
+    return PART_DESCRIPTIONS[partId];
+  }
+
+  // Shorten common patterns (legacy)
   const shortMap: Record<string, string> = {
     'Part C Section 1': 'Part C.1',
     'Part C Section 2': 'Part C.2',
@@ -292,7 +338,7 @@ function formatPartDisplay(partId: string): string {
     'Chapter F Part 7': 'Ch F.7',
   };
 
-  return shortMap[partId] || partId;
+  return { label: shortMap[partId] || partId };
 }
 
 /**
