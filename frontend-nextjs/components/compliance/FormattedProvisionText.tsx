@@ -109,8 +109,11 @@ export function FormattedProvisionText({
 
       case 'list-item':
         renderElements.push(
-          <div key={`list-${i}`} className={getElementClasses(el)}>
-            {el.content}
+          <div key={`list-${i}`} className="flex items-start gap-2 text-sm text-gray-700 leading-relaxed mb-1 ml-2">
+            <span className="text-purple-600 font-medium flex-shrink-0 min-w-[24px]">
+              {el.marker || '•'}
+            </span>
+            <span>{el.content}</span>
           </div>
         );
         break;

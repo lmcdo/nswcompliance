@@ -249,6 +249,24 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
       continue;
     }
 
+    // Check for inline list items (i. text; ii. text; iii. text)
+    const inlineListItems = splitInlineList(line);
+    if (inlineListItems && inlineListItems.length >= 2) {
+      for (const item of inlineListItems) {
+        // Extract the marker (i., ii., a., b., etc.)
+        const markerMatch = item.match(/^((?:i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
+        const marker = markerMatch ? markerMatch[1] : '•';
+        const content = markerMatch ? item.slice(markerMatch[0].length) : item;
+
+        elements.push({
+          type: 'list-item',
+          content: content.trim(),
+          marker: marker
+        });
+      }
+      continue;
+    }
+
     // Default: regular paragraph
     elements.push({
       type: currentControlMarker ? 'control-text' : 'paragraph',
@@ -263,6 +281,37 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
   }
 
   return elements;
+}
+
+/**
+ * Split inline list items (e.g., "i. First; ii. Second; iii. Third")
+ * Returns array of items if list detected, otherwise null
+ */
+function splitInlineList(text: string): string[] | null {
+  // Pattern for roman numerals with semicolons: "i. text; ii. text; iii. text"
+  const romanPattern = /\b(i{1,3}|iv|vi{0,3}|ix|x{0,3})\.\s+/gi;
+  const romanMatches = text.match(romanPattern);
+
+  if (romanMatches && romanMatches.length >= 2) {
+    // Split on roman numeral pattern
+    const parts = text.split(/;\s*(?=(?:i{1,3}|iv|vi{0,3}|ix|x{0,3})\.\s)/i);
+    if (parts.length >= 2) {
+      return parts.map(p => p.trim()).filter(p => p.length > 0);
+    }
+  }
+
+  // Pattern for letter lists: "a. text; b. text; c. text" or "(a) text; (b) text"
+  const letterPattern = /(?:^|;\s*)(?:\([a-z]\)|[a-z]\.)\s+/gi;
+  const letterMatches = text.match(letterPattern);
+
+  if (letterMatches && letterMatches.length >= 2) {
+    const parts = text.split(/;\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
+    if (parts.length >= 2) {
+      return parts.map(p => p.trim()).filter(p => p.length > 0);
+    }
+  }
+
+  return null;
 }
 
 /**

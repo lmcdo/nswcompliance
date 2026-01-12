@@ -460,9 +460,13 @@ export function PageGroupedProvisions({
                     >
                       {/* Provision Header Row */}
                       <div className="flex items-start gap-2 mb-1">
-                        {/* Marker Badge */}
+                        {/* Marker Badge - C=Control, O=Objective from DCP structure */}
                         {showMarkers && provision.v2_marker && (
-                          <Badge variant="outline" className="text-sm font-mono bg-white shrink-0">
+                          <Badge
+                            variant="outline"
+                            className="text-sm font-mono bg-white shrink-0 cursor-help"
+                            title={provision.v2_marker.startsWith('C') ? `Control ${provision.v2_marker.slice(1)} - A specific development requirement` : provision.v2_marker.startsWith('O') ? `Objective ${provision.v2_marker.slice(1)} - A design goal/principle` : provision.v2_marker}
+                          >
                             {provision.v2_marker}
                           </Badge>
                         )}
