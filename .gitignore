@@ -359,3 +359,5 @@ nsw-compliance-engine-frontend@*
 'version'
 .aider*
 frontend-nextjs/.wrangler/
+*.db-shm
+*.db-wal
