@@ -1284,8 +1284,9 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  // Extract page from URL only - no fallbacks
-                                                                  const displayPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                  // Use pdf_page (DCP page), fallback to URL extraction page
+                                                                  const urlPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                                  const displayPage = provision.pdf_page || urlPage;
                                                                   return (
                                                                     <Button
                                                                       size="sm"
@@ -1523,8 +1524,9 @@ export function ProvisionsByTopic({
                                                 )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                // Extract page from URL only - no fallbacks
-                                                const displayPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                // Use pdf_page (DCP page), fallback to URL extraction page
+                                                const urlPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
+                                                const displayPage = provision.pdf_page || urlPage;
                                                 return (
                                                   <Button
                                                     size="sm"

@@ -36,7 +36,7 @@ const LEICHHARDT_PAGE_OFFSETS: Record<string, number> = {
 
 /**
  * Extract page number from PDF image URL.
- * URLs follow pattern: ...page_N.png where N is the page number.
+ * URLs follow pattern: ...page_N.png where N is the extraction page number.
  */
 function extractPageFromUrl(url: string | null | undefined): number | null {
   if (!url) return null;
@@ -45,12 +45,14 @@ function extractPageFromUrl(url: string | null | undefined): number | null {
 }
 
 /**
- * Get the actual DCP page number for display, applying council-specific offsets.
- * Uses page number from URL only (pdf_page field is unreliable).
+ * Get the DCP page number for display.
+ * Uses pdf_page field (intended to be the actual DCP document page).
+ * Falls back to URL extraction page if pdf_page is missing.
  */
-function getDcpPageNumber(pdfUrl?: string | null, dcpPart?: string): number | null {
-  // Extract page from URL only - no fallbacks
-  const basePage = extractPageFromUrl(pdfUrl);
+function getDcpPageNumber(pdfPage: number | null | undefined, dcpPart?: string, pdfUrl?: string | null): number | null {
+  // Use pdf_page if available (this should be the DCP document page number)
+  // Fall back to URL extraction page only if pdf_page is missing
+  const basePage = pdfPage ?? extractPageFromUrl(pdfUrl);
 
   if (basePage == null) return null;
 
@@ -206,9 +208,10 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
       const key = prov.pdf_page_image_url;
       if (!pageMap.has(key)) {
         const dcpPart = prov.v2_dcp_part || null;
+        const rawPage = prov.pdf_page || null;
         pageMap.set(key, {
-          pageNumber: extractPageFromUrl(prov.pdf_page_image_url),
-          displayPageNumber: getDcpPageNumber(prov.pdf_page_image_url, dcpPart || undefined),
+          pageNumber: rawPage,
+          displayPageNumber: getDcpPageNumber(rawPage, dcpPart || undefined, prov.pdf_page_image_url),
           pageUrl: prov.pdf_page_image_url,
           provisions: [],
           dcpPart: dcpPart,
