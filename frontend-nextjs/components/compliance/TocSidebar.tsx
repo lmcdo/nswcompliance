@@ -147,9 +147,9 @@ function PartNode({
             className="p-0.5 hover:bg-teal-200 rounded"
           >
             {isExpanded ? (
-              <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+              <ChevronDown className="h-3 w-3 text-gray-500" />
             ) : (
-              <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+              <ChevronRight className="h-3 w-3 text-gray-500" />
             )}
           </button>
         ) : (
@@ -158,9 +158,9 @@ function PartNode({
 
         {/* Folder icon */}
         {isExpanded ? (
-          <FolderOpen className="h-4 w-4 text-teal-600 flex-shrink-0" />
+          <FolderOpen className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
         ) : (
-          <Folder className="h-4 w-4 text-teal-600 flex-shrink-0" />
+          <Folder className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
         )}
 
         {/* Part name with description */}
@@ -168,12 +168,12 @@ function PartNode({
           {(() => {
             const { label, desc } = formatPartDisplay(part.part_id);
             return (
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-sm font-medium text-gray-800 whitespace-nowrap">
+              <div>
+                <span className="text-sm font-medium text-gray-800">
                   {label}
                 </span>
                 {desc && (
-                  <span className="text-xs text-gray-500 truncate">
+                  <span className="text-xs text-gray-500 block truncate">
                     {desc}
                   </span>
                 )}
@@ -223,7 +223,7 @@ function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
       )}
       onClick={onClick}
     >
-      <FileText className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+      <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <span className="text-xs font-medium text-gray-700 block truncate">
           {display.primary}
