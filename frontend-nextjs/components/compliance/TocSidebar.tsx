@@ -291,12 +291,16 @@ function getPartOrder(partId: string): number {
  * Part descriptions for councils (concise labels for sidebar)
  */
 const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
-  // Marrickville DCP
+  // Marrickville DCP - All Parts
+  'Part 1': { label: 'Part 1', desc: 'Introduction' },
   'Part 2': { label: 'Part 2', desc: 'Site Planning' },
+  'Part 3': { label: 'Part 3', desc: 'Land Use & Activity' },
+  'Part 4': { label: 'Part 4', desc: 'Residential Development' },
   'Part 4.1': { label: 'Part 4.1', desc: 'Dwelling Houses' },
   'Part 4.2': { label: 'Part 4.2', desc: 'Dual Occupancy' },
   'Part 5': { label: 'Part 5', desc: 'Residential Flat Buildings' },
   'Part 6': { label: 'Part 6', desc: 'Mixed Use & Commercial' },
+  'Part 7': { label: 'Part 7', desc: 'Industrial Development' },
   'Part 8': { label: 'Part 8', desc: 'Heritage' },
   'Part 9': { label: 'Part 9', desc: 'Precinct Character' },
   // Leichhardt

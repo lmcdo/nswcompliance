@@ -144,8 +144,15 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
   // Fix OCR spacing errors first
   const text = fixOcrSpacing(rawText.trim());
 
+  // Pre-process: join list markers that are on their own line with next line
+  // e.g., "text\nii.\nMore text" -> "text\nii. More text"
+  const preprocessed = text
+    .replace(/\n(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s*\n/gi, '\n$1. ')
+    .replace(/\n([a-z])\.\s*\n/gi, '\n$1. ')
+    .replace(/\n(\d+)\.\s*\n/g, '\n$1. ');
+
   // Split by common delimiters while preserving structure
-  const lines = text.split(/\n+/);
+  const lines = preprocessed.split(/\n+/);
 
   let currentControlMarker: string | null = null;
   let inControlSection = false;
@@ -227,10 +234,11 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
 
     // Check for list item patterns
     // Bullet: • or - or * at start
+    // Roman: i. ii. iii. iv. v. vi. etc.
     // Letter: a. b. c. or (a) (b) (c)
     // Number: 1. 2. 3. or (1) (2) (3)
     // Also catch corrupted bullets that weren't fully cleaned
-    const listMatch = line.match(/^([•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
+    const listMatch = line.match(/^((?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s*|[•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
     if (listMatch) {
       elements.push({
         type: 'list-item',
