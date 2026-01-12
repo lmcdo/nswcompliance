@@ -20,6 +20,19 @@ export interface FormattedElement {
 function fixOcrSpacing(text: string): string {
   let fixed = text;
 
+  // ===== FIX TRAILING LIST NUMBERS =====
+  // OCR extraction sometimes puts the NEXT item's number at the end of the previous provision
+  // e.g., "...nearby streets). 2." should just be "...nearby streets)."
+  // Strip trailing ". N." or ". N" where N is 1-99
+  fixed = fixed.replace(/\.\s+(\d{1,2})\.?\s*$/, '.');
+
+  // Also strip standalone trailing numbers like "...content 3." at end
+  fixed = fixed.replace(/\s+(\d{1,2})\.?\s*$/, '');
+
+  // Strip trailing roman numerals too (i., ii., iii., iv., etc.)
+  const trailingRoman = /\.\s+(xxx|xxix|xxviii|xxvii|xxvi|xxv|xxiv|xxiii|xxii|xxi|xx|xix|xviii|xvii|xvi|xv|xiv|xiii|xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)\.?\s*$/i;
+  fixed = fixed.replace(trailingRoman, '.');
+
   // ===== FIX ENCODING ISSUES (MOJIBAKE) =====
   // These occur when UTF-8 text is interpreted as Windows-1252
 
