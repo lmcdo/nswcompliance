@@ -491,27 +491,37 @@ export function PageGroupedProvisions({
                         )}
                       </div>
 
-                      {/* Provision Text */}
+                      {/* Provision Text - truncated when collapsed, formatted when expanded */}
                       <div
-                        className={`text-sm text-gray-700 cursor-pointer ${
-                          !isExpanded ? (theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3') : ''
-                        }`}
+                        className="text-sm text-gray-700 cursor-pointer"
                         onClick={() => onToggleProvision(provision.id)}
                       >
-                        <FormattedProvisionText
-                          text={provision.provision_text}
-                          compact
-                          stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
-                        />
+                        {isExpanded ? (
+                          <FormattedProvisionText
+                            text={provision.provision_text}
+                            compact
+                            stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
+                          />
+                        ) : (
+                          <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>
+                            {/* Strip marker from display if shown as badge */}
+                            {showMarkers && provision.v2_marker
+                              ? provision.provision_text.replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
+                              : provision.provision_text}
+                          </p>
+                        )}
                       </div>
 
-                      {/* Expand/Collapse Button */}
+                      {/* Expand/Collapse Button - always show for long text */}
                       {provision.provision_text.length > theme.expandThreshold && (
                         <button
-                          className="text-xs text-slate-500 hover:text-slate-700 mt-1 font-medium"
-                          onClick={() => onToggleProvision(provision.id)}
+                          className="text-xs text-blue-600 hover:text-blue-800 mt-1 font-medium"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleProvision(provision.id);
+                          }}
                         >
-                          {isExpanded ? '↑ Show less' : '↓ Show more'}
+                          {isExpanded ? '↑ Show less' : '+ Show more'}
                         </button>
                       )}
                     </div>

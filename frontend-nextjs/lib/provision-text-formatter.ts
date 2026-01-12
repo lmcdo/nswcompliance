@@ -284,28 +284,46 @@ export function parseProvisionText(rawText: string): FormattedElement[] {
 }
 
 /**
- * Split inline list items (e.g., "i. First; ii. Second; iii. Third")
+ * Split inline list items - handles multiple formats:
+ * - "i. First; ii. Second; iii. Third" (semicolon-separated)
+ * - "i. First ii. Second iii. Third" (space-separated roman numerals)
+ * - "a. First b. Second c. Third" (space-separated letters)
  * Returns array of items if list detected, otherwise null
  */
 function splitInlineList(text: string): string[] | null {
-  // Pattern for roman numerals with semicolons: "i. text; ii. text; iii. text"
-  const romanPattern = /\b(i{1,3}|iv|vi{0,3}|ix|x{0,3})\.\s+/gi;
+  // Pattern for roman numerals (i., ii., iii., iv., v., vi., etc.)
+  const romanPattern = /\b(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s+/gi;
   const romanMatches = text.match(romanPattern);
 
   if (romanMatches && romanMatches.length >= 2) {
-    // Split on roman numeral pattern
-    const parts = text.split(/;\s*(?=(?:i{1,3}|iv|vi{0,3}|ix|x{0,3})\.\s)/i);
+    // First try semicolon-separated
+    const semicolonParts = text.split(/;\s*(?=(?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s)/i);
+    if (semicolonParts.length >= 2) {
+      return semicolonParts.map(p => p.trim()).filter(p => p.length > 0);
+    }
+
+    // Otherwise split directly on roman numeral markers
+    // This handles "i. text ii. text iii. text" without semicolons
+    const parts = text.split(/(?=\b(?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s+)/i);
     if (parts.length >= 2) {
       return parts.map(p => p.trim()).filter(p => p.length > 0);
     }
   }
 
-  // Pattern for letter lists: "a. text; b. text; c. text" or "(a) text; (b) text"
-  const letterPattern = /(?:^|;\s*)(?:\([a-z]\)|[a-z]\.)\s+/gi;
+  // Pattern for letter lists: "a. text b. text c. text" or "(a) text (b) text"
+  const letterPattern = /(?:\([a-z]\)|[a-z]\.)\s+/gi;
   const letterMatches = text.match(letterPattern);
 
   if (letterMatches && letterMatches.length >= 2) {
-    const parts = text.split(/;\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
+    // First try semicolon-separated
+    const semicolonParts = text.split(/;\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
+    if (semicolonParts.length >= 2) {
+      return semicolonParts.map(p => p.trim()).filter(p => p.length > 0);
+    }
+
+    // Otherwise split on letter markers (but be careful not to split on abbreviations)
+    // Only split if the letter is preceded by sentence-ending punctuation or start
+    const parts = text.split(/(?<=[.;:])\s*(?=(?:\([a-z]\)|[a-z]\.)\s)/i);
     if (parts.length >= 2) {
       return parts.map(p => p.trim()).filter(p => p.length > 0);
     }
