@@ -299,10 +299,17 @@ function splitInlineList(text: string): string[] | null {
 
   // Pattern for numbered lists: "1. text 2. text" or "text: 1. text; 2. text"
   // Match numbered markers like " 1. " or "; 1. " or ": 1. "
-  const numberPattern = /(?:^|[;:\s])(\d+)\.\s/g;
+  // Only match 1-99 to avoid matching years like "1920."
+  // Avoid matching after closing parens like "See (K). 2." unless there's clear list context
+  const numberPattern = /(?:^|[;:\s])([1-9]\d?)\.\s/g;
   const numberMatches = getAllMatches(numberPattern, text);
 
-  if (numberMatches.length >= 2) {
+  // Additional validation: check if numbers are sequential (1, 2, 3 or close to it)
+  // This helps avoid false positives from random numbers in text
+  const numbers = numberMatches.map(m => parseInt(m.match[1], 10));
+  const hasSequentialNumbers = numbers.length >= 2 && numbers.some((n, i) => i > 0 && (n === numbers[i-1] + 1 || n === 1));
+
+  if (numberMatches.length >= 2 && hasSequentialNumbers) {
     // Find positions of all numbered markers
     const positions: number[] = [];
     for (const { match, index } of numberMatches) {
@@ -338,9 +345,11 @@ function splitInlineList(text: string): string[] | null {
     }
   }
 
-  // Pattern for roman numerals (i., ii., iii., iv., v., vi., etc.)
+  // Pattern for roman numerals (i., ii., iii., iv., v., vi., ... up to xxx)
   // Match patterns like " i. " or "; i. " or ": i. " or "and i. "
-  const romanPattern = /(?:^|[;:\s]|and\s)(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s/gi;
+  // Explicit list to avoid matching empty strings
+  const romanNumerals = 'xxx|xxix|xxviii|xxvii|xxvi|xxv|xxiv|xxiii|xxii|xxi|xx|xix|xviii|xvii|xvi|xv|xiv|xiii|xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i';
+  const romanPattern = new RegExp(`(?:^|[;:\\s]|and\\s)(${romanNumerals})\\.\\s`, 'gi');
   const romanMatches = getAllMatches(romanPattern, text);
 
   if (romanMatches.length >= 2) {
@@ -427,9 +436,18 @@ function processTextWithPossibleLists(
   const listItems = splitInlineList(text);
 
   if (listItems && listItems.length >= 2) {
+    // Roman numerals pattern for marker extraction (i through xxx)
+    const romanMarkerPattern = /^(xxx|xxix|xxviii|xxvii|xxvi|xxv|xxiv|xxiii|xxii|xxi|xx|xix|xviii|xvii|xvi|xv|xiv|xiii|xii|xi|x|ix|viii|vii|vi|v|iv|iii|ii|i)\.?\s*/i;
+
     for (const item of listItems) {
-      // Extract the marker (1., 2., i., ii., a., b., etc.)
-      const markerMatch = item.match(/^((?:\d+|i{1,3}|iv|vi{0,3}|ix|x{0,3}|\([a-z]\)|[a-z])\.?)\s*/i);
+      // Extract the marker (1., 2., i., ii., xvi., a., b., etc.)
+      let markerMatch = item.match(/^(\d+)\.?\s*/); // Try numbered first
+      if (!markerMatch) {
+        markerMatch = item.match(romanMarkerPattern); // Then roman
+      }
+      if (!markerMatch) {
+        markerMatch = item.match(/^(\([a-z]\)|[a-z])\.?\s*/i); // Then letter
+      }
       const itemMarker = markerMatch ? markerMatch[1] : '•';
       const content = markerMatch ? item.slice(markerMatch[0].length) : item;
 
