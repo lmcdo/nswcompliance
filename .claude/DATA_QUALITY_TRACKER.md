@@ -627,34 +627,25 @@ The two-table architecture is intentional separation of concerns:
 
 **No action required.** Architecture is correct.
 
-### DQ-18: Marrickville pdf_page Mismatch (2026-01-12)
-**Status:** ✅ FIXED
-**Priority:** P1 (was)
-**Issue:** `pdf_page` field had relative page numbers (per split PDF file), but `pdf_page_image_url` had correct absolute page numbers
+### DQ-18: Marrickville pdf_page Field (2026-01-12)
+**Status:** ✅ CORRECT (relative page numbers are intentional)
+**Priority:** N/A - Not a bug
 
-**Root Cause:**
+**Understanding:**
 - Marrickville DCP was split into 19+ separate PDF files by section
-- Initial extraction treated each file independently → page numbers started at 1 for each file
-- PNG image URLs were generated with absolute positioning (correct)
-- Result: `pdf_page=5` but URL contains `page_9.png` for many provisions
+- Each section PDF starts at page 1 (relative numbering)
+- `pdf_page` stores the relative page within each section (CORRECT)
+- `pdf_page_image_url` contains absolute page numbers across combined document
+- Images load correctly from URL; labels show relative page within section
 
-**Impact:**
-- UI showed "Page 1" for provisions from multiple different pages
-- PDF image didn't match the provision content displayed
-- 1,753 provisions affected (94% of Marrickville provisions with URLs)
+**Incorrect "Fix" Applied & Reverted (2026-01-12):**
+1. `DQ18_fix_marrickville_page_numbers.py` incorrectly changed pdf_page to absolute numbers
+2. This broke the UI labels (e.g., "Page 5" instead of "Page 1" for first page of Landscaping section)
+3. `DQ18_revert_marrickville_pages.py` restored correct relative page numbers
+4. Formula: `relative_page = url_page - section_min_page + 1`
+5. 1,671 provisions corrected back to relative numbering
 
-**Fix Applied:**
-- Created `scripts/fixes/DQ18_fix_marrickville_page_numbers.py`
-- Extracted correct page number from URL using regex: `/page_(\d+)\./`
-- Updated `pdf_page` field to match URL-extracted value
-- Fixed 1,753 provisions
-
-**Verification:**
-```sql
--- After fix: 0 mismatches
-SELECT COUNT(*) FROM regulatory_provisions
-WHERE document_id LIKE '%Marrickville%'
-  AND pdf_page_image_url IS NOT NULL
-  AND pdf_page != CAST(SUBSTRING(pdf_page_image_url FROM 'page_([0-9]+)\.') AS INTEGER);
--- Result: 0
-```
+**Current State:**
+- `pdf_page` = relative page within each section PDF (correct for display)
+- Images load from URL with absolute pages (correct rendering)
+- UI shows "View Part 2 Page 1" for first page of each section (correct)
