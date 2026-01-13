@@ -1311,7 +1311,7 @@ export function ProvisionsByTopic({
                                                                   className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
                                                                   onClick={() => toggleProvision(provision.id)}
                                                                 >
-                                                                  <FormattedProvisionText text={provision.provision_text} compact skipHeadings />
+                                                                  <FormattedProvisionText text={provision.provision_text} compact />
                                                                 </div>
                                                                 {provision.provision_text.length > 200 && (
                                                                   <button
@@ -1551,7 +1551,7 @@ export function ProvisionsByTopic({
                                                 className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                                                 onClick={() => toggleProvision(provision.id)}
                                               >
-                                                <FormattedProvisionText text={provision.provision_text} compact skipHeadings />
+                                                <FormattedProvisionText text={provision.provision_text} compact />
                                               </div>
                                               {provision.provision_text.length > 300 && (
                                                 <button
