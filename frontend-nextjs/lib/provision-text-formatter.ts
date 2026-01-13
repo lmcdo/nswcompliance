@@ -673,7 +673,7 @@ export function getElementClasses(element: FormattedElement): string {
       return 'text-xs text-blue-600 italic mt-2';
 
     case 'note':
-      return 'text-sm font-bold text-gray-900 bg-yellow-50 border-l-4 border-yellow-500 pl-3 py-2 my-2';
+      return 'text-sm font-bold text-gray-900 mt-3 mb-1';
 
     default:
       return 'text-sm text-gray-700';
