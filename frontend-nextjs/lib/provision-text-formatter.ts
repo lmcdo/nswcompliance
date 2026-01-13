@@ -153,8 +153,10 @@ function fixOcrSpacing(text: string): string {
   // Fix ", #" artifacts
   fixed = fixed.replace(/,\s*#\s*/g, ', ');
 
-  // Multiple spaces to single space
-  fixed = fixed.replace(/\s{2,}/g, ' ');
+  // Multiple spaces to single space (preserve newlines!)
+  // CRITICAL: Only match space character ( ), NOT all whitespace (\s includes \n \r \t)
+  // This preserves paragraph breaks and list structure
+  fixed = fixed.replace(/ {2,}/g, ' ');
 
   // ===== FIX LATEX ARTIFACTS =====
 
