@@ -40,38 +40,51 @@ function escapeRegex(str: string): string {
  * Only strips when we have an exact match to avoid accidentally removing content
  * Better to show duplicate than strip valid provision content
  *
- * CRITICAL: Must not strip body text that follows the header on the same line!
- * Example: "4.1.9 Additional controls for contemporary dwellings..." with sectionHeader="Additional controls"
- * Should NOT strip "for contemporary dwellings" - that's body text!
+ * Handles two patterns from database:
+ * 1. "4.1.1 Objectives\n<body text>" - header followed by newline
+ * 2. "4.1.1 Objectives to provide..." - header followed by continuation text
  */
 export function stripSectionHeader(text: string, sectionHeader?: string | null): string {
   if (!sectionHeader || !text) return text;
 
-  // ONLY strip if we have section number + exact section title followed by:
-  // - Newline (most common)
-  // - End of string
-  // - Period/colon followed by newline/end
-  //
-  // Pattern breakdown:
-  // - ^\d+\.\d+(?:\.\d+)*\s+  : section number like "4.1.6 " or "4.1.6.1 "
-  // - ${escapeRegex(sectionHeader)} : exact section title (case insensitive)
-  // - (?:\n|$|[.,:]\s*(?:\n|$)) : followed by newline, end, or punctuation+newline/end
-  const exactPattern = new RegExp(
+  // Pattern 1: Section number + exact header + newline/end/punctuation
+  // Example: "4.1.6 Built Form And Character\nObjectives..."
+  const patternWithNewline = new RegExp(
     `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}(?:\\n|$|[.,:;]\\s*(?:\\n|$))`,
     'i'
   );
 
-  const cleaned = text.replace(exactPattern, '').trim();
+  let cleaned = text.replace(patternWithNewline, '').trim();
+  if (cleaned.length < text.length - 10) {
+    return cleaned;
+  }
 
-  // ONLY return cleaned if it actually matched significantly
-  // Require at least 10 chars removed to prevent false positives
+  // Pattern 2: Section number + exact header + space + lowercase word
+  // Example: "4.1.1 Objectives to provide..." where "to" indicates continuation
+  // Only strip if next word after header starts with lowercase (indicates continuation, not new sentence)
+  const patternWithContinuation = new RegExp(
+    `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}\\s+(?=[a-z])`,
+    'i'
+  );
+
+  cleaned = text.replace(patternWithContinuation, '').trim();
+  if (cleaned.length < text.length - 10) {
+    return cleaned;
+  }
+
+  // Pattern 3: Section number + exact header + Page info
+  // Example: "4.1.2 Planning context Page 3 · 1 provision"
+  const patternWithPage = new RegExp(
+    `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}\\s+Page\\s+\\d+[^\\n]*(?:\\n|$)`,
+    'i'
+  );
+
+  cleaned = text.replace(patternWithPage, '').trim();
   if (cleaned.length < text.length - 10) {
     return cleaned;
   }
 
   // Otherwise return original - DON'T GUESS!
-  // Fuzzy matching removed because it was incorrectly stripping valid content
-  // like "PC1.1 To complement..." or "4. Controls"
   return text;
 }
 
