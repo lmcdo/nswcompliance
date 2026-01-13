@@ -244,9 +244,20 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Section headers are already in database (section_header, toc_section_title fields)
-    // Don't parse them from provision_text - components should display DB field as header
-    // and strip any duplicate header text from start of provision_text before formatting
+    // Check for section headers (e.g., "4.1.9 Additional controls for contemporary dwellings")
+    // Section headers MAY be in database (section_header field), but not always
+    // Parse them from text if they exist and skipHeadings is false
+    if (!skipHeadings) {
+      const sectionMatch = line.match(/^(\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
+      if (sectionMatch) {
+        elements.push({
+          type: 'heading',
+          content: `${sectionMatch[1]} ${sectionMatch[2]}`,
+          level: 3
+        });
+        continue;
+      }
+    }
 
     // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)
     // Match patterns like "NB: text", "Note: text", "NB. text", "NB text"
@@ -317,11 +328,11 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
 
     // Check for list item patterns
     // Bullet: • or - or * at start
-    // Roman: i. ii. iii. iv. v. vi. etc.
+    // Roman: i. ii. iii. iv. v. vi. etc. (period OPTIONAL - database has "i Item" without periods)
     // Letter: a. b. c. or (a) (b) (c)
     // Number: 1. 2. 3. or (1) (2) (3)
     // Also catch corrupted bullets that weren't fully cleaned
-    const listMatch = line.match(/^((?:i{1,3}|iv|v|vi{1,3}|ix|x)\.\s*|[•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
+    const listMatch = line.match(/^((?:i{1,3}|iv|v|vi{1,3}|ix|x)\.?\s+|[•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
     if (listMatch) {
       elements.push({
         type: 'list-item',
