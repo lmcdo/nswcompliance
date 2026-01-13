@@ -39,15 +39,25 @@ function escapeRegex(str: string): string {
  * Strip section header from start of provision text (CONSERVATIVE)
  * Only strips when we have an exact match to avoid accidentally removing content
  * Better to show duplicate than strip valid provision content
+ *
+ * CRITICAL: Must not strip body text that follows the header on the same line!
+ * Example: "4.1.9 Additional controls for contemporary dwellings..." with sectionHeader="Additional controls"
+ * Should NOT strip "for contemporary dwellings" - that's body text!
  */
 export function stripSectionHeader(text: string, sectionHeader?: string | null): string {
   if (!sectionHeader || !text) return text;
 
-  // ONLY strip if we have an exact match with a section number prefix
-  // Pattern: section number (X.X or X.X.X) + exact section title
-  // Example: "4.1.6 Built Form And Character" when sectionHeader = "Built Form And Character"
+  // ONLY strip if we have section number + exact section title followed by:
+  // - Newline (most common)
+  // - End of string
+  // - Period/colon followed by newline/end
+  //
+  // Pattern breakdown:
+  // - ^\d+\.\d+(?:\.\d+)*\s+  : section number like "4.1.6 " or "4.1.6.1 "
+  // - ${escapeRegex(sectionHeader)} : exact section title (case insensitive)
+  // - (?:\n|$|[.,:]\s*(?:\n|$)) : followed by newline, end, or punctuation+newline/end
   const exactPattern = new RegExp(
-    `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}[\\s.,:]*`,
+    `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}(?:\\n|$|[.,:;]\\s*(?:\\n|$))`,
     'i'
   );
 
@@ -244,18 +254,30 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Check for section headers (e.g., "4.1.9 Additional controls for contemporary dwellings")
+    // Check for section headers (e.g., "4.1.9 Additional controls")
     // Section headers MAY be in database (section_header field), but not always
     // Parse them from text if they exist and skipHeadings is false
+    //
+    // IMPORTANT: Only detect SHORT headings (< 80 chars, < 10 words) to avoid
+    // capturing body text as headings. Long titles are likely descriptions, not headers.
     if (!skipHeadings) {
       const sectionMatch = line.match(/^(\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
       if (sectionMatch) {
-        elements.push({
-          type: 'heading',
-          content: `${sectionMatch[1]} ${sectionMatch[2]}`,
-          level: 3
-        });
-        continue;
+        const titleText = sectionMatch[2];
+        const wordCount = titleText.split(/\s+/).length;
+
+        // Only treat as heading if it's reasonably short
+        // Typical headers: "Objectives", "Built Form And Character", "Additional controls"
+        // NOT headers: "Additional controls for contemporary dwellings within the Heritage Conservation Area blah blah"
+        if (titleText.length <= 80 && wordCount <= 10) {
+          elements.push({
+            type: 'heading',
+            content: `${sectionMatch[1]} ${titleText}`,
+            level: 3
+          });
+          continue;
+        }
+        // If too long, treat as regular paragraph (fall through to default handling)
       }
     }
 
