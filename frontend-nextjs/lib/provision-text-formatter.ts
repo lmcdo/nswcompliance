@@ -188,8 +188,31 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Section headers are already in database (section_header field)
-    // Don't try to parse them from provision_text - just process the text as-is
+    // Check for section heading at start of line (only if not skipping headings)
+    if (!skipHeadings) {
+      // Pattern: "4.1.8 Dormer windows" or "4.1.1 Objectives"
+      // Match section numbers followed by title (stops at lowercase word starting a sentence)
+      // Captures: number + capitalized words until we hit lowercase "to", "for", "and", etc.
+      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)(?=\s+(?:to|for|and|the|of|in|on|at|with|from)\s+[A-Z]|\s*$|\.)/;
+      const sectionMatch = line.match(sectionPattern);
+
+      if (sectionMatch) {
+        const number = sectionMatch[1];
+        const title = sectionMatch[2].trim();
+
+        elements.push({
+          type: 'heading',
+          content: `${number} ${title}`,
+          level: number.split('.').length
+        });
+
+        // Remove the heading from the line and continue processing remainder
+        const headingText = `${number} ${title}`;
+        line = line.slice(headingText.length).trim();
+        if (!line) continue;
+        // If there's remaining text, fall through to process it
+      }
+    }
 
     // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)
     // Match patterns like "NB: text", "Note: text", "NB. text", "NB text"
