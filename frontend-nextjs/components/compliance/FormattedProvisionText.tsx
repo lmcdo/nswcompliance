@@ -45,7 +45,7 @@ export function FormattedProvisionText({
     );
   }
 
-  // Group control-marker + control-text pairs for better rendering
+  // Group control-marker + control-text pairs, and consecutive list items
   const renderElements: React.ReactNode[] = [];
   let i = 0;
 
@@ -83,6 +83,75 @@ export function FormattedProvisionText({
       continue;
     }
 
+    // Handle list item grouping - group consecutive list items into proper lists
+    if (el.type === 'list-item') {
+      const listItems: FormattedElement[] = [];
+      let listType: 'numbered' | 'roman' | 'alpha' | 'unordered' = 'unordered';
+
+      // Determine list type from first marker
+      if (el.marker?.match(/^\d+\./)) {
+        listType = 'numbered';
+      } else if (el.marker?.match(/^[ivxIVX]+\./)) {
+        listType = 'roman';
+      } else if (el.marker?.match(/^[a-zA-Z]\./)) {
+        listType = 'alpha';
+      } else if (el.marker?.match(/^\([a-z]\)/)) {
+        listType = 'alpha'; // Parenthesized letters like (a), (b)
+      }
+
+      // Collect all consecutive list items
+      while (i < elements.length && elements[i].type === 'list-item') {
+        listItems.push(elements[i]);
+        i++;
+      }
+
+      // Render as proper HTML list based on type
+      if (listType === 'numbered') {
+        renderElements.push(
+          <ol key={`list-${i}`} className={`list-decimal list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`}>
+            {listItems.map((item, idx) => (
+              <li key={idx} className="text-sm text-gray-700 leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ol>
+        );
+      } else if (listType === 'roman') {
+        renderElements.push(
+          <ol key={`list-${i}`} className={`list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`} style={{ listStyleType: 'lower-roman' }}>
+            {listItems.map((item, idx) => (
+              <li key={idx} className="text-sm text-gray-700 leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ol>
+        );
+      } else if (listType === 'alpha') {
+        renderElements.push(
+          <ol key={`list-${i}`} className={`list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`} style={{ listStyleType: 'lower-alpha' }}>
+            {listItems.map((item, idx) => (
+              <li key={idx} className="text-sm text-gray-700 leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ol>
+        );
+      } else {
+        // Unordered list
+        renderElements.push(
+          <ul key={`list-${i}`} className={`list-disc list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`}>
+            {listItems.map((item, idx) => (
+              <li key={idx} className="text-sm text-gray-700 leading-relaxed">
+                {item.content}
+              </li>
+            ))}
+          </ul>
+        );
+      }
+
+      continue;
+    }
+
     // Handle other element types
     switch (el.type) {
       case 'heading':
@@ -106,17 +175,6 @@ export function FormattedProvisionText({
           <p key={`para-${i}`} className={getElementClasses(el)}>
             {el.content}
           </p>
-        );
-        break;
-
-      case 'list-item':
-        renderElements.push(
-          <div key={`list-${i}`} className="flex items-start gap-2 text-sm text-gray-700 leading-relaxed mb-1 ml-2">
-            <span className="text-purple-600 font-medium flex-shrink-0 min-w-[24px]">
-              {el.marker || '•'}
-            </span>
-            <span>{el.content}</span>
-          </div>
         );
         break;
 

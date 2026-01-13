@@ -35,24 +35,34 @@ function escapeRegex(str: string): string {
  * stripSectionHeader("To provide more details...", "Objectives")
  * // Returns: "To provide more details..." (no match, unchanged)
  */
+/**
+ * Strip section header from start of provision text (CONSERVATIVE)
+ * Only strips when we have an exact match to avoid accidentally removing content
+ * Better to show duplicate than strip valid provision content
+ */
 export function stripSectionHeader(text: string, sectionHeader?: string | null): string {
   if (!sectionHeader || !text) return text;
 
-  // Try exact match first (case-insensitive)
-  // Pattern: section number (X.X or X.X.X) + section title
+  // ONLY strip if we have an exact match with a section number prefix
+  // Pattern: section number (X.X or X.X.X) + exact section title
+  // Example: "4.1.6 Built Form And Character" when sectionHeader = "Built Form And Character"
   const exactPattern = new RegExp(
     `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}[\\s.,:]*`,
     'i'
   );
-  let cleaned = text.replace(exactPattern, '').trim();
-  if (cleaned !== text) return cleaned;
 
-  // Try fuzzy match - section number followed by any capitalized words up to lowercase connector
-  // This handles case mismatches or slight title variations
-  const fuzzyPattern = /^\d+\.\d+(?:\.\d+)*\s+[A-Z][a-zA-Z\s]+?(?=\s+(?:to|for|and|the|of)\s+[A-Z]|\.|\s{2,})/;
-  cleaned = text.replace(fuzzyPattern, '').trim();
+  const cleaned = text.replace(exactPattern, '').trim();
 
-  return cleaned;
+  // ONLY return cleaned if it actually matched significantly
+  // Require at least 10 chars removed to prevent false positives
+  if (cleaned.length < text.length - 10) {
+    return cleaned;
+  }
+
+  // Otherwise return original - DON'T GUESS!
+  // Fuzzy matching removed because it was incorrectly stripping valid content
+  // like "PC1.1 To complement..." or "4. Controls"
+  return text;
 }
 
 /**
