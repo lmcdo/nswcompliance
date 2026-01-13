@@ -5,7 +5,7 @@
  */
 
 export interface FormattedElement {
-  type: 'heading' | 'subheading' | 'control-marker' | 'control-text' | 'paragraph' | 'list-item' | 'figure-ref';
+  type: 'heading' | 'subheading' | 'control-marker' | 'control-text' | 'paragraph' | 'list-item' | 'figure-ref' | 'note';
   content: string;
   level?: number; // For headings (1, 2, 3)
   marker?: string; // For control markers (C1, C2, O1)
@@ -196,6 +196,10 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     // Look for: space + section number + space + capital letter
     // But not if already at start of line or after newline
     text = text.replace(/([^\n])\s+(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-z])/g, '$1\n$2 $3');
+
+    // Insert newline before NB/Note patterns (e.g., "text NB:" → "text\nNB:")
+    // Patterns: "NB:", "NB.", "NB ", "Note:", "NOTE:"
+    text = text.replace(/([^\n])\s+(NB[:\.\s]|Note[:\s]|NOTE[:\s])/gi, '$1\n$2');
   }
 
   // Pre-process: join list markers that are on their own line with next line
@@ -243,6 +247,19 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
         });
         continue;
       }
+    }
+
+    // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)
+    // Match patterns like "NB: text", "Note: text", "NB. text", "NB text"
+    const nbPattern = /^(NB|Note|NOTE)[:\.\s]\s*(.+)$/i;
+    const nbMatch = line.match(nbPattern);
+    if (nbMatch) {
+      const noteContent = nbMatch[2].trim();
+      elements.push({
+        type: 'note',
+        content: noteContent
+      });
+      continue;
     }
 
     // Check for "Controls" or "Objectives" section marker
@@ -654,6 +671,9 @@ export function getElementClasses(element: FormattedElement): string {
 
     case 'figure-ref':
       return 'text-xs text-blue-600 italic mt-2';
+
+    case 'note':
+      return 'text-sm font-bold text-gray-900 bg-yellow-50 border-l-4 border-yellow-500 pl-3 py-2 my-2';
 
     default:
       return 'text-sm text-gray-700';
