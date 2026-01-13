@@ -221,31 +221,27 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
 
     // Check for section heading at start of line (only if not skipping headings)
     if (!skipHeadings) {
-      // Pattern: "4.1.8 Dormer windows" or "4.1.13.2 Characteristics"
-      // Match section numbers with 2+ levels (X.X, X.X.X, etc.) followed by text
-      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+(.+?)$/;
+      // Pattern: "4.1.8 Dormer windows" or "4.1.1 Objectives"
+      // Match section numbers with 2+ levels (X.X, X.X.X, etc.) followed by SHORT title
+      // Capture only first capitalized word or short phrase (up to 3 words) before lowercase "to"
+      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})(?:\s+to\s+[A-Z]|\.|\s|$)/;
       const sectionMatch = line.match(sectionPattern);
 
       if (sectionMatch) {
         const number = sectionMatch[1];
-        let title = sectionMatch[2].trim();
-
-        // Remove trailing content after the title (e.g., stop at next section number or excessive length)
-        // Title should be reasonably short (< 60 chars is typical for section titles)
-        const titleEndMatch = title.match(/^(.{1,60}?)(?:\s+\d+\.\d+\s|$)/);
-        if (titleEndMatch) {
-          title = titleEndMatch[1].trim();
-        }
-
-        // Convert to title case
-        title = toTitleCase(title);
+        const title = toTitleCase(sectionMatch[2].trim());
 
         elements.push({
           type: 'heading',
           content: `${number} ${title}`,
           level: number.split('.').length
         });
-        continue;
+
+        // Remove the heading from the line and continue processing remainder
+        const headingText = `${number} ${sectionMatch[2].trim()}`;
+        line = line.slice(headingText.length).trim();
+        if (!line) continue;
+        // If there's remaining text, fall through to process it
       }
     }
 
