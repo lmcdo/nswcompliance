@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
+import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
 interface Provision {
   id: number;
@@ -186,7 +187,10 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                               className={`text-sm cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                               onClick={() => toggleProvision(provision.id)}
                             >
-                              <FormattedProvisionText text={provision.provision_text} compact />
+                              <FormattedProvisionText
+                                text={stripSectionHeader(provision.provision_text, undefined)}
+                                compact
+                              />
                             </div>
                             {provision.provision_text.length > 150 && (
                               <button
@@ -230,7 +234,10 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                           </Badge>
                         ))}
                       </div>
-                      <FormattedProvisionText text={provision.provision_text} compact />
+                      <FormattedProvisionText
+                        text={stripSectionHeader(provision.provision_text, undefined)}
+                        compact
+                      />
                     </div>
                   ))}
 

@@ -13,6 +13,7 @@ import { ChevronDown, ChevronRight, ExternalLink, CheckCircle, AlertTriangle } f
 import { PdfPageButton, PdfPageFooter } from './PdfPageButton';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
+import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
 interface CategorizedRequirement {
   id: number;
@@ -443,7 +444,10 @@ export function CategorizedRequirementsCard({
 
                                   {/* Provision Text */}
                                   <div className="text-sm text-gray-700">
-                                    <FormattedProvisionText text={provision.provision_text} compact />
+                                    <FormattedProvisionText
+                                      text={stripSectionHeader(provision.provision_text, provision.section_header)}
+                                      compact
+                                    />
                                   </div>
 
                                   {/* Provision Footer */}

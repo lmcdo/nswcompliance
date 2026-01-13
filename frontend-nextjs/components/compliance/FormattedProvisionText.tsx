@@ -138,11 +138,11 @@ export function FormattedProvisionText({
         break;
 
       case 'note':
-        // NB/Note callout - render as bold text on newline
+        // NB/Note callout - render as bold label with normal text content
         renderElements.push(
-          <p key={`note-${i}`} className={getElementClasses(el)}>
+          <div key={`note-${i}`} className={getElementClasses(el)}>
             <span className="font-bold">NB:</span> {el.content}
-          </p>
+          </div>
         );
         break;
 

@@ -22,6 +22,7 @@ import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig 
 // HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
+import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
 interface Provision {
   id: number;
@@ -1311,7 +1312,10 @@ export function ProvisionsByTopic({
                                                                   className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-2'}`}
                                                                   onClick={() => toggleProvision(provision.id)}
                                                                 >
-                                                                  <FormattedProvisionText text={provision.provision_text} compact />
+                                                                  <FormattedProvisionText
+                                                                    text={stripSectionHeader(provision.provision_text, undefined)}
+                                                                    compact
+                                                                  />
                                                                 </div>
                                                                 {provision.provision_text.length > 200 && (
                                                                   <button
@@ -1551,7 +1555,10 @@ export function ProvisionsByTopic({
                                                 className={`text-sm text-gray-700 leading-relaxed cursor-pointer ${expandedProvisions.has(provision.id) ? '' : 'line-clamp-3'}`}
                                                 onClick={() => toggleProvision(provision.id)}
                                               >
-                                                <FormattedProvisionText text={provision.provision_text} compact />
+                                                <FormattedProvisionText
+                                                  text={stripSectionHeader(provision.provision_text, undefined)}
+                                                  compact
+                                                />
                                               </div>
                                               {provision.provision_text.length > 300 && (
                                                 <button

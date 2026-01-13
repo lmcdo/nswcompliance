@@ -12,6 +12,50 @@ export interface FormattedElement {
 }
 
 /**
+ * Escape special regex characters in a string
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Strip section header from start of provision text
+ *
+ * Section headers are structured data in the database (toc_section_title, section_header fields).
+ * This function removes duplicate headers from provision_text before formatting.
+ *
+ * @param text - Raw provision text that may contain section header at start
+ * @param sectionHeader - Section header from database (e.g., "Built Form And Character")
+ * @returns Text with section header removed if present
+ *
+ * @example
+ * stripSectionHeader("4.1.6 Built Form And Character. Text...", "Built Form And Character")
+ * // Returns: "Text..."
+ *
+ * stripSectionHeader("To provide more details...", "Objectives")
+ * // Returns: "To provide more details..." (no match, unchanged)
+ */
+export function stripSectionHeader(text: string, sectionHeader?: string | null): string {
+  if (!sectionHeader || !text) return text;
+
+  // Try exact match first (case-insensitive)
+  // Pattern: section number (X.X or X.X.X) + section title
+  const exactPattern = new RegExp(
+    `^\\d+\\.\\d+(?:\\.\\d+)*\\s+${escapeRegex(sectionHeader)}[\\s.,:]*`,
+    'i'
+  );
+  let cleaned = text.replace(exactPattern, '').trim();
+  if (cleaned !== text) return cleaned;
+
+  // Try fuzzy match - section number followed by any capitalized words up to lowercase connector
+  // This handles case mismatches or slight title variations
+  const fuzzyPattern = /^\d+\.\d+(?:\.\d+)*\s+[A-Z][a-zA-Z\s]+?(?=\s+(?:to|for|and|the|of)\s+[A-Z]|\.|\s{2,})/;
+  cleaned = text.replace(fuzzyPattern, '').trim();
+
+  return cleaned;
+}
+
+/**
  * Fix common OCR spacing errors, LaTeX artifacts, and encoding issues (mojibake)
  * e.g., "before1920.Therearemanydifferences" → "before 1920. There are many differences"
  * e.g., "$20 \% 1$" → "20%"
@@ -151,6 +195,8 @@ function extractControlMarkers(text: string): string[] {
 export interface ParseOptions {
   /** Skip heading detection - useful when provisions are already under TOC structure */
   skipHeadings?: boolean;
+  /** Section header from database to strip from start of text if present */
+  sectionHeader?: string;
 }
 
 /**
@@ -188,35 +234,14 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Check for section heading at start of line (only if not skipping headings)
-    if (!skipHeadings) {
-      // Pattern: "4.1.8 Dormer windows" or "4.1.1 Objectives"
-      // Match section numbers followed by title (stops at lowercase word starting a sentence)
-      // Captures: number + capitalized words until we hit lowercase "to", "for", "and", etc.
-      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)(?=\s+(?:to|for|and|the|of|in|on|at|with|from)\s+[A-Z]|\s*$|\.)/;
-      const sectionMatch = line.match(sectionPattern);
-
-      if (sectionMatch) {
-        const number = sectionMatch[1];
-        const title = sectionMatch[2].trim();
-
-        elements.push({
-          type: 'heading',
-          content: `${number} ${title}`,
-          level: number.split('.').length
-        });
-
-        // Remove the heading from the line and continue processing remainder
-        const headingText = `${number} ${title}`;
-        line = line.slice(headingText.length).trim();
-        if (!line) continue;
-        // If there's remaining text, fall through to process it
-      }
-    }
+    // Section headers are already in database (section_header, toc_section_title fields)
+    // Don't parse them from provision_text - components should display DB field as header
+    // and strip any duplicate header text from start of provision_text before formatting
 
     // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)
     // Match patterns like "NB: text", "Note: text", "NB. text", "NB text"
-    const nbPattern = /^(NB|Note|NOTE)[:\.\s]\s*(.+)$/i;
+    // Limit to first sentence or two to avoid capturing entire paragraphs
+    const nbPattern = /^(NB|Note|NOTE)[:\.\s]\s*([^.\n]+(?:\.[^.\n]+){0,1}\.?)/i;
     const nbMatch = line.match(nbPattern);
     if (nbMatch) {
       const noteContent = nbMatch[2].trim();

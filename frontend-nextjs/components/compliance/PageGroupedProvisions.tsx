@@ -16,6 +16,7 @@ import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { LayerBadges } from '@/lib/design-tokens';
+import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
 /**
  * Page offsets for Leichhardt DCP parts.
@@ -542,7 +543,10 @@ export function PageGroupedProvisions({
                       >
                         {isExpanded ? (
                           <FormattedProvisionText
-                            text={provision.provision_text}
+                            text={stripSectionHeader(
+                              provision.provision_text,
+                              provision.toc_section_title || group.tocSectionTitle
+                            )}
                             compact
                             stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
                           />
@@ -550,8 +554,14 @@ export function PageGroupedProvisions({
                           <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>
                             {/* Strip marker from display if shown as badge */}
                             {showMarkers && provision.v2_marker
-                              ? provision.provision_text.replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
-                              : provision.provision_text}
+                              ? stripSectionHeader(
+                                  provision.provision_text,
+                                  provision.toc_section_title || group.tocSectionTitle
+                                ).replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
+                              : stripSectionHeader(
+                                  provision.provision_text,
+                                  provision.toc_section_title || group.tocSectionTitle
+                                )}
                           </p>
                         )}
                       </div>
