@@ -120,44 +120,21 @@ function fixOcrSpacing(text: string): string {
 }
 
 /**
- * Convert text to title case (capitalize first letter of each word)
- * Preserves acronyms and all-caps words
- */
-function toTitleCase(text: string): string {
-  // Words to keep lowercase (articles, conjunctions, prepositions)
-  const lowerCaseWords = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'in', 'of', 'with', 'from']);
-
-  return text
-    .split(' ')
-    .map((word, index) => {
-      // Keep the word as-is if it's all uppercase (likely an acronym) or contains special chars
-      if (word.length > 1 && word === word.toUpperCase()) {
-        return word;
-      }
-      // Lowercase small words (except at start)
-      if (index > 0 && lowerCaseWords.has(word.toLowerCase())) {
-        return word.toLowerCase();
-      }
-      // Capitalize first letter
-      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-    })
-    .join(' ');
-}
-
-/**
  * Detect section number pattern (e.g., "2.11.3", "8.1.7", "Part 8")
+ * Note: Section headers are already in database (section_header field)
+ * This is only used in unstructured text parsing fallback
  */
 function extractSectionNumber(text: string): { number: string; title: string } | null {
   // Pattern: X.X.X or X.X at start of text followed by title
   const sectionMatch = text.match(/^(\d+(?:\.\d+)+)\s+(.+?)(?:\s*(?:Controls|Objectives|C\d|O\d)|$)/i);
   if (sectionMatch) {
-    return { number: sectionMatch[1], title: toTitleCase(sectionMatch[2].trim()) };
+    return { number: sectionMatch[1], title: sectionMatch[2].trim() };
   }
 
   // Pattern: Part X: Title
   const partMatch = text.match(/^(Part\s+\d+)[:\s]+(.+?)(?:\s*(?:Controls|Objectives)|$)/i);
   if (partMatch) {
-    return { number: partMatch[1], title: toTitleCase(partMatch[2].trim()) };
+    return { number: partMatch[1], title: partMatch[2].trim() };
   }
 
   return null;
@@ -188,17 +165,9 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
   // Fix OCR spacing errors first
   let text = fixOcrSpacing(rawText.trim());
 
-  // Pre-process: Insert line breaks before section numbers if not already present
-  // Pattern: "text 4.1.8 Title" → "text\n4.1.8 Title"
-  // This ensures section numbers are on their own line for proper detection
+  // Pre-process: Insert line breaks before NB/Note patterns (e.g., "text NB:" → "text\nNB:")
+  // Patterns: "NB:", "NB.", "NB ", "Note:", "NOTE:"
   if (!skipHeadings) {
-    // Insert newline before section patterns (X.X.X or X.X followed by capitalized title)
-    // Look for: space + section number + space + capital letter
-    // But not if already at start of line or after newline
-    text = text.replace(/([^\n])\s+(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-z])/g, '$1\n$2 $3');
-
-    // Insert newline before NB/Note patterns (e.g., "text NB:" → "text\nNB:")
-    // Patterns: "NB:", "NB.", "NB ", "Note:", "NOTE:"
     text = text.replace(/([^\n])\s+(NB[:\.\s]|Note[:\s]|NOTE[:\s])/gi, '$1\n$2');
   }
 
@@ -219,31 +188,8 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Check for section heading at start of line (only if not skipping headings)
-    if (!skipHeadings) {
-      // Pattern: "4.1.8 Dormer windows" or "4.1.1 Objectives"
-      // Match section numbers with 2+ levels (X.X, X.X.X, etc.) followed by SHORT title
-      // Capture only first capitalized word or short phrase (up to 3 words) before lowercase "to"
-      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})(?:\s+to\s+[A-Z]|\.|\s|$)/;
-      const sectionMatch = line.match(sectionPattern);
-
-      if (sectionMatch) {
-        const number = sectionMatch[1];
-        const title = toTitleCase(sectionMatch[2].trim());
-
-        elements.push({
-          type: 'heading',
-          content: `${number} ${title}`,
-          level: number.split('.').length
-        });
-
-        // Remove the heading from the line and continue processing remainder
-        const headingText = `${number} ${sectionMatch[2].trim()}`;
-        line = line.slice(headingText.length).trim();
-        if (!line) continue;
-        // If there's remaining text, fall through to process it
-      }
-    }
+    // Section headers are already in database (section_header field)
+    // Don't try to parse them from provision_text - just process the text as-is
 
     // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)
     // Match patterns like "NB: text", "Note: text", "NB. text", "NB text"
@@ -669,7 +615,7 @@ export function getElementClasses(element: FormattedElement): string {
       return 'text-xs text-blue-600 italic mt-2';
 
     case 'note':
-      return 'text-sm font-bold text-gray-900 mt-3 mb-1';
+      return 'text-sm text-gray-700 mt-3 mb-1';
 
     default:
       return 'text-sm text-gray-700';
