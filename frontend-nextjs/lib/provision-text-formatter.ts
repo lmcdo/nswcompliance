@@ -120,19 +120,44 @@ function fixOcrSpacing(text: string): string {
 }
 
 /**
+ * Convert text to title case (capitalize first letter of each word)
+ * Preserves acronyms and all-caps words
+ */
+function toTitleCase(text: string): string {
+  // Words to keep lowercase (articles, conjunctions, prepositions)
+  const lowerCaseWords = new Set(['a', 'an', 'the', 'and', 'but', 'or', 'for', 'nor', 'on', 'at', 'to', 'by', 'in', 'of', 'with', 'from']);
+
+  return text
+    .split(' ')
+    .map((word, index) => {
+      // Keep the word as-is if it's all uppercase (likely an acronym) or contains special chars
+      if (word.length > 1 && word === word.toUpperCase()) {
+        return word;
+      }
+      // Lowercase small words (except at start)
+      if (index > 0 && lowerCaseWords.has(word.toLowerCase())) {
+        return word.toLowerCase();
+      }
+      // Capitalize first letter
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
+
+/**
  * Detect section number pattern (e.g., "2.11.3", "8.1.7", "Part 8")
  */
 function extractSectionNumber(text: string): { number: string; title: string } | null {
   // Pattern: X.X.X or X.X at start of text followed by title
   const sectionMatch = text.match(/^(\d+(?:\.\d+)+)\s+(.+?)(?:\s*(?:Controls|Objectives|C\d|O\d)|$)/i);
   if (sectionMatch) {
-    return { number: sectionMatch[1], title: sectionMatch[2].trim() };
+    return { number: sectionMatch[1], title: toTitleCase(sectionMatch[2].trim()) };
   }
 
   // Pattern: Part X: Title
   const partMatch = text.match(/^(Part\s+\d+)[:\s]+(.+?)(?:\s*(?:Controls|Objectives)|$)/i);
   if (partMatch) {
-    return { number: partMatch[1], title: partMatch[2].trim() };
+    return { number: partMatch[1], title: toTitleCase(partMatch[2].trim()) };
   }
 
   return null;
@@ -161,7 +186,17 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
   const elements: FormattedElement[] = [];
 
   // Fix OCR spacing errors first
-  const text = fixOcrSpacing(rawText.trim());
+  let text = fixOcrSpacing(rawText.trim());
+
+  // Pre-process: Insert line breaks before section numbers if not already present
+  // Pattern: "text 4.1.8 Title" → "text\n4.1.8 Title"
+  // This ensures section numbers are on their own line for proper detection
+  if (!skipHeadings) {
+    // Insert newline before section patterns (X.X.X or X.X followed by capitalized title)
+    // Look for: space + section number + space + capital letter
+    // But not if already at start of line or after newline
+    text = text.replace(/([^\n])\s+(\d+\.\d+(?:\.\d+)*)\s+([A-Z][a-z])/g, '$1\n$2 $3');
+  }
 
   // Pre-process: join list markers that are on their own line with next line
   // e.g., "text\nii.\nMore text" -> "text\nii. More text"
@@ -180,20 +215,33 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Check for section heading at start (only if not skipping headings)
+    // Check for section heading at start of line (only if not skipping headings)
     if (!skipHeadings) {
-      const section = extractSectionNumber(line);
-      if (section && elements.length === 0) {
+      // Pattern: "4.1.8 Dormer windows" or "4.1.13.2 Characteristics"
+      // Match section numbers with 2+ levels (X.X, X.X.X, etc.) followed by text
+      const sectionPattern = /^(\d+\.\d+(?:\.\d+)*)\s+(.+?)$/;
+      const sectionMatch = line.match(sectionPattern);
+
+      if (sectionMatch) {
+        const number = sectionMatch[1];
+        let title = sectionMatch[2].trim();
+
+        // Remove trailing content after the title (e.g., stop at next section number or excessive length)
+        // Title should be reasonably short (< 60 chars is typical for section titles)
+        const titleEndMatch = title.match(/^(.{1,60}?)(?:\s+\d+\.\d+\s|$)/);
+        if (titleEndMatch) {
+          title = titleEndMatch[1].trim();
+        }
+
+        // Convert to title case
+        title = toTitleCase(title);
+
         elements.push({
           type: 'heading',
-          content: `${section.number} ${section.title}`,
-          level: section.number.split('.').length
+          content: `${number} ${title}`,
+          level: number.split('.').length
         });
-        // Remove the heading from the line for further processing
-        // Use the extracted section info, not a separate regex
-        const headingText = `${section.number} ${section.title}`;
-        line = line.slice(headingText.length).trim();
-        if (!line) continue;
+        continue;
       }
     }
 
@@ -582,10 +630,12 @@ export function getElementClasses(element: FormattedElement): string {
   switch (element.type) {
     case 'heading':
       return element.level === 1
-        ? 'text-lg font-bold text-gray-900 mb-3'
+        ? 'text-lg font-bold text-gray-900 mb-3 mt-4'
         : element.level === 2
-        ? 'text-base font-semibold text-gray-800 mb-2'
-        : 'text-sm font-semibold text-gray-700 mb-2';
+        ? 'text-base font-semibold text-gray-800 mb-2 mt-3'
+        : element.level === 3
+        ? 'text-sm font-semibold text-gray-800 mb-2 mt-3'
+        : 'text-sm font-semibold text-gray-700 mb-2 mt-2';
 
     case 'subheading':
       return 'text-xs font-bold text-purple-700 uppercase tracking-wide mb-2 mt-3';
