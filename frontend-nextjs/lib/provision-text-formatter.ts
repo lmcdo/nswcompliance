@@ -270,6 +270,14 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
         type: 'note',
         content: noteContent
       });
+
+      // CRITICAL: Process remaining text after NB note (may contain lists!)
+      const remainingText = line.slice(nbMatch[0].length).trim();
+      if (remainingText) {
+        const textType = currentControlMarker ? 'control-text' : 'paragraph';
+        const textElements = processTextWithPossibleLists(remainingText, textType, currentControlMarker || undefined);
+        elements.push(...textElements);
+      }
       continue;
     }
 
