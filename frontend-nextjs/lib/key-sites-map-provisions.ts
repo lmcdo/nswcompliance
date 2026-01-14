@@ -17,14 +17,14 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
   // Part 4 - General Key Sites controls
   {
     clauseNumber: '4.3C',
-    title: 'Height of buildings on land identified as "Key sites"',
-    pageNumber: 38, // Note: Page needs verification - clause 4.4 is on page 39
+    title: 'Landscaped areas for residential accommodation in Zone R1',
+    pageNumber: 37,
     part: 4
   },
   {
     clauseNumber: '4.4',
     title: 'Floor space ratio',
-    pageNumber: 39, // Page 39 contains clause 4.4, page 40 contains 4.4A/4.5
+    pageNumber: 39,
     part: 4
   },
 
