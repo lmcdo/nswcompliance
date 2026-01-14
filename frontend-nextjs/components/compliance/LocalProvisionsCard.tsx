@@ -22,6 +22,11 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
   const [expandedProvisions, setExpandedProvisions] = useState<Set<string>>(new Set());
   const [provisionDetails, setProvisionDetails] = useState<Record<string, ProvisionDetail>>({});
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  const [showNearby, setShowNearby] = useState(false);
+
+  // Split provisions into exact matches and nearby
+  const exactProvisions = localProvisions.filter(p => !p.isNearby);
+  const nearbyProvisions = localProvisions.filter(p => p.isNearby);
 
   const toggleProvision = async (provisionKey: string, clauseNumber: string | undefined) => {
     if (!clauseNumber) return;
@@ -70,21 +75,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
     }
   };
 
-  return (
-    <Card className="border-amber-200">
-      <CardHeader>
-        <CardTitle className="text-base flex items-center justify-between">
-          <span>Local Provisions (LEP Part 6)</span>
-          <Badge className="bg-amber-100 text-amber-800">
-            {localProvisions.length} {localProvisions.length === 1 ? 'provision' : 'provisions'}
-          </Badge>
-        </CardTitle>
-        <p className="text-sm text-muted-foreground mt-2">
-          Additional local provisions from the Local Environmental Plan
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {localProvisions.map((provision) => {
+  const renderProvision = (provision: LocalProvision) => {
           const uniqueKey = `${provision.title}-${provision.epiName || ''}-${provision.class || ''}`.replace(/\s+/g, '-');
           const isExpanded = expandedProvisions.has(uniqueKey);
           const detail = provisionDetails[uniqueKey];
@@ -227,7 +218,50 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
               </div>
             </div>
           );
-        })}
+  };
+
+  return (
+    <Card className="border-amber-200">
+      <CardHeader>
+        <CardTitle className="text-base flex items-center justify-between">
+          <span>Local Provisions (LEP Part 6)</span>
+          <Badge className="bg-amber-100 text-amber-800">
+            {exactProvisions.length} {exactProvisions.length === 1 ? 'provision' : 'provisions'}
+          </Badge>
+        </CardTitle>
+        <p className="text-sm text-muted-foreground mt-2">
+          Additional local provisions from the Local Environmental Plan
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Exact address provisions */}
+        {exactProvisions.map(renderProvision)}
+
+        {/* Nearby provisions (same Key Sites Map area, different addresses) */}
+        {nearbyProvisions.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <button
+              onClick={() => setShowNearby(!showNearby)}
+              className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 mb-3"
+            >
+              {showNearby ? (
+                <ChevronUp className="h-4 w-4" />
+              ) : (
+                <ChevronDown className="h-4 w-4" />
+              )}
+              Nearby Key Sites ({nearbyProvisions.length})
+              <span className="text-xs text-gray-500 font-normal">
+                - Same planning area, different addresses
+              </span>
+            </button>
+
+            {showNearby && (
+              <div className="space-y-3 opacity-75">
+                {nearbyProvisions.map(renderProvision)}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
           <p className="text-xs text-blue-800">

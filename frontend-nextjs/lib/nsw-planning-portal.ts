@@ -66,6 +66,7 @@ export interface LocalProvision {
  clauseNumber?: string; // e.g., "6.32"
  provisionText?: string; // Full clause text from LEP
  pageNumber?: number; // Page number in LEP PDF
+ isNearby?: boolean; // True if provision is for nearby property in same KSM area
 }
 
 /**
@@ -613,16 +614,49 @@ export class NSWPlanningPortalService {
 
 				// Create a provision for each clause
 				// Page numbers come from getKeySitesProvision imported at top
+				//
+				// FILTER STRATEGY:
+				// - Part 4 clauses (4.3C, 4.4): Apply to ALL Key Sites (show all)
+				// - Part 6 clauses: Site-specific, but Planning Portal returns ALL clauses in the KSM polygon
+				//   - Show exact address matches (required)
+				//   - Mark nearby clauses as "nearby" (optional to display)
 				for (const clauseNum of extractedClauses) {
 					const ksmProvision = getKeySitesProvision(clauseNum);
+					const clauseTitle = ksmProvision?.title || `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`;
+
+					let isNearby = false;
+
+					// Check if Part 6 clause matches this specific property address
+					if (clauseNum.startsWith('6.')) {
+						// Part 6 clause - check if title matches property address
+						const addressParts = constraints.address?.toLowerCase().split(/[\s,]+/) || [];
+						const titleLower = clauseTitle.toLowerCase();
+
+						// Check if street name and/or number appears in clause title
+						const hasAddressMatch = addressParts.some(part =>
+							part.length > 2 && titleLower.includes(part)
+						);
+
+						if (!hasAddressMatch) {
+							// This Part 6 clause is for a nearby property in the same KSM area
+							isNearby = true;
+							if (process.env.NODE_ENV === 'development') {
+								console.log(`Marking Part 6 clause ${clauseNum} as nearby - doesn't match address: ${constraints.address}`);
+								console.log(`  Clause title: ${clauseTitle}`);
+							}
+							// Don't skip - include as nearby provision
+						}
+					}
+
 					const provision: LocalProvision = {
 						class: result['Class'] || result['Label'],
 						epiName: result['EPI Name'],
-						title: ksmProvision?.title || `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`,
+						title: clauseTitle,
 						legislationUrl: result['legislationUrl'],
 						mapType: layer.layerName === 'Key Sites Map' ? 'KSM' : 'APU',
 						clauseNumber: clauseNum,
-						pageNumber: ksmProvision?.pageNumber
+						pageNumber: ksmProvision?.pageNumber,
+						isNearby: isNearby // Mark nearby provisions
 					};
 					constraints.localProvisions.push(provision);
 				}
