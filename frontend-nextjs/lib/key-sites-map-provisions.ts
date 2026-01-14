@@ -18,13 +18,13 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
   {
     clauseNumber: '4.3C',
     title: 'Height of buildings on land identified as "Key sites"',
-    pageNumber: 39,
+    pageNumber: 38, // Note: Page needs verification - clause 4.4 is on page 39
     part: 4
   },
   {
     clauseNumber: '4.4',
     title: 'Floor space ratio',
-    pageNumber: 40,
+    pageNumber: 39, // Page 39 contains clause 4.4, page 40 contains 4.4A/4.5
     part: 4
   },
 
