@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
       LIMIT 20
     `);
 
-    // Get ALL provisions from the 4.1 document
+    // Get ALL provisions from pages 15-17 to see complete structure
     const provResult = await query(`
       SELECT
         id,
@@ -24,16 +24,12 @@ export async function GET(req: NextRequest) {
         v2_marker,
         v2_provision_type,
         section_header,
-        LEFT(provision_text, 200) as provision_text_preview,
+        LEFT(provision_text, 300) as provision_text_preview,
         provision_text as provision_text_full,
         LENGTH(provision_text) as text_length
       FROM regulatory_provisions
       WHERE document_id = 'Marrickville_DCP_2011__4.1_Low_Density_Residential_Development'
-        AND (
-          section_header LIKE '%4.1.8%'
-          OR section_header LIKE '%Dormer%'
-          OR v2_marker IN ('C32', 'C33', 'C34', 'C35', 'C36', 'C37', 'C38', 'C39', 'C40')
-        )
+        AND pdf_page >= 15 AND pdf_page <= 17
       ORDER BY pdf_page, id
     `);
 

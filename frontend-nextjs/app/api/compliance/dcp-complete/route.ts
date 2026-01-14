@@ -389,6 +389,8 @@ export async function POST(request: NextRequest) {
             FROM regulatory_provisions
             WHERE document_id ILIKE $1
             AND page_number != '0'  -- Exclude TOC pages
+            AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
+            AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
             AND (
               document_id ~ '_2011_[247][_.]'  -- Parts 2, 4, 7
               OR document_id ILIKE '%_4.1_%'   -- Low density residential
@@ -539,6 +541,8 @@ export async function POST(request: NextRequest) {
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
               AND page_number != '0'  -- Exclude TOC pages
+              AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
+              AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
               AND (
                 document_id ILIKE '%Chapter_F%'
                 OR document_id ILIKE '%Chapter F%'
@@ -569,6 +573,8 @@ export async function POST(request: NextRequest) {
               FROM regulatory_provisions
               WHERE document_id ILIKE $1
               AND page_number != '0'  -- Exclude TOC pages
+              AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
+              AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
               AND (
                 -- General Parts A, B, D, E, F
                 document_id ILIKE '%Part A%'
@@ -713,6 +719,8 @@ export async function POST(request: NextRequest) {
           FROM regulatory_provisions
           WHERE document_id ILIKE $1
           AND page_number != '0'  -- Exclude TOC pages
+          AND provision_text NOT LIKE '%........%'  -- Exclude TOC pages with dots
+          AND NOT (provision_text ~ '^[\s\r\n]*i{1,3}[\s\r\n]+\d+\.\d+')  -- Exclude TOC starting with roman numerals
           AND (
             document_id ~ '_2011_[2478][_.]'  -- General provisions (Parts 2, 4, 7, 8) after _2011_
             OR document_id ILIKE '%_10.%'  -- Definitions
