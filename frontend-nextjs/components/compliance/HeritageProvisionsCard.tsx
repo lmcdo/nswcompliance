@@ -222,7 +222,7 @@ export function HeritageProvisionsCard({
         {/* Note about DCP heritage controls */}
         {isHCA && (
           <p className="mt-3 text-sm text-blue-700 bg-blue-50 rounded px-3 py-2">
-            Universal Heritage Conservation Area controls apply to all HCA properties in Inner West — see DCP tab.
+            Universal Heritage Conservation Area controls apply to all HCA properties in Leichhardt — see DCP tab.
           </p>
         )}
       </CardContent>

@@ -328,7 +328,7 @@ export function ProvisionsByTocStructure({
           {showHcaSection && (
             <div className="px-4 pb-4 border-t border-blue-200">
               <p className="text-xs text-blue-800 mt-3 mb-3 bg-blue-100 rounded px-2 py-1.5">
-                These controls apply to <strong>all Heritage Conservation Area properties</strong> in Inner West (former Leichhardt).
+                These controls apply to <strong>all Heritage Conservation Area properties</strong> in the former Leichhardt council area (Leichhardt DCP 2013).
                 They are in addition to the site-specific DCP provisions shown below.
               </p>
               {hcaLoading ? (
