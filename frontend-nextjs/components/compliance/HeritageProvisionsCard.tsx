@@ -147,18 +147,33 @@ export function HeritageProvisionsCard({
                   {loading ? (
                     <p className="text-sm text-muted-foreground">Loading provision text...</p>
                   ) : clauseNumber === '5.10' ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <h5 className="font-semibold text-sm text-blue-900">
-                        Heritage conservation
+                        Clause 5.10 Heritage conservation
                       </h5>
-                      <p className="text-sm text-gray-700 mb-2">
-                        View the full heritage conservation provision from Inner West LEP 2022:
-                      </p>
-                      <img
-                        src="/pdf-pages/iwlep_heritage_clause_5_10_page_50.png"
-                        alt="Clause 5.10 Heritage conservation - Page 50"
-                        className="w-full border border-blue-200 rounded"
-                      />
+                      <div className="text-sm text-gray-700 space-y-2">
+                        <p>
+                          This clause requires development consent for work that could affect the heritage significance of:
+                        </p>
+                        <ul className="list-disc ml-5 space-y-1">
+                          <li>Heritage items listed in Schedule 5</li>
+                          <li>Heritage conservation areas shown on the Heritage Map</li>
+                          <li>Archaeological sites</li>
+                          <li>Aboriginal objects or places of heritage significance</li>
+                        </ul>
+                        <p className="mt-2">
+                          Before granting consent, the consent authority must consider the effect on heritage significance and may require a heritage management document.
+                        </p>
+                      </div>
+                      <a
+                        href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0399#sec.5.10"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900 hover:underline"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        View full clause on NSW Legislation
+                      </a>
                     </div>
                   ) : provisionDetail && provisionDetail.provisionText && provisionDetail.provisionText.length > 100 ? (
                     <div className="space-y-2">
