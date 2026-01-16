@@ -149,31 +149,31 @@ export function HeritageProvisionsCard({
                   ) : clauseNumber === '5.10' ? (
                     <div className="space-y-3">
                       <h5 className="font-semibold text-sm text-blue-900">
-                        Clause 5.10 Heritage conservation
+                        Clause 5.10 Heritage conservation — Inner West LEP 2022
                       </h5>
-                      <div className="text-sm text-gray-700 space-y-2">
-                        <p>
-                          This clause requires development consent for work that could affect the heritage significance of:
-                        </p>
-                        <ul className="list-disc ml-5 space-y-1">
-                          <li>Heritage items listed in Schedule 5</li>
-                          <li>Heritage conservation areas shown on the Heritage Map</li>
-                          <li>Archaeological sites</li>
-                          <li>Aboriginal objects or places of heritage significance</li>
-                        </ul>
-                        <p className="mt-2">
-                          Before granting consent, the consent authority must consider the effect on heritage significance and may require a heritage management document.
-                        </p>
+                      {/* Full PDF page image of clause 5.10 */}
+                      <div className="border border-blue-200 rounded-lg overflow-hidden">
+                        <img
+                          src="/pdf-pages/iwlep_clause_5_10_page_50.png"
+                          alt="Inner West LEP 2022 Clause 5.10 Heritage conservation - Page 50"
+                          className="w-full"
+                        />
                       </div>
-                      <a
-                        href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0399#sec.5.10"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900 hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        View full clause on NSW Legislation
-                      </a>
+                      <div className="flex items-center gap-4 text-sm">
+                        <a
+                          href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457#sec.5.10"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          View full clause on NSW Legislation
+                        </a>
+                        <span className="text-gray-400">|</span>
+                        <span className="text-xs text-gray-500">
+                          Page 50 of Inner West LEP 2022
+                        </span>
+                      </div>
                     </div>
                   ) : provisionDetail && provisionDetail.provisionText && provisionDetail.provisionText.length > 100 ? (
                     <div className="space-y-2">
