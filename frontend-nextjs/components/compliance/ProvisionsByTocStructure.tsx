@@ -125,7 +125,7 @@ export function ProvisionsByTocStructure({
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
-  const [showHcaSection, setShowHcaSection] = useState(true); // HCA section expanded by default
+  const [showHcaSection, setShowHcaSection] = useState(false); // HCA section collapsed by default
   const [expandedHcaCategories, setExpandedHcaCategories] = useState<Set<string>>(new Set(['heritage'])); // Heritage expanded by default
 
   // Get council config
