@@ -9,7 +9,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
@@ -203,21 +202,19 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
                           </div>
                         ))}
 
-                        {/* PDF Page Button - after all provisions from this page */}
+                        {/* PDF Page Button - icon only with tooltip */}
                         {pdfPage && pdfUrl && (
                           <div className="flex justify-end mt-1 mb-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
+                            <button
+                              className="p-1.5 rounded hover:bg-slate-200 transition-colors"
+                              title={`Part 8 Heritage - Page ${pdfPage}`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setViewingPdfImage({ url: pdfUrl, page: pdfPage });
                               }}
                             >
-                              <FileText className="h-3 w-3 mr-1" />
-                              View PDF page {pdfPage}
-                            </Button>
+                              <FileText className="w-4 h-4 text-slate-600 hover:text-slate-800" />
+                            </button>
                           </div>
                         )}
                       </div>

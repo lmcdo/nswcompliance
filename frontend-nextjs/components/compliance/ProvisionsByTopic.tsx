@@ -1285,14 +1285,13 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  // Use pdf_page (DCP page), fallback to URL extraction page
-                                                                  const urlPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                                                  const displayPage = provision.pdf_page || urlPage;
+                                                                  // Use pdf_page (DCP page from database)
+                                                                  const displayPage = provision.pdf_page || 1;
+                                                                  const sectionInfo = provision.v2_dcp_part || '';
                                                                   return (
-                                                                    <Button
-                                                                      size="sm"
-                                                                      variant="ghost"
-                                                                      className="h-6 px-2 text-[10px] bg-teal-700 text-white hover:bg-teal-800"
+                                                                    <button
+                                                                      className="p-1 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
+                                                                      title={`${sectionInfo ? sectionInfo + ' - ' : ''}Page ${displayPage}`}
                                                                       onClick={(e) => {
                                                                         e.stopPropagation();
                                                                         setViewingPdfImage({
@@ -1301,9 +1300,8 @@ export function ProvisionsByTopic({
                                                                         });
                                                                       }}
                                                                     >
-                                                                      <FileText className="h-3 w-3 mr-1" />
-                                                                      View DCP Page {displayPage}
-                                                                    </Button>
+                                                                      <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
+                                                                    </button>
                                                                   );
                                                                 })()}
                                                               </div>
@@ -1528,14 +1526,13 @@ export function ProvisionsByTopic({
                                                 )}
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                // Use pdf_page (DCP page), fallback to URL extraction page
-                                                const urlPage = parseInt(provision.pdf_page_image_url!.match(/page_(\d+)/)?.[1] || '0');
-                                                const displayPage = provision.pdf_page || urlPage;
+                                                // Use pdf_page (DCP page from database)
+                                                const displayPage = provision.pdf_page || 1;
+                                                const sectionInfo = provision.v2_dcp_part || '';
                                                 return (
-                                                  <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="h-7 px-2 text-xs bg-teal-700 text-white hover:bg-teal-800"
+                                                  <button
+                                                    className="p-1 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
+                                                    title={`${sectionInfo ? sectionInfo + ' - ' : ''}Page ${displayPage}`}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
                                                       setViewingPdfImage({
@@ -1544,9 +1541,8 @@ export function ProvisionsByTopic({
                                                       });
                                                     }}
                                                   >
-                                                    <FileText className="h-3 w-3 mr-1" />
-                                                    View DCP Page {displayPage}
-                                                  </Button>
+                                                    <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
+                                                  </button>
                                                 );
                                               })()}
                                             </div>

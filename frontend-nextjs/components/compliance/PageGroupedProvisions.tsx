@@ -473,17 +473,17 @@ export function PageGroupedProvisions({
                 </span>
               </div>
 
-              {/* PDF Button in header */}
+              {/* PDF Button in header - icon only with tooltip */}
               {group.pageUrl && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     onViewPdf(group.pageUrl!, group.displayPageNumber || 0);
                   }}
-                  className="flex items-center gap-1 px-2 py-1 text-xs bg-teal-600 text-white hover:bg-teal-700 rounded transition-colors"
+                  className="p-1.5 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
+                  title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}Page ${group.displayPageNumber || 1}`}
                 >
-                  <FileText className="h-3 w-3" />
-                  View {group.dcpPart && group.dcpPart !== 'unknown' ? `${group.dcpPart} ` : 'DCP '}Page{group.displayPageNumber ? ` ${group.displayPageNumber}` : ''}
+                  <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
                 </button>
               )}
             </div>
