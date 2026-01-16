@@ -169,6 +169,18 @@ export function ProvisionsByTocStructure({
   const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];
   const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
 
+  // Map HCA requirements to Provision format for PageGroupedProvisions
+  const hcaProvisions = hcaCategories.flatMap((cat: any) =>
+    (cat.requirements || []).map((req: any) => ({
+      id: req.id,
+      provision_text: req.requirement_text,
+      pdf_page: req.pdf_page,
+      pdf_page_image_url: req.pdf_page_image_url,
+      v2_dcp_layer: 'condition',
+      v2_topic: cat.display_name || cat.category,
+    }))
+  );
+
   // Auto-select first part on load
   useEffect(() => {
     if (data?.data?.by_toc && !selectedPart) {
@@ -336,27 +348,19 @@ export function ProvisionsByTocStructure({
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                   <span className="text-sm text-blue-700">Loading HCA provisions...</span>
                 </div>
-              ) : hcaCategories.length > 0 ? (
-                <div className="space-y-2">
-                  {hcaCategories.map((category: any) => (
-                    <div key={category.category} className="bg-white rounded border border-blue-100 p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm text-blue-900">{category.display_name || category.category}</h4>
-                        <Badge variant="outline" className="text-xs bg-blue-50">
-                          {category.requirements?.length || 0} requirements
-                        </Badge>
-                      </div>
-                      <ul className="text-xs text-gray-700 space-y-1">
-                        {category.requirements?.slice(0, 3).map((req: any) => (
-                          <li key={req.id} className="truncate">• {req.requirement_text}</li>
-                        ))}
-                        {category.requirements?.length > 3 && (
-                          <li className="text-blue-600">+ {category.requirements.length - 3} more...</li>
-                        )}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+              ) : hcaProvisions.length > 0 ? (
+                <PageGroupedProvisions
+                  provisions={hcaProvisions}
+                  onViewPdf={(url, page) => setPdfModal({ url, page })}
+                  theme={{
+                    zebraStripeBg: 'bg-blue-50/50',
+                    zebraStripeAltBg: 'bg-white',
+                    borderColorClass: 'border-blue-200',
+                  }}
+                  showLayerBadges={true}
+                  formerCouncil="leichhardt"
+                  maxProvisions={100}
+                />
               ) : (
                 <p className="text-sm text-gray-500 py-2">No universal HCA provisions found.</p>
               )}
