@@ -616,12 +616,28 @@ export class NSWPlanningPortalService {
 				// Page numbers come from getKeySitesProvision imported at top
 				//
 				// FILTER STRATEGY:
-				// - Part 4 clauses (4.3C, 4.4): Apply to ALL Key Sites (show all)
+				// - Part 4 clauses (4.3C, 4.4): Apply based on zone restrictions (applicableZones)
+				//   - If applicableZones defined, only show if property zone matches
+				//   - If no applicableZones, apply to ALL Key Sites
 				// - Part 6 clauses: Site-specific, but Planning Portal returns ALL clauses in the KSM polygon
 				//   - Show exact address matches (required)
 				//   - Mark nearby clauses as "nearby" (optional to display)
 				for (const clauseNum of extractedClauses) {
 					const ksmProvision = getKeySitesProvision(clauseNum);
+
+					// Check zone-specific filtering for Part 4 clauses
+					if (ksmProvision?.applicableZones && ksmProvision.applicableZones.length > 0) {
+						// Extract zone code (e.g., "R1" from "R1 General Residential")
+						const propertyZoneCode = constraints.zone?.split(' ')[0];
+						const zoneMatches = propertyZoneCode && ksmProvision.applicableZones.includes(propertyZoneCode);
+						if (!zoneMatches) {
+							if (process.env.NODE_ENV === 'development') {
+								console.log(`Skipping clause ${clauseNum} - zone ${propertyZoneCode} not in applicable zones: ${ksmProvision.applicableZones.join(', ')}`);
+							}
+							continue; // Skip this provision - doesn't apply to this zone
+						}
+					}
+
 					const clauseTitle = ksmProvision?.title || `${layer.layerName} - ${result['Label'] || result['Class']} (Clause ${clauseNum})`;
 
 					let isNearby = false;

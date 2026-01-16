@@ -11,6 +11,7 @@ export interface KeySitesProvision {
   title: string;
   pageNumber: number;
   part: 4 | 6;
+  applicableZones?: string[]; // If specified, only show for these zones
 }
 
 export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
@@ -19,13 +20,15 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
     clauseNumber: '4.3C',
     title: 'Landscaped areas for residential accommodation in Zone R1',
     pageNumber: 37,
-    part: 4
+    part: 4,
+    applicableZones: ['R1'] // Only applies to R1 zone
   },
   {
     clauseNumber: '4.4',
     title: 'Floor space ratio',
     pageNumber: 39,
     part: 4
+    // No zone restriction - applies to all Key Sites
   },
 
   // Part 6 - Site-specific Key Sites
