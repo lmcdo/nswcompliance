@@ -155,8 +155,16 @@ export function ProvisionsByTocStructure({
     };
   }>(apiUrl, fetcher);
 
-  // Fetch universal HCA provisions when heritage=true (Inner West only for now)
-  const hcaRequestBody = heritage && formerCouncil?.toLowerCase() === 'leichhardt' ? {
+  // DCP names for each council
+  const councilDcpNames: Record<string, string> = {
+    leichhardt: 'Leichhardt DCP 2013',
+    ashfield: 'Ashfield Comprehensive DCP 2016',
+    marrickville: 'Marrickville DCP 2011',
+  };
+
+  // Fetch universal HCA provisions when heritage=true for any Inner West council
+  const councilLower = formerCouncil?.toLowerCase() || '';
+  const hcaRequestBody = heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) ? {
     precinctId: 'HCA',
     lga: 'Inner West',
     heritage: true
@@ -176,10 +184,9 @@ export function ProvisionsByTocStructure({
     if (req.pdf_page === 0) return false;
 
     const url = req.pdf_page_image_url || '';
-    const council = formerCouncil?.toLowerCase() || '';
-    if (council === 'leichhardt') return url.includes('leichhardt');
-    if (council === 'ashfield') return url.includes('ashfield');
-    if (council === 'marrickville') return url.includes('marr');
+    if (councilLower === 'leichhardt') return url.includes('leichhardt');
+    if (councilLower === 'ashfield') return url.includes('ashfield');
+    if (councilLower === 'marrickville') return url.includes('marr');
     return true;
   };
 
@@ -349,8 +356,8 @@ export function ProvisionsByTocStructure({
         </div>
       )}
 
-      {/* Universal HCA Provisions Banner - shown for heritage properties */}
-      {heritage && formerCouncil?.toLowerCase() === 'leichhardt' && (
+      {/* Universal HCA Provisions Banner - shown for heritage properties in any Inner West council */}
+      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && (
         <div id="dcp-hca-section" className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30">
           <button
             onClick={() => setShowHcaSection(!showHcaSection)}
@@ -366,7 +373,7 @@ export function ProvisionsByTocStructure({
           {showHcaSection && (
             <div className="px-4 pb-4 border-t border-blue-200">
               <p className="text-xs text-blue-800 mt-3 mb-3 bg-blue-100 rounded px-2 py-1.5">
-                These controls apply to <strong>all Heritage Conservation Area properties</strong> in the former Leichhardt council area (Leichhardt DCP 2013).
+                These controls apply to <strong>all Heritage Conservation Area properties</strong> in the former {formerCouncil} council area ({councilDcpNames[councilLower] || 'DCP'}).
                 They are in addition to the site-specific DCP provisions shown below.
               </p>
               {hcaLoading ? (
