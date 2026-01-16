@@ -124,7 +124,7 @@ export function ProvisionsByTocStructure({
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
-  const [showAbout, setShowAbout] = useState(true); // Open by default
+  const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   const [showHcaSection, setShowHcaSection] = useState(true); // HCA section expanded by default
   const [expandedHcaCategories, setExpandedHcaCategories] = useState<Set<string>>(new Set(['heritage'])); // Heritage expanded by default
 
@@ -170,8 +170,11 @@ export function ProvisionsByTocStructure({
   const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];
   const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
 
-  // Filter HCA requirements by council and group by category for meaningful display
-  const filterByCouncil = (req: any) => {
+  // Filter HCA requirements by council and exclude TOC pages
+  const filterHcaRequirement = (req: any) => {
+    // Exclude TOC pages (pdf_page 0 in DB)
+    if (req.pdf_page === 0) return false;
+
     const url = req.pdf_page_image_url || '';
     const council = formerCouncil?.toLowerCase() || '';
     if (council === 'leichhardt') return url.includes('leichhardt');
@@ -183,7 +186,7 @@ export function ProvisionsByTocStructure({
   // Group provisions by category, each category has its own provisions array
   const hcaByCategory = hcaCategories
     .map((cat: any) => {
-      const filteredReqs = (cat.requirements || []).filter(filterByCouncil);
+      const filteredReqs = (cat.requirements || []).filter(filterHcaRequirement);
       return {
         category: cat.category,
         displayName: cat.display_name || cat.category?.replace(/_/g, ' '),
