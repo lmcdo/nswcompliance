@@ -664,10 +664,13 @@ export function ComplianceDashboard({
         console.log('[ComplianceDashboard] Match data precinct object:', JSON.stringify(matchData.precinct, null, 2));
 
         // Step 2: Fetch categorized requirements for this specific precinct
+        // Include heritage flag to also fetch universal HCA provisions when property is in HCA
+        const isHeritage = propertyData.heritage?.heritage === true;
         const requestBody = {
           precinctId: precinctId,
           precinctName: precinctName,
-          lga: propertyData.constraints?.lga || propertyData.council
+          lga: propertyData.constraints?.lga || propertyData.council,
+          heritage: isHeritage  // When true, API also returns universal HCA provisions
         };
         console.log('[ComplianceDashboard] Sending to precinct-requirements API:', JSON.stringify(requestBody, null, 2));
 
@@ -704,7 +707,7 @@ export function ComplianceDashboard({
     };
 
     fetchCategorizedRequirements();
-  }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council]);
+  }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council, propertyData?.heritage?.heritage]);
 
   // REMOVED: Old useEffect for DCP Complete - now using SWR hook above
 
@@ -1444,12 +1447,16 @@ export function ComplianceDashboard({
               console.log('[ComplianceDashboard] RENDER CHECK: categorizedRequirements?', !!categorizedRequirements);
               console.log('[ComplianceDashboard] RENDER CHECK: categories?', !!categorizedRequirements?.categories);
               console.log('[ComplianceDashboard] RENDER CHECK: categories length:', categorizedRequirements?.categories?.length);
+              const isHeritage = propertyData?.heritage?.heritage === true;
               return categorizedRequirements && categorizedRequirements.categories && (
                 <CategorizedRequirementsCard
-                  categories={categorizedRequirements.categories}
+                  categories={categorizedRequirements.precinct_categories || categorizedRequirements.categories}
                   precinctName={categorizedRequirements.precinct?.precinct_name}
                   developmentType={developmentType}
                   className="mt-4"
+                  hcaCategories={categorizedRequirements.hca_categories}
+                  precinctCategories={categorizedRequirements.precinct_categories}
+                  isHeritage={isHeritage}
                 />
               );
             })()}

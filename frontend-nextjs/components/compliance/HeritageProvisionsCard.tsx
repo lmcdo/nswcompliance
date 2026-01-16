@@ -199,10 +199,28 @@ export function HeritageProvisionsCard({
         <div className="mt-4 p-3 bg-amber-50 rounded-md border border-amber-200 flex gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs text-amber-900">
-            <strong>Note:</strong> Development {isHCA ? 'within this Heritage Conservation Area' : 'on this heritage-listed property'} requires 
-            heritage impact assessment and may require additional consent pathways. Refer to the full LEP provisions and DCP heritage controls below.
+            <strong>Note:</strong> Development {isHCA ? 'within this Heritage Conservation Area' : 'on this heritage-listed property'} requires
+            heritage impact assessment and may require additional consent pathways.
           </div>
         </div>
+
+        {/* Link to DCP heritage controls */}
+        {isHCA && (
+          <a
+            href="#dcp-hca-section"
+            className="mt-3 flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline transition-colors"
+            onClick={(e) => {
+              e.preventDefault();
+              const element = document.getElementById('dcp-hca-section');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          >
+            <span>79 DCP heritage controls apply</span>
+            <span className="text-blue-500">→ View in DCP section</span>
+          </a>
+        )}
       </CardContent>
     </Card>
   );

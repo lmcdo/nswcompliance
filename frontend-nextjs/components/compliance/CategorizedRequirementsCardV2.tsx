@@ -48,13 +48,20 @@ interface CategorizedRequirementsCardProps {
   precinctName?: string;
   developmentType?: string;  // For frontend filtering
   className?: string;
+  // NEW: Separated HCA and precinct categories for heritage properties
+  hcaCategories?: CategoryGroup[];
+  precinctCategories?: CategoryGroup[];
+  isHeritage?: boolean;
 }
 
 export function CategorizedRequirementsCard({
   categories,
   precinctName,
   developmentType,
-  className = ''
+  className = '',
+  hcaCategories,
+  precinctCategories,
+  isHeritage = false
 }: CategorizedRequirementsCardProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set() // Start with all categories collapsed
@@ -271,6 +278,59 @@ export function CategorizedRequirementsCard({
           </div>
         </div>
 
+        {/* HCA Universal Heritage Controls - shown first for heritage properties */}
+        {isHeritage && hcaCategories && hcaCategories.length > 0 && (
+          <div id="dcp-hca-section" className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30 mb-4">
+            <div className="px-4 py-3 bg-blue-100/50 border-b border-blue-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-blue-700 text-lg">🏛️</span>
+                  <div>
+                    <h3 className="font-semibold text-blue-900">Heritage Conservation Areas</h3>
+                    <p className="text-xs text-blue-700">
+                      {hcaCategories.reduce((sum, cat) => sum + cat.total_count, 0)} controls
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {/* Contextual note */}
+              <p className="text-xs text-blue-800 mt-2 bg-blue-100 rounded px-2 py-1">
+                These controls apply to all Heritage Conservation Areas in Inner West (former Leichhardt).
+              </p>
+            </div>
+            <div className="p-3 space-y-2">
+              {hcaCategories.map(category => (
+                <div key={`hca-${category.category}`} className="border border-blue-100 rounded bg-white">
+                  <button
+                    onClick={() => toggleCategory(`hca-${category.category}`)}
+                    className="w-full px-3 py-2 flex items-center justify-between hover:bg-blue-50/50 transition-colors text-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      {expandedCategories.has(`hca-${category.category}`) ? (
+                        <ChevronDown className="w-4 h-4 text-blue-600" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-blue-600" />
+                      )}
+                      <span className="font-medium text-gray-800">{category.display_name}</span>
+                      <span className="text-xs text-gray-500">({category.total_count})</span>
+                    </div>
+                  </button>
+                  {expandedCategories.has(`hca-${category.category}`) && (
+                    <div className="px-3 pb-3 space-y-2 border-t border-blue-100">
+                      {category.requirements.map(req => (
+                        <div key={req.id} className="text-sm text-gray-700 py-2 border-b border-gray-100 last:border-0">
+                          {req.requirement_text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Precinct-specific requirements */}
         {filteredCategories.map(category => {
           const isExpanded = expandedCategories.has(category.category);
           const confidencePercent = Math.round(

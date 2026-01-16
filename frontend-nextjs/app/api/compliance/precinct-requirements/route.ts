@@ -11,6 +11,7 @@ interface PrecinctRequirementQuery {
   precinctId?: string;
   precinctName?: string;
   lga?: string;
+  heritage?: boolean;  // When true, also query universal HCA provisions
 }
 
 interface CategorizedRequirement {
@@ -51,12 +52,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: PrecinctRequirementQuery = await request.json();
-    const { address, precinctId, precinctName, lga } = body;
+    const { address, precinctId, precinctName, lga, heritage } = body;
 
     console.log('[Precinct Requirements API] Received request body:', JSON.stringify(body, null, 2));
-    console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga });
+    console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga, heritage });
     console.log('[Precinct Requirements API] precinctId type:', typeof precinctId, 'value:', precinctId);
     console.log('[Precinct Requirements API] Will use precinctId?', !!precinctId);
+    console.log('[Precinct Requirements API] Heritage mode?', !!heritage);
 
     // Must provide at least one identifier
     if (!precinctId && !precinctName && !address) {
@@ -112,12 +114,26 @@ export async function POST(request: NextRequest) {
     const queryParams: any[] = [];
     let paramIndex = 1;
 
-    // If precinctId is provided, only query by ID (it's unique)
-    // Don't also filter by name/LGA as they may not match exactly
+    // If precinctId is provided, query by ID
+    // When heritage=true, ALSO include universal HCA provisions (precinct_id = 'HCA')
     if (precinctId) {
-      requirementsQuery += ` AND pr.precinct_id = $${paramIndex}`;
-      queryParams.push(precinctId);
-      paramIndex++;
+      if (heritage) {
+        // Heritage mode: get both property precinct AND universal HCA provisions
+        requirementsQuery += ` AND (pr.precinct_id = $${paramIndex} OR pr.precinct_id = 'HCA')`;
+        queryParams.push(precinctId);
+        paramIndex++;
+        // Also filter HCA provisions by LGA (Inner West only for now)
+        if (lga) {
+          requirementsQuery += ` AND pr.lga ILIKE $${paramIndex}`;
+          queryParams.push(`%${lga}%`);
+          paramIndex++;
+        }
+      } else {
+        // Normal mode: only property precinct
+        requirementsQuery += ` AND pr.precinct_id = $${paramIndex}`;
+        queryParams.push(precinctId);
+        paramIndex++;
+      }
     } else {
       // Only use name/LGA filters when precinctId is not provided
       if (precinctName) {
@@ -152,15 +168,20 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Precinct Requirements API] Found ${result.rows.length} requirements`);
 
-    // Group by category
-    const categoryGroups: Map<string, CategoryGroup> = new Map();
+    // Separate HCA provisions from precinct provisions, then group by category
+    const hcaCategoryGroups: Map<string, CategoryGroup> = new Map();
+    const precinctCategoryGroups: Map<string, CategoryGroup> = new Map();
 
     for (const row of result.rows) {
       const category = row.category;
       const displayName = row.category_display_name || category.replace(/_/g, ' ');
 
-      if (!categoryGroups.has(category)) {
-        categoryGroups.set(category, {
+      // Determine which group this belongs to: HCA (universal) or precinct-specific
+      const isHcaProvision = row.precinct_id === 'HCA';
+      const targetGroups = isHcaProvision ? hcaCategoryGroups : precinctCategoryGroups;
+
+      if (!targetGroups.has(category)) {
+        targetGroups.set(category, {
           category,
           display_name: displayName,
           requirements: [],
@@ -170,7 +191,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const group = categoryGroups.get(category)!;
+      const group = targetGroups.get(category)!;
 
       // Find the provision that contains the requirement text
       const allProvisions = row.all_source_provisions || [];
@@ -252,10 +273,15 @@ export async function POST(request: NextRequest) {
       if (row.validated) group.validated_count++;
     }
 
-    // Convert map to array and sort by count (descending)
-    const categories = Array.from(categoryGroups.values()).sort(
+    // Convert maps to arrays and sort by count (descending)
+    const hcaCategories = Array.from(hcaCategoryGroups.values()).sort(
       (a, b) => b.total_count - a.total_count
     );
+    const precinctCategories = Array.from(precinctCategoryGroups.values()).sort(
+      (a, b) => b.total_count - a.total_count
+    );
+    // Combined categories for backwards compatibility
+    const categories = [...precinctCategories, ...hcaCategories];
 
     // Calculate overall metrics
     const totalRequirements = result.rows.length;
@@ -276,11 +302,18 @@ export async function POST(request: NextRequest) {
 
     const processingTime = Date.now() - startTime;
 
+    // Calculate HCA-specific metrics
+    const hcaRequirementsCount = hcaCategories.reduce((sum, cat) => sum + cat.total_count, 0);
+    const precinctRequirementsCount = precinctCategories.reduce((sum, cat) => sum + cat.total_count, 0);
+
     return NextResponse.json({
       success: true,
       data: {
         precinct: precinctInfo,
-        categories,
+        categories,  // Combined for backwards compatibility
+        // NEW: Separated groups for heritage UI
+        hca_categories: heritage ? hcaCategories : undefined,
+        precinct_categories: heritage ? precinctCategories : undefined,
         raw_requirements: result.rows  // Include raw data for debugging
       },
       metrics: {
@@ -290,13 +323,17 @@ export async function POST(request: NextRequest) {
         validated_count: validated,
         validated_percent: totalRequirements > 0 ? Math.round((validated / totalRequirements) * 100) : 0,
         with_conditionals: withConditionals,
-        category_count: categories.length
+        category_count: categories.length,
+        // NEW: Heritage-specific metrics
+        hca_requirements_count: hcaRequirementsCount,
+        precinct_requirements_count: precinctRequirementsCount
       },
       metadata: {
         query: {
           precinct_id: precinctId,
           precinct_name: precinctName,
-          lga
+          lga,
+          heritage
         },
         processingTimeMs: processingTime,
         timestamp: new Date().toISOString()
