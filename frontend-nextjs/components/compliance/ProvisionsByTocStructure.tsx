@@ -126,6 +126,7 @@ export function ProvisionsByTocStructure({
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(true); // Open by default
   const [showHcaSection, setShowHcaSection] = useState(true); // HCA section expanded by default
+  const [expandedHcaCategories, setExpandedHcaCategories] = useState<Set<string>>(new Set(['heritage'])); // Heritage expanded by default
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -169,28 +170,38 @@ export function ProvisionsByTocStructure({
   const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];
   const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
 
-  // Map HCA requirements to Provision format for PageGroupedProvisions
-  // Filter to only include provisions from the current formerCouncil (database has all 3 councils mixed)
-  const hcaProvisions = hcaCategories.flatMap((cat: any) =>
-    (cat.requirements || [])
-      .filter((req: any) => {
-        // Filter by pdf_page_image_url path to match current council
-        const url = req.pdf_page_image_url || '';
-        const council = formerCouncil?.toLowerCase() || '';
-        if (council === 'leichhardt') return url.includes('leichhardt');
-        if (council === 'ashfield') return url.includes('ashfield');
-        if (council === 'marrickville') return url.includes('marr');
-        return true; // No filter if council unknown
-      })
-      .map((req: any) => ({
-        id: req.id,
-        provision_text: req.requirement_text,
-        pdf_page: req.pdf_page,
-        pdf_page_image_url: req.pdf_page_image_url,
-        v2_dcp_layer: 'condition',
-        v2_topic: cat.display_name || cat.category,
-      }))
-  );
+  // Filter HCA requirements by council and group by category for meaningful display
+  const filterByCouncil = (req: any) => {
+    const url = req.pdf_page_image_url || '';
+    const council = formerCouncil?.toLowerCase() || '';
+    if (council === 'leichhardt') return url.includes('leichhardt');
+    if (council === 'ashfield') return url.includes('ashfield');
+    if (council === 'marrickville') return url.includes('marr');
+    return true;
+  };
+
+  // Group provisions by category, each category has its own provisions array
+  const hcaByCategory = hcaCategories
+    .map((cat: any) => {
+      const filteredReqs = (cat.requirements || []).filter(filterByCouncil);
+      return {
+        category: cat.category,
+        displayName: cat.display_name || cat.category?.replace(/_/g, ' '),
+        provisions: filteredReqs.map((req: any) => ({
+          id: req.id,
+          provision_text: req.requirement_text,
+          pdf_page: req.pdf_page,
+          pdf_page_image_url: req.pdf_page_image_url,
+          v2_dcp_layer: 'condition',
+          v2_topic: cat.display_name || cat.category,
+        })),
+      };
+    })
+    .filter((cat: any) => cat.provisions.length > 0)
+    .sort((a: any, b: any) => b.provisions.length - a.provisions.length);
+
+  // Flat list for total count
+  const hcaProvisions = hcaByCategory.flatMap((cat: any) => cat.provisions);
 
   // Auto-select first part on load
   useEffect(() => {
@@ -359,19 +370,51 @@ export function ProvisionsByTocStructure({
                   <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                   <span className="text-sm text-blue-700">Loading HCA provisions...</span>
                 </div>
-              ) : hcaProvisions.length > 0 ? (
-                <PageGroupedProvisions
-                  provisions={hcaProvisions}
-                  onViewPdf={(url, page) => setPdfModal({ url, page })}
-                  theme={{
-                    zebraStripeBg: 'bg-blue-50/50',
-                    zebraStripeAltBg: 'bg-white',
-                    borderColorClass: 'border-blue-200',
-                  }}
-                  showLayerBadges={true}
-                  formerCouncil="leichhardt"
-                  maxProvisions={100}
-                />
+              ) : hcaByCategory.length > 0 ? (
+                <div className="space-y-2">
+                  {hcaByCategory.map((cat: any) => {
+                    const isExpanded = expandedHcaCategories.has(cat.category);
+                    return (
+                      <div key={cat.category} className="border border-blue-100 rounded-lg overflow-hidden bg-white">
+                        <button
+                          onClick={() => {
+                            const newSet = new Set(expandedHcaCategories);
+                            if (isExpanded) newSet.delete(cat.category);
+                            else newSet.add(cat.category);
+                            setExpandedHcaCategories(newSet);
+                          }}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="h-4 w-4 text-blue-500" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 text-blue-500" />
+                          )}
+                          <span className="font-medium text-blue-900 capitalize">{cat.displayName}</span>
+                          <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700">
+                            {cat.provisions.length}
+                          </Badge>
+                        </button>
+                        {isExpanded && (
+                          <div className="border-t border-blue-100 p-2">
+                            <PageGroupedProvisions
+                              provisions={cat.provisions}
+                              onViewPdf={(url, page) => setPdfModal({ url, page })}
+                              theme={{
+                                zebraStripeBg: 'bg-blue-50/30',
+                                zebraStripeAltBg: 'bg-white',
+                                borderColorClass: 'border-blue-100',
+                              }}
+                              showLayerBadges={false}
+                              formerCouncil="leichhardt"
+                              maxProvisions={50}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
                 <p className="text-sm text-gray-500 py-2">No universal HCA provisions found.</p>
               )}
