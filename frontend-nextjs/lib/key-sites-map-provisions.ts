@@ -32,18 +32,8 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
   },
 
   // Part 6 - Site-specific Key Sites
-  {
-    clauseNumber: '6.14',
-    title: 'Development of land at 145–155 Parramatta Road, Annandale',
-    pageNumber: 73,
-    part: 6
-  },
-  {
-    clauseNumber: '6.15',
-    title: 'Development of land at 168–172 and 185 Parramatta Road, Annandale',
-    pageNumber: 73,
-    part: 6
-  },
+  // NOTE: 6.14 and 6.15 are NOT site-specific clauses in the LEP
+  // 6.14 = "Diverse housing", 6.15 = "Development control plans"
   {
     clauseNumber: '6.16',
     title: 'Development of land at 141 and 159 Allen Street, Leichhardt',
