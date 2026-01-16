@@ -190,7 +190,8 @@ export function ProvisionsByTocStructure({
         provisions: filteredReqs.map((req: any) => ({
           id: req.id,
           provision_text: req.requirement_text,
-          pdf_page: req.pdf_page,
+          // HCA provisions have 0-indexed page numbers from extraction, add +1 for display
+          pdf_page: req.pdf_page != null ? req.pdf_page + 1 : undefined,
           pdf_page_image_url: req.pdf_page_image_url,
           v2_dcp_layer: 'condition',
           v2_topic: cat.display_name || cat.category,
