@@ -15,7 +15,7 @@ import { PageGroupedProvisions } from './PageGroupedProvisions';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
@@ -102,6 +102,16 @@ interface ProvisionsByTocStructureProps {
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
 
+// POST fetcher for HCA provisions API
+const hcaFetcher = async ([url, body]: [string, any]) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return response.json();
+};
+
 export function ProvisionsByTocStructure({
   formerCouncil,
   zone,
@@ -115,6 +125,7 @@ export function ProvisionsByTocStructure({
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(true); // Open by default
+  const [showHcaSection, setShowHcaSection] = useState(true); // HCA section expanded by default
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -142,6 +153,21 @@ export function ProvisionsByTocStructure({
       };
     };
   }>(apiUrl, fetcher);
+
+  // Fetch universal HCA provisions when heritage=true (Inner West only for now)
+  const hcaRequestBody = heritage && formerCouncil?.toLowerCase() === 'leichhardt' ? {
+    precinctId: 'HCA',
+    lga: 'Inner West',
+    heritage: true
+  } : null;
+
+  const { data: hcaData, isLoading: hcaLoading } = useSWR(
+    hcaRequestBody ? ['/api/compliance/precinct-requirements', hcaRequestBody] : null,
+    hcaFetcher
+  );
+
+  const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];
+  const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
 
   // Auto-select first part on load
   useEffect(() => {
@@ -280,6 +306,60 @@ export function ProvisionsByTocStructure({
                 </div>
               )}
               <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{INNER_WEST_OVERVIEW}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Universal HCA Provisions Banner - shown for heritage properties */}
+      {heritage && formerCouncil?.toLowerCase() === 'leichhardt' && (
+        <div id="dcp-hca-section" className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30">
+          <button
+            onClick={() => setShowHcaSection(!showHcaSection)}
+            className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-blue-100/50 transition-colors"
+          >
+            <Shield className="h-4 w-4 text-blue-700" />
+            <span className="font-semibold text-blue-900">Universal Heritage Conservation Area Controls</span>
+            <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
+              {hcaLoading ? '...' : `${hcaCount} provisions`}
+            </Badge>
+            {showHcaSection ? <ChevronDown className="h-4 w-4 ml-auto text-blue-600" /> : <ChevronRight className="h-4 w-4 ml-auto text-blue-600" />}
+          </button>
+          {showHcaSection && (
+            <div className="px-4 pb-4 border-t border-blue-200">
+              <p className="text-xs text-blue-800 mt-3 mb-3 bg-blue-100 rounded px-2 py-1.5">
+                These controls apply to <strong>all Heritage Conservation Area properties</strong> in Inner West (former Leichhardt).
+                They are in addition to the site-specific DCP provisions shown below.
+              </p>
+              {hcaLoading ? (
+                <div className="flex items-center gap-2 py-4">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <span className="text-sm text-blue-700">Loading HCA provisions...</span>
+                </div>
+              ) : hcaCategories.length > 0 ? (
+                <div className="space-y-2">
+                  {hcaCategories.map((category: any) => (
+                    <div key={category.category} className="bg-white rounded border border-blue-100 p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm text-blue-900">{category.display_name || category.category}</h4>
+                        <Badge variant="outline" className="text-xs bg-blue-50">
+                          {category.requirements?.length || 0} requirements
+                        </Badge>
+                      </div>
+                      <ul className="text-xs text-gray-700 space-y-1">
+                        {category.requirements?.slice(0, 3).map((req: any) => (
+                          <li key={req.id} className="truncate">• {req.requirement_text}</li>
+                        ))}
+                        {category.requirements?.length > 3 && (
+                          <li className="text-blue-600">+ {category.requirements.length - 3} more...</li>
+                        )}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 py-2">No universal HCA provisions found.</p>
+              )}
             </div>
           )}
         </div>

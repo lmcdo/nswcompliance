@@ -219,22 +219,11 @@ export function HeritageProvisionsCard({
           </div>
         </div>
 
-        {/* Link to DCP heritage controls */}
+        {/* Note about DCP heritage controls */}
         {isHCA && (
-          <a
-            href="#dcp-hca-section"
-            className="mt-3 flex items-center gap-2 text-sm text-blue-700 hover:text-blue-900 hover:underline transition-colors"
-            onClick={(e) => {
-              e.preventDefault();
-              const element = document.getElementById('dcp-hca-section');
-              if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }
-            }}
-          >
-            <span>79 DCP heritage controls apply</span>
-            <span className="text-blue-500">→ View in DCP section</span>
-          </a>
+          <p className="mt-3 text-sm text-blue-700 bg-blue-50 rounded px-3 py-2">
+            Universal Heritage Conservation Area controls apply to all HCA properties in Inner West — see DCP tab.
+          </p>
         )}
       </CardContent>
     </Card>
