@@ -170,15 +170,26 @@ export function ProvisionsByTocStructure({
   const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
 
   // Map HCA requirements to Provision format for PageGroupedProvisions
+  // Filter to only include provisions from the current formerCouncil (database has all 3 councils mixed)
   const hcaProvisions = hcaCategories.flatMap((cat: any) =>
-    (cat.requirements || []).map((req: any) => ({
-      id: req.id,
-      provision_text: req.requirement_text,
-      pdf_page: req.pdf_page,
-      pdf_page_image_url: req.pdf_page_image_url,
-      v2_dcp_layer: 'condition',
-      v2_topic: cat.display_name || cat.category,
-    }))
+    (cat.requirements || [])
+      .filter((req: any) => {
+        // Filter by pdf_page_image_url path to match current council
+        const url = req.pdf_page_image_url || '';
+        const council = formerCouncil?.toLowerCase() || '';
+        if (council === 'leichhardt') return url.includes('leichhardt');
+        if (council === 'ashfield') return url.includes('ashfield');
+        if (council === 'marrickville') return url.includes('marr');
+        return true; // No filter if council unknown
+      })
+      .map((req: any) => ({
+        id: req.id,
+        provision_text: req.requirement_text,
+        pdf_page: req.pdf_page,
+        pdf_page_image_url: req.pdf_page_image_url,
+        v2_dcp_layer: 'condition',
+        v2_topic: cat.display_name || cat.category,
+      }))
   );
 
   // Auto-select first part on load
@@ -333,7 +344,7 @@ export function ProvisionsByTocStructure({
             <Shield className="h-4 w-4 text-blue-700" />
             <span className="font-semibold text-blue-900">Universal Heritage Conservation Area Controls</span>
             <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
-              {hcaLoading ? '...' : `${hcaCount} provisions`}
+              {hcaLoading ? '...' : `${hcaProvisions.length} provisions`}
             </Badge>
             {showHcaSection ? <ChevronDown className="h-4 w-4 ml-auto text-blue-600" /> : <ChevronRight className="h-4 w-4 ml-auto text-blue-600" />}
           </button>
