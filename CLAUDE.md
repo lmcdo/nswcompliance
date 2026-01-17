@@ -55,6 +55,11 @@
 - `frontend-nextjs/` - Next.js app
 - Virtual env: `venv_linux`
 
+## Plan Mode Files
+- **Location:** `~/.claude/plans/` (C:\Users\lawre\.claude\plans\)
+- **Format:** `word-word-word.md` (hyphens, lowercase)
+- Check here FIRST when user references a plan file
+
 ## Reference Docs (read when relevant, not every session)
 - `DB_SCHEMA.md` - Database structure quick reference (READ BEFORE DB WORK)
 - `.claude/prp/INDEX.md` - Architecture overview
