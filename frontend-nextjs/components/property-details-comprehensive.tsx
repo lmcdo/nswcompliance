@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square } from "lucide-react"
+import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square, Plane } from "lucide-react"
 
 interface PlanningLayer {
  id: string;
@@ -20,6 +20,21 @@ interface LotDimensions {
  notes?: string[];
 }
 
+interface AnefInfo {
+  inAnefZone: boolean;
+  anefLevel: number | null;
+  airport: {
+    code: string;
+    name: string;
+    version: string;
+  } | null;
+  buildingAcceptability: Array<{
+    buildingType: string;
+    displayName: string;
+    status: 'acceptable' | 'conditional' | 'unacceptable';
+  }> | null;
+}
+
 interface PropertyData {
  planningLayers?: PlanningLayer[];
  constraints?: any;
@@ -29,6 +44,7 @@ interface PropertyData {
  heritage?: any;
  propertyArea?: string;
  lotDimensions?: LotDimensions;
+ anefData?: AnefInfo | null;
  address?: string;
 }
 
@@ -265,6 +281,50 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                Note: Irregular lot shape - dimensions are estimates
              </p>
            )}
+         </div>
+       )}
+
+       {/* Aircraft Noise (ANEF) Zone */}
+       {propertyData.anefData?.inAnefZone && (
+         <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 mb-2">
+           <div className="flex items-center gap-2 mb-2">
+             <Plane className="h-4 w-4 text-sky-700" />
+             <span className="text-sm font-semibold text-sky-900">Aircraft Noise Zone</span>
+             <Badge className={`text-xs ${
+               propertyData.anefData.anefLevel && propertyData.anefData.anefLevel >= 25
+                 ? 'bg-orange-100 text-orange-800 border-orange-300'
+                 : 'bg-sky-100 text-sky-800 border-sky-300'
+             }`}>
+               ANEF {propertyData.anefData.anefLevel}
+             </Badge>
+           </div>
+           <div className="text-xs text-sky-800 space-y-1">
+             <p>
+               <span className="font-medium">{propertyData.anefData.airport?.name}</span>
+               {propertyData.anefData.airport?.version && (
+                 <span className="text-sky-600 ml-1">({propertyData.anefData.airport.version})</span>
+               )}
+             </p>
+             {propertyData.anefData.buildingAcceptability && (
+               <div className="mt-2 pt-2 border-t border-sky-200">
+                 <p className="font-medium mb-1">Building Acceptability (AS2021:2015):</p>
+                 <div className="grid grid-cols-2 gap-1">
+                   {propertyData.anefData.buildingAcceptability
+                     .filter(b => b.buildingType === 'house' || b.buildingType === 'commercial')
+                     .map(b => (
+                       <div key={b.buildingType} className="flex items-center gap-1">
+                         <span className={`w-2 h-2 rounded-full ${
+                           b.status === 'acceptable' ? 'bg-green-500' :
+                           b.status === 'conditional' ? 'bg-amber-500' : 'bg-red-500'
+                         }`} />
+                         <span className="truncate">{b.displayName.split(',')[0]}: {b.status}</span>
+                       </div>
+                     ))
+                   }
+                 </div>
+               </div>
+             )}
+           </div>
          </div>
        )}
 
