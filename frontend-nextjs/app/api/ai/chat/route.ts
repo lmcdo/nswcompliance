@@ -1,7 +1,16 @@
 import { streamText, convertToCoreMessages, CoreMessage } from 'ai';
-import { google } from '@ai-sdk/google';
-import { openai } from '@ai-sdk/openai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
 import { NextRequest } from 'next/server';
+
+// Initialize AI providers with API keys
+const google = createGoogleGenerativeAI({
+  apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+});
+
+const openai = createOpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Query complexity classification
 type QueryComplexity = 'simple' | 'standard' | 'complex';

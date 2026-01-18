@@ -361,3 +361,6 @@ nsw-compliance-engine-frontend@*
 frontend-nextjs/.wrangler/
 *.db-shm
 *.db-wal
+
+# Local tool data
+.beads/

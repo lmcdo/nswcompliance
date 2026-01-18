@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { useChat, Message } from 'ai/react';
+import { useChat, type Message } from '@ai-sdk/react';
 import { ChevronUp, ChevronDown, Sparkles, Send, Loader2, AlertCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -22,18 +22,44 @@ import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurr
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
+import { AIAssistantPanel } from '@/components/ai';
 
 export default function AssessmentPage() {
   // Property data and fetching
   const {
     selectedAddress,
     selectedProperty,
+    selectedCoordinates,
     loading,
     error,
     lepClauseData,
     developmentType,
     handleAddressSelect,
   } = usePropertyAssessment();
+
+  // Convert selectedProperty to PropertyContext for AI panel
+  const propertyContext = selectedProperty ? {
+    address: selectedProperty.address,
+    zone: selectedProperty.constraints?.zone || '',
+    lga: selectedProperty.constraints?.lga || '',
+    formerCouncil: selectedProperty.constraints?.formerCouncil || '',
+    precinctId: selectedProperty.constraints?.precinctId,
+    heritage: selectedProperty.heritage ? {
+      isHeritage: selectedProperty.heritage.isHeritage || false,
+      heritageType: selectedProperty.heritage.heritageType,
+      hcaCode: undefined, // Not available in this data structure
+    } : undefined,
+    lotArea: selectedProperty.propertyArea
+      ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, ''))
+      : undefined,
+    coordinates: selectedCoordinates ? {
+      lat: selectedCoordinates.lat,
+      lng: selectedCoordinates.lng,
+    } : undefined,
+  } : null;
+
+  // AI panel data readiness check
+  const isAIDataReady = !loading && !!selectedProperty && !!lepClauseData;
 
   // UI state (view mode, modals, inputs)
   const {
@@ -292,6 +318,20 @@ export default function AssessmentPage() {
                 lepClauseData={lepClauseData}
               />
             )}
+
+            {/* AI Assistant Panel */}
+            <AIAssistantPanel
+              property={propertyContext}
+              lepData={lepClauseData}
+              developmentType={developmentType}
+              isDataReady={isAIDataReady}
+              onScrollToProvision={(provisionId, tab) => {
+                // Switch to the appropriate tab
+                setViewMode(tab);
+                // TODO: Implement scroll-to-provision in each tab
+                console.log(`Scroll to provision ${provisionId} in ${tab} tab`);
+              }}
+            />
           </div>
 
           {/* Right Panel - Dynamic Regulatory Requirements (3/4 width) */}
