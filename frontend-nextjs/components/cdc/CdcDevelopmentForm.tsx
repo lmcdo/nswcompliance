@@ -4,10 +4,10 @@
  * CdcDevelopmentForm Component
  *
  * Form for entering proposed development details for CDC compliance checking.
- * Includes setbacks, site coverage, height, storeys, and parking.
+ * Uses neutral styling with minimal color - only green/red for pass/fail icons.
  */
 
-import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
+import { Check, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -28,23 +28,17 @@ import {
 } from './types';
 
 interface CdcDevelopmentFormProps {
-  /** Form values */
   form: CdcComplianceInput;
-  /** Validation state */
   validation: FormValidation;
-  /** Update a form field */
   updateField: <K extends keyof CdcComplianceInput>(
     field: K,
     value: CdcComplianceInput[K]
   ) => void;
-  /** Update a setback field */
   updateSetback: (
     field: 'front' | 'sideLeft' | 'sideRight' | 'rear',
     value: number
   ) => void;
-  /** Pass count for summary */
   passCount: number;
-  /** Total checks */
   totalChecks: number;
 }
 
@@ -57,10 +51,10 @@ export function CdcDevelopmentForm({
   totalChecks,
 }: CdcDevelopmentFormProps) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Development Type */}
       <div className="space-y-1.5">
-        <Label htmlFor="developmentType" className="text-sm font-medium text-gray-700">
+        <Label htmlFor="developmentType" className="text-xs font-medium text-gray-600">
           Development Type
         </Label>
         <Select
@@ -69,7 +63,7 @@ export function CdcDevelopmentForm({
             updateField('developmentType', value)
           }
         >
-          <SelectTrigger id="developmentType" className="w-full">
+          <SelectTrigger id="developmentType" className="w-full h-9 text-sm">
             <SelectValue placeholder="Select development type" />
           </SelectTrigger>
           <SelectContent>
@@ -84,10 +78,10 @@ export function CdcDevelopmentForm({
 
       {/* Setbacks Row */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium text-gray-700">
+        <Label className="text-xs font-medium text-gray-600">
           Setbacks (meters)
         </Label>
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           <CdcFieldInline
             label="Front"
             name="setback-front"
@@ -100,7 +94,7 @@ export function CdcDevelopmentForm({
             max={50}
           />
           <CdcFieldInline
-            label="Side Left"
+            label="Side L"
             name="setback-side-left"
             value={form.setbacks.sideLeft}
             validation={validation.sideLeft}
@@ -111,7 +105,7 @@ export function CdcDevelopmentForm({
             max={50}
           />
           <CdcFieldInline
-            label="Side Right"
+            label="Side R"
             name="setback-side-right"
             value={form.setbacks.sideRight}
             validation={validation.sideRight}
@@ -135,39 +129,40 @@ export function CdcDevelopmentForm({
         </div>
       </div>
 
-      {/* Upper Floor Habitable Rooms Checkbox */}
-      <div className="flex items-start gap-2 bg-gray-50 p-3 rounded-lg">
+      {/* Upper Floor Checkbox */}
+      <div className="flex items-start gap-2 bg-gray-50 p-2.5 rounded">
         <Checkbox
           id="hasUpperFloorHabitableRooms"
           checked={form.hasUpperFloorHabitableRooms}
           onCheckedChange={(checked) =>
             updateField('hasUpperFloorHabitableRooms', checked === true)
           }
+          className="mt-0.5"
         />
-        <div className="space-y-0.5">
+        <div>
           <Label
             htmlFor="hasUpperFloorHabitableRooms"
             className="text-sm text-gray-700 cursor-pointer"
           >
-            Upper floor habitable rooms face rear boundary
+            Upper floor habitable rooms face rear
           </Label>
           <p className="text-xs text-gray-500">
-            If checked, rear setback minimum increases from 3.0m to 6.0m
+            Increases rear setback to 6.0m
           </p>
         </div>
       </div>
 
-      {/* Site Coverage & Landscaping Row */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1.5">
+      {/* Site Coverage & Landscaping */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="siteCoverage" className="text-xs font-medium text-gray-700">
+            <Label htmlFor="siteCoverage" className="text-xs font-medium text-gray-600">
               Site Coverage
             </Label>
             {validation.siteCoverage.valid ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-green-600" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
+              <X className="w-3.5 h-3.5 text-red-500" />
             )}
           </div>
           <div className="relative">
@@ -181,28 +176,24 @@ export function CdcDevelopmentForm({
               min={0}
               max={100}
               step={1}
-              className={`pr-8 h-9 text-sm ${
-                validation.siteCoverage.valid
-                  ? 'border-green-300'
-                  : 'border-red-300'
-              }`}
+              className="pr-7 h-9 text-sm"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
               %
             </span>
           </div>
-          <span className="text-xs text-gray-500">Max 50%</span>
+          <span className="text-xs text-gray-400">Max 50%</span>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="landscapedArea" className="text-xs font-medium text-gray-700">
+            <Label htmlFor="landscapedArea" className="text-xs font-medium text-gray-600">
               Landscaped Area
             </Label>
             {validation.landscapedArea.valid ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-green-600" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
+              <X className="w-3.5 h-3.5 text-red-500" />
             )}
           </div>
           <div className="relative">
@@ -216,32 +207,28 @@ export function CdcDevelopmentForm({
               min={0}
               max={100}
               step={1}
-              className={`pr-8 h-9 text-sm ${
-                validation.landscapedArea.valid
-                  ? 'border-green-300'
-                  : 'border-red-300'
-              }`}
+              className="pr-7 h-9 text-sm"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
               %
             </span>
           </div>
-          <span className="text-xs text-gray-500">Min 30%</span>
+          <span className="text-xs text-gray-400">Min 30%</span>
         </div>
       </div>
 
-      {/* Height, Storeys, Parking Row */}
-      <div className="grid grid-cols-4 gap-3">
+      {/* Height, Storeys, Bedrooms, Parking */}
+      <div className="grid grid-cols-4 gap-2">
         {/* Height */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="height" className="text-xs font-medium text-gray-700">
+            <Label htmlFor="height" className="text-xs font-medium text-gray-600">
               Height
             </Label>
             {validation.buildingHeight.valid ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-green-600" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
+              <X className="w-3.5 h-3.5 text-red-500" />
             )}
           </div>
           <div className="relative">
@@ -255,38 +242,32 @@ export function CdcDevelopmentForm({
               min={0}
               max={20}
               step={0.1}
-              className={`pr-6 h-9 text-sm ${
-                validation.buildingHeight.valid
-                  ? 'border-green-300'
-                  : 'border-red-300'
-              }`}
+              className="pr-5 h-9 text-sm"
             />
-            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+            <span className="absolute right-1.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">
               m
             </span>
           </div>
-          <span className="text-xs text-gray-500">Max 8.5m</span>
+          <span className="text-xs text-gray-400">Max 8.5m</span>
         </div>
 
         {/* Storeys */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="storeys" className="text-xs font-medium text-gray-700">
+            <Label htmlFor="storeys" className="text-xs font-medium text-gray-600">
               Storeys
             </Label>
             {validation.storeys.valid ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-green-600" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
+              <X className="w-3.5 h-3.5 text-red-500" />
             )}
           </div>
           <Select
             value={String(form.storeys)}
             onValueChange={(value) => updateField('storeys', parseInt(value))}
           >
-            <SelectTrigger className={`h-9 ${
-              validation.storeys.valid ? 'border-green-300' : 'border-red-300'
-            }`}>
+            <SelectTrigger className="h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -295,19 +276,19 @@ export function CdcDevelopmentForm({
               <SelectItem value="3">3</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-xs text-gray-500">Max 2</span>
+          <span className="text-xs text-gray-400">Max 2</span>
         </div>
 
         {/* Bedrooms */}
-        <div className="space-y-1.5">
-          <Label htmlFor="bedrooms" className="text-xs font-medium text-gray-700">
-            Bedrooms
+        <div className="space-y-1">
+          <Label htmlFor="bedrooms" className="text-xs font-medium text-gray-600">
+            Beds
           </Label>
           <Select
             value={String(form.bedrooms)}
             onValueChange={(value) => updateField('bedrooms', parseInt(value))}
           >
-            <SelectTrigger className="h-9">
+            <SelectTrigger className="h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -318,28 +299,26 @@ export function CdcDevelopmentForm({
               <SelectItem value="5">5+</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-xs text-gray-500">For parking calc</span>
+          <span className="text-xs text-gray-400">For parking</span>
         </div>
 
         {/* Parking */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
-            <Label htmlFor="parking" className="text-xs font-medium text-gray-700">
+            <Label htmlFor="parking" className="text-xs font-medium text-gray-600">
               Parking
             </Label>
             {validation.parking.valid ? (
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
+              <Check className="w-3.5 h-3.5 text-green-600" />
             ) : (
-              <XCircle className="w-4 h-4 text-red-500" />
+              <X className="w-3.5 h-3.5 text-red-500" />
             )}
           </div>
           <Select
             value={String(form.parkingSpaces)}
             onValueChange={(value) => updateField('parkingSpaces', parseInt(value))}
           >
-            <SelectTrigger className={`h-9 ${
-              validation.parking.valid ? 'border-green-300' : 'border-red-300'
-            }`}>
+            <SelectTrigger className="h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -350,32 +329,26 @@ export function CdcDevelopmentForm({
               <SelectItem value="4">4+</SelectItem>
             </SelectContent>
           </Select>
-          <span className="text-xs text-gray-500">
-            Min {getRequiredParking(form.bedrooms)} required
+          <span className="text-xs text-gray-400">
+            Min {getRequiredParking(form.bedrooms)}
           </span>
         </div>
       </div>
 
-      {/* Summary Badge */}
-      <div className="flex items-center justify-center py-2">
-        <div
-          className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
-            passCount === totalChecks
-              ? 'bg-green-100 text-green-800'
-              : passCount >= totalChecks - 2
-              ? 'bg-amber-100 text-amber-800'
-              : 'bg-red-100 text-red-800'
-          }`}
-        >
+      {/* Summary - minimal */}
+      <div className="flex items-center justify-center py-1">
+        <span className="text-sm text-gray-600">
           {passCount === totalChecks ? (
-            <CheckCircle2 className="w-5 h-5" />
-          ) : passCount >= totalChecks - 2 ? (
-            <AlertTriangle className="w-5 h-5" />
+            <span className="inline-flex items-center gap-1.5 text-green-700">
+              <Check className="w-4 h-4" />
+              {passCount}/{totalChecks} checks pass
+            </span>
           ) : (
-            <XCircle className="w-5 h-5" />
+            <span className="text-gray-500">
+              {passCount}/{totalChecks} checks pass
+            </span>
           )}
-          {passCount}/{totalChecks} checks pass
-        </div>
+        </span>
       </div>
     </div>
   );

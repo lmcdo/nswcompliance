@@ -3,33 +3,27 @@
 /**
  * CdcComplianceResults Component
  *
- * Displays the results of CDC compliance checking with per-field status,
- * next steps section, and disclaimer footer.
+ * Displays CDC compliance results with minimal color usage.
+ * Only pass/fail icons use color; rest is typography-driven.
  */
 
 import {
-  CheckCircle2,
-  XCircle,
-  AlertTriangle,
+  Check,
+  X,
   ArrowRight,
   FileText,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { FormValidation, CDC_STANDARDS, getRequiredParking } from './types';
+import { FormValidation, getRequiredParking } from './types';
 
 interface CdcComplianceResultsProps {
-  /** Validation state from form */
   validation: FormValidation;
-  /** Number of passing checks */
   passCount: number;
-  /** Total number of checks */
   totalChecks: number;
-  /** Number of bedrooms (for parking requirement display) */
   bedrooms: number;
 }
 
 /**
- * Single result row
+ * Single result row - clean, minimal
  */
 function ResultRow({
   label,
@@ -48,35 +42,29 @@ function ResultRow({
   unit: string;
   isMax?: boolean;
 }) {
-  const comparison = isMax ? '\u2264' : '\u2265'; // ≤ or ≥
+  const comparison = isMax ? '≤' : '≥';
   const marginPrefix = margin >= 0 ? '+' : '';
 
   return (
-    <div
-      className={`flex items-center justify-between py-2 px-3 rounded-lg ${
-        valid ? 'bg-green-50' : 'bg-red-50'
-      }`}
-    >
+    <div className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
       <div className="flex items-center gap-2">
         {valid ? (
-          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+          <Check className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
         ) : (
-          <XCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+          <X className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
         )}
-        <span className={`text-sm ${valid ? 'text-green-800' : 'text-red-800'}`}>
-          {label}: {proposed}{unit} {comparison} {required}{unit}
+        <span className="text-sm text-gray-700">
+          {label}
         </span>
       </div>
-      <Badge
-        variant="outline"
-        className={`text-xs ${
-          valid
-            ? 'bg-green-100 text-green-700 border-green-300'
-            : 'bg-red-100 text-red-700 border-red-300'
-        }`}
-      >
-        [{marginPrefix}{Math.abs(margin).toFixed(1)}{unit}]
-      </Badge>
+      <div className="flex items-center gap-3 text-sm">
+        <span className={valid ? 'text-gray-600' : 'text-red-600 font-medium'}>
+          {proposed}{unit} {comparison} {required}{unit}
+        </span>
+        <span className="text-xs text-gray-400 w-12 text-right">
+          [{marginPrefix}{Math.abs(margin).toFixed(1)}{unit}]
+        </span>
+      </div>
     </div>
   );
 }
@@ -88,43 +76,29 @@ export function CdcComplianceResults({
   bedrooms,
 }: CdcComplianceResultsProps) {
   const allPass = passCount === totalChecks;
-  const mostPass = passCount >= totalChecks - 2;
   const failedChecks = Object.entries(validation).filter(([, v]) => !v.valid);
-
-  // Get status color classes
-  const statusClasses = allPass
-    ? 'bg-green-100 text-green-800 border-green-300'
-    : mostPass
-    ? 'bg-amber-100 text-amber-800 border-amber-300'
-    : 'bg-red-100 text-red-800 border-red-300';
-
-  const statusLabel = allPass
-    ? 'LIKELY COMPLIANT'
-    : mostPass
-    ? `${totalChecks - passCount} ISSUE${totalChecks - passCount > 1 ? 'S' : ''}`
-    : 'NON-COMPLIANT';
 
   return (
     <div className="space-y-4">
       {/* Results Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold text-gray-700">RESULTS</span>
-        <div
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium ${statusClasses}`}
-        >
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          Results
+        </span>
+        <span className={`text-sm font-medium ${allPass ? 'text-green-700' : 'text-gray-600'}`}>
           {allPass ? (
-            <CheckCircle2 className="w-4 h-4" />
-          ) : mostPass ? (
-            <AlertTriangle className="w-4 h-4" />
+            <span className="inline-flex items-center gap-1">
+              <Check className="w-4 h-4" />
+              {passCount}/{totalChecks} COMPLIANT
+            </span>
           ) : (
-            <XCircle className="w-4 h-4" />
+            `${passCount}/${totalChecks} pass`
           )}
-          {passCount}/{totalChecks} {statusLabel}
-        </div>
+        </span>
       </div>
 
       {/* Individual Results */}
-      <div className="space-y-2">
+      <div className="bg-gray-50 rounded p-3">
         <ResultRow
           label="Front"
           proposed={validation.front.proposed}
@@ -202,65 +176,49 @@ export function CdcComplianceResults({
         />
       </div>
 
-      {/* Next Steps for Failed Checks */}
+      {/* Action Required - only if failures */}
       {failedChecks.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 space-y-2">
-          <div className="flex items-center gap-2 text-amber-800 font-medium text-sm">
-            <AlertTriangle className="w-4 h-4" />
-            Action Required
-          </div>
-          <ul className="space-y-1.5 text-sm text-amber-700">
-            {failedChecks.map(([key, value]) => {
-              const fieldName = getFieldLabel(key);
-              const shortfall = Math.abs(value.margin);
-              const unit = getFieldUnit(key);
+        <div className="text-sm space-y-1.5">
+          <div className="text-gray-600 font-medium">Action Required:</div>
+          {failedChecks.map(([key, value]) => {
+            const fieldName = getFieldLabel(key);
+            const shortfall = Math.abs(value.margin);
+            const unit = getFieldUnit(key);
 
-              return (
-                <li key={key} className="flex items-start gap-2">
-                  <ArrowRight className="w-3 h-3 mt-1 flex-shrink-0" />
-                  <span>
-                    <strong>{fieldName}</strong>: Increase by {shortfall.toFixed(1)}{unit} or lodge Development Application
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
+            return (
+              <div key={key} className="flex items-start gap-2 text-gray-600">
+                <ArrowRight className="w-3 h-3 mt-1 flex-shrink-0 text-gray-400" />
+                <span>
+                  {fieldName}: adjust by {shortfall.toFixed(1)}{unit}, or lodge DA
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
       {/* All Pass Message */}
       {allPass && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          <div className="flex items-start gap-2 text-green-800 text-sm">
-            <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div className="text-sm text-gray-600 bg-gray-50 rounded p-3">
+          <div className="flex items-start gap-2">
+            <Check className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />
             <div>
-              <div className="font-medium">
-                All standards met for CDC pathway
-              </div>
-              <p className="text-green-700 mt-1">
-                Based on the values entered, this development may be suitable for a Complying Development Certificate.
-                Engage a registered certifier to proceed.
-              </p>
+              <span className="font-medium text-gray-700">All standards met for CDC pathway.</span>
+              <span className="text-gray-500"> Engage a registered certifier to proceed.</span>
             </div>
           </div>
         </div>
       )}
 
       {/* Disclaimer Footer */}
-      <div className="bg-gray-100 rounded-lg p-3 space-y-2">
-        <div className="flex items-center gap-2 text-gray-600 text-xs font-medium">
-          <FileText className="w-4 h-4" />
-          DISCLAIMER
+      <div className="text-xs text-gray-400 space-y-1 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-1.5">
+          <FileText className="w-3 h-3" />
+          <span className="font-medium">Disclaimer</span>
         </div>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          This is for general guidance only. Actual requirements may vary based on site
-          conditions, easements, covenants, and council-specific controls. The values shown
-          are based on SEPP (Housing) 2021 default standards for new dwelling houses in
-          residential zones. Always engage a registered certifier before proceeding with
-          any development application.
-        </p>
-        <p className="text-xs text-gray-500">
-          Reference: State Environmental Planning Policy (Housing) 2021, Part 3, Division 1
+        <p className="leading-relaxed">
+          General guidance only. Requirements may vary based on site conditions,
+          easements, and council controls. Based on SEPP Housing 2021 Part 3 Division 1.
         </p>
       </div>
     </div>
@@ -273,14 +231,14 @@ export function CdcComplianceResults({
 function getFieldLabel(key: string): string {
   const labels: Record<string, string> = {
     front: 'Front setback',
-    sideLeft: 'Side Left setback',
-    sideRight: 'Side Right setback',
+    sideLeft: 'Side Left',
+    sideRight: 'Side Right',
     rear: 'Rear setback',
     siteCoverage: 'Site coverage',
     landscapedArea: 'Landscaped area',
-    buildingHeight: 'Building height',
+    buildingHeight: 'Height',
     storeys: 'Storeys',
-    parking: 'Parking spaces',
+    parking: 'Parking',
   };
   return labels[key] || key;
 }
