@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square, Plane, Flag, AlertTriangle } from "lucide-react"
+import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square, Plane, Flag, AlertTriangle, Crosshair } from "lucide-react"
 
 interface PlanningLayer {
  id: string;
@@ -48,6 +48,14 @@ interface AnefInfo {
   }> | null;
 }
 
+interface CornerLotInfo {
+  isCornerLot: boolean;
+  adjacentRoads: string[];
+  roadCount: number;
+  confidence: number;
+  error?: string;
+}
+
 interface PropertyData {
  planningLayers?: PlanningLayer[];
  constraints?: any;
@@ -58,6 +66,7 @@ interface PropertyData {
  propertyArea?: string;
  lotDimensions?: LotDimensions;
  anefData?: AnefInfo | null;
+ cornerLot?: CornerLotInfo | null;
  address?: string;
 }
 
@@ -299,29 +308,18 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
 
        {/* Battleaxe Lot Detection */}
        {propertyData.lotDimensions?.battleaxe?.isBattleaxe && (
-         <div className={`border rounded-lg p-3 mb-2 ${
-           propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-             ? 'bg-violet-50 border-violet-200'
-             : 'bg-red-50 border-red-200'
-         }`}>
+         <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mb-2">
            <div className="flex items-center gap-2 mb-2">
-             <Flag className={`h-4 w-4 ${
-               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                 ? 'text-violet-700'
-                 : 'text-red-700'
-             }`} />
-             <span className={`text-sm font-semibold ${
-               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                 ? 'text-violet-900'
-                 : 'text-red-900'
-             }`}>Battleaxe Lot</span>
-             <Badge className={`text-xs ${
-               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
-                 ? 'bg-violet-100 text-violet-800 border-violet-300'
-                 : 'bg-red-100 text-red-800 border-red-300'
-             }`}>
-               {propertyData.lotDimensions.battleaxe.meetsMinimumRequirements ? 'Compliant' : 'Non-Compliant'}
+             <Flag className="h-4 w-4 text-violet-700" />
+             <span className="text-sm font-semibold text-violet-900">Battleaxe Lot</span>
+             <Badge className="text-xs bg-violet-100 text-violet-800 border-violet-300">
+               Flag Lot
              </Badge>
+             {!propertyData.lotDimensions.battleaxe.meetsMinimumRequirements && (
+               <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                 Below CDC Min
+               </Badge>
+             )}
            </div>
            <div className="grid grid-cols-2 gap-2 text-xs">
              <div className="bg-white rounded p-2 border border-violet-100">
@@ -360,6 +358,43 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
            <p className="text-xs text-gray-500 mt-2 italic">
              SEPP Housing 2021 requires 3m min access way, 12m×12m min main lot
            </p>
+         </div>
+       )}
+
+       {/* Corner Lot Detection */}
+       {propertyData.cornerLot?.confidence === 1 && (
+         <div className={`border rounded-lg p-3 mb-2 ${
+           propertyData.cornerLot.isCornerLot
+             ? 'bg-amber-50 border-amber-200'
+             : 'bg-gray-50 border-gray-200'
+         }`}>
+           <div className="flex items-center gap-2 mb-2">
+             <Crosshair className={`h-4 w-4 ${propertyData.cornerLot.isCornerLot ? 'text-amber-700' : 'text-gray-500'}`} />
+             <span className={`text-sm font-semibold ${propertyData.cornerLot.isCornerLot ? 'text-amber-900' : 'text-gray-700'}`}>
+               {propertyData.cornerLot.isCornerLot ? 'Corner Lot' : 'Not a Corner Lot'}
+             </span>
+             {propertyData.cornerLot.isCornerLot && (
+               <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                 {propertyData.cornerLot.roadCount} Roads
+               </Badge>
+             )}
+           </div>
+           {propertyData.cornerLot.isCornerLot && propertyData.cornerLot.adjacentRoads.length > 0 && (
+             <div className="text-xs space-y-1">
+               <p className="text-amber-800">
+                 <span className="font-medium">Adjacent roads:</span>{' '}
+                 {propertyData.cornerLot.adjacentRoads.join(', ')}
+               </p>
+               <p className="text-amber-700 italic mt-2">
+                 Secondary street setback: 3m (vs 6m rear for non-corner)
+               </p>
+             </div>
+           )}
+           {!propertyData.cornerLot.isCornerLot && propertyData.cornerLot.adjacentRoads.length > 0 && (
+             <p className="text-xs text-gray-600">
+               Adjacent road: {propertyData.cornerLot.adjacentRoads[0]}
+             </p>
+           )}
          </div>
        )}
 

@@ -74,11 +74,25 @@ export interface BoundarySegment {
  endPoint: { x: number; y: number };
 }
 
+export interface CornerLotInfo {
+  /** Whether lot is a corner lot (2+ adjacent roads) */
+  isCornerLot: boolean;
+  /** Names of adjacent roads */
+  adjacentRoads: string[];
+  /** Number of distinct road boundaries */
+  roadCount: number;
+  /** Confidence in detection (1.0 if API returned data, 0 if failed) */
+  confidence: number;
+  /** Error message if detection failed */
+  error?: string;
+}
+
 export interface PropertyIntelligenceResponse {
  success: boolean;
  property: PropertyData | null;
  lotGeometry: LotGeometry | null;
  lotDimensions?: LotDimensions | null;
+ cornerLot?: CornerLotInfo | null;
  error?: string;
  warning?: string;
  processing_time_ms?: number;

@@ -17,6 +17,7 @@ import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
 import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
 import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
+import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
 
 // Re-export TOD/HIA interfaces for use in components
 export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
@@ -81,6 +82,7 @@ export interface PropertyData {
  anefData?: AnefInfo | null;
  lotDetails?: LotDetails;
  lotDimensions?: LotDimensions | null;
+ cornerLot?: CornerLotResult | null;
 }
 
 export interface PlanningLayer {
@@ -124,6 +126,17 @@ export class PropertyDataService {
  lotDimensions = calculateLotDimensions(lotGeometry.geometry);
  if (lotDimensions) {
  console.log(`[PropertyDataService] Calculated lot dimensions: frontage=${lotDimensions.frontage}m, depth=${lotDimensions.depth}m, area=${lotDimensions.area}m²`);
+ }
+ }
+
+ // Detect corner lot from adjacent road parcels
+ let cornerLot: CornerLotResult | null = null;
+ if (lotGeometry?.geometry) {
+ cornerLot = await detectCornerLot(lotGeometry.geometry);
+ if (cornerLot.confidence > 0) {
+ console.log(`[PropertyDataService] Corner lot detection: isCornerLot=${cornerLot.isCornerLot}, roads=[${cornerLot.adjacentRoads.join(', ')}]`);
+ } else if (cornerLot.error) {
+ console.warn(`[PropertyDataService] Corner lot detection failed: ${cornerLot.error}`);
  }
  }
 
@@ -312,7 +325,8 @@ export class PropertyDataService {
  lotDescription: lotGeometry.lotDescription,
  geometry: lotGeometry.geometry
  } : undefined,
- lotDimensions // Calculated frontage, depth, area from lot geometry
+ lotDimensions, // Calculated frontage, depth, area from lot geometry
+ cornerLot // Corner lot detection from adjacent road parcels
  };
  
  } catch (error) {

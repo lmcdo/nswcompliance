@@ -1,7 +1,8 @@
 // app/api/property/[address]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import type { PropertyIntelligenceResponse, PropertyData, LotGeometry } from '@/types/property';
+import type { PropertyIntelligenceResponse, PropertyData, LotGeometry, CornerLotInfo } from '@/types/property';
 import { calculateLotDimensions, type LotDimensions } from '@/lib/geometry/lot-dimensions';
+import { detectCornerLot } from '@/lib/geometry/corner-lot-detection';
 
 // NSW Planning API base URL
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
@@ -190,11 +191,23 @@ export async function GET(
    }
  }
 
- const response: PropertyIntelligenceResponse & { lotDimensions?: LotDimensions } = {
+ // Detect corner lot from adjacent road parcels
+ let cornerLot: CornerLotInfo | null = null;
+ if (lotGeometry) {
+   cornerLot = await detectCornerLot(lotGeometry);
+   if (cornerLot.confidence > 0) {
+     console.log(`[API] Corner lot detection: isCornerLot=${cornerLot.isCornerLot}, roads=[${cornerLot.adjacentRoads.join(', ')}]`);
+   } else if (cornerLot.error) {
+     console.warn(`[API] Corner lot detection failed: ${cornerLot.error}`);
+   }
+ }
+
+ const response: PropertyIntelligenceResponse = {
  success: true,
  property: planningData,
  lotGeometry: lotGeometry,
  lotDimensions: lotDimensions || undefined,
+ cornerLot: cornerLot || undefined,
  processing_time_ms: processingTime
  };
 
