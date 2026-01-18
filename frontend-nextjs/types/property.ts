@@ -17,6 +17,8 @@ export interface PropertyData {
  lat: number;
  lng: number;
  };
+ /** API availability status for fallback handling */
+ api_status?: 'available' | 'unavailable';
 }
 
 export interface LotGeometry {
@@ -55,10 +57,29 @@ export interface PropertyIntelligenceRequest {
  lng?: number;
 }
 
+export interface LotDimensions {
+ area: number;
+ frontage: number;
+ depth: number;
+ boundaries: BoundarySegment[];
+ confidence: number;
+ notes: string[];
+}
+
+export interface BoundarySegment {
+ type: 'front' | 'rear' | 'side_left' | 'side_right' | 'unknown';
+ length: number;
+ bearing: number;
+ startPoint: { x: number; y: number };
+ endPoint: { x: number; y: number };
+}
+
 export interface PropertyIntelligenceResponse {
  success: boolean;
  property: PropertyData | null;
  lotGeometry: LotGeometry | null;
+ lotDimensions?: LotDimensions | null;
  error?: string;
+ warning?: string;
  processing_time_ms?: number;
 }

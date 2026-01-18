@@ -10,11 +10,13 @@ import {
  TODPrecinctInfo,
  AcceleratedTODInfo,
  HIAInfo,
- AnefInfo
+ AnefInfo,
+ LotGeometryData
 } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
 import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
+import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
 
 // Re-export TOD/HIA interfaces for use in components
 export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
@@ -78,6 +80,7 @@ export interface PropertyData {
  roadClassifications?: any[];
  anefData?: AnefInfo | null;
  lotDetails?: LotDetails;
+ lotDimensions?: LotDimensions | null;
 }
 
 export interface PlanningLayer {
@@ -113,7 +116,16 @@ export class PropertyDataService {
  throw new Error('Property not found in NSW Planning Portal');
  }
 
- const { propertyData, constraints, layers, roadClassifications, anefData } = nswData;
+ const { propertyData, constraints, layers, roadClassifications, anefData, lotGeometry } = nswData;
+
+ // Calculate lot dimensions from geometry
+ let lotDimensions: LotDimensions | null = null;
+ if (lotGeometry?.geometry) {
+ lotDimensions = calculateLotDimensions(lotGeometry.geometry);
+ if (lotDimensions) {
+ console.log(`[PropertyDataService] Calculated lot dimensions: frontage=${lotDimensions.frontage}m, depth=${lotDimensions.depth}m, area=${lotDimensions.area}m²`);
+ }
+ }
 
  // Extract source information from layers
  const fsrLayer = layers.find(l => l.layerName === 'Floor Space Ratio Map');
@@ -295,7 +307,12 @@ export class PropertyDataService {
  planningLayers: layers, // Pass through ALL layer data
  roadClassifications, // Road functional hierarchy for setback calculations
  anefData, // Aircraft noise exposure forecast data
- lotDetails: undefined // TODO: Add lot data when available from NSW service
+ lotDetails: lotGeometry ? {
+ cadId: lotGeometry.cadId,
+ lotDescription: lotGeometry.lotDescription,
+ geometry: lotGeometry.geometry
+ } : undefined,
+ lotDimensions // Calculated frontage, depth, area from lot geometry
  };
  
  } catch (error) {

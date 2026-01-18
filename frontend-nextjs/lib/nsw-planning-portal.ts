@@ -21,6 +21,20 @@ export interface NSWPropertyData {
  };
 }
 
+export interface LotGeometryData {
+ geometry: {
+ hasM: boolean;
+ hasZ: boolean;
+ rings: number[][][];
+ spatialReference: {
+ wkid: number;
+ latestWkid?: number | null;
+ };
+ };
+ cadId?: number;
+ lotDescription?: string;
+}
+
 export interface PlanningConstraints {
  maxFsr: number | null;
  maxHeight: number | null;
@@ -317,6 +331,52 @@ export class NSWPlanningPortalService {
 
  } catch (error) {
  console.error('Property valuation error:', error);
+ return null;
+ }
+ }
+
+ /**
+ * Get lot geometry (polygon boundary) for a property
+ * Returns detailed boundary coordinates for dimension calculations
+ */
+ static async getLotGeometry(propId: number): Promise<LotGeometryData | null> {
+ try {
+ const controller = new AbortController();
+ const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+ const response = await fetch(
+ `${this.BASE_URL}/lot?propId=${propId}`,
+ {
+ signal: controller.signal,
+ headers: {
+ 'Accept': 'application/json',
+ 'Origin': 'https://www.planningportal.nsw.gov.au',
+ 'Referer': 'https://www.planningportal.nsw.gov.au/'
+ }
+ }
+ );
+
+ clearTimeout(timeoutId);
+
+ if (!response.ok) {
+ console.warn(`Lot geometry fetch failed: ${response.status}`);
+ return null;
+ }
+
+ const data = await response.json();
+
+ if (data && data.length > 0) {
+ const lot = data[0];
+ return {
+ geometry: lot.geometry,
+ cadId: lot.attributes?.CADID,
+ lotDescription: lot.attributes?.LotDescription
+ };
+ }
+
+ return null;
+ } catch (error) {
+ console.warn('Lot geometry fetch failed:', error);
  return null;
  }
  }
@@ -803,6 +863,7 @@ export class NSWPlanningPortalService {
  layers: PlanningLayer[];
  roadClassifications?: any[];
  anefData?: AnefInfo | null;
+ lotGeometry?: LotGeometryData | null;
  } | null> {
  console.log('=== DEBUG: getPropertyComplianceData ===');
  console.log('Address:', address);
@@ -818,8 +879,8 @@ export class NSWPlanningPortalService {
  }
 
  // Step 2: Get planning layers, valuation data, and TOD layers in parallel
- console.log('Step 2: Getting planning layers, valuation data, TOD/HIA, and ANEF data...');
- const [layers, propertyData, todLayers, roadClassifications, anefData] = await Promise.all([
+ console.log('Step 2: Getting planning layers, valuation data, TOD/HIA, ANEF, and lot geometry...');
+ const [layers, propertyData, todLayers, roadClassifications, anefData, lotGeometry] = await Promise.all([
  this.getPlanningLayers(searchResult.propId),
  this.getPropertyValuation(searchResult.propId),
  // Fetch TOD layers after we get property data (need geometry)
@@ -859,6 +920,12 @@ export class NSWPlanningPortalService {
  .catch((err) => {
  console.log('ANEF check failed, continuing without ANEF data:', err);
  return null;
+ }),
+ // Fetch lot geometry for dimension calculations
+ this.getLotGeometry(searchResult.propId)
+ .catch((err) => {
+ console.log('Lot geometry fetch failed, continuing without lot data:', err);
+ return null;
  })
  ]);
 
@@ -867,6 +934,7 @@ export class NSWPlanningPortalService {
  console.log('TOD layers received:', todLayers);
  console.log('Road classifications received:', roadClassifications);
  console.log('ANEF data received:', anefData);
+ console.log('Lot geometry received:', lotGeometry ? `${lotGeometry.geometry?.rings?.[0]?.length || 0} vertices` : 'none');
 
  if (!propertyData) {
  throw new Error('Property valuation data not found');
@@ -895,7 +963,8 @@ export class NSWPlanningPortalService {
  constraints,
  layers: allLayers, // Return merged layers including TOD/HIA
  roadClassifications, // Return road classification data for setback calculations
- anefData // Return ANEF zone data for aircraft noise assessment
+ anefData, // Return ANEF zone data for aircraft noise assessment
+ lotGeometry // Return lot polygon geometry for dimension calculations
  };
 
  } catch (error) {

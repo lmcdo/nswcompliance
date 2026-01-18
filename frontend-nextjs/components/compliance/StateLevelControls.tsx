@@ -19,6 +19,7 @@ import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
+import { CdcComplianceCalculator } from '../cdc/CdcComplianceCalculator';
 
 interface StateLevelControlsProps {
   propertyData: any;
@@ -339,16 +340,21 @@ export function StateLevelControls({
   const lga = propertyData?.constraints?.lga || 'Inner West';
 
   // Extract lot dimensions for Housing SEPP LMR eligibility
+  // First try calculated dimensions from lot geometry, then fallback to property data
   const propertyAreaStr = propertyData?.propertyArea;
-  const lotSize = propertyAreaStr
-    ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, ''))
-    : propertyData?.geometry?.area;
+  const lotSize = propertyData?.lotDimensions?.area
+    || (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) : null)
+    || propertyData?.geometry?.area;
 
-  // Lot width - from geometry calculations or property data
-  const lotWidth = propertyData?.geometry?.frontageWidth
+  // Lot width - from calculated geometry (cadastre), then fallbacks
+  const lotWidth = propertyData?.lotDimensions?.frontage
+    || propertyData?.geometry?.frontageWidth
     || propertyData?.geometry?.estimatedWidth
     || propertyData?.constraints?.lotWidth
     || 15; // Default estimate if not available
+
+  // Lot depth - from calculated geometry
+  const lotDepth = propertyData?.lotDimensions?.depth || null;
 
   // Get station distance for TOD eligibility
   const stationDistance = propertyData?.constraints?.todPrecinct?.stationDistance
@@ -667,6 +673,16 @@ export function StateLevelControls({
             />
           </CardContent>
         </Card>
+      )}
+
+      {/* CDC Compliance Calculator - Shows for residential zones eligible for CDC */}
+      {isLMRArea && (
+        <CdcComplianceCalculator
+          address={propertyData?.address || null}
+          initialCollapsed={true}
+          lotDimensions={propertyData?.lotDimensions || null}
+          lotSize={lotSize || null}
+        />
       )}
 
       {/* Housing SEPP LMR Section - Shows for residential zones with lot data */}

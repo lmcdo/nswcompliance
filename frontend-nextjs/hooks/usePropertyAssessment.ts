@@ -4,6 +4,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { flushSync } from 'react-dom';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 
+interface LotDimensions {
+  area: number;
+  frontage: number;
+  depth: number;
+  confidence: number;
+  notes?: string[];
+}
+
 interface PropertyData {
   address: string;
   propertyArea?: string;
@@ -26,6 +34,7 @@ interface PropertyData {
     heritageSignificance?: string;
   };
   planningLayers?: any[];
+  lotDimensions?: LotDimensions;
 }
 
 interface UsePropertyAssessmentReturn {

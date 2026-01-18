@@ -4,12 +4,20 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink } from "lucide-react"
+import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square } from "lucide-react"
 
 interface PlanningLayer {
  id: string;
  layerName: string;
  results: any[];
+}
+
+interface LotDimensions {
+ area: number;
+ frontage: number;
+ depth: number;
+ confidence: number;
+ notes?: string[];
 }
 
 interface PropertyData {
@@ -20,6 +28,8 @@ interface PropertyData {
  environmental?: any;
  heritage?: any;
  propertyArea?: string;
+ lotDimensions?: LotDimensions;
+ address?: string;
 }
 
 interface PropertyDetailsComprehensiveProps {
@@ -205,6 +215,54 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
            {propertyData.constraints?.lga || 'Unknown'} LGA | {propertyData.constraints?.zone || 'Unknown'} | {propertyData.constraints?.maxHeight ? `${propertyData.constraints.maxHeight}m` : 'No height'} | {propertyData.constraints?.maxFsr ? `${propertyData.constraints.maxFsr}:1` : 'No FSR'} | Heritage: {propertyData.heritage?.isHeritage ? 'Yes' : 'No'} | Flood: {propertyData.constraints?.floodProne ? 'Yes' : 'No'} | {propertyData.constraints?.basixWater || 'N/A'} Water SEPP
          </p>
        </div>
+
+       {/* Lot Dimensions from Cadastre */}
+       {propertyData.lotDimensions && (
+         <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-2">
+           <div className="flex items-center gap-2 mb-2">
+             <Ruler className="h-4 w-4 text-amber-700" />
+             <span className="text-sm font-semibold text-amber-900">Lot Dimensions</span>
+             <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">Cadastre</Badge>
+           </div>
+           <div className="grid grid-cols-3 gap-3">
+             <div className="bg-white rounded p-2 text-center border border-amber-100">
+               <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                 <Square className="h-3 w-3" />
+                 <span className="text-xs">Area</span>
+               </div>
+               <span className="text-lg font-bold text-gray-900">
+                 {propertyData.lotDimensions.area.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+               </span>
+               <span className="text-xs text-gray-500 ml-1">m²</span>
+             </div>
+             <div className="bg-white rounded p-2 text-center border border-amber-100">
+               <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                 <Ruler className="h-3 w-3" />
+                 <span className="text-xs">Frontage</span>
+               </div>
+               <span className="text-lg font-bold text-gray-900">
+                 {propertyData.lotDimensions.frontage.toFixed(1)}
+               </span>
+               <span className="text-xs text-gray-500 ml-1">m</span>
+             </div>
+             <div className="bg-white rounded p-2 text-center border border-amber-100">
+               <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                 <Ruler className="h-3 w-3 rotate-90" />
+                 <span className="text-xs">Depth</span>
+               </div>
+               <span className="text-lg font-bold text-gray-900">
+                 {propertyData.lotDimensions.depth.toFixed(1)}
+               </span>
+               <span className="text-xs text-gray-500 ml-1">m</span>
+             </div>
+           </div>
+           {propertyData.lotDimensions.confidence < 0.8 && (
+             <p className="text-xs text-amber-700 mt-2 italic">
+               Note: Irregular lot shape - dimensions are estimates
+             </p>
+           )}
+         </div>
+       )}
 
        {expectedLayers.map((layerName) => {
          const layer = layerMap.get(layerName)
