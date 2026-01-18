@@ -32,7 +32,7 @@ const MIN_MAIN_LOT_AREA = 144.0; // 12m × 12m in sqm
 // Detection thresholds
 const MAX_HANDLE_WIDTH = 6.5; // Handle must be narrower than this
 const MIN_HEAD_WIDTH = 9.0; // Head must be wider than this
-const MAX_NARROW_PERCENTAGE = 0.45; // Handle must be <45% of lot length
+const MAX_NARROW_PERCENTAGE = 0.65; // Handle must be <65% of lot length (typically 30-50%, allow up to 60%)
 const MIN_WIDTH_RATIO = 0.65; // Handle/head width ratio must be below this
 
 export interface BattleaxeDetectionResult {
