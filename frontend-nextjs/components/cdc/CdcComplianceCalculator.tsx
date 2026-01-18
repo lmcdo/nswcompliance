@@ -80,7 +80,10 @@ function AutoChecksDisplay({ data }: { data: CdcCheckResult | null }) {
       {data.exclusions.length > 0 && (
         <div className="text-xs text-red-600 mt-1">
           {data.exclusions.map((exc, idx) => (
-            <span key={idx}>{exc.reason}</span>
+            <span key={idx}>
+              {idx > 0 && ' · '}
+              {exc.reason}
+            </span>
           ))}
         </div>
       )}

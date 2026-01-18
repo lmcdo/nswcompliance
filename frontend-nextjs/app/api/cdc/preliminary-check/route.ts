@@ -96,10 +96,10 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     // Fetch property data
     const propertyData = await PropertyDataService.getPropertyComplianceData(address);
 
-    const { constraints, heritage, environmental, propertyArea } = propertyData;
+    const { constraints, heritage, environmental, propertyArea, lotDimensions } = propertyData;
 
     // === CHECK 1: Zone eligibility ===
-    checksPerformed.push('Zone eligibility');
+    checksPerformed.push('Zone');
     const zoneCode = extractZoneCode(constraints?.zone);
 
     if (!zoneCode) {
@@ -108,7 +108,7 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
       const zoneCheck = isZoneCdcEligible(zoneCode);
       if (!zoneCheck.eligible) {
         exclusions.push({
-          reason: zoneCheck.reason || `Zone ${zoneCode} not CDC-eligible`,
+          reason: `Zone ${zoneCode} can't use CDC pathway`,
           constraint: 'zone',
           severity: 'definite',
           source: 'NSW Planning Portal'
@@ -117,31 +117,50 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     }
 
     // === CHECK 2: Lot size (minimum 200m²) ===
-    checksPerformed.push('Minimum lot size (200m²)');
-    if (propertyArea) {
-      // Parse area - may be "450 m²" or "450m²" or just "450"
+    checksPerformed.push('Lot size');
+
+    // Prefer cadastre-calculated area (more accurate), fallback to property area string
+    let areaNum: number | null = null;
+
+    if (lotDimensions?.area) {
+      areaNum = lotDimensions.area;
+    } else if (propertyArea) {
       const areaMatch = propertyArea.match(/[\d,]+\.?\d*/);
       if (areaMatch) {
-        const areaNum = parseFloat(areaMatch[0].replace(',', ''));
-        if (areaNum < 200) {
-          exclusions.push({
-            reason: `Lot size ${areaNum}m² is below 200m² minimum`,
-            constraint: 'lot_size',
-            severity: 'definite',
-            source: 'NSW Planning Portal'
-          });
-        }
+        areaNum = parseFloat(areaMatch[0].replace(',', ''));
+      }
+    }
+
+    if (areaNum !== null) {
+      if (areaNum < 200) {
+        exclusions.push({
+          reason: `Lot is too small (${Math.round(areaNum)}m², need at least 200m²)`,
+          constraint: 'lot_size',
+          severity: 'definite',
+          source: 'NSW Planning Portal'
+        });
       }
     } else {
       warnings.push('Could not determine lot size - verify lot size meets 200m² minimum');
     }
 
     // === CHECK 3: Heritage exclusion ===
-    checksPerformed.push('Heritage item exclusion');
+    checksPerformed.push('Heritage');
     if (heritage?.isHeritage) {
-      const heritageType = heritage.heritageType || 'Heritage item';
+      // Simplify heritage type for display
+      const heritageType = heritage.heritageType || '';
+      const isHCA = heritageType.toLowerCase().includes('conservation area');
+      const isItem = heritageType.toLowerCase().includes('item');
+
+      let reason = 'Heritage listed';
+      if (isHCA) {
+        reason = 'In a heritage conservation area';
+      } else if (isItem) {
+        reason = 'Heritage listed property';
+      }
+
       exclusions.push({
-        reason: `Property is a ${heritageType}`,
+        reason,
         constraint: 'heritage',
         severity: 'definite',
         source: 'NSW Planning Portal'
@@ -149,10 +168,10 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     }
 
     // === CHECK 4: Flood-prone land ===
-    checksPerformed.push('Flood-prone land exclusion');
+    checksPerformed.push('Flood risk');
     if (environmental?.floodProne) {
       exclusions.push({
-        reason: 'Property is identified as flood-prone land',
+        reason: 'Flood-prone land',
         constraint: 'flood',
         severity: 'definite',
         source: 'NSW Planning Portal'
@@ -160,10 +179,10 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     }
 
     // === CHECK 5: Bushfire-prone land ===
-    checksPerformed.push('Bushfire-prone land exclusion');
+    checksPerformed.push('Bushfire risk');
     if (environmental?.bushfireProne) {
       exclusions.push({
-        reason: 'Property is identified as bushfire-prone land',
+        reason: 'Bushfire-prone land',
         constraint: 'bushfire',
         severity: 'definite',
         source: 'NSW Planning Portal'
@@ -171,14 +190,14 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     }
 
     // === CHECK 6: Acid sulfate soils (Class 1-3) ===
-    checksPerformed.push('Acid sulfate soils check');
+    checksPerformed.push('Acid sulfate soils');
     if (environmental?.acidSulfateSoils) {
       const classMatch = environmental.acidSulfateSoils.match(/Class\s*([1-5])/i);
       if (classMatch) {
         const soilClass = parseInt(classMatch[1]);
         if (soilClass <= 3) {
           exclusions.push({
-            reason: `Acid sulfate soils Class ${soilClass} requires specific management`,
+            reason: `Acid sulfate soil (Class ${soilClass})`,
             constraint: 'acid_sulfate',
             severity: 'likely',
             source: 'NSW Planning Portal'
@@ -188,27 +207,24 @@ async function performCdcChecks(address: string): Promise<CdcCheckResult> {
     }
 
     // === CHECK 7: Height compliance (if available) ===
-    checksPerformed.push('Height standard check');
+    checksPerformed.push('Height limit');
     if (constraints?.maxHeight) {
       // CDC typically requires max 8.5m for houses
       if (constraints.maxHeight < 8.5) {
-        warnings.push(`Maximum height ${constraints.maxHeight}m may limit CDC dwelling types`);
+        warnings.push(`Height limit ${constraints.maxHeight}m (CDC needs 8.5m)`);
       }
     }
 
     // === CHECK 8: FSR compliance (if available) ===
-    checksPerformed.push('FSR standard check');
+    checksPerformed.push('Floor space ratio');
     if (constraints?.maxFsr) {
       // Very low FSR may limit CDC
       if (constraints.maxFsr < 0.3) {
-        warnings.push(`Low FSR ${constraints.maxFsr}:1 may limit development options`);
+        warnings.push(`Low floor space ratio (${constraints.maxFsr}:1)`);
       }
     }
 
-    // === CHECKS NOT POSSIBLE (need external data) ===
-    warnings.push('Cannot verify: registered easements (requires NSW LRS)');
-    warnings.push('Cannot verify: site slope >18 degrees (requires elevation data)');
-    warnings.push('Cannot verify: existing dwelling count on lot');
+    // Note: Some checks need external data we don't have
 
     // Determine final eligibility
     const definiteExclusions = exclusions.filter(e => e.severity === 'definite');

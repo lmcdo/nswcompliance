@@ -1,6 +1,7 @@
 // app/api/property/[address]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import type { PropertyIntelligenceResponse, PropertyData, LotGeometry } from '@/types/property';
+import { calculateLotDimensions, type LotDimensions } from '@/lib/geometry/lot-dimensions';
 
 // NSW Planning API base URL
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
@@ -180,10 +181,20 @@ export async function GET(
  const processingTime = Date.now() - startTime;
  console.log(`[API] Property analysis completed in ${processingTime}ms`);
 
- const response: PropertyIntelligenceResponse = {
+ // Calculate lot dimensions from geometry
+ let lotDimensions: LotDimensions | null = null;
+ if (lotGeometry) {
+   lotDimensions = calculateLotDimensions(lotGeometry);
+   if (lotDimensions) {
+     console.log(`[API] Calculated lot dimensions: frontage=${lotDimensions.frontage}m, depth=${lotDimensions.depth}m, area=${lotDimensions.area}m²`);
+   }
+ }
+
+ const response: PropertyIntelligenceResponse & { lotDimensions?: LotDimensions } = {
  success: true,
  property: planningData,
  lotGeometry: lotGeometry,
+ lotDimensions: lotDimensions || undefined,
  processing_time_ms: processingTime
  };
 
