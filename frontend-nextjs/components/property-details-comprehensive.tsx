@@ -4,12 +4,23 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square, Plane } from "lucide-react"
+import { ChevronDown, ChevronRight, MapPin, Calendar, FileText, Zap, TreePine, Building, Shield, ExternalLink, Ruler, Square, Plane, Flag, AlertTriangle } from "lucide-react"
 
 interface PlanningLayer {
  id: string;
  layerName: string;
  results: any[];
+}
+
+interface BattleaxeInfo {
+  isBattleaxe: boolean;
+  confidence: number;
+  accessWayWidth: number;
+  accessWayLength: number;
+  mainLotWidth: number;
+  mainLotArea: number;
+  meetsMinimumRequirements: boolean;
+  complianceIssues: string[];
 }
 
 interface LotDimensions {
@@ -18,6 +29,8 @@ interface LotDimensions {
  depth: number;
  confidence: number;
  notes?: string[];
+ lotType?: 'rectangular' | 'battleaxe' | 'irregular';
+ battleaxe?: BattleaxeInfo;
 }
 
 interface AnefInfo {
@@ -281,6 +294,72 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                Note: Irregular lot shape - dimensions are estimates
              </p>
            )}
+         </div>
+       )}
+
+       {/* Battleaxe Lot Detection */}
+       {propertyData.lotDimensions?.battleaxe?.isBattleaxe && (
+         <div className={`border rounded-lg p-3 mb-2 ${
+           propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+             ? 'bg-violet-50 border-violet-200'
+             : 'bg-red-50 border-red-200'
+         }`}>
+           <div className="flex items-center gap-2 mb-2">
+             <Flag className={`h-4 w-4 ${
+               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                 ? 'text-violet-700'
+                 : 'text-red-700'
+             }`} />
+             <span className={`text-sm font-semibold ${
+               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                 ? 'text-violet-900'
+                 : 'text-red-900'
+             }`}>Battleaxe Lot</span>
+             <Badge className={`text-xs ${
+               propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                 ? 'bg-violet-100 text-violet-800 border-violet-300'
+                 : 'bg-red-100 text-red-800 border-red-300'
+             }`}>
+               {propertyData.lotDimensions.battleaxe.meetsMinimumRequirements ? 'Compliant' : 'Non-Compliant'}
+             </Badge>
+           </div>
+           <div className="grid grid-cols-2 gap-2 text-xs">
+             <div className="bg-white rounded p-2 border border-violet-100">
+               <span className="text-gray-500">Access Way</span>
+               <p className="font-semibold text-gray-900">
+                 {propertyData.lotDimensions.battleaxe.accessWayWidth}m wide
+                 <span className="font-normal text-gray-500"> × {propertyData.lotDimensions.battleaxe.accessWayLength}m</span>
+               </p>
+               {propertyData.lotDimensions.battleaxe.accessWayWidth < 3 && (
+                 <p className="text-red-600 text-xs mt-1">Below 3m minimum</p>
+               )}
+             </div>
+             <div className="bg-white rounded p-2 border border-violet-100">
+               <span className="text-gray-500">Main Lot</span>
+               <p className="font-semibold text-gray-900">
+                 {propertyData.lotDimensions.battleaxe.mainLotWidth}m wide
+               </p>
+               <p className="text-gray-500">{propertyData.lotDimensions.battleaxe.mainLotArea}m² area</p>
+             </div>
+           </div>
+           {!propertyData.lotDimensions.battleaxe.meetsMinimumRequirements && (
+             <div className="mt-2 pt-2 border-t border-red-200">
+               <div className="flex items-start gap-1">
+                 <AlertTriangle className="h-3 w-3 text-red-600 mt-0.5 flex-shrink-0" />
+                 <div className="text-xs text-red-700">
+                   <p className="font-medium">SEPP Housing 2021 Issues:</p>
+                   <ul className="mt-1 space-y-0.5">
+                     {propertyData.lotDimensions.battleaxe.complianceIssues.map((issue, i) => (
+                       <li key={i}>• {issue}</li>
+                     ))}
+                   </ul>
+                 </div>
+               </div>
+             </div>
+           )}
+           <p className="text-xs text-gray-500 mt-2 italic">
+             SEPP Housing 2021 requires 3m min access way, 12m×12m min main lot
+           </p>
          </div>
        )}
 

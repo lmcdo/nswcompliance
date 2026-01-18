@@ -8,6 +8,7 @@
  */
 
 import type { LotGeometry } from '@/types/property';
+import { analyzeLotShape, type BattleaxeDetectionResult } from './lot-shape-analysis';
 
 export interface LotDimensions {
   /** Lot area in square meters */
@@ -22,6 +23,10 @@ export interface LotDimensions {
   confidence: number;
   /** Notes about the calculation */
   notes: string[];
+  /** Lot shape classification */
+  lotType?: 'rectangular' | 'battleaxe' | 'irregular';
+  /** Battleaxe lot details (if applicable) */
+  battleaxe?: BattleaxeDetectionResult;
 }
 
 export interface BoundarySegment {
@@ -97,6 +102,18 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
     notes.push(`Irregular lot shape (${boundaries.length} boundaries)`);
   }
 
+  // Analyze lot shape for battleaxe detection
+  const shapeAnalysis = analyzeLotShape(geometry);
+  const lotType = shapeAnalysis.lotType;
+  const battleaxe = shapeAnalysis.battleaxe;
+
+  if (battleaxe?.isBattleaxe) {
+    notes.push(`Battleaxe lot detected (handle: ${battleaxe.accessWayWidth}m, head: ${battleaxe.mainLotWidth}m)`);
+    if (!battleaxe.meetsMinimumRequirements) {
+      notes.push('WARNING: Does not meet SEPP Housing 2021 minimum requirements');
+    }
+  }
+
   return {
     area: Math.round(area * 100) / 100,
     frontage: Math.round(frontage * 100) / 100,
@@ -104,6 +121,8 @@ export function calculateLotDimensions(geometry: LotGeometry): LotDimensions | n
     boundaries,
     confidence: Math.max(0.5, confidence),
     notes,
+    lotType,
+    battleaxe,
   };
 }
 
