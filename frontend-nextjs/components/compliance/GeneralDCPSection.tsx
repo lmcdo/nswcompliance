@@ -109,7 +109,7 @@ interface GeneralDCPSectionProps {
   developmentType: string;
   filteringLevel?: 'zone+devtype' | 'devtype' | 'universal';
   formerCouncil?: string;
-  propertyArea?: string;  // For subdivision filtering
+  lotArea?: number;  // For subdivision filtering (cadastre area in m²)
   heritage?: any;  // For heritage filtering
   daRequirementsCount?: number;  // For DA requirements display
   displayModeSetterRef?: React.MutableRefObject<((mode: 'separated' | 'combined') => void) | null>;
@@ -565,7 +565,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   developmentType,
   filteringLevel = 'universal',
   formerCouncil,
-  propertyArea,
+  lotArea,
   heritage,
   daRequirementsCount = 0,
   displayModeSetterRef
@@ -581,7 +581,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
 
   // Subdivision filter state
   const [showSubdivisionOverride, setShowSubdivisionOverride] = useState(false);
-  const propertyCanSubdivide = canSubdivide(propertyArea);
+  const propertyCanSubdivide = canSubdivide(lotArea);
 
   // Heritage filter state
   const [showHeritageOverride, setShowHeritageOverride] = useState(false);
@@ -590,14 +590,14 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
   // Debug logging
   useEffect(() => {
     console.log('[Smart Filters] Debug:', {
-      propertyArea,
+      lotArea,
       propertyCanSubdivide,
       heritage: propertyHasHeritage,
       totalRequirements: generalData.requirements.length,
       subdivisionCount: generalData.requirements.filter(isSubdivisionRequirement).length,
       heritageCount: generalData.requirements.filter(isHeritageRequirement).length
     });
-  }, [propertyArea, propertyCanSubdivide, propertyHasHeritage, generalData.requirements]);
+  }, [lotArea, propertyCanSubdivide, propertyHasHeritage, generalData.requirements]);
 
   // Expose setDisplayMode and helper functions to parent via ref
   useEffect(() => {
@@ -711,7 +711,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
                 <li>• <strong>Qualitative requirements</strong> ({prioritized.qualitative.length}): Design principles, character, context - important but less prescriptive</li>
                 {subdivisionFiltered && (
                   <li className="flex items-center justify-between">
-                    <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {propertyArea} - too small to subdivide (450m² minimum)</span>
+                    <span>• <strong>Subdivision requirements hidden</strong> ({subdivisionCount}): Property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'} - too small to subdivide (450m² minimum)</span>
                     <button
                       onClick={() => setShowSubdivisionOverride(true)}
                       className="ml-2 text-xs text-blue-700 hover:text-blue-900 underline whitespace-nowrap"
@@ -752,7 +752,7 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               </div>
               {subdivisionFiltered && (
                 <div>
-                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {propertyArea}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
+                  <strong>Subdivision filtering:</strong> Properties under 450m² cannot legally be subdivided under Inner West LEP. Since your property is {lotArea ? `${Math.round(lotArea)}m²` : 'unknown size'}, {subdivisionCount} subdivision {subdivisionCount === 1 ? 'control' : 'controls'} {subdivisionCount === 1 ? 'has' : 'have'} been automatically hidden. Click "Show anyway" above to view if needed.
                 </div>
               )}
               {heritageFiltered && (

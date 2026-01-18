@@ -126,7 +126,11 @@ export default function AssessmentPageV2() {
                     </div>
                     <div>
                       <label className="text-sm text-gray-600">Area</label>
-                      <p className="font-medium text-sm">{selectedProperty.propertyArea || 'Unknown'}</p>
+                      <p className="font-medium text-sm">
+                        {selectedProperty.lotDimensions?.area
+                          ? `${Math.round(selectedProperty.lotDimensions.area)}m²`
+                          : selectedProperty.propertyArea || 'Unknown'}
+                      </p>
                     </div>
                   </div>
 

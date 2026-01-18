@@ -32,7 +32,7 @@ interface DARequirementsSectionProps {
   zone?: string;
   developmentType?: string;
   formerCouncil?: string;
-  propertyArea?: string;  // For subdivision filtering
+  lotArea?: number;  // For subdivision filtering (cadastre area in m²)
   heritage?: any;  // For heritage filtering
   showSubdivisionOverride?: boolean;  // Override state from parent
   showHeritageOverride?: boolean;  // Override state from parent
@@ -455,7 +455,7 @@ const DARequirementsSection: React.FC<DARequirementsSectionProps> = ({
   zone = '',
   developmentType = 'dwelling_house',
   formerCouncil = '',
-  propertyArea,
+  lotArea,
   heritage,
   showSubdivisionOverride = false,
   showHeritageOverride = false
@@ -463,7 +463,7 @@ const DARequirementsSection: React.FC<DARequirementsSectionProps> = ({
   const [expanded, setExpanded] = useState(defaultExpanded);
   const [showExcluded, setShowExcluded] = useState(false);
 
-  const propertyCanSubdivide = canSubdivide(propertyArea);
+  const propertyCanSubdivide = canSubdivide(lotArea);
   const propertyHasHeritage = hasHeritage(heritage);
 
   // Apply smart filters to requirements (using parent's override state)

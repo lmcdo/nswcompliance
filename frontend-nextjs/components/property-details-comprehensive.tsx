@@ -127,10 +127,14 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
      important.push({ key: 'Maximum Gross Floor Area', value: `${lepClauseCap.toFixed(1)}m² (${lepSource})` })
    } else {
      // Calculate max GFA from FSR if lot area is available
-     if (propertyData.propertyArea) {
-       const lotArea = parseFloat(propertyData.propertyArea.replace(/[^\d.]/g, ''))
+     // Prefer cadastre-calculated area (legally authoritative)
+     const lotArea = propertyData.lotDimensions?.area
+       ?? (propertyData.propertyArea
+         ? parseFloat(propertyData.propertyArea.replace(/[^\d.]/g, ''))
+         : null);
+     if (lotArea) {
        const fsr = parseFloat(result['Floor Space Ratio'])
-       if (!isNaN(lotArea) && !isNaN(fsr)) {
+       if (!isNaN(fsr)) {
          const maxGFA = (fsr * lotArea).toFixed(1)
          important.push({ key: 'Maximum Gross Floor Area', value: `${maxGFA}m²` })
        }

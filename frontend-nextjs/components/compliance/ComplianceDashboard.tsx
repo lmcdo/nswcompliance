@@ -188,8 +188,9 @@ export function ComplianceDashboard({
     const requirements = dcpCompleteData.general_provisions.requirements;
     let filtered = requirements;
 
-    // Apply subdivision filter
-    const propertyCanSubdivide = canSubdivide(propertyData?.propertyArea);
+    // Apply subdivision filter - prefer cadastre area (legally authoritative)
+    const lotArea = propertyData?.lotDimensions?.area ?? propertyData?.propertyArea;
+    const propertyCanSubdivide = canSubdivide(lotArea);
     if (!propertyCanSubdivide) {
       filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
     }
@@ -201,7 +202,7 @@ export function ComplianceDashboard({
     }
 
     return filtered.length;
-  }, [dcpCompleteData?.general_provisions?.requirements, propertyData?.propertyArea, propertyData?.heritage]);
+  }, [dcpCompleteData?.general_provisions?.requirements, propertyData?.lotDimensions?.area, propertyData?.propertyArea, propertyData?.heritage]);
 
   // Calculate filtered DA requirements count for header display
   const filteredDaCount = useMemo(() => {
@@ -212,8 +213,9 @@ export function ComplianceDashboard({
     const requirements = dcpCompleteData.da_requirements.requirements;
     let filtered = requirements;
 
-    // Apply subdivision filter
-    const propertyCanSubdivide = canSubdivide(propertyData?.propertyArea);
+    // Apply subdivision filter - prefer cadastre area (legally authoritative)
+    const lotArea = propertyData?.lotDimensions?.area ?? propertyData?.propertyArea;
+    const propertyCanSubdivide = canSubdivide(lotArea);
     if (!propertyCanSubdivide) {
       filtered = filtered.filter((req: any) => !isSubdivisionRequirement(req));
     }
@@ -225,7 +227,7 @@ export function ComplianceDashboard({
     }
 
     return filtered.length;
-  }, [dcpCompleteData?.da_requirements?.requirements, propertyData?.propertyArea, propertyData?.heritage]);
+  }, [dcpCompleteData?.da_requirements?.requirements, propertyData?.lotDimensions?.area, propertyData?.propertyArea, propertyData?.heritage]);
 
   // Collapsible state for main sections
   const [collapsedSections, setCollapsedSections] = useState({
@@ -1351,7 +1353,7 @@ export function ComplianceDashboard({
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
-                  propertyArea={propertyData.propertyArea}
+                  lotArea={propertyData.lotDimensions?.area}
                   heritage={propertyData.heritage}
                 />
               ) : (
@@ -1362,7 +1364,7 @@ export function ComplianceDashboard({
                   zone={propertyData.constraints.zone}
                   developmentType={developmentType}
                   formerCouncil={dcpCompleteData.query?.formerCouncil}
-                  propertyArea={propertyData.propertyArea}
+                  lotArea={propertyData.lotDimensions?.area}
                   heritage={propertyData.heritage}
                   daRequirementsCount={dcpCompleteData.da_requirements?.requirements?.length || 0}
                   displayModeSetterRef={displayModeSetterRef}

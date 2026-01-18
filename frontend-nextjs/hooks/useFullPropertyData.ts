@@ -11,6 +11,13 @@ import type {
   LoadingState,
 } from '@/types/regulatory';
 
+interface LotDimensions {
+  area: number;
+  frontage: number;
+  depth: number;
+  confidence?: number;
+}
+
 interface PropertyApiResponse {
   success: boolean;
   data?: {
@@ -18,6 +25,7 @@ interface PropertyApiResponse {
     propId?: number;
     gurasid?: number;
     propertyArea?: string;
+    lotDimensions?: LotDimensions;
     constraints?: {
       zone?: string;
       zoneDescription?: string;
@@ -285,10 +293,11 @@ export function useFullPropertyData(): UseFullPropertyDataReturn {
         throw new Error(propertyResult.error || 'Property not found');
       }
 
-      // Build property context
-      const lotArea = propertyResult.data.propertyArea
-        ? parseFloat(propertyResult.data.propertyArea.replace(/[^\d.]/g, ''))
-        : undefined;
+      // Build property context - prefer cadastre-calculated area (legally authoritative)
+      const lotArea = propertyResult.data.lotDimensions?.area
+        ?? (propertyResult.data.propertyArea
+          ? parseFloat(propertyResult.data.propertyArea.replace(/[^\d.]/g, ''))
+          : undefined);
 
       const propertyContext: PropertyContext = {
         address: propertyResult.data.address,

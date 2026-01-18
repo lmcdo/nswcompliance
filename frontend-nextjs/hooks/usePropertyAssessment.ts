@@ -83,9 +83,11 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
         return;
       }
 
-      const lotArea = selectedProperty.propertyArea
-        ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, ''))
-        : null;
+      // Prefer cadastre-calculated area (legally authoritative)
+      const lotArea = selectedProperty.lotDimensions?.area
+        ?? (selectedProperty.propertyArea
+          ? parseFloat(selectedProperty.propertyArea.replace(/[^\d.]/g, ''))
+          : null);
       if (!lotArea) return;
 
       try {
