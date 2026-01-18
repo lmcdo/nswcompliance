@@ -358,7 +358,7 @@ export function CdcComplianceCalculator({
               SEPP Housing 2021
             </a>
             <a
-              href="https://www.planningportal.nsw.gov.au/development-and-assessment/complying-development"
+              href="https://www.planning.nsw.gov.au/assess-and-regulate/development-assessment/planning-approval-pathways/complying-development"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800"
