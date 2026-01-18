@@ -106,6 +106,26 @@ export interface HIAInfo {
  legislativeClause?: string;
 }
 
+/**
+ * ANEF (Australian Noise Exposure Forecast) Information
+ * Aircraft noise zones from airport master plans
+ */
+export interface AnefInfo {
+  inAnefZone: boolean;
+  anefLevel: number | null;
+  airport: {
+    code: string;
+    name: string;
+    version: string;
+  } | null;
+  buildingAcceptability: Array<{
+    buildingType: string;
+    displayName: string;
+    status: 'acceptable' | 'conditional' | 'unacceptable';
+  }> | null;
+  standardReference: string;
+}
+
 export interface PlanningLayer {
  layerName: string;
  results: Array<{
@@ -781,6 +801,8 @@ export class NSWPlanningPortalService {
  propertyData: NSWPropertyData;
  constraints: PlanningConstraints & { applicableSepps?: string[] };
  layers: PlanningLayer[];
+ roadClassifications?: any[];
+ anefData?: AnefInfo | null;
  } | null> {
  console.log('=== DEBUG: getPropertyComplianceData ===');
  console.log('Address:', address);
@@ -796,8 +818,8 @@ export class NSWPlanningPortalService {
  }
 
  // Step 2: Get planning layers, valuation data, and TOD layers in parallel
- console.log('Step 2: Getting planning layers, valuation data, and TOD/HIA data...');
- const [layers, propertyData, todLayers, roadClassifications] = await Promise.all([
+ console.log('Step 2: Getting planning layers, valuation data, TOD/HIA, and ANEF data...');
+ const [layers, propertyData, todLayers, roadClassifications, anefData] = await Promise.all([
  this.getPlanningLayers(searchResult.propId),
  this.getPropertyValuation(searchResult.propId),
  // Fetch TOD layers after we get property data (need geometry)
@@ -820,6 +842,23 @@ export class NSWPlanningPortalService {
  .catch(() => {
  console.log('Road classification fetch failed, continuing without road data');
  return [];
+ }),
+ // Fetch ANEF (Aircraft Noise Exposure Forecast) zone data
+ this.getPropertyValuation(searchResult.propId)
+ .then(async (pd) => {
+ if (!pd) return null;
+ // Convert Web Mercator (x, y) to WGS84 (lon, lat)
+ const lon = (pd.geometry.x / 20037508.34) * 180;
+ const lat = (Math.atan(Math.exp((pd.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+ console.log(`[ANEF] Checking coordinates: (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+ const response = await fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`);
+ if (!response.ok) return null;
+ const result = await response.json();
+ return result.success ? result.data : null;
+ })
+ .catch((err) => {
+ console.log('ANEF check failed, continuing without ANEF data:', err);
+ return null;
  })
  ]);
 
@@ -827,6 +866,7 @@ export class NSWPlanningPortalService {
  console.log('Property data received:', propertyData);
  console.log('TOD layers received:', todLayers);
  console.log('Road classifications received:', roadClassifications);
+ console.log('ANEF data received:', anefData);
 
  if (!propertyData) {
  throw new Error('Property valuation data not found');
@@ -854,7 +894,8 @@ export class NSWPlanningPortalService {
  propertyData,
  constraints,
  layers: allLayers, // Return merged layers including TOD/HIA
- roadClassifications // Return road classification data for setback calculations
+ roadClassifications, // Return road classification data for setback calculations
+ anefData // Return ANEF zone data for aircraft noise assessment
  };
 
  } catch (error) {

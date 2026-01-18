@@ -9,7 +9,8 @@ import {
  PlanningConstraints,
  TODPrecinctInfo,
  AcceleratedTODInfo,
- HIAInfo
+ HIAInfo,
+ AnefInfo
 } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
@@ -74,6 +75,8 @@ export interface PropertyData {
  };
  seppRouting?: SeppRoutingResult;
  planningLayers?: PlanningLayer[];
+ roadClassifications?: any[];
+ anefData?: AnefInfo | null;
  lotDetails?: LotDetails;
 }
 
@@ -110,7 +113,7 @@ export class PropertyDataService {
  throw new Error('Property not found in NSW Planning Portal');
  }
 
- const { propertyData, constraints, layers, roadClassifications } = nswData;
+ const { propertyData, constraints, layers, roadClassifications, anefData } = nswData;
 
  // Extract source information from layers
  const fsrLayer = layers.find(l => l.layerName === 'Floor Space Ratio Map');
@@ -291,6 +294,7 @@ export class PropertyDataService {
  seppRouting,
  planningLayers: layers, // Pass through ALL layer data
  roadClassifications, // Road functional hierarchy for setback calculations
+ anefData, // Aircraft noise exposure forecast data
  lotDetails: undefined // TODO: Add lot data when available from NSW service
  };
  

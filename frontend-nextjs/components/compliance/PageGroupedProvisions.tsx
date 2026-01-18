@@ -11,12 +11,14 @@
  * Replaces 4 different provision rendering paths in ProvisionsByTopic.tsx
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { LayerBadges } from '@/lib/design-tokens';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
+import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
+import type { CrossReference } from '@/hooks/useCrossReferences';
 
 /**
  * Page offsets for Leichhardt DCP parts.
@@ -148,6 +150,11 @@ interface PageGroupedProvisionsProps {
   showLegend?: boolean;         // Show layer legend above results (default: false)
   maxProvisions?: number;       // Limit display count (e.g., 20)
   formerCouncil?: string;       // For council-specific layer labels
+  // Cross-reference support
+  crossReferencesMap?: Record<number, CrossReference[]>;  // Map of provisionId -> cross-references
+  showCrossReferences?: boolean;  // Whether to display cross-references (default: false)
+  onNavigateCrossRef?: (provisionId: number, docType: DocumentType) => void;  // Navigate to different doc
+  onScrollToCrossRef?: (provisionId: number) => void;  // Scroll to provision in same doc
 }
 
 // Default theme (teal, used by most paths)
@@ -309,6 +316,10 @@ export function PageGroupedProvisions({
   showLegend = false,
   maxProvisions,
   formerCouncil,
+  crossReferencesMap,
+  showCrossReferences = false,
+  onNavigateCrossRef,
+  onScrollToCrossRef,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -500,6 +511,7 @@ export function PageGroupedProvisions({
                   return (
                     <div
                       key={provision.id}
+                      data-provision-id={provision.id}
                       className={`px-4 py-3 ${bgClass} border-l-4`}
                       style={{ borderLeftColor: layer === 'precinct' ? '#8b5cf6' : layer === 'condition' ? '#f59e0b' : layer === 'use_specific' ? '#3b82f6' : '#14b8a6' }}
                     >
@@ -577,6 +589,20 @@ export function PageGroupedProvisions({
                         >
                           {isExpanded ? '↑ Show less' : '+ Show more'}
                         </button>
+                      )}
+
+                      {/* Cross-References - shown when enabled and available */}
+                      {showCrossReferences && crossReferencesMap?.[provision.id]?.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-gray-100">
+                          <CrossReferenceList
+                            references={crossReferencesMap[provision.id]}
+                            currentDocType="dcp"
+                            currentProvisionId={provision.id}
+                            onNavigate={onNavigateCrossRef}
+                            onScrollTo={onScrollToCrossRef}
+                            maxVisible={3}
+                          />
+                        </div>
                       )}
                     </div>
                   );
