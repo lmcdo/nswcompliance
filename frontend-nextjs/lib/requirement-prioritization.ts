@@ -105,8 +105,17 @@ export function detectDevTypeFromZone(zone?: string): string {
 
   const zoneUpper = zone.toUpperCase();
 
-  // Residential zones (R1, R2, R3, R4, R5, etc.) - default to dwelling_house
+  // Residential zones - differentiate by density
   if (zoneUpper.startsWith('R')) {
+    // R4 = High Density Residential → residential flat buildings
+    if (zoneUpper === 'R4') {
+      return 'residential_flat';
+    }
+    // R3 = Medium Density Residential → multi-dwelling housing
+    if (zoneUpper === 'R3') {
+      return 'multi_dwelling';
+    }
+    // R1, R2, R5 = Low Density / Large Lot → dwelling house
     return 'dwelling_house';
   }
 
