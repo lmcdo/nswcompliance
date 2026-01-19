@@ -109,11 +109,11 @@ export function detectDevTypeFromZone(zone?: string): string {
   if (zoneUpper.startsWith('R')) {
     // R4 = High Density Residential → residential flat buildings
     if (zoneUpper === 'R4') {
-      return 'residential_flat';
+      return 'residential_flat_building';
     }
     // R3 = Medium Density Residential → multi-dwelling housing
     if (zoneUpper === 'R3') {
-      return 'multi_dwelling';
+      return 'multi_dwelling_housing';
     }
     // R1, R2, R5 = Low Density / Large Lot → dwelling house
     return 'dwelling_house';

@@ -791,6 +791,14 @@ export function StateLevelControls({
               ) : (
                 <>
                   <ADGSummaryCard developmentType={developmentType} zoneCode={zone} />
+
+                  {/* Building Separation Setbacks with Height Input */}
+                  <div className="mt-4">
+                    <ADGBuildingSeparationTable
+                      developmentType={developmentType}
+                    />
+                  </div>
+
                   {adgStructuredRequirements.length > 0 && (
                     <div className="mt-4">
                       <StructuredSeppRequirements

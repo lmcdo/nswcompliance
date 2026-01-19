@@ -69,8 +69,11 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
 
   // Auto-detect development type from zone when property loads
   useEffect(() => {
-    if (selectedProperty?.constraints?.zone) {
-      const detectedDevType = detectDevTypeFromZone(selectedProperty.constraints.zone);
+    const zone = selectedProperty?.constraints?.zone;
+    console.log('🏠 Zone detection - zone:', zone);
+    if (zone) {
+      const detectedDevType = detectDevTypeFromZone(zone);
+      console.log('🏠 Zone detection - detectedDevType:', detectedDevType);
       setDevelopmentType(detectedDevType);
     }
   }, [selectedProperty?.constraints?.zone]);

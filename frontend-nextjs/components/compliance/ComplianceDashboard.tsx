@@ -31,6 +31,25 @@ import {
 } from '@/lib/environmental-relevance-filter';
 import { extractVersionFromPlanningAPI } from '@/lib/version-metadata-utils';
 import { canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement } from '@/lib/requirement-prioritization';
+
+// Development types that require ADG building separation standards
+const APARTMENT_DEV_TYPES = [
+  'multi_dwelling_housing',
+  'residential_flat_building',
+  'shop_top_housing',
+  'boarding_house',
+  'mixed_use'
+];
+
+// Zones that permit apartment developments (ADG should show for these)
+const APARTMENT_PERMITTING_ZONES = [
+  'R3',   // Medium Density Residential
+  'R4',   // High Density Residential
+  'B1', 'B2', 'B3', 'B4', 'B5', 'B6',  // Business zones
+  'MU1',  // Mixed Use
+  'E1', 'E2',   // Employment zones
+];
+
 // Import types only, will use API endpoint for data
 export interface ProvisionContent {
   id: number;
@@ -1144,11 +1163,9 @@ export function ComplianceDashboard({
         );
       })()}
 
-      {/* ADG Building Separation Standards (Multi-Dwelling Only) */}
-      {buildingHeight && buildingHeight > 0 && (
-        developmentType === 'multi_dwelling' ||
-        developmentType === 'residential_flat' ||
-        developmentType === 'shop_top_housing'
+      {/* ADG Building Separation Standards (Apartment-Permitting Zones/Dev Types) */}
+      {(APARTMENT_DEV_TYPES.includes(developmentType) ||
+        APARTMENT_PERMITTING_ZONES.some(z => propertyData?.constraints?.zone?.toUpperCase().startsWith(z))
       ) && (
         <Card className="border-3 border-pink-400 bg-pink-50">
           <CardHeader

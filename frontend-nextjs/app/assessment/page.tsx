@@ -260,32 +260,8 @@ export default function AssessmentPage() {
                     </div>
                   )}
 
-                  {/* Development Type - Auto-detected from zone (hidden from UI) */}
-
-                  {/* Building Height Input (conditional on multi-dwelling types) */}
-                  {(developmentType === 'multi_dwelling' ||
-                    developmentType === 'residential_flat' ||
-                    developmentType === 'shop_top_housing') && (
-                    <div className="border-t pt-3">
-                      <label className="text-sm text-gray-600 block mb-2">
-                        Building Height (meters)
-                        <span className="text-red-500 ml-1">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        value={buildingHeight || ''}
-                        onChange={(e) => setBuildingHeight(parseFloat(e.target.value) || null)}
-                        className="w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        placeholder="e.g., 10.5"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Required for ADG building separation standards
-                      </p>
-                    </div>
-                  )}
+                  {/* Development Type - Auto-detected from zone */}
+                  {/* Building Height Input is now in ADG card (SEPP tab) for better UX */}
                 </div>
               )}
             </div>

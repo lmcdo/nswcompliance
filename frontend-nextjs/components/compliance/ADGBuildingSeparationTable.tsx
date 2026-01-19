@@ -6,8 +6,9 @@ import { Info, ChevronDown, ExternalLink, FileImage } from 'lucide-react';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
 
 interface ADGBuildingSeparationTableProps {
-  buildingHeight: number;
+  buildingHeight?: number | null;
   developmentType: string;
+  onBuildingHeightChange?: (height: number | null) => void;
 }
 
 interface ADGStandards {
@@ -42,21 +43,39 @@ interface ADGStandards {
 
 export function ADGBuildingSeparationTable({
   buildingHeight,
-  developmentType
+  developmentType,
+  onBuildingHeightChange
 }: ADGBuildingSeparationTableProps) {
   const [data, setData] = useState<ADGStandards | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [viewingPdfPage, setViewingPdfPage] = useState(false);
+  const [localHeight, setLocalHeight] = useState<string>(buildingHeight?.toString() || '');
 
+  // Sync local state with prop
   useEffect(() => {
-    const fetchADGStandards = async () => {
+    if (buildingHeight !== null && buildingHeight !== undefined) {
+      setLocalHeight(buildingHeight.toString());
+    }
+  }, [buildingHeight]);
+
+  // Fetch ADG standards when we have a valid building height (debounced)
+  useEffect(() => {
+    const height = buildingHeight ?? parseFloat(localHeight);
+    if (!height || isNaN(height) || height <= 0) {
+      setData(null);
+      setLoading(false);
+      return;
+    }
+
+    // Debounce: wait 400ms after user stops changing value
+    const timeoutId = setTimeout(async () => {
       setLoading(true);
       setError(null);
 
       try {
         const response = await fetch(
-          `/api/setbacks/adg?building_height=${buildingHeight}&development_type=${developmentType}`
+          `/api/setbacks/adg?building_height=${height}&development_type=${developmentType}`
         );
 
         if (!response.ok) {
@@ -77,40 +96,86 @@ export function ADGBuildingSeparationTable({
       } finally {
         setLoading(false);
       }
-    };
+    }, 400);
 
-    fetchADGStandards();
-  }, [buildingHeight, developmentType]);
+    return () => clearTimeout(timeoutId);
+  }, [buildingHeight, localHeight, developmentType]);
 
-  if (loading) {
-    return (
-      <div className="animate-pulse space-y-3">
-        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-        <div className="h-20 bg-gray-200 rounded"></div>
-      </div>
-    );
-  }
+  const handleHeightChange = (value: string) => {
+    setLocalHeight(value);
+    const numValue = parseFloat(value);
+    if (onBuildingHeightChange) {
+      onBuildingHeightChange(isNaN(numValue) ? null : numValue);
+    }
+  };
 
-  if (error) {
-    return (
-      <div className="text-red-600 text-sm">
-        Error loading ADG standards: {error}
-      </div>
-    );
-  }
+  const effectiveHeight = buildingHeight ?? parseFloat(localHeight);
+  const hasValidHeight = effectiveHeight && !isNaN(effectiveHeight) && effectiveHeight > 0;
 
-  if (!data) {
-    return null;
-  }
-
+  // Always show the card with height input
   return (
     <div className="space-y-4">
+      {/* Building Height Input - always visible */}
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <label className="text-sm font-semibold text-purple-900 block mb-2">
+          Proposed Building Height (meters)
+        </label>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            step="0.1"
+            min="0"
+            max="100"
+            value={localHeight}
+            onChange={(e) => handleHeightChange(e.target.value)}
+            className="w-32 px-3 py-2 border border-purple-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            placeholder="e.g., 18"
+          />
+          <span className="text-sm text-purple-700">meters</span>
+          {hasValidHeight && (
+            <span className="text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded">
+              {effectiveHeight <= 12 ? 'Low-rise (≤4 storeys)' :
+               effectiveHeight <= 25 ? 'Mid-rise (5-8 storeys)' :
+               'High-rise (9+ storeys)'}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-purple-600 mt-2">
+          Enter your proposed building height to calculate ADG setback requirements
+        </p>
+      </div>
+
+      {/* Loading state */}
+      {loading && (
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+          <div className="h-20 bg-gray-200 rounded"></div>
+        </div>
+      )}
+
+      {/* Error state */}
+      {error && (
+        <div className="text-red-600 text-sm">
+          Error loading ADG standards: {error}
+        </div>
+      )}
+
+      {/* Prompt to enter height if not provided */}
+      {!hasValidHeight && !loading && (
+        <div className="text-center py-6 text-gray-500 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+          <p className="text-sm">Enter a building height above to see ADG setback requirements</p>
+        </div>
+      )}
+
+      {/* ADG Data Display */}
+      {data && hasValidHeight && !loading && (
+        <>
       {/* Alert: Statutory requirement */}
       <Alert className="border-red-200 bg-red-50">
         <Info className="h-4 w-4 text-red-600" />
-        <AlertTitle className="text-red-900">Statutory Requirement</AlertTitle>
+        <AlertTitle className="text-red-900">These setbacks are required by law</AlertTitle>
         <AlertDescription className="text-red-800">
-          Mandatory under {data.source.authority}. Not discretionary.
+          Council cannot approve smaller setbacks. Your design must meet these minimums.
         </AlertDescription>
       </Alert>
 
@@ -253,6 +318,8 @@ export function ADGBuildingSeparationTable({
             </div>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
