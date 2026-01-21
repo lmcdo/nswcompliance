@@ -1,0 +1,114 @@
+{
+  "id": "ashfield",
+  "name": "Ashfield",
+  "parentLGA": "Inner West",
+  "dcpCitation": "Inner West Development Control Plan (Ashfield) 2016",
+  "dcpExplanation": "Ashfield DCP is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas. Chapter F covers development categories and Chapter D provides guidance for 11 Village Precincts. Most provisions (69%) apply broadly across all development types.\n\n[Base Controls] in Chapter A cover general requirements. [Heritage] (Chapter E1) is the most detailed section with conservation principles, character assessment, building form, and materials guidance for each HCA - filtered to your property's HCA. [Village Precinct] controls (Chapter D) cover 11 urban village areas - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not effective as most provisions apply broadly.",
+  "totalProvisions": 1892,
+  "primaryLayer": "condition",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": false,
+  "devTypeNote": "Ashfield provisions apply broadly (69% tagged as ALL development types). Use topic filters instead.",
+  "topicFilterRequired": false,
+  "warningThreshold": 500,
+  "resultGuidance": {
+    "DA_expected": "300-450",
+    "CDC_expected": "1-5"
+  },
+  "suggestedTopics": ["building_form", "parking", "trees", "access", "heritage", "waste"],
+  "topicOrder": {
+    "certifier": ["parking", "height", "trees", "access", "building_form", "heritage", "waste"],
+    "planner": ["building_form", "heritage", "trees", "parking", "access"]
+  },
+  "layerLabels": {
+    "generic": "Base Controls",
+    "use_specific": "Dev Type",
+    "condition": "Heritage",
+    "precinct": "Village Precinct"
+  },
+  "hideLayers": ["use_specific"],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage & Character",
+      "categories": ["heritage", "character", "streetscape"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setback_front", "setback_side", "setback_rear", "setbacks"],
+      "showSubcategories": true,
+      "priority": 2
+    },
+    "building": {
+      "label": "Building",
+      "categories": ["building_form", "building_height"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "landscaping": {
+      "label": "Landscaping & Trees",
+      "categories": ["landscaping", "tree_preservation"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "safety": {
+      "label": "Safety & Privacy",
+      "categories": ["safety", "privacy", "fencing"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "waste": {
+      "label": "Waste",
+      "categories": ["waste_management"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "solar_access"],
+      "showSubcategories": false,
+      "priority": 9
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 10
+    },
+    "site": {
+      "label": "Site Controls",
+      "categories": ["site_area", "site_coverage", "deep_soil", "open_space"],
+      "showSubcategories": false,
+      "priority": 11
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "da_requirements", "subdivision", "acoustic", "location", "biodiversity", "contamination", "environmental", "amenity"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "prevailing",
+    "message": "Ashfield uses character-based setbacks",
+    "method": "Setbacks determined by neighbourhood character",
+    "guidance": [
+      { "boundary": "front", "text": "Match prevailing building line established by adjoining and nearby houses" },
+      { "boundary": "side", "text": "Minimum 900mm for dwelling houses" },
+      { "boundary": "rear", "text": "Maintain useable back garden" }
+    ]
+  }
+}

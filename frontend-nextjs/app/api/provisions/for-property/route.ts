@@ -26,9 +26,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 
-// Use the shared database pool from lib/db.ts
-// It uses PGHOST, PGDATABASE, PGUSER, PGPASSWORD, PGPORT env vars
-
 interface PropertyFilters {
   lga?: string;
   zone?: string;

@@ -308,38 +308,80 @@ function buildPrecinctDocumentId(precinctId: string, precinctName: string, lga: 
   return `${formerCouncil}_DCP_2011_${precinctId}_${nameSlug}`;
 }
 
+/**
+ * Council precinct ID patterns - config-driven for multi-LGA support
+ * Each entry defines regex patterns that identify precincts belonging to that council
+ */
+const PRECINCT_ID_PATTERNS: Record<string, RegExp[]> = {
+  // Ashfield patterns - "Part X" format from precinct_boundaries table
+  // Part 1-13 are Ashfield Chapter D precincts (Ashfield Town Centre, Summer Hill, etc.)
+  'Ashfield': [
+    /^part\s*\d+$/i,           // Part 1, Part 2, etc.
+    /^ashfield/i,              // ashfield_*
+    /^a_/i,                    // a_* prefix
+    /chapter_[def]/i,          // Chapter D, E, F
+  ],
+
+  // Leichhardt patterns (C2.X.X.X format, Part G neighbourhoods)
+  'Leichhardt': [
+    /^c2/i,                    // C2.X.X.X format
+    /^l_/i,                    // l_* prefix
+    /part_[cg]/i,              // Part C, Part G
+    /^g\d+$/i,                 // G1, G2, etc.
+  ],
+
+  // Marrickville patterns - Part 9 precincts with numeric format
+  'Marrickville': [
+    /^9_\d+$/,                 // 9_XX format
+    /^\d+_$/,                  // XX_ format (precinct number)
+    /part_9/i,                 // Part 9
+    /^m_/i,                    // m_* prefix
+  ],
+
+  // Central Coast patterns (for future use)
+  'Central Coast': [
+    /^cc_/i,                   // cc_* prefix
+    /^gosford/i,               // Gosford precincts
+    /^wyong/i,                 // Wyong precincts
+    /chapter_[45]/i,           // Chapters 4-5 specific sites
+  ],
+
+  // Parramatta patterns (for future use)
+  'Parramatta': [
+    /^parra/i,                 // parra_* prefix
+    /^p_/i,                    // p_* prefix
+  ],
+};
+
+/**
+ * Get former council from precinct ID using config-driven patterns
+ * Returns the council name that owns this precinct based on ID patterns
+ */
 function getFormerCouncilFromPrecinctId(precinctId: string): string {
-  // Marrickville precincts: 9_XX, XX_ (numeric underscore like 13_)
-  // Ashfield precincts: "Part X" format (Part 1 through Part 13 from Chapter D)
-  // Leichhardt precincts: C2.X.X.X format
+  if (!precinctId) return 'Unknown';
 
   const id = precinctId.toLowerCase();
 
-  // Ashfield patterns - "Part X" format from precinct_boundaries table
-  // Part 1-13 are Ashfield Chapter D precincts (Ashfield Town Centre, Summer Hill, etc.)
-  if (/^part\s*\d+$/i.test(precinctId)) {
-    return 'Ashfield';
-  }
-
-  // Other Ashfield patterns
-  if (id.startsWith('ashfield') || id.startsWith('a_') ||
-      id.includes('chapter_d') || id.includes('chapter_e') || id.includes('chapter_f')) {
-    return 'Ashfield';
-  }
-
-  // Leichhardt patterns (C2.X.X.X format)
-  if (id.startsWith('c2') || id.startsWith('l_') ||
-      id.includes('part_g') || id.includes('part_c')) {
-    return 'Leichhardt';
-  }
-
-  // Marrickville patterns - numeric underscore like 9_, 10_, 13_
-  if (precinctId.startsWith('9_') || /^\d+_$/.test(precinctId) || id.includes('part_9')) {
-    return 'Marrickville';
+  // Check each council's patterns
+  for (const [council, patterns] of Object.entries(PRECINCT_ID_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(precinctId) || pattern.test(id)) {
+        return council;
+      }
+    }
   }
 
   // Default to Marrickville as it's most common in Inner West
+  // This default can be overridden per-LGA in future versions
   return 'Marrickville';
+}
+
+/**
+ * Register custom precinct patterns for a new LGA
+ * Call this when adding support for a new council
+ */
+export function registerPrecinctPatterns(councilName: string, patterns: RegExp[]): void {
+  PRECINCT_ID_PATTERNS[councilName] = patterns;
 }
 
 /**

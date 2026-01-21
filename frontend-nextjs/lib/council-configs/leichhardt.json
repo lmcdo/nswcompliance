@@ -1,0 +1,108 @@
+{
+  "id": "leichhardt",
+  "name": "Leichhardt",
+  "parentLGA": "Inner West",
+  "dcpCitation": "Inner West Development Control Plan (Leichhardt) 2013",
+  "dcpExplanation": "Leichhardt DCP is topic-centric with the highest provision count (3,355). Most provisions are [Universal] controls organized by topic.\n\n[Heritage] provisions are distributed across topics rather than in a dedicated chapter. [Distinct Neighbourhood] controls cover 26 areas - filtered to your address.\n\nDCP STRUCTURE: Part C \"Place\" (setbacks, heights, parking, landscaping) • Part D (energy) • Part E (water) • Part F (food premises) • Part G (26 Distinct Neighbourhoods)\n\nSelect topics to filter provisions. Use the DCP Part accordion to see controls organized by source section.",
+  "totalProvisions": 3355,
+  "primaryLayer": "generic",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": false,
+  "devTypeNote": "Leichhardt provisions are organized by topic. Use topic filters to navigate.",
+  "topicFilterRequired": true,
+  "warningThreshold": 200,
+  "resultGuidance": {
+    "DA_expected": "50-100 (with topic)",
+    "CDC_expected": "15-25"
+  },
+  "suggestedTopics": ["heritage", "parking", "building_form", "landscaping", "setbacks", "height", "trees"],
+  "topicOrder": {
+    "certifier": ["parking", "setbacks", "height", "landscaping", "building_form", "heritage", "access", "trees"],
+    "planner": ["building_form", "heritage", "parking", "landscaping", "height", "setbacks", "trees"]
+  },
+  "layerLabels": {
+    "generic": "Universal",
+    "use_specific": "Zone",
+    "condition": "Heritage",
+    "precinct": "Distinct Neighbourhood"
+  },
+  "hideLayers": ["use_specific"],
+  "categoryGroups": {
+    "environmental": {
+      "label": "Environmental",
+      "categories": ["contamination", "water_management", "stormwater", "drainage", "flood_management", "environmental", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "waste": {
+      "label": "Waste",
+      "categories": ["waste_management"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "safety": {
+      "label": "Safety",
+      "categories": ["safety"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "landscaping": {
+      "label": "Landscaping & Trees",
+      "categories": ["landscaping", "tree_preservation", "deep_soil", "open_space"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "character": {
+      "label": "Character & Heritage",
+      "categories": ["character", "heritage", "streetscape"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "building": {
+      "label": "Building",
+      "categories": ["building_form", "building_height", "privacy", "acoustic"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "energy_efficiency", "solar_access"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 9
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setbacks", "setback_front", "setback_side", "setback_rear"],
+      "showSubcategories": false,
+      "priority": 10
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "da_requirements", "social_impact", "public_domain", "health_wellbeing", "subdivision", "public_art", "site_coverage", "amenity"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "prevailing",
+    "message": "Leichhardt uses neighbourhood-specific setbacks",
+    "method": "Setbacks vary by neighbourhood character",
+    "guidance": [
+      { "boundary": "front", "text": "Match prevailing setback pattern in your neighbourhood" },
+      { "boundary": "side", "text": "Typically 1m-3m depending on neighbourhood" },
+      { "boundary": "rear", "text": "Maintain useable outdoor space" }
+    ]
+  }
+}

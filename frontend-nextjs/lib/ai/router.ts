@@ -512,6 +512,20 @@ async function handleDcpProvisionLookup(
       topic: topic, // Topics match v2_topic in regulatory_provisions
     });
 
+    // Add heritage params if property is heritage-listed
+    if (context.constraints?.heritage) {
+      params.set('heritage', 'true');
+      // Pass HCA code if available for HCA-specific provisions
+      if (context.constraints.hca) {
+        params.set('hca', context.constraints.hca);
+      }
+    }
+
+    // Add precinct ID if available
+    if (context.precinctId) {
+      params.set('precinct_id', context.precinctId);
+    }
+
     const response = await fetch(`${API_BASE}/api/provisions/for-property?${params.toString()}`);
     const data = await response.json();
 

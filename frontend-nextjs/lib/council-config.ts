@@ -1,9 +1,16 @@
 /**
  * Council-Specific Configuration
  *
- * Each Inner West council (former LGAs) has a different DCP structure
- * that requires different UI/UX approaches for optimal professional use.
+ * Loads council configurations from JSON files for multi-LGA support.
+ * Each council has its own JSON config defining DCP structure and UI behavior.
+ *
+ * Configuration files location: lib/council-configs/{council-id}.json
  */
+
+// Import council configs from JSON files
+import marrickvilleConfig from './council-configs/marrickville.json';
+import leichhardtConfig from './council-configs/leichhardt.json';
+import ashfieldConfig from './council-configs/ashfield.json';
 
 export interface CategoryGroup {
   label: string;
@@ -12,9 +19,22 @@ export interface CategoryGroup {
   priority: number;  // Display order (lower = higher priority)
 }
 
+export interface SetbackGuidance {
+  boundary: string;
+  text: string;
+}
+
+export interface SetbackFallback {
+  type: 'numeric' | 'prevailing' | 'not_available';
+  message: string;
+  method?: string;
+  guidance?: SetbackGuidance[];
+}
+
 export interface CouncilConfig {
   id: string;
   name: string;
+  parentLGA?: string | null;  // For merged councils (e.g., Inner West)
   dcpCitation: string;
   dcpExplanation: string;
   totalProvisions: number;
@@ -45,6 +65,8 @@ export interface CouncilConfig {
   hideLayers?: ('generic' | 'use_specific' | 'condition' | 'precinct')[];
   // Category groupings for UI display
   categoryGroups: Record<string, CategoryGroup>;
+  // Fallback setback guidance when DB has no data
+  setbackFallback?: SetbackFallback;
 }
 
 /**
@@ -60,315 +82,52 @@ ASHFIELD (1,892 provisions) is heritage-focused with Chapter E1 providing extens
 
 All three DCPs use topic-based filtering. Select a topic to see relevant provisions grouped by DCP Part.`;
 
+/**
+ * Council configurations loaded from JSON files
+ * Key: council ID (lowercase)
+ * Value: CouncilConfig object
+ */
 export const COUNCIL_CONFIGS: Record<string, CouncilConfig> = {
-  marrickville: {
-    id: 'marrickville',
-    name: 'Marrickville',
-    dcpCitation: 'Inner West Development Control Plan (Marrickville) 2011',
-    dcpExplanation: 'Marrickville DCP is organized by development type with separate chapters for residential (Part 4), commercial (Part 5), and industrial (Part 6). Your zone determines which chapter applies, but the majority of provisions are in Part 2 Generic Provisions which apply universally to all development.\n\n[Base Controls] (Part 2) cover 25 topics including parking, landscaping, solar access, and urban design. [Heritage] has a dedicated chapter (Part 8) with detailed controls for heritage items and 37 Heritage Conservation Areas - filtered to your property\'s HCA. [Precinct Character] controls (Part 9) cover 48 suburb Precincts with desired future character statements - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not available as provisions apply broadly by topic.',
-    totalProvisions: 1866,
-    primaryLayer: 'generic',
-    zoneFilterEffective: false,
-    devTypeFilterEffective: false,
-    devTypeNote: 'Marrickville provisions are organized by topic (Part 2) rather than development type. Your zone determines which Part applies but most controls are universal.',
-    topicFilterRequired: false,
-    warningThreshold: 300,
-    resultGuidance: {
-      DA_expected: '150-250',
-      CDC_expected: '15-25',
-    },
-    suggestedTopics: ['setbacks', 'height', 'parking', 'heritage', 'building_form'],
-    topicOrder: {
-      certifier: ['setbacks', 'height', 'parking', 'landscaping', 'heritage', 'building_form', 'access', 'solar', 'privacy'],
-      planner: ['building_form', 'heritage', 'height', 'setbacks', 'landscaping', 'parking', 'access'],
-    },
-    layerLabels: {
-      generic: 'Base Controls',
-      use_specific: 'Zone Controls',
-      condition: 'Heritage',
-      precinct: 'Precinct Character',
-    },
-    categoryGroups: {
-      heritage: {
-        label: 'Heritage',
-        categories: ['heritage', 'character'],
-        showSubcategories: false,
-        priority: 1,
-      },
-      building: {
-        label: 'Building Form',
-        categories: ['building_form', 'building_height'],
-        showSubcategories: false,
-        priority: 2,
-      },
-      setbacks: {
-        label: 'Setbacks',
-        categories: ['setbacks', 'setback_front'],
-        showSubcategories: false,
-        priority: 3,
-      },
-      landscaping: {
-        label: 'Landscaping',
-        categories: ['landscaping', 'biodiversity'],
-        showSubcategories: false,
-        priority: 4,
-      },
-      sustainability: {
-        label: 'Sustainability',
-        categories: ['sustainability', 'energy_efficiency', 'solar_access'],
-        showSubcategories: false,
-        priority: 5,
-      },
-      parking: {
-        label: 'Parking & Access',
-        categories: ['parking', 'accessibility', 'transport'],
-        showSubcategories: false,
-        priority: 6,
-      },
-      signage: {
-        label: 'Signage',
-        categories: ['signage'],
-        showSubcategories: false,
-        priority: 7,
-      },
-      water: {
-        label: 'Water & Stormwater',
-        categories: ['stormwater', 'water_management'],
-        showSubcategories: false,
-        priority: 8,
-      },
-      other: {
-        label: 'Other',
-        categories: ['other', 'subdivision', 'da_requirements', 'safety', 'fencing', 'environmental', 'land_use', 'health_wellbeing', 'streetscape', 'acoustic', 'amenity', 'privacy', 'location'],
-        showSubcategories: false,
-        priority: 99,
-      },
-    },
-  },
+  marrickville: marrickvilleConfig as CouncilConfig,
+  leichhardt: leichhardtConfig as CouncilConfig,
+  ashfield: ashfieldConfig as CouncilConfig,
+};
 
-  leichhardt: {
-    id: 'leichhardt',
-    name: 'Leichhardt',
-    dcpCitation: 'Inner West Development Control Plan (Leichhardt) 2013',
-    dcpExplanation: 'Leichhardt DCP is topic-centric with the highest provision count (3,355). Most provisions are [Universal] controls organized by topic.\n\n[Heritage] provisions are distributed across topics rather than in a dedicated chapter. [Distinct Neighbourhood] controls cover 26 areas - filtered to your address.\n\nDCP STRUCTURE: Part C "Place" (setbacks, heights, parking, landscaping) • Part D (energy) • Part E (water) • Part F (food premises) • Part G (26 Distinct Neighbourhoods)\n\nSelect topics to filter provisions. Use the DCP Part accordion to see controls organized by source section.',
-    totalProvisions: 3355,
-    primaryLayer: 'generic',
-    zoneFilterEffective: false,
-    devTypeFilterEffective: false,
-    devTypeNote: 'Leichhardt provisions are organized by topic. Use topic filters to navigate.',
-    topicFilterRequired: true,
-    warningThreshold: 200,
-    resultGuidance: {
-      DA_expected: '50-100 (with topic)',
-      CDC_expected: '15-25',
-    },
-    suggestedTopics: ['heritage', 'parking', 'building_form', 'landscaping', 'setbacks', 'height', 'trees'],
-    topicOrder: {
-      certifier: ['parking', 'setbacks', 'height', 'landscaping', 'building_form', 'heritage', 'access', 'trees'],
-      planner: ['building_form', 'heritage', 'parking', 'landscaping', 'height', 'setbacks', 'trees'],
-    },
-    layerLabels: {
-      generic: 'Universal',
-      use_specific: 'Zone',
-      condition: 'Heritage',
-      precinct: 'Distinct Neighbourhood',
-    },
-    hideLayers: ['use_specific'],
-    categoryGroups: {
-      environmental: {
-        label: 'Environmental',
-        categories: ['contamination', 'water_management', 'stormwater', 'drainage', 'flood_management', 'environmental', 'biodiversity'],
-        showSubcategories: false,
-        priority: 1,
-      },
-      parking: {
-        label: 'Parking & Access',
-        categories: ['parking', 'accessibility'],
-        showSubcategories: false,
-        priority: 2,
-      },
-      waste: {
-        label: 'Waste',
-        categories: ['waste_management'],
-        showSubcategories: false,
-        priority: 3,
-      },
-      safety: {
-        label: 'Safety',
-        categories: ['safety'],
-        showSubcategories: false,
-        priority: 4,
-      },
-      landscaping: {
-        label: 'Landscaping & Trees',
-        categories: ['landscaping', 'tree_preservation', 'deep_soil', 'open_space'],
-        showSubcategories: false,
-        priority: 5,
-      },
-      character: {
-        label: 'Character & Heritage',
-        categories: ['character', 'heritage', 'streetscape'],
-        showSubcategories: false,
-        priority: 6,
-      },
-      building: {
-        label: 'Building',
-        categories: ['building_form', 'building_height', 'privacy', 'acoustic'],
-        showSubcategories: false,
-        priority: 7,
-      },
-      sustainability: {
-        label: 'Sustainability',
-        categories: ['sustainability', 'energy_efficiency', 'solar_access'],
-        showSubcategories: false,
-        priority: 8,
-      },
-      signage: {
-        label: 'Signage',
-        categories: ['signage'],
-        showSubcategories: false,
-        priority: 9,
-      },
-      setbacks: {
-        label: 'Setbacks',
-        categories: ['setbacks', 'setback_front', 'setback_side', 'setback_rear'],
-        showSubcategories: false,
-        priority: 10,
-      },
-      other: {
-        label: 'Other',
-        categories: ['other', 'da_requirements', 'social_impact', 'public_domain', 'health_wellbeing', 'subdivision', 'public_art', 'site_coverage', 'amenity'],
-        showSubcategories: false,
-        priority: 99,
-      },
-    },
-  },
-
-  ashfield: {
-    id: 'ashfield',
-    name: 'Ashfield',
-    dcpCitation: 'Inner West Development Control Plan (Ashfield) 2016',
-    dcpExplanation: 'Ashfield DCP is heritage-focused with Chapter E1 providing extensive controls for Heritage Conservation Areas. Chapter F covers development categories and Chapter D provides guidance for 11 Village Precincts. Most provisions (69%) apply broadly across all development types.\n\n[Base Controls] in Chapter A cover general requirements. [Heritage] (Chapter E1) is the most detailed section with conservation principles, character assessment, building form, and materials guidance for each HCA - filtered to your property\'s HCA. [Village Precinct] controls (Chapter D) cover 11 urban village areas - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not effective as most provisions apply broadly.',
-    totalProvisions: 1892,
-    primaryLayer: 'condition',
-    zoneFilterEffective: false,
-    devTypeFilterEffective: false,
-    devTypeNote: 'Ashfield provisions apply broadly (69% tagged as ALL development types). Use topic filters instead.',
-    topicFilterRequired: false,
-    warningThreshold: 500,
-    resultGuidance: {
-      DA_expected: '300-450',
-      CDC_expected: '1-5',
-    },
-    suggestedTopics: ['building_form', 'parking', 'trees', 'access', 'heritage', 'waste'],
-    topicOrder: {
-      certifier: ['parking', 'height', 'trees', 'access', 'building_form', 'heritage', 'waste'],
-      planner: ['building_form', 'heritage', 'trees', 'parking', 'access'],
-    },
-    layerLabels: {
-      generic: 'Base Controls',
-      use_specific: 'Dev Type',
-      condition: 'Heritage',
-      precinct: 'Village Precinct',
-    },
-    hideLayers: ['use_specific'],
-    categoryGroups: {
-      heritage: {
-        label: 'Heritage & Character',
-        categories: ['heritage', 'character', 'streetscape'],
-        showSubcategories: false,
-        priority: 1,
-      },
-      setbacks: {
-        label: 'Setbacks',
-        categories: ['setback_front', 'setback_side', 'setback_rear', 'setbacks'],
-        showSubcategories: true,  // Ashfield certifiers need front/side/rear distinction
-        priority: 2,
-      },
-      building: {
-        label: 'Building',
-        categories: ['building_form', 'building_height'],
-        showSubcategories: false,
-        priority: 3,
-      },
-      parking: {
-        label: 'Parking & Access',
-        categories: ['parking', 'accessibility'],
-        showSubcategories: false,
-        priority: 4,
-      },
-      landscaping: {
-        label: 'Landscaping & Trees',
-        categories: ['landscaping', 'tree_preservation'],
-        showSubcategories: false,
-        priority: 5,
-      },
-      safety: {
-        label: 'Safety & Privacy',
-        categories: ['safety', 'privacy', 'fencing'],
-        showSubcategories: false,
-        priority: 6,
-      },
-      waste: {
-        label: 'Waste',
-        categories: ['waste_management'],
-        showSubcategories: false,
-        priority: 7,
-      },
-      water: {
-        label: 'Water & Stormwater',
-        categories: ['stormwater', 'water_management'],
-        showSubcategories: false,
-        priority: 8,
-      },
-      sustainability: {
-        label: 'Sustainability',
-        categories: ['sustainability', 'solar_access'],
-        showSubcategories: false,
-        priority: 9,
-      },
-      signage: {
-        label: 'Signage',
-        categories: ['signage'],
-        showSubcategories: false,
-        priority: 10,
-      },
-      site: {
-        label: 'Site Controls',
-        categories: ['site_area', 'site_coverage', 'deep_soil', 'open_space'],
-        showSubcategories: false,
-        priority: 11,
-      },
-      other: {
-        label: 'Other',
-        categories: ['other', 'da_requirements', 'subdivision', 'acoustic', 'location', 'biodiversity', 'contamination', 'environmental', 'amenity'],
-        showSubcategories: false,
-        priority: 99,
-      },
-    },
-  },
+/**
+ * Aliases for council detection
+ * Maps various name variations to canonical council IDs
+ */
+const COUNCIL_ALIASES: Record<string, string> = {
+  // Inner West councils
+  'marrickville': 'marrickville',
+  'leichhardt': 'leichhardt',
+  'ashfield': 'ashfield',
+  // Add aliases for new LGAs here
 };
 
 /**
  * Detect council from LGA or formerCouncil field
+ * Returns the canonical council ID or null if not found
  */
 export function detectCouncil(lga?: string, formerCouncil?: string): string | null {
-  const council = (formerCouncil || '').toLowerCase();
-  const lgaLower = (lga || '').toLowerCase();
+  const council = (formerCouncil || '').toLowerCase().trim();
+  const lgaLower = (lga || '').toLowerCase().trim();
 
-  if (council.includes('marrickville') || lgaLower.includes('marrickville')) {
-    return 'marrickville';
+  // Check direct match first
+  if (council && COUNCIL_CONFIGS[council]) {
+    return council;
   }
-  if (council.includes('leichhardt') || lgaLower.includes('leichhardt')) {
-    return 'leichhardt';
-  }
-  if (council.includes('ashfield') || lgaLower.includes('ashfield')) {
-    return 'ashfield';
+
+  // Check aliases
+  for (const [alias, id] of Object.entries(COUNCIL_ALIASES)) {
+    if (council.includes(alias) || lgaLower.includes(alias)) {
+      return id;
+    }
   }
 
   // Default for Inner West if not specific
   if (lgaLower.includes('inner west')) {
-    // Could try to detect from address/precinct, for now default to marrickville
+    // Could try to detect from address/precinct, for now return null
     return null;
   }
 
@@ -376,7 +135,7 @@ export function detectCouncil(lga?: string, formerCouncil?: string): string | nu
 }
 
 /**
- * Get council config, with fallback to marrickville defaults
+ * Get council config by ID, with fallback to marrickville defaults
  */
 export function getCouncilConfig(councilId: string | null): CouncilConfig {
   if (councilId && COUNCIL_CONFIGS[councilId]) {
@@ -384,6 +143,48 @@ export function getCouncilConfig(councilId: string | null): CouncilConfig {
   }
   // Default fallback
   return COUNCIL_CONFIGS.marrickville;
+}
+
+/**
+ * Get all configured council IDs
+ */
+export function getConfiguredCouncils(): string[] {
+  return Object.keys(COUNCIL_CONFIGS);
+}
+
+/**
+ * Check if a council is configured
+ */
+export function isCouncilConfigured(councilId: string): boolean {
+  return councilId in COUNCIL_CONFIGS;
+}
+
+/**
+ * Get council config by LGA name (handles aliases and fuzzy matching)
+ */
+export function getCouncilConfigByLGA(lgaName: string): CouncilConfig | null {
+  const councilId = detectCouncil(lgaName);
+  if (councilId) {
+    return COUNCIL_CONFIGS[councilId];
+  }
+  return null;
+}
+
+/**
+ * Get setback fallback guidance for a council
+ * Used when database has no setback data for the property
+ */
+export function getSetbackFallback(councilId: string | null): SetbackFallback {
+  const config = getCouncilConfig(councilId);
+  if (config.setbackFallback) {
+    return config.setbackFallback;
+  }
+  // Default fallback if not configured
+  return {
+    type: 'not_available',
+    message: `Setback data not yet available for ${config.name}`,
+    method: 'Refer to DCP provisions or contact Council'
+  };
 }
 
 /**

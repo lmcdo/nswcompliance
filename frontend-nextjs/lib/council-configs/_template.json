@@ -1,0 +1,125 @@
+{
+  "$schema": "./council-config.schema.json",
+  "_comment": "Template for adding new LGA configurations. Copy this file and rename to {lga-slug}.json",
+
+  "id": "example_council",
+  "name": "Example Council",
+  "parentLGA": null,
+  "dcpCitation": "Example Council Development Control Plan 2024",
+  "dcpExplanation": "Brief explanation of the DCP structure and how to navigate it. Describe:\n- Main organizational approach (topic-based, development-type based, etc.)\n- Key chapters and what they contain\n- Any unique features or quirks\n- Recommended filtering strategies",
+  "totalProvisions": 0,
+  "primaryLayer": "generic",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": false,
+  "devTypeNote": "Optional note explaining why dev type filtering is/isn't effective",
+  "topicFilterRequired": false,
+  "warningThreshold": 300,
+  "resultGuidance": {
+    "DA_expected": "100-200",
+    "CDC_expected": "10-20"
+  },
+  "suggestedTopics": ["setbacks", "height", "parking", "heritage", "building_form"],
+  "topicOrder": {
+    "certifier": ["setbacks", "height", "parking", "landscaping", "heritage", "building_form"],
+    "planner": ["building_form", "heritage", "height", "setbacks", "landscaping", "parking"]
+  },
+  "layerLabels": {
+    "generic": "General Controls",
+    "use_specific": "Zone-Specific",
+    "condition": "Site Conditions",
+    "precinct": "Precinct Controls"
+  },
+  "hideLayers": [],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage",
+      "categories": ["heritage", "character"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "building": {
+      "label": "Building Form",
+      "categories": ["building_form", "building_height"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setbacks", "setback_front", "setback_side", "setback_rear"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "landscaping": {
+      "label": "Landscaping",
+      "categories": ["landscaping", "biodiversity", "tree_preservation"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility", "transport"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "energy_efficiency", "solar_access"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management", "flood_management"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "waste": {
+      "label": "Waste",
+      "categories": ["waste_management"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 9
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "da_requirements", "subdivision", "safety", "fencing", "environmental", "acoustic", "amenity", "privacy"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "not_available",
+    "message": "Setback data not yet configured for this LGA",
+    "method": "Refer to DCP provisions or contact Council",
+    "guidance": []
+  },
+
+  "_onboarding_checklist": {
+    "config_files": [
+      "Create {lga-slug}.json from this template",
+      "Add entry to config/lga-mappings.json (postcodes/suburbs)",
+      "Add entry to lga-configs/index.ts LGA_CONFIGS"
+    ],
+    "database": [
+      "Import provisions with lga = '{LGA Name}'",
+      "Import precinct boundaries to dcp_precinct_boundaries",
+      "Import HCAs to heritage_conservation_areas (if applicable)"
+    ],
+    "enrichment": [
+      "Run enrichment pipeline: python enrichment/pipeline.py --lga '{LGA Name}'",
+      "Verify v2_ column population (>80% coverage)",
+      "Validate topic distribution"
+    ],
+    "testing": [
+      "Test NSW Planning Portal returns LGA correctly",
+      "Test 4-layer filtering returns expected counts",
+      "Test precinct matching via PostGIS",
+      "Verify capacity calculator (parking/setbacks)"
+    ]
+  }
+}

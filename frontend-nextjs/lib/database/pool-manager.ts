@@ -48,11 +48,13 @@ export function getPool(): Pool {
       keepAliveInitialDelayMillis: 10000,
 
       // SSL for Supabase/production connections
-      // Use true to enable with certificate verification (secure)
+      // Use rejectUnauthorized: false to allow Supabase pooler connections
       // Set DATABASE_SSL=false to explicitly disable if needed
       ssl: process.env.DATABASE_SSL === 'false'
         ? false
-        : (isSupabase || process.env.NODE_ENV === 'production'),
+        : (isSupabase || process.env.NODE_ENV === 'production')
+          ? { rejectUnauthorized: false }
+          : false,
     });
 
     // Connection lifecycle monitoring

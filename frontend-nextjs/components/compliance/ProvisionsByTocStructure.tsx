@@ -100,7 +100,14 @@ interface ProvisionsByTocStructureProps {
   precinctId?: string;
 }
 
-const fetcher = (url: string) => fetch(url).then(res => res.json());
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const error = new Error('Failed to fetch provisions');
+    throw error;
+  }
+  return res.json();
+};
 
 // POST fetcher for HCA provisions API
 const hcaFetcher = async ([url, body]: [string, any]) => {
@@ -153,7 +160,13 @@ export function ProvisionsByTocStructure({
         total_provisions: number;
       };
     };
-  }>(apiUrl, fetcher);
+  }>(apiUrl, fetcher, {
+    dedupingInterval: 60000,  // Dedupe requests within 60 seconds
+    revalidateOnFocus: false, // Don't refetch on window focus
+    errorRetryCount: 3,       // Retry up to 3 times on error
+    errorRetryInterval: 1000, // Wait 1s between retries
+    shouldRetryOnError: true, // Enable retry on error
+  });
 
   // DCP names for each council
   const councilDcpNames: Record<string, string> = {
@@ -172,7 +185,11 @@ export function ProvisionsByTocStructure({
 
   const { data: hcaData, isLoading: hcaLoading } = useSWR(
     hcaRequestBody ? ['/api/compliance/precinct-requirements', hcaRequestBody] : null,
-    hcaFetcher
+    hcaFetcher,
+    {
+      dedupingInterval: 60000,
+      revalidateOnFocus: false,
+    }
   );
 
   const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];

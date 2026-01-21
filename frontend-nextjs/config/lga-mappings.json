@@ -1,10 +1,12 @@
 {
   "inner_west": {
     "lga_name": "Inner West Council",
+    "status": "active",
     "formed_date": "2016-05-12",
     "former_councils": [
       {
         "name": "Ashfield",
+        "config_id": "ashfield",
         "postcodes": ["2130", "2131", "2044", "2039", "2140", "2137", "2133", "2132", "2045"],
         "suburbs": [
           "Ashfield",
@@ -20,6 +22,7 @@
       },
       {
         "name": "Leichhardt",
+        "config_id": "leichhardt",
         "postcodes": ["2040", "2041", "2042", "2043", "2038", "2037", "2050", "2049"],
         "suburbs": [
           "Leichhardt",
@@ -39,6 +42,7 @@
       },
       {
         "name": "Marrickville",
+        "config_id": "marrickville",
         "postcodes": ["2204", "2048", "2046", "2047", "2203"],
         "suburbs": [
           "Marrickville",
@@ -76,5 +80,76 @@
       "special_case_rules",
       "default_to_all_three"
     ]
+  },
+
+  "parramatta": {
+    "lga_name": "City of Parramatta",
+    "status": "planned",
+    "formed_date": "2016-05-12",
+    "former_councils": [
+      {
+        "name": "Parramatta",
+        "config_id": "parramatta"
+      }
+    ],
+    "postcodes": [
+      "2116", "2117", "2118", "2119", "2120", "2121", "2122", "2123", "2124",
+      "2125", "2126", "2127", "2128", "2142", "2145", "2150", "2151", "2152",
+      "2153", "2154", "2155", "2160", "2161", "2162", "2163", "2164", "2190"
+    ],
+    "suburbs": [
+      "Auburn", "Beecroft", "Carlingford", "Clyde", "Constitution Hill", "Dundas",
+      "Dundas Valley", "Eastwood", "Epping", "Ermington", "Granville", "Harris Park",
+      "Melrose Park", "Merrylands", "Newington", "North Parramatta", "North Rocks",
+      "Northmead", "Oatlands", "Old Toongabbie", "Parramatta", "Pendle Hill",
+      "Rosehill", "Rydalmere", "South Granville", "Sydney Olympic Park", "Telopea",
+      "Toongabbie", "Wentworthville", "Westmead", "Winston Hills"
+    ],
+    "special_cases": [],
+    "dcp_priority_order": ["suburb_exact_match", "postcode_exact_match"]
+  },
+
+  "central_coast": {
+    "lga_name": "Central Coast Council",
+    "status": "planned",
+    "formed_date": "2016-05-12",
+    "former_councils": [
+      {
+        "name": "Gosford",
+        "config_id": "central_coast"
+      },
+      {
+        "name": "Wyong",
+        "config_id": "central_coast"
+      }
+    ],
+    "postcodes": [
+      "2250", "2251", "2256", "2257", "2258", "2259", "2260", "2261", "2262",
+      "2263", "2264", "2265", "2267", "2775"
+    ],
+    "suburbs": [
+      "Avoca Beach", "Bateau Bay", "Berkeley Vale", "Budgewoi", "Copacabana",
+      "Erina", "Ettalong Beach", "Forresters Beach", "Gorokan", "Gosford",
+      "Green Point", "Hardys Bay", "Kariong", "Killarney Vale", "Kincumber",
+      "Lake Haven", "Long Jetty", "MacMasters Beach", "Matcham", "Narara",
+      "Niagara Park", "Noraville", "Point Clare", "San Remo", "Springfield",
+      "Tascott", "Terrigal", "The Entrance", "Toowoon Bay", "Tuggerah",
+      "Tumbi Umbi", "Umina Beach", "Wamberal", "West Gosford", "Woy Woy",
+      "Wyoming", "Wyong"
+    ],
+    "special_cases": [],
+    "dcp_priority_order": ["suburb_exact_match", "postcode_exact_match"]
+  },
+
+  "_meta": {
+    "version": "2.0.0",
+    "lastUpdated": "2025-01-19",
+    "description": "LGA to postcode/suburb mappings for NSW compliance engine multi-LGA support",
+    "sources": [
+      "NSW Spatial Services",
+      "Australia Post",
+      "NSW Planning Portal"
+    ],
+    "notes": "Use 'status' field to check if LGA is active or planned for future implementation"
   }
 }

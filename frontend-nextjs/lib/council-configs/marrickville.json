@@ -1,0 +1,96 @@
+{
+  "id": "marrickville",
+  "name": "Marrickville",
+  "parentLGA": "Inner West",
+  "dcpCitation": "Inner West Development Control Plan (Marrickville) 2011",
+  "dcpExplanation": "Marrickville DCP is organized by development type with separate chapters for residential (Part 4), commercial (Part 5), and industrial (Part 6). Your zone determines which chapter applies, but the majority of provisions are in Part 2 Generic Provisions which apply universally to all development.\n\n[Base Controls] (Part 2) cover 25 topics including parking, landscaping, solar access, and urban design. [Heritage] has a dedicated chapter (Part 8) with detailed controls for heritage items and 37 Heritage Conservation Areas - filtered to your property's HCA. [Precinct Character] controls (Part 9) cover 48 suburb Precincts with desired future character statements - filtered to your address.\n\nUse topic filters to navigate. Development type filtering is not available as provisions apply broadly by topic.",
+  "totalProvisions": 1866,
+  "primaryLayer": "generic",
+  "zoneFilterEffective": false,
+  "devTypeFilterEffective": false,
+  "devTypeNote": "Marrickville provisions are organized by topic (Part 2) rather than development type. Your zone determines which Part applies but most controls are universal.",
+  "topicFilterRequired": false,
+  "warningThreshold": 300,
+  "resultGuidance": {
+    "DA_expected": "150-250",
+    "CDC_expected": "15-25"
+  },
+  "suggestedTopics": ["setbacks", "height", "parking", "heritage", "building_form"],
+  "topicOrder": {
+    "certifier": ["setbacks", "height", "parking", "landscaping", "heritage", "building_form", "access", "solar", "privacy"],
+    "planner": ["building_form", "heritage", "height", "setbacks", "landscaping", "parking", "access"]
+  },
+  "layerLabels": {
+    "generic": "Base Controls",
+    "use_specific": "Zone Controls",
+    "condition": "Heritage",
+    "precinct": "Precinct Character"
+  },
+  "hideLayers": [],
+  "categoryGroups": {
+    "heritage": {
+      "label": "Heritage",
+      "categories": ["heritage", "character"],
+      "showSubcategories": false,
+      "priority": 1
+    },
+    "building": {
+      "label": "Building Form",
+      "categories": ["building_form", "building_height"],
+      "showSubcategories": false,
+      "priority": 2
+    },
+    "setbacks": {
+      "label": "Setbacks",
+      "categories": ["setbacks", "setback_front"],
+      "showSubcategories": false,
+      "priority": 3
+    },
+    "landscaping": {
+      "label": "Landscaping",
+      "categories": ["landscaping", "biodiversity"],
+      "showSubcategories": false,
+      "priority": 4
+    },
+    "sustainability": {
+      "label": "Sustainability",
+      "categories": ["sustainability", "energy_efficiency", "solar_access"],
+      "showSubcategories": false,
+      "priority": 5
+    },
+    "parking": {
+      "label": "Parking & Access",
+      "categories": ["parking", "accessibility", "transport"],
+      "showSubcategories": false,
+      "priority": 6
+    },
+    "signage": {
+      "label": "Signage",
+      "categories": ["signage"],
+      "showSubcategories": false,
+      "priority": 7
+    },
+    "water": {
+      "label": "Water & Stormwater",
+      "categories": ["stormwater", "water_management"],
+      "showSubcategories": false,
+      "priority": 8
+    },
+    "other": {
+      "label": "Other",
+      "categories": ["other", "subdivision", "da_requirements", "safety", "fencing", "environmental", "land_use", "health_wellbeing", "streetscape", "acoustic", "amenity", "privacy", "location"],
+      "showSubcategories": false,
+      "priority": 99
+    }
+  },
+  "setbackFallback": {
+    "type": "prevailing",
+    "message": "Marrickville uses character-based setbacks",
+    "method": "Setbacks must match prevailing street pattern",
+    "guidance": [
+      { "boundary": "front", "text": "Match predominant building line on your street" },
+      { "boundary": "side", "text": "Minimum 900mm (heritage/character areas)" },
+      { "boundary": "rear", "text": "Maintain useable back garden for outdoor activities" }
+    ]
+  }
+}

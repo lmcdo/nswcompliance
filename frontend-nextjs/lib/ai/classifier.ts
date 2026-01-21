@@ -52,9 +52,11 @@ export interface PropertyContext {
   formerCouncil?: string;
   lotSize?: number;
   lotWidth?: number;
+  precinctId?: string;
   constraints?: {
     heritage?: boolean;
     heritageName?: string;
+    hca?: string;  // HCA code from Planning Portal (e.g., "C98" or slug like "parramatta_road")
     flood?: boolean;
     bushfire?: boolean;
   };

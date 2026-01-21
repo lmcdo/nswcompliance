@@ -491,9 +491,12 @@ export default function AssessmentPage() {
           formerCouncil: selectedProperty.constraints?.formerCouncil,
           lotSize: selectedProperty.lotDimensions?.area,
           lotWidth: selectedProperty.lotDimensions?.frontage,
+          precinctId: selectedProperty.constraints?.precinctId,
           constraints: {
             heritage: selectedProperty.heritage?.isHeritage,
             heritageName: selectedProperty.heritage?.heritageItemName,
+            // Pass HCA code for HCA-specific provisions (e.g., "C98", "HCA 26")
+            hca: selectedProperty.heritage?.heritageItemNumber,
           },
         } as PropertyContext : undefined}
         isPropertyLoading={loading}
