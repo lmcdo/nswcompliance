@@ -20,8 +20,11 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
+import { AIAssistantWidget } from '@/components/ai-assistant';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
+import { PropertyContext } from '@/lib/ai/classifier';
+import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
 export default function AssessmentPage() {
   // Property data and fetching
@@ -279,14 +282,40 @@ export default function AssessmentPage() {
           {/* Right Panel - Dynamic Regulatory Requirements (3/4 width) */}
           {/* Elevated styling signals "active working area" vs static left context */}
           <div className="lg:col-span-3 lg:border-l-2 lg:border-l-slate-200 lg:pl-6">
-            {!selectedProperty && (
+            {/* Loading state - show skeleton */}
+            {loading && (
+              <div className="animate-in fade-in duration-300">
+                {/* Skeleton tab bar */}
+                <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
+                  <div className="flex">
+                    <div className="flex-1 px-6 py-3 bg-purple-100 animate-pulse">
+                      <div className="h-5 w-16 bg-purple-200 rounded mx-auto mb-1" />
+                      <div className="h-3 w-24 bg-purple-200 rounded mx-auto" />
+                    </div>
+                    <div className="flex-1 px-6 py-3 bg-amber-50">
+                      <div className="h-5 w-12 bg-amber-200 rounded mx-auto mb-1 animate-pulse" />
+                      <div className="h-3 w-20 bg-amber-200 rounded mx-auto animate-pulse" />
+                    </div>
+                    <div className="flex-1 px-6 py-3 bg-green-50">
+                      <div className="h-5 w-12 bg-green-200 rounded mx-auto mb-1 animate-pulse" />
+                      <div className="h-3 w-24 bg-green-200 rounded mx-auto animate-pulse" />
+                    </div>
+                  </div>
+                </div>
+                {/* Skeleton content */}
+                <SkeletonSeppContent />
+              </div>
+            )}
+
+            {/* No property selected */}
+            {!loading && !selectedProperty && (
               <div className="bg-white border rounded-lg p-12 shadow-md text-center">
                 <h3 className="text-lg font-medium mb-2 text-slate-500">No Property Selected</h3>
                 <p className="text-slate-600">Enter a property address to see compliance provisions</p>
               </div>
             )}
 
-            {selectedProperty && (
+            {!loading && selectedProperty && (
               <>
                 {/* Regulatory Tabs - SEPP purple, LEP amber, DCP green */}
                 <div className="bg-white border rounded-lg shadow-md mb-4 overflow-hidden">
@@ -452,6 +481,23 @@ export default function AssessmentPage() {
           </div>
         </div>
       )}
+
+      {/* AI Assistant Widget */}
+      <AIAssistantWidget
+        propertyContext={selectedProperty ? {
+          address: selectedProperty.address,
+          zone: selectedProperty.constraints?.zone,
+          lga: selectedProperty.constraints?.lga,
+          formerCouncil: selectedProperty.constraints?.formerCouncil,
+          lotSize: selectedProperty.lotDimensions?.area,
+          lotWidth: selectedProperty.lotDimensions?.frontage,
+          constraints: {
+            heritage: selectedProperty.heritage?.isHeritage,
+            heritageName: selectedProperty.heritage?.heritageItemName,
+          },
+        } as PropertyContext : undefined}
+        isPropertyLoading={loading}
+      />
 
       {/* Feedback Widget */}
       <FeedbackWidget

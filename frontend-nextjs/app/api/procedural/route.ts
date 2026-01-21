@@ -176,9 +176,15 @@ export async function GET(request: NextRequest): Promise<NextResponse<Procedural
       }
 
       // Development type filter
+      // "residential" or empty means general checklist (development_type IS NULL)
+      // specific types match their development_type value
       if (developmentType) {
-        checklistConditions.push(`development_type ILIKE $${paramIndex++}`);
-        checklistParams.push(`%${developmentType}%`);
+        if (developmentType.toLowerCase() === 'residential' || developmentType.toLowerCase() === 'general') {
+          checklistConditions.push(`development_type IS NULL`);
+        } else {
+          checklistConditions.push(`development_type ILIKE $${paramIndex++}`);
+          checklistParams.push(`%${developmentType}%`);
+        }
       }
 
       const checklistWhereClause = checklistConditions.length > 0
