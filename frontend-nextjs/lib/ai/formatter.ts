@@ -688,22 +688,36 @@ function capitalize(str: string): string {
 function cleanText(text: string): string {
   if (!text) return '';
   return text
-    // Fix double-encoded UTF-8
+    // Fix double-encoded UTF-8 (common mojibake patterns)
     .replace(/â€™/g, "'")      // Right single quote
+    .replace(/â€˜/g, "'")      // Left single quote
     .replace(/â€œ/g, '"')      // Left double quote
-    .replace(/â€/g, '"')       // Right double quote
+    .replace(/â€/g, '"')       // Right double quote (partial)
     .replace(/â€"/g, '—')      // Em dash
     .replace(/â€"/g, '–')      // En dash
     .replace(/Â·/g, '·')       // Middle dot
     .replace(/Â /g, ' ')       // Non-breaking space
-    // Fix common mojibake patterns
+    .replace(/Ã©/g, 'é')       // e-acute
+    .replace(/Ã¨/g, 'è')       // e-grave
+    // Fix corrupted quote patterns seen in database
+    .replace(/""/g, '"')       // Double corrupted quotes -> single quote
+    .replace(/'''/g, "'")      // Triple single quotes -> single quote
     .replace(/"™/g, "'")       // Corrupted apostrophe
-    .replace(/""/g, '"')       // Corrupted quote
-    .replace(/"\s*,/g, '",')   // Quote before comma
-    .replace(/"\s*\./g, '".')  // Quote before period
-    // Clean up any remaining weird characters
+    .replace(/"'/g, "'")       // Quote + apostrophe
+    .replace(/'\s*"/g, "'")    // Apostrophe + quote
+    // Remove annotation artifacts that got embedded in text
+    .replace(/,\s*#\s*left single quote\s*/gi, "'")  // Annotation artifact
+    .replace(/#\s*left single quote\s*/gi, "'")      // Annotation artifact
+    .replace(/#\s*right single quote\s*/gi, "'")     // Annotation artifact
+    .replace(/#\s*left double quote\s*/gi, '"')      // Annotation artifact
+    .replace(/#\s*right double quote\s*/gi, '"')     // Annotation artifact
+    // Clean up Unicode escapes
     .replace(/\u00c2\u00b7/g, '·')  // Double-encoded middle dot
     .replace(/\u00e2\u0080\u0099/g, "'")  // Triple-encoded apostrophe
+    .replace(/\u00e2\u0080\u0098/g, "'")  // Triple-encoded left single quote
     .replace(/\u00e2\u0080\u009c/g, '"')  // Triple-encoded left quote
-    .replace(/\u00e2\u0080\u009d/g, '"'); // Triple-encoded right quote
+    .replace(/\u00e2\u0080\u009d/g, '"')  // Triple-encoded right quote
+    // Final cleanup - normalize multiple spaces
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
