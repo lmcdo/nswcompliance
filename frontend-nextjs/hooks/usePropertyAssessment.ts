@@ -55,6 +55,24 @@ interface UsePropertyAssessmentReturn {
 }
 
 /**
+ * Normalize address format for consistent API calls across platforms.
+ * Google Places Autocomplete can return different formats on Windows vs Mac.
+ */
+function normalizeAddress(address: string): string {
+  if (!address) return '';
+
+  return address
+    // Normalize whitespace (handles different platform line endings and multiple spaces)
+    .replace(/\s+/g, ' ')
+    // Remove trailing ", Australia" if present (NSW Portal doesn't need it)
+    .replace(/,?\s*Australia$/i, '')
+    // Normalize comma spacing
+    .replace(/\s*,\s*/g, ', ')
+    // Trim
+    .trim();
+}
+
+/**
  * Hook for managing property assessment data fetching and state.
  * Handles address selection, property lookup, and LEP clause fetching.
  */
@@ -126,12 +144,16 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     coordinates?: google.maps.LatLngLiteral
   ) => {
     console.log('=== handleAddressSelect CALLED ===');
-    console.log('Address:', address);
+    console.log('Address (raw):', address);
+
+    // Normalize address for consistent API calls across platforms
+    const normalizedAddress = normalizeAddress(address);
+    console.log('Address (normalized):', normalizedAddress);
     console.log('Coordinates:', coordinates);
 
     // Use flushSync to force immediate render of loading state
     flushSync(() => {
-      setSelectedAddress(address);
+      setSelectedAddress(normalizedAddress);
       setSelectedCoordinates(coordinates || null);
       setLoading(true);
       setError(null);
@@ -142,7 +164,7 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     const MIN_LOADING_MS = 400; // Minimum loading time for UX feedback
 
     try {
-      const url = `/api/property?address=${encodeURIComponent(address)}`;
+      const url = `/api/property?address=${encodeURIComponent(normalizedAddress)}`;
       console.log('Fetching:', url);
 
       const response = await fetch(url);
