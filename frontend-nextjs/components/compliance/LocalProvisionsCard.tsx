@@ -28,6 +28,9 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
   const exactProvisions = localProvisions.filter(p => !p.isNearby);
   const nearbyProvisions = localProvisions.filter(p => p.isNearby);
 
+  // Check if this property is a Key Site (has KSM provisions)
+  const isKeySite = exactProvisions.some(p => p.mapType === 'KSM' || p.mapType === 'Key Sites Map');
+
   const toggleProvision = async (provisionKey: string, clauseNumber: string | undefined) => {
     if (!clauseNumber) return;
 
@@ -224,14 +227,20 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
     <Card className="border-amber-200">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
-          <span>Local Provisions (LEP Part 6)</span>
+          <span>{isKeySite ? 'Key Site (LEP Part 6)' : 'Local Provisions (LEP Part 6)'}</span>
           <Badge className="bg-amber-100 text-amber-800">
             {exactProvisions.length} {exactProvisions.length === 1 ? 'provision' : 'provisions'}
           </Badge>
         </CardTitle>
-        <p className="text-sm text-muted-foreground mt-2">
-          Additional local provisions from the Local Environmental Plan
-        </p>
+        {isKeySite ? (
+          <p className="text-sm text-amber-800 font-medium mt-2">
+            This property is identified as a Key Site in the LEP with site-specific controls.
+          </p>
+        ) : (
+          <p className="text-sm text-muted-foreground mt-2">
+            Additional local provisions from the Local Environmental Plan
+          </p>
+        )}
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Exact address provisions */}
@@ -249,9 +258,9 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
               ) : (
                 <ChevronDown className="h-4 w-4" />
               )}
-              Nearby Key Sites ({nearbyProvisions.length})
+              Other properties in this Key Site area ({nearbyProvisions.length})
               <span className="text-xs text-gray-500 font-normal">
-                - Same planning area, different addresses
+                — same planning controls apply
               </span>
             </button>
 
