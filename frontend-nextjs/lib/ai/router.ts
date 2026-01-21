@@ -8,7 +8,25 @@
 import { ClassificationResult, PropertyContext, QuestionCategory } from './classifier';
 
 // Base URL for API calls (server-side)
-const API_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3003';
+// Must resolve correctly in both local dev and Vercel production
+function getApiBase(): string {
+  // Production: use the canonical domain
+  if (process.env.VERCEL_ENV === 'production') {
+    return 'https://verify.plotdetect.com.au';
+  }
+  // Preview deployments: use VERCEL_URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  // Custom base URL if set
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    return process.env.NEXT_PUBLIC_BASE_URL;
+  }
+  // Local development
+  return 'http://localhost:3003';
+}
+
+const API_BASE = getApiBase();
 
 // Response from data endpoints
 export interface DataResponse {
