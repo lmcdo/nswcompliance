@@ -155,17 +155,9 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeri
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {displayHCA.legislativeClause}.
-              <div className="mt-1.5 pt-1.5 border-t border-amber-200">
-                <span className="text-amber-700 font-semibold">Heritage Resources: </span>
-                <a
-                  href="https://www.heritage.nsw.gov.au/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
-                >
-                  NSW Heritage Office
-                  <ExternalLink className="h-3 w-3" />
-                </a>
+              <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
+                <strong>Note:</strong> {displayHCA.legislativeClause} is the generic LEP clause for all heritage.
+                For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.
               </div>
             </div>
           </div>
@@ -226,17 +218,9 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeri
             <div className="text-xs text-amber-900">
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {hcaData.legislativeClause}.
-              <div className="mt-1.5 pt-1.5 border-t border-amber-200">
-                <span className="text-amber-700 font-semibold">Heritage Resources: </span>
-                <a
-                  href="https://www.heritage.nsw.gov.au/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:text-blue-800 underline inline-flex items-center gap-1"
-                >
-                  NSW Heritage Office
-                  <ExternalLink className="h-3 w-3" />
-                </a>
+              <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
+                <strong>Note:</strong> {hcaData.legislativeClause} is the generic LEP clause for all heritage.
+                For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.
               </div>
             </div>
           </div>

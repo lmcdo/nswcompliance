@@ -151,6 +151,11 @@ export function HeritageProvisionsCard({
                       <h5 className="font-semibold text-sm text-blue-900">
                         Clause 5.10 Heritage conservation — Inner West LEP 2022
                       </h5>
+                      {/* Note about generic vs specific */}
+                      <div className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5 border border-gray-200">
+                        <strong>Generic LEP clause:</strong> Clause 5.10 applies to <em>all</em> heritage items and HCAs across NSW.
+                        For controls specific to this HCA (materials, colours, setbacks), see the <strong>DCP tab → Heritage</strong>.
+                      </div>
                       {/* Full PDF page image of clause 5.10 */}
                       <div className="border border-blue-200 rounded-lg overflow-hidden">
                         <img
