@@ -173,7 +173,7 @@ function PartNode({
                   {label}
                 </span>
                 {desc && (
-                  <span className="text-xs text-gray-500 block truncate">
+                  <span className="text-xs text-gray-500 block">
                     {desc}
                   </span>
                 )}
@@ -190,7 +190,7 @@ function PartNode({
 
       {/* Sections (if expanded) */}
       {isExpanded && hasMultipleSections && (
-        <div className="ml-4 mt-0.5 border-l border-gray-200 pl-2">
+        <div className="mt-0.5 border-l border-gray-200 pl-2">
           {Object.entries(sections).map(([sectionId, section]) => (
             <SectionNode
               key={sectionId}
@@ -217,19 +217,19 @@ function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-2 py-1 rounded cursor-pointer transition-colors",
+        "flex items-start gap-2 px-2 py-1 rounded cursor-pointer transition-colors",
         "hover:bg-teal-50",
         isSelected && "bg-teal-100 text-teal-900"
       )}
       onClick={onClick}
     >
-      <FileText className="h-3 w-3 text-gray-400 flex-shrink-0" />
+      <FileText className="h-3 w-3 text-gray-400 flex-shrink-0 mt-0.5" />
       <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-gray-700 block truncate">
+        <span className="text-xs font-medium text-gray-700 block break-words">
           {display.primary}
         </span>
         {display.secondary && (
-          <span className="text-[10px] text-gray-500 block truncate">
+          <span className="text-[10px] text-gray-500 block break-words">
             {display.secondary}
           </span>
         )}
@@ -379,6 +379,7 @@ function sanitizeText(text: string): string {
 
 /**
  * Format section for display - returns object for flexible rendering
+ * No truncation - let CSS handle text wrapping
  */
 function formatSectionDisplay(sectionId: string, sectionTitle: string): { primary: string; secondary?: string } {
   const cleanTitle = sanitizeText(sectionTitle);
@@ -392,23 +393,17 @@ function formatSectionDisplay(sectionId: string, sectionTitle: string): { primar
     if (stripped && stripped !== sectionId && !stripped.match(/^C\d+$/) && stripped.length > 2) {
       return {
         primary: `Ctrl ${num}`,
-        secondary: stripped.length > 20 ? stripped.slice(0, 20) + '…' : stripped
+        secondary: stripped
       };
     }
     return { primary: `Control ${num}` };
   }
 
-  // For numeric sections, show number + title
+  // For numeric sections, show number + title (full text, wrap if needed)
   if (sectionId.match(/^\d/)) {
-    const shortTitle = cleanTitle.length > 22
-      ? cleanTitle.slice(0, 22) + '…'
-      : cleanTitle;
-    return { primary: shortTitle || sectionId };
+    return { primary: cleanTitle || sectionId };
   }
 
-  // Default: just the title (truncated)
-  const display = cleanTitle.length > 25
-    ? cleanTitle.slice(0, 25) + '…'
-    : cleanTitle;
-  return { primary: display || sectionId };
+  // Default: just the title (full text, wrap if needed)
+  return { primary: cleanTitle || sectionId };
 }
