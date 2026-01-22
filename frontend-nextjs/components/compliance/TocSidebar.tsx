@@ -190,7 +190,7 @@ function PartNode({
 
       {/* Sections (if expanded) */}
       {isExpanded && hasMultipleSections && (
-        <div className="mt-0.5 border-l border-gray-200 pl-2">
+        <div className="mt-0.5">
           {Object.entries(sections).map(([sectionId, section]) => (
             <SectionNode
               key={sectionId}
@@ -217,23 +217,18 @@ function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
   return (
     <div
       className={cn(
-        "flex items-start gap-2 px-2 py-1 rounded cursor-pointer transition-colors",
+        "flex items-start justify-between px-2 py-1 rounded cursor-pointer transition-colors",
         "hover:bg-teal-50",
         isSelected && "bg-teal-100 text-teal-900"
       )}
       onClick={onClick}
     >
-      <FileText className="h-3 w-3 text-gray-400 flex-shrink-0 mt-0.5" />
-      <div className="flex-1 min-w-0">
-        <span className="text-xs font-medium text-gray-700 block break-words">
-          {display.primary}
-        </span>
+      <span className="text-xs text-gray-700 break-words pr-2">
+        {display.primary}
         {display.secondary && (
-          <span className="text-[10px] text-gray-500 block break-words">
-            {display.secondary}
-          </span>
+          <span className="text-gray-500 ml-1">{display.secondary}</span>
         )}
-      </div>
+      </span>
       <span className="text-xs text-gray-400 flex-shrink-0">
         {section.provision_count}
       </span>
