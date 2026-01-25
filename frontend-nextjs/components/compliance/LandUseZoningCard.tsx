@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ExternalLink } from 'lucide-react';
-// Updated: Show first 10 uses with ellipsis
+import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
+
+const INITIAL_DISPLAY_COUNT = 5;
 
 interface LandUseZoningCardProps {
   zone: string;
@@ -121,6 +123,16 @@ export function LandUseZoningCard({
 
   const { permitted, prohibited } = getPermittedUses(zone);
 
+  const [permittedExpanded, setPermittedExpanded] = useState(false);
+  const [prohibitedExpanded, setProhibitedExpanded] = useState(false);
+
+  const displayedPermitted = permittedExpanded
+    ? permitted
+    : permitted.slice(0, INITIAL_DISPLAY_COUNT);
+  const displayedProhibited = prohibitedExpanded
+    ? prohibited
+    : prohibited.slice(0, INITIAL_DISPLAY_COUNT);
+
   return (
     <Card className="border-blue-200 bg-blue-50/50">
       <CardContent className="pt-4">
@@ -175,43 +187,67 @@ export function LandUseZoningCard({
             {/* Left: Permitted Uses */}
             <div>
               <div className="text-xs font-semibold text-green-700 mb-2 flex items-center gap-1">
-                ✓ Permitted Uses
+                ✓ Permitted Uses ({permitted.length})
               </div>
               <ul className="text-sm text-gray-700 space-y-1">
-                {permitted.slice(0, 10).map((use, idx) => (
+                {displayedPermitted.map((use, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-green-600 flex-shrink-0">•</span>
                     <span>{use}</span>
                   </li>
                 ))}
-                {permitted.length > 10 && (
-                  <li className="flex items-start gap-2">
-                    <span className="text-green-600 flex-shrink-0">•</span>
-                    <span className="text-gray-500 italic">...</span>
-                  </li>
-                )}
               </ul>
+              {permitted.length > INITIAL_DISPLAY_COUNT && (
+                <button
+                  onClick={() => setPermittedExpanded(!permittedExpanded)}
+                  className="text-xs text-green-700 hover:text-green-800 hover:underline mt-2 flex items-center gap-1"
+                >
+                  {permittedExpanded ? (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      Show all {permitted.length} uses
+                    </>
+                  )}
+                </button>
+              )}
             </div>
 
             {/* Right: Prohibited Uses */}
             <div>
               <div className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1">
-                ✗ Prohibited Uses
+                ✗ Prohibited Uses ({prohibited.length})
               </div>
               <ul className="text-sm text-gray-700 space-y-1">
-                {prohibited.slice(0, 10).map((use, idx) => (
+                {displayedProhibited.map((use, idx) => (
                   <li key={idx} className="flex items-start gap-2">
                     <span className="text-red-600 flex-shrink-0">•</span>
                     <span>{use}</span>
                   </li>
                 ))}
-                {prohibited.length > 10 && (
-                  <li className="flex items-start gap-2">
-                    <span className="text-red-600 flex-shrink-0">•</span>
-                    <span className="text-gray-500 italic">...</span>
-                  </li>
-                )}
               </ul>
+              {prohibited.length > INITIAL_DISPLAY_COUNT && (
+                <button
+                  onClick={() => setProhibitedExpanded(!prohibitedExpanded)}
+                  className="text-xs text-red-700 hover:text-red-800 hover:underline mt-2 flex items-center gap-1"
+                >
+                  {prohibitedExpanded ? (
+                    <>
+                      <ChevronUp className="h-3 w-3" />
+                      Show less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="h-3 w-3" />
+                      Show all {prohibited.length} uses
+                    </>
+                  )}
+                </button>
+              )}
             </div>
           </div>
         </div>
