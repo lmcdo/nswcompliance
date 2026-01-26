@@ -2,8 +2,8 @@
 
 **Purpose:** Track data quality issues systematically across Claude sessions.
 
-**Last Updated:** 2026-01-12
-**Session:** Marrickville Page Number Fix
+**Last Updated:** 2026-01-24
+**Session:** DCP Extraction QA Test Framework
 
 ---
 
@@ -28,6 +28,133 @@
 | DQ-16: Heritage topic fragmentation | ✅ FIXED | P1 (was) |
 | DQ-17: "Orphaned" non-heritage provisions | ✅ NOT ORPHANED | N/A |
 | DQ-18: Marrickville pdf_page mismatch | ✅ FIXED | P1 (was) |
+| DQ-19: Part 9 pattern collision | ✅ FIXED | P1 (was) |
+| DQ-20: Part 5/6 vs Part 9 precedence | ✅ FIXED | P2 (was) |
+| DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
+| DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
+| DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-22: TOC Provisions Marked as Actionable
+
+**Status:** ✅ FIXED
+**Found:** 2026-01-26
+**Fixed:** 2026-01-26
+
+**Problem:** 34 Table of Contents (TOC) provisions had `v2_is_actionable = true`, causing them to appear in the DCP tab UI. User reported Part D showing TOC as first provision for 185 Parramatta Road Annandale.
+
+**Example:** ID 80116 (Leichhardt Part D Energy) contained:
+```
+SECTION 1 – ENERGY MANAGEMENT .
+SECTION 2 – RESOURCE RECOVERY AND WASTE MANAGEMENT .......... .....6
+```
+
+**Root Cause:** v2 enrichment process didn't detect TOC patterns (dotted leaders like `........`). The `dcp-complete` route had TOC filters but `for-property` API relied solely on `v2_is_actionable`.
+
+**Fix:** SQL update to set `v2_is_actionable = false` for provisions containing `........`:
+```sql
+UPDATE regulatory_provisions
+SET v2_is_actionable = false
+WHERE v2_is_actionable = true
+AND provision_text LIKE '%........%'
+-- Fixed 34 rows
+```
+
+**Affected Documents:** Leichhardt DCP (Parts C, D, G), Marrickville DCP (Parts 2, 4, 6, 7, 8, 9), LEP TOC pages
+
+---
+
+## DQ-23: Duplicate Provisions in TOC View
+
+**Status:** ✅ FIXED
+**Found:** 2026-01-26
+**Fixed:** 2026-01-26
+
+**Problem:** Provisions appearing multiple times in DCP tab TOC-structured view. User reported "C1.5 CORNER SITES" showing 18 provisions on page 17 (6 provisions × 3 duplicates) and 6 provisions on page 18 (3 provisions × 2 duplicates).
+
+**Root Cause:** The `groupByTocStructure` function (frontend-nextjs/app/api/provisions/for-property/route.ts:685-691) flattened provisions from all 4 layers (generic, use_specific, condition, precinct) WITHOUT deduplication. When the same provision appeared in multiple layers due to the layer query logic, it was added to the TOC structure multiple times.
+
+**Code Location:** `frontend-nextjs/app/api/provisions/for-property/route.ts:688-690`
+
+**Fix:** Added Map-based deduplication by provision ID before grouping:
+```typescript
+// Before (buggy):
+const allProvisions: any[] = [];
+for (const layer of layers) {
+  for (const provision of layer.provisions) {
+    allProvisions.push({ ...provision, layer: layer.layer });
+  }
+}
+
+// After (fixed):
+const provisionMap = new Map<number, any>();
+for (const layer of layers) {
+  for (const provision of layer.provisions) {
+    if (!provisionMap.has(provision.id)) {
+      provisionMap.set(provision.id, { ...provision, layer: layer.layer });
+    }
+  }
+}
+const allProvisions = Array.from(provisionMap.values());
+```
+
+**Impact:** Prevents duplicate provision display in DCP tab. Keeps first occurrence (preserves layer priority order: generic → use_specific → condition → precinct).
+
+**Test:** Reload 185 Parramatta Road Annandale assessment - C1.5 Corner Sites should now show 6 unique provisions on page 17, 3 unique provisions on page 18.
+
+---
+
+## DQ-19: Part 9 Pattern Collision with Section Numbers
+
+**Status:** ✅ FIXED
+**Found:** 2026-01-24 (via automated test suite)
+**Fixed:** 2026-01-24
+
+**Problem:** Layer tagger pattern `'9__' in doc` matched section numbers like `19__` or `29__`, causing Part 2 sections to be misclassified as Part 9 precincts.
+
+**Example:** `Marrickville__DCP__2011__-__2__19__Trees` (Section 2.19 Trees) was classified as `precinct` instead of `generic`.
+
+**Root Cause:** Pattern `'9__'` is a substring of `19__`, `29__`, etc.
+
+**Fix:** Added leading delimiter requirement in `layer_topic_tagger.py:179`:
+```python
+# Before: if '9_' in doc or '9__' in doc or 'Precinct' in doc:
+# After:
+if '_9_' in doc or '_9__' in doc or '-9_' in doc or '-9__' in doc or 'Precinct' in doc:
+```
+
+**Validation:** Test `test_marrickville_part2_section_topics` now passes.
+
+---
+
+## DQ-20: Part 5/6 vs Part 9 Precedence Issue
+
+**Status:** ✅ FIXED
+**Found:** 2026-01-24 (via automated test suite)
+**Fixed:** 2026-01-24
+
+**Problem:** Part 5 check for `'Commercial' in doc` matched before Part 9 for precinct names containing "Commercial".
+
+**Example:** `Marrickville__DCP__2011__-__9__40__Town__Centre__Commercial` was classified as `use_specific` (Part 5) instead of `precinct` (Part 9).
+
+**Fix:** Reordered Part 9 check to run before Part 5/6 in `layer_topic_tagger.py:169-177`.
+
+**Validation:** Test `test_part9_precinct` now passes.
+
+---
+
+## DQ-21: Double-Underscore Document_ID Patterns
+
+**Status:** ✅ FIXED
+**Found:** 2026-01-24 (via automated test suite)
+**Fixed:** 2026-01-24
+
+**Problem:** Part 4.1/4.2 detection only checked `'4_1'` and `'4.1'`, missing `'4__1'` patterns used in some document_ids.
+
+**Fix:** Added `'4__1'` and `'4__2'` patterns to `layer_topic_tagger.py:159-166`.
+
+**Validation:** Test `test_part4_1_use_specific` now passes.
 
 ---
 

@@ -683,12 +683,17 @@ function groupByTocStructure(
   const byToc: Record<string, TocPart> = {};
 
   // Flatten all provisions from all layers
-  const allProvisions: any[] = [];
+  // Deduplicate by provision ID to prevent same provision appearing multiple times
+  const provisionMap = new Map<number, any>();
   for (const layer of layers) {
     for (const provision of layer.provisions) {
-      allProvisions.push({ ...provision, layer: layer.layer });
+      // Keep first occurrence (preserves layer priority order)
+      if (!provisionMap.has(provision.id)) {
+        provisionMap.set(provision.id, { ...provision, layer: layer.layer });
+      }
     }
   }
+  const allProvisions = Array.from(provisionMap.values());
 
   // Group by v2_dcp_part first
   for (const provision of allProvisions) {
