@@ -364,3 +364,4 @@ frontend-nextjs/.wrangler/
 
 # Local tool data
 .beads/
+lancedb_data/
