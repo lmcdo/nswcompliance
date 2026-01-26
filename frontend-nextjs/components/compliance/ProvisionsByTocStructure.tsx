@@ -290,7 +290,16 @@ export function ProvisionsByTocStructure({
     return Object.values(part.sections).flatMap(s => s.provisions);
   };
 
-  const selectedProvisions = getSelectedProvisions();
+  const rawSelectedProvisions = getSelectedProvisions();
+
+  // Deduplicate provisions by text content (safety net for any DB/API duplicates)
+  const seenTexts = new Set<string>();
+  const selectedProvisions = rawSelectedProvisions.filter(p => {
+    const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+    if (seenTexts.has(key)) return false;
+    seenTexts.add(key);
+    return true;
+  });
 
   // Apply topic filter if set
   let filteredProvisions = topicFilter
