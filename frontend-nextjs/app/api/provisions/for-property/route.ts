@@ -550,25 +550,31 @@ async function queryLayer(
   }
 
   // Heritage filtering logic:
-  // 1. If property is NOT heritage (heritage=false), exclude heritage provisions entirely
-  // 2. If heritage=true with HCA, exclude heritage from non-condition layers (comes from queryHeritageByHca)
-  // 3. If heritage=true without HCA, include heritage but filter by precinct
-  if (!filters.heritage && layer !== 'condition') {
-    // Property is not heritage - exclude all heritage provisions
-    sql += ` AND LOWER(v2_topic) != 'heritage'`;
-  } else if (filters.hca && layer !== 'condition') {
+  // 1. Generic/use-specific layers: Only include heritage provisions if LEP heritage = true
+  // 2. Precinct layer: ALWAYS include provisions if in that precinct (precinct defines scope)
+  // 3. Condition layer: Handled separately below
+  // IMPORTANT: Check both v2_topic and v2_marker for heritage (provisions tagged with either)
+  //
+  // Authority: EP&A Act s 3.42 - DCP precinct provisions apply to all properties within
+  // precinct boundaries, independently of LEP heritage schedules (precinct maps define scope)
+  if (!filters.heritage && layer !== 'condition' && layer !== 'precinct') {
+    // Property is not heritage - exclude all heritage provisions from generic/use-specific layers
+    sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+  } else if (filters.hca && layer !== 'condition' && layer !== 'precinct') {
     // Heritage with HCA - exclude from non-condition layers (handled by queryHeritageByHca)
-    sql += ` AND LOWER(v2_topic) != 'heritage'`;
-  } else if (filters.heritage && !filters.hca && layer !== 'condition') {
+    sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+  } else if (filters.heritage && !filters.hca && layer !== 'condition' && layer !== 'precinct') {
     // Heritage without HCA - include but filter by precinct to avoid showing ALL precincts
     if (filters.precinct_id) {
-      sql += ` AND (LOWER(v2_topic) != 'heritage' OR v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
+      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
       params.push(filters.precinct_id);
     } else {
       // No precinct specified - only show non-precinct heritage provisions
-      sql += ` AND (LOWER(v2_topic) != 'heritage' OR v2_precinct_id IS NULL)`;
+      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL)`;
     }
   }
+  // Note: Precinct layer (layer === 'precinct') is NOT filtered by heritage status
+  // Precinct provisions (including heritage-tagged ones) apply to ALL properties in precinct
 
   // Layer-specific filtering
   if (layer === 'use_specific' && filters.zone) {
