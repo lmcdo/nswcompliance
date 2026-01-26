@@ -705,13 +705,14 @@ function groupByTocStructure(
   // Use first 100 chars + page as dedup key to catch true duplicates while allowing
   // legitimately similar provisions on different pages
   const textDeduped = new Map<string, any>();
-  for (const provision of provisionMap.values()) {
+  const idDedupedProvisions = [...provisionMap.values()];
+  for (const provision of idDedupedProvisions) {
     const textKey = `${(provision.provision_text || '').substring(0, 100)}|${provision.pdf_page || 0}`;
     if (!textDeduped.has(textKey)) {
       textDeduped.set(textKey, provision);
     }
   }
-  const allProvisions = Array.from(textDeduped.values());
+  const allProvisions = [...textDeduped.values()];
 
   // Group by v2_dcp_part first
   for (const provision of allProvisions) {
