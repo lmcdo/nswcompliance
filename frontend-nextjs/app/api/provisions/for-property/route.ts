@@ -812,3 +812,4 @@ function formatPartName(partId: string): string {
 
   return patterns[partId] || partId;
 }
+// Trigger rebuild Tue, Jan 27, 2026  8:12:03 AM
