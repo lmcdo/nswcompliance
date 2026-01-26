@@ -294,7 +294,8 @@ export async function GET(request: NextRequest) {
           api_version: 'v2_4layer_toc'
         }
       });
-      response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=60');
+      // Temporarily disabled cache for debugging duplicates issue
+      response.headers.set('Cache-Control', 'no-store, must-revalidate');
       return response;
 
     } finally {
