@@ -196,37 +196,60 @@ Section 4.15 establishes that decision-makers must consider ALL relevant environ
 - Junior certifier gets explicit guidance on which to review first (risk reduction)
 - No provisions hidden (professional liability mitigation)
 
-### 3.3 Council-Specific Processing Strategies
+### 3.3 Development Type Filtering - Legal and Compliant Implementation
 
-**Challenge:** Inner West LGA comprises three former councils with radically different DCP structures.
+**Critical Distinction:** Development type filtering is ONLY compliant when provisions are explicitly tagged with their applicable development types by the DCP author or through verified extraction. We do NOT use AI to guess which provisions apply to which dev types.
 
-**Marrickville DCP 2011** (1,051 provisions)
-- Structure: Balanced 4-layer model
-  - Part 2: Generic (22% of total)
-  - Part 4: Zone-specific (34% of total)
-  - Part 8: Heritage (30% of total)
-  - Part 9: Precincts (34% of total - 47 distinct precincts)
-- Processing Strategy: Apply all 4 layers equally
-- UI Approach: Topic grouping optional; 4-layer display default
-- **Result:** 50-90 provisions typical for dwelling house DA
+#### How Dev-Type Filtering Works Legally
 
-**Leichhardt DCP 2013** (2,989 provisions)
-- Structure: Generic-heavy (77% generic)
-  - Part C Section 1: 1,554 provisions with C1-C55 markers (markers = topics, not controls)
-  - Part D-G: Specialized chapters (energy, water, site-specific)
-- Processing Strategy: Topic filtering CRITICAL (2,989 → 30-85 provisions)
-- UI Approach: Auto-expand topic chips; encourage filtering by topic
-- **Result:** Without topic filter = 2,211 provisions (unusable); with topic filter = 30-85 provisions
-- **Implementation:** `COUNCIL_CONFIGS.leichhardt.features.topicFilterRecommended = true`
+**Premise:** Many DCP provisions explicitly state their applicability. For example:
+- "Dwelling houses shall have a maximum of 2 storeys" (applies to: dwelling_house)
+- "Commercial premises require loading bay access" (applies to: shop, retail_premises)
+- "All development shall respect streetscape character" (applies to: ALL development types)
 
-**Ashfield DCP 2016** (1,526 provisions)
-- Structure: Heritage-heavy (59% condition layer)
-  - Chapter E1: Heritage (905 provisions, mostly narrative character descriptions)
+**Our Approach:**
+1. **Explicit Tagging Only:** Provisions tagged with `v2_applicable_dev_types` are ONLY those where the DCP text explicitly mentions a development type
+2. **Conservative NULL Handling:** Provisions with `v2_applicable_dev_types = NULL` are treated as "applies to ALL" (inclusive, not exclusive)
+3. **User Control:** Dev-type filter is OPTIONAL - users can disable it to see all provisions
+4. **Legal Disclaimer:** Banner states dev-type filtering is a navigation aid, not a compliance filter
+
+#### Council-Specific Filtering Strategies & Risks
+
+**Challenge:** Inner West LGA comprises three former councils with radically different DCP structures and tagging completeness.
+
+**Marrickville DCP 2011** (1,584 actionable provisions)
+- Structure: Balanced 4-layer model with strong precinct focus
+  - Part 2: Generic (206 provisions, 13% of total)
+  - Part 4: Zone-specific (113 provisions, 7% of total)
+  - Part 8: Heritage/Condition (180 provisions, 11% of total)
+  - Part 9: Precincts (275 provisions, 17% of total - 47 distinct precincts)
+  - **Data Quality Issue:** 51% of provisions missing v2_applicable_dev_types tags
+- Processing Strategy: Precinct filtering PRIMARY, dev-type filtering LIMITED (only 30.2% tagged)
+- UI Approach: 4-layer display with precinct as primary filter
+- **Result:** 50-90 provisions typical after precinct + zone filtering
+- **Action Required:** Audit and complete dev_type tagging before enabling dev-type filter
+
+**Leichhardt DCP 2013** (1,442 actionable provisions)
+- Structure: Generic-heavy (52.5% generic) with significant precinct component
+  - Part C Section 1: 590 generic provisions with C1-C55 markers (markers = topics, not controls)
+  - Part G: 376 precinct-specific provisions (43.2% of total)
+  - Part D-F: Specialized chapters (energy, water, food)
+- Processing Strategy: **Dev-type filtering PRIMARY** (65.8% tagged) + Topic filtering SECONDARY
+- UI Approach: Dev-type filter reduces 1,442 → ~493; topic filter further reduces to 30-85
+- **Result:** Dev-type + topic dual filtering = 95% reduction
+- **Implementation:** `v2_applicable_dev_types` has 100% coverage for Leichhardt (best in class)
+
+**Ashfield DCP 2016** (1,112 actionable provisions)
+- Structure: Heritage/Condition-heavy (52.2% condition layer)
+  - Chapter E1: Heritage (578 provisions, 52% of total)
   - v2_heritage_type: control|character|descriptive (sub-categorization)
-- Processing Strategy: Heritage topic fragmentation → sub-topic filtering
-- UI Approach: Heritage provisions shown by element (fence, roof, window, materials)
-- **Result:** 50-400 provisions depending on heritage status
-- **Implementation:** `v2_heritage_element` array enables fine-grained filtering
+  - Generic: 328 provisions (29.6%)
+  - Dev-type tagging: 41.1% (moderate coverage)
+- Processing Strategy: Heritage filtering PRIMARY, dev-type filtering SECONDARY
+- UI Approach: Heritage provisions shown by element (fence, roof, window, materials); dev-type as optional filter
+- **Result:** Heritage properties: 500-900 provisions; Non-heritage: 200-400 provisions
+- **Implementation:** `v2_heritage_element` array + `v2_applicable_dev_types` combination filtering
+- **Risk:** Dev-type filtering alone misses 52% condition-based provisions
 
 **Design Lesson:** One-size-fits-all DCP processing is inadequate. Council-specific UI adaptations are necessary.
 
