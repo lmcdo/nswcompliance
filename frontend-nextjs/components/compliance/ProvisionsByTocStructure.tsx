@@ -8,14 +8,15 @@
  * - Right: Provisions for selected part/section
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
-import { PageGroupedProvisions } from './PageGroupedProvisions';
+import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
+import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
@@ -130,6 +131,8 @@ export function ProvisionsByTocStructure({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   const [showHcaSection, setShowHcaSection] = useState(false); // HCA section collapsed by default
@@ -241,6 +244,111 @@ export function ProvisionsByTocStructure({
     }
   }, [data, selectedPart]);
 
+  // Debounce search input with 300ms delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Extract data with safe defaults (for use in hooks below)
+  const tocStructure = data?.data?.by_toc || {};
+  const totalProvisions = data?.data?.summary?.total_provisions || 0;
+
+  // Get provisions for selected part/section - memoized to avoid unnecessary recalculations
+  const rawSelectedProvisions = useMemo(() => {
+    if (!selectedPart || !tocStructure[selectedPart]) return [];
+
+    const part = tocStructure[selectedPart];
+
+    if (selectedSection && part.sections[selectedSection]) {
+      return part.sections[selectedSection].provisions;
+    }
+
+    // Return all provisions for the part
+    return Object.values(part.sections).flatMap(s => s.provisions);
+  }, [selectedPart, selectedSection, tocStructure]);
+
+  // Deduplicate provisions by text content (safety net for any DB/API duplicates)
+  const selectedProvisions = useMemo(() => {
+    const seenTexts = new Set<string>();
+    return rawSelectedProvisions.filter(p => {
+      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+      if (seenTexts.has(key)) return false;
+      seenTexts.add(key);
+      return true;
+    });
+  }, [rawSelectedProvisions]);
+
+  // Apply filters and sort by priority
+  const filteredProvisions = useMemo(() => {
+    let filtered = selectedProvisions;
+
+    // Apply search filter
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.provision_text?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply topic filter if set
+    if (topicFilter) {
+      filtered = filtered.filter(p =>
+        p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
+      );
+    }
+
+    // Apply layer filter if set
+    if (layerFilter) {
+      filtered = filtered.filter(p =>
+        (p.v2_dcp_layer || p.layer) === layerFilter
+      );
+    }
+
+    // Sort by priority: critical first, then important, guideline, contextual
+    return filtered.sort((a, b) => {
+      const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
+      const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
+      const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
+      return aPriority - bPriority;
+    });
+  }, [selectedProvisions, debouncedSearch, topicFilter, layerFilter]);
+
+  // Get unique topics for filter chips
+  const availableTopics = useMemo(() =>
+    [...new Set(selectedProvisions.map(p => p.v2_topic).filter(Boolean))].sort(),
+    [selectedProvisions]
+  );
+
+  // Count provisions by layer for the current selection
+  const layerCounts = useMemo(() => ({
+    generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+    use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+    condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+    precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+  }), [selectedProvisions]);
+
+  // Check if any provisions have C/O markers
+  const hasMarkers = useMemo(() =>
+    selectedProvisions.some(p => p.v2_marker),
+    [selectedProvisions]
+  );
+
+  // Calculate priority stats per topic for smart defaults
+  const topicPriorityStats = useMemo(() => {
+    const stats: Record<string, { critical: number; total: number }> = {};
+    selectedProvisions.forEach(p => {
+      const topic = p.v2_topic?.toLowerCase().replace(/ /g, '_') || 'other';
+      if (!stats[topic]) stats[topic] = { critical: 0, total: 0 };
+      stats[topic].total++;
+      if (p.v2_display_priority === 'critical') stats[topic].critical++;
+    });
+    return stats;
+  }, [selectedProvisions]);
+
+  // NOW handle loading/error states AFTER all hooks are called
   if (isLoading) {
     return (
       <Card>
@@ -262,9 +370,6 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  const tocStructure = data?.data?.by_toc || {};
-  const totalProvisions = data?.data?.summary?.total_provisions || 0;
-
   // Safety check - if no TOC data, show message
   if (!data?.data?.by_toc || Object.keys(tocStructure).length === 0) {
     return (
@@ -275,61 +380,6 @@ export function ProvisionsByTocStructure({
       </Card>
     );
   }
-
-  // Get provisions for selected part/section
-  const getSelectedProvisions = (): any[] => {
-    if (!selectedPart || !tocStructure[selectedPart]) return [];
-
-    const part = tocStructure[selectedPart];
-
-    if (selectedSection && part.sections[selectedSection]) {
-      return part.sections[selectedSection].provisions;
-    }
-
-    // Return all provisions for the part
-    return Object.values(part.sections).flatMap(s => s.provisions);
-  };
-
-  const rawSelectedProvisions = getSelectedProvisions();
-
-  // Deduplicate provisions by text content (safety net for any DB/API duplicates)
-  const seenTexts = new Set<string>();
-  const selectedProvisions = rawSelectedProvisions.filter(p => {
-    const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
-    if (seenTexts.has(key)) return false;
-    seenTexts.add(key);
-    return true;
-  });
-
-  // Apply topic filter if set
-  let filteredProvisions = topicFilter
-    ? selectedProvisions.filter(p =>
-        p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
-      )
-    : selectedProvisions;
-
-  // Apply layer filter if set
-  if (layerFilter) {
-    filteredProvisions = filteredProvisions.filter(p =>
-      (p.v2_dcp_layer || p.layer) === layerFilter
-    );
-  }
-
-  // Get unique topics for filter chips
-  const availableTopics = [...new Set(
-    selectedProvisions.map(p => p.v2_topic).filter(Boolean)
-  )].sort();
-
-  // Count provisions by layer for the current selection
-  const layerCounts = {
-    generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
-    use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
-    condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
-    precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-  };
-
-  // Check if any provisions have C/O markers
-  const hasMarkers = selectedProvisions.some(p => p.v2_marker);
 
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
@@ -381,6 +431,9 @@ export function ProvisionsByTocStructure({
           )}
         </div>
       )}
+
+      {/* EP&A Act s 4.15 Compliance Disclaimer */}
+      <EPAAct415ComplianceNotice />
 
       {/* Universal HCA Provisions Banner - shown for heritage properties in any Inner West council */}
       {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && (
@@ -502,6 +555,33 @@ export function ProvisionsByTocStructure({
             </div>
           </div>
 
+          {/* Search box */}
+          <div className="mt-3 relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search provisions..."
+                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {debouncedSearch && (
+              <div className="mt-1 text-xs text-gray-500">
+                {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''} match your search
+              </div>
+            )}
+          </div>
+
           {/* Topic filter chips - show all topics */}
           {availableTopics.length > 1 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
@@ -517,21 +597,26 @@ export function ProvisionsByTocStructure({
               >
                 All
               </button>
-              {availableTopics.map(topic => (
-                <button
-                  key={topic}
-                  onClick={() => setTopicFilter(
-                    topic.toLowerCase().replace(/ /g, '_')
-                  )}
-                  className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                    topicFilter === topic.toLowerCase().replace(/ /g, '_')
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {topic}
-                </button>
-              ))}
+              {availableTopics.map(topic => {
+                const topicKey = topic.toLowerCase().replace(/ /g, '_');
+                const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
+                const hasCritical = stats.critical > 0;
+
+                return (
+                  <button
+                    key={topic}
+                    onClick={() => setTopicFilter(topicKey)}
+                    className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                      topicFilter === topicKey
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {hasCritical && <span className={topicFilter === topicKey ? 'text-yellow-200' : 'text-red-500'}>⚠️</span>}
+                    {topic} ({stats.total}{hasCritical ? `, ${stats.critical} critical` : ''})
+                  </button>
+                );
+              })}
             </div>
           )}
 
@@ -611,6 +696,7 @@ export function ProvisionsByTocStructure({
               showLegend={true}
               maxProvisions={100}
               onViewPdf={(url, page) => setPdfModal({ url, page })}
+              highlightQuery={debouncedSearch}
             />
           ) : (
             <div className="text-center py-12 text-gray-500">

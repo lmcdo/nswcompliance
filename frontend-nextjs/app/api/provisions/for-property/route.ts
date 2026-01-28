@@ -16,6 +16,8 @@
  * - dev_type: Development type (optional)
  * - topic: Filter by topic (optional)
  * - groupBy: "topic" (default) or "toc" - how to group results
+ * - version_date: ISO date string (e.g., "2024-05-15") - returns provisions as of this date
+ * - include_version_metadata: "true" to include version metadata in results
  *
  * Response includes:
  * - by_layer: provisions grouped by 4-layer model
@@ -39,6 +41,10 @@ interface PropertyFilters {
   former_council?: string;  // Former council name (Ashfield, Marrickville, Leichhardt)
   hca?: string;  // Heritage Conservation Area slug (e.g., "summer_hill", "hca_1")
   groupBy?: 'topic' | 'toc';  // How to group results (default: topic)
+
+  // Version tracking parameters
+  version_date?: string;  // ISO date string (e.g., "2024-05-15") - get provisions as of this date
+  include_version_metadata?: boolean;  // Include version metadata in results
 }
 
 interface LayerResult {
@@ -172,6 +178,55 @@ async function resolveHcaCode(client: any, hcaCode: string): Promise<string | nu
   return null;
 }
 
+/**
+ * Deduplicate provisions across all layers
+ * Removes duplicate provisions based on:
+ * 1. Same provision ID
+ * 2. Same text content (first 100 chars) + page number
+ */
+function deduplicateLayers(layers: LayerResult[]): LayerResult[] {
+  // Collect all provisions with their layer info
+  const allProvisions: Array<{ provision: any; layerIndex: number }> = [];
+  layers.forEach((layer, layerIndex) => {
+    layer.provisions.forEach(provision => {
+      allProvisions.push({ provision, layerIndex });
+    });
+  });
+
+  // First pass: deduplicate by provision ID
+  const idDeduped = new Map<number, { provision: any; layerIndex: number }>();
+  for (const item of allProvisions) {
+    if (!idDeduped.has(item.provision.id)) {
+      idDeduped.set(item.provision.id, item);
+    }
+  }
+
+  // Second pass: deduplicate by text content (first 100 chars) + page
+  // Use provision ID in key to prevent NULL pdf_page from causing over-deduplication
+  // (when pdf_page is NULL, all provisions with similar text would get key "text|0")
+  const textDeduped = new Map<string, { provision: any; layerIndex: number }>();
+  for (const item of idDeduped.values()) {
+    const textKey = `${item.provision.id}|${(item.provision.provision_text || '').substring(0, 100)}`;
+    if (!textDeduped.has(textKey)) {
+      textDeduped.set(textKey, item);
+    }
+  }
+
+  // Rebuild layers with deduplicated provisions
+  const newLayers: LayerResult[] = layers.map(layer => ({
+    ...layer,
+    provisions: [],
+    count: 0
+  }));
+
+  for (const item of textDeduped.values()) {
+    newLayers[item.layerIndex].provisions.push(item.provision);
+    newLayers[item.layerIndex].count++;
+  }
+
+  return newLayers;
+}
+
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
@@ -192,6 +247,10 @@ export async function GET(request: NextRequest) {
       former_council: searchParams.get('former_council') || undefined,
       hca: searchParams.get('hca') || undefined,
       groupBy: (searchParams.get('groupBy') as 'topic' | 'toc') || 'topic',
+
+      // Version tracking parameters
+      version_date: searchParams.get('version_date') || undefined,
+      include_version_metadata: searchParams.get('include_version_metadata') === 'true',
     };
 
     console.log(`[4-Layer API] Filters: ${JSON.stringify(filters)}`);
@@ -255,7 +314,9 @@ export async function GET(request: NextRequest) {
 
       // No URL adjustment needed - PDF files are correctly named
       // page_N.png contains DCP page N+1 content (verified 2024-12-10)
-      const adjustedResults = results;
+
+      // Deduplicate provisions across all layers
+      const adjustedResults = deduplicateLayers(results);
 
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
@@ -265,6 +326,9 @@ export async function GET(request: NextRequest) {
       const byToc = filters.groupBy === 'toc'
         ? groupByTocStructure(adjustedResults, filters.former_council)
         : undefined;
+
+      // Calculate relevance summary if dev_type provided
+      const relevanceSummary = filters.dev_type ? calculateRelevanceSummary(adjustedResults) : undefined;
 
       // Include dev_type hierarchy info if filtering by dev_type
       const devTypeInfo = filters.dev_type ? {
@@ -285,13 +349,20 @@ export async function GET(request: NextRequest) {
             layer_2_use_specific: adjustedResults[1].count,
             layer_3_condition: adjustedResults[2].count,
             layer_4_precinct: adjustedResults[3].count,
+            relevance_breakdown: relevanceSummary,  // NEW: Relevance stats
           }
         },
         meta: {
           filters_applied: filters,
           dev_type_hierarchy: devTypeInfo,
+          dev_type_approach: filters.dev_type
+            ? 'inclusive_with_relevance_scoring'
+            : 'show_all_provisions',
+          legal_note: filters.dev_type
+            ? 'All provisions shown per EP&A Act s 4.15 (consider all relevant provisions). Dev type used for relevance ranking only.'
+            : undefined,
           response_time_ms: responseTime,
-          api_version: 'v2_4layer_toc'
+          api_version: 'v3_relevance_scoring'
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
@@ -316,6 +387,34 @@ export async function GET(request: NextRequest) {
 }
 
 /**
+ * Calculate relevance summary for provisions when dev_type is provided
+ */
+function calculateRelevanceSummary(layers: LayerResult[]): any {
+  const summary = {
+    primary: 0,
+    general: 0,
+    secondary: 0,
+  };
+
+  for (const layer of layers) {
+    for (const provision of layer.provisions) {
+      if (provision.relevance_level) {
+        summary[provision.relevance_level as 'primary' | 'general' | 'secondary']++;
+      }
+    }
+  }
+
+  const total = summary.primary + summary.general + summary.secondary;
+  return {
+    ...summary,
+    total,
+    primary_pct: total > 0 ? ((summary.primary / total) * 100).toFixed(1) : '0.0',
+    general_pct: total > 0 ? ((summary.general / total) * 100).toFixed(1) : '0.0',
+    secondary_pct: total > 0 ? ((summary.secondary / total) * 100).toFixed(1) : '0.0',
+  };
+}
+
+/**
  * Query heritage provisions filtered by specific HCA from regulatory_provisions
  * Returns provisions for the property's HCA + general heritage controls
  */
@@ -325,6 +424,28 @@ async function queryHeritageByHca(
 ): Promise<any[]> {
   const params: any[] = [];
   let paramIndex = 1;
+
+  // Build relevance scoring for dev_type
+  let relevanceSelect = '';
+  if (filters.dev_type) {
+    const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
+    const devTypeParamIndex = paramIndex++;
+    relevanceSelect = `,
+      CASE
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'primary'
+        WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'general'
+        ELSE 'secondary'
+      END as relevance_level,
+      CASE
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for ${filters.dev_type}'
+        WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'Applies to all development types'
+        ELSE 'May apply if objectives relevant (EP&A Act s 4.15)'
+      END as relevance_reason
+    `;
+    params.push(expandedTypes);
+  } else {
+    relevanceSelect = `, NULL as relevance_level, NULL as relevance_reason`;
+  }
 
   // Query regulatory_provisions for HCA-specific provisions
   let sql = `
@@ -339,12 +460,15 @@ async function queryHeritageByHca(
       v2_precinct_id,
       v2_marker,
       v2_display_behavior,
+      v2_display_priority,
       pdf_page,
       pdf_source_file,
       pdf_page_image_url,
       v2_heritage_type,
       v2_heritage_element,
-      v2_heritage_hca
+      v2_heritage_hca,
+      v2_applicable_dev_types
+      ${relevanceSelect}
     FROM regulatory_provisions
     WHERE v2_is_actionable = true
       AND (LOWER(v2_topic) = 'heritage' OR v2_topic = 'Heritage')
@@ -456,6 +580,17 @@ async function queryHeritageFromDcpGeneralRequirements(
   const params: any[] = [];
   let paramIndex = 1;
 
+  // Heritage provisions from dcp_general_requirements apply universally
+  let relevanceSelect = '';
+  if (filters.dev_type) {
+    relevanceSelect = `,
+      'general' as relevance_level,
+      'Applies to all development types' as relevance_reason
+    `;
+  } else {
+    relevanceSelect = `, NULL as relevance_level, NULL as relevance_reason`;
+  }
+
   let sql = `
     SELECT
       id,
@@ -477,7 +612,9 @@ async function queryHeritageFromDcpGeneralRequirements(
       NULL as v2_heritage_type,
       NULL as v2_heritage_element,
       NULL as v2_heritage_hca,
+      NULL as v2_applicable_dev_types,
       INITCAP(REPLACE(category, '_', ' ')) as v2_heritage_subcategory
+      ${relevanceSelect}
     FROM dcp_general_requirements
     WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
     -- Exclude non-heritage sections that just mention heritage
@@ -503,8 +640,7 @@ async function queryLayer(
   filters: PropertyFilters
 ): Promise<any[]> {
   // For condition layer with heritage, use appropriate source based on HCA filter
-  const isAshfield = filters.former_council?.toLowerCase() === 'ashfield';
-  if (layer === 'condition' && (filters.heritage || isAshfield)) {
+  if (layer === 'condition' && filters.heritage) {
     // If specific HCA is provided, query regulatory_provisions filtered by that HCA
     // This gives specific HCA provisions + general heritage provisions
     if (filters.hca) {
@@ -518,27 +654,109 @@ async function queryLayer(
   const params: any[] = [];
   let paramIndex = 1;
 
+  // Build relevance scoring for dev_type (used for ranking, NOT filtering)
+  let relevanceSelect = '';
+  if (filters.dev_type) {
+    const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
+    const devTypeParamIndex = paramIndex++;
+    relevanceSelect = `,
+      CASE
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'primary'
+        WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'general'
+        ELSE 'secondary'
+      END as relevance_level,
+      CASE
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for ${filters.dev_type}'
+        WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'Applies to all development types'
+        ELSE 'May apply if objectives relevant (EP&A Act s 4.15)'
+      END as relevance_reason
+    `;
+    params.push(expandedTypes);
+  } else {
+    relevanceSelect = `, NULL as relevance_level, NULL as relevance_reason`;
+  }
+
+  // Build version metadata selection (if requested)
+  let versionSelect = '';
+  if (filters.include_version_metadata) {
+    versionSelect = `,
+      regulatory_provisions.version_count,
+      regulatory_provisions.first_seen_date,
+      regulatory_provisions.last_modified_date,
+      pv.version_number,
+      pv.effective_from,
+      pv.effective_to
+    `;
+  }
+
+  // Build FROM clause with optional version JOIN
+  let fromClause = '';
+  let whereClause = 'WHERE v2_is_actionable = true';
+
+  if (filters.version_date) {
+    // Historical query - JOIN to get provisions effective at specific date
+    const versionDateParamIndex = paramIndex++;
+    fromClause = `
+    FROM regulatory_provisions
+    INNER JOIN provision_versions pv ON (
+      pv.provision_id = regulatory_provisions.id
+      AND pv.effective_from <= $${versionDateParamIndex}::timestamp
+      AND (pv.effective_to IS NULL OR pv.effective_to > $${versionDateParamIndex}::timestamp)
+    )`;
+    params.push(filters.version_date);
+  } else {
+    // Default: current provisions only (fast path)
+    if (filters.include_version_metadata) {
+      fromClause = `
+    FROM regulatory_provisions
+    LEFT JOIN provision_versions pv ON (
+      pv.id = regulatory_provisions.current_version_id
+    )`;
+    } else {
+      fromClause = `
+    FROM regulatory_provisions`;
+    }
+    whereClause += ' AND regulatory_provisions.is_current = TRUE';
+  }
+
   let sql = `
     SELECT
-      id,
-      document_id,
-      provision_text,
-      v2_dcp_layer,
-      v2_dcp_part,
-      v2_topic,
-      v2_provision_type,
-      v2_precinct_id,
-      v2_marker,
-      v2_display_behavior,
-      pdf_page,
-      pdf_source_file,
-      pdf_page_image_url,
-      v2_heritage_type,
-      v2_heritage_element,
-      v2_heritage_hca
-    FROM regulatory_provisions
-    WHERE v2_is_actionable = true
+      regulatory_provisions.id,
+      regulatory_provisions.document_id,
+      regulatory_provisions.provision_text,
+      regulatory_provisions.v2_dcp_layer,
+      regulatory_provisions.v2_dcp_part,
+      regulatory_provisions.v2_topic,
+      regulatory_provisions.v2_provision_type,
+      regulatory_provisions.v2_precinct_id,
+      regulatory_provisions.v2_marker,
+      regulatory_provisions.v2_display_behavior,
+      regulatory_provisions.v2_display_priority,
+      regulatory_provisions.pdf_page,
+      regulatory_provisions.pdf_source_file,
+      regulatory_provisions.pdf_page_image_url,
+      regulatory_provisions.v2_heritage_type,
+      regulatory_provisions.v2_heritage_element,
+      regulatory_provisions.v2_heritage_hca,
+      regulatory_provisions.v2_applicable_dev_types
+      ${relevanceSelect}
+      ${versionSelect}
+    ${fromClause}
+    ${whereClause}
       AND v2_dcp_layer = $${paramIndex++}
+      AND NOT (
+        LOWER(COALESCE(section_header, '')) LIKE '%table of contents%'
+        OR LOWER(COALESCE(section_header, '')) LIKE '%list of tables%'
+        OR LOWER(COALESCE(section_header, '')) = 'contents'
+        OR (
+          COALESCE(section_header, '') = ''
+          AND (
+            (provision_text LIKE '%Table %:%Table %:%Table %:%' AND provision_text LIKE '%. . .%')
+            OR (provision_text ~ '[A-Z][0-9]+\.[0-9]+\.[0-9]+ .+\. \. +[0-9]+' AND provision_text ~ '(\n|^)[A-Z][0-9]+\.[0-9]+\.[0-9]+ .+\. \. +[0-9]+')
+            OR (provision_text LIKE '%SECTION 1%SECTION 2%' AND provision_text LIKE '%.....%')
+          )
+        )
+      )
   `;
   params.push(layer);
 
@@ -610,6 +828,12 @@ async function queryLayer(
       // No precinct ID - exclude all precinct-specific provisions
       console.log(`[4-Layer API] No precinct_id provided - excluding all precinct provisions`);
       sql += ` AND v2_precinct_id IS NULL`;
+
+      // Also filter heritage for non-heritage properties
+      // (Provisions with v2_precinct_id IS NULL don't get precinct boundary protection)
+      if (!filters.heritage) {
+        sql += ` AND (LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage'))`;
+      }
     }
   }
 
@@ -620,15 +844,14 @@ async function queryLayer(
     params.push(filters.topic.replace(/ /g, '_'));
   }
 
-  // Optional dev_type filter with hierarchical matching
-  // Applies to ALL layers - provisions tagged with specific dev types or 'ALL' are included
-  if (filters.dev_type) {
-    // Expand dev_type to include related types (e.g., 'residential' -> all residential types)
-    // Include provisions tagged with 'ALL' (applies to all development types)
-    const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
-    sql += ` AND (v2_applicable_dev_types && $${paramIndex++}::text[] OR 'ALL' = ANY(v2_applicable_dev_types) OR v2_applicable_dev_types IS NULL)`;
-    params.push(expandedTypes);
-  }
+  // ⚠️ CRITICAL: dev_type is NOT used for filtering (legal compliance per EP&A Act s 4.15)
+  // Dev type is only used for RELEVANCE SCORING (added to SELECT clause above)
+  // All provisions are returned; they're just ranked by relevance to user's dev_type
+  //
+  // Previous exclusive filtering REMOVED for legal compliance:
+  // - EP&A Act s 4.15 requires considering ALL relevant provisions
+  // - Dev type listings are ADVISORY, not exclusive (*Wehbe v Pittwater Council*)
+  // - Excluding provisions = high liability risk for missed merits-based application
 
   // Assessment type filter (CDC = quantitative only, DA = all)
   if (filters.assessment_type === 'CDC') {
@@ -637,7 +860,19 @@ async function queryLayer(
   }
   // DA shows all provisions (no additional filter)
 
-  sql += ` ORDER BY v2_topic, v2_dcp_part, id LIMIT 500`;
+  // Order by relevance (if dev_type provided), then by topic and part
+  // Increased limit to 3000 to accommodate all Leichhardt provisions (2309 generic + 660 precinct)
+  if (filters.dev_type) {
+    const devTypeParamIndex = 1; // First parameter in params array
+    sql += ` ORDER BY
+    CASE
+      WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 1
+      WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 2
+      ELSE 3
+    END, v2_topic, v2_dcp_part, id LIMIT 3000`;
+  } else {
+    sql += ` ORDER BY v2_topic, v2_dcp_part, id LIMIT 3000`;
+  }
 
   const result = await client.query(sql, params);
   return result.rows;
@@ -702,12 +937,12 @@ function groupByTocStructure(
   }
 
   // Second pass: deduplicate by text content (database may have multiple IDs with same text)
-  // Use first 100 chars + page as dedup key to catch true duplicates while allowing
-  // legitimately similar provisions on different pages
+  // Use provision ID + first 100 chars as dedup key to prevent NULL pdf_page from causing over-deduplication
   const textDeduped = new Map<string, any>();
   const idDedupedProvisions = [...provisionMap.values()];
   for (const provision of idDedupedProvisions) {
-    const textKey = `${(provision.provision_text || '').substring(0, 100)}|${provision.pdf_page || 0}`;
+    // Use provision ID in key to prevent NULL pdf_page from grouping unrelated provisions
+    const textKey = `${provision.id}|${(provision.provision_text || '').substring(0, 100)}`;
     if (!textDeduped.has(textKey)) {
       textDeduped.set(textKey, provision);
     }
