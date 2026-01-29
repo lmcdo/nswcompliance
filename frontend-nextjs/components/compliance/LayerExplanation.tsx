@@ -24,6 +24,22 @@ export function LayerExplanation({
 }: LayerExplanationProps) {
   const councilName = formerCouncil || 'this council';
 
+  // Format precinct name for display
+  const formatPrecinctName = (name: string | undefined): string => {
+    if (!name) return '';
+
+    // If it's just a precinct ID like "30_", format it nicely
+    if (name.match(/^\d+_?$/)) {
+      const num = name.replace('_', '');
+      return `Precinct ${num}`;
+    }
+
+    // Otherwise return as-is
+    return name;
+  };
+
+  const displayPrecinctName = formatPrecinctName(precinctName);
+
   return (
     <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
       <div className="flex items-start gap-2">
@@ -58,11 +74,11 @@ export function LayerExplanation({
               </div>
             )}
 
-            {precinctName && (
+            {displayPrecinctName && (
               <div className="flex items-start gap-2">
                 <span className="inline-block w-2 h-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></span>
                 <div>
-                  <strong>Precinct:</strong> Apply because your property is in <strong>{precinctName}</strong>
+                  <strong>Precinct:</strong> Apply because your property is in <strong>{displayPrecinctName}</strong>
                 </div>
               </div>
             )}
