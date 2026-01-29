@@ -13,6 +13,7 @@ import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
 import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
+import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -575,7 +576,7 @@ export function ProvisionsByTocStructure({
           {availableTopics.length > 1 && (
             <div className="mt-3 flex items-center gap-2 flex-wrap">
               <Filter className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs text-gray-500 font-medium">Topics:</span>
+              <span className="text-xs text-gray-500 font-medium">Navigate by topic:</span>
               <button
                 onClick={() => setTopicFilter(null)}
                 className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
@@ -677,6 +678,15 @@ export function ProvisionsByTocStructure({
 
         {/* Provisions list */}
         <div className="p-4">
+          {/* Layer explanation - always visible */}
+          <LayerExplanation
+            zone={zone}
+            heritage={heritage}
+            hcaName={hcaName}
+            precinctName={precinctId}
+            formerCouncil={formerCouncil}
+          />
+
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions
               provisions={filteredProvisions}

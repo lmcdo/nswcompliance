@@ -123,6 +123,9 @@ export interface Provision {
   toc_section_number?: string | null;
   toc_section_title?: string | null;
   v2_display_priority?: 'critical' | 'important' | 'guideline' | 'contextual';
+  // Dev type relevance scoring
+  relevance_level?: 'primary' | 'general' | 'secondary';
+  relevance_reason?: string;
 }
 
 interface PageGroup {
@@ -602,6 +605,18 @@ export function PageGroupedProvisions({
                         {provision.v2_display_priority === 'critical' && (
                           <Badge className="text-sm shrink-0 bg-red-100 text-red-800 border-red-300">
                             ⚠️ Critical
+                          </Badge>
+                        )}
+
+                        {/* Relevance Badge - Dev type matching */}
+                        {provision.relevance_level === 'primary' && (
+                          <Badge className="text-sm shrink-0 bg-blue-100 text-blue-800 border-blue-300">
+                            Primary Match
+                          </Badge>
+                        )}
+                        {provision.relevance_level === 'secondary' && (
+                          <Badge variant="outline" className="text-sm shrink-0 bg-gray-50 text-gray-600 border-gray-300">
+                            May Apply
                           </Badge>
                         )}
 

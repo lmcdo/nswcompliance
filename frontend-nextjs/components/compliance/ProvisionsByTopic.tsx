@@ -22,6 +22,7 @@ import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig 
 // HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
+import { LayerExplanation } from './LayerExplanation';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
 interface Provision {
