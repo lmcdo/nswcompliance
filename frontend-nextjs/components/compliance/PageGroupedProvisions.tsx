@@ -112,6 +112,7 @@ export interface Provision {
   v2_provision_type?: string;
   v2_precinct_id?: string;
   v2_marker?: string;
+  v2_has_numeric_value?: boolean;
   pdf_page?: number;
   pdf_page_image_url?: string;
   layer?: string;
