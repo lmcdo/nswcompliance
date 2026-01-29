@@ -1,5 +1,11 @@
 # PlotDetect CLAUDE.md - Standing Rules
 
+## ⛔ CRITICAL - READ FIRST ⛔
+- **NEVER use `taskkill //IM node.exe`** - kills Claude Chat server
+- **Kill Next.js dev server by PORT only**: `netstat -ano | findstr :3003` then `taskkill /F /PID <PID>`
+- **NEVER run queries without WHERE clauses** on main tables
+- **NEVER create fake/placeholder data** - ask if real data unavailable
+
 ## Database Safety (NON-NEGOTIABLE)
 - **Read DB_SCHEMA.md FIRST** before any database work to understand table structure
 - Run `./scripts/db_safety_check.sh` BEFORE any database operation

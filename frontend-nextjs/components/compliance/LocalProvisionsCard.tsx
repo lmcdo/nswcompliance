@@ -28,10 +28,15 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
   const exactProvisions = localProvisions.filter(p => !p.isNearby);
   const nearbyProvisions = localProvisions.filter(p => p.isNearby);
 
-  // Check if this property is a Key Site (has KSM provisions)
-  const isKeySite = exactProvisions.some(p => p.mapType === 'KSM' || p.mapType === 'Key Sites Map');
+  // Property is a Key Site only if it has an exact-match Part 6 clause (e.g. 6.24, 6.27).
+  // General KSM clauses like 4.4 (floor space ratio) apply to ALL properties in KSM polygons
+  // and do NOT mean this specific property is at a Key Site.
+  const isKeySite = exactProvisions.some(p =>
+    (p.mapType === 'KSM' || p.mapType === 'Key Sites Map') &&
+    p.clauseNumber?.startsWith('6.')
+  );
 
-  const toggleProvision = async (provisionKey: string, clauseNumber: string | undefined) => {
+  const toggleProvision = async (provisionKey: string, clauseNumber: string | undefined, fallbackPageNumber: number | undefined) => {
     if (!clauseNumber) return;
 
     const isExpanded = expandedProvisions.has(provisionKey);
@@ -57,7 +62,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
 
             // Use pageNumber from provision object if API returns null
             // (Planning Portal extraction sets pageNumber from KSM mapping, but DB may have null)
-            const pageNumber = data.pageNumber || provision.pageNumber;
+            const pageNumber = data.pageNumber || fallbackPageNumber;
 
             setProvisionDetails({
               ...provisionDetails,
@@ -97,7 +102,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                     </h4>
                     {provision.clauseNumber && (
                       <button
-                        onClick={() => toggleProvision(uniqueKey, provision.clauseNumber)}
+                        onClick={() => toggleProvision(uniqueKey, provision.clauseNumber, provision.pageNumber)}
                         className="text-amber-700 hover:text-amber-900 transition-colors"
                         aria-label={isExpanded ? 'Collapse provision' : 'Expand provision'}
                       >
@@ -150,7 +155,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                             View the full provision from Inner West LEP 2022:
                           </p>
                           <img
-                            src={`/pdf-pages/iwlep_clause_${provision.clauseNumber.replace('.', '_')}_page_${detail?.pageNumber || provision.pageNumber}.png`}
+                            src={`https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/iwlep_clause_${provision.clauseNumber.replace('.', '_')}_page_${detail?.pageNumber || provision.pageNumber}.png`}
                             alt={`Clause ${provision.clauseNumber} - Page ${detail?.pageNumber || provision.pageNumber}`}
                             className="w-full border border-amber-200 rounded"
                             onError={(e) => {

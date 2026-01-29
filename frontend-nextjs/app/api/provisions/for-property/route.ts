@@ -159,18 +159,44 @@ function expandDevTypeHierarchy(devType: string): string[] {
  * Returns the db_slug that matches v2_heritage_hca in regulatory_provisions
  */
 async function resolveHcaCode(client: any, hcaCode: string): Promise<string | null> {
-  // If already looks like a db_slug (e.g., "hca_35", "summer_hill"), return as-is
-  if (!hcaCode.match(/^[CA]\d+$/i)) {
+  // Try to resolve HCA code/name to db_slug
+  // Input can be: "C35", "HCA 10", "Parramatta Road Heritage Conservation Area", or "parramatta_road_heritage_conservation_area"
+
+  // Handle Marrickville HCA pattern: "HCA 10" -> "hca_10"
+  if (hcaCode.match(/^HCA\s*\d+$/i)) {
+    const hcaSlug = hcaCode.toLowerCase().replace(/\s+/g, '_');
+    console.log(`[HCA Lookup] ${hcaCode} -> ${hcaSlug} (Marrickville format)`);
+    return hcaSlug;
+  }
+
+  // If it matches code pattern (C35, A12), look up by h_id
+  if (hcaCode.match(/^[CA]\d+$/i)) {
+    const result = await client.query(
+      `SELECT db_slug FROM heritage_conservation_areas WHERE h_id = $1 LIMIT 1`,
+      [hcaCode.toUpperCase()]
+    );
+
+    if (result.rows.length > 0 && result.rows[0].db_slug) {
+      console.log(`[HCA Lookup] ${hcaCode} -> ${result.rows[0].db_slug}`);
+      return result.rows[0].db_slug;
+    }
+  }
+
+  // Otherwise try to look up by h_name (full name) or return if already a slug
+  // First check if it already looks like a slug (contains underscore, no spaces)
+  if (hcaCode.includes('_') && !hcaCode.includes(' ')) {
+    console.log(`[HCA Lookup] ${hcaCode} -> assuming already a slug`);
     return hcaCode;
   }
 
+  // Try to look up by h_name
   const result = await client.query(
-    `SELECT db_slug FROM heritage_conservation_areas WHERE h_id = $1 LIMIT 1`,
-    [hcaCode.toUpperCase()]
+    `SELECT db_slug FROM heritage_conservation_areas WHERE h_name ILIKE $1 LIMIT 1`,
+    [hcaCode]
   );
 
   if (result.rows.length > 0 && result.rows[0].db_slug) {
-    console.log(`[HCA Lookup] ${hcaCode} -> ${result.rows[0].db_slug}`);
+    console.log(`[HCA Lookup] ${hcaCode} (by name) -> ${result.rows[0].db_slug}`);
     return result.rows[0].db_slug;
   }
 
@@ -315,8 +341,26 @@ export async function GET(request: NextRequest) {
       // No URL adjustment needed - PDF files are correctly named
       // page_N.png contains DCP page N+1 content (verified 2024-12-10)
 
+      // Log layer counts before deduplication
+      console.log('[Layer Counts Before Dedup]', {
+        generic: results[0].count,
+        use_specific: results[1].count,
+        condition: results[2].count,
+        precinct: results[3].count,
+        total: results.reduce((sum, r) => sum + r.count, 0)
+      });
+
       // Deduplicate provisions across all layers
       const adjustedResults = deduplicateLayers(results);
+
+      // Log layer counts after deduplication
+      console.log('[Layer Counts After Dedup]', {
+        generic: adjustedResults[0].count,
+        use_specific: adjustedResults[1].count,
+        condition: adjustedResults[2].count,
+        precinct: adjustedResults[3].count,
+        total: adjustedResults.reduce((sum, r) => sum + r.count, 0)
+      });
 
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
@@ -325,6 +369,11 @@ export async function GET(request: NextRequest) {
       const byTopic = groupByTopic(adjustedResults);
       const byToc = filters.groupBy === 'toc'
         ? groupByTocStructure(adjustedResults, filters.former_council)
+        : undefined;
+
+      // Get complete DCP TOC structure (unfiltered) for sidebar navigation
+      const completeToc = filters.groupBy === 'toc' && filters.former_council
+        ? await getCompleteTocStructure(client, filters.former_council)
         : undefined;
 
       // Calculate relevance summary if dev_type provided
@@ -343,6 +392,7 @@ export async function GET(request: NextRequest) {
           by_layer: adjustedResults,
           by_topic: byTopic,
           by_toc: byToc,
+          complete_toc: completeToc,  // Unfiltered TOC structure for sidebar navigation
           summary: {
             total_provisions: totalCount,
             layer_1_generic: adjustedResults[0].count,
@@ -821,8 +871,9 @@ async function queryLayer(
   if (layer === 'precinct') {
     if (filters.precinct_id) {
       // For precinct layer, filter by precinct ID
-      console.log(`[4-Layer API] Precinct filter: v2_precinct_id = '${filters.precinct_id}'`);
-      sql += ` AND v2_precinct_id = $${paramIndex++}`;
+      // Include BOTH specific precinct provisions AND overview provisions (PART_G_OVERVIEW)
+      console.log(`[4-Layer API] Precinct filter: v2_precinct_id = '${filters.precinct_id}' OR 'PART_G_OVERVIEW'`);
+      sql += ` AND (v2_precinct_id = $${paramIndex++} OR v2_precinct_id = 'PART_G_OVERVIEW')`;
       params.push(filters.precinct_id);
     } else {
       // No precinct ID - exclude all precinct-specific provisions
@@ -852,6 +903,18 @@ async function queryLayer(
   // - EP&A Act s 4.15 requires considering ALL relevant provisions
   // - Dev type listings are ADVISORY, not exclusive (*Wehbe v Pittwater Council*)
   // - Excluding provisions = high liability risk for missed merits-based application
+
+  // Exclude TOC provisions from display (table of contents items are navigation only)
+  sql += ` AND (v2_provision_type IS NULL OR v2_provision_type != 'TOC')`;
+
+  // Exclude provisions that are TOC pages - multiple patterns:
+  // 1. Contains "i Contents" or starts with "Contents"
+  // 2. Contains multiple dotted line patterns (e.g., "2.11.1 Objectives.... 1")
+  // 3. Contains section lists with page numbers and dots
+  sql += ` AND provision_text NOT LIKE '%i%Contents%'
+           AND provision_text NOT LIKE 'Contents%'
+           AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')`;
+
 
   // Assessment type filter (CDC = quantitative only, DA = all)
   if (filters.assessment_type === 'CDC') {
@@ -916,6 +979,53 @@ interface TocPart {
   part_name: string;
   provision_count: number;
   sections: Record<string, TocSection>;
+}
+
+/**
+ * Get complete DCP TOC structure for a council (unfiltered by property)
+ * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
+ */
+async function getCompleteTocStructure(client: any, formerCouncil: string): Promise<Record<string, TocPart>> {
+  const councilName = formerCouncil.charAt(0).toUpperCase() + formerCouncil.slice(1).toLowerCase();
+
+  // Query all distinct parts and their provision counts (excluding TOC provisions)
+  const result = await client.query(`
+    SELECT
+      v2_dcp_part,
+      COUNT(*) as provision_count
+    FROM regulatory_provisions
+    WHERE document_id ILIKE $1
+      AND v2_dcp_part IS NOT NULL
+      AND (v2_provision_type IS NULL OR v2_provision_type != 'TOC')
+      AND provision_text NOT LIKE '%i%Contents%'
+      AND provision_text NOT LIKE 'Contents%'
+      AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')
+    GROUP BY v2_dcp_part
+    ORDER BY v2_dcp_part
+  `, [`%${councilName}%`]);
+
+  const completeToc: Record<string, TocPart> = {};
+
+  for (const row of result.rows) {
+    const partId = row.v2_dcp_part;
+    const partName = formatPartName(partId);
+
+    completeToc[partId] = {
+      part_id: partId,
+      part_name: partName,
+      provision_count: parseInt(row.provision_count),
+      sections: {
+        'General': {
+          section_id: 'General',
+          section_title: 'General',
+          provision_count: parseInt(row.provision_count),
+          provisions: []  // Empty - we don't need actual provisions for navigation
+        }
+      }
+    };
+  }
+
+  return completeToc;
 }
 
 function groupByTocStructure(

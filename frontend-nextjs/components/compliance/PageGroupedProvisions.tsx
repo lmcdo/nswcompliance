@@ -14,6 +14,11 @@
 import { useState, useMemo, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { LayerBadges } from '@/lib/design-tokens';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
@@ -98,7 +103,7 @@ function sanitizeText(text: string | null | undefined): string {
     .trim();
 }
 
-interface Provision {
+export interface Provision {
   id: number;
   provision_text: string;
   v2_dcp_layer: string;
@@ -117,6 +122,7 @@ interface Provision {
   // TOC section info (from dcp_table_of_contents)
   toc_section_number?: string | null;
   toc_section_title?: string | null;
+  v2_display_priority?: 'critical' | 'important' | 'guideline' | 'contextual';
 }
 
 interface PageGroup {
@@ -150,6 +156,12 @@ interface PageGroupedProvisionsProps {
   showLegend?: boolean;         // Show layer legend above results (default: false)
   maxProvisions?: number;       // Limit display count (e.g., 20)
   formerCouncil?: string;       // For council-specific layer labels
+  highlightQuery?: string;      // Search query to highlight in provision text
+  // Layer tooltip context
+  zone?: string;                // Property zone (for use_specific tooltip)
+  heritage?: boolean;           // Heritage classification (for condition tooltip)
+  hcaName?: string;             // Heritage Conservation Area name (for condition tooltip)
+  precinctName?: string;        // Precinct name (for precinct tooltip)
   // Cross-reference support
   crossReferencesMap?: Record<number, CrossReference[]>;  // Map of provisionId -> cross-references
   showCrossReferences?: boolean;  // Whether to display cross-references (default: false)
@@ -316,10 +328,15 @@ export function PageGroupedProvisions({
   showLegend = false,
   maxProvisions,
   formerCouncil,
+  highlightQuery,
   crossReferencesMap,
   showCrossReferences = false,
   onNavigateCrossRef,
   onScrollToCrossRef,
+  zone,
+  heritage,
+  hcaName,
+  precinctName,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -403,6 +420,40 @@ export function PageGroupedProvisions({
       return COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()][layer] || LAYER_LABELS[layer] || layer;
     }
     return LAYER_LABELS[layer] || layer;
+  };
+
+  // Get tooltip explanation for why a layer applies
+  const getLayerTooltip = (layer: string | null | undefined): string => {
+    const councilName = formerCouncil || 'this council';
+
+    if (!layer || layer === 'unknown' || layer === 'null' || layer === 'generic') {
+      return `These provisions apply to ALL properties in ${councilName}`;
+    }
+
+    if (layer === 'use_specific') {
+      if (zone) {
+        return `These provisions apply because your property is in ${zone} zone`;
+      }
+      return 'These provisions apply based on your property\'s zoning';
+    }
+
+    if (layer === 'condition') {
+      if (heritage && hcaName) {
+        return `These provisions apply because your property is in ${hcaName}`;
+      } else if (heritage) {
+        return 'These provisions apply because your property has heritage classification';
+      }
+      return 'These provisions apply based on site conditions (heritage, flood, bushfire, etc.)';
+    }
+
+    if (layer === 'precinct') {
+      if (precinctName) {
+        return `These provisions apply because your property is in ${precinctName}`;
+      }
+      return 'These provisions apply based on your property\'s precinct location';
+    }
+
+    return `These provisions are relevant to your property`;
   };
 
   // Format topic for display (snake_case → Title Case)
@@ -529,14 +580,28 @@ export function PageGroupedProvisions({
                         )}
 
                         {/* Layer Badge - council-specific label with larger font */}
-                        <Badge className={`text-sm font-medium shrink-0 ${getLayerColor(layer)}`}>
-                          {getLayerLabel(layer)}
-                        </Badge>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge className={`text-sm font-medium shrink-0 ${getLayerColor(layer)}`}>
+                              {getLayerLabel(layer)}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{getLayerTooltip(layer)}</p>
+                          </TooltipContent>
+                        </Tooltip>
 
                         {/* Topic Badge - separate pill */}
                         {provision.v2_topic && (
                           <Badge variant="outline" className="text-sm shrink-0 bg-white border-gray-300 text-gray-700">
                             {formatTopic(provision.v2_topic)}
+                          </Badge>
+                        )}
+
+                        {/* Priority Badge - Critical provisions */}
+                        {provision.v2_display_priority === 'critical' && (
+                          <Badge className="text-sm shrink-0 bg-red-100 text-red-800 border-red-300">
+                            ⚠️ Critical
                           </Badge>
                         )}
 
@@ -561,6 +626,7 @@ export function PageGroupedProvisions({
                             )}
                             compact
                             stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
+                            highlightQuery={highlightQuery}
                           />
                         ) : (
                           <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>

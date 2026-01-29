@@ -14,6 +14,10 @@ export interface SiteSpecificProvision {
 }
 
 export const SITE_SPECIFIC_PART6: SiteSpecificProvision[] = [
+  // Clauses 6.1-6.15 are general environmental/planning provisions — NOT site-specific
+  // Clauses 6.21-6.23 are zone-based general provisions (E3/E4) — NOT site-specific
+  // Clause 6.33 is "Affordable housing" — a general provision, NOT site-specific
+  // Clauses 6.28-6.29 do not exist in this LEP version (numbering skips 6.27 to 6.30)
   {
     clauseNumber: '6.16',
     title: 'Development of land at 141 and 159 Allen Street, Leichhardt',
@@ -71,6 +75,12 @@ export const SITE_SPECIFIC_PART6: SiteSpecificProvision[] = [
     streetAddresses: ['287 Trafalgar Street, Petersham', '289 Trafalgar Street, Petersham', '291 Trafalgar Street, Petersham', '293 Trafalgar Street, Petersham', '295 Trafalgar Street, Petersham', '297 Trafalgar Street, Petersham', '299 Trafalgar Street, Petersham', '301 Trafalgar Street, Petersham', '303 Trafalgar Street, Petersham', '305 Trafalgar Street, Petersham', '307 Trafalgar Street, Petersham', '309 Trafalgar Street, Petersham']
   },
   {
+    clauseNumber: '6.27',
+    title: '50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters',
+    pageNumber: 83,
+    streetAddresses: ['50 Edith Street, St Peters', '52 Edith Street, St Peters', '67 Mary Street, St Peters', '73 Mary Street, St Peters', '43 Roberts Street, St Peters']
+  },
+  {
     clauseNumber: '6.30',
     title: 'Development of land at 36 Lonsdale Street and 64–70 Brenan Street, Lilyfield',
     pageNumber: 85,
@@ -83,6 +93,12 @@ export const SITE_SPECIFIC_PART6: SiteSpecificProvision[] = [
     pageNumber: 86,
     // Uses "Area 13" on Key Sites Map - no specific lot/DP in provision text
     streetAddresses: [] // Requires Key Sites Map matching
+  },
+  {
+    clauseNumber: '6.32',
+    title: 'Special Entertainment Precinct Map',
+    pageNumber: 87,
+    streetAddresses: [] // Matched by SEP map type from Planning Portal
   },
   {
     clauseNumber: '6.34',

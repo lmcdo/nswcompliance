@@ -1128,6 +1128,10 @@ export function ProvisionsByTopic({
                                                       expandThreshold: 200,
                                                     }}
                                                     maxProvisions={20}
+                                                    zone={zone}
+                                                    heritage={heritage}
+                                                    hcaName={hcaName}
+                                                    precinctName={precinctId}
                                                   />
                                                 </div>
                                               )}
@@ -1397,6 +1401,10 @@ export function ProvisionsByTopic({
                                                                       expandThreshold: 200,
                                                                     }}
                                                                     maxProvisions={isShowingAll ? undefined : 10}
+                                                                    zone={zone}
+                                                                    heritage={heritage}
+                                                                    hcaName={hcaName}
+                                                                    precinctName={precinctId}
                                                                   />
                                                                   {splitResults.onlyThis.length > 10 && (
                                                                     <button
@@ -1430,6 +1438,10 @@ export function ProvisionsByTopic({
                                                                       expandThreshold: 200,
                                                                     }}
                                                                     maxProvisions={isShowingAll ? undefined : 5}
+                                                                    zone={zone}
+                                                                    heritage={heritage}
+                                                                    hcaName={hcaName}
+                                                                    precinctName={precinctId}
                                                                   />
                                                                   {splitResults.plusOthers.length > 5 && (
                                                                     <button
@@ -1458,6 +1470,10 @@ export function ProvisionsByTopic({
                                                                   expandThreshold: 200,
                                                                 }}
                                                                 maxProvisions={isShowingAll ? undefined : displayLimit}
+                                                                zone={zone}
+                                                                heritage={heritage}
+                                                                hcaName={hcaName}
+                                                                precinctName={precinctId}
                                                               />
                                                               {filteredProvisions.length > displayLimit && (
                                                                 <button
@@ -1630,6 +1646,10 @@ export function ProvisionsByTopic({
                                                   onToggleProvision={toggleProvision}
                                                   onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
                                                   maxProvisions={20}
+                                                  zone={zone}
+                                                  heritage={heritage}
+                                                  hcaName={hcaName}
+                                                  precinctName={precinctId}
                                                 />
                                               </div>
                                             )}
@@ -1646,6 +1666,10 @@ export function ProvisionsByTopic({
                                                   onToggleProvision={toggleProvision}
                                                   onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
                                                   maxProvisions={10}
+                                                  zone={zone}
+                                                  heritage={heritage}
+                                                  hcaName={hcaName}
+                                                  precinctName={precinctId}
                                                 />
                                               </div>
                                             )}
@@ -1658,6 +1682,10 @@ export function ProvisionsByTopic({
                                             onToggleProvision={toggleProvision}
                                             onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
                                             maxProvisions={20}
+                                            zone={zone}
+                                            heritage={heritage}
+                                            hcaName={hcaName}
+                                            precinctName={precinctId}
                                           />
                                         )}
                                       </>
@@ -1679,6 +1707,10 @@ export function ProvisionsByTopic({
                         onViewPdf={(url, page) => setViewingPdfImage({ url, page })}
                         showDcpPart={true}
                         maxProvisions={20}
+                        zone={zone}
+                        heritage={heritage}
+                        hcaName={hcaName}
+                        precinctName={precinctId}
                       />
                     )}
                 </div>

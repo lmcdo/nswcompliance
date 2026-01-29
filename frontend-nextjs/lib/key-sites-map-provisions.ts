@@ -31,9 +31,11 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
     // No zone restriction - applies to all Key Sites
   },
 
-  // Part 6 - Site-specific Key Sites
-  // NOTE: 6.14 and 6.15 are NOT site-specific clauses in the LEP
-  // 6.14 = "Diverse housing", 6.15 = "Development control plans"
+  // Part 6 - Site-specific Key Sites (verified against LEP PDF, April 2025 version)
+  // Clauses 6.1-6.15 are general environmental/planning provisions - NOT site-specific
+  // Clauses 6.21-6.23 are zone-based general provisions (E3/E4) - NOT site-specific
+  // Clause 6.33 is "Affordable housing" - a general provision, NOT site-specific
+  // Only clauses below are actual site-specific Key Sites with street addresses
   {
     clauseNumber: '6.16',
     title: 'Development of land at 141 and 159 Allen Street, Leichhardt',
@@ -59,21 +61,9 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
     part: 6
   },
   {
-    clauseNumber: '6.21',
-    title: 'Development of certain land within Zone B4 Mixed Use at Haberfield',
-    pageNumber: 78,
-    part: 6
-  },
-  {
-    clauseNumber: '6.22',
-    title: 'Development of land at 1-47 Norton Street and 1–3 Stewart Street, Leichhardt',
-    pageNumber: 79,
-    part: 6
-  },
-  {
-    clauseNumber: '6.23',
-    title: 'Development of land at 78–80 Marion Street and 68 Flood Street, Leichhardt',
-    pageNumber: 79,
+    clauseNumber: '6.20',
+    title: 'Development on land in Haberfield Heritage Conservation Area',
+    pageNumber: 77,
     part: 6
   },
   {
@@ -89,8 +79,14 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
     part: 6
   },
   {
+    clauseNumber: '6.26',
+    title: 'Development at 287–309 Trafalgar Street, Petersham',
+    pageNumber: 83,
+    part: 6
+  },
+  {
     clauseNumber: '6.27',
-    title: 'Development of land at 6 and 8–28 Collins Street, Annandale, and 244 Johnston Street, Annandale',
+    title: '50–52 Edith Street, 67 and 73–83 Mary Street and 43 Roberts Street, St Peters',
     pageNumber: 83,
     part: 6
   },
@@ -104,6 +100,12 @@ export const KEY_SITES_PROVISIONS: KeySitesProvision[] = [
     clauseNumber: '6.31',
     title: 'Development on certain land at Victoria Road, Marrickville',
     pageNumber: 86,
+    part: 6
+  },
+  {
+    clauseNumber: '6.32',
+    title: 'Special entertainment precinct',
+    pageNumber: 87,
     part: 6
   },
   {

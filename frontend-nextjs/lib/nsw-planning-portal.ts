@@ -150,6 +150,66 @@ export interface PlanningLayer {
  }>;
 }
 
+// Suburb proximity map for Inner West LGA Part 6 nearby filtering.
+// Only Part 6 clauses whose suburb is in the user's nearby set will show as "nearby".
+// Suburbs not listed here (e.g. Rhodes) are outside the LGA and always filtered out.
+const SUBURB_NEARBY_MAP: Record<string, string[]> = {
+ 'annandale': ['annandale', 'stanmore', 'enmore', 'st peters', 'marrickville'],
+ 'stanmore': ['stanmore', 'annandale', 'enmore', 'petersham', 'marrickville'],
+ 'enmore': ['enmore', 'annandale', 'stanmore', 'petersham', 'marrickville'],
+ 'st peters': ['st peters', 'annandale', 'stanmore', 'marrickville'],
+ 'marrickville': ['marrickville', 'petersham', 'stanmore', 'enmore', 'st peters'],
+ 'petersham': ['petersham', 'marrickville', 'stanmore', 'enmore'],
+ 'leichhardt': ['leichhardt', 'lilyfield', 'rozelle', 'annandale', 'haberfield'],
+ 'lilyfield': ['lilyfield', 'leichhardt', 'rozelle', 'annandale', 'balmain'],
+ 'rozelle': ['rozelle', 'lilyfield', 'leichhardt', 'balmain'],
+ 'balmain': ['balmain', 'rozelle', 'lilyfield', 'drummoyne'],
+ 'haberfield': ['haberfield', 'leichhardt', 'ashfield', 'five dock'],
+ 'ashfield': ['ashfield', 'haberfield', 'five dock'],
+ 'five dock': ['five dock', 'ashfield', 'haberfield'],
+ 'drummoyne': ['drummoyne', 'balmain', 'rozelle'],
+};
+
+function extractSuburbFromTitle(title: string): string | null {
+ // Try comma-suburb pattern first: "...Street, Leichhardt"
+ const commaMatch = title.match(/,\s*([A-Za-z][A-Za-z\s]*?)(?:\s*$)/);
+ if (commaMatch) return commaMatch[1].trim().toLowerCase();
+ // Fallback: "at Suburb" at end (e.g. "...Mixed Use at Haberfield")
+ const atMatch = title.match(/\bat\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s*$/);
+ if (atMatch) return atMatch[1].trim().toLowerCase();
+ return null;
+}
+
+function extractSuburbFromAddress(address: string): string | null {
+ // Try comma-suburb pattern: "123 Street, Suburb NSW 2038"
+ const commaMatch = address.match(/,\s*([A-Za-z][A-Za-z\s]*?)(?:\s+NSW|\s*$)/i);
+ if (commaMatch) return commaMatch[1].trim().toLowerCase();
+ // Planning Portal returns no comma: "185 PARRAMATTA ROAD ANNANDALE 2038"
+ // Match word(s) before postcode or NSW
+ const noCommaMatch = address.match(/([A-Za-z]+(?:\s+[A-Za-z]+)?)\s+(?:NSW\s+)?\d{4}\s*$/i);
+ if (noCommaMatch) {
+  // Could be "ROAD ANNANDALE" - take last word only if second-to-last looks like a street type
+  const words = noCommaMatch[1].trim().split(/\s+/);
+  if (words.length === 2) {
+   const streetTypes = ['road', 'street', 'avenue', 'drive', 'lane', 'way', 'place', 'court'];
+   if (streetTypes.includes(words[0].toLowerCase())) {
+    return words[1].toLowerCase();
+   }
+  }
+  return words[words.length - 1].toLowerCase();
+ }
+ return null;
+}
+
+function isSuburbNearby(userSuburb: string, clauseSuburb: string): boolean {
+ if (userSuburb === clauseSuburb) return true;
+ const nearbySet = SUBURB_NEARBY_MAP[userSuburb];
+ if (nearbySet) return nearbySet.includes(clauseSuburb);
+ // If user suburb not in map, allow all Inner West suburbs but block non-Inner West ones
+ const allInnerWestSuburbs = new Set(Object.keys(SUBURB_NEARBY_MAP));
+ return allInnerWestSuburbs.has(clauseSuburb);
+}
+
 export class NSWPlanningPortalService {
  private static BASE_URL = 'https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi';
  private static VALUATION_URL = 'https://maps.six.nsw.gov.au/arcgis/rest/services/public/Valuation/MapServer/5/query';
@@ -459,7 +519,7 @@ export class NSWPlanningPortalService {
  /**
  * Extract planning constraints from layers
  */
- static extractPlanningConstraints(layers: PlanningLayer[]): PlanningConstraints & { applicableSepps?: string[] } {
+ static extractPlanningConstraints(layers: PlanningLayer[], address?: string): PlanningConstraints & { applicableSepps?: string[] } {
  const constraints: PlanningConstraints & { applicableSepps?: string[] } = {
  maxFsr: null,
  maxHeight: null,
@@ -702,7 +762,22 @@ export class NSWPlanningPortalService {
 				// - Part 6 clauses: Site-specific, but Planning Portal returns ALL clauses in the KSM polygon
 				//   - Show exact address matches (required)
 				//   - Mark nearby clauses as "nearby" (optional to display)
+				// General Part 6 provisions that are NOT site-specific Key Sites.
+				// These are zone-based or thematic clauses the Planning Portal may include
+				// in the Legislative Clause field but which don't identify specific properties.
+				const NON_SITE_SPECIFIC_CLAUSES = new Set([
+					'6.14', // Diverse housing
+					'6.15', // Development control plans for certain development
+					'6.21', // Business and office premises in Zones E3 and E4
+					'6.22', // Dwellings and residential flat buildings in Zone E3
+					'6.23', // Residential accommodation as part of mixed use in Zone E3
+					'6.33', // Affordable housing
+				]);
+
 				for (const clauseNum of extractedClauses) {
+					// Skip general Part 6 provisions - not site-specific Key Sites
+					if (NON_SITE_SPECIFIC_CLAUSES.has(clauseNum)) continue;
+
 					const ksmProvision = getKeySitesProvision(clauseNum);
 
 					// Check zone-specific filtering for Part 4 clauses
@@ -725,7 +800,7 @@ export class NSWPlanningPortalService {
 					// Check if Part 6 clause matches this specific property address
 					if (clauseNum.startsWith('6.')) {
 						// Part 6 clause - check if title matches property address
-						const addressParts = constraints.address?.toLowerCase().split(/[\s,]+/) || [];
+						const addressParts = address?.toLowerCase().split(/[\s,]+/) || [];
 						const titleLower = clauseTitle.toLowerCase();
 
 						// Check if street name and/or number appears in clause title
@@ -734,13 +809,22 @@ export class NSWPlanningPortalService {
 						);
 
 						if (!hasAddressMatch) {
-							// This Part 6 clause is for a nearby property in the same KSM area
+							// Check suburb proximity - only show as nearby if geographically close
+							const clauseSuburb = extractSuburbFromTitle(clauseTitle);
+							const userSuburb = extractSuburbFromAddress(address || '');
+								if (clauseSuburb && userSuburb && !isSuburbNearby(userSuburb, clauseSuburb)) {
+								// Suburb is too far away (e.g., Rhodes for an Annandale search) - skip
+								if (process.env.NODE_ENV === 'development') {
+									console.log(`Skipping Part 6 clause ${clauseNum} - suburb "${clauseSuburb}" not near "${userSuburb}"`);
+								}
+								continue;
+							}
+							// This Part 6 clause is for a nearby property in the same area
 							isNearby = true;
 							if (process.env.NODE_ENV === 'development') {
-								console.log(`Marking Part 6 clause ${clauseNum} as nearby - doesn't match address: ${constraints.address}`);
+								console.log(`Marking Part 6 clause ${clauseNum} as nearby - doesn't match address: ${address}`);
 								console.log(`  Clause title: ${clauseTitle}`);
 							}
-							// Don't skip - include as nearby provision
 						}
 					}
 
@@ -944,7 +1028,7 @@ export class NSWPlanningPortalService {
  console.log('Step 3: Merging layers and extracting constraints...');
  const allLayers = [...layers, ...todLayers];
  console.log('Total layers (including TOD):', allLayers.length);
- const constraints = this.extractPlanningConstraints(allLayers);
+ const constraints = this.extractPlanningConstraints(allLayers, address);
 
  // Step 4: Clean up the address from search result
  // Hunter Street Lewisham has incorrect "8-12" in addresses - remove it

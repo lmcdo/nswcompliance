@@ -159,7 +159,7 @@ export function HeritageProvisionsCard({
                       {/* Full PDF page image of clause 5.10 */}
                       <div className="border border-blue-200 rounded-lg overflow-hidden">
                         <img
-                          src="/pdf-pages/iwlep_clause_5_10_page_50.png"
+                          src="https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/iwlep_clause_5_10_page_50.png"
                           alt="Inner West LEP 2022 Clause 5.10 Heritage conservation - Page 50"
                           className="w-full"
                         />

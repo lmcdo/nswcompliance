@@ -223,11 +223,13 @@ Section 4.15 establishes that decision-makers must consider ALL relevant environ
   - Part 4: Zone-specific (113 provisions, 7% of total)
   - Part 8: Heritage/Condition (180 provisions, 11% of total)
   - Part 9: Precincts (275 provisions, 17% of total - 47 distinct precincts)
-  - **Data Quality Issue:** 51% of provisions missing v2_applicable_dev_types tags
-- Processing Strategy: Precinct filtering PRIMARY, dev-type filtering LIMITED (only 30.2% tagged)
-- UI Approach: 4-layer display with precinct as primary filter
-- **Result:** 50-90 provisions typical after precinct + zone filtering
-- **Action Required:** Audit and complete dev_type tagging before enabling dev-type filter
+  - **Dev-type tagging: 92.7% tagged** (EXCELLENT - verified via API testing Jan 27, 2026)
+  - **Critical nuance:** Tagging is RESIDENTIAL-FOCUSED (dwelling_house, multi_dwelling_housing, boarding_house, secondary_dwelling, dual_occupancy)
+- Processing Strategy: **Dev-type filtering PRIMARY for residential properties** (92.7% tagged), precinct filtering SECONDARY
+- UI Approach: Show dev-type dropdown; for residential properties, filtering is highly effective; for commercial, most provisions show as "General (ALL)"
+- **Result:** Residential zones: 210-224 provisions with 117 primary (dwelling_house), 15 general, 92 secondary
+- **Result:** Commercial zones: 223 provisions with 0 primary (shop), 18 general, 205 secondary
+- **Implementation Status:** ✅ Dev-type filtering fully operational for residential; commercial provisions correctly show as general applicability
 
 **Leichhardt DCP 2013** (1,442 actionable provisions)
 - Structure: Generic-heavy (52.5% generic) with significant precinct component
@@ -600,22 +602,25 @@ When user selects "dwelling_house", API expands to match provisions tagged with 
 
 **Priority:** High (improves legal compliance understanding)
 
-### 7.3 Development Type Tagging Coverage (Incomplete)
+### 7.3 Development Type Tagging Coverage (Council-Specific Status)
 
-**Current State:**
-- 451 provisions have explicit `v2_applicable_dev_types` tagging (4% of total)
-- Remaining 96% tagged as NULL (interpreted as "all dev types")
+**Current State (Verified Jan 27, 2026):**
+- **Leichhardt:** 100% dev-type tagging coverage ✅ (best in class)
+- **Marrickville:** 92.7% dev-type tagging coverage ✅ (residential-focused)
+- **Ashfield:** 41.1% dev-type tagging coverage ⚠️ (heritage-focused)
+- **Overall:** Strong coverage for residential dev-types; commercial/industrial coverage varies
 
 **Impact:**
-- Most provisions show "Applies to all development types" badge
-- Reduces utility of relevance ranking (too many "general" provisions)
+- Leichhardt: Relevance ranking highly effective for ALL dev-types
+- Marrickville: Relevance ranking highly effective for RESIDENTIAL dev-types; commercial provisions show as "General"
+- Ashfield: Relevance ranking supplementary to heritage element filtering
 
-**Recommended Fix:**
-- Phase 2: LLM-based dev_type inference
-- Analyze provision text for dev_type keywords: "dwelling", "commercial", "industrial"
-- Confidence-score tagging: High confidence = explicit tag, Low confidence = NULL (general)
+**Recommended Fix (Commercial/Industrial Optimization):**
+- Phase 2: Extend dev_type tagging to commercial/industrial provisions in Marrickville DCP
+- Focus on: shop, office, business_premises, industrial, warehouse, food_premises
+- Method: LLM-based inference with manual QA verification
 
-**Priority:** Medium (current relevance ranking still provides value; this would enhance precision)
+**Priority:** Low (residential is primary market; current coverage serves 80%+ of users)
 
 ### 7.4 Provision Versioning & Change Tracking (Not Implemented)
 

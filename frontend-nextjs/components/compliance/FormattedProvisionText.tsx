@@ -18,6 +18,25 @@ interface FormattedProvisionTextProps {
   compact?: boolean; // Reduced spacing for inline display
   stripMarker?: string; // If provided, strip this marker from start of text (e.g., "C9")
   skipHeadings?: boolean; // Skip bold heading detection - useful when under TOC structure
+  highlightQuery?: string; // Search query to highlight in the text
+}
+
+/**
+ * Helper function to highlight matching text
+ */
+function highlightText(text: string, query: string): React.ReactNode {
+  if (!query) return text;
+
+  const parts = text.split(new RegExp(`(${query})`, 'gi'));
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase() ? (
+      <mark key={i} className="bg-yellow-200 font-normal">
+        {part}
+      </mark>
+    ) : (
+      part
+    )
+  );
 }
 
 export function FormattedProvisionText({
@@ -25,7 +44,8 @@ export function FormattedProvisionText({
   className = '',
   compact = false,
   stripMarker,
-  skipHeadings = false
+  skipHeadings = false,
+  highlightQuery
 }: FormattedProvisionTextProps) {
   // Strip the marker from the beginning of text if it's already shown as a badge
   const processedText = useMemo(() => {
@@ -37,10 +57,15 @@ export function FormattedProvisionText({
 
   const elements = useMemo(() => parseProvisionText(processedText, { skipHeadings }), [processedText, skipHeadings]);
 
+  // Helper to apply highlighting to content
+  const applyHighlight = (content: string): React.ReactNode => {
+    return highlightQuery ? highlightText(content, highlightQuery) : content;
+  };
+
   if (!elements || elements.length === 0) {
     return (
       <p className={`text-sm text-gray-700 whitespace-pre-wrap ${className}`}>
-        {processedText}
+        {applyHighlight(processedText)}
       </p>
     );
   }
@@ -72,7 +97,7 @@ export function FormattedProvisionText({
           <div className="flex-1 space-y-1">
             {controlTexts.map((ct, idx) => (
               <p key={idx} className={getElementClasses(ct)}>
-                {ct.content}
+                {applyHighlight(ct.content)}
               </p>
             ))}
           </div>
@@ -111,7 +136,7 @@ export function FormattedProvisionText({
           <ol key={`list-${i}`} className={`list-decimal list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`}>
             {listItems.map((item, idx) => (
               <li key={idx} className="text-sm text-gray-700 leading-relaxed">
-                {item.content}
+                {applyHighlight(item.content)}
               </li>
             ))}
           </ol>
@@ -121,7 +146,7 @@ export function FormattedProvisionText({
           <ol key={`list-${i}`} className={`list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`} style={{ listStyleType: 'lower-roman' }}>
             {listItems.map((item, idx) => (
               <li key={idx} className="text-sm text-gray-700 leading-relaxed">
-                {item.content}
+                {applyHighlight(item.content)}
               </li>
             ))}
           </ol>
@@ -131,7 +156,7 @@ export function FormattedProvisionText({
           <ol key={`list-${i}`} className={`list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`} style={{ listStyleType: 'lower-alpha' }}>
             {listItems.map((item, idx) => (
               <li key={idx} className="text-sm text-gray-700 leading-relaxed">
-                {item.content}
+                {applyHighlight(item.content)}
               </li>
             ))}
           </ol>
@@ -142,7 +167,7 @@ export function FormattedProvisionText({
           <ul key={`list-${i}`} className={`list-disc list-inside ml-4 space-y-1 ${compact ? 'my-1' : 'my-2'}`}>
             {listItems.map((item, idx) => (
               <li key={idx} className="text-sm text-gray-700 leading-relaxed">
-                {item.content}
+                {applyHighlight(item.content)}
               </li>
             ))}
           </ul>
@@ -157,7 +182,7 @@ export function FormattedProvisionText({
       case 'heading':
         renderElements.push(
           <h3 key={`heading-${i}`} className={getElementClasses(el)}>
-            {el.content}
+            {applyHighlight(el.content)}
           </h3>
         );
         break;
@@ -165,7 +190,7 @@ export function FormattedProvisionText({
       case 'subheading':
         renderElements.push(
           <h4 key={`subheading-${i}`} className={getElementClasses(el)}>
-            {el.content}
+            {applyHighlight(el.content)}
           </h4>
         );
         break;
@@ -173,7 +198,7 @@ export function FormattedProvisionText({
       case 'paragraph':
         renderElements.push(
           <p key={`para-${i}`} className={getElementClasses(el)}>
-            {el.content}
+            {applyHighlight(el.content)}
           </p>
         );
         break;
@@ -181,7 +206,7 @@ export function FormattedProvisionText({
       case 'figure-ref':
         renderElements.push(
           <p key={`fig-${i}`} className={getElementClasses(el)}>
-            {el.content}
+            {applyHighlight(el.content)}
           </p>
         );
         break;
@@ -190,7 +215,7 @@ export function FormattedProvisionText({
         // Orphan control-text (no marker) - render as paragraph
         renderElements.push(
           <p key={`ct-${i}`} className="text-sm text-gray-800 leading-relaxed mb-2 pl-10">
-            {el.content}
+            {applyHighlight(el.content)}
           </p>
         );
         break;
@@ -199,7 +224,7 @@ export function FormattedProvisionText({
         // NB/Note callout - render as bold label with normal text content
         renderElements.push(
           <div key={`note-${i}`} className={getElementClasses(el)}>
-            <span className="font-bold">NB:</span> {el.content}
+            <span className="font-bold">NB:</span> {applyHighlight(el.content)}
           </div>
         );
         break;

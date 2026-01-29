@@ -158,6 +158,7 @@ export function ProvisionsByTocStructure({
     success: boolean;
     data: {
       by_toc: Record<string, TocPart>;
+      complete_toc: Record<string, TocPart>;  // Complete unfiltered TOC for sidebar
       by_topic: Record<string, any[]>;
       summary: {
         total_provisions: number;
@@ -178,66 +179,43 @@ export function ProvisionsByTocStructure({
     marrickville: 'Marrickville DCP 2011',
   };
 
-  // Fetch universal HCA provisions when heritage=true for any Inner West council
+  // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
-  const hcaRequestBody = heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) ? {
-    precinctId: 'HCA',
-    lga: 'Inner West',
-    heritage: true
-  } : null;
 
-  const { data: hcaData, isLoading: hcaLoading } = useSWR(
-    hcaRequestBody ? ['/api/compliance/precinct-requirements', hcaRequestBody] : null,
-    hcaFetcher,
-    {
-      dedupingInterval: 60000,
-      revalidateOnFocus: false,
-    }
+  // Get heritage provisions from the main API response's condition layer
+  const conditionLayer = data?.data?.by_layer?.[2]; // Layer 3 = condition
+  const allConditionProvisions = conditionLayer?.provisions || [];
+
+  // Filter for heritage topic provisions
+  const heritageProvisions = allConditionProvisions.filter((p: any) =>
+    p.v2_topic?.toLowerCase() === 'heritage'
   );
 
-  const hcaCategories = hcaData?.data?.hca_categories || hcaData?.data?.categories || [];
-  const hcaCount = hcaCategories.reduce((sum: number, cat: any) => sum + (cat.requirements?.length || 0), 0);
+  // Group heritage provisions by DCP part for the HCA section
+  const hcaByPart: Record<string, any[]> = {};
+  heritageProvisions.forEach((provision: any) => {
+    const part = provision.v2_dcp_part || 'Other';
+    if (!hcaByPart[part]) {
+      hcaByPart[part] = [];
+    }
+    hcaByPart[part].push(provision);
+  });
 
-  // Filter HCA requirements by council and exclude TOC pages
-  const filterHcaRequirement = (req: any) => {
-    // Exclude TOC pages (pdf_page 0 in DB)
-    if (req.pdf_page === 0) return false;
-
-    const url = req.pdf_page_image_url || '';
-    if (councilLower === 'leichhardt') return url.includes('leichhardt');
-    if (councilLower === 'ashfield') return url.includes('ashfield');
-    if (councilLower === 'marrickville') return url.includes('marr');
-    return true;
-  };
-
-  // Group provisions by category, each category has its own provisions array
-  const hcaByCategory = hcaCategories
-    .map((cat: any) => {
-      const filteredReqs = (cat.requirements || []).filter(filterHcaRequirement);
-      return {
-        category: cat.category,
-        displayName: cat.display_name || cat.category?.replace(/_/g, ' '),
-        provisions: filteredReqs.map((req: any) => ({
-          id: req.id,
-          provision_text: req.requirement_text,
-          // HCA provisions have 0-indexed page numbers from extraction, add +1 for display
-          pdf_page: req.pdf_page != null ? req.pdf_page + 1 : undefined,
-          pdf_page_image_url: req.pdf_page_image_url,
-          v2_dcp_layer: 'condition',
-          v2_topic: cat.display_name || cat.category,
-        })),
-      };
-    })
-    .filter((cat: any) => cat.provisions.length > 0)
-    .sort((a: any, b: any) => b.provisions.length - a.provisions.length);
+  // Convert to category structure for display
+  const hcaByCategory = Object.entries(hcaByPart).map(([part, provisions]) => ({
+    category: part,
+    displayName: part,
+    provisions: provisions
+  })).filter(cat => cat.provisions.length > 0);
 
   // Flat list for total count
-  const hcaProvisions = hcaByCategory.flatMap((cat: any) => cat.provisions);
+  const hcaProvisions = heritageProvisions;
+  const hcaLoading = isLoading;
 
-  // Auto-select first part on load
+  // Auto-select first part on load (use complete TOC)
   useEffect(() => {
-    if (data?.data?.by_toc && !selectedPart) {
-      const parts = Object.keys(data.data.by_toc);
+    if (data?.data?.complete_toc && !selectedPart) {
+      const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
         setSelectedPart(parts[0]);
       }
@@ -253,7 +231,8 @@ export function ProvisionsByTocStructure({
   }, [searchQuery]);
 
   // Extract data with safe defaults (for use in hooks below)
-  const tocStructure = data?.data?.by_toc || {};
+  const tocStructure = data?.data?.by_toc || {};  // Filtered provisions for selected part
+  const completeTocStructure = data?.data?.complete_toc || {};  // Complete TOC for sidebar navigation
   const totalProvisions = data?.data?.summary?.total_provisions || 0;
 
   // Get provisions for selected part/section - memoized to avoid unnecessary recalculations
@@ -283,7 +262,8 @@ export function ProvisionsByTocStructure({
 
   // Apply filters and sort by priority
   const filteredProvisions = useMemo(() => {
-    let filtered = selectedProvisions;
+    // First, exclude TOC provisions from display
+    let filtered = selectedProvisions.filter(p => p.v2_provision_type !== 'TOC');
 
     // Apply search filter
     if (debouncedSearch) {
@@ -436,24 +416,29 @@ export function ProvisionsByTocStructure({
       <EPAAct415ComplianceNotice />
 
       {/* Universal HCA Provisions Banner - shown for heritage properties in any Inner West council */}
-      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && (
+      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && hcaProvisions.length > 0 && (
         <div id="dcp-hca-section" className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30">
           <button
             onClick={() => setShowHcaSection(!showHcaSection)}
             className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-blue-100/50 transition-colors"
           >
             <Shield className="h-4 w-4 text-blue-700" />
-            <span className="font-semibold text-blue-900">Universal Heritage Conservation Area Controls</span>
+            <span className="font-semibold text-blue-900">Heritage Conservation Area Controls</span>
             <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
-              {hcaLoading ? '...' : `${hcaProvisions.length} provisions`}
+              {hcaLoading ? '...' : `${hcaProvisions.length} total provisions`}
             </Badge>
             {showHcaSection ? <ChevronDown className="h-4 w-4 ml-auto text-blue-600" /> : <ChevronRight className="h-4 w-4 ml-auto text-blue-600" />}
           </button>
           {showHcaSection && (
             <div className="px-4 pb-4 border-t border-blue-200">
               <p className="text-xs text-blue-800 mt-3 mb-3 bg-blue-100 rounded px-2 py-1.5">
-                These controls apply to <strong>all Heritage Conservation Area properties</strong> in the former {formerCouncil} council area ({councilDcpNames[councilLower] || 'DCP'}).
-                They are in addition to the site-specific DCP provisions shown below.
+                <strong>{hcaProvisions.length} total heritage provisions</strong> across all DCP parts for this property.
+                {councilLower === 'leichhardt' && (
+                  <span> Leichhardt DCP has general heritage controls that apply to all HCAs (no HCA-specific provisions).</span>
+                )}
+                {(councilLower === 'ashfield' || councilLower === 'marrickville') && (
+                  <span> Includes both general heritage controls and HCA-specific provisions.</span>
+                )}
               </p>
               {hcaLoading ? (
                 <div className="flex items-center gap-2 py-4">
@@ -498,6 +483,10 @@ export function ProvisionsByTocStructure({
                               showLayerBadges={false}
                               formerCouncil="leichhardt"
                               maxProvisions={50}
+                              zone={zone}
+                              heritage={heritage}
+                              hcaName={hcaName}
+                              precinctName={precinctId}
                             />
                           </div>
                         )}
@@ -518,7 +507,7 @@ export function ProvisionsByTocStructure({
       {/* Left: TOC Sidebar */}
       <div className="w-64 border-r bg-gray-50 flex-shrink-0">
         <TocSidebar
-          tocStructure={tocStructure}
+          tocStructure={completeTocStructure}
           selectedPart={selectedPart}
           selectedSection={selectedSection}
           onSelectPart={handleSelectPart}
@@ -535,12 +524,12 @@ export function ProvisionsByTocStructure({
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 {selectedPart
-                  ? sanitizeText(tocStructure[selectedPart]?.part_name) || selectedPart
+                  ? sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
                   : 'Select a section'}
               </h3>
               {selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600">
-                  {sanitizeText(tocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
+                  {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
             </div>
@@ -697,6 +686,10 @@ export function ProvisionsByTocStructure({
               maxProvisions={100}
               onViewPdf={(url, page) => setPdfModal({ url, page })}
               highlightQuery={debouncedSearch}
+              zone={zone}
+              heritage={heritage}
+              hcaName={hcaName}
+              precinctName={precinctId}
             />
           ) : (
             <div className="text-center py-12 text-gray-500">

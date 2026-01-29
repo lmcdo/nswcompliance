@@ -25,6 +25,15 @@ from typing import Dict, List, Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from db_safety_wrapper import get_safe_connection
 
+# Import version tracking functions
+sys.path.insert(0, str(Path(__file__).parent))
+from version_tracking import (
+    detect_provision_changes,
+    update_provision_with_versioning,
+    create_initial_version,
+    calculate_text_hash
+)
+
 # Use absolute path from script location
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -92,10 +101,11 @@ def get_existing_provisions():
         conn = get_safe_connection()
         cur = conn.cursor()
 
-        # Get all SEPP provisions
+        # Get all SEPP provisions (including version tracking fields)
         cur.execute("""
             SELECT id, document_id, ref_number, provision_text, provision_type,
-                   section_header, zone, development_type, full_text_length
+                   section_header, zone, development_type, full_text_length,
+                   text_hash_current
             FROM regulatory_provisions
             WHERE document_id LIKE '%State_Environmental_Planning_Policy%'
                OR document_id LIKE '%State Environmental Planning Policy%'
@@ -113,6 +123,7 @@ def get_existing_provisions():
                 'zone': row[6],
                 'development_type': row[7],
                 'full_text_length': row[8],
+                'text_hash_current': row[9],
             })
 
         conn.close()
@@ -241,63 +252,131 @@ def update_database(matches: Dict) -> bool:
         inserted_count = 0
         errors = []
 
-        # Update exact matches
-        print("1. Updating exact matches...")
+        # Update exact matches (with version tracking)
+        print("1. Updating exact matches with version tracking...")
+        version_created_count = 0
         for match in matches['exact_matches']:
             try:
                 json_prov = match['json_provision']
-                cur.execute("""
-                    UPDATE regulatory_provisions
-                    SET provision_text = %s,
-                        full_text_length = %s,
-                        extraction_method = 'mineru',
-                        last_updated = NOW(),
-                        section_header = COALESCE(section_header, %s)
-                    WHERE id = %s
-                """, (
-                    json_prov['provision_text'],
-                    json_prov['text_length'],
-                    json_prov.get('section_header'),
-                    match['db_id']
-                ))
-                updated_count += 1
 
-                if updated_count % 100 == 0:
-                    print(f"   Updated {updated_count:,} provisions...")
+                # Get existing provision data for version tracking
+                cur.execute("""
+                    SELECT provision_text, text_hash_current
+                    FROM regulatory_provisions
+                    WHERE id = %s
+                """, (match['db_id'],))
+
+                row = cur.fetchone()
+                if row:
+                    old_text = row[0]
+                    old_hash = row[1]
+
+                    # Prepare new metadata
+                    new_metadata = {
+                        'provision_type': json_prov.get('provision_type', 'formal_provision'),
+                        'section_header': json_prov.get('section_header'),
+                    }
+
+                    # Update with version tracking
+                    was_changed, new_version_id = update_provision_with_versioning(
+                        cur=cur,
+                        provision_id=match['db_id'],
+                        old_text=old_text,
+                        old_hash=old_hash or calculate_text_hash(old_text),
+                        new_text=json_prov['provision_text'],
+                        new_metadata=new_metadata,
+                        document_id=match['document_id'],
+                        amendment_ref='Full text extraction update'
+                    )
+
+                    if was_changed:
+                        version_created_count += 1
+
+                    # Also update fields not tracked in version history
+                    cur.execute("""
+                        UPDATE regulatory_provisions
+                        SET full_text_length = %s,
+                            extraction_method = 'mineru',
+                            section_header = COALESCE(section_header, %s)
+                        WHERE id = %s
+                    """, (
+                        json_prov['text_length'],
+                        json_prov.get('section_header'),
+                        match['db_id']
+                    ))
+
+                    updated_count += 1
+
+                    if updated_count % 100 == 0:
+                        print(f"   Updated {updated_count:,} provisions ({version_created_count} changed)...")
 
             except Exception as e:
                 errors.append(f"Update error for ID {match['db_id']}: {e}")
 
-        print(f"   [OK] Updated {updated_count:,} exact match provisions")
+        print(f"   [OK] Updated {updated_count:,} exact match provisions ({version_created_count} versions created)")
 
-        # Update normalized matches
-        print("\n2. Updating normalized matches...")
+        # Update normalized matches (with version tracking)
+        print("\n2. Updating normalized matches with version tracking...")
         normalized_updated = 0
+        normalized_version_count = 0
         for match in matches['normalized_matches']:
             try:
                 json_prov = match['json_provision']
-                cur.execute("""
-                    UPDATE regulatory_provisions
-                    SET provision_text = %s,
-                        full_text_length = %s,
-                        extraction_method = 'mineru',
-                        last_updated = NOW()
-                    WHERE id = %s
-                """, (
-                    json_prov['provision_text'],
-                    json_prov['text_length'],
-                    match['db_id']
-                ))
-                normalized_updated += 1
 
-                if normalized_updated % 100 == 0:
-                    print(f"   Updated {normalized_updated:,} provisions...")
+                # Get existing provision data for version tracking
+                cur.execute("""
+                    SELECT provision_text, text_hash_current
+                    FROM regulatory_provisions
+                    WHERE id = %s
+                """, (match['db_id'],))
+
+                row = cur.fetchone()
+                if row:
+                    old_text = row[0]
+                    old_hash = row[1]
+
+                    # Prepare new metadata
+                    new_metadata = {
+                        'provision_type': json_prov.get('provision_type', 'formal_provision'),
+                    }
+
+                    # Update with version tracking
+                    was_changed, new_version_id = update_provision_with_versioning(
+                        cur=cur,
+                        provision_id=match['db_id'],
+                        old_text=old_text,
+                        old_hash=old_hash or calculate_text_hash(old_text),
+                        new_text=json_prov['provision_text'],
+                        new_metadata=new_metadata,
+                        document_id=match['document_id'],
+                        amendment_ref='Full text extraction update'
+                    )
+
+                    if was_changed:
+                        normalized_version_count += 1
+
+                    # Also update fields not tracked in version history
+                    cur.execute("""
+                        UPDATE regulatory_provisions
+                        SET full_text_length = %s,
+                            extraction_method = 'mineru'
+                        WHERE id = %s
+                    """, (
+                        json_prov['text_length'],
+                        match['db_id']
+                    ))
+
+                    normalized_updated += 1
+
+                    if normalized_updated % 100 == 0:
+                        print(f"   Updated {normalized_updated:,} provisions ({normalized_version_count} changed)...")
 
             except Exception as e:
                 errors.append(f"Normalized update error for ID {match['db_id']}: {e}")
 
-        print(f"   [OK] Updated {normalized_updated:,} normalized match provisions")
+        print(f"   [OK] Updated {normalized_updated:,} normalized match provisions ({normalized_version_count} versions created)")
         updated_count += normalized_updated
+        version_created_count += normalized_version_count
 
         # COMMIT UPDATES BEFORE TRYING INSERTS
         print(f"\n   Committing {updated_count} updates...")
@@ -308,8 +387,8 @@ def update_database(matches: Dict) -> bool:
         sequence_fixed = fix_sequence(conn, cur)
 
         if sequence_fixed and len(matches['new_provisions']) > 0:
-            # Insert new provisions
-            print(f"\n3. Inserting {len(matches['new_provisions']):,} new provisions...")
+            # Insert new provisions (with initial version creation)
+            print(f"\n3. Inserting {len(matches['new_provisions']):,} new provisions with version tracking...")
 
             for idx, new_prov in enumerate(matches['new_provisions']):
                 try:
@@ -318,12 +397,14 @@ def update_database(matches: Dict) -> bool:
                     # Use document_id from match
                     doc_id = new_prov['document_id']
 
+                    # Insert provision
                     cur.execute("""
                         INSERT INTO regulatory_provisions (
                             document_id, ref_number, provision_text, provision_type,
                             section_header, full_text_length, extraction_method,
                             last_updated
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                        RETURNING id
                     """, (
                         doc_id,
                         new_prov['ref_number'],
@@ -333,6 +414,22 @@ def update_database(matches: Dict) -> bool:
                         json_prov['text_length'],
                         'mineru'
                     ))
+
+                    new_provision_id = cur.fetchone()[0]
+
+                    # Create initial version (version 1)
+                    metadata = {
+                        'provision_type': json_prov.get('provision_type', 'formal_provision'),
+                    }
+
+                    create_initial_version(
+                        cur=cur,
+                        provision_id=new_provision_id,
+                        provision_text=json_prov['provision_text'],
+                        metadata=metadata,
+                        document_id=doc_id
+                    )
+
                     inserted_count += 1
 
                     if inserted_count % 100 == 0:
@@ -348,7 +445,7 @@ def update_database(matches: Dict) -> bool:
                     conn = get_safe_connection()
                     cur = conn.cursor()
 
-            print(f"   [OK] Inserted {inserted_count:,} new provisions")
+            print(f"   [OK] Inserted {inserted_count:,} new provisions (with version 1 records)")
         else:
             print(f"\n3. Skipping inserts (sequence issue or no new provisions)")
 
@@ -361,6 +458,7 @@ def update_database(matches: Dict) -> bool:
             'import_timestamp': datetime.now().isoformat(),
             'provisions_updated': updated_count,
             'provisions_inserted': inserted_count,
+            'versions_created': version_created_count,
             'errors': errors,
             'error_count': len(errors)
         }
@@ -368,10 +466,11 @@ def update_database(matches: Dict) -> bool:
         with open(IMPORT_LOG, 'w', encoding='utf-8') as f:
             json.dump(import_log, f, indent=2)
 
-        print(f"\n[SUCCESS] DATABASE UPDATE COMPLETE")
-        print(f"   Updated:  {updated_count:,} provisions")
-        print(f"   Inserted: {inserted_count:,} provisions")
-        print(f"   Errors:   {len(errors):,}")
+        print(f"\n[SUCCESS] DATABASE UPDATE COMPLETE (WITH VERSION TRACKING)")
+        print(f"   Updated:         {updated_count:,} provisions")
+        print(f"   Inserted:        {inserted_count:,} provisions")
+        print(f"   Versions Created: {version_created_count:,} (changes detected)")
+        print(f"   Errors:          {len(errors):,}")
 
         if errors and len(errors) <= 20:
             print(f"\n[!] Errors:")
