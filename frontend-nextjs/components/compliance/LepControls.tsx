@@ -1,9 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LandUseZoningCard } from './LandUseZoningCard';
-
 import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
+import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 
 interface LepControlsProps {
@@ -58,14 +58,20 @@ export function LepControls({
       )}
 
       {/* Local Provisions Card */}
-      {constraints?.localProvisions && constraints.localProvisions.length > 0 && (
+      {constraints?.localProvisions && constraints.localProvisions.length > 0 ? (
         <LocalProvisionsCard
           localProvisions={constraints.localProvisions}
+        />
+      ) : (
+        <NotApplicableCard
+          title="Additional Local Provisions"
+          reason="No site-specific local provisions (LEP Part 6) or key site controls apply to this address."
+          color="amber"
         />
       )}
 
       {/* Heritage Provisions Card */}
-      {constraints?.heritage && (
+      {constraints?.heritage ? (
         <HeritageProvisionsCard
           heritage={constraints.heritage}
           heritageType={constraints.heritageType}
@@ -74,6 +80,12 @@ export function LepControls({
           heritageLegislativeClause={constraints.heritageLegislativeClause}
           heritageSignificance={constraints.heritageSignificance}
           heritageLegislationUrl={constraints.heritageLegislationUrl}
+        />
+      ) : (
+        <NotApplicableCard
+          title="Heritage Conservation"
+          reason="This property is not in a Heritage Conservation Area and is not listed as a heritage item."
+          color="amber"
         />
       )}
     </div>

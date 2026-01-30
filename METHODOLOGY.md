@@ -3,7 +3,7 @@
 **Document Purpose**: Professional documentation of architectural decisions, data methodology, and industry best practices alignment for council stakeholder presentations.
 
 **Last Updated**: January 2026
-**Version**: 2.0
+**Version**: 2.1
 
 ---
 
@@ -83,6 +83,49 @@ Layer 4: PRECINCT (Applies to specific geographic area)
 
 ## 2. Data Enrichment Methodology
 
+### 2.0 Foundation Layer: Actionability Classification
+
+**Before enrichment begins**, all provisions undergo actionability classification to separate substantive regulatory content from document structure and boilerplate.
+
+**Purpose**: Extract only provisions that contain actionable requirements, controls, or guidance for development assessment.
+
+**Filtering Logic**:
+
+```python
+# EXCLUDED (Non-actionable):
+- Table of contents entries (dotted leaders, "i Contents")
+- Legislative boilerplate ("Parliamentary Counsel", "legislation website")
+- PDF artifacts ("Figure 1", "Map 2", "Diagram")
+- Too short (<10 characters)
+- Document structure elements (headers, page numbers)
+
+# INCLUDED (Actionable):
+- Control provisions ("must", "shall", "required")
+- Numeric standards (height, FSR, setbacks)
+- Objectives and performance criteria (DCP O1, C1 markers)
+- Design guidance and considerations
+```
+
+**Results** (validated via `analyze_actionability_cull.py`):
+- **Total provisions**: 21,492
+- **Actionable**: 10,316 (48%) - used for compliance assessment
+- **Non-actionable**: 11,176 (52%) - filtered out
+- **Precision**: 99.96% (only 5 potential false negatives out of 11,176)
+
+**Document-Type Context**:
+- **DCP**: 87% actionable (4,458/5,079) - detailed controls and guidance
+- **LEP/SEPP**: 36% actionable (5,858/16,413) - substantial legislative boilerplate
+
+**Why This Matters**:
+1. **Efficiency**: Reduces enrichment workload by 52% (only enrich what matters)
+2. **UX Quality**: Users see 406 relevant provisions, not 850+ mixed with TOC pages
+3. **Cost Optimization**: LLM enrichment costs ~$15 for 10,316 provisions vs ~$31 for all 21,492
+4. **Professional Standard**: Mirrors legal research platforms that hide structural content
+
+**API Implementation**: All queries filter with `WHERE v2_is_actionable = true` (route.ts:745)
+
+---
+
 ### 2.1 Tiered Reliability Model
 
 Following LexisNexis editorial standards, we use different enrichment methods based on data type:
@@ -140,22 +183,35 @@ elif 'Part_9' in document_id:
 
 ### 2.2 Professional Standard: No Filtering, Only Prioritization
 
+**Two-Stage Approach**:
+
+**Stage 1: Actionability Filter** (Foundation Layer - Section 2.0)
+- **Purpose**: Remove document structure (TOC, headers, boilerplate)
+- **Scope**: Filters 52% of database (11,176 non-actionable provisions)
+- **Rationale**: Legal research platforms (LexisNexis, Jade) hide structural content
+- **Risk**: Minimal - only removes navigation elements, not substantive provisions
+
+**Stage 2: Prioritization Within Actionable Provisions** (This is the critical principle)
+- **Purpose**: Organize provisions for efficient review
+- **Scope**: ALL 10,316 actionable provisions are shown
+- **Method**: Tags/badges for smart organization, NOT filtering
+
 **Critical Distinction**:
 
 ```
-❌ FILTERING (Not what we do):
-"Only show critical provisions"
+❌ FILTERING ACTIONABLE PROVISIONS (Not what we do):
+"Only show critical provisions, hide guidelines"
 → Risk: Certifier misses miscategorized provision
 
-✅ PRIORITIZATION (What we do):
-"Show ALL provisions, organized by criticality"
+✅ PRIORITIZATION OF ACTIONABLE PROVISIONS (What we do):
+"Show ALL actionable provisions, organized by criticality"
 → Safe: Certifier sees everything, works efficiently
 ```
 
 **Rationale**: LexisNexis principle - "Our categorization helps you work efficiently, but you are professionally responsible for reviewing all applicable law."
 
 **Implementation**:
-- ALL applicable provisions shown (no hiding)
+- ALL actionable provisions shown (no hiding based on priority/dev-type)
 - Tags used for smart organization ("Start here: 113 critical")
 - Progress tracking (✓ 45/406 provisions reviewed)
 - Warning if assessment incomplete
@@ -353,7 +409,7 @@ ORDER BY v2_display_priority, v2_dcp_part;
 > "We follow the same organizational principles as LexisNexis - the legal research tool trusted by 1M+ lawyers worldwide. Our system helps certifiers work efficiently while maintaining full professional responsibility."
 
 **Message 2: Transparent Methodology**
-> "All architectural decisions are documented with rationale. Our data enrichment uses proven methods: deterministic for structure (99% accurate), LLM-assisted for content (95% accurate), with confidence scores and human override."
+> "All architectural decisions are documented with rationale. Our two-stage data processing: (1) Actionability filter removes 52% document structure with 99.96% precision, (2) Enrichment uses deterministic methods for structure (99% accurate) and LLM-assisted for content (95% accurate), with confidence scores and human override."
 
 **Message 3: Professional Liability Protection**
 > "The system prioritizes provisions but shows ALL applicable controls. Certifiers maintain full decision-making authority. We provide tools, not answers."
@@ -426,6 +482,10 @@ ORDER BY v2_display_priority, v2_dcp_part;
 
 **Response**: "Manual review remains necessary - that doesn't change. What changes is efficiency. Instead of reading 400 provisions in random order, certifiers can start with 113 critical provisions, then systematically review the rest. Same thoroughness, better organization."
 
+### Q7: "You're filtering out 52% of provisions - how do we know you're not hiding critical requirements?"
+
+**Response**: "We only filter document structure, not substantive provisions. The 52% filtered out consists of table of contents pages, legislative boilerplate ('Published by Parliamentary Counsel'), PDF artifacts ('Figure 1', 'Map 2'), and empty content - nothing that certifiers would assess for compliance. This mirrors how LexisNexis and Jade hide structural content while preserving all law. Our validation shows 99.96% precision - only 5 potential false negatives out of 11,176 filtered provisions, and those were procedural definitions, not controls. The filtering logic is transparent and can be audited via our validation scripts."
+
 ---
 
 ## 9. Appendices
@@ -447,10 +507,13 @@ ORDER BY v2_display_priority, v2_dcp_part;
 
 ### Appendix C: Validation Scripts
 
-All validation scripts available in `scripts/validation/`:
+All validation scripts available in root directory and `scripts/validation/`:
+- `analyze_actionability_cull.py` - Actionability filter validation (99.96% precision)
 - `verify_hca_code_resolution.py` - HCA mapping validation
 - `check_heritage_duplication.py` - Deduplication testing
 - `validate_enrichment_accuracy.py` - Sample-based accuracy testing
+- `show_enrichment_comparison.py` - Regex vs LLM enrichment comparison
+- `test_llm_enrichment_sample.py` - LLM enrichment quality test
 
 ### Appendix D: References
 
@@ -468,6 +531,7 @@ All validation scripts available in `scripts/validation/`:
 **Version History**:
 - v1.0 (2025-12): Initial architecture documentation
 - v2.0 (2026-01): Added LLM enrichment methodology and industry comparison
+- v2.1 (2026-01): Added actionability classification foundation layer with validation results
 
 **Distribution**: Council stakeholders, professional certifier associations, regulatory bodies
 

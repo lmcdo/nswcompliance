@@ -20,6 +20,7 @@ import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { CdcComplianceCalculator } from '../cdc/CdcComplianceCalculator';
+import { NotApplicableCard } from './NotApplicableCard';
 
 interface StateLevelControlsProps {
   propertyData: any;
@@ -685,8 +686,8 @@ export function StateLevelControls({
         />
       )}
 
-      {/* Housing SEPP LMR Section - Shows for residential zones with lot data */}
-      {showHousingSEPPSection && (
+      {/* Housing SEPP LMR Section - Always shown */}
+      {showHousingSEPPSection ? (
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardHeader
             className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
@@ -720,10 +721,16 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
+      ) : (
+        <NotApplicableCard
+          title="Low and Mid-Rise Housing Reforms"
+          reason="Not applicable to this address. Property is not in an LMR area or lot size/width data unavailable."
+          color="purple"
+        />
       )}
 
-      {/* ADG Section - Shows for apartment zones OR apartment development types */}
-      {showADGSection && (
+      {/* ADG Section - Always shown */}
+      {showADGSection ? (
         <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader
             className="cursor-pointer hover:bg-purple-100/50 transition-colors"
@@ -813,10 +820,16 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
+      ) : (
+        <NotApplicableCard
+          title="Apartment Design Guide (ADG)"
+          reason="Not applicable to this address. Property zone does not permit apartments and development type is not apartment-related."
+          color="purple"
+        />
       )}
 
-      {/* TOD Parking Reductions - Shows when property has regulatory TOD relevance */}
-      {showTODSection && (
+      {/* TOD Parking Reductions - Always shown */}
+      {showTODSection ? (
         <Card className="border-emerald-200 bg-emerald-50/30">
           <CardHeader
             className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
@@ -1102,27 +1115,12 @@ export function StateLevelControls({
             </CardContent>
           )}
         </Card>
-      )}
-
-      {/* Info for zones that don't permit apartments */}
-      {!showADGSection && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-          <p>
-            <strong>Note:</strong> ADG Design Criteria apply to zones that permit apartment
-            developments (R3, R4, B1-B6, MU1, E1-E2).
-            {zone && <span> Current zone: <strong>{zone}</strong></span>}
-          </p>
-        </div>
-      )}
-
-      {/* TOD info when no qualifying transport found */}
-      {!showTODSection && !showADGSection && propertyLat && propertyLng && !transportLoading && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-sm text-gray-600">
-          <p>
-            <strong>TOD:</strong> No public transport within regulatory thresholds
-            (800m rail, 600m light rail, 400m frequent bus) detected for this property.
-          </p>
-        </div>
+      ) : (
+        <NotApplicableCard
+          title="Transit Oriented Development (TOD) Parking"
+          reason="Not applicable to this address. Property is not in a designated TOD precinct and has no qualifying public transport within regulatory thresholds (800m rail, 600m light rail, 400m frequent bus)."
+          color="purple"
+        />
       )}
 
       {/* PDF Image Modal */}
