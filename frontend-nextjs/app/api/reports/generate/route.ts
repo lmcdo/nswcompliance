@@ -1,24 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ReportGenerator, ReportConfig } from '@/lib/assessment/reports';
+import { ReportSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
  try {
- const config: ReportConfig = await request.json();
+ const body = await request.json();
 
- // Validate required fields
- if (!config.template_id) {
+ // Validate request using ReportSchema
+ const validation = validateRequest(ReportSchema, body);
+
+ if (!validation.success) {
  return NextResponse.json(
- { error: 'Template ID is required' },
+ {
+ success: false,
+ error: 'Invalid request data',
+ details: formatValidationErrors(validation.details),
+ },
  { status: 400 }
  );
  }
 
- if (!config.property_data) {
- return NextResponse.json(
- { error: 'Property data is required' },
- { status: 400 }
- );
- }
+ const config: ReportConfig = body;
 
  // Generate report
  const report = await ReportGenerator.generateReport(config);

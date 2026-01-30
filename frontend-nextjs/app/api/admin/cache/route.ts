@@ -7,9 +7,33 @@ import { clearAllCaches, getAllCacheStats, cleanupAllCaches } from '@/lib/cache'
  * GET  /api/admin/cache - Get cache statistics
  * POST /api/admin/cache?action=clear - Clear all caches
  * POST /api/admin/cache?action=cleanup - Remove expired entries only
+ *
+ * Requires X-Admin-Key header matching ADMIN_API_KEY environment variable
  */
 
-export async function GET() {
+function checkAdminAuth(request: NextRequest): boolean {
+  const adminKey = process.env.ADMIN_API_KEY;
+  const providedKey = request.headers.get('x-admin-key');
+
+  // If no admin key is configured, deny access (fail secure)
+  if (!adminKey) {
+    console.warn('[Admin Auth] ADMIN_API_KEY not configured - denying access');
+    return false;
+  }
+
+  return providedKey === adminKey;
+}
+
+export async function GET(request: NextRequest) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Forbidden - Admin authentication required'
+      },
+      { status: 403 }
+    );
+  }
   const stats = getAllCacheStats();
 
   return NextResponse.json({
@@ -20,6 +44,16 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  if (!checkAdminAuth(request)) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Forbidden - Admin authentication required'
+      },
+      { status: 403 }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
 

@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-
-// Validation schema for requirement-specific feedback
-const requirementFeedbackSchema = z.object({
-  requirementId: z.string(),
-  propertyAddress: z.string(),
-  feedbackType: z.enum(['correct', 'incorrect', 'missing_context', 'outdated']),
-  description: z.string().min(1),
-  userType: z.enum(['certifier', 'planner', 'developer', 'architect', 'other']),
-  urgency: z.enum(['low', 'medium', 'high']),
-});
+import { RequirementFeedbackSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate input
-    const validatedFeedback = requirementFeedbackSchema.parse(body);
+    // Validate input using centralized schema
+    const validation = validateRequest(RequirementFeedbackSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid feedback data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
+    }
+
+    const validatedFeedback = {
+      requirementId: validation.data.provisionId,
+      propertyAddress: body.propertyAddress || '',
+      feedbackType: validation.data.isCorrect ? 'correct' : 'incorrect',
+      description: validation.data.feedback,
+      userType: body.userType || 'other',
+      urgency: body.urgency || 'medium',
+    };
 
     // Get requirement details for context
     const requirementDetails = await query(`

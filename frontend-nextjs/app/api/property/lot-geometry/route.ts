@@ -1,16 +1,35 @@
 // app/api/property/lot-geometry/route.ts
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+import { validateRequest, formatValidationErrors } from '@/lib/schemas';
+
+// Schema for lot geometry query params
+const LotGeometryQuerySchema = z.object({
+  propId: z.string().min(1, 'Property ID is required'),
+});
 
 export async function GET(request: NextRequest) {
  const searchParams = request.nextUrl.searchParams;
- const propId = searchParams.get('propId');
 
- if (!propId) {
+ // Convert query params to object and validate
+ const params = {
+ propId: searchParams.get('propId'),
+ };
+
+ const validation = validateRequest(LotGeometryQuerySchema, params);
+
+ if (!validation.success) {
  return NextResponse.json(
- { error: 'Property ID is required' },
+ {
+ success: false,
+ error: 'Invalid query parameters',
+ details: formatValidationErrors(validation.details),
+ },
  { status: 400 }
  );
  }
+
+ const { propId } = validation.data;
 
  try {
  const url = `https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot?propId=${propId}`;

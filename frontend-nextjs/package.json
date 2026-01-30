@@ -51,6 +51,8 @@
     "@types/pg": "^8.15.5",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.36.1",
     "@vercel/analytics": "^1.5.0",
     "ai": "^6.0.39",
     "autoprefixer": "^10.4.16",

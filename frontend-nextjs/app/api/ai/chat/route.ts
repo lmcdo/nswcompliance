@@ -13,6 +13,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { classifyQuestion, PropertyContext, ClassificationResult } from '@/lib/ai/classifier';
 import { routeQuestion } from '@/lib/ai/router';
 import { formatResponse, FormattedResponse } from '@/lib/ai/formatter';
+import { AIChatSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import {
+  aiRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 // Request body structure
 interface ChatRequest {
@@ -106,32 +113,45 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
   const startTime = Date.now();
 
   try {
+    // AI-specific rate limit check (5 requests per minute per IP)
+    // More strict than global rate limit to protect LLM API costs
+    const clientIP = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientIP, aiRateLimiter, 5, 60000);
+
+    if (!rateLimitResult.success) {
+      const headers = createRateLimitHeaders(rateLimitResult);
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Rate limit exceeded. Please wait a minute before trying again.',
+          processingTimeMs: Date.now() - startTime,
+        },
+        {
+          status: 429,
+          headers,
+        }
+      );
+    }
+
     const body: ChatRequest = await request.json();
-    const { message, propertyContext } = body;
 
-    // Validate input
-    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+    // Validate input with Zod schema
+    const validation = validateRequest(AIChatSchema, body);
+
+    if (!validation.success) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Message is required',
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
           processingTimeMs: Date.now() - startTime,
         },
         { status: 400 }
       );
     }
 
-    // Limit message length to prevent abuse
-    if (message.length > 500) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Message is too long. Please keep your question under 500 characters.',
-          processingTimeMs: Date.now() - startTime,
-        },
-        { status: 400 }
-      );
-    }
+    const { message, propertyContext } = validation.data;
 
     console.log(`[AI Chat] Received: "${message.substring(0, 100)}..."`);
     console.log(`[AI Chat] Property context: ${propertyContext?.address || 'None'}`);

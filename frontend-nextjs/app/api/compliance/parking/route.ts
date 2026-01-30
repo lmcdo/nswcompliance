@@ -19,6 +19,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { z } from 'zod';
+import { validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // SEPP Housing legislation URL
 const SEPP_HOUSING_URL = 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
@@ -47,18 +49,37 @@ interface ParkingRequirement {
   development_type: string;
 }
 
+// Schema for parking query params
+const ParkingQuerySchema = z.object({
+  dev_type: z.string().min(1, 'dev_type is required'),
+  zone: z.string().optional(),
+});
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const devType = searchParams.get('dev_type');
-    const zone = searchParams.get('zone');
 
-    if (!devType) {
+    // Convert URLSearchParams to object
+    const params = {
+      dev_type: searchParams.get('dev_type'),
+      zone: searchParams.get('zone'),
+    };
+
+    // Validate query parameters
+    const validation = validateRequest(ParkingQuerySchema, params);
+
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'dev_type parameter is required' },
+        {
+          success: false,
+          error: 'Invalid query parameters',
+          details: formatValidationErrors(validation.details),
+        },
         { status: 400 }
       );
     }
+
+    const { dev_type: devType, zone } = validation.data;
 
     // Map to database dev types
     const dbDevTypes = DEV_TYPE_MAP[devType.toLowerCase()] || [devType];

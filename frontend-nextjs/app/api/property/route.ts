@@ -1,25 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
+import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * General NSW Property Data API Endpoint
- * 
+ *
  * Returns comprehensive property data for any NSW property address
  * Fixed to use real data instead of N/A values
  */
 export async function GET(req: NextRequest) {
  const { searchParams } = new URL(req.url);
- const address = searchParams.get('address');
- 
- if (!address) {
- return NextResponse.json(
- { 
- error: 'Address parameter required',
- example: '/api/property?address=3 Wilkinson Ln, Telopea NSW 2117'
- },
- { status: 400 }
- );
+
+ // Build object from query parameters for validation
+ const params = {
+   address: searchParams.get('address') || '',
+   lga: searchParams.get('lga') || undefined,
+   includeConstraints: searchParams.get('includeConstraints') === 'true' || undefined
+ };
+
+ // Validate request data with Zod
+ const validation = validateRequest(PropertySearchSchema, params);
+
+ if (!validation.success) {
+   return NextResponse.json(
+     {
+       success: false,
+       error: 'Invalid request data',
+       details: formatValidationErrors(validation.details),
+       example: '/api/property?address=3 Wilkinson Ln, Telopea NSW 2117'
+     },
+     { status: 400 }
+   );
  }
+
+ const { address, lga, includeConstraints } = validation.data;
  
  try {
  // Get comprehensive property data

@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
-
-interface CapacityRequest {
-  address: string;
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
-  developmentType: string;
-  lotArea: number;  // m²
-  zone: string;
-  lga: string;
-  formerCouncil: string;
-}
+import { CapacityCalculationSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface SetbackResult {
-  type: 'numeric' | 'prevailing' | 'precinct_specific' | 'not_available';
+  type: 'numeric' | 'prevailing' | 'precinct_specific' | 'not_available' | 'mixed';
   front?: number;
   side?: number;
   rear?: number;
@@ -24,11 +12,38 @@ interface SetbackResult {
   minimum_standards?: any;
   source?: string;
   precinct_name?: string;
+  guidance?: Array<{
+    boundary: string;
+    text: string;
+  }>;
+  values?: Array<any>;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const { address, coordinates, developmentType, lotArea, zone, lga, formerCouncil }: CapacityRequest = await request.json();
+    const body = await request.json();
+
+    // Validate request data with Zod
+    const validation = validateRequest(CapacityCalculationSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { lotSize: lotArea, frontage, zone, fsr, heightLimit, developmentType } = validation.data;
+
+    // Extract additional fields that aren't in the schema but are still used
+    const address = body.address || 'Unknown';
+    const coordinates = body.coordinates;
+    const lga = body.lga || 'Unknown';
+    const formerCouncil = body.formerCouncil || 'Unknown';
 
     // Normalize LGA to title case
     const normalizedLGA = lga.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import type { PropertyIntelligenceResponse, PropertyData, LotGeometry, CornerLotInfo } from '@/types/property';
 import { calculateLotDimensions, type LotDimensions } from '@/lib/geometry/lot-dimensions';
 import { detectCornerLot } from '@/lib/geometry/corner-lot-detection';
+import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // NSW Planning API base URL
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
@@ -27,7 +28,23 @@ export async function GET(
 ) {
  const startTime = Date.now();
  const address = decodeURIComponent(params.address);
- 
+
+ // Validate address from URL parameter
+ const validation = validateRequest(PropertySearchSchema, { address });
+
+ if (!validation.success) {
+ return NextResponse.json(
+ {
+ success: false,
+ property: null,
+ lotGeometry: null,
+ error: 'Invalid address',
+ details: formatValidationErrors(validation.details),
+ } as PropertyIntelligenceResponse,
+ { status: 400 }
+ );
+ }
+
  // Get optional coordinates from query params
  const { searchParams } = new URL(request.url);
  const lat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : undefined;

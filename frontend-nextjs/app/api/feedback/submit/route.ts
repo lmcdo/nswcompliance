@@ -1,30 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { z } from 'zod';
-
-// Validation schema
-const feedbackSchema = z.object({
-  type: z.enum(['address_issue', 'missing_data', 'incorrect_calculation', 'general']),
-  context: z.object({
-    propertyAddress: z.string(),
-    section: z.string(),
-    currentValue: z.any().optional(),
-    expectedValue: z.any().optional(),
-    userInput: z.string().optional(),
-    confidence: z.number().optional(),
-  }),
-  description: z.string().min(1),
-  userType: z.enum(['certifier', 'planner', 'developer', 'architect', 'other']),
-  severity: z.enum(['low', 'medium', 'high']),
-  contactEmail: z.string().email().optional(),
-});
+import { FeedbackSubmitSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validate input
-    const validatedFeedback = feedbackSchema.parse(body);
+    // Validate input using centralized schema
+    const validation = validateRequest(FeedbackSubmitSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid feedback data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
+    }
+
+    const validatedFeedback = {
+      type: body.type || 'general',
+      context: body.context || { propertyAddress: '', section: '' },
+      description: validation.data.text,
+      userType: body.userType || 'other',
+      severity: body.severity || 'medium',
+      contactEmail: validation.data.email,
+    };
 
     // Store feedback in database
     const result = await query(`

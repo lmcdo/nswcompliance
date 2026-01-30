@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 import { getSEPPCache, createCacheKey } from '@/lib/cache';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({

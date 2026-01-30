@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { HousingSEPPSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * Housing SEPP Eligibility API
@@ -7,16 +8,8 @@ import { getPool } from '@/lib/db';
  * with full provenance and compliance status
  *
  * POST /api/housing-sepp/eligibility
- * Body: { zoneCode, lotSize, lotWidth, stationDistance?, isLMRArea? }
+ * Body: { address, zone, lotSize, developmentType, lga?, coordinates? }
  */
-
-interface EligibilityRequest {
-  zoneCode: string;           // e.g., "R2"
-  lotSize: number;            // in m²
-  lotWidth: number;           // in metres (at front building line)
-  stationDistance?: number;   // distance to nearest station in metres
-  isLMRArea?: boolean;        // is property in LMR reform area
-}
 
 interface DevelopmentStandard {
   standardType: string;
@@ -54,7 +47,15 @@ const DEVELOPMENT_TYPE_NAMES: Record<string, { name: string; description: string
     name: 'Multi-Dwelling Housing (Townhouses/Villas)',
     description: 'Multiple occupancy with 3 or more homes — includes townhouses, villas, and villa units'
   },
+  multi_dwelling_housing: {
+    name: 'Multi-Dwelling Housing (Townhouses/Villas)',
+    description: 'Multiple occupancy with 3 or more homes — includes townhouses, villas, and villa units'
+  },
   terraces: {
+    name: 'Terrace Housing (Row Houses)',
+    description: 'Row of attached homes, each with its own street entrance — traditional terrace style'
+  },
+  terrace_house: {
     name: 'Terrace Housing (Row Houses)',
     description: 'Row of attached homes, each with its own street entrance — traditional terrace style'
   },
@@ -76,15 +77,28 @@ export async function POST(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const body: EligibilityRequest = await request.json();
-    const { zoneCode, lotSize, lotWidth, stationDistance, isLMRArea } = body;
+    const body = await request.json();
 
-    if (!zoneCode || !lotSize || !lotWidth) {
-      return NextResponse.json({
-        success: false,
-        error: 'zoneCode, lotSize, and lotWidth are required'
-      }, { status: 400 });
+    // Validate request data with Zod
+    const validation = validateRequest(HousingSEPPSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
     }
+
+    const { address, zone: zoneCode, lotSize, developmentType, lga, coordinates } = validation.data;
+
+    // Extract additional fields for compatibility
+    const lotWidth = body.lotWidth;
+    const stationDistance = body.stationDistance;
+    const isLMRArea = body.isLMRArea;
 
     // Normalize zone code (e.g., "R2 Low Density Residential" -> "R2")
     const zone = zoneCode.split(' ')[0].toUpperCase();

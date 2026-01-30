@@ -6,6 +6,7 @@ import { getPrecinctForAddress, getPrecinctControls } from '@/lib/precinct-servi
 import { getZoneAliases } from '@/lib/zone-translation';
 import { normalizeDevType } from '@/lib/dev-type-loader';
 import { getCommercialKeywords } from '@/lib/keyword-loader';
+import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface ConstraintQuery {
   address: string;
@@ -55,14 +56,30 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: ConstraintQuery = await request.json();
-    const { address, zone, lga, developmentType, propId, planningApiClauses = [], heritageItemName, coordinates } = body;
 
-    if (!zone) {
+    // Validate core address fields
+    const validation = validateRequest(PropertySearchSchema, {
+      address: body.address,
+      lga: body.lga,
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid request data',
+        details: formatValidationErrors(validation.details),
+      }, { status: 400 });
+    }
+
+    if (!body.zone) {
       return NextResponse.json({
         success: false,
         error: 'Zone is required'
       }, { status: 400 });
     }
+
+    const { address, lga } = validation.data;
+    const { zone, developmentType, propId, planningApiClauses = [], heritageItemName, coordinates } = body;
 
     // Extract or default LGA
     const lgaName = lga || extractLGA(address || '');

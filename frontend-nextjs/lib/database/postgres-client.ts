@@ -93,8 +93,12 @@ export class PostgresClient {
  params.push(`%${subjectContains}%`);
  }
  
- sql += ` ORDER BY confidence_score DESC LIMIT ${limit}`;
- 
+ // Sanitize and parameterize limit to prevent SQL injection
+ const safeLimit = Math.min(Math.max(1, Math.floor(Number(limit) || 10)), 100);
+ const paramIndex = subjectContains ? 3 : 2;
+ sql += ` ORDER BY confidence_score DESC LIMIT $${paramIndex}`;
+ params.push(safeLimit);
+
  return await this.execute(sql, params);
  }
 

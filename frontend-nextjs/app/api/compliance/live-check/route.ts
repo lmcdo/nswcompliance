@@ -5,19 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { LiveComplianceClient } from '@/lib/database/specialized/live-compliance-client';
 import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/migration-flags';
 import type { ComplianceCalculationRequest, LiveComplianceResponse } from '@/types/live-compliance';
-
-interface ComplianceCheckRequest {
- address: string;
- proposed_development: {
- gross_floor_area?: number;
- height?: number;
- building_area?: number;
- };
- coordinates?: {
- lat: number;
- lng: number;
- };
-}
+import { LiveCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface ComplianceResult {
  compliant: boolean;
@@ -49,32 +37,28 @@ export async function POST(request: NextRequest) {
   const requestId = request.headers.get('x-request-id') || `req_${Date.now()}`;
 
   try {
-    const body: ComplianceCheckRequest = await request.json();
-    const { address, proposed_development, coordinates } = body;
+    const body = await request.json();
 
-    // Validate required parameters
- if (!address || !proposed_development) {
- return NextResponse.json({
- success: false,
- error: 'Address and proposed development details required',
- processing_time_ms: Date.now() - startTime
- } as ComplianceResponse, { status: 400 });
- }
+    // Validate request data with Zod
+    const validation = validateRequest(LiveCheckSchema, body);
 
- // Validate proposed development has at least one parameter
- const hasValidDevelopment = (
- (proposed_development.gross_floor_area && proposed_development.gross_floor_area > 0) ||
- (proposed_development.height && proposed_development.height > 0) ||
- (proposed_development.building_area && proposed_development.building_area > 0)
- );
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+          processing_time_ms: Date.now() - startTime
+        } as ComplianceResponse,
+        { status: 400 }
+      );
+    }
 
- if (!hasValidDevelopment) {
- return NextResponse.json({
- success: false,
- error: 'At least one valid development parameter required (gross_floor_area, height, or building_area)',
- processing_time_ms: Date.now() - startTime
- } as ComplianceResponse, { status: 400 });
- }
+    const { address, developmentType, includeReasons } = validation.data;
+
+    // Extract additional fields for compatibility
+    const proposed_development = body.proposed_development || {};
+    const coordinates = body.coordinates;
 
     // Feature flag: Use PostgreSQL or Python subprocess
     const usePostgreSQL = shouldUsePostgreSQL('live-check', requestId);
@@ -139,7 +123,7 @@ export async function POST(request: NextRequest) {
     const processingTime = Date.now() - startTime;
     console.error('[Live Compliance] Error:', error);
 
-    logMigrationMetrics('live-check', 'unknown', processingTime, false,
+    logMigrationMetrics('live-check', 'postgresql', processingTime, false,
       error instanceof Error ? error.message : 'Unknown error'
     );
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { getSEPPCache, createCacheKey } from '@/lib/cache';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // Key metrics to display in summary card (in order of importance)
 const KEY_METRICS = [

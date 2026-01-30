@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { ADGSeparationSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface SeparationRow {
   height_category: string;
@@ -87,6 +88,27 @@ function parseADGSeparationText(text: string): SeparationRow[] {
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+
+    // Validate query params if provided (optional for this endpoint)
+    if (searchParams.get('developmentType') && searchParams.get('dwellingCount')) {
+      const validation = validateRequest(ADGSeparationSchema, {
+        developmentType: searchParams.get('developmentType') || 'multi_dwelling_housing',
+        dwellingCount: parseInt(searchParams.get('dwellingCount') || '1'),
+      });
+
+      if (!validation.success) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Invalid query parameters',
+            details: formatValidationErrors(validation.details),
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     const pool = getPool();
     const client = await pool.connect();
 

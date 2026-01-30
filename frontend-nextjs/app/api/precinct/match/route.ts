@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrecinctForAddress } from '@/lib/precinct-service';
+import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * POST /api/precinct/match
@@ -31,15 +32,23 @@ import { getPrecinctForAddress } from '@/lib/precinct-service';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { address, lga, coordinates, heritageItemName } = body;
 
-    // Validate required fields
-    if (!address || !lga) {
+    // Validate request using PropertySearchSchema with coordinates
+    const validation = validateRequest(PropertySearchSchema, {
+      address: body.address,
+      lga: body.lga,
+    });
+
+    if (!validation.success) {
       return NextResponse.json({
         success: false,
-        error: 'address and lga are required'
+        error: 'Invalid request data',
+        details: formatValidationErrors(validation.details),
       }, { status: 400 });
     }
+
+    const { address, lga } = validation.data;
+    const { coordinates, heritageItemName } = body;
 
     console.log('[Precinct Match API] Matching address:', { address, lga, hasCoordinates: !!coordinates, heritageItemName });
 

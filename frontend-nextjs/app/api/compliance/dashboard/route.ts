@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { ComplianceDataClient, type ComplianceData } from '@/lib/database/compliance-client';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function GET(request: NextRequest) {
   try {
@@ -99,20 +100,24 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate request body
-    if (!body.zone) {
+    const validation = validateRequest(ComplianceCheckSchema, body);
+
+    if (!validation.success) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Zone is required in request body',
-          code: 'VALIDATION_ERROR'
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
         },
         { status: 400 }
       );
     }
 
+    const { zone, developmentType } = validation.data;
+
     // Extract constraints from request body
     const constraints = {
-      zone: body.zone,
+      zone,
       maxHeight: body.maxHeight,
       maxFsr: body.maxFsr,
       basixWater: body.basixWater,
@@ -125,7 +130,7 @@ export async function POST(request: NextRequest) {
     // Get compliance data
     const complianceClient = new ComplianceDataClient();
     const complianceData: ComplianceData = await complianceClient.getComplianceData(
-      body.zone,
+      zone,
       body.heritage || false,
       constraints
     );

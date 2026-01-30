@@ -20,6 +20,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface AssessmentRequest {
   address: string;
@@ -47,14 +48,23 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: AssessmentRequest = await request.json();
-    const { address, coordinates, developmentType = 'dwelling_house' } = body;
 
-    if (!address) {
+    // Validate input with Zod schema
+    const validation = validateRequest(FullAssessmentSchema, body);
+
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, error: 'Address is required' },
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+          timing: { ...timing, total: Date.now() - totalStart }
+        },
         { status: 400 }
       );
     }
+
+    const { address, coordinates, developmentType = 'dwelling_house' } = validation.data;
 
     const baseUrl = getBaseUrl(request);
     console.log(`[Assessment/Full] Starting for: ${address}`);

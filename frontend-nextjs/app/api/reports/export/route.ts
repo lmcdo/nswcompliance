@@ -1,9 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ReportExporter, ReportExportOptions } from '@/lib/assessment/reports';
+import { ReportSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
  try {
- const { content, options }: { content: any; options: ReportExportOptions } = await request.json();
+ const body = await request.json();
+
+ // Validate core report data using ReportSchema
+ const validation = validateRequest(ReportSchema, {
+ address: body.address || 'N/A',
+ zone: body.zone || 'N/A',
+ developmentType: body.developmentType || 'other',
+ format: body.options?.format || 'json',
+ });
+
+ if (!validation.success) {
+ return NextResponse.json(
+ {
+ success: false,
+ error: 'Invalid request data',
+ details: formatValidationErrors(validation.details),
+ },
+ { status: 400 }
+ );
+ }
+
+ const { content, options }: { content: any; options: ReportExportOptions } = body;
 
  if (!content) {
  return NextResponse.json(

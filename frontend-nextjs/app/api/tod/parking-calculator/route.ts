@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { TODSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 interface ParkingCalculationRequest {
  development_type: string;
@@ -14,6 +15,23 @@ interface ParkingCalculationRequest {
 export async function POST(request: NextRequest) {
  try {
  const body: ParkingCalculationRequest = await request.json();
+
+ // Validate request using TODSchema (use address as dummy value)
+ const validation = validateRequest(TODSchema, {
+ address: 'Parking Calculation',
+ coordinates: body.transport_proximity ? { lat: 0, lng: 0 } : undefined,
+ });
+
+ if (!validation.success) {
+ return NextResponse.json(
+ {
+ success: false,
+ error: 'Invalid request data',
+ details: formatValidationErrors(validation.details),
+ },
+ { status: 400 }
+ );
+ }
 
  // Validate required inputs
  if (!body.unit_count || !body.parking_rate) {

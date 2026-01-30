@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AutocompleteSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // Transport stations for NSW - focused on Inner West + major hubs
 // Coordinates verified from TfNSW and Google Maps
@@ -77,7 +78,27 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 export async function GET(request: NextRequest) {
  try {
  const searchParams = request.nextUrl.searchParams;
- const query = searchParams.get('query')?.toLowerCase() || '';
+
+ // Validate query params using AutocompleteSchema (only if query is provided)
+ const queryParam = searchParams.get('query');
+ if (queryParam) {
+ const validation = validateRequest(AutocompleteSchema, {
+ query: queryParam,
+ limit: parseInt(searchParams.get('limit') || '10'),
+ });
+
+ if (!validation.success) {
+ return NextResponse.json(
+ {
+ error: 'Invalid query parameters',
+ details: formatValidationErrors(validation.details),
+ },
+ { status: 400 }
+ );
+ }
+ }
+
+ const query = queryParam?.toLowerCase() || '';
  const lat = parseFloat(searchParams.get('lat') || '-33.8688');
  const lng = parseFloat(searchParams.get('lng') || '151.2093');
  const limit = parseInt(searchParams.get('limit') || '10');

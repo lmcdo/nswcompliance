@@ -10,6 +10,7 @@ import path from 'path';
 import { ProvisionSearchClient } from '@/lib/database/specialized/provision-search-client';
 import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/migration-flags';
 import type { ProvisionSearchFilters } from '@/types/provision-search';
+import { ProvisionSearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
@@ -17,7 +18,6 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get('q') || '';
     const userZone = searchParams.get('zone'); // NEW: Zone filter for Tier 1 ranking
     const useTier1 = searchParams.get('ranked') === 'true'; // NEW: Enable Tier 1 ranking
 
@@ -27,13 +27,39 @@ export async function GET(request: NextRequest) {
     const zones = searchParams.get('zones');
     const developmentTypes = searchParams.get('development_types');
 
+    // Build object for validation
+    const params = {
+      query: searchParams.get('q') || '',
+      documentType: searchParams.get('documentType') as 'LEP' | 'DCP' | 'SEPP' | 'all' | undefined,
+      lga: searchParams.get('lga') || undefined,
+      zone: userZone || undefined,
+      limit: parseInt(searchParams.get('limit') || '20'),
+      offset: parseInt(searchParams.get('offset') || '0')
+    };
+
+    // Validate request data with Zod
+    const validation = validateRequest(ProvisionSearchSchema, params);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { query, documentType, lga, zone, limit, offset } = validation.data;
+
     const filters: ProvisionSearchFilters = {
       documentTypes: documentTypes?.split(','),
       categories: categories?.split(','),
       zones: zones?.split(','),
       developmentTypes: developmentTypes?.split(','),
-      limit: parseInt(searchParams.get('limit') || '50'),
-      userZone: userZone || undefined // NEW: Add zone to filters
+      limit: limit,
+      userZone: zone
     };
 
     console.log(`[Provision Search] Query: ${query}, Tier1: ${useTier1}, Zone: ${userZone || 'all'}, Filters: ${JSON.stringify(filters)}`);

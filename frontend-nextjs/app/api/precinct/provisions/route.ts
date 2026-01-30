@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrecinctProvisions } from '@/lib/precinct-service';
+import { ProvisionLookupSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * POST /api/precinct/provisions
@@ -8,7 +9,8 @@ import { getPrecinctProvisions } from '@/lib/precinct-service';
  * Request body:
  * {
  *   precinctId: string,  // e.g., "29_" (note: underscore format from database)
- *   lga: string          // e.g., "Inner West"
+ *   zone?: string,       // Optional zone filter
+ *   limit?: number       // Optional limit (default 50)
  * }
  *
  * Response:
@@ -36,20 +38,38 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { precinctId, lga } = body;
 
-    // Validate required fields
-    if (!precinctId || !lga) {
+    // Validate request data with Zod
+    const validation = validateRequest(ProvisionLookupSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
+    }
+
+    const { precinctId, zone, limit } = validation.data;
+
+    // Extract additional fields for compatibility
+    const lga = body.lga || 'Inner West';
+
+    // Require either precinctId or zone
+    if (!precinctId && !zone) {
       return NextResponse.json({
         success: false,
-        error: 'precinctId and lga are required'
+        error: 'Either precinctId or zone is required'
       }, { status: 400 });
     }
 
-    console.log('[Precinct Provisions API] Request:', { precinctId, lga });
+    console.log('[Precinct Provisions API] Request:', { precinctId, zone, lga, limit });
 
     // Get provisions for precinct
-    const provisions = await getPrecinctProvisions(precinctId, lga);
+    const provisions = await getPrecinctProvisions(precinctId || '', lga);
 
     const processingTime = Date.now() - startTime;
 

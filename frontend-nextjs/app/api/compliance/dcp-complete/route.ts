@@ -3,6 +3,7 @@ import { query } from '@/lib/db';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import { filterRequirementsByDevType } from '@/lib/dev-type-filter';
 import { getZoneAliases } from '@/lib/zone-translation';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 // Force recompile
 
 /**
@@ -107,15 +108,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: DCPCompleteRequest = await request.json();
-    const { address, coordinates, zone, developmentType, lga, precinctId } = body;
 
     // Validate required parameters
-    if (!zone || !developmentType || !lga) {
+    const validation = validateRequest(ComplianceCheckSchema, body);
+
+    if (!validation.success) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required parameters: zone, developmentType, lga'
+        error: 'Invalid request data',
+        details: formatValidationErrors(validation.details),
       }, { status: 400 });
     }
+
+    const { address, zone, developmentType } = validation.data;
+    const { lga, coordinates, precinctId } = body;
 
     console.log('=== DCP Complete API ===');
     console.log('Zone:', zone);

@@ -4,11 +4,7 @@ import { NSWPlanningPortalService } from '@/lib/nsw-planning-portal';
 import { determineFormerCouncilArea } from '@/lib/inner-west-mapping-v2';
 import fs from 'fs';
 import path from 'path';
-
-interface PermissibilityRequest {
-  address: string;
-  developmentType: string;
-}
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // Load development type mappings
 function getDevTypeMappings() {
@@ -32,14 +28,23 @@ function normalizeDevTypeToLEP(uiType: string): string {
 
 export async function POST(request: NextRequest) {
   try {
-    const { address, developmentType }: PermissibilityRequest = await request.json();
+    const body = await request.json();
 
-    if (!address || !developmentType) {
-      return NextResponse.json({
-        success: false,
-        error: 'Address and development type are required'
-      }, { status: 400 });
+    // Validate request data with Zod
+    const validation = validateRequest(ComplianceCheckSchema, body);
+
+    if (!validation.success) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
+        { status: 400 }
+      );
     }
+
+    const { address, zone: userZone, developmentType, lga: userLga, coordinates, lotSize, frontage } = validation.data;
 
     // 1. Get property details from Planning Portal
     const propertyData = await NSWPlanningPortalService.getPropertyComplianceData(address);
@@ -53,11 +58,12 @@ export async function POST(request: NextRequest) {
 
     const { constraints } = propertyData;
 
-    const zone = constraints.zone;  // e.g., "R2"
+    // Use validated zone if provided, otherwise use from property data
+    const zone = userZone || constraints.zone;  // e.g., "R2"
     // Normalize LGA to title case (Planning Portal returns "INNER WEST", DB has "Inner West")
-    const lga = constraints.lga
+    const lga = userLga || (constraints.lga
       ? constraints.lga.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-      : 'Inner West';
+      : 'Inner West');
     const formerCouncil = determineFormerCouncilArea(address, lga);
 
     // 2. Normalize dev type to LEP terminology

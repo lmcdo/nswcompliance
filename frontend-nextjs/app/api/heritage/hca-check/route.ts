@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/db';
 import { getHeritageCache, createCacheKey } from '@/lib/cache';
+import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * Convert Web Mercator (EPSG:3857) coordinates to WGS84 (EPSG:4326)
@@ -86,13 +87,28 @@ function pointInPolygon(point: [number, number], polygon: number[][][]): boolean
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // Validate request using PropertySearchSchema
+    const validation = validateRequest(PropertySearchSchema, {
+      address: body.address || 'Heritage Check',
+      lga: body.lga,
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid request data',
+        details: formatValidationErrors(validation.details),
+      }, { status: 400 });
+    }
+
     const { x, y, lga } = body;
 
     // Validate inputs
-    if (!x || !y || !lga) {
+    if (!x || !y) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required parameters: x, y, lga'
+        error: 'Missing required parameters: x, y'
       }, { status: 400 });
     }
 

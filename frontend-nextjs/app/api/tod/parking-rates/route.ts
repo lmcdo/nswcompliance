@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { TODSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * TOD Parking Rates API
@@ -37,6 +38,20 @@ const SEPP_DWELLING_TYPE_MAP: Record<string, string[]> = {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
+
+    // Validate query params using TODSchema
+    const validation = validateRequest(TODSchema, {
+      address: searchParams.get('lga') || 'N/A',
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({
+        found: false,
+        error: 'Invalid query parameters',
+        details: formatValidationErrors(validation.details),
+      }, { status: 400 });
+    }
+
     const zone = searchParams.get('zone');
     const developmentType = searchParams.get('development_type');
     const lga = searchParams.get('lga');

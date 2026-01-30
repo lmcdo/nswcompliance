@@ -6,10 +6,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
+import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
  try {
  const body = await request.json();
+
+ // Validate request using FullAssessmentSchema
+ const validation = validateRequest(FullAssessmentSchema, {
+ address: body.address || 'N/A',
+ propertyId: body.propertyId,
+ developmentType: body.developmentType,
+ });
+
+ if (!validation.success) {
+ return NextResponse.json(
+ {
+ success: false,
+ error: 'Invalid request data',
+ details: formatValidationErrors(validation.details),
+ },
+ { status: 400 }
+ );
+ }
+
  const {
  propertyId,
  zone,

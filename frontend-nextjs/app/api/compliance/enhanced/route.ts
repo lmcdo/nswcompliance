@@ -6,36 +6,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
+import { ComplianceEnhancedSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const {
-      propertyId,
-      zone,
-      zoneCode,
-      developmentType,
-      assessmentDate,
-      includeRecommendations = true,
-      includeCitations = true,
-      detailedAnalysis = true
-    } = body;
 
-    // Handle both zone and zoneCode for compatibility
-    const zoneValue = zone || zoneCode;
+    // Validate request data with Zod
+    const validation = validateRequest(ComplianceEnhancedSchema, body);
 
-    // Validate required fields
-    if (!zoneValue || !developmentType) {
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'Missing required fields: zone, developmentType' },
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
         { status: 400 }
       );
     }
 
-    console.log(`[Enhanced Compliance] Property: ${propertyId}, Zone: ${zoneValue}, Type: ${developmentType}`);
+    // Use validated data
+    const { address, zone, developmentType, lga, coordinates, includeHeritage, includeFlood, includePrecinct } = validation.data;
+
+    console.log(`[Enhanced Compliance] Address: ${address}, Zone: ${zone}, Type: ${developmentType}, LGA: ${lga}`);
 
     // Call the real Python compliance engine
-    const result = await callRealComplianceEngine(zoneValue, propertyId, developmentType);
+    const result = await callRealComplianceEngine(zone, undefined, developmentType);
 
     return NextResponse.json({
       success: true,

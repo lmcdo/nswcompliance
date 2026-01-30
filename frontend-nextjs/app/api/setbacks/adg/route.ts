@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
+import { SetbackRequestSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 const pool = new Pool({
   user: process.env.PGUSER || 'postgres',
@@ -24,6 +25,24 @@ const pool = new Pool({
  */
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
+
+  // Validate request using SetbackRequestSchema
+  const validation = validateRequest(SetbackRequestSchema, {
+    zone: searchParams.get('zone') || 'R1',
+    developmentType: searchParams.get('development_type') || 'multi_dwelling_housing',
+  });
+
+  if (!validation.success) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Invalid query parameters',
+        details: formatValidationErrors(validation.details),
+      },
+      { status: 400 }
+    );
+  }
+
   const buildingHeightStr = searchParams.get('building_height');
   const developmentType = searchParams.get('development_type');
 

@@ -1,16 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { property_id, zone_code, development_type, include_development_permissions, basix_provisions, special_provisions } = body;
 
-    if (!zone_code) {
+    // Validate request using ComplianceCheckSchema
+    const validation = validateRequest(ComplianceCheckSchema, {
+      address: body.address || 'N/A',
+      zone: body.zone_code,
+      developmentType: body.development_type || 'other',
+    });
+
+    if (!validation.success) {
       return NextResponse.json(
-        { error: 'zone_code is required' },
+        {
+          success: false,
+          error: 'Invalid request data',
+          details: formatValidationErrors(validation.details),
+        },
         { status: 400 }
       );
     }
+
+    const { property_id, zone_code, development_type, include_development_permissions, basix_provisions, special_provisions } = body;
 
     console.log(`[Enhanced API] Compliance request: zone=${zone_code}, dev_type=${development_type}, property_id=${property_id}`);
 

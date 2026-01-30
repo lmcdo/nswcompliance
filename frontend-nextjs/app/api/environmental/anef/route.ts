@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/db';
+import { CoordinatesSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * ANEF Building Acceptability Standards (AS2021:2015)
@@ -51,6 +52,46 @@ const BUILDING_STANDARDS: Record<string, {
     conditionalMax: 999,
   },
 };
+
+/**
+ * POST /api/environmental/anef
+ *
+ * Check ANEF contour levels for a property location
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+
+    // Validate coordinates using CoordinatesSchema
+    const validation = validateRequest(CoordinatesSchema, {
+      lat: body.lat,
+      lng: body.lng,
+    });
+
+    if (!validation.success) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid coordinates',
+        details: formatValidationErrors(validation.details),
+      }, { status: 400 });
+    }
+
+    const { lat, lng } = validation.data;
+
+    // Delegate to GET handler with query params
+    const url = new URL(request.url);
+    url.searchParams.set('lat', lat.toString());
+    url.searchParams.set('lng', lng.toString());
+
+    return GET(new NextRequest(url));
+  } catch (error) {
+    console.error('[ANEF API] POST error:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Internal server error'
+    }, { status: 500 });
+  }
+}
 
 /**
  * Point-in-polygon check using ray casting algorithm

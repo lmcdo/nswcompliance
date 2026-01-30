@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 /**
  * Week 3: Categorized Precinct Requirements API
@@ -52,21 +53,41 @@ export async function POST(request: NextRequest) {
 
   try {
     const body: PrecinctRequirementQuery = await request.json();
-    const { address, precinctId, precinctName, lga, heritage } = body;
 
     console.log('[Precinct Requirements API] Received request body:', JSON.stringify(body, null, 2));
-    console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga, heritage });
-    console.log('[Precinct Requirements API] precinctId type:', typeof precinctId, 'value:', precinctId);
-    console.log('[Precinct Requirements API] Will use precinctId?', !!precinctId);
-    console.log('[Precinct Requirements API] Heritage mode?', !!heritage);
 
     // Must provide at least one identifier
-    if (!precinctId && !precinctName && !address) {
+    if (!body.precinctId && !body.precinctName && !body.address) {
       return NextResponse.json({
         success: false,
         error: 'Must provide precinctId, precinctName, or address'
       }, { status: 400 });
     }
+
+    // Validate if address is provided (optional since precinctId/precinctName can be used)
+    if (body.address) {
+      const validation = validateRequest(ComplianceCheckSchema, {
+        address: body.address,
+        zone: 'R1', // Dummy value for schema validation
+        developmentType: 'dwelling_house', // Dummy value for schema validation
+        lga: body.lga,
+      });
+
+      if (!validation.success) {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid address data',
+          details: formatValidationErrors(validation.details),
+        }, { status: 400 });
+      }
+    }
+
+    const { address, precinctId, precinctName, lga, heritage } = body;
+
+    console.log('[Precinct Requirements API] Extracted values:', { address, precinctId, precinctName, lga, heritage });
+    console.log('[Precinct Requirements API] precinctId type:', typeof precinctId, 'value:', precinctId);
+    console.log('[Precinct Requirements API] Will use precinctId?', !!precinctId);
+    console.log('[Precinct Requirements API] Heritage mode?', !!heritage);
 
     // Query categorized requirements with ALL source provisions for text matching
     let requirementsQuery = `

@@ -5,8 +5,10 @@ import { DatabaseClient } from '@/lib/database/client';
 import { SEPPLEPProcessor } from '@/lib/compliance/sepp-lep-processor';
 import type { SetbackCalculationRequest, SetbackCalculationResponse } from '@/types/setback';
 import { z } from 'zod';
+import { SetbackRequestSchema as CentralSetbackSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
 // Request validation schema - PRP-K3 Zone-Specific (geometry optional)
+// Note: We have both local and centralized schemas - using local for complex geometry validation
 const SetbackRequestSchema = z.object({
  property_id: z.number().int().positive(),
  lot_geometry: z.object({
