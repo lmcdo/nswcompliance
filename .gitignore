@@ -365,3 +365,6 @@ frontend-nextjs/.wrangler/
 # Local tool data
 .beads/
 lancedb_data/
+
+# Archived investigation/fix scripts (kept locally for reference)
+archive/
