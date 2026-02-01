@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+
+export const dynamic = 'force-dynamic';
 const pool = new Pool({
   host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
   database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const provisionId = searchParams.get('provision_id');
     const referenceType = searchParams.get('type');
     const resolvedOnly = searchParams.get('resolved_only') === 'true';

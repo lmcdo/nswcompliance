@@ -17,6 +17,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database/pool-manager';
 
+
+export const dynamic = 'force-dynamic';
 interface GuideStep {
   step_number: number;
   title: string;
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<GuidesResp
   const startTime = Date.now();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Parse query parameters
     const slug = searchParams.get('slug');

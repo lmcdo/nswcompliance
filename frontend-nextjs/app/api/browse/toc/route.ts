@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+
+export const dynamic = 'force-dynamic';
 interface TOCSection {
   sectionNumber: string;
   sectionTitle: string;
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest) {
  * /api/browse/toc?documentId=Marrickville_DCP_2011__2_10_Parking
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const documentId = searchParams.get('documentId');
 
   if (!documentId) {

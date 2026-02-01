@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Pool } from 'pg';
 
+
+export const dynamic = 'force-dynamic';
 // Database connection
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
@@ -118,7 +120,7 @@ export async function POST(request: NextRequest) {
 // GET endpoint to retrieve feedback (for admin dashboard)
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const type = searchParams.get('type');
     const status = searchParams.get('status');
     const limit = parseInt(searchParams.get('limit') || '100');

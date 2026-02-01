@@ -12,12 +12,14 @@ import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/mi
 import type { ProvisionSearchFilters } from '@/types/provision-search';
 import { ProvisionSearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
   const requestId = request.headers.get('x-request-id') || `req_${Date.now()}`;
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const userZone = searchParams.get('zone'); // NEW: Zone filter for Tier 1 ranking
     const useTier1 = searchParams.get('ranked') === 'true'; // NEW: Enable Tier 1 ranking
 

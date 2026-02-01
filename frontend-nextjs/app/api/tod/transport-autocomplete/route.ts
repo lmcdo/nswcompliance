@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AutocompleteSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+export const dynamic = 'force-dynamic';
+
 // Transport stations for NSW - focused on Inner West + major hubs
 // Coordinates verified from TfNSW and Google Maps
 const TRANSPORT_STATIONS = [

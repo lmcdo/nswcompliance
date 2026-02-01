@@ -8,9 +8,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ComplianceDataClient, type ComplianceData } from '@/lib/database/compliance-client';
 import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Extract query parameters
     const zone = searchParams.get('zone');

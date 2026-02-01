@@ -5,6 +5,8 @@ import { calculateLotDimensions, type LotDimensions } from '@/lib/geometry/lot-d
 import { detectCornerLot } from '@/lib/geometry/corner-lot-detection';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 // NSW Planning API base URL
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
 
@@ -46,7 +48,7 @@ export async function GET(
  }
 
  // Get optional coordinates from query params
- const { searchParams } = new URL(request.url);
+ const searchParams = request.nextUrl.searchParams;
  const lat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : undefined;
  const lng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : undefined;
 

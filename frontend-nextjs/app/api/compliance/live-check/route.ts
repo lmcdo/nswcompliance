@@ -7,6 +7,8 @@ import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/mi
 import type { ComplianceCalculationRequest, LiveComplianceResponse } from '@/types/live-compliance';
 import { LiveCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 interface ComplianceResult {
  compliant: boolean;
  actual_value: number;
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint for testing
 export async function GET(request: NextRequest) {
- const { searchParams } = new URL(request.url);
+ const searchParams = request.nextUrl.searchParams;
  const address = searchParams.get('address');
 
  if (!address) {

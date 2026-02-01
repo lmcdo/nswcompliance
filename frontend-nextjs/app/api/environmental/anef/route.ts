@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/db';
 import { CoordinatesSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 /**
  * ANEF Building Acceptability Standards (AS2021:2015)
  * Defines acceptable, conditional, and unacceptable ANEF levels for each building type

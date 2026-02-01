@@ -32,6 +32,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 
+
+export const dynamic = 'force-dynamic';
 interface PropertyFilters {
   lga?: string;
   zone?: string;
@@ -182,7 +184,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Parse filters
     const filters: PropertyFilters = {

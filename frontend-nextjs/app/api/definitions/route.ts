@@ -17,6 +17,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/database/pool-manager';
 
+
+export const dynamic = 'force-dynamic';
 interface DefinitionResult {
   id: number;
   term: string;
@@ -47,7 +49,7 @@ export async function GET(request: NextRequest): Promise<NextResponse<Definition
   const startTime = Date.now();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Parse query parameters
     const term = searchParams.get('term');

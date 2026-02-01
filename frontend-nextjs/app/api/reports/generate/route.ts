@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ReportGenerator, ReportConfig } from '@/lib/assessment/reports';
 import { ReportSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 export async function POST(request: NextRequest) {
  try {
  const body = await request.json();
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
- const { searchParams } = new URL(request.url);
+ const searchParams = request.nextUrl.searchParams;
  const action = searchParams.get('action');
 
  if (action === 'templates') {

@@ -6,13 +6,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient } from '@/lib/database/pool-manager';
 
+
+export const dynamic = 'force-dynamic';
 const DOCUMENT_ID = 'Inner_West_Local_Environmental_Plan_2022_Part_6';
 
 export async function GET(request: NextRequest) {
   let client;
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const clauseNumber = searchParams.get('clause');
 
     if (!clauseNumber) {

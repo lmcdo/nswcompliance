@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { TODSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 /**
  * TOD Parking Rates API
  *
@@ -37,7 +39,7 @@ const SEPP_DWELLING_TYPE_MAP: Record<string, string[]> = {
  */
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Validate query params using TODSchema
     const validation = validateRequest(TODSchema, {

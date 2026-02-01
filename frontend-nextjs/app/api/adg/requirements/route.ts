@@ -3,6 +3,8 @@ import { Pool } from 'pg';
 import { getSEPPCache, createCacheKey } from '@/lib/cache';
 import { ComplianceCheckSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 // Database connection (PRP-A1 compliant)
 const pool = new Pool({
   host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
@@ -53,7 +55,7 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
     const section = searchParams.get('section');
     const metric = searchParams.get('metric');
     const numericOnly = searchParams.get('numeric_only') === 'true';

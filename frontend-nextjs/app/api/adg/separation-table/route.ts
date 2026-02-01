@@ -15,6 +15,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { ADGSeparationSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 interface SeparationRow {
   height_category: string;
   height_range: string;
@@ -88,7 +90,7 @@ function parseADGSeparationText(text: string): SeparationRow[] {
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Validate query params if provided (optional for this endpoint)
     if (searchParams.get('developmentType') && searchParams.get('dwellingCount')) {

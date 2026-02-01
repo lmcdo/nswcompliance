@@ -9,9 +9,11 @@ import path from 'path';
 import { VersionClient } from '@/lib/database/specialized/version-client';
 import { shouldUsePostgreSQL, logMigrationMetrics } from '@/lib/feature-flags/migration-flags';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
  try {
- const { searchParams } = new URL(request.url);
+ const searchParams = request.nextUrl.searchParams;
  const action = searchParams.get('action');
  const documentType = searchParams.get('documentType');
  const documentIdentifier = searchParams.get('documentIdentifier');

@@ -14,6 +14,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '@/lib/property-data';
 
+
+export const dynamic = 'force-dynamic';
 // CDC-eligible residential zones
 const CDC_ELIGIBLE_ZONES = [
   'R1', 'R2', 'R3', 'R4',  // Residential zones
@@ -298,7 +300,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const address = searchParams.get('address');
 
   if (!address) {

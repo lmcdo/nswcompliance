@@ -22,6 +22,8 @@ import { getPool } from '@/lib/db';
 import { z } from 'zod';
 import { validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+
+export const dynamic = 'force-dynamic';
 // SEPP Housing legislation URL
 const SEPP_HOUSING_URL = 'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714';
 
@@ -57,7 +59,7 @@ const ParkingQuerySchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
+    const searchParams = request.nextUrl.searchParams;
 
     // Convert URLSearchParams to object
     const params = {

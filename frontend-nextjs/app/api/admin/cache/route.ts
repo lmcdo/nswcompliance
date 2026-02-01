@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clearAllCaches, getAllCacheStats, cleanupAllCaches } from '@/lib/cache';
 
+
+export const dynamic = 'force-dynamic';
 /**
  * Admin Cache Management Endpoint
  *
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');
 
   if (action === 'clear') {

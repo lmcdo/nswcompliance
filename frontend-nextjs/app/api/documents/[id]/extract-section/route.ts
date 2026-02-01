@@ -13,6 +13,8 @@ import { extractSection, extractMultipleSections } from '@/lib/document-extracti
 import { getCachedSection, cacheSection, getCacheStats } from '@/lib/document-extraction/section-cache';
 import type { ExtractedSection } from '@/lib/lga-configs/types';
 
+
+export const dynamic = 'force-dynamic';
 const pool = new Pool({
   host: process.env.DB_HOST || process.env.DATABASE_HOST || 'localhost',
   database: process.env.DB_NAME || process.env.DATABASE_NAME || 'nsw_planning',
@@ -27,7 +29,7 @@ export async function GET(
 ) {
   const startTime = Date.now();
   const documentId = params.id;
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
 
   // Get query parameters
   const sectionParam = searchParams.get('section');

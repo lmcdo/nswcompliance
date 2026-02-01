@@ -9,6 +9,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+
+export const dynamic = 'force-dynamic';
 interface Provision {
   id: number;
   documentId: string;
@@ -192,7 +194,7 @@ export async function POST(request: NextRequest) {
  * /api/browse/section?documentId=...&sectionNumber=2.10.1
  */
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
+  const searchParams = request.nextUrl.searchParams;
   const documentId = searchParams.get('documentId');
   const sectionNumber = searchParams.get('sectionNumber');
 
