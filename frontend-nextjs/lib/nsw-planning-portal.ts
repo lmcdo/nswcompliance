@@ -62,6 +62,14 @@ export interface PlanningConstraints {
  acceleratedTOD?: AcceleratedTODInfo;
  hiaArea?: HIAInfo;
 
+ // Phase 1: Tree Canopy Coverage
+ treeCanopy?: {
+ coverage: string | null; // e.g., "35%" or "35"
+ coverageClass: string | null; // e.g., "Medium-High"
+ year: string;
+ source: string;
+ } | null;
+
  // Phase 6: Local Provisions (LEP Schedule 7)
  localProvisions?: LocalProvision[];
 }
@@ -643,7 +651,14 @@ export class NSWPlanningPortalService {
  break;
  
  case 'Greater Sydney Tree Canopy Cover 2019':
- // Add tree canopy data extraction
+ console.log('✅ Extracting Tree Canopy data:', result);
+ constraints.treeCanopy = {
+ coverage: result['Tree Canopy Cover %'] || result['Canopy_Cover'] || result['Cover_Percent'],
+ coverageClass: result['Cover Class'] || result['Canopy_Class'],
+ year: '2019',
+ source: 'Greater Sydney Tree Canopy Cover 2019'
+ };
+ console.log('Tree canopy extracted:', constraints.treeCanopy);
  break;
 
  // ===== PHASE 5: TOD/HIA EXTRACTION =====
