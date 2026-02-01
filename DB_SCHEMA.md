@@ -1,15 +1,16 @@
 # Database Schema - Complete Reference
 
-Last Updated: 2026-01-10
-Total Tables: 58  
-Total Provisions: 47,818
+Last Updated: 2026-02-01
+Total Tables: 58
+Total Provisions: 46,585 (10,008 actionable)
 
 See DB_SCHEMA_RAW.txt for full column details.
 
 ## Core Tables (Must Know)
 
-regulatory_provisions - 47,818 rows, 51 cols
-  Main provision table. Use v2_precinct_id (102 precincts), v2_dcp_part, pdf_page_image_url
+regulatory_provisions - 46,585 rows, 51 cols
+  Main provision table. 10,008 actionable (v2_is_actionable=true)
+  Use v2_precinct_id (102 precincts), v2_dcp_part, pdf_page_image_url
 
 sepp_structured_requirements - 3 rows, 12 cols  
   Curated SEPP data with JSONB requirement_data and PDF links

@@ -48,9 +48,9 @@
 - DAISY - "Generative AI for DA process"
 
 **Your edge:**
-- 47,818 provisions vs PropCode's 1,000
-- AI chat layer (they don't have this)
-- Multi-endpoint synthesis
+- 10,000+ actionable controls (vs PropCode's 1,000 rules)
+- 46,585 total provisions (SEPP + DCP depth they don't have)
+- AI chat layer with multi-endpoint synthesis (unique)
 - 6-12 month window before market saturates
 
 ## Key Files

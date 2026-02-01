@@ -9,4 +9,12 @@ npm run type-check || {
   exit 1
 }
 
-echo "✅ Pre-commit checks passed"
+echo "✅ Type check passed"
+
+# Run documentation reminder hook
+if [ -f "scripts/git-hooks/pre-commit" ]; then
+  echo ""
+  bash scripts/git-hooks/pre-commit || exit 1
+fi
+
+echo "✅ Pre-commit checks complete"
