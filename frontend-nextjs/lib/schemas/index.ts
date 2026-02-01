@@ -203,17 +203,15 @@ export const ProvisionLookupSchema = z.object({
 
 /**
  * Housing SEPP Eligibility Schema - /api/housing-sepp/eligibility
+ * Checks all development types for a property, returns eligibility for each
  */
 export const HousingSEPPSchema = z.object({
-  address: AddressStringSchema,
-  zone: ZoneCodeSchema,
+  zoneCode: ZoneCodeSchema,
   lotSize: z.number().positive('Lot size must be positive'),
-  developmentType: z.enum([
-    'manor_house',
-    'terrace_house',
-    'dual_occupancy',
-    'multi_dwelling_housing',
-  ]),
+  lotWidth: z.number().positive('Lot width must be positive'),
+  stationDistance: z.number().positive('Station distance must be positive').optional(),
+  isLMRArea: z.boolean().optional(),
+  address: AddressStringSchema.optional(),
   lga: LGASchema.optional(),
   coordinates: CoordinatesSchema.optional(),
 });

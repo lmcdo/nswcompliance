@@ -93,12 +93,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { address, zone: zoneCode, lotSize, developmentType, lga, coordinates } = validation.data;
-
-    // Extract additional fields for compatibility
-    const lotWidth = body.lotWidth;
-    const stationDistance = body.stationDistance;
-    const isLMRArea = body.isLMRArea;
+    const { zoneCode, lotSize, lotWidth, stationDistance, isLMRArea, address, lga, coordinates } = validation.data;
 
     // Normalize zone code (e.g., "R2 Low Density Residential" -> "R2")
     const zone = zoneCode.split(' ')[0].toUpperCase();
