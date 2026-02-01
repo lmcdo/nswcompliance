@@ -27,6 +27,103 @@
 
 **Timeline:** 16 days total (6 phases)
 
+### 2b. Validation Strategy
+**File:** `.claude/AI_IMPLEMENTATION_VALIDATION_STRATEGY.md`
+**Purpose:** How to validate each phase aligns with Gemini capacity/legitimacy/effectiveness
+**User Directive:** "No quick wins. Cover ALL."
+**Key Framework:**
+- 4-part test per phase: Capacity, Legitimacy, Effectiveness, Safety
+- Testing: 10 real queries + 5 edge cases + 3 adversarial inputs per phase
+- Validation: 100% match between AI answer and direct lookup
+- Regression testing after each phase
+- Rollback plan if validation fails
+
+### 2c. Detailed Implementation Plan
+**File:** `.claude/DETAILED_IMPLEMENTATION_PLAN.md`
+**Purpose:** File-by-file, step-by-step implementation guide (reduces errors, increases success)
+**Scope:** All 6 phases with exact code changes, database queries, tests
+**Detail Level:**
+- Exact files to modify with line numbers
+- Full code examples for each change
+- Database verification queries
+- Success criteria per step
+- Rollback procedures
+- 300+ test cases defined
+**Timeline:** 16 days with full testing
+
+### 2d. UX Strategy
+**File:** `.claude/UX_STRATEGY_AI_LAYER.md`
+**Purpose:** How to integrate 200+ data fields without overwhelming users or losing professional trust
+**Scope:** Information architecture, UI patterns, progressive disclosure strategy
+**Key Insights:**
+- Current "declarative style" (Quick Reference) is optimal for compliance domain
+- Progressive disclosure: collapsible panels for complexity
+- Confidence indicators for uncertain data (<80%)
+- Structured synthesis format (checklist vs paragraph)
+- Domain best practices from legal research, tax software, medical diagnosis
+**Includes:**
+- 5 detailed UX patterns with mockups
+- A/B testing strategy
+- Risk mitigation plans
+- User testing protocol
+- Success metrics
+
+### 2e. Pre-Implementation Checklist
+**File:** `.claude/PRE_IMPLEMENTATION_CHECKLIST.md`
+**Purpose:** Comprehensive checklist to complete BEFORE starting Day 1 implementation
+**Scope:** 12 critical sections covering operational readiness
+**Sections:**
+1. Development Environment Setup
+2. Database Verification (table existence, row counts, data quality)
+3. Existing AI Chat Status Audit
+4. Data Population Verification (contextual_guidance_real, cross_reference_index)
+5. API Endpoints Audit
+6. Feature Flags Setup
+7. Monitoring Setup (logging, metrics, alerting)
+8. Performance Baselines
+9. Rollback Procedures Testing
+10. Cost Management (Gemini API budget)
+11. Security Checklist
+12. Documentation Verification
+**Timeline:** 2-3 hours to complete all checkboxes
+**Status:** MUST complete before implementation begins
+
+### 2f. Deployment & Operations Plan
+**File:** `.claude/DEPLOYMENT_OPERATIONS_PLAN.md`
+**Purpose:** How to deploy incrementally, monitor, and operate in production
+**Scope:** Deployment strategy, monitoring, incident response, cost management
+**Includes:**
+- Phase-by-phase rollout (Week 1-6, NOT "big bang")
+- Feature flag strategy per environment
+- Deployment checklist (before, during, after per phase)
+- Monitoring dashboards and key metrics (per phase)
+- Logging strategy (what to log, retention policies)
+- Incident response playbooks (P0-P3 severity levels with exact procedures)
+- Cost management and optimization ($0.32/month baseline, optimization if needed)
+- Operational runbook (daily 5 min, weekly 30 min, monthly 2 hours)
+- Success criteria per phase and overall
+**Critical Procedures:**
+- Hallucination incident response (15 min → 24 hour recovery)
+- Performance degradation response
+- Complete outage rollback
+**Budget:** <$10/month (extremely low cost)
+
+### 2g. Quickstart Implementation Guide
+**File:** `.claude/QUICKSTART_IMPLEMENTATION_GUIDE.md`
+**Purpose:** Get from "ready to start" to "Day 1 implementation" in 30 minutes
+**Audience:** Developer implementing AI layer (you after a break, or someone else)
+**Covers:**
+- Document reading order (90 min total reading before starting)
+- Local development setup (15 min)
+- Database verification procedures (10 min)
+- Testing existing AI chat (5 min)
+- Pre-implementation checklist completion guide
+- Day 1 preparation checklist
+- Troubleshooting common issues (dev server, database, Gemini API, tests, AI chat)
+- Documentation quick reference (when to read what)
+**Ready to start checklist:** 9 items must be ✓ before Day 1
+**Status:** START HERE for implementation
+
 ### 3. Strategic Design
 **File:** `docs/AI_LAYER_STRATEGIC_DESIGN.md`
 **Purpose:** How to reference existing data, not regenerate
@@ -49,10 +146,10 @@
 **File:** `.claude/PROVISION_COUNTS.md`
 **Purpose:** Accurate provision count breakdown for competitive defense
 **Key Numbers:**
-- 46,585 total provisions (10,008 actionable)
-- 35,028 SEPP (State)
-- 5,836 Inner West LEP (Local Law)
-- 5,721 DCP (Design Guidelines)
+- 21,492 total provisions in database (subset of full 46,585 corpus)
+- 16,413 SEPP-like provisions (no "SEPP" in document_id)
+- 1,414 Inner West LEP provisions
+- 3,665 DCP provisions
 
 ---
 
@@ -151,16 +248,89 @@
 
 ---
 
-## Next Steps
+---
 
-1. **Review plan** with stakeholders
-2. **Start Phase 1** (enable tree canopy, ANEF, confidence - 2 days)
-3. **Build Phase 5** (granny flat synthesis - 4 days) in parallel if desired
-4. **Test with 5 real users** before wider release
-5. **Launch outreach** with granny flat synthesis as hero feature
+## 🎯 START HERE
+
+### 1. Read Query Scope First (CRITICAL)
+
+**File:** `.claude/AI_QUERY_SCOPE_AND_CAPABILITIES.md` (30KB)
+
+**READ THIS BEFORE IMPLEMENTING.** Defines:
+- What questions system can/cannot answer (8 categories)
+- Complexity limits (simple/medium/complex/refuse)
+- Edge case handling (7 scenarios)
+- Professional stakeholder needs (5 personas)
+- System boundaries (never cross these)
+- Success metrics
+
+**Why read first:** Prevents building features outside viable scope.
+
+### 1b. Review Complex Workflow Catalog (CRITICAL)
+
+**File:** `.claude/COMPLEX_WORKFLOW_CATALOG.md` (40KB)
+
+**THE KEY DIFFERENTIATOR.** Comprehensive catalog of all viable complex workflows:
+- 5 workflows already implemented ✅ (granny flat, permissibility, parking, capacity, precinct)
+- 10 workflows prioritized for build (15-27 hours development)
+- 5 data-dependent workflows (conditional on external data)
+- Template implementation patterns
+- Per-workflow success metrics
+- Clear refusal boundaries
+
+**Total viable scope:** 15-20 templated workflows (not infinite synthesis)
+
+**Why critical:** Complex multi-endpoint synthesis is the unique value proposition vs competitors.
+
+### 2. Then Follow Master Plan
+
+**File:** `.claude/AI_LAYER_MASTER_IMPLEMENTATION_PLAN.md` (85KB)
+
+**Implementation guide.** Consolidates all 7 investigation documents into one comprehensive day-by-day guide.
+
+**Contains:**
+- Strategy & Context (zero hallucination, competitive positioning)
+- Day-by-day implementation (16 days, all 6 phases)
+  - Each day: Technical steps + UX integration + Validation tests
+  - Exact file paths and line numbers
+  - Code snippets ready to copy/paste
+- UX Pattern Library (5 patterns with mockups)
+- Testing Reference (300+ test cases)
+- Rollback Procedures
+- Success Metrics & ROI
+
+**No other documents needed for implementation.**
 
 ---
 
-**Status:** Investigation complete, ready for implementation
-**Last Updated:** 2026-02-01
-**Contact:** See COMPLETE_DATA_EXPLOITATION_PLAN.md for technical details
+## Next Steps
+
+### BEFORE Implementation
+1. **Review Security:** Read `ANTI_COPYCAT_SECURITY.md` - Implement 5.5 hours of critical protections
+2. **Read Quickstart:** `QUICKSTART_IMPLEMENTATION_GUIDE.md` (30 min)
+3. **Complete Checklist:** `PRE_IMPLEMENTATION_CHECKLIST.md` ALL checkboxes (2-3 hours)
+4. **Review Deployment:** `DEPLOYMENT_OPERATIONS_PLAN.md` (15 min)
+
+### Implementation (After Checklist Complete)
+5. **Follow Master Plan:** `AI_LAYER_MASTER_IMPLEMENTATION_PLAN.md` day-by-day
+6. **Create feature branch:** `feature/ai-layer-phase-1`
+7. **Start Day 1** (tree canopy + ANEF - from master plan)
+8. **Deploy incrementally** per DEPLOYMENT_OPERATIONS_PLAN (Week 1-6)
+9. **Monitor metrics** per phase (hallucination rate, response time, success rate)
+10. **Test with 5 real users** before wider release
+
+### Documentation Status
+- **Investigation:** ✅ Complete (7 documents, 218KB)
+- **Operational Readiness:** ✅ Complete (3 documents)
+- **Security Strategy:** ✅ Complete (2 documents)
+- **Integration:** ✅ **COMPLETE - Master plan created**
+
+---
+
+**Status:** Implementation-ready (master plan consolidated, security strategy defined)
+**Last Updated:** 2026-02-01 (consolidated all docs + added security)
+**Total Documentation:** 13 documents, ~300KB (1 master plan + 12 reference)
+**Next Immediate Step:**
+1. Implement Tier 1 security protections (5.5 hours) - CRITICAL before production
+2. Complete PRE_IMPLEMENTATION_CHECKLIST.md (2-3 hours)
+3. Follow AI_LAYER_MASTER_IMPLEMENTATION_PLAN.md Day 1
