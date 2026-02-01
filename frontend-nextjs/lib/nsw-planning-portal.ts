@@ -652,9 +652,10 @@ export class NSWPlanningPortalService {
  
  case 'Greater Sydney Tree Canopy Cover 2019':
  console.log('✅ Extracting Tree Canopy data:', result);
+ // Field name in actual API response is "Canopy %" not "Tree Canopy Cover %"
  constraints.treeCanopy = {
- coverage: result['Tree Canopy Cover %'] || result['Canopy_Cover'] || result['Cover_Percent'],
- coverageClass: result['Cover Class'] || result['Canopy_Class'],
+ coverage: result['Canopy %'] || result['Tree Canopy Cover %'] || result['Canopy_Cover'],
+ coverageClass: result['Cover Class'] || result['Canopy_Class'] || result['Canopy Class'],
  year: '2019',
  source: 'Greater Sydney Tree Canopy Cover 2019'
  };
