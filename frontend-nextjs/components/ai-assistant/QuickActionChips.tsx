@@ -26,13 +26,8 @@ const PROPERTY_SEPP = [
   { label: 'Housing SEPP', question: 'What am I eligible for under Housing SEPP?' },
 ];
 
-const PROPERTY_DCP = [
-  { label: 'Setbacks', question: 'What are the setback requirements?' },
-  { label: 'Parking', question: 'What are the parking requirements?' },
-  { label: 'Landscaping', question: 'What are the landscaping requirements?' },
-  { label: 'Open space', question: 'What are the open space requirements?' },
-  { label: 'Privacy', question: 'What are the privacy requirements?' },
-];
+// DCP provisions removed - provision extraction unreliable, users should check DCP tab
+// const PROPERTY_DCP = [];
 
 // General resources (no address needed) - 13 chips
 const GUIDES = [
@@ -65,7 +60,7 @@ const ADDRESS_LOOKUPS = [
   { category: 'LEP Controls', options: PROPERTY_LEP },
   { category: 'What Can I Build?', options: PROPERTY_PERMISSIBILITY },
   { category: 'SEPP Housing', options: PROPERTY_SEPP },
-  { category: 'DCP Requirements', options: PROPERTY_DCP },
+  // DCP Requirements removed - check DCP tab for detailed provisions
 ];
 
 const GENERAL_RESOURCES = [
