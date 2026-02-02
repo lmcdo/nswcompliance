@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Home, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import { MessageCircle, X, Send, Home, Loader2, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react';
 import { ChatMessage, Message } from './ChatMessage';
 import { QuickActionChips } from './QuickActionChips';
 import { PropertyContext } from '@/lib/ai/classifier';
@@ -199,6 +199,16 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
           </div>
         </div>
         <div className="flex items-center gap-1">
+          {messages.length > 0 && (
+            <button
+              onClick={clearHistory}
+              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+              aria-label="New question"
+              title="New question"
+            >
+              <RotateCcw size={18} />
+            </button>
+          )}
           <button
             onClick={() => setIsMinimized(true)}
             className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded transition-colors"
