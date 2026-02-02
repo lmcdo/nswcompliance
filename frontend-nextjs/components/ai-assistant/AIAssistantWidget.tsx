@@ -85,24 +85,12 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
     setIsLoading(true);
 
     try {
-      // Clean propertyContext to remove undefined/null values
-      const cleanContext = propertyContext ? {
-        ...(propertyContext.address && { address: propertyContext.address }),
-        ...(propertyContext.zone && { zone: propertyContext.zone }),
-        ...(propertyContext.lga && { lga: propertyContext.lga }),
-        ...(propertyContext.formerCouncil && { formerCouncil: propertyContext.formerCouncil }),
-        ...(propertyContext.lotSize && { lotSize: propertyContext.lotSize }),
-        ...(propertyContext.lotWidth && { lotWidth: propertyContext.lotWidth }),
-        ...(propertyContext.precinctId && { precinctId: propertyContext.precinctId }),
-        ...(propertyContext.constraints && { constraints: propertyContext.constraints }),
-      } : undefined;
-
       const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: question,
-          ...(cleanContext && { propertyContext: cleanContext }),
+          propertyContext,
         }),
       });
 

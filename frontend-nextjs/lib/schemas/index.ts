@@ -100,6 +100,7 @@ export const LGASchema = z
 /**
  * AI Chat Schema - /api/ai/chat
  * High-risk: Calls external LLM API (cost impact)
+ * PERMISSIVE: Accepts any reasonable property context structure
  */
 export const AIChatSchema = z.object({
   message: z
@@ -108,25 +109,19 @@ export const AIChatSchema = z.object({
     .max(500, 'Message must be less than 500 characters'),
   propertyContext: z
     .object({
-      address: AddressStringSchema.optional(),
-      zone: z.string().optional(), // Allow any zone string (not just uppercase alphanumeric)
-      lga: LGASchema.optional(),
+      address: z.string().optional(),
+      zone: z.string().optional(),
+      lga: z.string().optional(),
       formerCouncil: z.string().optional(),
       lotSize: z.number().positive().optional(),
       lotWidth: z.number().positive().optional(),
       precinctId: z.string().optional(),
       coordinates: CoordinatesSchema.optional(),
-      constraints: z.object({
-        heritage: z.boolean().optional(),
-        heritageName: z.string().optional(),
-        hca: z.string().optional(),
-        flood: z.boolean().optional(),
-        bushfire: z.boolean().optional(),
-      }).optional(),
+      constraints: z.record(z.any()).optional(), // Accept any constraints structure
     })
-    .passthrough() // Allow additional fields for future extensibility
+    .passthrough() // Allow additional fields
     .optional(),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.string().optional(), // Allow any string, not just UUID
 });
 
 /**
