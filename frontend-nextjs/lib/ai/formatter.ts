@@ -187,22 +187,64 @@ function formatDcpProvisions(data: any): string {
 
   let response = `**${topicTitle} Requirements** — ${totalCount} provision${totalCount === 1 ? '' : 's'}`;
 
-  // Show all provisions (no truncation)
+  // Filter and show useful provisions only
+  let shownCount = 0;
   for (const p of dcpProvisions) {
     const text = cleanText(p.text || '');
     const summary = extractSummary(text);
-    if (summary) {
-      response += `\n\n• ${cleanText(summary)}`;
-      if (p.section) {
-        response += `\n  *${cleanText(p.section)}*`;
-      }
+
+    // Skip useless provisions
+    if (!summary || !isUsefulProvision(summary, p.section)) {
+      continue;
     }
+
+    response += `\n\n• ${cleanText(summary)}`;
+    if (p.section) {
+      response += `\n  *${cleanText(p.section)}*`;
+    }
+    shownCount++;
+
+    // Limit to 5 most relevant provisions to avoid overwhelming users
+    if (shownCount >= 5) break;
+  }
+
+  if (shownCount === 0) {
+    response += '\n\n*No specific requirements found. Check the **DCP tab** for detailed provisions.*';
   }
 
   // Add data limitations note
   response += '\n\n---\n**Data Note:** DCP provisions shown are extracted from the applicable council DCP. Not all provisions may be displayed. Check the **DCP tab** for the full list or consult the DCP document.';
 
   return response;
+}
+
+/**
+ * Check if a provision is useful to display (not just a header, definition, or fragment)
+ */
+function isUsefulProvision(summary: string, section: string): boolean {
+  if (!summary || summary.length < 20) return false;
+
+  const lower = summary.toLowerCase();
+  const sectionLower = (section || '').toLowerCase();
+
+  // Skip section headers and generic part names
+  if (/^(part|section|chapter)\s+\d+/i.test(summary)) return false;
+  if (/^(generic provisions|definitions|key terms|introduction)/i.test(summary)) return false;
+
+  // Skip pure definitions (starts with term + "means")
+  if (/^\w+\s+(means|refers to|is defined as)/i.test(summary)) return false;
+
+  // Skip if section is "Definitions" or "unknown"
+  if (sectionLower.includes('definition') || sectionLower === 'unknown') return false;
+
+  // Skip table fragments and reference-only text
+  if (/^(table|figure|diagram|refer to|see |note:|code requirement)/i.test(summary)) return false;
+
+  // Skip if it's mostly numbers/symbols (table data)
+  const alphaChars = summary.replace(/[^a-zA-Z]/g, '').length;
+  if (alphaChars < summary.length * 0.5) return false;
+
+  return true;
 }
 
 /**
@@ -361,17 +403,18 @@ function formatPermissibilityResponse(data: any): string {
     return 'Unable to check permissibility for this development type.';
   }
 
-  const { permitted, permissibility, zoneName, zone, reason, summary, alternatives } = data;
+  const { developmentType, permitted, permissibility, zoneName, zone, reason, summary, alternatives } = data;
   const displayZone = zoneName || zone || 'this zone';
+  const displayDevType = developmentType ? capitalize(developmentType.replace(/_/g, ' ')) : '';
 
   let response = '';
 
   if (permitted) {
     const status = permissibility === 'permitted' ? 'Permitted' : 'Permissible with consent';
-    response += `✓ **${status}** in ${displayZone}`;
+    response += `✓ **${displayDevType}${displayDevType ? ' ' : ''}${status}** in ${displayZone}`;
     if (summary) response += `\n${summary}`;
   } else {
-    response += `✗ **Prohibited** in ${displayZone}`;
+    response += `✗ **${displayDevType}${displayDevType ? ' ' : ''}Prohibited** in ${displayZone}`;
     if (reason) response += `\n${reason}`;
   }
 

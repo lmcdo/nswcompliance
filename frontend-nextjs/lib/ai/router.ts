@@ -621,6 +621,7 @@ async function handlePermissibilityCheck(
       success: true,
       category: 'permissibility',
       data: {
+        developmentType: normalizedType, // Include for display formatting
         permitted: data.permitted ?? false,
         permissibility: data.permissibility || 'prohibited',
         zone: data.zone || context.zone,

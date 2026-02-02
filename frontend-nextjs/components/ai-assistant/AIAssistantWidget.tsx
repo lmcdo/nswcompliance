@@ -58,10 +58,19 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
   // Note: Chat history is intentionally not persisted across page reloads
   // so users always see the intro/scope message first
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to show new message when added (but don't force to very bottom)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messages.length > 0 && messagesEndRef.current) {
+      // Scroll to show the last message, with some padding
+      const container = messagesEndRef.current.parentElement;
+      if (container) {
+        const lastMessage = messagesEndRef.current.previousElementSibling;
+        if (lastMessage) {
+          lastMessage.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }
+  }, [messages.length]); // Only trigger when message count changes
 
   // Focus input when panel opens
   useEffect(() => {
