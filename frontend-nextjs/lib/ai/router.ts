@@ -420,63 +420,44 @@ async function handleFactualLookup(
   context: PropertyContext
 ): Promise<DataResponse> {
   try {
-    // For height and FSR, use capacity API (from Planning Portal spatial data)
+    // For height and FSR, use values from Planning Portal (already in context)
     // For all other DCP topics, query the DCP provisions API (same source as DCP tab)
     if (controlType !== 'height' && controlType !== 'fsr' && controlType !== 'all') {
       return handleDcpProvisionLookup(controlType, context);
     }
 
-    // For height, FSR, or 'all', use capacity API
-    const response = await fetch(`${API_BASE}/api/capacity/calculate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        address: context.address,
-        developmentType: 'dwelling_house', // Default for general lookups
-        lotSize: context.lotSize || 450, // Use 450 as default (matches Housing SEPP default)
-        frontage: context.lotWidth || 12, // frontage = lotWidth, use 12m default
-        zone: context.zone || 'R2',
-        lga: context.lga || 'Inner West',
-        formerCouncil: context.formerCouncil || 'Marrickville',
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!data.success) {
-      return {
-        success: false,
-        category: 'factual_lookup',
-        data: null,
-        sources: [],
-        error: data.error || 'Unable to calculate development capacity.',
-      };
+    // Use Planning Portal data directly from context (no API call needed)
+    const capacity: any = {};
+    if (context.maxHeight) {
+      capacity.maxHeight = context.maxHeight;
+      // Estimate storeys: ~3m per storey
+      capacity.approxStoreys = Math.floor(context.maxHeight / 3);
+    }
+    if (context.maxFsr && context.lotSize) {
+      capacity.maxFSR = context.maxFsr;
+      capacity.maxGFA = context.lotSize * context.maxFsr;
+      capacity.lotArea = context.lotSize;
     }
 
     // Filter to requested control type
-    let filteredData: any = data;
-    if (controlType !== 'all') {
-      filteredData = {
-        // Only include capacity for height/fsr/all queries
-        capacity: controlType === 'height'
-          ? { maxHeight: data.capacity?.maxHeight, approxStoreys: data.capacity?.approxStoreys }
-          : controlType === 'fsr'
-          ? { maxFSR: data.capacity?.maxFSR, maxGFA: data.capacity?.maxGFA, lotArea: data.capacity?.lotArea }
-          : undefined, // Don't include capacity for setbacks queries
-        setbacks: controlType === 'setbacks' ? data.setbacks : undefined,
+    let filteredData: any = { capacity };
+    if (controlType === 'height') {
+      filteredData.capacity = {
+        maxHeight: capacity.maxHeight,
+        approxStoreys: capacity.approxStoreys
+      };
+    } else if (controlType === 'fsr') {
+      filteredData.capacity = {
+        maxFSR: capacity.maxFSR,
+        maxGFA: capacity.maxGFA,
+        lotArea: capacity.lotArea
       };
     }
 
-    const sources: Citation[] = [];
-    if (data.setbacks?.source) {
-      sources.push({ source: data.setbacks.source });
-    }
-    if (data.lepClauses?.length > 0) {
-      sources.push({
-        source: 'Inner West LEP 2022',
-        clause: data.lepClauses[0].clause_number,
-      });
-    }
+    const sources: Citation[] = [{
+      source: 'NSW Planning Portal',
+      url: 'https://www.planningportal.nsw.gov.au/',
+    }];
 
     return {
       success: true,

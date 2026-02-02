@@ -492,6 +492,8 @@ export default function AssessmentPage() {
           lotSize: selectedProperty.lotDimensions?.area,
           lotWidth: selectedProperty.lotDimensions?.frontage,
           precinctId: selectedProperty.constraints?.precinctId,
+          maxHeight: selectedProperty.constraints?.maxHeight,
+          maxFsr: selectedProperty.constraints?.maxFsr,
           constraints: {
             heritage: selectedProperty.heritage?.isHeritage,
             heritageName: selectedProperty.heritage?.heritageItemName,

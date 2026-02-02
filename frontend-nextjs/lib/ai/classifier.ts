@@ -53,6 +53,8 @@ export interface PropertyContext {
   lotSize?: number;
   lotWidth?: number;
   precinctId?: string;
+  maxHeight?: number;  // From Planning Portal spatial layers
+  maxFsr?: number;     // From Planning Portal spatial layers
   constraints?: {
     heritage?: boolean;
     heritageName?: string;
