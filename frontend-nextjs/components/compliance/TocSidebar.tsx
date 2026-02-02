@@ -334,8 +334,8 @@ const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
   'Part 9': { label: 'Part 9', desc: 'Precinct Character' },
   // Leichhardt
   'Part C Section 1': { label: 'Part C.1', desc: 'General Controls' },
-  'Part C Section 2': { label: 'Part C.2', desc: 'Resource Recovery' },
-  'Part D': { label: 'Part D', desc: 'Character Areas' },
+  'Part C Section 2': { label: 'Part C.2', desc: 'Neighbourhood Controls' },
+  'Part D': { label: 'Part D', desc: 'Energy & Waste' },
   'Part E': { label: 'Part E', desc: 'Water Management' },
   'Part G Section 1': { label: 'Part G.1', desc: 'Norton St Precinct' },
   // Ashfield
