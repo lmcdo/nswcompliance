@@ -433,8 +433,9 @@ async function handleFactualLookup(
       body: JSON.stringify({
         address: context.address,
         developmentType: 'dwelling_house', // Default for general lookups
-        lotArea: context.lotSize || 0,
-        zone: context.zone || '',
+        lotSize: context.lotSize || 450, // Use 450 as default (matches Housing SEPP default)
+        frontage: context.lotWidth || 12, // frontage = lotWidth, use 12m default
+        zone: context.zone || 'R2',
         lga: context.lga || 'Inner West',
         formerCouncil: context.formerCouncil || 'Marrickville',
       }),
