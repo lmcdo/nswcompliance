@@ -140,11 +140,13 @@ export async function POST(request: NextRequest): Promise<NextResponse<ChatRespo
     const validation = validateRequest(AIChatSchema, body);
 
     if (!validation.success) {
+      const errorDetails = formatValidationErrors(validation.details);
+      console.error('[AI Chat] Validation failed:', errorDetails);
       return NextResponse.json(
         {
           success: false,
-          error: 'Invalid request data',
-          details: formatValidationErrors(validation.details),
+          error: `Invalid request data: ${errorDetails.join(', ')}`,
+          details: errorDetails,
           processingTimeMs: Date.now() - startTime,
         },
         { status: 400 }
