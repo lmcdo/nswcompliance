@@ -109,10 +109,22 @@ export const AIChatSchema = z.object({
   propertyContext: z
     .object({
       address: AddressStringSchema.optional(),
-      zone: ZoneCodeSchema.optional(),
+      zone: z.string().optional(), // Allow any zone string (not just uppercase alphanumeric)
       lga: LGASchema.optional(),
+      formerCouncil: z.string().optional(),
+      lotSize: z.number().positive().optional(),
+      lotWidth: z.number().positive().optional(),
+      precinctId: z.string().optional(),
       coordinates: CoordinatesSchema.optional(),
+      constraints: z.object({
+        heritage: z.boolean().optional(),
+        heritageName: z.string().optional(),
+        hca: z.string().optional(),
+        flood: z.boolean().optional(),
+        bushfire: z.boolean().optional(),
+      }).optional(),
     })
+    .passthrough() // Allow additional fields for future extensibility
     .optional(),
   conversationId: z.string().uuid().optional(),
 });
