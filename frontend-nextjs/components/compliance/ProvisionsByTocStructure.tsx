@@ -509,6 +509,7 @@ export function ProvisionsByTocStructure({
       <div className="w-64 border-r bg-gray-50 flex-shrink-0">
         <TocSidebar
           tocStructure={completeTocStructure}
+          filteredTocStructure={tocStructure}
           selectedPart={selectedPart}
           selectedSection={selectedSection}
           onSelectPart={handleSelectPart}

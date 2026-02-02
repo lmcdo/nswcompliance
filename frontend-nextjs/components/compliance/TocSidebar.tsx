@@ -27,6 +27,7 @@ interface TocPart {
 
 interface TocSidebarProps {
   tocStructure: Record<string, TocPart>;
+  filteredTocStructure: Record<string, TocPart>;
   selectedPart: string | null;
   selectedSection: string | null;
   onSelectPart: (partId: string) => void;
@@ -36,6 +37,7 @@ interface TocSidebarProps {
 
 export function TocSidebar({
   tocStructure,
+  filteredTocStructure,
   selectedPart,
   selectedSection,
   onSelectPart,
@@ -81,18 +83,25 @@ export function TocSidebar({
       </div>
 
       <nav className="p-2">
-        {sortedParts.map(([partId, part]) => (
-          <PartNode
-            key={partId}
-            part={part}
-            isExpanded={expandedParts.has(partId)}
-            isSelected={selectedPart === partId}
-            selectedSection={selectedPart === partId ? selectedSection : null}
-            onToggle={() => togglePart(partId)}
-            onSelectPart={() => onSelectPart(partId)}
-            onSelectSection={(sectionId) => onSelectSection(partId, sectionId)}
-          />
-        ))}
+        {sortedParts.map(([partId, part]) => {
+          const filteredPart = filteredTocStructure[partId];
+          const hasProvisions = !!filteredPart && filteredPart.provision_count > 0;
+
+          return (
+            <PartNode
+              key={partId}
+              part={part}
+              filteredPart={filteredPart}
+              hasProvisions={hasProvisions}
+              isExpanded={expandedParts.has(partId)}
+              isSelected={selectedPart === partId}
+              selectedSection={selectedPart === partId ? selectedSection : null}
+              onToggle={() => togglePart(partId)}
+              onSelectPart={() => onSelectPart(partId)}
+              onSelectSection={(sectionId) => onSelectSection(partId, sectionId)}
+            />
+          );
+        })}
       </nav>
     </div>
   );
@@ -100,6 +109,8 @@ export function TocSidebar({
 
 interface PartNodeProps {
   part: TocPart;
+  filteredPart?: TocPart;
+  hasProvisions: boolean;
   isExpanded: boolean;
   isSelected: boolean;
   selectedSection: string | null;
@@ -110,6 +121,8 @@ interface PartNodeProps {
 
 function PartNode({
   part,
+  filteredPart,
+  hasProvisions,
   isExpanded,
   isSelected,
   selectedSection,
@@ -127,7 +140,7 @@ function PartNode({
       <div
         className={cn(
           "flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer transition-colors",
-          "hover:bg-teal-50",
+          hasProvisions ? "hover:bg-teal-50" : "hover:bg-gray-100 opacity-50",
           isSelected && !selectedSection && "bg-teal-100 text-teal-900"
         )}
         onClick={() => {
@@ -147,9 +160,9 @@ function PartNode({
             className="p-0.5 hover:bg-teal-200 rounded"
           >
             {isExpanded ? (
-              <ChevronDown className="h-3 w-3 text-gray-500" />
+              <ChevronDown className={cn("h-3 w-3", hasProvisions ? "text-gray-500" : "text-gray-400")} />
             ) : (
-              <ChevronRight className="h-3 w-3 text-gray-500" />
+              <ChevronRight className={cn("h-3 w-3", hasProvisions ? "text-gray-500" : "text-gray-400")} />
             )}
           </button>
         ) : (
@@ -158,9 +171,9 @@ function PartNode({
 
         {/* Folder icon */}
         {isExpanded ? (
-          <FolderOpen className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
+          <FolderOpen className={cn("h-3.5 w-3.5 flex-shrink-0", hasProvisions ? "text-teal-600" : "text-gray-400")} />
         ) : (
-          <Folder className="h-3.5 w-3.5 text-teal-600 flex-shrink-0" />
+          <Folder className={cn("h-3.5 w-3.5 flex-shrink-0", hasProvisions ? "text-teal-600" : "text-gray-400")} />
         )}
 
         {/* Part name with description */}
@@ -169,11 +182,11 @@ function PartNode({
             const { label, desc } = formatPartDisplay(part.part_id);
             return (
               <div>
-                <span className="text-sm font-medium text-gray-800">
+                <span className={cn("text-sm font-medium", hasProvisions ? "text-gray-800" : "text-gray-400")}>
                   {label}
                 </span>
                 {desc && (
-                  <span className="text-xs text-gray-500 block">
+                  <span className={cn("text-xs block", hasProvisions ? "text-gray-500" : "text-gray-400")}>
                     {desc}
                   </span>
                 )}
@@ -182,23 +195,36 @@ function PartNode({
           })()}
         </div>
 
-        {/* Count badge */}
-        <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-          {part.provision_count}
-        </span>
+        {/* Count badge - show filtered count if available, otherwise show 0 */}
+        {hasProvisions ? (
+          <span className="text-xs text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded font-medium">
+            {filteredPart?.provision_count || 0}
+          </span>
+        ) : (
+          <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
+            0
+          </span>
+        )}
       </div>
 
       {/* Sections (if expanded) */}
       {isExpanded && hasMultipleSections && (
         <div className="mt-0.5">
-          {Object.entries(sections).map(([sectionId, section]) => (
-            <SectionNode
-              key={sectionId}
-              section={section}
-              isSelected={selectedSection === sectionId}
-              onClick={() => onSelectSection(sectionId)}
-            />
-          ))}
+          {Object.entries(sections).map(([sectionId, section]) => {
+            const filteredSection = filteredPart?.sections?.[sectionId];
+            const sectionHasProvisions = !!filteredSection && filteredSection.provision_count > 0;
+
+            return (
+              <SectionNode
+                key={sectionId}
+                section={section}
+                filteredSection={filteredSection}
+                hasProvisions={sectionHasProvisions}
+                isSelected={selectedSection === sectionId}
+                onClick={() => onSelectSection(sectionId)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -207,31 +233,39 @@ function PartNode({
 
 interface SectionNodeProps {
   section: TocSection;
+  filteredSection?: TocSection;
+  hasProvisions: boolean;
   isSelected: boolean;
   onClick: () => void;
 }
 
-function SectionNode({ section, isSelected, onClick }: SectionNodeProps) {
+function SectionNode({ section, filteredSection, hasProvisions, isSelected, onClick }: SectionNodeProps) {
   const display = formatSectionDisplay(section.section_id, section.section_title);
 
   return (
     <div
       className={cn(
         "flex items-start justify-between px-2 py-1 rounded cursor-pointer transition-colors",
-        "hover:bg-teal-50",
+        hasProvisions ? "hover:bg-teal-50" : "hover:bg-gray-100 opacity-50",
         isSelected && "bg-teal-100 text-teal-900"
       )}
       onClick={onClick}
     >
-      <span className="text-xs text-gray-700 break-words pr-2">
+      <span className={cn("text-xs break-words pr-2", hasProvisions ? "text-gray-700" : "text-gray-400")}>
         {display.primary}
         {display.secondary && (
-          <span className="text-gray-500 ml-1">{display.secondary}</span>
+          <span className={cn("ml-1", hasProvisions ? "text-gray-500" : "text-gray-400")}>{display.secondary}</span>
         )}
       </span>
-      <span className="text-xs text-gray-400 flex-shrink-0">
-        {section.provision_count}
-      </span>
+      {hasProvisions ? (
+        <span className="text-xs text-gray-700 flex-shrink-0 font-medium">
+          {filteredSection?.provision_count || 0}
+        </span>
+      ) : (
+        <span className="text-xs text-gray-400 flex-shrink-0">
+          0
+        </span>
+      )}
     </div>
   );
 }
