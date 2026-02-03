@@ -236,7 +236,7 @@ export class NSWPlanningPortalService {
  const encodedAddress = encodeURIComponent(address);
  
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 5000); // 30 second timeout
+ const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
  
  const response = await fetch(
  `${this.BASE_URL}/address?a=${encodedAddress}&noOfRecords=1`,
@@ -354,7 +354,7 @@ export class NSWPlanningPortalService {
  static async getPropertyValuation(propId: number): Promise<NSWPropertyData | null> {
  try {
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 5000); // 30 second timeout
+ const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
  
  const response = await fetch(
  `${this.VALUATION_URL}?where=propid=${propId}&outFields=propid,address,val1_bd,val1_lv,prop_area,zone_desc,urbanity&f=json`,
@@ -410,7 +410,7 @@ export class NSWPlanningPortalService {
  static async getLotGeometry(propId: number): Promise<LotGeometryData | null> {
  try {
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 5000);
+ const timeoutId = setTimeout(() => controller.abort(), 30000);
 
  const response = await fetch(
  `${this.BASE_URL}/lot?propId=${propId}`,
