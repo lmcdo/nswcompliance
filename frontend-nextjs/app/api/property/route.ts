@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 
+// Use Edge Runtime for faster cold starts (boots in ~50ms vs ~1-3s for Node.js)
+export const runtime = 'edge';
+
 /**
  * General NSW Property Data API Endpoint
  *
