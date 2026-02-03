@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, FileText, X } from "lucide-react"
+import { Search, FileText, X, Loader2 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ export function QuickSearch() {
  const [selectedClause, setSelectedClause] = useState<any>(null)
  const [isClauseDialogOpen, setIsClauseDialogOpen] = useState(false)
  const [isLoadingClause, setIsLoadingClause] = useState(false)
+ const [isLoadingProperty, setIsLoadingProperty] = useState(false)
 
  // Listen for address selection from header
  useEffect(() => {
@@ -51,6 +52,7 @@ export function QuickSearch() {
  const fetchPropertyProvisions = async (addr: string) => {
  if (!addr) return
 
+ setIsLoadingProperty(true)
  try {
  const response = await fetch(`/api/property?address=${encodeURIComponent(addr)}`)
  if (response.ok) {
@@ -70,6 +72,8 @@ export function QuickSearch() {
  }
  } catch (error) {
  console.error('Failed to fetch property provisions:', error)
+ } finally {
+ setIsLoadingProperty(false)
  }
  }
 
@@ -217,7 +221,15 @@ export function QuickSearch() {
  </div>
  </div>
 
- {suggestions.length > 0 && (
+ {isLoadingProperty && (
+ <div className="flex flex-col items-center justify-center py-8 space-y-3">
+ <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+ <div className="text-sm text-gray-600 font-medium">Searching NSW Planning Portal...</div>
+ <div className="text-xs text-gray-500">Finding property data and planning constraints</div>
+ </div>
+ )}
+
+ {!isLoadingProperty && suggestions.length > 0 && (
  <div>
  <div className="text-sm font-medium text-gray-600 mb-3">Recent/Suggested:</div>
  <ul className="space-y-2">
@@ -233,7 +245,7 @@ export function QuickSearch() {
  </div>
  )}
 
- {results.length > 0 && (
+ {!isLoadingProperty && results.length > 0 && (
  <div>
  <div className="text-sm font-medium text-gray-600 mb-3">Property Provisions</div>
  <div className="max-h-48 overflow-y-auto space-y-3">
