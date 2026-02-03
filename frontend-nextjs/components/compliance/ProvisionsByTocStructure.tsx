@@ -573,92 +573,109 @@ export function ProvisionsByTocStructure({
             )}
           </div>
 
-          {/* Topic filter chips - show all topics */}
-          {availableTopics.length > 1 && (
-            <div className="mt-3 flex items-center gap-2 flex-wrap">
-              <Filter className="h-3.5 w-3.5 text-gray-400" />
-              <span className="text-xs text-gray-500 font-medium">Navigate by topic:</span>
-              <button
-                onClick={() => setTopicFilter(null)}
-                className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                  !topicFilter
-                    ? 'bg-teal-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              {availableTopics.map(topic => {
-                const topicKey = topic.toLowerCase().replace(/ /g, '_');
-                const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
-                const hasCritical = stats.critical > 0;
+          {/* Combined filters section */}
+          <div className="mt-3 space-y-2">
+            {/* Layer filter - primary filter row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-gray-500 font-medium min-w-[70px]">Show from:</span>
+              {[
+                { key: null, label: 'All layers', color: '#6b7280' },
+                { key: 'generic', color: '#14b8a6' },
+                { key: 'use_specific', color: '#3b82f6' },
+                { key: 'condition', color: '#f59e0b' },
+                { key: 'precinct', color: '#8b5cf6' },
+              ].map((item) => {
+                if (item.key === null) {
+                  // "All layers" button
+                  const totalCount = Object.values(layerCounts).reduce((a, b) => a + b, 0);
+                  return (
+                    <button
+                      key="all"
+                      onClick={() => { setLayerFilter(null); setTopicFilter(null); }}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                        !layerFilter && !topicFilter
+                          ? 'bg-gray-800 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      All ({totalCount})
+                    </button>
+                  );
+                }
+
+                const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
+                const label = councilLabels ? councilLabels[item.key] : DEFAULT_LAYER_LABELS[item.key];
+                const count = layerCounts[item.key as keyof typeof layerCounts] || 0;
+                const hasProvisions = count > 0;
 
                 return (
                   <button
-                    key={topic}
-                    onClick={() => setTopicFilter(topicKey)}
-                    className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                      topicFilter === topicKey
-                        ? 'bg-teal-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    key={item.key}
+                    onClick={() => hasProvisions && setLayerFilter(layerFilter === item.key ? null : item.key)}
+                    disabled={!hasProvisions}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                      !hasProvisions
+                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
+                        : layerFilter === item.key
+                        ? 'text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
+                    style={layerFilter === item.key ? { backgroundColor: item.color } : undefined}
+                    title={!hasProvisions ? 'No provisions with this layer' : undefined}
                   >
-                    {hasCritical && <span className={topicFilter === topicKey ? 'text-yellow-200' : 'text-red-500'}>⚠️</span>}
-                    {topic} ({stats.total}{hasCritical ? `, ${stats.critical} critical` : ''})
+                    <div
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: hasProvisions ? item.color : '#d1d5db' }}
+                    />
+                    {label} ({count})
                   </button>
                 );
               })}
             </div>
-          )}
 
-          {/* Layer filter - clickable legend */}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <Filter className="h-3.5 w-3.5 text-gray-400" />
-            <span className="text-xs text-gray-500 font-medium">Layers:</span>
-            <button
-              onClick={() => setLayerFilter(null)}
-              className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                !layerFilter
-                  ? 'bg-teal-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-            >
-              All
-            </button>
-            {[
-              { key: 'generic', color: '#14b8a6' },
-              { key: 'use_specific', color: '#3b82f6' },
-              { key: 'condition', color: '#f59e0b' },
-              { key: 'precinct', color: '#8b5cf6' },
-            ].map(({ key, color }) => {
-              const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
-              const label = councilLabels ? councilLabels[key] : DEFAULT_LAYER_LABELS[key];
-              const count = layerCounts[key as keyof typeof layerCounts] || 0;
-              const hasProvisions = count > 0;
-
-              return (
+            {/* Topic filter chips - secondary filter row */}
+            {availableTopics.length > 1 && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topic:</span>
                 <button
-                  key={key}
-                  onClick={() => hasProvisions && setLayerFilter(layerFilter === key ? null : key)}
-                  disabled={!hasProvisions}
-                  className={`flex items-center gap-1.5 px-2 py-0.5 text-xs rounded-full transition-colors ${
-                    !hasProvisions
-                      ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
-                      : layerFilter === key
-                      ? 'bg-gray-800 text-white ring-2 ring-offset-1'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  onClick={() => setTopicFilter(null)}
+                  className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
+                    !topicFilter
+                      ? 'bg-teal-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
-                  style={layerFilter === key ? { ringColor: color } : undefined}
-                  title={!hasProvisions ? 'No provisions with this layer in selected section' : undefined}
                 >
-                  <div
-                    className="w-2.5 h-2.5 rounded-sm"
-                    style={{ backgroundColor: hasProvisions ? color : '#d1d5db' }}
-                  />
-                  {label} ({count})
+                  All topics
                 </button>
-              );
-            })}
+                {availableTopics.map(topic => {
+                  const topicKey = topic.toLowerCase().replace(/ /g, '_');
+                  const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
+                  const hasCritical = stats.critical > 0;
+
+                  return (
+                    <button
+                      key={topic}
+                      onClick={() => setTopicFilter(topicFilter === topicKey ? null : topicKey)}
+                      className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                        topicFilter === topicKey
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {hasCritical && (
+                        <span
+                          className={`inline-block w-1.5 h-1.5 rounded-full ${
+                            topicFilter === topicKey ? 'bg-yellow-300' : 'bg-amber-500'
+                          }`}
+                          title={`${stats.critical} critical provision${stats.critical > 1 ? 's' : ''}`}
+                        />
+                      )}
+                      {topic} ({stats.total})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Marker key - explains C1/O1 badges (only show if markers exist) */}
