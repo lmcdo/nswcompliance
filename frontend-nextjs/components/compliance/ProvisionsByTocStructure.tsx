@@ -635,46 +635,51 @@ export function ProvisionsByTocStructure({
 
             {/* Topic filter chips - secondary filter row */}
             {availableTopics.length > 1 && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topic:</span>
-                <button
-                  onClick={() => setTopicFilter(null)}
-                  className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                    !topicFilter
-                      ? 'bg-teal-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  All topics
-                </button>
-                {availableTopics.map(topic => {
-                  const topicKey = topic.toLowerCase().replace(/ /g, '_');
-                  const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
-                  const hasCritical = stats.critical > 0;
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topic:</span>
+                  <button
+                    onClick={() => setTopicFilter(null)}
+                    className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
+                      !topicFilter
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    All topics
+                  </button>
+                  {availableTopics.map(topic => {
+                    const topicKey = topic.toLowerCase().replace(/ /g, '_');
+                    const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
+                    const hasCritical = stats.critical > 0;
 
-                  return (
-                    <button
-                      key={topic}
-                      onClick={() => setTopicFilter(topicFilter === topicKey ? null : topicKey)}
-                      className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                        topicFilter === topicKey
-                          ? 'bg-teal-600 text-white'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      {topic} ({stats.total})
-                      {hasCritical && (
-                        <span className={`text-[10px] font-medium px-1 rounded ${
+                    return (
+                      <button
+                        key={topic}
+                        onClick={() => setTopicFilter(topicFilter === topicKey ? null : topicKey)}
+                        className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
                           topicFilter === topicKey
-                            ? 'bg-white/20 text-white'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {stats.critical} key
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
+                            ? 'bg-teal-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {topic} ({stats.total})
+                        {hasCritical && (
+                          <span className={`w-2 h-2 rounded-full ${
+                            topicFilter === topicKey ? 'bg-amber-300' : 'bg-amber-500'
+                          }`} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Legend for critical indicator */}
+                {Object.values(topicPriorityStats).some(s => s.critical > 0) && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 ml-[78px]">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span>= contains provisions with numeric standards (heights, setbacks, etc.)</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
