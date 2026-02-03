@@ -662,15 +662,16 @@ export function ProvisionsByTocStructure({
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      {hasCritical && (
-                        <span
-                          className={`inline-block w-1.5 h-1.5 rounded-full ${
-                            topicFilter === topicKey ? 'bg-yellow-300' : 'bg-amber-500'
-                          }`}
-                          title={`${stats.critical} critical provision${stats.critical > 1 ? 's' : ''}`}
-                        />
-                      )}
                       {topic} ({stats.total})
+                      {hasCritical && (
+                        <span className={`text-[10px] font-medium px-1 rounded ${
+                          topicFilter === topicKey
+                            ? 'bg-white/20 text-white'
+                            : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {stats.critical} key
+                        </span>
+                      )}
                     </button>
                   );
                 })}
