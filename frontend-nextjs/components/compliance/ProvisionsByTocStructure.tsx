@@ -12,6 +12,7 @@ import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
+import { LayerExplanation } from './LayerExplanation';
 import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
@@ -571,6 +572,15 @@ export function ProvisionsByTocStructure({
             )}
           </div>
 
+          {/* Why am I seeing these provisions? */}
+          <LayerExplanation
+            zone={zone}
+            heritage={heritage}
+            hcaName={hcaName}
+            precinctName={precinctName}
+            formerCouncil={formerCouncil}
+          />
+
           {/* Combined filters section */}
           <div className="mt-3 space-y-2">
             {/* Layer filter - primary filter row */}
@@ -712,7 +722,6 @@ export function ProvisionsByTocStructure({
               provisions={filteredProvisions}
               formerCouncil={formerCouncil}
               showLayerBadges={true}
-              showLegend={true}
               maxProvisions={100}
               onViewPdf={(url, page) => setPdfModal({ url, page })}
               highlightQuery={debouncedSearch}
