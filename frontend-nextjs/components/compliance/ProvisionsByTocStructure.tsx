@@ -13,7 +13,6 @@ import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
 import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
-import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -574,15 +573,6 @@ export function ProvisionsByTocStructure({
 
           {/* Combined filters section */}
           <div className="mt-3 space-y-2">
-            {/* Layer explanation — context before the filters */}
-            <LayerExplanation
-              zone={zone}
-              heritage={heritage}
-              hcaName={hcaName}
-              precinctName={precinctName}
-              formerCouncil={formerCouncil}
-            />
-
             {/* Layer filter - primary filter row */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-gray-500 font-medium min-w-[70px]">Applies because:</span>
