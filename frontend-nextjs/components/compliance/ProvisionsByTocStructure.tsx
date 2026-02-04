@@ -666,7 +666,7 @@ export function ProvisionsByTocStructure({
                         {topic} ({stats.total})
                         {hasCritical && (
                           <span className={`w-2 h-2 rounded-full ${
-                            topicFilter === topicKey ? 'bg-amber-300' : 'bg-amber-500'
+                            topicFilter === topicKey ? 'bg-teal-300' : 'bg-teal-600'
                           }`} />
                         )}
                       </button>
@@ -676,7 +676,7 @@ export function ProvisionsByTocStructure({
                 {/* Legend for critical indicator */}
                 {Object.values(topicPriorityStats).some(s => s.critical > 0) && (
                   <div className="flex items-center gap-1.5 text-[11px] text-gray-500 ml-[78px]">
-                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <span className="w-2 h-2 rounded-full bg-teal-600" />
                     <span>= contains provisions with numeric standards (heights, setbacks, etc.)</span>
                   </div>
                 )}
