@@ -263,49 +263,7 @@ export function ProvisionsByTocStructure({
     });
   }, [rawSelectedProvisions]);
 
-  // Apply filters and sort by priority
-  const filteredProvisions = useMemo(() => {
-    // First, exclude TOC provisions from display
-    let filtered = selectedProvisions.filter(p => p.v2_provision_type !== 'TOC');
-
-    // Apply search filter
-    if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.provision_text?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Apply topic filter if set
-    if (topicFilter) {
-      filtered = filtered.filter(p =>
-        p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
-      );
-    }
-
-    // Apply layer filter if set
-    if (layerFilter) {
-      filtered = filtered.filter(p =>
-        (p.v2_dcp_layer || p.layer) === layerFilter
-      );
-    }
-
-    // Sort by priority: critical first, then important, guideline, contextual
-    return filtered.sort((a, b) => {
-      const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
-      const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
-      const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
-      return aPriority - bPriority;
-    });
-  }, [selectedProvisions, debouncedSearch, topicFilter, layerFilter]);
-
-  // Get unique topics for filter chips
-  const availableTopics = useMemo(() =>
-    [...new Set(selectedProvisions.map(p => p.v2_topic).filter(Boolean))].sort(),
-    [selectedProvisions]
-  );
-
-  // Count provisions by layer for the current selection
+  // Count provisions by layer (always from full set — layer buttons always visible)
   const layerCounts = useMemo(() => ({
     generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
     use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
@@ -313,23 +271,62 @@ export function ProvisionsByTocStructure({
     precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
   }), [selectedProvisions]);
 
+  // Layer-filtered base: excludes TOC entries and applies active layer.
+  // Used by both filteredProvisions (rendered list) and topic chips (counts).
+  const layerFilteredProvisions = useMemo(() => {
+    const base = selectedProvisions.filter(p => p.v2_provision_type !== 'TOC');
+    if (!layerFilter) return base;
+    return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
+  }, [selectedProvisions, layerFilter]);
+
+  // Apply search + topic filter on top of layer-filtered base, then sort by priority
+  const filteredProvisions = useMemo(() => {
+    let filtered = layerFilteredProvisions;
+
+    if (debouncedSearch) {
+      const searchLower = debouncedSearch.toLowerCase();
+      filtered = filtered.filter(p =>
+        p.provision_text?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    if (topicFilter) {
+      filtered = filtered.filter(p =>
+        p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
+      );
+    }
+
+    return filtered.sort((a, b) => {
+      const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
+      const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
+      const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
+      return aPriority - bPriority;
+    });
+  }, [layerFilteredProvisions, debouncedSearch, topicFilter]);
+
+  // Get unique topics for filter chips — scoped to selected layer
+  const availableTopics = useMemo(() =>
+    [...new Set(layerFilteredProvisions.map(p => p.v2_topic).filter(Boolean))].sort(),
+    [layerFilteredProvisions]
+  );
+
   // Check if any provisions have C/O markers
   const hasMarkers = useMemo(() =>
     selectedProvisions.some(p => p.v2_marker),
     [selectedProvisions]
   );
 
-  // Calculate priority stats per topic for smart defaults
+  // Calculate priority stats per topic — scoped to selected layer
   const topicPriorityStats = useMemo(() => {
     const stats: Record<string, { critical: number; total: number }> = {};
-    selectedProvisions.forEach(p => {
+    layerFilteredProvisions.forEach(p => {
       const topic = p.v2_topic?.toLowerCase().replace(/ /g, '_') || 'other';
       if (!stats[topic]) stats[topic] = { critical: 0, total: 0 };
       stats[topic].total++;
       if (p.v2_display_priority === 'critical') stats[topic].critical++;
     });
     return stats;
-  }, [selectedProvisions]);
+  }, [layerFilteredProvisions]);
 
   // NOW handle loading/error states AFTER all hooks are called
   if (isLoading) {
@@ -577,9 +574,18 @@ export function ProvisionsByTocStructure({
 
           {/* Combined filters section */}
           <div className="mt-3 space-y-2">
+            {/* Layer explanation — context before the filters */}
+            <LayerExplanation
+              zone={zone}
+              heritage={heritage}
+              hcaName={hcaName}
+              precinctName={precinctName}
+              formerCouncil={formerCouncil}
+            />
+
             {/* Layer filter - primary filter row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-500 font-medium min-w-[70px]">Show from:</span>
+              <span className="text-xs text-gray-500 font-medium min-w-[70px]">Applies because:</span>
               {[
                 { key: null, label: 'All layers', color: '#6b7280' },
                 { key: 'generic', color: '#14b8a6' },
@@ -613,7 +619,7 @@ export function ProvisionsByTocStructure({
                 return (
                   <button
                     key={item.key}
-                    onClick={() => hasProvisions && setLayerFilter(layerFilter === item.key ? null : item.key)}
+                    onClick={() => hasProvisions && (setLayerFilter(layerFilter === item.key ? null : item.key), setTopicFilter(null))}
                     disabled={!hasProvisions}
                     className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
                       !hasProvisions
@@ -634,15 +640,6 @@ export function ProvisionsByTocStructure({
                 );
               })}
             </div>
-
-            {/* Layer explanation — directly under the layer filter it references */}
-            <LayerExplanation
-              zone={zone}
-              heritage={heritage}
-              hcaName={hcaName}
-              precinctName={precinctName}
-              formerCouncil={formerCouncil}
-            />
 
             {/* Topic filter chips - secondary filter row */}
             {availableTopics.length > 1 && (
@@ -682,13 +679,22 @@ export function ProvisionsByTocStructure({
                     );
                   })}
                 </div>
-                {/* Legend for critical indicator */}
-                {Object.values(topicPriorityStats).some(s => s.critical > 0) && (
-                  <div className="flex items-center gap-1.5 text-[11px] text-gray-500 ml-[78px]">
-                    <Ruler className="w-3 h-3 text-gray-500" />
-                    <span>= contains numeric standards (heights, setbacks, etc.)</span>
-                  </div>
-                )}
+              </div>
+            )}
+
+            {/* Status line — plain-language summary of active filters */}
+            {(layerFilter || topicFilter) && (
+              <div className="text-xs text-gray-500 pt-1 border-t border-gray-100 mt-0.5">
+                {(() => {
+                  const labels = COUNCIL_LAYER_LABELS[(formerCouncil || '').toLowerCase()] || DEFAULT_LAYER_LABELS;
+                  const count = filteredProvisions.length;
+                  const base = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
+                  const layerLabel = layerFilter ? labels[layerFilter] : null;
+                  const topicLabel = topicFilter ? topicFilter.replace(/_/g, ' ') : null;
+                  if (layerLabel && topicLabel) return `${base} — ${topicLabel} within ${layerLabel}`;
+                  if (layerLabel) return `${base} from ${layerLabel}`;
+                  return `${base} about ${topicLabel}`;
+                })()}
               </div>
             )}
           </div>

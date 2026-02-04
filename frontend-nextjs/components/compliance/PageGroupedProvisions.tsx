@@ -12,7 +12,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Ruler } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Tooltip,
@@ -602,10 +602,10 @@ export function PageGroupedProvisions({
                           </Badge>
                         )}
 
-                        {/* Priority Badge - Critical provisions */}
+                        {/* Numeric Badge - provisions with numeric standards */}
                         {provision.v2_display_priority === 'critical' && (
-                          <Badge className="text-sm shrink-0 bg-red-100 text-red-800 border-red-300">
-                            ⚠️ Critical
+                          <Badge className="text-sm shrink-0 bg-red-100 text-red-800 border-red-300 inline-flex items-center gap-1">
+                            <Ruler className="w-3 h-3" /> Numeric
                           </Badge>
                         )}
 

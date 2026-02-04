@@ -142,6 +142,22 @@ function fixOcrSpacing(text: string): string {
   fixed = fixed.replace(/[\u2018\u2019]/g, "'");
   fixed = fixed.replace(/[\u201C\u201D]/g, '"');
 
+  // ===== FIX LATEX MATH MODE BLOCKS =====
+  // Must run before trailing "$" stripper below, which eats opening "$" preceded by space.
+  // "$3 0 0 \mathsf { m m }$" → "300mm"
+  // "$1 8 0 0 ^ { \prime } { \sf s }$" → "1800's"
+  // "$5 . 1 - 8 \mathsf { m }$" → "5.1-8m"
+  fixed = fixed.replace(/\$([^$]*(?:\\mathsf|\\prime|\\sf)[^$]*)\$/g, (_match, inner) => {
+    let result = inner;
+    result = result.replace(/\\mathsf\s*\{\s*([^}]*?)\s*\}/g, (_m: string, c: string) => c.replace(/\s+/g, ''));
+    result = result.replace(/\^\s*\{\s*\\prime\s*\}/g, "'");
+    result = result.replace(/\{\s*\\sf\s+([^}]*?)\s*\}/g, (_m: string, c: string) => c.replace(/\s+/g, ''));
+    result = result.replace(/\\[a-zA-Z]+/g, '');
+    result = result.replace(/[{}^]/g, '');
+    result = result.replace(/\s+/g, '');
+    return result;
+  });
+
   // ===== FIX SPACING ARTIFACTS =====
 
   // Fix number spacing artifacts: "1 8 0 m m $" → "180mm"
