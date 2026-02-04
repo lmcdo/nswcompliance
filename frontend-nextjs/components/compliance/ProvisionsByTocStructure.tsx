@@ -17,7 +17,7 @@ import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X, Ruler } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
@@ -665,9 +665,7 @@ export function ProvisionsByTocStructure({
                       >
                         {topic} ({stats.total})
                         {hasCritical && (
-                          <span className={`w-2 h-2 rounded-full ${
-                            topicFilter === topicKey ? 'bg-teal-300' : 'bg-teal-600'
-                          }`} />
+                          <Ruler className={`w-3 h-3 ${topicFilter === topicKey ? 'text-white/80' : 'text-gray-500'}`} />
                         )}
                       </button>
                     );
@@ -676,8 +674,8 @@ export function ProvisionsByTocStructure({
                 {/* Legend for critical indicator */}
                 {Object.values(topicPriorityStats).some(s => s.critical > 0) && (
                   <div className="flex items-center gap-1.5 text-[11px] text-gray-500 ml-[78px]">
-                    <span className="w-2 h-2 rounded-full bg-teal-600" />
-                    <span>= contains provisions with numeric standards (heights, setbacks, etc.)</span>
+                    <Ruler className="w-3 h-3 text-gray-500" />
+                    <span>= contains numeric standards (heights, setbacks, etc.)</span>
                   </div>
                 )}
               </div>
