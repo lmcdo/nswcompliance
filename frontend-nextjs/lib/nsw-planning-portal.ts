@@ -236,7 +236,7 @@ export class NSWPlanningPortalService {
  const encodedAddress = encodeURIComponent(address);
  
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+ const timeoutId = setTimeout(() => controller.abort(), 15000); // 30 second timeout
  
  const response = await fetch(
  `${this.BASE_URL}/address?a=${encodedAddress}&noOfRecords=1`,
@@ -354,7 +354,7 @@ export class NSWPlanningPortalService {
  static async getPropertyValuation(propId: number): Promise<NSWPropertyData | null> {
  try {
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+ const timeoutId = setTimeout(() => controller.abort(), 15000); // 30 second timeout
  
  const response = await fetch(
  `${this.VALUATION_URL}?where=propid=${propId}&outFields=propid,address,val1_bd,val1_lv,prop_area,zone_desc,urbanity&f=json`,
@@ -410,7 +410,7 @@ export class NSWPlanningPortalService {
  static async getLotGeometry(propId: number): Promise<LotGeometryData | null> {
  try {
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 30000);
+ const timeoutId = setTimeout(() => controller.abort(), 15000);
 
  const response = await fetch(
  `${this.BASE_URL}/lot?propId=${propId}`,
@@ -978,56 +978,46 @@ export class NSWPlanningPortalService {
  throw new Error('Property not found');
  }
 
- // Step 2: Get planning layers, valuation data, and TOD layers in parallel
- console.log('Step 2: Getting planning layers, valuation data, TOD/HIA, ANEF, and lot geometry...');
- const [layers, propertyData, todLayers, roadClassifications, anefData, lotGeometry] = await Promise.all([
- this.getPlanningLayers(searchResult.propId),
- this.getPropertyValuation(searchResult.propId),
- // Fetch TOD layers after we get property data (need geometry)
- this.getPropertyValuation(searchResult.propId)
- .then(pd => pd ? this.getTODLayers(pd.geometry) : [])
- .catch(() => {
- console.log('TOD layers fetch failed, continuing without TOD data');
- return [];
- }),
- // Fetch road classifications for setback calculations (need WGS84 coordinates)
- this.getPropertyValuation(searchResult.propId)
- .then(pd => {
- if (!pd) return [];
- // Convert Web Mercator (x, y) to WGS84 (lon, lat)
- const lon = (pd.geometry.x / 20037508.34) * 180;
- const lat = (Math.atan(Math.exp((pd.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
- console.log(`[Road Classification] Converted coordinates: Web Mercator (${pd.geometry.x}, ${pd.geometry.y}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
- return getRoadClassifications(lat, lon);
- })
- .catch(() => {
- console.log('Road classification fetch failed, continuing without road data');
- return [];
- }),
- // Fetch ANEF (Aircraft Noise Exposure Forecast) zone data
- this.getPropertyValuation(searchResult.propId)
- .then(async (pd) => {
- if (!pd) return null;
- // Convert Web Mercator (x, y) to WGS84 (lon, lat)
- const lon = (pd.geometry.x / 20037508.34) * 180;
- const lat = (Math.atan(Math.exp((pd.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
- console.log(`[ANEF] Checking coordinates: (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
- const response = await fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`);
- if (!response.ok) return null;
- const result = await response.json();
- return result.success ? result.data : null;
- })
- .catch((err) => {
- console.log('ANEF check failed, continuing without ANEF data:', err);
- return null;
- }),
- // Fetch lot geometry for dimension calculations
- this.getLotGeometry(searchResult.propId)
- .catch((err) => {
- console.log('Lot geometry fetch failed, continuing without lot data:', err);
- return null;
- })
+ // Step 2a: Fetch independent calls in parallel (valuation called once only)
+ console.log('Step 2: Getting planning layers, valuation data, and lot geometry...');
+ const [layers, propertyData, lotGeometry] = await Promise.all([
+   this.getPlanningLayers(searchResult.propId),
+   this.getPropertyValuation(searchResult.propId),
+   this.getLotGeometry(searchResult.propId).catch((err) => {
+     console.log('Lot geometry fetch failed, continuing without lot data:', err);
+     return null;
+   })
  ]);
+
+ // Step 2b: Fan out from single valuation result (needs geometry)
+ console.log('Step 2b: Fetching TOD, road classifications, and ANEF using valuation geometry...');
+ let todLayers: PlanningLayer[] = [];
+ let roadClassifications: any[] = [];
+ let anefData: AnefInfo | null = null;
+
+ if (propertyData) {
+   const lon = (propertyData.geometry.x / 20037508.34) * 180;
+   const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+   console.log(`Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+
+   [todLayers, roadClassifications, anefData] = await Promise.all([
+     this.getTODLayers(propertyData.geometry).catch(() => {
+       console.log('TOD layers fetch failed, continuing without TOD data');
+       return [];
+     }),
+     getRoadClassifications(lat, lon).catch(() => {
+       console.log('Road classification fetch failed, continuing without road data');
+       return [];
+     }),
+     fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`)
+       .then(res => res.ok ? res.json() : null)
+       .then(result => result?.success ? result.data : null)
+       .catch((err) => {
+         console.log('ANEF check failed, continuing without ANEF data:', err);
+         return null;
+       })
+   ]);
+ }
 
  console.log('Layers received:', layers);
  console.log('Property data received:', propertyData);
