@@ -120,24 +120,13 @@ export class PropertyDataService {
 
  const { propertyData, constraints, layers, roadClassifications, anefData, lotGeometry } = nswData;
 
- // Calculate lot dimensions from geometry
+ // Calculate lot dimensions (sync) and detect corner lot (async) in parallel
  let lotDimensions: LotDimensions | null = null;
+ let cornerLotPromise: Promise<CornerLotResult | null> = Promise.resolve(null);
+
  if (lotGeometry?.geometry) {
  lotDimensions = calculateLotDimensions(lotGeometry.geometry);
- if (lotDimensions) {
- console.log(`[PropertyDataService] Calculated lot dimensions: frontage=${lotDimensions.frontage}m, depth=${lotDimensions.depth}m, area=${lotDimensions.area}m²`);
- }
- }
-
- // Detect corner lot from adjacent road parcels
- let cornerLot: CornerLotResult | null = null;
- if (lotGeometry?.geometry) {
- cornerLot = await detectCornerLot(lotGeometry.geometry);
- if (cornerLot.confidence > 0) {
- console.log(`[PropertyDataService] Corner lot detection: isCornerLot=${cornerLot.isCornerLot}, roads=[${cornerLot.adjacentRoads.join(', ')}]`);
- } else if (cornerLot.error) {
- console.warn(`[PropertyDataService] Corner lot detection failed: ${cornerLot.error}`);
- }
+ cornerLotPromise = detectCornerLot(lotGeometry.geometry);
  }
 
  // Extract source information from layers
@@ -201,72 +190,64 @@ export class PropertyDataService {
  };
 
  // Convert Web Mercator (x, y) to WGS84 (lat, lon) for geocoding
- // Formula from nsw-planning-portal.ts lines 637-640
  const lon = (propertyData.geometry.x / 20037508.34) * 180;
  const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
- console.log(`[PropertyDataService] Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (lat: ${lat.toFixed(6)}, lon: ${lon.toFixed(6)})`);
+
+ // Load precinct service and suburb mapping in parallel
+ const [precinctModule, suburbModule] = await Promise.all([
+   import('./precinct-service').catch(() => null),
+   import('./inner-west-mapping-v2').catch(() => null)
+ ]);
 
  // Match precinct for DCP filtering - precinct data includes formerCouncil from spatial match
- try {
-   const { getPrecinctForAddress } = await import('./precinct-service');
-   const precinctData = await getPrecinctForAddress(
-     propertyData.address,
-     constraints.lga || '',
-     { lat, lon }  // Pass coordinates with correct property names
-   );
+ if (precinctModule) {
+   try {
+     const precinctData = await precinctModule.getPrecinctForAddress(
+       propertyData.address,
+       constraints.lga || '',
+       { lat, lon }
+     );
 
-   if (precinctData) {
-     constraints.precinctId = precinctData.precinctId;
-     console.log(`[PropertyDataService] Precinct matched: ${precinctData.precinctId} (${precinctData.precinctName})`);
-
-     // Use formerCouncil from precinct spatial match (most reliable)
-     if (precinctData.formerCouncil) {
-       constraints.formerCouncil = precinctData.formerCouncil;
-       console.log(`[PropertyDataService] Former council from precinct: ${precinctData.formerCouncil}`);
+     if (precinctData) {
+       constraints.precinctId = precinctData.precinctId;
+       if (precinctData.formerCouncil) {
+         constraints.formerCouncil = precinctData.formerCouncil;
+       }
      }
+   } catch (error) {
+     console.error('[PropertyDataService] Precinct matching failed:', error);
    }
- } catch (error) {
-   console.log('[PropertyDataService] Precinct matching failed:', error);
  }
 
- // ALWAYS check suburb name for former council - more reliable than precinct boundaries
  // Suburb name matching overrides precinct-derived council for boundary cases like Petersham
- try {
-   const { determineFormerCouncilArea } = await import('./inner-west-mapping-v2');
-   const suburbBasedCouncil = determineFormerCouncilArea(propertyData.address, constraints.lga || '');
-   if (suburbBasedCouncil) {
-     if (constraints.formerCouncil && constraints.formerCouncil !== suburbBasedCouncil) {
-       console.log(`[PropertyDataService] Suburb override: ${constraints.formerCouncil} → ${suburbBasedCouncil}`);
+ if (suburbModule) {
+   try {
+     const suburbBasedCouncil = suburbModule.determineFormerCouncilArea(propertyData.address, constraints.lga || '');
+     if (suburbBasedCouncil) {
+       constraints.formerCouncil = suburbBasedCouncil;
      }
-     constraints.formerCouncil = suburbBasedCouncil;
-     console.log(`[PropertyDataService] Former council from suburb: ${suburbBasedCouncil}`);
+   } catch (error) {
+     console.error('[PropertyDataService] Former council mapping failed:', error);
    }
- } catch (error) {
-   console.log('[PropertyDataService] Former council mapping failed:', error);
  }
 
 
     // Match site-specific Part 6 LEP clauses (based on address and heritage item)
     try {
       const siteSpecificClauseNumbers = getSiteSpecificClauses(propertyData.address);
-      
+
       // Special case: Haberfield Heritage Conservation Area (C54) -> Clause 6.20
       if (constraints.heritage && constraints.heritageItemNumber === 'C54') {
         if (!siteSpecificClauseNumbers.includes('6.20')) {
           siteSpecificClauseNumbers.push('6.20');
-          console.log('[PropertyDataService] Added Clause 6.20 for Haberfield HCA (C54)');
         }
       }
-      
+
       if (siteSpecificClauseNumbers.length > 0) {
-        console.log(`[PropertyDataService] Found ${siteSpecificClauseNumbers.length} site-specific Part 6 clause(s): ${siteSpecificClauseNumbers.join(', ')}`);
-        
-        // Initialize localProvisions array if not exists
         if (!constraints.localProvisions) {
           constraints.localProvisions = [];
         }
-        
-        // Add each site-specific clause as a LocalProvision
+
         for (const clauseNumber of siteSpecificClauseNumbers) {
           const details = getSiteSpecificProvisionDetails(clauseNumber);
           if (details) {
@@ -282,14 +263,13 @@ export class PropertyDataService {
         }
       }
     } catch (error) {
-      console.log('[PropertyDataService] Site-specific clause matching failed:', error);
+      console.error('[PropertyDataService] Site-specific clause matching failed:', error);
     }
 
  // Route applicable SEPPs
  const seppRouter = new SeppRouter();
  let applicableSepps = constraints.applicableSepps || [];
 
- // Add contextual SEPPs based on development characteristics
  applicableSepps = seppRouter.addContextualSepps(
  'residential_low', // TODO: determine from zone and property
  propertyData.zoneDescription || 'R2',
@@ -297,8 +277,10 @@ export class PropertyDataService {
  applicableSepps
  );
 
- const seppRouting = await seppRouter.routeApplicableSepps(applicableSepps);
- console.log('SEPP Routing Result:', seppRouting);
+ const seppRouting = seppRouter.routeApplicableSepps(applicableSepps);
+
+ // Resolve corner lot detection (started earlier in parallel with other work)
+ const cornerLot = await cornerLotPromise;
 
  return {
  propId: propertyData.propId,
@@ -334,7 +316,7 @@ export class PropertyDataService {
 
  // Don't return fallback data - throw error with clear message
  if (error instanceof Error && error.message.includes('abort')) {
-   throw new Error('NSW Planning Portal API request timed out after 5 seconds. Please try again.');
+   throw new Error('NSW Planning Portal API request timed out. Please try again.');
  }
 
  if (error instanceof Error && error.message.includes('Property not found')) {

@@ -227,19 +227,12 @@ export class NSWPlanningPortalService {
  * Returns the first matching result (follows same pattern as map-viewer project)
  */
  static async searchProperty(address: string): Promise<{ propId: number; address: string; GURASID: number } | null> {
- console.log('=== DEBUG: searchProperty ===');
- console.log('Address:', address);
- console.log('Encoded:', encodeURIComponent(address));
- console.log('URL:', `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=1`);
- 
  try {
- const encodedAddress = encodeURIComponent(address);
- 
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 15000); // 30 second timeout
- 
+ const timeoutId = setTimeout(() => controller.abort(), 15000);
+
  const response = await fetch(
- `${this.BASE_URL}/address?a=${encodedAddress}&noOfRecords=1`,
+ `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=1`,
  {
  signal: controller.signal,
  headers: {
@@ -248,29 +241,19 @@ export class NSWPlanningPortalService {
  }
  }
  );
- 
+
  clearTimeout(timeoutId);
- 
- console.log('Search response status:', response.status);
- console.log('Search response ok:', response.ok);
- 
+
  if (!response.ok) {
- const errorText = await response.text();
- console.log('Search error response:', errorText);
  throw new Error(`Address search failed: ${response.status}`);
  }
- 
+
  const results = await response.json() as any[];
- console.log('Search results:', results);
- console.log('Results length:', results?.length);
- 
+
  if (!results || results.length === 0) {
- console.log('No results found');
  return null;
  }
- 
- console.log('Returning result:', results[0]);
- // Return the first result - NSW Planning Portal API handles the matching
+
  return results[0];
  
  } catch (error) {
@@ -284,12 +267,8 @@ export class NSWPlanningPortalService {
  * Now includes 10s timeout to prevent indefinite hangs
  */
  static async getPlanningLayers(propId: number, retryCount: number = 0): Promise<PlanningLayer[]> {
- console.log('=== DEBUG: getPlanningLayers ===');
- console.log('PropId:', propId, 'Retry:', retryCount);
-
- // Add timeout protection to prevent indefinite hangs
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+ const timeoutId = setTimeout(() => controller.abort(), 10000);
 
  try {
  const response = await fetch(
@@ -297,49 +276,32 @@ export class NSWPlanningPortalService {
  { signal: controller.signal }
  );
 
- // Clear timeout on successful response
  clearTimeout(timeoutId);
-
- console.log('Response status:', response.status);
- console.log('Response ok:', response.ok);
 
  if (response.status === 429) {
  if (retryCount < 2) {
- console.log('Rate limited! Waiting 2 seconds before retry...');
- await new Promise(resolve => setTimeout(resolve, 2000)); // Reduced from 10s to 2s
+ await new Promise(resolve => setTimeout(resolve, 2000));
  return this.getPlanningLayers(propId, retryCount + 1);
- } else {
- console.log('Rate limited after 2 retries, giving up');
- return [];
  }
+ return [];
  }
 
  if (!response.ok) {
- const errorText = await response.text();
- console.log('Response error text:', errorText);
  throw new Error(`Planning layers failed: ${response.status}`);
  }
 
  const data = await response.json();
- console.log('Planning layers data received:', data?.length || 0, 'layers');
-
  return data || [];
 
  } catch (error) {
- // Clear timeout in case of error
  clearTimeout(timeoutId);
 
- // Handle timeout specifically
  if (error instanceof Error && error.name === 'AbortError') {
- console.error('Planning layers request timed out after 10 seconds');
  if (retryCount < 1) {
- console.log('Retrying after timeout...');
  await new Promise(resolve => setTimeout(resolve, 2000));
  return this.getPlanningLayers(propId, retryCount + 1);
- } else {
- console.error('Planning layers timeout after retry, giving up');
- return [];
  }
+ return [];
  }
 
  console.error('Planning layers error:', error);
@@ -354,8 +316,8 @@ export class NSWPlanningPortalService {
  static async getPropertyValuation(propId: number): Promise<NSWPropertyData | null> {
  try {
  const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 15000); // 30 second timeout
- 
+ const timeoutId = setTimeout(() => controller.abort(), 15000);
+
  const response = await fetch(
  `${this.VALUATION_URL}?where=propid=${propId}&outFields=propid,address,val1_bd,val1_lv,prop_area,zone_desc,urbanity&f=json`,
  {
@@ -455,71 +417,56 @@ export class NSWPlanningPortalService {
  * Phase 3: Separate API call for TOD/HIA detection
  */
  static async getTODLayers(geometry: { x: number; y: number }): Promise<PlanningLayer[]> {
- const todLayers: PlanningLayer[] = [];
-
- const controller = new AbortController();
- const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+ const todController = new AbortController();
+ const accController = new AbortController();
+ const todTimeout = setTimeout(() => todController.abort(), 8000);
+ const accTimeout = setTimeout(() => accController.abort(), 8000);
 
  try {
- console.log('=== Fetching TOD/HIA Layers (Phase 3) ===');
- console.log('Geometry:', geometry);
-
- // Query 1: TOD Sites Map (SEPP Housing 2021)
  const todUrl = `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/SEPP_Housing_2021/MapServer/3/query?` +
  `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
  `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
 
- console.log('Querying TOD Sites Map...');
- const todResponse = await fetch(todUrl, { signal: controller.signal });
-
- if (todResponse.ok) {
- const todData = await todResponse.json();
- if (todData.features && todData.features.length > 0) {
- console.log('✅ TOD layer found:', todData.features.length, 'features');
- todLayers.push({
- layerName: 'Transport Oriented Development Sites Map',
- results: todData.features.map((f: any) => f.attributes)
- });
- } else {
- console.log('❌ No TOD features at this location');
- }
- }
-
- // Query 2: Accelerated TOD Precincts
  const acceleratedUrl = `https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/ePlanning/Planning_Portal_SEPP/MapServer/759/query?` +
  `geometry=${geometry.x},${geometry.y}&geometryType=esriGeometryPoint&` +
  `spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json`;
 
- console.log('Querying Accelerated TOD Precincts...');
- const acceleratedResponse = await fetch(acceleratedUrl, { signal: controller.signal });
+ const [todResponse, acceleratedResponse] = await Promise.all([
+ fetch(todUrl, { signal: todController.signal }).catch(() => null),
+ fetch(acceleratedUrl, { signal: accController.signal }).catch(() => null)
+ ]);
 
- if (acceleratedResponse.ok) {
+ clearTimeout(todTimeout);
+ clearTimeout(accTimeout);
+
+ const todLayers: PlanningLayer[] = [];
+
+ if (todResponse?.ok) {
+ const todData = await todResponse.json();
+ if (todData.features?.length > 0) {
+ todLayers.push({
+ layerName: 'Transport Oriented Development Sites Map',
+ results: todData.features.map((f: any) => f.attributes)
+ });
+ }
+ }
+
+ if (acceleratedResponse?.ok) {
  const acceleratedData = await acceleratedResponse.json();
- if (acceleratedData.features && acceleratedData.features.length > 0) {
- console.log('✅ Accelerated TOD found:', acceleratedData.features.length, 'features');
+ if (acceleratedData.features?.length > 0) {
  todLayers.push({
  layerName: 'Accelerated TOD Precincts Rezoning Areas Map',
  results: acceleratedData.features.map((f: any) => f.attributes)
  });
- } else {
- console.log('❌ No Accelerated TOD features at this location');
  }
  }
 
- clearTimeout(timeoutId);
- console.log('TOD/HIA query complete. Found', todLayers.length, 'layer(s)');
  return todLayers;
 
  } catch (error) {
- clearTimeout(timeoutId);
-
- if (error instanceof Error && error.name === 'AbortError') {
- console.error('TOD layers request timed out after 8 seconds (non-critical)');
- } else {
- console.error('TOD layers fetch failed (non-critical):', error);
- }
-
- // Graceful degradation - return empty array, don't break property lookup
+ clearTimeout(todTimeout);
+ clearTimeout(accTimeout);
+ // Graceful degradation — TOD layers are non-critical
  return [];
  }
  }
@@ -543,37 +490,7 @@ export class NSWPlanningPortalService {
  applicableSepps: []
  };
 
- // ===== PHASE 2 TOD/HIA LAYER AUDIT =====
- console.log('\n=== LAYER COVERAGE AUDIT (Phase 2) ===');
- console.log('Total layers received:', layers.length);
- console.log('\nAll layer names:');
- layers.forEach((layer, index) => {
- console.log(`  ${index + 1}. ${layer.layerName} (${layer.results?.length || 0} results)`);
- });
-
- // Check for TOD/HIA-related keywords
- const todKeywords = ['transport', 'tod', 'housing', 'accelerated', 'hia', 'infrastructure', 'station', 'precinct'];
- const todRelatedLayers = layers.filter(l =>
- todKeywords.some(keyword => l.layerName.toLowerCase().includes(keyword))
- );
-
- if (todRelatedLayers.length > 0) {
- console.log('\n✅ TOD/HIA-related layers FOUND:');
- todRelatedLayers.forEach(l => console.log(`  - ${l.layerName}`));
- } else {
- console.log('\n❌ NO TOD/HIA-related layers found in EPI response');
- console.log('  Will need separate API call (Phase 3)');
- }
- console.log('=== END LAYER AUDIT ===\n');
- // ===== END PHASE 2 AUDIT =====
-
- console.log('Extracting from', layers.length, 'layers');
  layers.forEach(layer => {
- console.log('Layer:', layer.layerName, 'Results:', layer.results?.length || 0);
- if (layer.results?.length > 0) {
- console.log('First result keys:', Object.keys(layer.results[0]));
- console.log('First result:', JSON.stringify(layer.results[0], null, 2));
- }
  layer.results?.forEach(result => {
  switch (layer.layerName) {
  case 'Floor Space Ratio Map':
@@ -651,15 +568,12 @@ export class NSWPlanningPortalService {
  break;
  
  case 'Greater Sydney Tree Canopy Cover 2019':
- console.log('✅ Extracting Tree Canopy data:', result);
- // Field name in actual API response is "Canopy %" not "Tree Canopy Cover %"
  constraints.treeCanopy = {
  coverage: result['Canopy %'] || result['Tree Canopy Cover %'] || result['Canopy_Cover'],
  coverageClass: result['Cover Class'] || result['Canopy_Class'] || result['Canopy Class'],
  year: '2019',
  source: 'Greater Sydney Tree Canopy Cover 2019'
  };
- console.log('Tree canopy extracted:', constraints.treeCanopy);
  break;
 
  // ===== PHASE 5: TOD/HIA EXTRACTION =====
@@ -667,7 +581,6 @@ export class NSWPlanningPortalService {
  case 'TOD Precinct':
  case 'SEPP Housing 2021 - TOD':
  case 'SEPP (Housing) 2021':
- console.log('✅ Extracting TOD precinct data:', result);
  constraints.todPrecinct = {
  inTODArea: true,
  precinctName: result['Precinct Name'] || result['PrecinctName'] ||
@@ -683,13 +596,11 @@ export class NSWPlanningPortalService {
  legislativeClause: result['Legislative Clause'] || result['Clause'] || 'Clause 4.4',
  seppReference: result['EPI Name'] || result['SEPP'] || 'SEPP (Housing) 2021'
  };
- console.log('TOD precinct extracted:', constraints.todPrecinct);
  break;
 
  case 'Accelerated TOD Precincts Rezoning Areas Map':
  case 'Accelerated Transport Oriented Development':
  case 'Priority Precincts':
- console.log('✅ Extracting Accelerated TOD data:', result);
  constraints.acceleratedTOD = {
  inAcceleratedPrecinct: true,
  precinctName: result['Precinct Name'] || result['PrecinctName'] ||
@@ -698,20 +609,17 @@ export class NSWPlanningPortalService {
  result['Expected_Rezoning'] || result['REZONING_DATE'],
  priorityArea: true
  };
- console.log('Accelerated TOD extracted:', constraints.acceleratedTOD);
  break;
 
  case 'Housing Infrastructure Areas':
  case 'HIA Map':
  case 'State Significant Development':
- console.log('✅ Extracting HIA data:', result);
  constraints.hiaArea = {
  inHIA: true,
  hiaName: result['HIA Name'] || result['Name'] || result['Area Name'] || 'HIA Area',
  specialControls: result['Special Controls'] || result['Controls'] || result['CONTROLS'],
  legislativeClause: result['Legislative Clause'] || result['Clause']
  };
- console.log('HIA area extracted:', constraints.hiaArea);
  break;
 
 			case 'Local Provisions':
@@ -867,7 +775,6 @@ export class NSWPlanningPortalService {
  });
  });
 
- console.log('Final constraints:', constraints);
  return constraints;
  }
 
@@ -875,8 +782,6 @@ export class NSWPlanningPortalService {
  * Extract applicable SEPPs from special provisions data
  */
  static extractApplicableSepps(result: any, constraints: PlanningConstraints & { applicableSepps?: string[] }): void {
- console.log('Processing special provisions result:', JSON.stringify(result, null, 2));
- 
  // Look for SEPP identifiers in various fields
  const searchFields = ['Type', 'Category', 'EPI Name', 'Legislative Clause', 'Description', 'Map Type'];
  const seppKeywords = ['sepp', 'state environmental planning policy'];
@@ -888,8 +793,6 @@ export class NSWPlanningPortalService {
  
  // Check if this field mentions any SEPP
  if (seppKeywords.some(keyword => lowerValue.includes(keyword))) {
- console.log(`Found SEPP reference in ${field}: ${value}`);
- 
  // Extract SEPP number/identifier
  const seppMatch = value.match(/sepp[^\d]*(\d+)/i) || value.match(/state environmental planning policy[^\d]*(\d+)/i);
  if (seppMatch) {
@@ -898,7 +801,6 @@ export class NSWPlanningPortalService {
  
  if (!constraints.applicableSepps?.includes(seppIdentifier)) {
  constraints.applicableSepps?.push(seppIdentifier);
- console.log(`Added SEPP identifier: ${seppIdentifier}`);
  }
  }
  
@@ -965,32 +867,21 @@ export class NSWPlanningPortalService {
  anefData?: AnefInfo | null;
  lotGeometry?: LotGeometryData | null;
  } | null> {
- console.log('=== DEBUG: getPropertyComplianceData ===');
- console.log('Address:', address);
- 
  try {
- // Step 1: Search for property
- console.log('Step 1: Searching for property...');
  const searchResult = await this.searchProperty(address);
- console.log('Search result:', searchResult);
- 
+
  if (!searchResult) {
  throw new Error('Property not found');
  }
 
- // Step 2a: Fetch independent calls in parallel (valuation called once only)
- console.log('Step 2: Getting planning layers, valuation data, and lot geometry...');
+ // Stage 1: independent fetches in parallel (valuation called once only)
  const [layers, propertyData, lotGeometry] = await Promise.all([
    this.getPlanningLayers(searchResult.propId),
    this.getPropertyValuation(searchResult.propId),
-   this.getLotGeometry(searchResult.propId).catch((err) => {
-     console.log('Lot geometry fetch failed, continuing without lot data:', err);
-     return null;
-   })
+   this.getLotGeometry(searchResult.propId).catch(() => null)
  ]);
 
- // Step 2b: Fan out from single valuation result (needs geometry)
- console.log('Step 2b: Fetching TOD, road classifications, and ANEF using valuation geometry...');
+ // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion)
  let todLayers: PlanningLayer[] = [];
  let roadClassifications: any[] = [];
  let anefData: AnefInfo | null = null;
@@ -998,42 +889,22 @@ export class NSWPlanningPortalService {
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
-   console.log(`Converted coordinates: Web Mercator (${propertyData.geometry.x}, ${propertyData.geometry.y}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
 
    [todLayers, roadClassifications, anefData] = await Promise.all([
-     this.getTODLayers(propertyData.geometry).catch(() => {
-       console.log('TOD layers fetch failed, continuing without TOD data');
-       return [];
-     }),
-     getRoadClassifications(lat, lon).catch(() => {
-       console.log('Road classification fetch failed, continuing without road data');
-       return [];
-     }),
+     this.getTODLayers(propertyData.geometry).catch(() => []),
+     getRoadClassifications(lat, lon).catch(() => []),
      fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`)
        .then(res => res.ok ? res.json() : null)
        .then(result => result?.success ? result.data : null)
-       .catch((err) => {
-         console.log('ANEF check failed, continuing without ANEF data:', err);
-         return null;
-       })
+       .catch(() => null)
    ]);
  }
-
- console.log('Layers received:', layers);
- console.log('Property data received:', propertyData);
- console.log('TOD layers received:', todLayers);
- console.log('Road classifications received:', roadClassifications);
- console.log('ANEF data received:', anefData);
- console.log('Lot geometry received:', lotGeometry ? `${lotGeometry.geometry?.rings?.[0]?.length || 0} vertices` : 'none');
 
  if (!propertyData) {
  throw new Error('Property valuation data not found');
  }
 
- // Step 3: Merge all layers and extract constraints
- console.log('Step 3: Merging layers and extracting constraints...');
  const allLayers = [...layers, ...todLayers];
- console.log('Total layers (including TOD):', allLayers.length);
  const constraints = this.extractPlanningConstraints(allLayers, address);
 
  // Step 4: Clean up the address from search result

@@ -106,12 +106,18 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
 
     const url = `${NSW_SPATIAL_BASE}/${ROAD_CORRIDOR_LAYER}/query?${queryParams.toString()}`;
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return {
