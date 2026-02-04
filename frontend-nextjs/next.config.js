@@ -17,10 +17,16 @@ const nextConfig = {
    // In development, serve from local public folder (default behavior)
    return [];
  },
- // Production optimizations - enable SWC minification and strict mode for production builds
- // Disabled in development to avoid hot reload issues
  reactStrictMode: process.env.NODE_ENV === 'production',
  swcMinify: process.env.NODE_ENV === 'production',
+ // Strip all console.* except console.error in production builds (SWC compile-time transform)
+ compiler: {
+   ...(process.env.NODE_ENV === 'production' && {
+     removeConsole: {
+       exclude: ['error'],
+     },
+   }),
+ },
  // Temporarily disable TypeScript checking in build to unblock deployment
  typescript: {
  ignoreBuildErrors: true
