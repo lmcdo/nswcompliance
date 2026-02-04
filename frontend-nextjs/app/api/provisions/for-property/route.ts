@@ -652,7 +652,7 @@ async function queryHeritageFromDcpGeneralRequirements(
       'condition' as v2_dcp_layer,
       COALESCE(part_number, part_name) as v2_dcp_part,
       CASE
-        WHEN part_name = 'Heritage' THEN 'Heritage'
+        WHEN part_name ILIKE '%Heritage%' THEN 'Heritage'
         ELSE INITCAP(REPLACE(category, '_', ' '))
       END as v2_topic,
       'control' as v2_provision_type,
