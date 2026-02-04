@@ -403,6 +403,7 @@ export default function AssessmentPage() {
                         ? selectedProperty.heritage?.heritageItemName
                         : undefined}
                       precinctId={selectedProperty.constraints?.precinctId}
+                      precinctName={selectedProperty.constraints?.precinctName}
                     />
                   </div>
                 )}

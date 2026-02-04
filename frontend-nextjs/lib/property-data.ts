@@ -210,6 +210,7 @@ export class PropertyDataService {
 
      if (precinctData) {
        constraints.precinctId = precinctData.precinctId;
+       constraints.precinctName = precinctData.precinctName;
        if (precinctData.formerCouncil) {
          constraints.formerCouncil = precinctData.formerCouncil;
        }

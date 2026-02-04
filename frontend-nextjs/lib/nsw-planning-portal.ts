@@ -43,6 +43,7 @@ export interface PlanningConstraints {
  zoneDescription: string | null;
  lga: string | null;
  precinctId?: string | null;
+ precinctName?: string | null;
  formerCouncil?: string | null;
  heritage: boolean;
  heritageType?: string;

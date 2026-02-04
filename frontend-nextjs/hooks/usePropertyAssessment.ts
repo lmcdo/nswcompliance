@@ -21,6 +21,7 @@ interface PropertyData {
     lga?: string;
     formerCouncil?: string;
     precinctId?: string;
+    precinctName?: string;
     todPrecinct?: any;
     acceleratedTOD?: any;
     hiaArea?: any;

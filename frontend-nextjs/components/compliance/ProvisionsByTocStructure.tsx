@@ -100,6 +100,7 @@ interface ProvisionsByTocStructureProps {
   heritage?: boolean;
   hcaName?: string;
   precinctId?: string;
+  precinctName?: string;
 }
 
 const fetcher = async (url: string) => {
@@ -126,7 +127,8 @@ export function ProvisionsByTocStructure({
   zone,
   heritage,
   hcaName,
-  precinctId
+  precinctId,
+  precinctName
 }: ProvisionsByTocStructureProps) {
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -633,6 +635,15 @@ export function ProvisionsByTocStructure({
               })}
             </div>
 
+            {/* Layer explanation — directly under the layer filter it references */}
+            <LayerExplanation
+              zone={zone}
+              heritage={heritage}
+              hcaName={hcaName}
+              precinctName={precinctName}
+              formerCouncil={formerCouncil}
+            />
+
             {/* Topic filter chips - secondary filter row */}
             {availableTopics.length > 1 && (
               <div className="space-y-1.5">
@@ -700,15 +711,6 @@ export function ProvisionsByTocStructure({
 
         {/* Provisions list */}
         <div className="p-4">
-          {/* Layer explanation - always visible */}
-          <LayerExplanation
-            zone={zone}
-            heritage={heritage}
-            hcaName={hcaName}
-            precinctName={precinctId}
-            formerCouncil={formerCouncil}
-          />
-
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions
               provisions={filteredProvisions}

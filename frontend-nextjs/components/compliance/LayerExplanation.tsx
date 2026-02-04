@@ -1,11 +1,26 @@
 /**
  * Layer Explanation Component
  *
- * Displays always-visible explanation of the 4-layer applicability model
- * Replaces hover tooltips with discoverable, accessible information
+ * Explains which layers apply and why. Colours and labels must stay in sync
+ * with the "Show from" filter buttons in ProvisionsByTocStructure.
+ *
+ * Colour map (shared with filter buttons):
+ *   generic      → teal   #14b8a6  (bg-teal-500)
+ *   use_specific → blue   #3b82f6  (bg-blue-500)
+ *   condition    → amber  #f59e0b  (bg-amber-500)
+ *   precinct     → purple #8b5cf6  (bg-purple-500)
  */
 
 import { Info } from 'lucide-react';
+
+// Must mirror COUNCIL_LAYER_LABELS / DEFAULT_LAYER_LABELS in ProvisionsByTocStructure
+const LAYER_LABELS: Record<string, Record<string, string>> = {
+  ashfield:    { generic: 'Ashfield-wide',    precinct: 'Village Precinct' },
+  leichhardt:  { generic: 'Leichhardt-wide',  precinct: 'Distinct Neighbourhood' },
+  marrickville:{ generic: 'Marrickville-wide', precinct: 'Precinct Character' },
+};
+
+const DEFAULT_LABELS = { generic: 'LGA-wide', precinct: 'Precinct' };
 
 interface LayerExplanationProps {
   zone?: string;
@@ -22,66 +37,46 @@ export function LayerExplanation({
   precinctName,
   formerCouncil
 }: LayerExplanationProps) {
-  const councilName = formerCouncil || 'this council';
-
-  // Format precinct name for display
-  const formatPrecinctName = (name: string | undefined): string => {
-    if (!name) return '';
-
-    // If it's just a precinct ID like "30_", format it nicely
-    if (name.match(/^\d+_?$/)) {
-      const num = name.replace('_', '');
-      return `Precinct ${num}`;
-    }
-
-    // Otherwise return as-is
-    return name;
-  };
-
-  const displayPrecinctName = formatPrecinctName(precinctName);
+  const labels = (formerCouncil && LAYER_LABELS[formerCouncil.toLowerCase()]) || DEFAULT_LABELS;
+  const genericLabel = labels.generic;
+  const precinctLabel = labels.precinct;
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
       <div className="flex items-start gap-2">
-        <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
         <div className="flex-1">
-          <h4 className="text-sm font-semibold text-blue-900 mb-2">
+          <div className="text-xs font-semibold text-blue-900 mb-1.5">
             Why am I seeing these provisions?
-          </h4>
-          <div className="space-y-1.5 text-sm text-blue-800">
-            <div className="flex items-start gap-2">
-              <span className="inline-block w-2 h-2 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"></span>
-              <div>
-                <strong>Generic:</strong> Apply to ALL properties in {councilName}
-              </div>
+          </div>
+          <div className="space-y-1 text-xs text-blue-800">
+
+            <div className="flex items-center gap-2">
+              <span className="inline-block w-2 h-2 bg-teal-500 rounded-full flex-shrink-0"></span>
+              <span><strong>{genericLabel}:</strong> Apply to all properties in {formerCouncil || 'this council'}</span>
             </div>
 
             {zone && (
-              <div className="flex items-start gap-2">
-                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></span>
-                <div>
-                  <strong>Zone-Specific:</strong> Apply because your property is in <strong>{zone}</strong> zone
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
+                <span><strong>Zone-Specific:</strong> Apply because your property is in <strong>{zone}</strong> zone</span>
               </div>
             )}
 
             {heritage && (
-              <div className="flex items-start gap-2">
-                <span className="inline-block w-2 h-2 bg-amber-500 rounded-full mt-1.5 flex-shrink-0"></span>
-                <div>
-                  <strong>Heritage:</strong> Apply because your property is {hcaName ? `in ${hcaName}` : 'heritage listed'}
-                </div>
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></span>
+                <span><strong>Heritage:</strong> Apply because your property is {hcaName ? `in ${hcaName}` : 'heritage listed'}</span>
               </div>
             )}
 
-            {displayPrecinctName && (
-              <div className="flex items-start gap-2">
-                <span className="inline-block w-2 h-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></span>
-                <div>
-                  <strong>Precinct:</strong> Apply because your property is in <strong>{displayPrecinctName}</strong>
-                </div>
+            {precinctName && (
+              <div className="flex items-center gap-2">
+                <span className="inline-block w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></span>
+                <span><strong>{precinctLabel}:</strong> Apply because your property is in <strong>{precinctName}</strong></span>
               </div>
             )}
+
           </div>
         </div>
       </div>
