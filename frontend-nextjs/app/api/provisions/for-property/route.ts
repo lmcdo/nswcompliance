@@ -524,7 +524,7 @@ async function queryHeritageByHca(
       ${relevanceSelect}
     FROM regulatory_provisions
     WHERE v2_is_actionable = true
-      AND (LOWER(v2_topic) = 'heritage' OR v2_topic = 'Heritage')
+      AND v2_marker = 'heritage'
       AND (
         v2_heritage_hca IS NULL  -- General heritage controls
         OR v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
