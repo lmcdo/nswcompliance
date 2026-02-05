@@ -10,11 +10,13 @@ interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
   planningLayers: PlanningLayer[];
   constraints: PlanningConstraints;
+  formerCouncil?: string;
 }
 
 export function LepControls({
   planningLayers,
-  constraints
+  constraints,
+  formerCouncil
 }: LepControlsProps) {
   const lepName = constraints?.lga 
     ? `${constraints.lga} Local Environmental Plan 2022` 
@@ -80,6 +82,7 @@ export function LepControls({
           heritageLegislativeClause={constraints.heritageLegislativeClause}
           heritageSignificance={constraints.heritageSignificance}
           heritageLegislationUrl={constraints.heritageLegislationUrl}
+          formerCouncil={formerCouncil}
         />
       ) : (
         <NotApplicableCard

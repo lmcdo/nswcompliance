@@ -467,8 +467,9 @@ function calculateRelevanceSummary(layers: LayerResult[]): any {
 }
 
 /**
- * Query heritage provisions filtered by specific HCA from regulatory_provisions
- * Returns provisions for the property's HCA + general heritage controls
+ * Query heritage provisions from regulatory_provisions.
+ * When filters.hca is set: returns general heritage controls + HCA-specific controls.
+ * When filters.hca is not set (e.g. individual heritage items): returns general controls only.
  */
 async function queryHeritageByHca(
   client: any,
@@ -525,12 +526,21 @@ async function queryHeritageByHca(
     FROM regulatory_provisions
     WHERE v2_is_actionable = true
       AND v2_marker = 'heritage'
+  `;
+
+  // Include HCA-specific controls only when a specific HCA is provided.
+  // Without HCA (e.g. individual heritage items): general controls only.
+  if (filters.hca) {
+    sql += `
       AND (
         v2_heritage_hca IS NULL  -- General heritage controls
         OR v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
       )
-  `;
-  params.push(filters.hca);
+    `;
+    params.push(filters.hca);
+  } else {
+    sql += ` AND v2_heritage_hca IS NULL`;
+  }
 
   // Filter by former council
   if (filters.former_council) {
@@ -549,16 +559,12 @@ async function queryHeritageByHca(
     sql += ` AND v2_precinct_id IS NULL`;
   }
 
-  sql += ` ORDER BY v2_dcp_part, id LIMIT 200`;
+  sql += ` ORDER BY v2_dcp_part, id LIMIT 500`;
 
   const result = await client.query(sql, params);
   return result.rows;
 }
 
-/**
- * Query heritage provisions from dcp_general_requirements (LLM-extracted, curated data)
- * Maps columns to match the UI's expected interface
- */
 /**
  * Enrich provisions with TOC section info (section_number, section_title)
  * Uses document_id + pdf_page to find matching TOC entry
@@ -626,82 +632,16 @@ async function enrichWithTocSections(
   });
 }
 
-async function queryHeritageFromDcpGeneralRequirements(
-  client: any,
-  filters: PropertyFilters
-): Promise<any[]> {
-  const params: any[] = [];
-  let paramIndex = 1;
-
-  // Heritage provisions from dcp_general_requirements apply universally
-  let relevanceSelect = '';
-  if (filters.dev_type) {
-    relevanceSelect = `,
-      'general' as relevance_level,
-      'Applies to all development types' as relevance_reason
-    `;
-  } else {
-    relevanceSelect = `, NULL as relevance_level, NULL as relevance_reason`;
-  }
-
-  let sql = `
-    SELECT
-      id,
-      NULL as document_id,
-      COALESCE(verbatim_source_text, requirement_text) as provision_text,
-      'condition' as v2_dcp_layer,
-      COALESCE(part_number, part_name) as v2_dcp_part,
-      CASE
-        WHEN part_name ILIKE '%Heritage%' THEN 'Heritage'
-        ELSE INITCAP(REPLACE(category, '_', ' '))
-      END as v2_topic,
-      'control' as v2_provision_type,
-      NULL as v2_precinct_id,
-      NULL as v2_marker,
-      NULL as v2_display_behavior,
-      pdf_page,
-      pdf_path as pdf_source_file,
-      pdf_page_image_url,
-      NULL as v2_heritage_type,
-      NULL as v2_heritage_element,
-      NULL as v2_heritage_hca,
-      NULL as v2_applicable_dev_types,
-      INITCAP(REPLACE(category, '_', ' ')) as v2_heritage_subcategory
-      ${relevanceSelect}
-    FROM dcp_general_requirements
-    WHERE (category = 'heritage' OR part_name ILIKE '%Heritage%')
-    -- Exclude non-heritage sections that just mention heritage
-    AND (part_name IS NULL OR part_name NOT IN ('Energy Management', 'Waste Management', 'Landscaping and Open Spaces', 'Fencing'))
-  `;
-
-  // Filter by former council
-  if (filters.former_council) {
-    const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
-    sql += ` AND former_council = $${paramIndex++}`;
-    params.push(councilName);
-  }
-
-  sql += ` ORDER BY part_name, id LIMIT 500`;
-
-  const result = await client.query(sql, params);
-  return result.rows;
-}
-
 async function queryLayer(
   client: any,
   layer: string,
   filters: PropertyFilters
 ): Promise<any[]> {
-  // For condition layer with heritage, use appropriate source based on HCA filter
+  // For condition layer with heritage, always use regulatory_provisions.
+  // queryHeritageByHca handles both: HCA-specific + general (when hca set)
+  // or general-only (when hca not set, e.g. individual heritage items).
   if (layer === 'condition' && filters.heritage) {
-    // If specific HCA is provided, query regulatory_provisions filtered by that HCA
-    // This gives specific HCA provisions + general heritage provisions
-    if (filters.hca) {
-      return queryHeritageByHca(client, filters);
-    }
-    // Otherwise return general heritage provisions from dcp_general_requirements
-    // but limit to a smaller set (not 500+)
-    return queryHeritageFromDcpGeneralRequirements(client, filters);
+    return queryHeritageByHca(client, filters);
   }
 
   const params: any[] = [];

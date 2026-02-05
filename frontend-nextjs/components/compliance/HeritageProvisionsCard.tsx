@@ -14,7 +14,27 @@ interface HeritageProvisionsCardProps {
   heritageLegislativeClause?: string;
   heritageSignificance?: string;
   heritageLegislationUrl?: string;
+  formerCouncil?: string;
 }
+
+/** Council-specific DCP heritage chapter references */
+const COUNCIL_DCP_INFO: Record<string, { year: string; chapter: string; hcaNote: string }> = {
+  Ashfield: {
+    year: '2016',
+    chapter: 'Chapter E1',
+    hcaNote: 'Area Character Statements describe the character of individual Heritage Conservation Areas within the Ashfield DCP.'
+  },
+  Leichhardt: {
+    year: '2013',
+    chapter: 'Part C, Section 1',
+    hcaNote: 'Heritage controls apply generally to all Heritage Conservation Areas in Leichhardt — there are no HCA-specific controls in the Leichhardt DCP.'
+  },
+  Marrickville: {
+    year: '2011',
+    chapter: 'Section 8',
+    hcaNote: 'Individual Heritage Conservation Areas may have specific controls and a Statement of Significance in the Marrickville DCP.'
+  }
+};
 
 interface ProvisionDetail {
   clauseNumber: string;
@@ -30,7 +50,8 @@ export function HeritageProvisionsCard({
   heritageItemNumber,
   heritageLegislativeClause,
   heritageSignificance,
-  heritageLegislationUrl
+  heritageLegislationUrl,
+  formerCouncil
 }: HeritageProvisionsCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [provisionDetail, setProvisionDetail] = useState<ProvisionDetail | null>(null);
@@ -90,9 +111,9 @@ export function HeritageProvisionsCard({
           </Badge>
         </CardTitle>
         <p className="text-sm text-muted-foreground mt-2">
-          {isHCA 
-            ? 'Area-wide heritage controls under the Local Environmental Plan'
-            : 'Specific heritage item protections under the Local Environmental Plan'
+          {isHCA
+            ? `Heritage Conservation Area identified under the Inner West LEP 2022. DCP heritage controls are in ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
+            : `Heritage-listed property identified under the Inner West LEP 2022. General heritage controls apply from ${COUNCIL_DCP_INFO[formerCouncil || '']?.chapter || 'the heritage chapter'} of the ${formerCouncil || ''} DCP ${COUNCIL_DCP_INFO[formerCouncil || '']?.year || ''}.`
           }
         </p>
       </CardHeader>
@@ -153,8 +174,11 @@ export function HeritageProvisionsCard({
                       </h5>
                       {/* Note about generic vs specific */}
                       <div className="text-xs text-gray-600 bg-gray-50 rounded px-2 py-1.5 border border-gray-200">
-                        <strong>Generic LEP clause:</strong> Clause 5.10 applies to <em>all</em> heritage items and HCAs across NSW.
-                        For controls specific to this HCA (materials, colours, setbacks), see the <strong>DCP tab → Heritage</strong>.
+                        <strong>LEP clause:</strong> Clause 5.10 applies to all heritage items and HCAs across the Inner West.
+                        For design controls specific to this property, see the <strong>DCP tab → Heritage</strong>.
+                        {formerCouncil && COUNCIL_DCP_INFO[formerCouncil] && (
+                          <span className="block mt-1">{COUNCIL_DCP_INFO[formerCouncil].hcaNote}</span>
+                        )}
                       </div>
                       {/* Full PDF page image of clause 5.10 */}
                       <div className="border border-blue-200 rounded-lg overflow-hidden">
@@ -225,9 +249,9 @@ export function HeritageProvisionsCard({
         </div>
 
         {/* Note about DCP heritage controls */}
-        {isHCA && (
+        {isHCA && formerCouncil && (
           <p className="mt-3 text-sm text-blue-700 bg-blue-50 rounded px-3 py-2">
-            Universal Heritage Conservation Area controls apply to all HCA properties in Leichhardt — see DCP tab.
+            Heritage controls for this area are in {COUNCIL_DCP_INFO[formerCouncil]?.chapter || 'the heritage chapter'} of the {formerCouncil} DCP {COUNCIL_DCP_INFO[formerCouncil]?.year || ''} — see DCP tab.
           </p>
         )}
       </CardContent>

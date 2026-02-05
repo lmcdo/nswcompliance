@@ -1257,6 +1257,7 @@ export function ComplianceDashboard({
             heritage={propertyData.heritage}
             propertyGeometry={propertyData.geometry}
             lga={propertyData.constraints?.lga}
+            formerCouncil={propertyData.constraints?.formerCouncil || ''}
             onViewDCPHeritage={() => {
               // Switch to combined mode and expand heritage category
               if (displayModeSetterRef.current) {

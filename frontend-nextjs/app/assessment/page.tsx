@@ -386,6 +386,7 @@ export default function AssessmentPage() {
                       <LepControls
                         planningLayers={selectedProperty.planningLayers || []}
                         constraints={selectedProperty.constraints}
+                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
                       />
                     </ErrorBoundary>
                   </div>

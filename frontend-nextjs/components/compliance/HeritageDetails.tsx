@@ -29,10 +29,27 @@ interface HeritageDetailsProps {
     y: number;
   };
   lga?: string;
+  formerCouncil?: string;
   onViewDCPHeritage?: () => void;
 }
 
-export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeritage }: HeritageDetailsProps) {
+/** Council-specific heritage context for HCA cards */
+const COUNCIL_HERITAGE_CONTEXT: Record<string, { dcpRef: string; hcaExplanation: string }> = {
+  Ashfield: {
+    dcpRef: 'Ashfield DCP 2016, Chapter E1',
+    hcaExplanation: 'General heritage controls apply to all Heritage Conservation Areas in the former Ashfield area. An Area Character Statement describing this HCA\'s character is available in the DCP.'
+  },
+  Leichhardt: {
+    dcpRef: 'Leichhardt DCP 2013, Part C Section 1',
+    hcaExplanation: 'General heritage controls apply to all Heritage Conservation Areas in the former Leichhardt area. There are no HCA-specific controls in the Leichhardt DCP.'
+  },
+  Marrickville: {
+    dcpRef: 'Marrickville DCP 2011, Section 8',
+    hcaExplanation: 'Heritage controls may include both general requirements and HCA-specific controls with a Statement of Significance. Check the DCP tab for controls applicable to this area.'
+  }
+};
+
+export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil, onViewDCPHeritage }: HeritageDetailsProps) {
   const [hcaData, setHcaData] = useState<HCAData | null>(null);
   const [hcaLoading, setHcaLoading] = useState(false);
 
@@ -156,8 +173,11 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeri
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {displayHCA.legislativeClause}.
               <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
-                <strong>Note:</strong> {displayHCA.legislativeClause} is the generic LEP clause for all heritage.
-                For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.
+                {formerCouncil && COUNCIL_HERITAGE_CONTEXT[formerCouncil] ? (
+                  <><strong>DCP controls:</strong> {COUNCIL_HERITAGE_CONTEXT[formerCouncil].hcaExplanation}</>
+                ) : (
+                  <><strong>Note:</strong> For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.</>
+                )}
               </div>
             </div>
           </div>
@@ -219,8 +239,11 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeri
               Development within this Heritage Conservation Area requires assessment against
               heritage conservation principles under {hcaData.legislativeClause}.
               <div className="mt-1.5 pt-1.5 border-t border-amber-200 text-amber-800">
-                <strong>Note:</strong> {hcaData.legislativeClause} is the generic LEP clause for all heritage.
-                For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.
+                {formerCouncil && COUNCIL_HERITAGE_CONTEXT[formerCouncil] ? (
+                  <><strong>DCP controls:</strong> {COUNCIL_HERITAGE_CONTEXT[formerCouncil].hcaExplanation}</>
+                ) : (
+                  <><strong>Note:</strong> For HCA-specific controls (materials, setbacks, design), see <strong>DCP tab → Heritage</strong>.</>
+                )}
               </div>
             </div>
           </div>
@@ -297,7 +320,8 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, onViewDCPHeri
             <div className="font-semibold mb-1">Heritage Development Controls Apply</div>
             <div className="text-amber-800">
               Development on heritage-listed properties requires heritage impact assessment.
-              Additional approval pathways and design controls apply under {heritage?.heritageClause || 'LEP heritage provisions'}.
+              General heritage design controls apply under {heritage?.heritageClause || 'LEP heritage provisions'}
+              {formerCouncil && COUNCIL_HERITAGE_CONTEXT[formerCouncil] ? ` — see ${COUNCIL_HERITAGE_CONTEXT[formerCouncil].dcpRef} in the DCP tab` : ''}.
             </div>
           </div>
         </div>
