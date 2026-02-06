@@ -146,6 +146,7 @@ diagnose_*.py
 !DEPLOYMENT.md
 !TASK.md
 !CHANGELOG.md
+!screencast-*.md
 
 # BROAD: Ignore ALL root-level Python scripts except core
 /*.py
