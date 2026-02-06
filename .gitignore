@@ -147,6 +147,7 @@ diagnose_*.py
 !TASK.md
 !CHANGELOG.md
 !screencast-*.md
+!SCREENCAST_API_CHECKLIST.md
 
 # BROAD: Ignore ALL root-level Python scripts except core
 /*.py
