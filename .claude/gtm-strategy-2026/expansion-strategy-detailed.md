@@ -206,16 +206,22 @@ Lawrence
 
 ### **How to Create the Loom Video (15 minutes):**
 
-**Script:**
-1. Go to plot-detect-homepage-design-4mb9qjqh7.vercel.app
+**Script (Updated 2026-02-05 with NEW heritage architecture):**
+1. Go to verify.plotdetect.com.au (production URL)
 2. Screen record with Loom (free)
 3. "Hi, I'm Lawrence. Let me show you this compliance engine in 90 seconds."
-4. Enter: 185 Parramatta Rd, Leichhardt
-5. Show: 429 provisions filtered to 42 actionable
-6. Click: Heritage tab → show HCA provisions
-7. Click: AI chat → type "What is the parking rate?"
-8. "That's it. Usually takes 4-6 hours manually. Here it's 3 seconds. Interested in testing?"
-9. Upload to Loom, get shareable link
+4. Enter: **185 Parramatta Rd, Annandale** (not Leichhardt — Annandale is the suburb)
+5. Show property card: **C1 Annandale Heritage Conservation Area** badge
+6. Expand heritage card — council-specific text appears: "Leichhardt DCP 2013, Part C Section 1. General controls apply to all HCAs — no HCA-specific controls."
+7. Click DCP tab → Heritage button: **494 provisions filtered to 16 heritage controls**
+8. Show subtopics: Materials (5), Additions (2), Parking (2), Demolition (2), Solar (2), Signage (2), Verandah (1), Roof (1)
+9. "That's it. 16 heritage provisions, all general controls, zero false positives. Usually takes 4-6 hours manually. Here it's 30 seconds. Interested in testing?"
+10. Upload to Loom, get shareable link
+
+**Key talking points (updated):**
+- Single-table heritage architecture (no more fallback false positives)
+- Council-specific explanatory text (Leichhardt vs Ashfield vs Marrickville)
+- Correct provision counts: Leichhardt 16 general, Marrickville 193 general + 3 HCA-specific per HCA, Ashfield 306 general
 
 **Expected response rate:**
 - 10 messages sent → 3-4 replies (30-40%)
