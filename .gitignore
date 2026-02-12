@@ -298,8 +298,11 @@ debug_*.js
 # PRPs working directory
 PRPs/
 
-# Docs directory (large PDFs)
-docs/
+# Docs directory (large PDFs ignored, but allow markdown subdirs)
+docs/*
+!docs/screencasts/
+!docs/user-stories/
+!docs/*.md
 
 # PDF page images (stored in cloud, not git)
 frontend-nextjs/public/pdf-pages/

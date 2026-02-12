@@ -17,10 +17,11 @@
 
 ## Database Quick Reference
 - **Always check DB_SCHEMA.md** before writing queries
-- 58 tables, 47,818 provisions in `regulatory_provisions`
+- ~42 tables (after 2026-02 cleanup), 47,818 provisions in `regulatory_provisions`
 - Use `v2_precinct_id` (102 precincts), NOT `dcp_precinct_provisions` (legacy, incomplete)
 - SEPP Housing 2021: 241 provisions in `regulatory_provisions`, query by document_id
 - Full schema details in DB_SCHEMA_RAW.txt
+- **DB Cleanup:** See `db-clean-tasks/README.md` for cleanup history and scripts
 
 ## Data Integrity (NON-NEGOTIABLE)
 - **NEVER create fake, placeholder, or "approximate" data**
@@ -63,15 +64,20 @@
 
 ## Plan Mode Files
 - **Location:** `~/.claude/plans/` (C:\Users\lawre\.claude\plans\)
-- **Format:** `word-word-word.md` (hyphens, lowercase)
+- **Prefix convention:** `ce-` ComplianceEngine | `pd-` PlotDetect | `biz-` Business/Strategy | `meta-` Cross-project
+- **Format:** `{prefix}-descriptive-name.md` (hyphens, lowercase)
+- **Dashboard:** `~/.claude/plans/INDEX.md`
 - Check here FIRST when user references a plan file
 
 ## Reference Docs (read when relevant, not every session)
 - `DB_SCHEMA.md` - Database structure quick reference (READ BEFORE DB WORK)
+- `db-clean-tasks/README.md` - DB cleanup history (2026-02: dropped 16 tables)
 - `.claude/prp/INDEX.md` - Architecture overview
 - `.claude/DATA_QUALITY_TRACKER.md` - DQ issues and fixes
 - `DEPLOYMENT.md` - Deploy guide
 - `frontend-nextjs/app/assessment/README.md` - UI details
+- `docs/screencasts/INDEX.md` - Screencast scripts index
+- `docs/user-stories/` - User story documents
 
 ## Deployment
 ```bash
