@@ -313,7 +313,7 @@ function buildPrecinctDocumentId(precinctId: string, precinctName: string, lga: 
  * Each entry defines regex patterns that identify precincts belonging to that council
  */
 const PRECINCT_ID_PATTERNS: Record<string, RegExp[]> = {
-  // Ashfield patterns - "Part X" format from precinct_boundaries table
+  // Ashfield patterns - "Part X" format from dcp_precinct_boundaries table
   // Part 1-13 are Ashfield Chapter D precincts (Ashfield Town Centre, Summer Hill, etc.)
   'Ashfield': [
     /^part\s*\d+$/i,           // Part 1, Part 2, etc.

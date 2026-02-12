@@ -42,6 +42,7 @@ interface PropertyFilters {
   assessment_type?: 'CDC' | 'DA';  // CDC = quantitative only, DA = all
   former_council?: string;  // Former council name (Ashfield, Marrickville, Leichhardt)
   hca?: string;  // Heritage Conservation Area slug (e.g., "summer_hill", "hca_1")
+  heritage_type?: 'control' | 'character' | 'descriptive';  // Filter heritage provisions by type
   groupBy?: 'topic' | 'toc';  // How to group results (default: topic)
 
   // Version tracking parameters
@@ -274,6 +275,7 @@ export async function GET(request: NextRequest) {
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
       former_council: searchParams.get('former_council') || undefined,
       hca: searchParams.get('hca') || undefined,
+      heritage_type: (searchParams.get('heritage_type') as 'control' | 'character' | 'descriptive') || undefined,
       groupBy: (searchParams.get('groupBy') as 'topic' | 'toc') || 'topic',
 
       // Version tracking parameters
@@ -557,6 +559,18 @@ async function queryHeritageByHca(
   } else {
     // No precinct specified - exclude all precinct-specific provisions
     sql += ` AND v2_precinct_id IS NULL`;
+  }
+
+  // Filter by heritage_type (control, character, descriptive)
+  if (filters.heritage_type) {
+    sql += ` AND v2_heritage_type = $${paramIndex++}`;
+    params.push(filters.heritage_type);
+  }
+
+  // Filter by topic (e.g., "Roof", "Materials", "Additions")
+  if (filters.topic) {
+    sql += ` AND LOWER(REPLACE(v2_topic, ' ', '_')) = LOWER($${paramIndex++})`;
+    params.push(filters.topic.replace(/ /g, '_'));
   }
 
   sql += ` ORDER BY v2_dcp_part, id LIMIT 500`;

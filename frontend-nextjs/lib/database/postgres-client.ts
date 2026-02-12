@@ -126,10 +126,9 @@ export class PostgresClient {
  async getDatabaseStats() {
  const queries = [
  'SELECT COUNT(*) as count FROM development_controls',
- 'SELECT COUNT(*) as count FROM quantitative_standards', 
+ 'SELECT COUNT(*) as count FROM quantitative_standards',
  'SELECT COUNT(*) as count FROM kg_relationships',
- 'SELECT COUNT(*) as count FROM regulatory_provisions_clean',
- 'SELECT COUNT(*) as count FROM development_pathways'
+ 'SELECT COUNT(*) as count FROM regulatory_provisions_clean'
  ];
 
  const results = await Promise.all(
@@ -141,7 +140,6 @@ export class PostgresClient {
  quantitative_standards: results[1][0].count,
  kg_relationships: results[2][0].count,
  regulatory_provisions: results[3][0].count,
- development_pathways: results[4][0].count,
  total_records: results.reduce((sum, result) => sum + parseInt(result[0].count), 0)
  };
  }

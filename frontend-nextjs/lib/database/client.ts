@@ -347,22 +347,20 @@ export class DatabaseClient {
  'SELECT COUNT(*) as count FROM development_controls',
  'SELECT COUNT(*) as count FROM quantitative_standards',
  'SELECT COUNT(*) as count FROM kg_relationships',
- 'SELECT COUNT(*) as count FROM regulatory_provisions_canonical',
- 'SELECT COUNT(*) as count FROM development_pathways'
+ 'SELECT COUNT(*) as count FROM regulatory_provisions_canonical'
  ];
- 
+
  const results = await Promise.all(
  queries.map(query => client.query(query))
  );
- 
- const [dev_controls, quant_standards, kg_relationships, reg_provisions, dev_pathways] = results;
- 
+
+ const [dev_controls, quant_standards, kg_relationships, reg_provisions] = results;
+
  return {
  development_controls: parseInt(dev_controls.rows[0].count),
  quantitative_standards: parseInt(quant_standards.rows[0].count),
  kg_relationships: parseInt(kg_relationships.rows[0].count),
  regulatory_provisions: parseInt(reg_provisions.rows[0].count),
- development_pathways: parseInt(dev_pathways.rows[0].count),
  total_records: results.reduce((sum, result) => sum + parseInt(result.rows[0].count), 0)
  };
  } finally {

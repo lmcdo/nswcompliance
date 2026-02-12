@@ -6,14 +6,37 @@
 - **NEVER run queries without WHERE clauses** on main tables
 - **NEVER create fake/placeholder data** - ask if real data unavailable
 
+## Investigation Before Action (NON-NEGOTIABLE)
+- **ALWAYS investigate thoroughly BEFORE making changes or proposing solutions**
+- Never assume - check actual tables, columns, and data first
+- Do NOT jump to implementation until you have confirmed your understanding with evidence
+- When asked to explore or plan, stay in exploration/planning mode until explicitly told to implement
+- **Pattern:** Read files → Check database schema/data → Show findings → Get confirmation → THEN act
+- If uncertain about column names, table structure, or data state: STOP and CHECK first
+
+## Keep It Simple (NON-NEGOTIABLE)
+- When the user has already identified specific records/items to change, apply the change directly
+- Do NOT over-engineer solutions with pattern-matching scripts, regex analyzers, or complex pipelines when a simple direct operation is what's needed
+- Do NOT make redundant API calls or re-fetch data that is already available
+- Ask yourself: "Is there a simpler way to do exactly what the user asked?"
+- **Example:** If user says "818 records with condition X are bad, mark them Y" → just UPDATE those records directly, don't build a detection script
+
 ## Database Safety (NON-NEGOTIABLE)
 - **Read DB_SCHEMA.md FIRST** before any database work to understand table structure
 - Run `./scripts/db_safety_check.sh` BEFORE any database operation
 - Create backup before ANY database operation
+- **NEVER use TRUNCATE, DROP, or CASCADE** operations without explicit user confirmation
 - NEVER run queries without WHERE clauses on main tables
+- Verify target table and row count BEFORE DELETE/UPDATE operations
 - Use timeouts (30 seconds max)
 - Database issues = STOP IMMEDIATELY
 - **Single database: Supabase** (no sync needed, changes visible in production immediately)
+
+## Reuse Existing Data
+- When the API or frontend already has data available (from a previous fetch, passed as props, or in session state), use it directly
+- Do NOT make redundant API calls or re-fetch data that is already accessible
+- Check what data is already available before writing new fetch logic
+- **Example:** If provision data is already in the component props, don't fetch it again from the API
 
 ## Database Quick Reference
 - **Always check DB_SCHEMA.md** before writing queries
@@ -61,6 +84,14 @@
 - `compliance/` - Compliance logic
 - `frontend-nextjs/` - Next.js app
 - Virtual env: `venv_linux`
+
+## Project Stack & Domain Context
+- **Languages:** Python (backend/ETL/scripts), TypeScript (frontend/compliance engine)
+- **Database:** Supabase (PostgreSQL) - single production database
+- **Domain:** Regulatory compliance engine for Australian council planning provisions (LEP, DCP, SEPP)
+- **Key tables:** `regulatory_provisions` (47,818 rows with columns: v2_topic, v2_marker, v2_is_actionable, former_council, pdf_page, document_id, precinct_id), `documents`, `heritage_conservation_areas`, `precincts`
+- **Common columns to check:** v2_topic (not "topic"), v2_marker (not "marker"), former_council (not "council"), v2_precinct_id (not "precinct_id")
+- **Never assume column names** - always check DB_SCHEMA.md or query information_schema.columns first
 
 ## Plan Mode Files
 - **Location:** `~/.claude/plans/` (C:\Users\lawre\.claude\plans\)

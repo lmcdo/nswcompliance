@@ -48,8 +48,7 @@ export class MockDatabaseClient {
  quantitative_standards: 800,
  kg_relationships: 2200,
  regulatory_provisions: 22000,
- development_pathways: 150,
- total_records: 26650
+ total_records: 26500
  };
  }
 

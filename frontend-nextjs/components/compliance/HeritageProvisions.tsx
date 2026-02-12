@@ -7,11 +7,17 @@
  */
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface Provision {
   id: number;
@@ -62,6 +68,9 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
   const [expandedTypes, setExpandedTypes] = useState<Set<string>>(new Set(['control']));
   const [expandedProvisions, setExpandedProvisions] = useState<Set<number>>(new Set());
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(
+    new Set(['control', 'character', 'descriptive'])
+  );
 
   // Group by heritage type
   const byType: Record<string, Provision[]> = { control: [], character: [], descriptive: [] };
@@ -90,6 +99,18 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
         next.delete(id);
       } else {
         next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleTypeFilter = (type: string) => {
+    setEnabledTypes(prev => {
+      const next = new Set(prev);
+      if (next.has(type)) {
+        next.delete(type);
+      } else {
+        next.add(type);
       }
       return next;
     });
@@ -130,13 +151,90 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
     return { sortedPageGroups, provisionsWithoutPage };
   };
 
+  // Filter chips component
+  const FilterChips = () => (
+    <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+      <span className="text-xs text-gray-500 mr-1">Show:</span>
+
+      <button
+        onClick={() => toggleTypeFilter('control')}
+        className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+          enabledTypes.has('control')
+            ? 'bg-green-100 text-green-800 border border-green-300'
+            : 'text-gray-400 bg-white border border-gray-200 line-through opacity-60'
+        }`}
+      >
+        {enabledTypes.has('control') ? '✓ ' : ''}Controls {byType.control.length}
+      </button>
+
+      <button
+        onClick={() => toggleTypeFilter('character')}
+        className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+          enabledTypes.has('character')
+            ? 'bg-blue-100 text-blue-800 border border-blue-300'
+            : 'text-gray-400 bg-white border border-gray-200 line-through opacity-60'
+        }`}
+      >
+        {enabledTypes.has('character') ? '✓ ' : ''}Character {byType.character.length}
+      </button>
+
+      <button
+        onClick={() => toggleTypeFilter('descriptive')}
+        className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+          enabledTypes.has('descriptive')
+            ? 'bg-gray-100 text-gray-600 border border-gray-300'
+            : 'text-gray-400 bg-white border border-gray-200 line-through opacity-60'
+        }`}
+      >
+        {enabledTypes.has('descriptive') ? '✓ ' : ''}Descriptive {byType.descriptive.length}
+      </button>
+
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button className="ml-1 text-gray-400 hover:text-gray-600 transition-colors">
+              <Info className="h-3 w-3" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <TypesTooltip />
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
+  );
+
+  // Tooltip content
+  const TypesTooltip = () => (
+    <div className="text-xs space-y-2">
+      <div>
+        <div className="font-semibold text-green-800">CONTROLS</div>
+        <div className="text-gray-600">Actionable requirements (C1-C999, "must", "shall")</div>
+      </div>
+      <div>
+        <div className="font-semibold text-blue-800">CHARACTER</div>
+        <div className="text-gray-600">HCA descriptions and heritage significance</div>
+      </div>
+      <div>
+        <div className="font-semibold text-gray-600">DESCRIPTIVE</div>
+        <div className="text-gray-600">Background information and policy context</div>
+      </div>
+    </div>
+  );
+
   const typeOrder = ['control', 'character', 'descriptive'];
 
   return (
     <>
+      <FilterChips />
+
       <div className="space-y-3">
         {typeOrder.map(type => {
           const typeProvisions = byType[type];
+
+          // Hide if type is disabled via filter
+          if (!enabledTypes.has(type)) return null;
+
           if (!typeProvisions || typeProvisions.length === 0) return null;
 
           const isExpanded = expandedTypes.has(type);
