@@ -518,6 +518,7 @@ async function queryHeritageByHca(
       v2_display_priority,
       v2_has_numeric_value,
       pdf_page,
+      pdf_printed_page,
       pdf_source_file,
       pdf_page_image_url,
       v2_heritage_type,

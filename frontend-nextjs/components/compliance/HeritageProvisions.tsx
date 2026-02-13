@@ -27,6 +27,7 @@ interface Provision {
   v2_heritage_hca?: string;
   pdf_page_image_url?: string;
   pdf_page?: number;
+  pdf_printed_page?: number;
 }
 
 interface HeritageProvisionsProps {
@@ -123,10 +124,14 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
 
     typeProvisions.slice(0, limit).forEach(prov => {
       let pageNum: number | null = null;
-      if (prov.pdf_page) {
+      // Use printed page number if available (human-readable page from PDF)
+      if (prov.pdf_printed_page) {
+        pageNum = prov.pdf_printed_page;
+      } else if (prov.pdf_page) {
+        // Fallback to extraction page number
         pageNum = prov.pdf_page;
       }
-      // Fallback to URL if pdf_page is missing
+      // Final fallback to URL if pdf_page is missing
       // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
       if (!pageNum && prov.pdf_page_image_url) {
         const match = prov.pdf_page_image_url.match(/[/_]page_(\d+)\./);
