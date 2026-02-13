@@ -337,6 +337,8 @@ const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
   'Part C Section 2': { label: 'Part C.2', desc: 'Neighbourhood Controls' },
   'Part D': { label: 'Part D', desc: 'Energy & Waste' },
   'Part E': { label: 'Part E', desc: 'Water Management' },
+  'Part F': { label: 'Part F', desc: 'Food & Environment' },
+  'Part G': { label: 'Part G', desc: 'Site-Specific Controls' },
   'Part G Section 1': { label: 'Part G.1', desc: 'Norton St Precinct' },
   // Ashfield
   'Chapter A': { label: 'Chapter A', desc: 'General Controls' },

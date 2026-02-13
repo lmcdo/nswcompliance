@@ -418,7 +418,11 @@ export function ProvisionsByTocStructure({
                   </p>
                 )}
                 <p className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
-                  → See <strong>Part 8: Heritage</strong> below for all {totalHeritageCount} heritage provisions
+                  → See <strong>{
+                    councilLower === 'ashfield' ? 'Chapter E1: Heritage' :
+                    councilLower === 'leichhardt' ? 'Part C Section 1: Heritage' :
+                    'Part 8: Heritage'
+                  }</strong> below for all {totalHeritageCount} heritage provisions
                 </p>
               </div>
             </div>

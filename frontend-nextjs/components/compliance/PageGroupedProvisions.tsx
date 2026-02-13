@@ -607,7 +607,7 @@ export function PageGroupedProvisions({
                       {/* Provision Header Row */}
                       <div className="flex items-start gap-2 mb-1">
                         {/* Marker Badge - C=Control, O=Objective from DCP structure */}
-                        {showMarkers && provision.v2_marker && (
+                        {showMarkers && provision.v2_marker && getLayerLabel(layer).toLowerCase() !== provision.v2_marker.toLowerCase() && (
                           <Badge
                             variant="outline"
                             className="text-sm font-mono bg-white shrink-0 cursor-help"
