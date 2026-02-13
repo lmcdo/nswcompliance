@@ -189,9 +189,9 @@ export function ProvisionsByTocStructure({
   const conditionLayer = data?.data?.by_layer?.[2]; // Layer 3 = condition
   const allConditionProvisions = conditionLayer?.provisions || [];
 
-  // Filter for heritage topic provisions
+  // Filter for heritage marker provisions
   const heritageProvisions = allConditionProvisions.filter((p: any) =>
-    p.v2_topic?.toLowerCase() === 'heritage'
+    p.v2_marker?.toLowerCase() === 'heritage'
   );
 
   // Group heritage provisions by DCP part for the HCA section
