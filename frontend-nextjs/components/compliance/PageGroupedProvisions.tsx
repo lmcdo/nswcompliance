@@ -245,6 +245,12 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
         const dcpPart = prov.v2_dcp_part || null;
         const rawPage = prov.pdf_page || null;
         const printedPage = prov.pdf_printed_page || null;
+
+        // DEBUG: Log what we're receiving for heritage provisions
+        if (prov.v2_marker === 'heritage' && rawPage === 20) {
+          console.log(`[PageGroupedProvisions DEBUG] ID ${prov.id}: pdf_page=${rawPage}, pdf_printed_page=${printedPage}, hasField=${prov.hasOwnProperty('pdf_printed_page')}`);
+        }
+
         pageMap.set(key, {
           pageNumber: rawPage,
           displayPageNumber: getDcpPageNumber(printedPage, rawPage, dcpPart || undefined, prov.pdf_page_image_url),
