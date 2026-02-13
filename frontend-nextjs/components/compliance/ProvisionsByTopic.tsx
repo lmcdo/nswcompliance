@@ -35,6 +35,7 @@ interface Provision {
   v2_precinct_id: string;
   v2_marker: string;
   pdf_page: number;
+  pdf_printed_page?: number;
   pdf_page_image_url?: string;
   layer?: string;
   v2_heritage_type?: 'control' | 'guidance' | 'character' | 'descriptive';
@@ -1290,8 +1291,8 @@ export function ProvisionsByTopic({
                                                                   )}
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
-                                                                  // Use pdf_page (DCP page from database)
-                                                                  const displayPage = provision.pdf_page || 1;
+                                                                  // Use pdf_printed_page (human-readable page from PDF) with fallback to pdf_page
+                                                                  const displayPage = provision.pdf_printed_page || provision.pdf_page || 1;
                                                                   const sectionInfo = provision.v2_dcp_part || '';
                                                                   return (
                                                                     <button
