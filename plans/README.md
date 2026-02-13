@@ -24,27 +24,36 @@ plans/
 
 ### Documents
 
-1. **`lga-onboarding-architecture-analysis.md`**
-   - 6 critical architectural issues blocking automation
-   - Root cause analysis (why 11-19 hours manual effort)
-   - Recommended solutions with tradeoff analysis
-   - Implementation roadmap (Phase 0-4)
-   - ROI: Save 1,170-1,950 hours across 130 LGAs
+1. **`lga-onboarding-infrastructure.md`**
+   - Scalable LGA onboarding framework for DCP processing
+   - 5-phase automation pipeline (DCP discovery, priority ID, schema config, tagging, UI)
+   - Universal vs council-specific architecture patterns
+   - Config-driven UI (eliminates hardcoded council logic)
+   - Onboarding target: 1-week per LGA (vs current undefined/manual)
+   - Incorporates latest Inner West learnings (heritage bugs, spatial areas)
 
-2. **`lga-onboarding-versioning-deployment.md`**
+2. **`extraction-pipeline-implementation.md`**
+   - Production-grade extraction pipeline (PDF → DB)
+   - 8-stage architecture (ingestion, structure, extraction, splitting, LLM, spatial, QA, insert)
+   - Dual-pass LLM validation with review queue
+   - Error handling (DLQ, checkpoints, retry logic)
+   - Testing strategy and success metrics
+   - Target: <8 hours processing, >95% accuracy, zero data loss
+
+3. **`lga-onboarding-versioning-deployment.md`**
    - Complete deployment plan for Phase 0 (versioning infrastructure)
    - Step-by-step staging and production deployment
    - Validation queries and rollback procedures
    - Post-deployment monitoring checklist
    - Rollback time: < 5 minutes
 
-3. **`lga-onboarding-versioning-research-report.md`**
+4. **`lga-onboarding-versioning-research-report.md`**
    - Current state of versioning infrastructure (partially dormant)
    - NSW Planning update sources (legislation.nsw.gov.au, Planning Portal)
    - Regulatory update monitoring strategy (automated SEPP/LEP, manual DCP)
    - Council-specific update patterns
 
-4. **`production-safety-deployment-practices.md`**
+5. **`production-safety-deployment-practices.md`**
    - Production-safe deployment best practices
    - Two-database strategy (staging + production)
    - Backup and restore procedures
@@ -156,5 +165,5 @@ ls plans/expansion/
 
 ---
 
-**Last Updated:** 2026-02-11
+**Last Updated:** 2026-02-13
 **Status:** Reorganized to project root for better visibility and accessibility
