@@ -127,16 +127,11 @@ export function HeritageProvisions({ provisions }: HeritageProvisionsProps) {
       // Use printed page number if available (human-readable page from PDF)
       if (prov.pdf_printed_page) {
         pageNum = prov.pdf_printed_page;
-        // Debug logging (remove after fix confirmed)
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Heritage] ID ${prov.id}: using pdf_printed_page=${pageNum}`);
-        }
+        console.log(`[Heritage DEBUG] ID ${prov.id}: using pdf_printed_page=${pageNum}`);
       } else if (prov.pdf_page) {
         // Fallback to extraction page number
         pageNum = prov.pdf_page;
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Heritage] ID ${prov.id}: using pdf_page=${pageNum} (no printed page)`);
-        }
+        console.log(`[Heritage DEBUG] ID ${prov.id}: using pdf_page=${pageNum} (no printed_page available)`);
       }
       // Final fallback to URL if pdf_page is missing
       // Handle both formats: "_page_X." (Marrickville) and "/page_X." (Ashfield)
