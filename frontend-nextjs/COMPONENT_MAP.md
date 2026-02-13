@@ -73,10 +73,12 @@ grep -r "from.*HeritageProvisions" app/ components/
 
 **All places that display PDF page numbers:**
 
-1. **PageGroupedProvisions.tsx** ← MAIN ONE FOR DCP TAB
+1. **PageGroupedProvisions.tsx** ← MAIN ONE FOR DCP TAB ✅ FIXED 2026-02-13
    - Line 544: `<span>Page {group.displayPageNumber}</span>`
    - Line 562: `title="Page ${group.displayPageNumber}"`
-   - Uses: `getDcpPageNumber(pdf_printed_page, pdf_page, ...)` function
+   - Line 68: `getDcpPageNumber()` function - uses `pdf_printed_page` FIRST, then falls back to `pdf_page`
+   - **Fix:** Function now correctly prioritizes `pdf_printed_page` over extraction `pdf_page`
+   - **Tested:** Provision ID 78649 now shows "Page 6" (correct) instead of "Page 20" (extraction number)
 
 2. **ProvisionsByTopic.tsx** ← USED FOR TOPIC VIEW (not TOC view)
    - Line 1301: `title="Page ${displayPage}"`
