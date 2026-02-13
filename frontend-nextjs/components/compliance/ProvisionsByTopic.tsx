@@ -1292,6 +1292,7 @@ export function ProvisionsByTopic({
                                                                 </div>
                                                                 {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                                                   // Use pdf_printed_page (human-readable page from PDF) with fallback to pdf_page
+                                                                  // Force rebuild: 2026-02-13 - API confirmed returning pdf_printed_page correctly
                                                                   const displayPage = provision.pdf_printed_page || provision.pdf_page || 1;
                                                                   const sectionInfo = provision.v2_dcp_part || '';
                                                                   return (
@@ -1545,6 +1546,7 @@ export function ProvisionsByTopic({
                                               </div>
                                               {provision.pdf_page_image_url && showPdfButtonIds.has(provision.id) && (() => {
                                                 // Use pdf_printed_page (human-readable page from PDF) with fallback to pdf_page
+                                                // Force rebuild: 2026-02-13 - API confirmed returning pdf_printed_page correctly
                                                 const displayPage = provision.pdf_printed_page || provision.pdf_page || 1;
                                                 const sectionInfo = provision.v2_dcp_part || '';
                                                 return (
