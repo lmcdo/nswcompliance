@@ -5,6 +5,7 @@
 - **Kill Next.js dev server by PORT only**: `netstat -ano | findstr :3003` then `taskkill /F /PID <PID>`
 - **NEVER run queries without WHERE clauses** on main tables
 - **NEVER create fake/placeholder data** - ask if real data unavailable
+- **BEFORE FIXING ANY UI BUG:** Read `frontend-nextjs/COMPONENT_MAP.md` to find the ACTUAL component being used
 
 ## Investigation Before Action (NON-NEGOTIABLE)
 - **ALWAYS investigate thoroughly BEFORE making changes or proposing solutions**
@@ -78,6 +79,17 @@
 - Never delete/overwrite code unless explicitly instructed
 - Never interpret regulations - only extract exact clauses
 - Don't use markdown tables in chat responses
+
+## UI Bug Debugging Protocol (MANDATORY)
+**When user reports UI showing wrong data:**
+1. Read `frontend-nextjs/COMPONENT_MAP.md` FIRST
+2. Look up the route/view → find which component renders it
+3. Call production API with EXACT user parameters to verify data
+4. Search codebase for exact UI text pattern to confirm component
+5. Fix ONLY the component identified in step 2
+6. Update COMPONENT_MAP.md if component tree has changed
+
+**NEVER guess which component is used. ALWAYS use COMPONENT_MAP.md.**
 
 ## Project Structure
 - `regulatory-engine/` - RAG processing
