@@ -362,6 +362,22 @@ export function PageGroupedProvisions({
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
+  // DEBUG: Log component render
+  console.log(`[PageGroupedProvisions] Rendering with ${provisions.length} provisions`);
+  const heritageCount = provisions.filter(p => p.v2_marker === 'heritage').length;
+  if (heritageCount > 0) {
+    console.log(`[PageGroupedProvisions] ${heritageCount} heritage provisions`);
+    const sample = provisions.find(p => p.v2_marker === 'heritage' && p.pdf_page === 20);
+    if (sample) {
+      console.log(`[PageGroupedProvisions] Page 20 provision:`, {
+        id: sample.id,
+        pdf_page: sample.pdf_page,
+        pdf_printed_page: sample.pdf_printed_page,
+        has_field: 'pdf_printed_page' in sample
+      });
+    }
+  }
+
   // Group provisions by page
   const pageGroups = useMemo(() => groupProvisionsByPage(provisions), [provisions]);
 
