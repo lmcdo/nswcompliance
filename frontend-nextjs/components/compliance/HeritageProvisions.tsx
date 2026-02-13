@@ -27,7 +27,7 @@ interface Provision {
   v2_heritage_hca?: string;
   pdf_page_image_url?: string;
   pdf_page?: number;
-  pdf_printed_page?: number;
+  pdf_printed_page?: number; // Human-readable page number from PDF document
 }
 
 interface HeritageProvisionsProps {
