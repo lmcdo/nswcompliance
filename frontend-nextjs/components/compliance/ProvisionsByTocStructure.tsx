@@ -717,6 +717,8 @@ export function ProvisionsByTocStructure({
 
         {/* Provisions list */}
         <div className="p-4">
+          {console.log(`[ProvisionsByTocStructure] filteredProvisions: ${filteredProvisions.length}, selectedPart: ${selectedPart}`)}
+          {filteredProvisions.length > 0 && filteredProvisions.some(p => p.v2_marker === 'heritage' && p.pdf_page === 20) && console.log(`[ProvisionsByTocStructure] FOUND page 20 provision:`, { id: filteredProvisions.find(p => p.pdf_page === 20)?.id, pdf_printed_page: filteredProvisions.find(p => p.pdf_page === 20)?.pdf_printed_page })}
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions
               provisions={filteredProvisions}
