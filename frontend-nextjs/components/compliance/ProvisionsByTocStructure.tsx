@@ -138,8 +138,6 @@ export function ProvisionsByTocStructure({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
-  const [showHcaSection, setShowHcaSection] = useState(false); // HCA section collapsed by default
-  const [expandedHcaCategories, setExpandedHcaCategories] = useState<Set<string>>(new Set(['heritage'])); // Heritage expanded by default
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -194,26 +192,10 @@ export function ProvisionsByTocStructure({
     p.v2_marker?.toLowerCase() === 'heritage'
   );
 
-  // Group heritage provisions by DCP part for the HCA section
-  const hcaByPart: Record<string, any[]> = {};
-  heritageProvisions.forEach((provision: any) => {
-    const part = provision.v2_dcp_part || 'Other';
-    if (!hcaByPart[part]) {
-      hcaByPart[part] = [];
-    }
-    hcaByPart[part].push(provision);
-  });
-
-  // Convert to category structure for display
-  const hcaByCategory = Object.entries(hcaByPart).map(([part, provisions]) => ({
-    category: part,
-    displayName: part,
-    provisions: provisions
-  })).filter(cat => cat.provisions.length > 0);
-
-  // Flat list for total count
-  const hcaProvisions = heritageProvisions;
-  const hcaLoading = isLoading;
+  // Count general vs HCA-specific provisions
+  const generalHeritageCount = heritageProvisions.filter((p: any) => !p.v2_heritage_hca).length;
+  const hcaSpecificCount = heritageProvisions.filter((p: any) => p.v2_heritage_hca).length;
+  const totalHeritageCount = heritageProvisions.length;
 
   // Auto-select first part on load (use complete TOC)
   useEffect(() => {
@@ -415,90 +397,32 @@ export function ProvisionsByTocStructure({
       {/* EP&A Act s 4.15 Compliance Disclaimer */}
       <EPAAct415ComplianceNotice />
 
-      {/* Universal HCA Provisions Banner - shown for heritage properties in any Inner West council */}
-      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && hcaProvisions.length > 0 && (
-        <div id="dcp-hca-section" className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50/30">
-          <button
-            onClick={() => setShowHcaSection(!showHcaSection)}
-            className="w-full flex items-center gap-2 px-4 py-3 text-sm hover:bg-blue-100/50 transition-colors"
-          >
-            <Shield className="h-4 w-4 text-blue-700" />
-            <span className="font-semibold text-blue-900">Heritage Conservation Area Controls</span>
-            <Badge className="ml-2 bg-blue-100 text-blue-800 text-xs">
-              {hcaLoading ? '...' : `${hcaProvisions.length} total provisions`}
-            </Badge>
-            {showHcaSection ? <ChevronDown className="h-4 w-4 ml-auto text-blue-600" /> : <ChevronRight className="h-4 w-4 ml-auto text-blue-600" />}
-          </button>
-          {showHcaSection && (
-            <div className="px-4 pb-4 border-t border-blue-200">
-              <p className="text-xs text-blue-800 mt-3 mb-3 bg-blue-100 rounded px-2 py-1.5">
-                <strong>{hcaProvisions.length} total heritage provisions</strong> across all DCP parts for this property.
-                {councilLower === 'leichhardt' && (
-                  <span> Leichhardt DCP has general heritage controls that apply to all HCAs (no HCA-specific provisions).</span>
+      {/* HCA Summary Card - compact info card for heritage properties */}
+      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && totalHeritageCount > 0 && (
+        <div id="dcp-hca-section" className="border border-amber-300 rounded-lg bg-amber-50 px-4 py-3 mb-4">
+          <div className="flex items-start gap-3">
+            <Shield className="h-5 w-5 text-amber-700 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-semibold text-amber-900">
+                  {hcaName ? `Your Heritage Conservation Area: ${hcaName}` : 'Heritage Conservation Area'}
+                </h3>
+              </div>
+              <div className="space-y-1 text-sm text-amber-800">
+                <p>
+                  <strong>{generalHeritageCount} general heritage controls</strong> apply to all heritage properties in Inner West
+                </p>
+                {hcaSpecificCount > 0 && (
+                  <p>
+                    <strong>{hcaSpecificCount} {hcaName ? hcaName.split(' ')[0] : 'HCA'}-specific controls</strong> apply only to this Heritage Conservation Area
+                  </p>
                 )}
-                {(councilLower === 'ashfield' || councilLower === 'marrickville') && (
-                  <span> Includes both general heritage controls and HCA-specific provisions.</span>
-                )}
-              </p>
-              {hcaLoading ? (
-                <div className="flex items-center gap-2 py-4">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                  <span className="text-sm text-blue-700">Loading HCA provisions...</span>
-                </div>
-              ) : hcaByCategory.length > 0 ? (
-                <div className="space-y-2">
-                  {hcaByCategory.map((cat: any) => {
-                    const isExpanded = expandedHcaCategories.has(cat.category);
-                    return (
-                      <div key={cat.category} className="border border-blue-100 rounded-lg overflow-hidden bg-white">
-                        <button
-                          onClick={() => {
-                            const newSet = new Set(expandedHcaCategories);
-                            if (isExpanded) newSet.delete(cat.category);
-                            else newSet.add(cat.category);
-                            setExpandedHcaCategories(newSet);
-                          }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-blue-50 transition-colors"
-                        >
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-blue-500" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-blue-500" />
-                          )}
-                          <span className="font-medium text-blue-900 capitalize">{cat.displayName}</span>
-                          <Badge variant="outline" className="ml-auto text-xs bg-blue-50 text-blue-700">
-                            {cat.provisions.length}
-                          </Badge>
-                        </button>
-                        {isExpanded && (
-                          <div className="border-t border-blue-100 p-2">
-                            <PageGroupedProvisions
-                              provisions={cat.provisions}
-                              onViewPdf={(url, page) => setPdfModal({ url, page })}
-                              theme={{
-                                zebraStripeBg: 'bg-blue-50/30',
-                                zebraStripeAltBg: 'bg-white',
-                                borderColorClass: 'border-blue-100',
-                              }}
-                              showLayerBadges={false}
-                              formerCouncil="leichhardt"
-                              maxProvisions={50}
-                              zone={zone}
-                              heritage={heritage}
-                              hcaName={hcaName}
-                              precinctName={precinctId}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 py-2">No universal HCA provisions found.</p>
-              )}
+                <p className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
+                  → See <strong>Part 8: Heritage</strong> below for all {totalHeritageCount} heritage provisions
+                </p>
+              </div>
             </div>
-          )}
+          </div>
         </div>
       )}
 

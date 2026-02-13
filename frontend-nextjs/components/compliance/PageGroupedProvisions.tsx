@@ -629,10 +629,22 @@ export function PageGroupedProvisions({
                           </TooltipContent>
                         </Tooltip>
 
-                        {/* Topic Badge - separate pill */}
-                        {provision.v2_topic && (
+                        {/* Topic Badge - separate pill (skip if duplicates layer label) */}
+                        {provision.v2_topic && getLayerLabel(layer).toLowerCase() !== provision.v2_topic.toLowerCase() && (
                           <Badge variant="outline" className="text-sm shrink-0 bg-white border-gray-300 text-gray-700">
                             {formatTopic(provision.v2_topic)}
+                          </Badge>
+                        )}
+
+                        {/* HCA Badge - show if HCA-specific */}
+                        {provision.v2_heritage_hca && (
+                          <Badge className="text-sm shrink-0 bg-amber-100 text-amber-800 border-amber-300">
+                            {provision.v2_heritage_hca.replace(/_/g, ' ').replace(/hca /i, 'HCA ')}
+                          </Badge>
+                        )}
+                        {provision.v2_marker === 'heritage' && !provision.v2_heritage_hca && (
+                          <Badge variant="outline" className="text-sm shrink-0 bg-gray-100 text-gray-700 border-gray-300">
+                            All HCAs
                           </Badge>
                         )}
 
