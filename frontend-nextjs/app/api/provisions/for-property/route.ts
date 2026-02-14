@@ -599,9 +599,13 @@ async function enrichWithTocSections(
 
   // Batch query TOC sections for all provisions
   // Uses exact match OR fuzzy match (for IWLEP suffix variations)
+  // Normalize document_id for matching: collapse double-underscores, remove dash separators, normalize hyphens
+  // Handles mismatch between provision doc_ids (e.g. Marrickville__DCP__2011__-__8.0__Heritage)
+  // and TOC doc_ids (e.g. Marrickville_DCP_2011__8.0_Heritage)
   const sql = `
     WITH provision_pages AS (
-      SELECT DISTINCT document_id, pdf_page
+      SELECT DISTINCT document_id, pdf_page,
+        REPLACE(REPLACE(REPLACE(REPLACE(document_id, '__-__', '__'), '_-_', '_'), '__', '_'), '-', '_') as doc_normalized
       FROM regulatory_provisions
       WHERE id = ANY($1::int[])
     )
@@ -613,6 +617,8 @@ async function enrichWithTocSections(
     FROM provision_pages pp
     LEFT JOIN dcp_table_of_contents t ON (
       t.document_id = pp.document_id
+      OR REPLACE(REPLACE(t.document_id, '__', '_'), '-', '_') = pp.doc_normalized
+      OR REPLACE(REPLACE(t.document_id, '__', '_'), '-', '_') LIKE pp.doc_normalized || '%'
       OR t.document_id LIKE REGEXP_REPLACE(pp.document_id, '_with_IWLEP.*$', '') || '%'
     )
     AND pp.pdf_page >= t.page_start
