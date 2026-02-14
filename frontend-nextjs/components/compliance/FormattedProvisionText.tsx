@@ -49,6 +49,11 @@ export function FormattedProvisionText({
   highlightQuery,
   theme = 'purple'
 }: FormattedProvisionTextProps) {
+  // DEBUG: Log theme (only for control markers)
+  if (text.match(/^[CO]\d+/)) {
+    console.log(`[FormattedProvisionText] Rendering with theme: ${theme}, text preview: ${text.substring(0, 50)}`);
+  }
+
   // Strip the marker from the beginning of text if it's already shown as a badge
   const processedText = useMemo(() => {
     if (!stripMarker) return text;

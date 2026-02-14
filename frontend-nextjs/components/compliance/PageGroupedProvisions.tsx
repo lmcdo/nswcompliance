@@ -364,6 +364,9 @@ export function PageGroupedProvisions({
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
+  // DEBUG: Log provision theme
+  console.log(`[PageGroupedProvisions] Using provisionTheme: ${provisionTheme}`);
+
   // DEBUG: Log component render
   console.log(`[PageGroupedProvisions] Rendering with ${provisions.length} provisions`);
   const heritageCount = provisions.filter(p => p.v2_marker === 'heritage').length;
