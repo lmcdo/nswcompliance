@@ -346,7 +346,8 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     }
 
     // Check for control marker at start of line (C1, C2, O1, etc.)
-    const controlMatch = line.match(/^([CO]\d+)\s+(.+)/);
+    // Handle both "C11 text..." and standalone "C11" on its own line
+    const controlMatch = line.match(/^([CO]\d+)(?:\s+(.+))?$/);
     if (controlMatch) {
       currentControlMarker = controlMatch[1];
       elements.push({
@@ -354,9 +355,11 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
         content: currentControlMarker,
         marker: currentControlMarker
       });
-      // Process rest of line for possible inline lists
-      const textElements = processTextWithPossibleLists(controlMatch[2], 'control-text', currentControlMarker);
-      elements.push(...textElements);
+      // If there's text on the same line, process it
+      if (controlMatch[2]) {
+        const textElements = processTextWithPossibleLists(controlMatch[2], 'control-text', currentControlMarker);
+        elements.push(...textElements);
+      }
       continue;
     }
 
