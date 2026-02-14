@@ -455,6 +455,12 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
+      {/* SEPP Tab Intro Banner */}
+      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+        <div className="font-semibold text-amber-900 mb-1">State Environmental Planning Policies</div>
+        <div className="text-sm text-amber-800">Mandatory state-wide requirements that apply to this property</div>
+      </div>
+
       {/* Exempt & Complying Development Standards - certifier CDC gateway, shown first */}
       {zoneCode && (
         <ExemptComplyingProvisions zoneCode={zoneCode} />

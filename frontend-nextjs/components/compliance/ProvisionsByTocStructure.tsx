@@ -359,6 +359,14 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-4">
+      {/* DCP Tab Intro Banner */}
+      {formerCouncil && councilConfig && (
+        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+          <div className="font-semibold text-green-900 mb-1">{councilConfig.dcpCitation}</div>
+          <div className="text-sm text-green-800">Detailed local design controls for building form, character, setbacks, and heritage.</div>
+        </div>
+      )}
+
       {/* About Inner West DCPs - Collapsible */}
       {formerCouncil && (
         <div className="bg-white border rounded-lg overflow-hidden">
