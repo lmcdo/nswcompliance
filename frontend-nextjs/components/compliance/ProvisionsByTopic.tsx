@@ -42,6 +42,8 @@ interface Provision {
   v2_heritage_element?: string[];
   v2_heritage_hca?: string;
   v2_heritage_subcategory?: string;  // For Heritage topic sub-grouping (character, fencing, etc.)
+  toc_section_number?: string | null;
+  toc_section_title?: string | null;
 }
 
 interface LayerResult {
@@ -1276,6 +1278,11 @@ export function ProvisionsByTopic({
                                                             >
                                                               <div className="flex items-center justify-between px-3 py-1.5 bg-gray-50/50 border-b border-gray-100">
                                                                 <div className="flex items-center gap-2 flex-wrap">
+                                                                  {provision.toc_section_number && (
+                                                                    <span className="font-mono text-xs font-semibold text-slate-700">
+                                                                      {provision.toc_section_number}
+                                                                    </span>
+                                                                  )}
                                                                   {provision.v2_marker && (
                                                                     <span className="font-mono text-xs font-semibold text-slate-700">
                                                                       {provision.v2_marker}
@@ -1530,6 +1537,11 @@ export function ProvisionsByTopic({
                                           >
                                             <div className="flex items-center justify-between px-4 py-2 bg-gray-50/50 border-b border-gray-100">
                                               <div className="flex items-center gap-2 flex-wrap">
+                                                {provision.toc_section_number && (
+                                                  <span className="font-mono text-sm font-semibold text-slate-700">
+                                                    {provision.toc_section_number}
+                                                  </span>
+                                                )}
                                                 {provision.v2_marker && (
                                                   <span className="font-mono text-sm font-semibold text-slate-700">
                                                     {provision.v2_marker}
