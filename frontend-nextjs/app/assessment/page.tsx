@@ -49,27 +49,6 @@ export default function AssessmentPage() {
     setBuildingHeight,
   } = useAssessmentUI();
 
-  // CDC availability for SEPP tab badge
-  const [cdcAvailable, setCdcAvailable] = React.useState(false);
-
-  // Check CDC availability when property zone changes
-  React.useEffect(() => {
-    if (!selectedProperty?.constraints?.zone) {
-      setCdcAvailable(false);
-      return;
-    }
-
-    const zone = selectedProperty.constraints.zone;
-    const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-
-    fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`)
-      .then(r => r.json())
-      .then(data => {
-        const totalCount = Object.values(data.counts || {}).reduce((a: number, b: number) => a + b, 0);
-        setCdcAvailable(totalCount > 0);
-      })
-      .catch(() => setCdcAvailable(false));
-  }, [selectedProperty?.constraints?.zone]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -104,6 +83,18 @@ export default function AssessmentPage() {
             <p className="text-teal-600 text-xs hidden sm:block">
               Professional compliance assessment using real-time planning data
             </p>
+          </div>
+          {/* Quick Guide */}
+          <div className="hidden sm:flex items-center">
+            <a
+              href="/quick-guide"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-teal-600 bg-white text-teal-700 hover:bg-teal-50 transition-colors"
+            >
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Quick Guide
+            </a>
           </div>
           {/* Share Report - Coming Soon */}
           <div className="hidden sm:flex items-center relative">
@@ -354,12 +345,7 @@ export default function AssessmentPage() {
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">
-                        SEPP
-                        {cdcAvailable && (
-                          <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Complying Development available" />
-                        )}
-                      </span>
+                      <span className="block text-base font-bold">SEPP</span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'sepp' ? 'text-purple-100' : 'text-purple-400'}`}>State Planning Policies</span>
                     </button>
                     <button
@@ -537,6 +523,38 @@ export default function AssessmentPage() {
       <FeedbackWidget
         propertyAddress={selectedProperty?.address}
       />
+
+      {/* Footer Help Links */}
+      <footer className="bg-gray-100 border-t mt-12">
+        <div className="max-w-7xl mx-auto px-4 py-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-700 mb-1">Need help using PlotDetect?</p>
+              <p className="text-xs text-gray-500">Comprehensive guides with examples and workflows</p>
+            </div>
+            <div className="flex gap-3">
+              <a
+                href="/quick-guide"
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-gray-700 hover:text-teal-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Quick Reference
+              </a>
+              <a
+                href="/user-guide"
+                className="inline-flex items-center gap-1 px-4 py-1.5 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                Complete User Guide
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

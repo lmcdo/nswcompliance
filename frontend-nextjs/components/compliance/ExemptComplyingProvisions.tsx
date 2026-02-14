@@ -108,15 +108,15 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
           }
         </div>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <Badge className="bg-emerald-100 text-emerald-800 text-xs">
-            SEPP (Exempt &amp; Complying) 2008
-          </Badge>
-          <Badge variant="outline" className="text-emerald-700 border-emerald-300 text-xs">
+          <Badge className="bg-emerald-100 text-emerald-800 text-xs pointer-events-none">
             {partName}
           </Badge>
+          <span className="text-xs text-emerald-600">
+            Applies to {zoneCode} zone
+          </span>
           {!expanded && totalCount > 0 && (
             <span className="text-xs text-emerald-600">
-              {totalCount} actionable standards across {Object.keys(counts).length} work types
+              · {totalCount} actionable standards across {Object.keys(counts).length} work types
             </span>
           )}
         </div>
@@ -227,19 +227,37 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
           )}
 
           {/* Footer */}
-          <div className="mt-4 pt-3 border-t border-emerald-100 flex items-center justify-between flex-wrap gap-2">
-            <p className="text-xs text-gray-500">
-              Showing {partName} standards only. Other codes may apply — see all provisions for confirmation.
-            </p>
-            <a
-              href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-572"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
-            >
-              <ExternalLink className="h-3 w-3" />
-              View full SEPP on NSW Legislation
-            </a>
+          <div className="mt-4 pt-3 border-t border-emerald-100 space-y-3">
+            {/* Workflow guidance */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs font-medium text-amber-900 mb-2">
+                ⚠️ Complying Development Compliance Pathway
+              </p>
+              <ol className="text-xs text-amber-800 space-y-1 ml-4 list-decimal">
+                <li>Verify all {partName} standards above are met</li>
+                <li>Check <strong>LEP tab</strong> confirms the proposed use is permitted in this zone</li>
+                <li>Check <strong>DCP tab</strong> for additional local controls that may apply</li>
+              </ol>
+              <p className="text-xs text-amber-700 mt-2 italic">
+                Meeting E&C standards alone does not guarantee approval. LEP and DCP controls also apply.
+              </p>
+            </div>
+
+            {/* Legal reference */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-xs text-gray-500">
+                Showing {partName} standards only. Other codes may apply — see all provisions for confirmation.
+              </p>
+              <a
+                href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-572"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                View full SEPP on NSW Legislation
+              </a>
+            </div>
           </div>
         </CardContent>
       )}
