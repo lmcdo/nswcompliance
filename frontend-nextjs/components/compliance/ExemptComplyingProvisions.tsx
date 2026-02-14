@@ -13,9 +13,10 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, ExternalLink, FileText } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, FileText, FileImage } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 
 const WORK_TYPES = [
   { key: 'Deck',    label: 'Deck / Balcony' },
@@ -55,6 +56,7 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [part, setPart] = useState('');
   const [loading, setLoading] = useState(false);
+  const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
 
   // Fetch counts on mount
   useEffect(() => {
@@ -170,20 +172,53 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
             <div className="space-y-2">
               {provisions.map(p => {
                 const page = p.pdf_printed_page || p.pdf_page;
+
+                // Extract sub-clause from provision text (e.g., "(a)", "(1)", "(2)(b)")
+                const subClauseMatch = p.provision_text.match(/^\(([^)]+)\)/);
+                const displayNumber = subClauseMatch
+                  ? `Part ${p.v2_part} ${subClauseMatch[0]}`
+                  : `Part ${p.v2_part}`;
+
                 return (
                   <div
                     key={p.id}
                     className="bg-white rounded border border-emerald-100 px-3 py-2.5"
                   >
+                    {/* Provision number badge */}
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                        {displayNumber}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {p.v2_topic}
+                      </span>
+                    </div>
+
+                    {/* Provision text + PDF button */}
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm text-gray-800 leading-relaxed flex-1">
                         {p.provision_text}
                       </p>
-                      {page && (
-                        <span className="text-xs text-gray-400 whitespace-nowrap mt-0.5">
-                          p.{page}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {page && (
+                          <>
+                            <button
+                              onClick={() => setViewingPdfPage({
+                                pageNumber: page,
+                                url: `/pdf-pages/sepp-exempt-complying/page_${page}.png`,
+                                label: `SEPP E&C Part ${p.v2_part} - Page ${page}`
+                              })}
+                              className="p-1 rounded hover:bg-emerald-100 transition-colors"
+                              title="View PDF page"
+                            >
+                              <FileImage className="w-4 h-4 text-emerald-600 hover:text-emerald-800" />
+                            </button>
+                            <span className="text-xs text-gray-400 whitespace-nowrap">
+                              p.{page}
+                            </span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -208,6 +243,15 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
           </div>
         </CardContent>
       )}
+
+      {/* PDF Image Modal */}
+      <PdfImageModal
+        isOpen={!!viewingPdfPage}
+        onClose={() => setViewingPdfPage(null)}
+        imageUrl={viewingPdfPage?.url || null}
+        pageNumber={viewingPdfPage?.pageNumber}
+        title={viewingPdfPage?.label}
+      />
     </Card>
   );
 }
