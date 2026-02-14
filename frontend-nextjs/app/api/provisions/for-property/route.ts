@@ -623,7 +623,7 @@ async function enrichWithTocSections(
     )
     AND pp.pdf_page >= t.page_start
     AND (t.page_end IS NULL OR pp.pdf_page <= t.page_end)
-    ORDER BY pp.document_id, pp.pdf_page, t.page_start DESC
+    ORDER BY pp.document_id, pp.pdf_page, t.page_start DESC, t.depth DESC, t.section_number DESC
   `;
 
   const provisionIds = provisions.map(p => p.id);
