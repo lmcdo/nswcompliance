@@ -1,0 +1,2382 @@
+[
+  {
+    "provision_id": 78662,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78663,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78677,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78690,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78701,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78937,
+    "v2_topic": "Verandah",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 85845,
+    "v2_topic": "Additions",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 85960,
+    "v2_topic": "Verandah",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86172,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "window",
+      "materials"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86219,
+    "v2_topic": "Character",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86234,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86237,
+    "v2_topic": "Roof",
+    "elements": [
+      "roof",
+      "verandah",
+      "materials"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86238,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "setback"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86247,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "materials"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86255,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86260,
+    "v2_topic": "Character",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86261,
+    "v2_topic": "Additions",
+    "elements": [
+      "scale"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86276,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86307,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86343,
+    "v2_topic": "Roof",
+    "elements": [
+      "garden",
+      "setback",
+      "scale",
+      "materials",
+      "facade",
+      "roof",
+      "chimney",
+      "window"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86350,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86357,
+    "v2_topic": "Retail",
+    "elements": [
+      "window",
+      "facade",
+      "materials"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86368,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86376,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86387,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86391,
+    "v2_topic": "Materials",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86408,
+    "v2_topic": "Parking",
+    "elements": [
+      "fence",
+      "materials"
+    ],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86449,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 86717,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "gold_standard_reviewed",
+    "confidence": 1
+  },
+  {
+    "provision_id": 78644,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78645,
+    "v2_topic": "Fencing",
+    "elements": [
+      "materials",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 78647,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "demolition",
+      "infill",
+      "interior",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78649,
+    "v2_topic": "Roof",
+    "elements": [
+      "facade",
+      "interior",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78650,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "facade",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 78651,
+    "v2_topic": "Roof",
+    "elements": [
+      "fence",
+      "garden",
+      "interior",
+      "materials",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78652,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "chimney",
+      "door",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78653,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78654,
+    "v2_topic": "Demolition",
+    "elements": [
+      "demolition"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78659,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78660,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78661,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78664,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78665,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78667,
+    "v2_topic": "Parking",
+    "elements": [
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 78668,
+    "v2_topic": "Parking",
+    "elements": [
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 78669,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78670,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78671,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78672,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78673,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78675,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78676,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78678,
+    "v2_topic": "Retail",
+    "elements": [
+      "garden",
+      "materials",
+      "roof",
+      "setback",
+      "verandah"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 78679,
+    "v2_topic": "Roof",
+    "elements": [
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 78680,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78681,
+    "v2_topic": "Parking",
+    "elements": [
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 78682,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78683,
+    "v2_topic": "Roof",
+    "elements": [
+      "garden",
+      "roof",
+      "scale",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78685,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78686,
+    "v2_topic": "Parking",
+    "elements": [
+      "door",
+      "facade",
+      "infill",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 78687,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "roof",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78688,
+    "v2_topic": "Retail",
+    "elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78689,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78691,
+    "v2_topic": "Roof",
+    "elements": [
+      "fence",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 78692,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78693,
+    "v2_topic": "Parking",
+    "elements": [
+      "door",
+      "facade",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 78694,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78696,
+    "v2_topic": "Verandah",
+    "elements": [
+      "garden",
+      "verandah"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 78697,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78700,
+    "v2_topic": "Parking",
+    "elements": [
+      "garden"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.6
+  },
+  {
+    "provision_id": 78703,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78704,
+    "v2_topic": "Parking",
+    "elements": [
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 78773,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78774,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78825,
+    "v2_topic": "Materials",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78840,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78855,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78897,
+    "v2_topic": "Retail",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 78974,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 79014,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 79030,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 79044,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 79051,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 79138,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 85898,
+    "v2_topic": "Materials",
+    "elements": [
+      "fence",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 85910,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 86217,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86220,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "demolition",
+      "infill",
+      "interior",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86223,
+    "v2_topic": "Roof",
+    "elements": [
+      "door",
+      "facade",
+      "materials",
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86224,
+    "v2_topic": "Demolition",
+    "elements": [
+      "demolition"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86225,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "fence",
+      "garden",
+      "interior",
+      "materials",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86227,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86228,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "car_parking",
+      "garden",
+      "infill"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.6
+  },
+  {
+    "provision_id": 86229,
+    "v2_topic": "Demolition",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86232,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86240,
+    "v2_topic": "Materials",
+    "elements": [
+      "garden"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8999999999999999
+  },
+  {
+    "provision_id": 86241,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "chimney",
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86244,
+    "v2_topic": "Retail",
+    "elements": [
+      "infill",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86245,
+    "v2_topic": "Retail",
+    "elements": [
+      "demolition",
+      "facade",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.735
+  },
+  {
+    "provision_id": 86246,
+    "v2_topic": "Retail",
+    "elements": [
+      "car_parking",
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "verandah"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86248,
+    "v2_topic": "Retail",
+    "elements": [
+      "car_parking",
+      "door",
+      "facade"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86249,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86250,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86251,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86252,
+    "v2_topic": "Roof",
+    "elements": [
+      "facade",
+      "materials",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86253,
+    "v2_topic": "Verandah",
+    "elements": [
+      "facade",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86254,
+    "v2_topic": "Retail",
+    "elements": [
+      "door",
+      "facade",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86256,
+    "v2_topic": "Verandah",
+    "elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "fence",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86257,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86259,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "infill",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86264,
+    "v2_topic": "Retail",
+    "elements": [
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86265,
+    "v2_topic": "Additions",
+    "elements": [
+      "roof",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86266,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "materials",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86268,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86273,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86275,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86281,
+    "v2_topic": "Archaeological",
+    "elements": [
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 86282,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86283,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86290,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86292,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86293,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86295,
+    "v2_topic": "Roof",
+    "elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 86296,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86299,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86303,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86304,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86306,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "fence",
+      "garden",
+      "infill",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86311,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86312,
+    "v2_topic": "Parking",
+    "elements": [
+      "facade",
+      "garden",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86314,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "infill",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86315,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86317,
+    "v2_topic": "Materials",
+    "elements": [
+      "garden",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86321,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86322,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86326,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86329,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86331,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86335,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86338,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86341,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86344,
+    "v2_topic": "Materials",
+    "elements": [
+      "garden"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 86346,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 86347,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86349,
+    "v2_topic": "Roof",
+    "elements": [
+      "car_parking",
+      "chimney",
+      "fence",
+      "garden",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86353,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86354,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86355,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86358,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86362,
+    "v2_topic": "Retail",
+    "elements": [
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.8999999999999999
+  },
+  {
+    "provision_id": 86365,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86367,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86371,
+    "v2_topic": "Materials",
+    "elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86372,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86374,
+    "v2_topic": "Retail",
+    "elements": [
+      "door",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86380,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86382,
+    "v2_topic": "Roof",
+    "elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86384,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86386,
+    "v2_topic": "Roof",
+    "elements": [
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86394,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86398,
+    "v2_topic": "Parking",
+    "elements": [
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 86400,
+    "v2_topic": "Roof",
+    "elements": [
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86402,
+    "v2_topic": "Roof",
+    "elements": [
+      "chimney",
+      "materials",
+      "roof",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86403,
+    "v2_topic": "Roof",
+    "elements": [
+      "facade",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86404,
+    "v2_topic": "Verandah",
+    "elements": [
+      "door",
+      "facade",
+      "materials",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86406,
+    "v2_topic": "Verandah",
+    "elements": [
+      "facade",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.885
+  },
+  {
+    "provision_id": 86411,
+    "v2_topic": "Additions",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86412,
+    "v2_topic": "Additions",
+    "elements": [
+      "facade",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.675
+  },
+  {
+    "provision_id": 86414,
+    "v2_topic": "Retail",
+    "elements": [
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86415,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "materials",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86416,
+    "v2_topic": "Retail",
+    "elements": [
+      "facade",
+      "materials",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.935
+  },
+  {
+    "provision_id": 86441,
+    "v2_topic": "Roof",
+    "elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86442,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86444,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "verandah"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86446,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86448,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "door",
+      "materials",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 86714,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden",
+      "materials",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86732,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86736,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 86746,
+    "v2_topic": "Demolition",
+    "elements": [
+      "facade",
+      "garden"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86768,
+    "v2_topic": "Materials",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86772,
+    "v2_topic": "Parking",
+    "elements": [
+      "fence",
+      "garden",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86773,
+    "v2_topic": "Retail",
+    "elements": [
+      "door",
+      "facade",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.885
+  },
+  {
+    "provision_id": 86790,
+    "v2_topic": "Parking",
+    "elements": [
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 86856,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86860,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86865,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86878,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86901,
+    "v2_topic": "Materials",
+    "elements": [
+      "car_parking",
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86902,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86920,
+    "v2_topic": "Parking",
+    "elements": [
+      "car_parking",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86922,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86926,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86973,
+    "v2_topic": "Parking",
+    "elements": [
+      "materials",
+      "roof"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.7
+  },
+  {
+    "provision_id": 87052,
+    "v2_topic": "Parking",
+    "elements": [
+      "fence",
+      "garden",
+      "materials"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 87091,
+    "v2_topic": "Parking",
+    "elements": [
+      "facade",
+      "garden",
+      "scale"
+    ],
+    "source": "auto_accepted_matched",
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 87110,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "auto_accepted_matched",
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 78674,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.8
+  },
+  {
+    "provision_id": 78684,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "materials",
+      "window"
+    ],
+    "confidence": 0.685
+  },
+  {
+    "provision_id": 78695,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden",
+      "setback"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 78705,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "car_parking",
+      "door",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "confidence": 0.72
+  },
+  {
+    "provision_id": 78775,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "garden",
+      "setback",
+      "verandah"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "roof",
+      "setback",
+      "verandah"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86077,
+    "v2_topic": "Verandah",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "infill",
+      "materials",
+      "roof",
+      "verandah"
+    ],
+    "pass2_elements": [
+      "fence",
+      "materials",
+      "roof",
+      "verandah"
+    ],
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86218,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "pass2_elements": [
+      "materials",
+      "setback"
+    ],
+    "confidence": 0.65
+  },
+  {
+    "provision_id": 86222,
+    "v2_topic": "Materials",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "interior",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "pass2_elements": [
+      "facade",
+      "interior",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86226,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "car_parking",
+      "chimney",
+      "door",
+      "fence",
+      "garden",
+      "interior",
+      "materials",
+      "verandah",
+      "window"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "door",
+      "facade",
+      "garden",
+      "interior",
+      "materials",
+      "window"
+    ],
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86235,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "roof"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "roof",
+      "scale"
+    ],
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86236,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "infill",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.885
+  },
+  {
+    "provision_id": 86239,
+    "v2_topic": "Fencing",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "fence",
+      "materials"
+    ],
+    "pass2_elements": [
+      "fence",
+      "materials",
+      "setback"
+    ],
+    "confidence": 0.95
+  },
+  {
+    "provision_id": 86279,
+    "v2_topic": "Retail",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "demolition",
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "window"
+    ],
+    "confidence": 0.92
+  },
+  {
+    "provision_id": 86318,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "chimney",
+      "demolition",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "confidence": 0.885
+  },
+  {
+    "provision_id": 86325,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "window"
+    ],
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86334,
+    "v2_topic": "Materials",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "door",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.735
+  },
+  {
+    "provision_id": 86340,
+    "v2_topic": "Roof",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86364,
+    "v2_topic": "Signage",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.75
+  },
+  {
+    "provision_id": 86378,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "confidence": 0.885
+  },
+  {
+    "provision_id": 86396,
+    "v2_topic": "Additions",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "interior"
+    ],
+    "pass2_elements": [
+      "infill",
+      "interior"
+    ],
+    "confidence": 0.625
+  },
+  {
+    "provision_id": 86725,
+    "v2_topic": "Parking",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "pass2_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86808,
+    "v2_topic": "Character",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden"
+    ],
+    "confidence": 0.85
+  },
+  {
+    "provision_id": 86896,
+    "v2_topic": "Archaeological",
+    "elements": [],
+    "source": "needs_review_mismatch",
+    "pass1_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "setback"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "confidence": 0.75
+  }
+]

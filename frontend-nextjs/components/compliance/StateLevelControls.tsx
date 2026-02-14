@@ -21,6 +21,7 @@ import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { CdcComplianceCalculator } from '../cdc/CdcComplianceCalculator';
 import { NotApplicableCard } from './NotApplicableCard';
+import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 
 interface StateLevelControlsProps {
   propertyData: any;
@@ -454,6 +455,11 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
+      {/* Exempt & Complying Development Standards - certifier CDC gateway, shown first */}
+      {zoneCode && (
+        <ExemptComplyingProvisions zoneCode={zoneCode} />
+      )}
+
       {/* SEPP Section */}
       <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}`}>
         <CardHeader

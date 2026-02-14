@@ -1,0 +1,654 @@
+[
+  {
+    "provision_id": 78674,
+    "provision_text": "Section 8.2.17 of the DCP applies to the Holmwood Estate Heritage Conservation Area (HCA 15) (Figure 1).\n\nThe HCA contains fine examples of single and two storey terraces set in a highly cohesive streetscape with good street tree planting and other streetscape qualities. It is aesthetically significant for its narrow and dense development, which establishes a tightly described street wall, creating a sense of intimacy and privacy. It is also significant for its 19th and early 20th century terraces, cottages and houses (detached and semi-detached), which include several highly cohesive groups.\n\nThe built form reflects the interruption to development throughout NSW caused by the 1890s depression, as many lots were still undeveloped in 1910 and now read as being \"non-original\" when they are, in fact, original development.",
+    "v2_topic": "Archaeological",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.95,
+    "pass2_confidence": 0.65,
+    "avg_confidence": 0.8,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This is a descriptive and historical significance statement about the HCA. It describes aesthetic qualities (narrow/dense development, street wall, intimacy), historical context (19th-20th century terraces, 1890s depression), and streetscape character (tree planting). While physical elements are mentioned (terraces, cottages, houses, street trees), they are referenced only to establish heritage significance and character, not to regulate specific physical interventions or requirements. No explicit regulatory provisions for specific physical elements are stated. This is background/context material, not a heritage control provision.",
+    "pass2_reasoning": "Single and two storey terraces → scale (height/storey). Street tree planting and streetscape qualities → garden (landscaping/trees). Narrow and dense development with tightly described street wall → setback (building line/alignment creating street wall effect). General significance statements about aesthetics, cohesion, and historical context are not tagged as they describe character rather than regulate specific physical elements.",
+    "timestamp": "2026-02-13T03:34:58.673Z"
+  },
+  {
+    "provision_id": 78684,
+    "provision_text": "Section 8.2.27 of the DCP applies to the Petersham Commercial Precinct Heritage Conservation Area (HCA 25) (Figure 1).\n\nThe streetscapes are of aesthetic significance because they encompass a substantially intact mid to late 19th century retail precinct, which includes notable examples of the Federation Freestyle retail development, such as the group at 65-77 New Canterbury Road, recognised as an exemplar of its style. The aesthetic value of the area is enhanced by the undulating alignment of New Canterbury Road, which provides a fine series of evolving views and vistas.\n\nThe commercial and retail buildings within the HCA demonstrate the principal characteristics of the traditional suburban shopping area with narrow shopfronts and clearly defined structural bays providing physical evidence of the regularity of the underlying subdivision pattern. First floor facades are generally intact. Although many original ground floor shopfronts have been substantially altered, the streetscape at pedestrian level remains cohesive due to the regular spacing of the original shopfronts and the 1920s hanging ball white-way lights under the awnings which creates a distinctive aesthetic quality to the streetscape and accentuates the curvature of the facade as it follows the alignment of New Canterbury Road.",
+    "v2_topic": "Archaeological",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "materials",
+      "window"
+    ],
+    "pass1_confidence": 0.65,
+    "pass2_confidence": 0.72,
+    "avg_confidence": 0.685,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "The provision describes aesthetic significance and streetscape character (not tagged). However, it explicitly mentions: (1) 'shopfronts' and 'ground floor shopfronts' - these are facade elements; (2) 'First floor facades are generally intact' - explicit facade reference; (3) 'original shopfronts' with 'regular spacing' - shopfronts include glazing (window elements). The reference to 'awnings' is descriptive of existing conditions rather than a regulatory requirement. The 'undulating alignment' and 'evolving views' are design principles/character (not tagged). Tagged elements are those explicitly mentioned as physical features of the precinct, though the provision is primarily descriptive rather than prescriptive of what must be retained/altered.",
+    "pass2_reasoning": "The provision describes aesthetic significance and streetscape character (not tagged). However, it explicitly regulates: (1) 'First floor facades are generally intact' → facade element; (2) 'shopfronts' and 'ground floor shopfronts' → facade + window (shopfront glazing); (3) '1920s hanging ball white-way lights under the awnings' → facade (awning detail); (4) 'original shopfronts' implies materials/design specification → materials. The 'undulating alignment', 'evolving views', 'regularity', 'spacing', and 'curvature' are design principles/character descriptors (not tagged). The reference to 'narrow shopfronts and clearly defined structural bays' describes existing conditions but implies facade/window regulation through the 'substantially intact' and 'generally intact' language.",
+    "timestamp": "2026-02-13T03:36:10.836Z"
+  },
+  {
+    "provision_id": 78695,
+    "provision_text": "The area comprising the Hoskins Park & Environs Heritage Conservation Area was developed during the late nineteenth and early twentieth centuries. It is largely the result of the construction of the Wardell Road-Darling Island Railway Line and the formation of Hoskins Park which was put onto separate title in 1911. The unusual configuration of Davis Street reflects the construction of the Wardell Road-Darling Island Railway Line and provides evidence of its impacts on the physical fabric of the Marrickville local government area.\n\nThe Hoskins Park & Environs HCA is of historical significance as an area providing evidence of early twentieth century urban consolidation in Dulwich Hill, both by the provision of public parks and by the consistent residential development on Davis and Pigott Streets. The character of the Hoskins Park & Environs HCA derives from a combination of several features including site configuration and topography, mature trees and landscaping, and smaller detail elements from the 1920s along with its important visual relationship with late nineteenth and early twentieth century housing along Davis and Pigott Streets.\n\nThe aesthetic significance of the Hoskins Park & Environs HCA is due to the physical character of Hoskins Park along with the inter-relationship of the park and residential development around it. The aesthetic quality of the HCA is reinforced by the retention of original setbacks, garden spaces and street planting along Davis and Pigott Streets. The HCA has retained the early pattern of subdivision and contains Victorian dwellings along with late Federation and Inter-War era bungalow style houses that reflect the different periods of residential development and subdivision.",
+    "v2_topic": "Roof",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden",
+      "setback"
+    ],
+    "pass1_confidence": 0.95,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This is a heritage significance and character description statement. While it mentions physical features (mature trees, landscaping, setbacks, garden spaces, street planting, Victorian dwellings, bungalow style houses), these are referenced only to describe historical significance and aesthetic character, not to regulate or control specific physical elements. No prescriptive requirements or controls are stated. The text is descriptive/contextual rather than regulatory.",
+    "pass2_reasoning": "The provision explicitly mentions 'retention of original setbacks' (setback element) and 'garden spaces and street planting' (garden element) as key aesthetic qualities. All other content is descriptive/historical significance statements about the HCA's character, development history, and architectural periods, which do not regulate specific physical elements.",
+    "timestamp": "2026-02-13T03:37:24.520Z"
+  },
+  {
+    "provision_id": 78705,
+    "provision_text": "These controls provide details about managing change to Inter-War Art Deco residential flat buildings in HCAs. They should be read in conjunction with the streetscape controls relevant to each HCA.\n\nThe characteristics of the Inter-War Art Deco residential flat buildings described here are found frequently in Marrickville LGA's HCAs. Some properties demonstrate original features not described here; and others do not demonstrate all these features. The evidence of the fabric (including old photographs of the building) must be the main source of information about the original form of each property.\n\n8.5.4.1 Characteristics\nThe characteristics reflect the findings of the fieldwork undertaken for MLEP 2011. Marrickville LGA's HCAs contain simply designed and detailed examples of this style which include features of other Inter-War period styles. All examples were most likely builder-designed and built, giving the streetscapes a highly consistent form with rows of repeated roofs and bays.\n\nMost examples of Inter-War Art Deco residential flat buildings in the Marrickville LGA are modest. They are usually two storeys.\n\nThe Inter-War Art Deco style was the most popular Inter-War period style for construction of residential flat buildings in the Marrickville LGA in the 1920s and 1930s and is well represented throughout the HCAs.\n\nMost Inter-War Art Deco residential flat buildings were built in the 1920s and 1930s, generally as the result of subdivision of Victorian period villa estates.\n\nMany examples feature side driveways to rear garages.\n\nBrick base were used where land slopes sufficiently.\n\nAlmost all examples are symmetrical with central front doors.\n\nSome examples feature side entries.",
+    "v2_topic": "Parking",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "car_parking",
+      "door",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "pass1_confidence": 0.72,
+    "pass2_confidence": 0.72,
+    "avg_confidence": 0.72,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Text identifies specific physical characteristics: 'repeated roofs' (roof), 'side driveways to rear garages' (car_parking), 'brick base' (materials), 'central front doors' and 'side entries' (door), 'two storeys' (scale). However, most content is descriptive/historical context about the style rather than regulatory controls. The provision describes what exists rather than what must be managed or controlled. Tagged elements are those with explicit physical references, but confidence is moderate because this is primarily characteristic description rather than prescriptive regulation.",
+    "pass2_reasoning": "Text identifies specific physical characteristics: 'repeated roofs' (roof), 'two storeys' (scale), 'side driveways to rear garages' (car_parking), 'brick base' (materials), 'central front doors' and 'side entries' (door), 'symmetrical' facade arrangement (facade). However, most content is descriptive/historical context rather than regulatory controls. The provision describes existing characteristics rather than prescribing what must be managed or retained. Tagged elements are those with explicit physical references, though confidence is moderate due to the descriptive rather than prescriptive nature of the text.",
+    "timestamp": "2026-02-13T03:38:14.370Z"
+  },
+  {
+    "provision_id": 78775,
+    "provision_text": "The terrace row at 19-53 Lackey Street, is an unusually long uniform terrace row within a narrow streetscape with Simpson Park opposite, providing consistent and uniform terrace facades and parapets built to the street alignment which are a prominent element in the streetscape.\nThe Ficus tree boundary planting to Simpson Park is the defining element of the Park.\nResidential character demonstrated through the continuous uniform long row of Lackey Street late 19th century terrace houses built with verandahs/balconies to the street alignment.",
+    "v2_topic": "Retail",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "garden",
+      "setback",
+      "verandah"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "roof",
+      "setback",
+      "verandah"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.85,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Explicit physical elements regulated: 'terrace facades and parapets' (facade), 'built to the street alignment' (setback), 'Ficus tree boundary planting' (garden), 'verandahs/balconies to the street alignment' (verandah). General significance statements about 'uniform', 'prominent element', and 'residential character' are descriptive but support the physical element identifications. Parapets are facade components; street alignment indicates setback regulation.",
+    "pass2_reasoning": "Explicit physical elements identified: 'terrace facades and parapets' (facade + roof), 'built to the street alignment' (setback), 'Ficus tree boundary planting' (garden), 'verandahs/balconies to the street alignment' (verandah). General significance statements about 'uniform', 'prominent element', and 'residential character' are descriptive but support the physical element tags. Parapets are roof-related architectural features.",
+    "timestamp": "2026-02-13T03:38:33.861Z"
+  },
+  {
+    "provision_id": 86077,
+    "provision_text": "C79\nOn residential period buildings the removal of the separation between the roof and the main balcony roof is not permitted.\n\nC80\nProposals involving the reconstruction of balconies on residential period buildings must use traditional materials such as:\ni. Corrugated iron or slate roofs where appropriate to the style of the building;\nii. Timber for floors and timber framing for underside of verandah roofs;\niii. Cast iron friezes and balustrade panels with iron or timber handrails for Victorian buildings; and\niv. Timber balustrades for early Victorian buildings and Federation buildings.\n\nC81\nThe use of the following balcony materials is not permitted:\ni. Smooth, textured or profiled face brick and exposed cement blocks;\nii. Corrugated and other profiled metal sheeting;\niii. Wire; and\niv. Fibrous cement sheeting.\n\nC82\nOriginal balconies on period dwelling houses must not be enclosed. Existing enclosed balconies should be reopened and restored wherever possible.\n\nC83\nA balcony addition to a residential period building must match its period style unless designed to the rear of the building as part of a contemporary addition.\n\nC87\nThe painting of original unpainted brickwork or stonework is not permitted in order to protect the longevity of the material and to retain its value.\n\nC88\nUnsympathetic practices such as re-skinning of brickwork, replacing timber windows with aluminium windows on period buildings and painting, rendering, bagging of any original unpainted masonry or sandstone surface is not permitted.",
+    "v2_topic": "Verandah",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "infill",
+      "materials",
+      "roof",
+      "verandah"
+    ],
+    "pass2_elements": [
+      "fence",
+      "materials",
+      "roof",
+      "verandah"
+    ],
+    "pass1_confidence": 0.92,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.92,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "C79: 'roof' and 'verandah' (balcony roof separation). C80: 'roof' (corrugated iron/slate), 'verandah' (timber floors, underside of verandah roofs), 'materials' (corrugated iron, slate, timber, cast iron, balustrade specifications). C81: 'materials' (prohibited materials: brick, cement blocks, metal sheeting, fibrous cement). C82: 'verandah' (balcony enclosure/reopening). C83: 'infill' (balcony addition) and 'facade' (period style matching). C87: 'materials' (painting of brickwork/stonework prohibited). C88: 'materials' (re-skinning, painting, rendering, bagging of masonry/sandstone), 'window' (aluminium window replacement). Note: 'balcony' mapped to 'verandah' per heritage vocabulary (attached facade element); balcony additions = infill development.",
+    "pass2_reasoning": "C79: 'roof and main balcony roof' = roof element. C80: 'reconstruction of balconies' with 'corrugated iron or slate roofs', 'timber for floors and timber framing for underside of verandah roofs', 'cast iron friezes and balustrade panels' = roof + verandah + materials + fence (balustrade). C81: prohibited balcony materials = materials. C82: 'original balconies must not be enclosed' = verandah/balcony structure. C83: 'balcony addition' = verandah. C87-C88: 'painting of original unpainted brickwork or stonework', 'painting, rendering, bagging of original unpainted masonry' = materials. Balustrades and handrails tagged as fence (railing elements). Verandah explicitly mentioned in C80.",
+    "timestamp": "2026-02-13T03:40:17.371Z"
+  },
+  {
+    "provision_id": 86218,
+    "provision_text": "Identified heritage items must be retained in a manner where their heritage significance is preserved and the public can interpret that significance without confusion as to its actual age or function.\n\nThe aesthetic values of those areas are evident in the way the elements work together and are often enhanced by consistency of built form, setbacks, materials and architectural period. The qualities of the public domain are integral to the aesthetic values of Marrickville LGA's Heritage Conservation Areas, particularly where they reinforce a cohesiveness between the built elements through materials, curbing, guttering, paving and street tree planting.\n\nThe quality of the public domain in those areas is generally high, with original sandstone kerbs, sometimes guttering and high-quality street tree planting in places. Perhaps the most impressive element of Marrickville LGA's public domain, however, are the extensive areas of brick paving to footpaths in many places throughout the former Petersham LGA. The brick paving was laid as part of a Depression era employment relief scheme which is important in a historical context. Where undisturbed by services, these have remained in excellent condition adding an important textural quality to the footpath. Paving of this extent and quality is rare in NSW today.",
+    "v2_topic": "Archaeological",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "pass2_elements": [
+      "materials",
+      "setback"
+    ],
+    "pass1_confidence": 0.65,
+    "pass2_confidence": 0.65,
+    "avg_confidence": 0.65,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "The provision explicitly mentions 'setbacks, materials and architectural period' as elements that contribute to aesthetic values and must be preserved. 'Materials' is clearly regulated (sandstone kerbs, guttering, brick paving, street tree planting). 'Garden' is tagged for 'street tree planting' which is a landscaping/garden element. However, most of this text is descriptive/historical significance rather than prescriptive regulation. The opening sentence about 'heritage significance' and 'public interpretation' is general significance language (not tagged). Design principles like 'consistency of built form' and 'cohesiveness' are not tagged as they are design principles rather than physical element regulations. The extensive discussion of paving quality and historical context is descriptive rather than regulatory.",
+    "pass2_reasoning": "The provision explicitly mentions 'setbacks, materials and architectural period' as elements that contribute to aesthetic values and must be considered. 'Materials' is clearly regulated (sandstone kerbs, guttering, brick paving, street tree planting). 'Setback' is explicitly named as a regulated element. However, most of the text is descriptive/historical context about significance and character rather than prescriptive regulation of specific physical elements. The references to 'consistency of built form,' 'cohesiveness,' 'aesthetic values,' and 'textural quality' are design principles and significance statements, not direct element regulations. Street tree planting is mentioned but in a descriptive context about public domain quality rather than as a regulated requirement, so 'garden' is not tagged.",
+    "timestamp": "2026-02-13T03:40:37.547Z"
+  },
+  {
+    "provision_id": 86222,
+    "provision_text": "C1 Heritage items must be conserved and new development must not diminish the significance of the item.\nC2 An experienced heritage architect or conservation specialist must be engaged for works to a heritage item.\nC3 Significant internal and external features of heritage items must be maintained in their original form.\nC4 Subdivision of a site containing a heritage item must leave an adequate curtilage to the heritage item.\nC5 New development need not seek to replicate period details of original buildings, but rather, demonstrate respect for the form and scale of the immediate area.\nC6 Alterations and additions must not adversely impact the significant features of the heritage item.\nC7 Changes must maintain the significant form, proportion, scale, details and materials of the item.\nC8 Extensions must not compete with the integrity, scale or character of the item. Extensions can best meet this requirement if: i. Separation from the original building is maximised; and ii. They are designed in a simple, unobtrusive style and size.\nC9 Alterations and additions must be located so as to reduce their visibility and prominence from any point in the street or adjoining streets, and the height must not be seen above the main ridgeline of the building.\nC10 New side additions may be permitted where: i. They are sympathetic to the character and design of the existing building, having regard to the form, bulk, materials and details of the building.",
+    "v2_topic": "Materials",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "interior",
+      "materials",
+      "roof",
+      "scale"
+    ],
+    "pass2_elements": [
+      "facade",
+      "interior",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.85,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "C3 explicitly mentions 'internal and external features' (interior + facade). C7 specifies 'materials' as a regulated element. C5, C8, and C9 regulate 'scale' and form (physical bulk/height). C9 references 'ridgeline' (roof element). C10 mentions 'materials' and 'bulk' (scale). General conservation principles and design character statements are not tagged. 'Curtilage' (C4) is site context, not a physical element of the building itself.",
+    "pass2_reasoning": "C3 explicitly mentions 'internal and external features' (interior + facade). C5, C7, C8, C9 regulate scale/form/proportion (scale element). C7 and C10 specify materials. C9 references 'ridgeline' (roof element). C4 addresses curtilage/site subdivision (setback principle). C8-C9 address visibility and prominence from street (facade/setback related). Design principles like 'character,' 'respect,' 'integrity,' and 'sympathetic' are not tagged as they are qualitative descriptors rather than physical element regulations.",
+    "timestamp": "2026-02-13T03:40:59.841Z"
+  },
+  {
+    "provision_id": 86226,
+    "provision_text": "viii. Repair of existing tiling to balconies, verandahs, front steps or pathways;\nix. Repair, replacement or repainting of timber windows, external doors or joinery;\nx. Repair or repainting of chimneys;\nxi. Replacement or maintenance of gardens with compatible plants, trees, shrubs and lawns (unless the tree is a heritage item);\nxii. Repainting external surfaces that are already painted in the same colours;\nxiii. Repair or repainting of verandahs, balcony balustrades and valences;\nxiv. Utility installation such as gas meters, satellite dish, antenna, television aerials, meter boxes, water heaters, water tanks (excluding solar panels) that are not visible from a public place;\nxv. Repair or replacement of letter boxes;\nxvi. Repair or replacement of decks; and\nxvii. Painting or rendering unpainted exterior surfaces.\n\n8.1.9.1 Other works – Council notification as minor\nwork not required\n\nOther works that do not require the notification of Council are:\ni. Replacing of screws and bolts to ensure fixtures are securely held in place;\nii. Re-hinging doors or gates;\niii. Replacing of plumbing and/or wiring;\niv. Repairing, sanding, polishing or oiling of floor boards;\nv. Maintaining or upgrading non-original kitchens, bathrooms or laundry fixtures and fittings;\nvi. Removing or replacing non-original floor coverings, built in cupboards or wardrobes;\nvii. Removing or replacing non-original internal light fittings; and\nviii. Internal painting that does not affect the significant features.\n\n8.1.10 Archaeological sites\n\nArchaeological sites provide evidence of the lives of Australia's previous generations. This evidence includes objects and artefacts of everyday life such as crockery, bottles, tools and the remains of early buildings and structures. This section deals only with non-Aboriginal archaeology.\n\nAll known and potential archaeological relics in NSW are protected under the NSW Heritage Act 1977 (as amended). When intending to disturb or excavate land where archaeological relics have been identified or are considered likely to occur, it is the responsibility of the property owner to seek relevant approvals. Either an excavation permit under Section 140 of the Heritage Act 1977 or an exception under Section 139(4) of the Heritage Act 1977 will be required.",
+    "v2_topic": "Archaeological",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "car_parking",
+      "chimney",
+      "door",
+      "fence",
+      "garden",
+      "interior",
+      "materials",
+      "verandah",
+      "window"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "door",
+      "facade",
+      "garden",
+      "interior",
+      "materials",
+      "window"
+    ],
+    "pass1_confidence": 0.92,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.92,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Provision lists specific physical elements requiring repair/maintenance: verandahs (viii, xiii), balconies (viii, xiii), timber windows (ix), external doors (ix), chimneys (x), gardens/plants/trees (xi), balustrades (xiii - fence element), external surface repainting (xii, xvii - materials), decks (xvi - car_parking as outdoor structure), letter boxes (xv - door-related), utility installations (xiv - car_parking/materials context). Second section covers interior works: plumbing/wiring (iii - interior), flooring (iv - interior), kitchens/bathrooms (v - interior), internal light fittings (vii - interior), internal painting (viii - interior). Archaeological section is descriptive/regulatory framework with no specific physical element regulation. Excluded: design principles, general significance statements.",
+    "pass2_reasoning": "Section 8.1.9 lists specific physical elements subject to minor works exemptions: balconies/verandahs/pathways (facade), timber windows/doors/joinery (window, door, materials), chimneys (chimney), gardens/plants/trees (garden), repainting (materials), balustrades/valences (facade), decks (facade/infill structure), rendering (materials). Section 8.1.9.1 covers interior elements: flooring (interior), kitchens/bathrooms (interior), internal light fittings (interior), internal painting (interior). Section 8.1.10 on archaeology is descriptive/regulatory framework with no specific physical element regulation - not tagged. Excluded: utility installations (not visible = not regulated), letter boxes (minor fixture), door/gate re-hinging (maintenance action not element-specific).",
+    "timestamp": "2026-02-13T03:41:31.517Z"
+  },
+  {
+    "provision_id": 86235,
+    "provision_text": "C1 The existing pattern and rhythm of the built up edge to the street formed by fences, gardens, front facade and roofs must be maintained without the introduction of other elements such as carports which might reduce the view of those facades.\nC2 Retention of all original fabric is encouraged through regular maintenance.\nC3 Reinstatement of lost detail is encouraged.\nC4 In general, all additions must be single storey and be located to the rear of the property. However, Council may consider an application on merit for an additional floor where it is possible to design a proposal which can comply with Council's stated objectives for additions.",
+    "v2_topic": "Parking",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "roof"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "roof",
+      "scale"
+    ],
+    "pass1_confidence": 0.92,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.92,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "C1 explicitly regulates: fences, gardens, front facade, roofs (all physical elements), and car_parking (carports specifically mentioned as elements to avoid). 'Pattern and rhythm' are design principles (not tagged), but the physical elements they describe ARE tagged. C2-C4 contain no specific physical element regulations - they address maintenance philosophy, reinstatement encouragement, and storey/location principles (scale/setback as design intent, not specific regulation). The prohibition on carports reducing facade views confirms car_parking as a regulated element.",
+    "pass2_reasoning": "C1 explicitly regulates: fences (fence), gardens (garden), front facade (facade), roofs (roof), and carports (car_parking) as elements to maintain/avoid. 'Pattern and rhythm' are design principles (not tagged). C2-C3 encourage maintenance/reinstatement but don't specify physical elements. C4 regulates additions as single storey (scale) and rear location (setback principle, but 'rear' is locational not a physical element regulation). Carports in C1 are explicitly mentioned as elements to avoid, making car_parking a regulated element.",
+    "timestamp": "2026-02-13T03:42:11.285Z"
+  },
+  {
+    "provision_id": 86236,
+    "provision_text": "The limited headroom in the roof space of the lower pitched 'standard' Californian bungalow and the later 1930s bungalow generally precludes additions within the existing roof envelope. Roof additions should generally be confined to the rear of the existing building and must not alter the essential form and character of the existing single storey building.\n\nC5 Proposals for additions to an existing building should generally be designed to be located at the rear of properties in order to maintain the original front setback alignment.\n\nC6 Additions to the side of buildings must be designed so that they set back as far as possible from the front building line, with a minimum setback of 900mm from the side boundary. Proposals must be designed in sympathy with the original architectural style of buildings maintaining original roof pitch, eaves detail and width.",
+    "v2_topic": "Roof",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "infill",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.885,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Explicit regulations: (1) 'roof space' and 'roof additions' + 'roof envelope' + 'roof pitch' and 'eaves detail' = roof element; (2) 'front setback alignment' + 'set back...from front building line' + 'minimum setback of 900mm' = setback element; (3) 'single storey building' + 'form' (physical form/massing) = scale element. Design principle 'character' and 'architectural style' are not tagged. 'Width' mentioned in context of eaves detail (roof-related) not separately tagged.",
+    "pass2_reasoning": "Provision explicitly regulates: (1) roof - 'roof space', 'roof additions', 'roof envelope', 'roof pitch', 'eaves detail' all clearly roof elements; (2) setback - 'front setback alignment', 'set back from front building line', 'minimum setback of 900mm' explicitly regulate setback distances; (3) scale - 'single storey building', 'additions' (physical size/massing of new construction); (4) infill - 'additions to existing building' = infill development. Design principles like 'essential form and character' and 'sympathy with original architectural style' are not tagged. 'Width' mentioned in context of eaves detail (roof element, not separate tag).",
+    "timestamp": "2026-02-13T03:42:18.183Z"
+  },
+  {
+    "provision_id": 86239,
+    "provision_text": "C15 Proposals for front fences must be designed in face brick to complement the original fencing and housing within the HCA and must be designed with brick piers no more than 1200mm high, set at regular intervals.  C16 Front fences must not be less than 600mm and not more than 1200mm high.",
+    "v2_topic": "Fencing",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "fence",
+      "materials"
+    ],
+    "pass2_elements": [
+      "fence",
+      "materials",
+      "setback"
+    ],
+    "pass1_confidence": 0.95,
+    "pass2_confidence": 0.95,
+    "avg_confidence": 0.95,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "C15 explicitly regulates front fences with material specification (face brick) and physical dimensions (brick piers height 1200mm max, regular intervals). C16 specifies fence height constraints (600-1200mm). Both provisions directly regulate physical fence elements and materials.",
+    "pass2_reasoning": "C15 explicitly regulates front fences (fence), specifies face brick material (materials), and prescribes brick pier spacing at 'regular intervals' which relates to setback/spacing from street. C16 specifies fence height constraints (scale element for fence). Height limits are physical dimensional regulations of the fence structure itself.",
+    "timestamp": "2026-02-13T03:42:35.724Z"
+  },
+  {
+    "provision_id": 86279,
+    "provision_text": "The core period of heritage significance is the late 18th Century to 1940. Any buildings or significant elements of the fabric from this period must be retained and maintained.\n\nRelevant heritage conservation area DCP section:\n• Retail streetscapes. See Section 8.4.\n\nPrimary relevant historic architectural style. See Section 8.5 (note: other styles will exist for some buildings in the area):\n• Victorian Italianate/Victorian Filigree;\n• Federation Styles; and\n• Inter-War Art Deco residential flat buildings.\n\nAdditional area-specific controls:\n• Conserve remaining original façade detailing (both to ground and upper levels) to include façade repairs and retention of face brickwork facades without rendering or painting.\n• Original façade detailing to be used as a template for façade reinstatements within rows.\n• Where no evidence remains of original ground floor shopfronts and the existing modern shopfront detracts from the appearance of the building, encourage the shop window replacement with a more sympathetic modern shopfront (for example consisting of timber framed glazed bifold doors with timber framed fanlights above).\n• Reinstatement of post-supported balconies to shopfronts where there is physical or historical evidence of their existence is encouraged.\n• Reinstatement of original arched recessed balconies is encouraged. Due to the noise impacts of Parramatta Road it is considered reasonable to allow sympathetically designed enclosure of recessed balcony openings (such as glazing with minimal framing or timber-framed windows) provided that unsympathetic alterations (such as brickwork infill of original arched balcony openings) are removed concurrently.\n• Retention of suspended awnings is required.\n• Any future redevelopment of Nos. 266-310 and 230-264 Parramatta Road must ensure they are complementary to the character of HCA 5 in terms of scale, height, form and façade detail.\n• Contributory buildings within the HCA have been identified and mapped. Refer to Section 8.4.2 of this DCP for details.",
+    "v2_topic": "Retail",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "demolition",
+      "facade",
+      "infill",
+      "materials",
+      "scale",
+      "window"
+    ],
+    "pass1_confidence": 0.92,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.92,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Provision explicitly regulates: (1) FACADE - 'façade detailing', 'façade repairs', 'shopfront', 'balconies', 'awnings', 'arched recessed balconies', 'façade reinstatements'; (2) MATERIALS - 'face brickwork facades', 'rendering or painting', 'timber framed', 'glazing', 'brickwork infill'; (3) WINDOW - 'shop window replacement', 'glazed bifold doors', 'fanlights', 'glazing', 'timber-framed windows'; (4) INFILL - 'brickwork infill of original arched balcony openings' (removal of unsympathetic infill); (5) SCALE - 'scale, height, form' for future redevelopment. General significance statements ('core period', 'heritage significance', architectural styles) are not tagged. Design principles ('character', 'sympathetic', 'complementary') are not tagged as standalone elements.",
+    "pass2_reasoning": "Provision explicitly regulates: (1) FACADE - 'façade detailing', 'façade repairs', 'shopfront', 'balconies', 'awnings', 'arched recessed balconies', 'façade reinstatements'; (2) MATERIALS - 'face brickwork facades', 'rendering or painting', 'timber framed', 'glazing', 'brickwork infill'; (3) WINDOW - 'shop window replacement', 'glazed bifold doors', 'fanlights', 'glazing', 'timber-framed windows'; (4) DEMOLITION - 'retained and maintained', 'removal of unsympathetic alterations'; (5) INFILL - 'brickwork infill of original arched balcony openings'; (6) SCALE - 'scale, height, form' for future redevelopment. General significance statements (late 18th-1940, architectural styles, HCA mapping) not tagged. Design principles ('character', 'sympathetic', 'complementary') not tagged as standalone.",
+    "timestamp": "2026-02-13T03:45:37.364Z"
+  },
+  {
+    "provision_id": 86318,
+    "provision_text": "8.2.18.5 Elements that contribute to the consistency of the streetscape (visible from the public domain)\ni. Residential character demonstrated through the single and two storey 19th century and Federation period terrace housing typologies;\nii. Victorian commercial properties including two storey corner shops;\niii. Building typologies that reinforce the tight urban grain:\na. Groups and runs of terraces demonstrate strong streetscape qualities including cohesiveness of form, rhythm and materials;\nb. Simple detailing occurs to the front elevation of intact and substantially intact houses and terraces; and\nc. Increasing simplification of scale and detailing towards the rear includes window size, bulk and visual prominence in view from street;\niv. Roof forms appropriate to typology and period of construction:\na. Primary ridgelines of roofs align parallel to the street;\nb. Roof forms of groups or runs of buildings demonstrate consistent pitch and rhythm;\nc. Few major alterations to roof form and volumes;\nd. Original chimneys that contribute to the quality and visual interest of roofscapes; and\ne. Original dormer windows that are small and vertically proportioned;\nv. Intact or substantially intact built elements:\na. Consistency of form and detailing to intact and substantially intact original dwellings and streetscapes; and\nb. Any additions visible from the public domain of a minor scale respect original built form and are unobtrusive in the context of the streetscape;\nvi. Building heights appropriate to typology and period of construction;\nvii. Detailing and finishes appropriate to typology and period of construction:\na. Window openings appropriate for architectural type;\nb. Timber framed windows;\nc. Complex timber framed windows to main bay of front elevation; and\nd. Appropriate colour schemes used for detailing;\nviii. Fences appropriate to typology and period of construction.\n\n8.2.18.6 Applicable conservation controls\n\nThe core period of heritage significance is 1869-1957 but development of the residential component was substantially completed by 1920. Any buildings or significant elements of the fabric from 1920 or any earlier period must be retained and maintained.",
+    "v2_topic": "Roof",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "chimney",
+      "demolition",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "facade",
+      "fence",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "pass1_confidence": 0.92,
+    "pass2_confidence": 0.85,
+    "avg_confidence": 0.885,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "8.2.18.5 explicitly regulates multiple physical elements: scale/storey heights (i, vi); roof forms, ridgelines, pitch, chimneys, dormer windows (iv a-e); window openings and timber framing (vii a-c); facade detailing and finishes (vii d); fences (viii). Materials are specified (timber windows, colour schemes). 8.2.18.6 establishes retention/demolition controls for pre-1920 fabric. Excluded: 'rhythm', 'cohesiveness', 'character', 'visual interest' are design principles not physical regulations; 'typology', 'period', 'significance' are descriptive context.",
+    "pass2_reasoning": "This provision regulates multiple physical elements visible from public domain: roof forms and ridgelines (roof), chimneys and dormer windows (chimney, window), front elevation detailing and shopfronts (facade), building heights and storey numbers (scale), window openings and timber framing (window), materials and colour schemes (materials), and fences (fence). Descriptive language about 'streetscape qualities', 'cohesiveness', 'rhythm', and 'character' are design principles and not tagged. The 1869-1957 retention requirement is a temporal control, not a physical element regulation.",
+    "timestamp": "2026-02-13T03:47:48.997Z"
+  },
+  {
+    "provision_id": 86325,
+    "provision_text": "The Petersham South (Norwood Estate) HCA contains details or fine-grained elements on buildings of different styles and types that contribute to the integrity and heritage significance of the area. The elements are not found on all buildings but must be retained where present.\n\nStreet layout – including alignment of Stanmore Road;\nStreet tree plantings;\nMarr Playground and Maundrell Park – including mature vegetation and civic improvements;\nStreet names set into footpath (where present); and\nSandstone block kerbing.\n\nGroups of buildings from key period of significance (1854-1940);\nVariety of periods, styles and typologies of built form;\nOriginal fabric;\nQuality of streetscape patterns, rhythms and textures;\nBuilding typologies that reinforce the urban grain:\na. Groups of similar types and runs of terraces demonstrate strong streetscape qualities including cohesiveness of form, scale, rhythm and materials;\nb. High quality original detailing occurs to the front elevation; and\nc. Increasing simplification of scale and detailing occurs towards the rear, including window size, bulk and visual prominence in view from street;\nRoof forms appropriate to typology and period of construction:\na. Intact roof forms;\nb. Primary ridgelines of roofs that align parallel to the street;\nc. Roof forms of groups or runs of buildings that demonstrate consistent pitch and rhythm;",
+    "v2_topic": "Roof",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "window"
+    ],
+    "pass1_confidence": 0.75,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.75,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Street tree plantings = garden; Sandstone block kerbing = materials/fence (boundary element); Original fabric + front elevation detailing = facade; Window size mentioned = window; Roof forms, ridgelines, pitch = roof; Scale and bulk mentioned = scale. Excluded: 'rhythm', 'patterns', 'textures', 'cohesiveness', 'quality of streetscape' as design principles; 'groups of buildings', 'variety of periods', 'significance' as general descriptive statements; street layout/alignment as infrastructure rather than building element regulation.",
+    "pass2_reasoning": "Street tree plantings = garden. Sandstone block kerbing = fence/materials (boundary element). Front elevation detailing = facade. Window size specifications = window. Roof forms, ridgelines, pitch = roof. Materials cohesiveness in runs of terraces = materials. Note: 'rhythm', 'textures', 'streetscape patterns', 'character', 'cohesiveness', 'visual prominence' are design principles (not tagged). 'Original fabric' and 'integrity/significance' are general statements (not tagged). Street layout alignment and street names are infrastructure (not physical building elements regulated). Playground/parks are separate civic spaces (not building heritage elements).",
+    "timestamp": "2026-02-13T03:48:11.724Z"
+  },
+  {
+    "provision_id": 86334,
+    "provision_text": "8.2.23.2 Summary of core heritage values and elements\ni. The HCA has a consistent subdivision pattern.\nii. There is a suburban character to streetscape.\niii. High quality examples of Federation and Federation Queen Anne domestic architecture exists in the HCA.\niv. The high quality streetscape is derived from the consistency of subdivision pattern, setbacks, built forms, roofscapes, materials, detailing and garden spaces.\nv. The public domain is simply designed and detailed.\n\n8.2.23.3 Specific elements\nThe Rathlin Estate HCA also contains many details or fine-grained elements on buildings of different styles and types that contribute to the integrity and heritage significance of the area. Where present, those elements must be retained in any new development.\n\n8.2.23.4 Subdivision and public domain elements\ni. Street layout;\nii. Subdivision layout;\niii. Grass verges with street tree planting;\niv. Sandstone block kerbing;\nv. Scale and proportion of highly intact lots;\nvi. Setbacks from the street alignment consistent and sufficient to allow a small front garden to be planted; and\nvii. Low density suburban character of streetscape due to street widths, wide verges, setbacks and single storey built forms.\n\n8.2.23.5 Elements that contribute to the consistency of the streetscape (visible from the public domain)\ni. Residential character demonstrated through the consistency of the Federation bungalow typology;\nii. Imposing street presence of intact and substantially intact Federation period dwellings;\niii. Individual dwellings of high aesthetic value;\niv. Substantially intact groups demonstrating key elements (scale, form and detailing) of the Federation period bungalow style;\nv. Building typologies that reinforce the suburban grain:\na. Houses that demonstrate strong streetscape qualities through cohesiveness of built form, scale, rhythm and materials;\nb. High quality detailing that occurs to the front elevation of intact and substantially intact houses is appropriate to the period and style of the dwelling; and",
+    "v2_topic": "Materials",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "door",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.72,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.735,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This is primarily a descriptive heritage values statement with limited specific physical element regulations. Tagged elements: 'setback' (explicit in 8.2.23.4.vi - 'Setbacks from the street alignment'), 'garden' (8.2.23.4.vi - 'small front garden'), 'scale' (8.2.23.4.v,vii - 'Scale and proportion', 'single storey built forms'), 'materials' (8.2.23.4 summary mentions 'materials' as contributing to streetscape; 8.2.23.5.v.a - 'cohesiveness of built form, scale, rhythm and materials'), 'roof' (8.2.23.4 summary - 'roofscapes'), 'facade' (8.2.23.5.v.b - 'front elevation'), 'window' and 'door' (implied in 8.2.23.5.v.b - 'detailing' on front elevation of Federation period dwellings, though not explicitly named). Note: 'Rhythm' in 8.2.23.5.v.a is a design principle (not tagged). Most of sections 8.2.23.2-3 are general significance/character statements (not tagged). Low confidence due to heavy reliance on descriptive language rather than explicit regulatory requirements.",
+    "pass2_reasoning": "This is primarily a descriptive summary of heritage values and character. However, specific physical elements are regulated: (1) 8.2.23.4(vi) explicitly regulates setbacks and front gardens; (2) 8.2.23.4(vii) references scale/single storey forms; (3) 8.2.23.5(a) mentions 'scale, rhythm and materials' - scale and materials are physical, rhythm is design principle (not tagged); (4) 8.2.23.5(b) regulates 'front elevation' (facade) detailing; (5) 8.2.23.4 mentions 'roofscapes' in context of what contributes to streetscape quality. Most of section 8.2.23.2 is general significance/character (not tagged). Section 8.2.23.3 is procedural. Conservative approach: tagged only where physical elements are explicitly mentioned as regulated or required to be retained.",
+    "timestamp": "2026-02-13T03:48:41.030Z"
+  },
+  {
+    "provision_id": 86340,
+    "provision_text": "The Jarvie Avenue HCA also contains many details or fine-grained elements on buildings of different styles and types that contribute to the integrity and heritage significance of the area. The elements are not found on all buildings, but where present must be retained in any new development.\n\nStreet layout;\nSubdivision configuration;\nGrass verges with street tree planting and narrow, centrally located footpath;\nFront setback - garden or soft surface; and\nDetached, low density character (semi-detached dwellings read as a single dwelling on first inspection).\n\nResidential character demonstrated through the consistency of the bungalow typology;\nSubstantially intact group demonstrating key elements (scale, form and detailing) of the Inter-War Californian bungalow and Georgian Revival style period bungalow style;\nRange of stylistic variation within a highly consistent overall built form;\nIndividual dwellings of high aesthetic value;\nBuilding typologies that reinforce the suburban grain:\na. Houses demonstrate strong streetscape qualities through cohesiveness of built form, scale, rhythm and materials;\nb. High quality detailing to the front elevation of intact and substantially intact houses is appropriate to the period and style of the dwelling; and\nc. Increasing simplification of scale and detailing occurs towards the rear, including window size, bulk and visual prominence in view from street;\nBuilding forms appropriate to architectural type (Inter-War Californian and Georgian Revival bungalows);\nRoof forms appropriate to typology and period of construction:\na. Good quality roofscape views;\nb. Roof forms of groups or runs of buildings demonstrating consistent pitch and rhythm;\nc. Intact roof forms and volumes;\nd. Where original roof cladding has been replaced, unglazed dark terracotta tile has been used; and\ne. Original chimneys that contribute to the quality and visual interest of roofscapes;\nIntact or substantially intact built elements.",
+    "v2_topic": "Roof",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "chimney",
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback",
+      "window"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.85,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This provision describes heritage character elements. Tagged elements: 'setback' (front setback specified), 'garden' (garden or soft surface), 'scale' (scale mentioned as key element, building height/bulk), 'facade' (front elevation, streetscape qualities, detailing), 'materials' (consistency of materials, terracotta tile specification), 'roof' (roof forms, pitch, roofscape, cladding, volumes), 'chimney' (original chimneys). NOT tagged: 'street layout', 'subdivision configuration', 'grass verges/street trees' (these are public realm/landscape, not building elements), 'rhythm' and 'character' (design principles), 'typology' and 'architectural style' (descriptive/historical context). 'Window' not tagged despite 'window size' mention because context is about visual prominence/bulk rather than window-specific regulation.",
+    "pass2_reasoning": "This provision describes heritage character elements that must be retained. Tagged elements: 'setback' (front setback specified), 'garden' (garden or soft surface), 'scale' (scale, bulk, storey mentioned multiple times), 'facade' (front elevation, streetscape qualities, detailing), 'materials' (consistency of materials, terracotta tile specification), 'roof' (roof forms, pitch, cladding, roofscape), 'chimney' (original chimneys mentioned), 'window' (window size, openings implied in detailing). NOT tagged: 'street layout', 'subdivision configuration', 'footpath' (infrastructure), 'rhythm' and 'character' (design principles), 'typology' and 'significance' (descriptive/historical context). High confidence as physical elements are explicitly listed as 'must be retained'.",
+    "timestamp": "2026-02-13T03:49:03.497Z"
+  },
+  {
+    "provision_id": 86364,
+    "provision_text": "The imposing scale and street presence of major civic buildings establish a strong focal point with lesser scale to ancillary and supporting buildings.\nCivic and social functions continue through the main buildings in the HCA.\nSt Brigid's Church and the former Marrickville Hospital complex are set back from Marrickville Road with vegetated settings addressing each other.\nSt Brigid's Church and St Clement's Church are imposing local church buildings with towers that bracket the east and west extents of the area.\nThe HCA contains individually outstanding designs of individual civic and public buildings.\nThe town hall, fire station and St Clement's Church are aligned to provide a semi-formal forecourt setting to allow scale of buildings and their relationship to each other to be appreciated.\nThe retail section of the HCA contributes to the setting and integrity of the civic streetscape through its continuing use as a retail/commercial area and through its consistent parapet heights, which contribute to the HCA's aesthetic values by directing the eye to the churches and focal points at the western end. The retail precinct also contains some good examples of late 19th/early 20th century retail shops with residential accommodation above. Other individual shops contribute minimal aesthetic value to the area and are significant primarily for their ongoing retail/commercial role.\nThe HCA contains many details or fine-grained elements on buildings of different styles and types that contribute to the integrity and heritage significance of the area. The elements are not found on all buildings but must be retained where present.\nBoundaries of the former villa estates occupied by Lilydale and Shrublands Nurseries;\nCivic and spatial relationships between:\na. St Brigid's Church and the former Marrickville Hospital complex (both set back from Marrickville Road with vegetated settings addressing each other);\nb. St Brigid's Church and St Clement's Church (both imposing local church buildings with towers that bracket the east and west extents of the area); and\nc. Alignment of town hall, fire station and St Clement's to provide semi-formal forecourt setting to allow scale of buildings and their relationship to each other to be appreciated;\nSandstone block kerbing; and\nStreet tree planting and public domain improvements to retail area.",
+    "v2_topic": "Signage",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "facade",
+      "garden",
+      "materials",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.75,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.75,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "SCALE: 'imposing scale', 'scale of buildings' explicitly regulate physical size/height. SETBACK: 'set back from Marrickville Road' explicitly specifies building line distance. GARDEN: 'vegetated settings' regulate landscaping/planting; 'Street tree planting' explicitly mentioned. FACADE: 'parapet heights' regulate roofline facade element; 'retail shops' and 'street presentation' relate to facade treatment. ROOF: 'parapet heights' are roof/facade edge elements; 'towers' on churches are roof-related vertical elements. MATERIALS: 'Sandstone block kerbing' explicitly specifies material. NOT TAGGED: 'civic and social functions', 'outstanding designs', 'aesthetic values', 'integrity', 'heritage significance', 'fine-grained elements' (general descriptive/significance statements); 'relationship to each other', 'focal point', 'character' (design principles); 'retail/commercial role' (functional use). Towers mentioned but as part of scale/massing rather than isolated chimney elements.",
+    "pass2_reasoning": "SCALE: 'imposing scale', 'scale of buildings' explicitly regulate physical size/height. SETBACK: 'set back from Marrickville Road' explicitly specifies building line distance. GARDEN: 'vegetated settings' regulate landscaping/planting. FACADE: 'parapet heights' regulate roof/wall edge, 'retail shops' and 'street presentation' relate to facade treatment. MATERIALS: 'Sandstone block kerbing' explicitly specifies material. NOT TAGGED: 'street presence', 'focal point', 'relationship to each other', 'aesthetic values', 'integrity', 'significance' = general character/significance statements. 'Fine-grained elements' = too vague without specifics. 'Civic and spatial relationships' = design principle (not physical regulation). 'Street tree planting' mentioned but in context of public domain (outside HCA building control).",
+    "timestamp": "2026-02-13T03:50:43.940Z"
+  },
+  {
+    "provision_id": 86378,
+    "provision_text": "i. Houses include two groups of consistent scale, form, style and detailing, each built by different speculative builders - one who built detached bungalows and the other semi-detached cottages. They show the mature form of suburban development in the LGA.\nii. The aesthetic values of the HCA and its streetscape are derived from the strong patterns created by the consistently expressed built forms and regular building footprint and setbacks which create a strongly expressed and aesthetically cohesive streetscape group enhanced by the survival of much original fabric.\niii. Detached Inter-War double fronted bungalows with side entry door and no central hallway demonstrate the adaptation of the Californian bungalow for lower, middle and working classes.\niv. The half-gabled roof form demonstrated by many houses is an uncommon variation to the unusual bungalow roof configuration. The single fronted version is particularly rare in the Marrickville LGA.\nv. The rhythmic nature of the facades in the streetscape views is enhanced by the oblique alignment of the street and orientation of buildings to the side boundaries, creating a staggered effect.\nvi. Semi-detached cottages with Art Deco detailing provide a more affordable housing option.\nvii. Low brick fences consistent with the built form and constructed of water-pipe and woven mesh wire were an economical and practical solution (of unevenly opening gates) to allow pedestrian access via the driveway rather than a separate pathway.\nviii. Setbacks and front garden spaces are highly consistent within the streetscape group, featuring medium setbacks from all boundaries with one side sufficient to allow vehicular access.",
+    "v2_topic": "Parking",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "door",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "scale",
+      "setback"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.92,
+    "avg_confidence": 0.885,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Multiple physical elements explicitly regulated: (i) scale, form, style; (iii) side entry door; (iv) half-gabled roof form; (v) facades (rhythmic nature); (vii) brick fences, water-pipe and woven mesh wire materials, gates; (viii) setbacks and front garden spaces. Design principles like 'rhythm' and 'aesthetic values' are not tagged. General significance statements about suburban development and housing types are descriptive but support element identification.",
+    "pass2_reasoning": "Multiple physical elements explicitly regulated: (i) scale, form, detailing; (iii) side entry door; (iv) half-gabled roof form; (v) facades (rhythmic nature); (vii) brick fences, water-pipe and woven mesh wire materials, gates; (viii) setbacks and front garden spaces, vehicular access. Design principles like 'rhythm' and 'aesthetic cohesion' are not tagged. General significance statements about suburban development and housing types are descriptive context but support tagging of specific elements they reference.",
+    "timestamp": "2026-02-13T03:51:41.516Z"
+  },
+  {
+    "provision_id": 86396,
+    "provision_text": "i. Protecting elements that contribute to heritage significance;\nii. Minimising or, where possible, reversing the impact of existing non-contributory elements; and\niii. Preventing new works that will adversely affect or compromise heritage significance.\nThe DCP focuses on the management of streetscape changes and major additions to the rear of properties that may adversely affect the cumulative significance of a group of buildings or a particular significant streetscape.\nMinor additions not visible from the street are not subject to special heritage controls, nor are internal alterations (unless on a heritage item).",
+    "v2_topic": "Additions",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "interior"
+    ],
+    "pass2_elements": [
+      "infill",
+      "interior"
+    ],
+    "pass1_confidence": 0.6,
+    "pass2_confidence": 0.65,
+    "avg_confidence": 0.625,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This is primarily a general heritage management framework statement. Most content describes significance protection principles (not tagged as design principles). However, the explicit mention of 'internal alterations (unless on a heritage item)' directly references interior elements as subject to potential regulation. The reference to 'rear of properties' and 'not visible from the street' are locational descriptors rather than physical element regulations. 'Streetscape changes' and 'major additions' are too general without specific element specification.",
+    "pass2_reasoning": "The provision explicitly mentions 'major additions to the rear of properties' (infill development) and 'internal alterations' (interior). However, the text is primarily procedural/policy guidance about heritage management approach rather than specific physical element regulations. The mention of 'streetscape changes' and 'non-contributory elements' are general significance statements without explicit physical element specification. 'Minor additions not visible from the street' and 'internal alterations' are the only concrete physical element references: infill (rear additions) and interior (internal alterations explicitly named). Lower confidence due to predominantly descriptive/procedural nature of the provision.",
+    "timestamp": "2026-02-13T03:52:32.808Z"
+  },
+  {
+    "provision_id": 86725,
+    "provision_text": "5. To protect significant streetscapes and/or public domain elements within the precinct including landscaping, fencing, open space, sandstone kerbing and guttering, views and vistas and prevailing subdivision patterns.\n\n9. To protect the identified values of the Porter's Brickworks Estate Heritage Conservation Area, the Jarvie Avenue Heritage Conservation Area, the Rathlin Estate Heritage Conservation Area and the Dulwich Hill Commercial Precinct Heritage Conservation Area.\n\n9.12.3.1 HCA 24: Porter's Brickworks Estate Heritage Conservation Area (C24)\nThe Porter's Brickworks Estate Heritage Conservation Area is of historical significance as an area developed from the 1928 subdivision of a portion of what had been Porter's Brickworks. By this time virtually all vacant land in the area had been subdivided and the area is representative of the final period of major residential development in the area between 1928 and 1935.\n\nThe Porter's Brickworks Estate Heritage Conservation Area is of aesthetic significance for its good quality individual examples and small groups of Post Federation and Inter-War period bungalows that retain original timber joinery, window hoods and detailing to gables and verandas. Its streetscape is of significance for the surviving camellia street plantings which are rare in the area.\n\nThe key period of significance for the Porter's Brickworks Estate Heritage Conservation Area is 1928-1935.\n\n9.12.3.2 HCA 23: Jarvie Avenue Heritage Conservation Area (C23)\nThe Jarvie Avenue Heritage Conservation Area is of historical significance as a 1930s subdivision by John Jarvie and as one of the last substantial subdivisions in the area.\n\nThe Jarvie Avenue Heritage Conservation Area is of aesthetic significance for its very good examples of modest Inter-War bungalows and semi-detached cottages, the strong patterns created by the consistently expressed built forms and survival of much original detailing.",
+    "v2_topic": "Parking",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "verandah",
+      "window"
+    ],
+    "pass2_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "setback",
+      "verandah",
+      "window"
+    ],
+    "pass1_confidence": 0.85,
+    "pass2_confidence": 0.85,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "Provision 5 explicitly regulates: landscaping (garden), fencing (fence), sandstone kerbing and guttering (materials). Heritage significance descriptions for C24 and C23 mention: timber joinery and window hoods (window), verandas (verandah), gables (roof), camellia plantings (garden), and original detailing (materials). General historical/aesthetic significance statements are not tagged. 'Views and vistas', 'subdivision patterns', and 'streetscape character' are descriptive/design principles, not specific physical element regulations.",
+    "pass2_reasoning": "Provision 5 explicitly regulates: landscaping (garden), fencing (fence), sandstone kerbing and guttering (materials). Descriptive sections about HCAs identify significant physical elements: timber joinery and window hoods (window), verandas (verandah), gables (roof), camellia plantings (garden), and subdivision patterns (setback/building line). General significance statements about historical/aesthetic value are not tagged. 'Views and vistas' and 'prevailing subdivision patterns' are design principles/patterns rather than specific physical element regulations.",
+    "timestamp": "2026-02-13T03:54:57.853Z"
+  },
+  {
+    "provision_id": 86808,
+    "provision_text": "C1 HCA 16 Goodsell Estate Heritage Conservation Area has been identified as containing the following streetscapes:\na. Mixed Residential Streetscapes (Type B). Refer to Section 8.3 of this DCP for relevant controls.\nRelevant Architectural Style Sheets for HCA 16 Goodsell Estate Heritage Conservation Area include:\nb. Victorian Italianate. Refer to Section 8.5.1 of this DCP for relevant controls.\nc. Federation styles. Refer to Section 8.5.2 of this DCP for relevant controls.\nC2 Camdenville Park must be retained as open space.",
+    "v2_topic": "Character",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [],
+    "pass2_elements": [
+      "garden"
+    ],
+    "pass1_confidence": 0.95,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.85,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This provision contains only identification and classification statements. It identifies the HCA, names streetscape types (Mixed Residential), and lists architectural styles (Victorian Italianate, Federation). It also states that Camdenville Park must be retained as open space. None of these are specific regulations of physical elements - they are descriptive/classificatory statements that reference other sections for actual controls. The open space retention is a land use designation, not a regulation of a specific physical element. No explicit physical element regulations are present.",
+    "pass2_reasoning": "C2 explicitly regulates Camdenville Park as open space, which constitutes a garden/landscaping element. C1 is descriptive/classificatory text identifying streetscape types and architectural styles without specifying physical element controls - these are references to other sections rather than direct regulations. The architectural style references (Victorian Italianate, Federation) are historical/stylistic descriptors without explicit physical element specifications in this provision.",
+    "timestamp": "2026-02-13T03:55:51.713Z"
+  },
+  {
+    "provision_id": 86896,
+    "provision_text": "The desired future character of the area is:\n1. To protect the identified Heritage Items within the precinct.\n2. To protect the identified values of the King Street and Enmore Road Heritage Conservation Area.\n3. To protect and enhance the character of streetscapes and public domain elements within the precinct including prevailing subdivision patterns, building typologies, materials and finishes, setbacks, landscaping, fencing, open space, carriageway and footpath design and kerb and guttering.",
+    "v2_topic": "Archaeological",
+    "old_elements": null,
+    "new_elements": [],
+    "pass1_elements": [
+      "fence",
+      "garden",
+      "materials",
+      "roof",
+      "setback"
+    ],
+    "pass2_elements": [
+      "car_parking",
+      "facade",
+      "fence",
+      "garden",
+      "materials",
+      "setback"
+    ],
+    "pass1_confidence": 0.75,
+    "pass2_confidence": 0.75,
+    "avg_confidence": 0.75,
+    "matched": false,
+    "needs_review": true,
+    "pass1_reasoning": "This is primarily a character/significance statement (desired future character), but it explicitly mentions several physical elements to be protected: 'materials and finishes' (materials), 'setbacks' (setback), 'fencing' (fence), 'landscaping' (garden). The mention of 'building typologies' and 'streetscapes' are design principles/character descriptors (not tagged). 'Kerb and guttering' relates to roof drainage infrastructure (roof). However, the overall provision is aspirational/descriptive rather than prescriptive regulation, which reduces confidence.",
+    "pass2_reasoning": "Point 3 explicitly regulates multiple physical elements: 'building typologies' (facade/scale), 'materials and finishes' (materials), 'setbacks' (setback), 'landscaping' (garden), 'fencing' (fence), and 'carriageway and footpath design' (car_parking as infrastructure). Points 1-2 are general significance/protection statements without specific element regulation, so not tagged. 'Character of streetscapes' and 'prevailing subdivision patterns' are design principles/character concepts, not specific physical element regulations.",
+    "timestamp": "2026-02-13T03:56:26.624Z"
+  }
+]

@@ -64,7 +64,7 @@ ACTION: Click DCP tab → apply Heritage filter chip → apply Roof filter chip
 OVERLAY: `285 heritage provisions → 33 actionable controls · 88% reduction`
 
 SAY: "DCP tab. Heritage filter, Roof filter — two clicks.
-285 provisions down to 33. Top result is Provision 8.1.7.3."
+285 provisions down to 35. Top result is Provision 8.1.7.3."
 
 ACTION: Pause — read provision text on screen
 

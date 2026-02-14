@@ -1,0 +1,213 @@
+'use client';
+
+/**
+ * ExemptComplyingProvisions
+ *
+ * Certifier-facing browser for SEPP Exempt and Complying Development Codes 2008.
+ * Shows actionable standards for a given work type, filtered to the applicable
+ * housing code Part based on the property's zone.
+ *
+ * Zone → Part mapping:
+ *   R1, R2, R3, R4, RU5 → Part 3 (Housing Code)
+ *   R5, RU1–RU6          → Part 3A (Rural Housing Code)
+ */
+
+import { useState, useEffect } from 'react';
+import { ChevronDown, ChevronUp, ExternalLink, FileText } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+
+const WORK_TYPES = [
+  { key: 'Deck',    label: 'Deck / Balcony' },
+  { key: 'Fence',   label: 'Fence' },
+  { key: 'Carport', label: 'Carport' },
+  { key: 'Pool',    label: 'Pool' },
+] as const;
+
+type WorkTypeKey = typeof WORK_TYPES[number]['key'];
+
+const PART_NAMES: Record<string, string> = {
+  '3':  'Part 3 — Housing Code',
+  '3A': 'Part 3A — Rural Housing Code',
+  '3B': 'Part 3B — Low Rise Housing Diversity Code',
+  '3C': 'Part 3C — Greenfield Housing Code',
+  '3D': 'Part 3D — Inland Code',
+};
+
+interface Provision {
+  id: number;
+  pdf_page: number | null;
+  pdf_printed_page: number | null;
+  provision_text: string;
+  v2_part: string;
+  v2_topic: string;
+}
+
+interface Props {
+  zoneCode: string; // e.g. "R2"
+}
+
+export function ExemptComplyingProvisions({ zoneCode }: Props) {
+  const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
+  const [expanded, setExpanded] = useState(residentialZones.includes(zoneCode));
+  const [selectedType, setSelectedType] = useState<WorkTypeKey | null>(null);
+  const [provisions, setProvisions] = useState<Provision[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  const [part, setPart] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Fetch counts on mount
+  useEffect(() => {
+    if (!zoneCode) return;
+    fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`)
+      .then(r => r.json())
+      .then(data => {
+        setCounts(data.counts || {});
+        setPart(data.part || '');
+      })
+      .catch(() => {});
+  }, [zoneCode]);
+
+  // Fetch provisions when work type selected
+  useEffect(() => {
+    if (!selectedType || !zoneCode) return;
+    setLoading(true);
+    fetch(`/api/sepp/exempt-complying?zone=${zoneCode}&workType=${selectedType}`)
+      .then(r => r.json())
+      .then(data => {
+        setProvisions(data.provisions || []);
+        setPart(data.part || '');
+      })
+      .catch(() => setProvisions([]))
+      .finally(() => setLoading(false));
+  }, [selectedType, zoneCode]);
+
+  const totalCount = Object.values(counts).reduce((a, b) => a + b, 0);
+  if (totalCount === 0 && !loading) return null;
+
+  const partName = PART_NAMES[part] || `Part ${part}`;
+
+  return (
+    <Card className="border-emerald-200 bg-emerald-50/30">
+      <CardHeader
+        className="cursor-pointer select-none"
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-emerald-700" />
+            <CardTitle className="text-lg text-emerald-900">
+              Exempt &amp; Complying Development Standards
+            </CardTitle>
+          </div>
+          {expanded
+            ? <ChevronUp className="h-4 w-4 text-emerald-600" />
+            : <ChevronDown className="h-4 w-4 text-emerald-600" />
+          }
+        </div>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <Badge className="bg-emerald-100 text-emerald-800 text-xs">
+            SEPP (Exempt &amp; Complying) 2008
+          </Badge>
+          <Badge variant="outline" className="text-emerald-700 border-emerald-300 text-xs">
+            {partName}
+          </Badge>
+          {!expanded && totalCount > 0 && (
+            <span className="text-xs text-emerald-600">
+              {totalCount} actionable standards across {Object.keys(counts).length} work types
+            </span>
+          )}
+        </div>
+      </CardHeader>
+
+      {expanded && (
+        <CardContent className="pt-0">
+          <p className="text-sm text-emerald-700 mb-4">
+            Standards that apply to development that may proceed as complying development
+            on this property. Click a work type to view the applicable standards.
+          </p>
+
+          {/* Work type tabs */}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {WORK_TYPES.map(({ key, label }) => {
+              const count = counts[key] || 0;
+              const active = selectedType === key;
+              return (
+                <button
+                  key={key}
+                  onClick={() => setSelectedType(active ? null : key)}
+                  className={[
+                    'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
+                    active
+                      ? 'bg-emerald-700 text-white border-emerald-700'
+                      : count > 0
+                        ? 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
+                        : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed',
+                  ].join(' ')}
+                  disabled={count === 0}
+                >
+                  {label}
+                  {count > 0 && (
+                    <span className={`ml-1.5 text-xs ${active ? 'text-emerald-200' : 'text-emerald-500'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Provisions list */}
+          {loading && (
+            <div className="text-sm text-emerald-600 py-4">Loading provisions…</div>
+          )}
+
+          {!loading && selectedType && provisions.length === 0 && (
+            <div className="text-sm text-gray-500 py-4">No actionable standards found for this work type and zone.</div>
+          )}
+
+          {!loading && provisions.length > 0 && (
+            <div className="space-y-2">
+              {provisions.map(p => {
+                const page = p.pdf_printed_page || p.pdf_page;
+                return (
+                  <div
+                    key={p.id}
+                    className="bg-white rounded border border-emerald-100 px-3 py-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm text-gray-800 leading-relaxed flex-1">
+                        {p.provision_text}
+                      </p>
+                      {page && (
+                        <span className="text-xs text-gray-400 whitespace-nowrap mt-0.5">
+                          p.{page}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Footer */}
+          <div className="mt-4 pt-3 border-t border-emerald-100 flex items-center justify-between flex-wrap gap-2">
+            <p className="text-xs text-gray-500">
+              Showing {partName} standards only. Other codes may apply — see all provisions for confirmation.
+            </p>
+            <a
+              href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-572"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />
+              View full SEPP on NSW Legislation
+            </a>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}

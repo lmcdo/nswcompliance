@@ -11,6 +11,8 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
+| DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
 | DQ-1: Precinct CDC=0 | ✅ Not a bug | N/A |
 | DQ-2: Topic misclassification | ✅ Fixed | P1 (was) |
 | DQ-3: Headers in provisions | ✅ Fixed | P2 (was) |
@@ -796,6 +798,60 @@ The two-table architecture is intentional separation of concerns:
 - `pdf_page` = relative page within each section PDF (correct for display)
 - Images load from URL with absolute pages (correct rendering)
 - UI shows "View Part 2 Page 1" for first page of each section (correct)
+
+### DQ-25: Transport & Infrastructure sepp_structured_requirements Empty (2026-02-14)
+**Status:** ⏳ BACKLOG
+**Priority:** P2 — blocks classified road noise feature for certifiers
+
+**Problem:** `sepp_structured_requirements` table has zero rows for `sepp_id = 'transport_infrastructure_2021'`. The UI transport section (`StateLevelControls.tsx` lines 658-672) is fully wired but never renders because the underlying data was never populated.
+
+**What's blocking the feature:**
+- `sepp-router.ts` adds `SEPP_TRANSPORT_INFRASTRUCTURE_2021` to every property unconditionally (line 126-128)
+- `StateLevelControls` fetches `/api/sepp/structured-requirements` with `seppId = 'transport_infrastructure_2021'`
+- API queries `sepp_structured_requirements WHERE sepp_id = 'transport_infrastructure_2021'` → empty → nothing renders
+
+**What needs to go in this table:**
+Three provision categories relevant to residential certifiers:
+1. **Classified road corridor** — noise attenuation requirements for dwellings within X metres of classified roads (State Roads, RMS/TfNSW). Affects large % of inner-Sydney properties (Parramatta Rd, King St etc.). Most important for CDC certifiers.
+2. **Rail corridor** — noise/vibration requirements near railway lines
+3. **Airport obstacle limitation surfaces** — height controls near Sydney/Bankstown airports
+
+**Source document:** `State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation` (2,733 provisions) — but v2_topic tagging is wrong (see DQ-24). Will need either:
+- Manual curation of the specific classified road/rail/airport clauses into `sepp_structured_requirements`, OR
+- Fix DQ-24 first (retag document), then build query-based lookup
+
+**Triggering condition:** Should only show when Planning Portal API detects classified road corridor or rail corridor proximity — not for every property. Currently added unconditionally in sepp-router.ts (should be conditional).
+
+**Do not fix until:** Classified road/rail corridor detection from Planning Portal is confirmed working for a test address on a classified road.
+
+---
+
+### DQ-24: Transport & Infrastructure SEPP v2_topic Retag (2026-02-14)
+**Status:** ⏳ BACKLOG
+**Priority:** P3 — No current production impact
+**Document:** `State_Environmental_Planning_Policy_Transport_and_Infrastructure_2021__NSW_Legislation` (2,733 provisions)
+
+**Problem:** Entire document tagged with DCP-style topic taxonomy (heritage, building_form, height, landscaping, waste, signage etc.) which is wrong for a state infrastructure instrument. Solar/wind turbine provisions (the main use case) are tagged `waste` instead of `solar`.
+
+**Distribution of wrong tags:**
+- (null): 1,724 (63%)
+- heritage: 116, building_form: 110, height: 106, landscaping: 95, safety: 94, access: 87, waste: 83, signage: 59, stormwater: 47, trees: 41, fencing: 40, flooding: 38, parking: 33
+- solar: 20 (only correct ones)
+
+**Root cause:** DCP topic taxonomy applied to a SEPP document during an earlier tagging pass. DCP labels (setbacks, heritage, signage etc.) are meaningless for infrastructure development types.
+
+**Current production impact:** ZERO — live app uses `sepp_structured_requirements` table for the transport section, not `regulatory_provisions`. Broken tags are never queried by the UI.
+
+**Future impact:** Blocks solar provision browser — certifier filtering by Solar would see 0 actionable provisions.
+
+**Fix required:**
+1. Clear all v2_topic values for this document
+2. Re-run classification with infrastructure-appropriate taxonomy: roads, rail, electricity/solar, water/stormwater, parking, community_infrastructure, general
+3. Note: the 168-provision duplicate (`State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation` with parentheses) also exists — may need cleanup
+
+**Do not fix until:** Solar provision browser is being built.
+
+---
 
 ### Provision Text Formatting Enhancement (2026-01-12)
 **Status:** ✅ IMPLEMENTED

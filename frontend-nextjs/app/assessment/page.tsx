@@ -49,6 +49,28 @@ export default function AssessmentPage() {
     setBuildingHeight,
   } = useAssessmentUI();
 
+  // CDC availability for SEPP tab badge
+  const [cdcAvailable, setCdcAvailable] = React.useState(false);
+
+  // Check CDC availability when property zone changes
+  React.useEffect(() => {
+    if (!selectedProperty?.constraints?.zone) {
+      setCdcAvailable(false);
+      return;
+    }
+
+    const zone = selectedProperty.constraints.zone;
+    const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+
+    fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`)
+      .then(r => r.json())
+      .then(data => {
+        const totalCount = Object.values(data.counts || {}).reduce((a: number, b: number) => a + b, 0);
+        setCdcAvailable(totalCount > 0);
+      })
+      .catch(() => setCdcAvailable(false));
+  }, [selectedProperty?.constraints?.zone]);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Regulatory Currency Warning Banner */}
@@ -326,13 +348,18 @@ export default function AssessmentPage() {
                       aria-selected={viewMode === 'sepp'}
                       aria-controls="panel-sepp"
                       onClick={() => setViewMode('sepp')}
-                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
+                      className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] relative ${
                         viewMode === 'sepp'
                           ? 'bg-purple-700 text-white'
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">SEPP</span>
+                      <span className="block text-base font-bold">
+                        SEPP
+                        {cdcAvailable && (
+                          <span className="ml-1.5 inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Complying Development available" />
+                        )}
+                      </span>
                       <span className={`text-xs hidden sm:block ${viewMode === 'sepp' ? 'text-purple-100' : 'text-purple-400'}`}>State Planning Policies</span>
                     </button>
                     <button
