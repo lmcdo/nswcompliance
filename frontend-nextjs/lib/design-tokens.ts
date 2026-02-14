@@ -1,13 +1,13 @@
 export const AuthorityColors = {
     LEP: {
-        primary: '#2563eb', // blue-600
-        border: 'border-blue-500',
-        bg: 'bg-blue-50',
-        text: 'text-blue-700',
-        hover: 'hover:bg-blue-100',
+        primary: '#d97706', // amber-600
+        border: 'border-amber-500',
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        hover: 'hover:bg-amber-100',
     },
     DCP: {
-        primary: '#059669', // emerald-600
+        primary: '#16a34a', // green-600
         border: 'border-green-500',
         bg: 'bg-green-50',
         text: 'text-green-700',
@@ -24,7 +24,7 @@ export const AuthorityColors = {
 
 export const LayerBadges = {
     generic: {
-        bg: 'bg-teal-500',  // #14b8a6 - matches legend and border
+        bg: 'bg-green-500',  // #22c55e - matches legend and border
         text: 'text-white',
     },
     use_specific: {
