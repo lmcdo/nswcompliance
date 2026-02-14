@@ -102,10 +102,10 @@ export default function QuickGuidePage() {
             />
           </div>
           <div className="mt-3 text-xs text-gray-600 space-y-1">
-            <p><strong>1.</strong> DCP Tab → Heritage card → Read HCA objectives & general provisions</p>
-            <p><strong>2.</strong> DCP Tab → Select work type (Additions, Roof, etc.) → Check specific controls</p>
-            <p><strong>3.</strong> SEPP Tab → Check if State Heritage Register item (additional requirements)</p>
-            <p><strong>4.</strong> LEP & DCP → Standard controls also apply (setbacks, height, character)</p>
+            <p><strong>1.</strong> LEP Tab → HCA card → Read heritage conservation area objectives</p>
+            <p><strong>2.</strong> DCP Tab → Heritage provisions → Review applicable heritage controls</p>
+            <p><strong>3.</strong> SEPP Tab → Check if State Heritage Register item (additional SEPP requirements)</p>
+            <p><strong>4.</strong> LEP & DCP → Standard controls also apply (setbacks, height, FSR, character)</p>
           </div>
         </div>
 

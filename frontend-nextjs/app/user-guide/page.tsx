@@ -344,28 +344,28 @@ export default function UserGuidePage() {
                   <li className="flex gap-2">
                     <span className="font-bold flex-shrink-0">1.</span>
                     <div>
-                      <strong>Check DCP Tab → Heritage card</strong>
-                      <p className="text-purple-700">Read heritage conservation area (HCA) objectives and general provisions</p>
+                      <strong>Check LEP Tab → HCA card</strong>
+                      <p className="text-purple-700">Read heritage conservation area objectives and context</p>
                     </div>
                   </li>
                   <li className="flex gap-2">
                     <span className="font-bold flex-shrink-0">2.</span>
                     <div>
-                      <strong>Review work-type specific heritage controls</strong>
-                      <p className="text-purple-700">Check controls for your work type (Additions, Roof, Fencing, etc.)</p>
+                      <strong>Check DCP Tab → Heritage provisions</strong>
+                      <p className="text-purple-700">Review applicable heritage design controls for the HCA</p>
                     </div>
                   </li>
                   <li className="flex gap-2">
                     <span className="font-bold flex-shrink-0">3.</span>
                     <div>
-                      <strong>Check SEPP Tab → Heritage (if State item)</strong>
-                      <p className="text-purple-700">State Heritage Register items have additional SEPP requirements</p>
+                      <strong>Check SEPP Tab → Heritage (if State Heritage Register item)</strong>
+                      <p className="text-purple-700">State-listed items have additional SEPP requirements beyond local controls</p>
                     </div>
                   </li>
                   <li className="flex gap-2">
                     <span className="font-bold flex-shrink-0">4.</span>
                     <div>
-                      <strong>Check LEP and DCP for standard controls</strong>
+                      <strong>Check standard LEP and DCP controls</strong>
                       <p className="text-purple-700">Heritage properties must ALSO meet setbacks, height, FSR, and other standard requirements</p>
                     </div>
                   </li>
