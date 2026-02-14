@@ -7,6 +7,12 @@ module.exports = {
         './app/**/*.{ts,tsx}',
         './src/**/*.{ts,tsx}',
     ],
+    safelist: [
+        // Provision theme colors for dynamic theming (purple/green/amber)
+        'bg-purple-100', 'text-purple-700', 'before:text-purple-500',
+        'bg-green-100', 'text-green-700', 'before:text-green-500',
+        'bg-amber-100', 'text-amber-700', 'before:text-amber-500',
+    ],
     theme: {
         container: {
             center: true,
