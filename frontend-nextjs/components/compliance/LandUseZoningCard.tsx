@@ -134,7 +134,7 @@ export function LandUseZoningCard({
     : prohibited.slice(0, INITIAL_DISPLAY_COUNT);
 
   return (
-    <Card className="border-blue-200 bg-blue-50/50">
+    <Card className="border-amber-200 bg-amber-50/50">
       <CardContent className="pt-4">
         {/* Main content - Zone name/code on left, pills on right */}
         <div className="flex justify-between items-start mb-3">
@@ -145,7 +145,7 @@ export function LandUseZoningCard({
                 href={`${legislationUrl}#pt-cg1.Zone_${zone}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm text-blue-600 hover:text-blue-700 underline"
+                className="text-sm text-amber-600 hover:text-amber-700 underline"
               >
                 Land Use Zoning:
               </a>
@@ -157,7 +157,7 @@ export function LandUseZoningCard({
                 href={`${legislationUrl}#pt-cg1.Zone_${zone}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-lg font-bold text-blue-600 hover:text-blue-700 underline"
+                className="text-lg font-bold text-amber-600 hover:text-amber-700 underline"
               >
                 {zone} {zoneName !== zone && `- ${zoneName}`}
               </a>
@@ -170,11 +170,11 @@ export function LandUseZoningCard({
 
           {/* Right: Blue and Green pills stacked */}
           <div className="flex flex-col gap-1 items-end">
-            <Badge className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800">
+            <Badge className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800">
               {epiName || 'Inner West Local Environmental Plan 2022'} - {legislativeClause}
             </Badge>
             {amendment && (
-              <Badge className="text-xs px-2 py-0.5 bg-blue-50 text-blue-700">
+              <Badge className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700">
                 {amendment}
               </Badge>
             )}
@@ -182,7 +182,7 @@ export function LandUseZoningCard({
         </div>
 
         {/* Permitted & Prohibited Uses Table */}
-        <div className="bg-white rounded-lg p-3 border border-blue-200">
+        <div className="bg-white rounded-lg p-3 border border-amber-200">
           <div className="grid grid-cols-2 gap-4">
             {/* Left: Permitted Uses */}
             <div>
@@ -254,12 +254,12 @@ export function LandUseZoningCard({
 
         {/* View Full Table Link */}
         {legislationUrl && (
-          <div className="mt-3 pt-3 border-t border-blue-200">
+          <div className="mt-3 pt-3 border-t border-amber-200">
             <a
               href={`${legislationUrl}#pt-cg1.Zone_${zone}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-sm text-blue-600 hover:text-blue-700 underline inline-flex items-center gap-1"
+              className="text-sm text-amber-600 hover:text-amber-700 underline inline-flex items-center gap-1"
             >
               View Full Land Use Table for {zone}
               <ExternalLink className="h-3 w-3" />
@@ -268,8 +268,8 @@ export function LandUseZoningCard({
         )}
 
         {/* Info note */}
-        <div className="mt-3 bg-blue-50 rounded p-2 border border-blue-200">
-          <p className="text-xs text-blue-800">
+        <div className="mt-3 bg-amber-50 rounded p-2 border border-amber-200">
+          <p className="text-xs text-amber-800">
             Some uses may be permitted with consent or prohibited. Check the full LEP Land Use Table for details.
           </p>
         </div>

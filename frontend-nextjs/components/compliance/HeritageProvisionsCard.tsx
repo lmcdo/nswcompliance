@@ -93,20 +93,20 @@ export function HeritageProvisionsCard({
   // Link to base LEP document - NSW legislation site doesn't support reliable clause anchors
   const clauseUrl = heritageLegislationUrl;
 
-  const cardColor = isHCA ? 'border-blue-300' : isStateHeritage ? 'border-red-300' : 'border-blue-300';
-  const bgColor = isHCA ? 'bg-blue-50/50' : isStateHeritage ? 'bg-red-50/50' : 'bg-blue-50/50';
+  const cardColor = isHCA ? 'border-amber-300' : isStateHeritage ? 'border-red-300' : 'border-amber-300';
+  const bgColor = isHCA ? 'bg-amber-50/50' : isStateHeritage ? 'bg-red-50/50' : 'bg-amber-50/50';
 
   return (
-    <Card className={'border-blue-300 bg-blue-50/50'}>
+    <Card className={'border-amber-300 bg-amber-50/50'}>
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-blue-700" />
-            <span className="text-blue-900">
+            <Shield className="h-5 w-5 text-amber-700" />
+            <span className="text-amber-900">
               {isHCA ? 'Heritage Conservation Area' : 'Heritage Listed Property'}
             </span>
           </div>
-          <Badge className={isStateHeritage ? 'bg-red-100 text-red-800 border-red-300 font-semibold' : 'bg-blue-100 text-blue-800 font-semibold'}>
+          <Badge className={isStateHeritage ? 'bg-red-100 text-red-800 border-red-300 font-semibold' : 'bg-amber-100 text-amber-800 font-semibold'}>
             {heritageSignificance || 'Heritage'} Significance
           </Badge>
         </CardTitle>
@@ -118,17 +118,17 @@ export function HeritageProvisionsCard({
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="border-l-4 border-blue-500 pl-4 py-2 bg-blue-50/50 rounded-r-md">
+        <div className="border-l-4 border-amber-500 pl-4 py-2 bg-amber-50/50 rounded-r-md">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h4 className="font-semibold text-sm text-blue-900">
+                <h4 className="font-semibold text-sm text-amber-900">
                   {heritageItemName || (isHCA ? 'Heritage Conservation Area' : 'Heritage Item')}
                 </h4>
                 {clauseNumber && (
                   <button
                     onClick={toggleProvision}
-                    className="text-blue-700 hover:text-blue-900 transition-colors"
+                    className="text-amber-700 hover:text-amber-900 transition-colors"
                     aria-label={isExpanded ? 'Collapse provision' : 'Expand provision'}
                   >
                     {isExpanded ? (
@@ -142,7 +142,7 @@ export function HeritageProvisionsCard({
 
               <div className="flex flex-wrap gap-2 mt-2">
                 {heritageLegislativeClause && (
-                  <Badge variant="outline" className="text-xs bg-blue-100 text-blue-900 border-blue-300">
+                  <Badge variant="outline" className="text-xs bg-amber-100 text-amber-900 border-amber-300">
                     {heritageLegislativeClause}
                   </Badge>
                 )}
@@ -164,12 +164,12 @@ export function HeritageProvisionsCard({
               </div>
 
               {isExpanded && (
-                <div className="mt-3 p-3 bg-white rounded-md border border-blue-200">
+                <div className="mt-3 p-3 bg-white rounded-md border border-amber-200">
                   {loading ? (
                     <p className="text-sm text-muted-foreground">Loading provision text...</p>
                   ) : clauseNumber === '5.10' ? (
                     <div className="space-y-3">
-                      <h5 className="font-semibold text-sm text-blue-900">
+                      <h5 className="font-semibold text-sm text-amber-900">
                         Clause 5.10 Heritage conservation — Inner West LEP 2022
                       </h5>
                       {/* Note about generic vs specific */}
@@ -181,7 +181,7 @@ export function HeritageProvisionsCard({
                         )}
                       </div>
                       {/* Full PDF page image of clause 5.10 */}
-                      <div className="border border-blue-200 rounded-lg overflow-hidden">
+                      <div className="border border-amber-200 rounded-lg overflow-hidden">
                         <img
                           src="https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/iwlep_clause_5_10_page_50.png"
                           alt="Inner West LEP 2022 Clause 5.10 Heritage conservation - Page 50"
@@ -193,7 +193,7 @@ export function HeritageProvisionsCard({
                           href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457#sec.5.10"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 hover:underline"
+                          className="inline-flex items-center gap-1 text-amber-700 hover:text-amber-900 hover:underline"
                         >
                           <ExternalLink className="h-3 w-3" />
                           View full clause on NSW Legislation
@@ -206,7 +206,7 @@ export function HeritageProvisionsCard({
                     </div>
                   ) : provisionDetail && provisionDetail.provisionText && provisionDetail.provisionText.length > 100 ? (
                     <div className="space-y-2">
-                      <h5 className="font-semibold text-sm text-blue-900">
+                      <h5 className="font-semibold text-sm text-amber-900">
                         {provisionDetail.clauseTitle}
                       </h5>
                       <div className="text-sm text-gray-700 whitespace-pre-wrap">
@@ -230,7 +230,7 @@ export function HeritageProvisionsCard({
                   href={clauseUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-blue-700 hover:text-blue-900"
+                  className="flex items-center gap-1 text-amber-700 hover:text-amber-900"
                 >
                   <ExternalLink className="h-3 w-3" />
                   <span className="text-xs">View LEP</span>
@@ -250,7 +250,7 @@ export function HeritageProvisionsCard({
 
         {/* Note about DCP heritage controls */}
         {isHCA && formerCouncil && (
-          <p className="mt-3 text-sm text-blue-700 bg-blue-50 rounded px-3 py-2">
+          <p className="mt-3 text-sm text-amber-700 bg-amber-50 rounded px-3 py-2">
             Heritage controls for this area are in {COUNCIL_DCP_INFO[formerCouncil]?.chapter || 'the heritage chapter'} of the {formerCouncil} DCP {COUNCIL_DCP_INFO[formerCouncil]?.year || ''} — see DCP tab.
           </p>
         )}

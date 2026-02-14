@@ -12,6 +12,13 @@ module.exports = {
         'bg-purple-100', 'text-purple-700', 'before:text-purple-500',
         'bg-green-100', 'text-green-700', 'before:text-green-500',
         'bg-amber-100', 'text-amber-700', 'before:text-amber-500',
+        // Card colors for tab theming
+        'bg-purple-50', 'bg-purple-200', 'text-purple-600', 'text-purple-800', 'text-purple-900',
+        'border-purple-100', 'border-purple-200', 'border-purple-300', 'hover:bg-purple-50', 'hover:bg-purple-100',
+        'bg-green-50', 'bg-green-200', 'text-green-600', 'text-green-800', 'text-green-900',
+        'border-green-100', 'border-green-200', 'hover:bg-green-100', 'hover:text-green-800',
+        'bg-amber-50', 'bg-amber-200', 'text-amber-600', 'text-amber-800', 'text-amber-900',
+        'border-amber-200', 'border-amber-300', 'border-amber-500', 'hover:text-amber-700', 'hover:text-amber-800',
     ],
     theme: {
         container: {

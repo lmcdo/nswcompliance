@@ -668,14 +668,14 @@ export function StateLevelControls({
 
       {/* Transport Infrastructure Section - Shows when SEPP_TRANSPORT_INFRASTRUCTURE_2021 detected */}
       {transportRequirements.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50/30">
+        <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-orange-600" />
+              <Building2 className="h-5 w-5 text-purple-600" />
               <CardTitle className="text-lg text-orange-900">Transport Infrastructure Requirements</CardTitle>
             </div>
-            <Badge className="bg-orange-100 text-orange-800 mt-2">SEPP (Transport and Infrastructure) 2021</Badge>
-            <p className="text-sm text-orange-700 mt-2">
+            <Badge className="bg-purple-100 text-purple-800 mt-2">SEPP (Transport and Infrastructure) 2021</Badge>
+            <p className="text-sm text-purple-700 mt-2">
               Requirements for development near railway corridors, classified roads, and aviation facilities
             </p>
           </CardHeader>
@@ -700,24 +700,24 @@ export function StateLevelControls({
 
       {/* Housing SEPP LMR Section - Always shown */}
       {showHousingSEPPSection ? (
-        <Card className="border-emerald-200 bg-emerald-50/30">
+        <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader
-            className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
+            className="cursor-pointer hover:bg-purple-100/50 transition-colors"
             onClick={() => toggleSection('lmr')}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {collapsedSections.lmr ? (
-                  <ChevronRight className="h-5 w-5 text-emerald-600" />
+                  <ChevronRight className="h-5 w-5 text-purple-600" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-emerald-600" />
+                  <ChevronDown className="h-5 w-5 text-purple-600" />
                 )}
-                <Building2 className="h-5 w-5 text-emerald-600" />
-                <CardTitle className="text-lg text-emerald-900">Multiple Occupancy Options</CardTitle>
+                <Building2 className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg text-purple-900">Multiple Occupancy Options</CardTitle>
               </div>
-              <Badge className="bg-emerald-100 text-emerald-800">NSW Reforms</Badge>
+              <Badge className="bg-purple-100 text-purple-800">NSW Reforms</Badge>
             </div>
-            <p className="text-sm text-emerald-700 mt-1 ml-7">
+            <p className="text-sm text-purple-700 mt-1 ml-7">
               Duplexes, townhouses, apartments and other housing options under Low and Mid-Rise reforms
             </p>
           </CardHeader>
@@ -842,29 +842,29 @@ export function StateLevelControls({
 
       {/* TOD Parking Reductions - Always shown */}
       {showTODSection ? (
-        <Card className="border-emerald-200 bg-emerald-50/30">
+        <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader
-            className="cursor-pointer hover:bg-emerald-100/50 transition-colors"
+            className="cursor-pointer hover:bg-purple-100/50 transition-colors"
             onClick={() => toggleSection('tod')}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {collapsedSections.tod ? (
-                  <ChevronRight className="h-5 w-5 text-emerald-600" />
+                  <ChevronRight className="h-5 w-5 text-purple-600" />
                 ) : (
-                  <ChevronDown className="h-5 w-5 text-emerald-600" />
+                  <ChevronDown className="h-5 w-5 text-purple-600" />
                 )}
-                <Car className="h-5 w-5 text-emerald-600" />
-                <CardTitle className="text-lg text-emerald-900">TOD Parking Reductions</CardTitle>
+                <Car className="h-5 w-5 text-purple-600" />
+                <CardTitle className="text-lg text-purple-900">TOD Parking Reductions</CardTitle>
               </div>
               <div className="flex items-center gap-2">
                 {isInDesignatedTOD && (
-                  <Badge className="bg-emerald-600 text-white">Designated TOD</Badge>
+                  <Badge className="bg-purple-600 text-white">Designated TOD</Badge>
                 )}
-                <Badge className="bg-emerald-100 text-emerald-800">Transit Oriented</Badge>
+                <Badge className="bg-purple-100 text-purple-800">Transit Oriented</Badge>
               </div>
             </div>
-            <p className="text-sm text-emerald-700 mt-1 ml-7">
+            <p className="text-sm text-purple-700 mt-1 ml-7">
               {isInDesignatedTOD
                 ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021.'
                 : (() => {
@@ -887,19 +887,19 @@ export function StateLevelControls({
             <CardContent className="pt-0 space-y-4">
               {/* Designated TOD Precinct Info */}
               {isInDesignatedTOD && (
-                <div className="bg-emerald-100 border border-emerald-300 rounded-lg p-3">
-                  <p className="text-sm font-medium text-emerald-900">
+                <div className="bg-purple-100 border border-purple-300 rounded-lg p-3">
+                  <p className="text-sm font-medium text-purple-900">
                     This property is in a designated TOD precinct
                   </p>
-                  <p className="text-xs text-emerald-700 mt-1">
+                  <p className="text-xs text-purple-700 mt-1">
                     Special parking provisions may apply under SEPP (Housing) 2021
                   </p>
                 </div>
               )}
 
               {/* Nearby Transport Detection */}
-              <div className="bg-white border border-emerald-100 rounded-lg p-3">
-                <h4 className="text-xs font-semibold text-emerald-800 mb-2">
+              <div className="bg-white border border-purple-100 rounded-lg p-3">
+                <h4 className="text-xs font-semibold text-purple-800 mb-2">
                   Qualifying Transport Near This Property
                 </h4>
                 <NearbyTransportCard
@@ -913,13 +913,13 @@ export function StateLevelControls({
               {/* SEPP Parking Provisions */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-semibold text-emerald-800">
+                  <h4 className="text-xs font-semibold text-purple-800">
                     SEPP (Housing) 2021 Parking Provisions
                   </h4>
                 </div>
 
                 {/* Boarding House Parking */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Boarding Houses</p>
@@ -939,7 +939,7 @@ export function StateLevelControls({
                         url: '/pdf-pages/sepp-housing/sepp-housing_page_11.png',
                         label: 'SEPP (Housing) 2021 - Boarding House Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
@@ -947,7 +947,7 @@ export function StateLevelControls({
                 </div>
 
                 {/* Co-Living Parking */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Co-Living Housing</p>
@@ -967,7 +967,7 @@ export function StateLevelControls({
                         url: '/pdf-pages/sepp-housing/sepp-housing_page_32.png',
                         label: 'SEPP (Housing) 2021 - Co-Living Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
@@ -975,7 +975,7 @@ export function StateLevelControls({
                 </div>
 
                 {/* Build-to-Rent Housing */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Build-to-Rent Housing</p>
@@ -997,13 +997,13 @@ export function StateLevelControls({
                         url: '/pdf-pages/sepp-housing/sepp-housing_page_35.png',
                         label: 'SEPP (Housing) 2021 - Build-to-Rent Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
                   </div>
                 {/* In-Fill Affordable Housing */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">In-Fill Affordable Housing</p>
@@ -1023,7 +1023,7 @@ export function StateLevelControls({
                         url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png',
                         label: 'SEPP (Housing) 2021 - In-Fill Affordable Housing Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
@@ -1031,7 +1031,7 @@ export function StateLevelControls({
                 </div>
 
                 {/* Seniors Independent Living */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Seniors Independent Living</p>
@@ -1051,7 +1051,7 @@ export function StateLevelControls({
                         url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-47_seniors_independent.png',
                         label: 'SEPP (Housing) 2021 - Seniors Independent Living Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
@@ -1061,7 +1061,7 @@ export function StateLevelControls({
                 </div>
 
                 {/* Affordable Housing / LHAC */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-gray-900">Affordable Housing in TOD Areas</p>
@@ -1083,7 +1083,7 @@ export function StateLevelControls({
                         url: '/pdf-pages/sepp-housing/sepp-housing_page_18.png',
                         label: 'SEPP (Housing) 2021 - Affordable Housing Parking'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
@@ -1091,7 +1091,7 @@ export function StateLevelControls({
                 </div>
 
                 {/* Market-Rate Apartments */}
-                <div className="bg-white border border-emerald-200 rounded-lg p-3">
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
                   <p className="text-sm font-semibold text-gray-900">Residential Flat Buildings & Apartments</p>
                   <p className="text-xs text-gray-700 mt-1">
                     Parking rates determined by <strong>council DCP</strong>. SEPP (Housing) 2021 refers to ADG Part 3J, which defers to local planning controls.
@@ -1102,11 +1102,11 @@ export function StateLevelControls({
                 </div>
 
                 {/* Accessible Area Definition */}
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
-                      <p className="text-xs font-semibold text-emerald-900">What is an "Accessible Area"?</p>
-                      <p className="text-xs text-emerald-800 mt-1">
+                      <p className="text-xs font-semibold text-purple-900">What is an "Accessible Area"?</p>
+                      <p className="text-xs text-purple-800 mt-1">
                         Land within <strong>800m walking distance</strong> of a public entrance to a railway, metro or light rail station (Schedule 11)
                       </p>
                     </div>
@@ -1116,7 +1116,7 @@ export function StateLevelControls({
                         url: '/pdf-pages/sepp-housing/sepp-housing_page_115.png',
                         label: 'SEPP (Housing) 2021 - Accessible Area Definition'
                       })}
-                      className="text-emerald-600 hover:text-emerald-800 transition-colors p-1 rounded hover:bg-emerald-50"
+                      className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
                     >
                       <FileImage className="h-5 w-5" />
                     </button>
