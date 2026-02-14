@@ -10,7 +10,7 @@
  */
 
 import React, { useMemo } from 'react';
-import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions } from '@/lib/provision-text-formatter';
+import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme } from '@/lib/provision-text-formatter';
 
 interface FormattedProvisionTextProps {
   text: string;
@@ -19,6 +19,7 @@ interface FormattedProvisionTextProps {
   stripMarker?: string; // If provided, strip this marker from start of text (e.g., "C9")
   skipHeadings?: boolean; // Skip bold heading detection - useful when under TOC structure
   highlightQuery?: string; // Search query to highlight in the text
+  theme?: ProvisionTheme; // Color theme: 'purple' (SEPP), 'green' (DCP), 'amber' (LEP)
 }
 
 /**
@@ -45,7 +46,8 @@ export function FormattedProvisionText({
   compact = false,
   stripMarker,
   skipHeadings = false,
-  highlightQuery
+  highlightQuery,
+  theme = 'purple'
 }: FormattedProvisionTextProps) {
   // Strip the marker from the beginning of text if it's already shown as a badge
   const processedText = useMemo(() => {
@@ -91,12 +93,12 @@ export function FormattedProvisionText({
 
       renderElements.push(
         <div key={`control-${i}`} className={`flex items-start gap-2 ${compact ? 'mb-2' : 'mb-3'}`}>
-          <span className={getElementClasses(el)}>
+          <span className={getElementClasses(el, theme)}>
             {marker}
           </span>
           <div className="flex-1 space-y-1">
             {controlTexts.map((ct, idx) => (
-              <p key={idx} className={getElementClasses(ct)}>
+              <p key={idx} className={getElementClasses(ct, theme)}>
                 {applyHighlight(ct.content)}
               </p>
             ))}
@@ -181,7 +183,7 @@ export function FormattedProvisionText({
     switch (el.type) {
       case 'heading':
         renderElements.push(
-          <h3 key={`heading-${i}`} className={getElementClasses(el)}>
+          <h3 key={`heading-${i}`} className={getElementClasses(el, theme)}>
             {applyHighlight(el.content)}
           </h3>
         );
@@ -189,7 +191,7 @@ export function FormattedProvisionText({
 
       case 'subheading':
         renderElements.push(
-          <h4 key={`subheading-${i}`} className={getElementClasses(el)}>
+          <h4 key={`subheading-${i}`} className={getElementClasses(el, theme)}>
             {applyHighlight(el.content)}
           </h4>
         );
@@ -197,7 +199,7 @@ export function FormattedProvisionText({
 
       case 'paragraph':
         renderElements.push(
-          <p key={`para-${i}`} className={getElementClasses(el)}>
+          <p key={`para-${i}`} className={getElementClasses(el, theme)}>
             {applyHighlight(el.content)}
           </p>
         );
@@ -205,7 +207,7 @@ export function FormattedProvisionText({
 
       case 'figure-ref':
         renderElements.push(
-          <p key={`fig-${i}`} className={getElementClasses(el)}>
+          <p key={`fig-${i}`} className={getElementClasses(el, theme)}>
             {applyHighlight(el.content)}
           </p>
         );
@@ -223,7 +225,7 @@ export function FormattedProvisionText({
       case 'note':
         // NB/Note callout - render as bold label with normal text content
         renderElements.push(
-          <div key={`note-${i}`} className={getElementClasses(el)}>
+          <div key={`note-${i}`} className={getElementClasses(el, theme)}>
             <span className="font-bold">NB:</span> {applyHighlight(el.content)}
           </div>
         );
@@ -250,7 +252,7 @@ export function FormattedProvisionText({
 /**
  * Simple inline variant for compact displays
  */
-export function FormattedProvisionTextInline({ text }: { text: string }) {
+export function FormattedProvisionTextInline({ text, theme = 'purple' }: { text: string; theme?: ProvisionTheme }) {
   // Always skip headings for inline display - provision text shouldn't have bold headings
   const elements = useMemo(() => parseProvisionText(text, { skipHeadings: true }), [text]);
 
@@ -265,10 +267,17 @@ export function FormattedProvisionTextInline({ text }: { text: string }) {
 
   const markers = elements.filter(el => el.type === 'control-marker');
 
+  // Theme-specific colors for inline badges
+  const themeColors = {
+    purple: 'bg-purple-100 text-purple-700',
+    green: 'bg-green-100 text-green-700',
+    amber: 'bg-amber-100 text-amber-700'
+  };
+
   return (
     <span className="text-sm text-gray-700">
       {markers.length > 0 && (
-        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-100 text-purple-700 font-bold text-xs mr-2">
+        <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full ${themeColors[theme]} font-bold text-xs mr-2`}>
           {markers[0].content}
         </span>
       )}

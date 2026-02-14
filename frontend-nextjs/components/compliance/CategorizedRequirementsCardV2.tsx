@@ -507,6 +507,7 @@ export function CategorizedRequirementsCard({
                                     <FormattedProvisionText
                                       text={stripSectionHeader(provision.provision_text, provision.section_header)}
                                       compact
+                                      theme="green"
                                     />
                                   </div>
 

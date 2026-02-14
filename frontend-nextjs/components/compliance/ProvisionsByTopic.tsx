@@ -1119,7 +1119,7 @@ export function ProvisionsByTopic({
                                               {/* Subcategory Provisions - Page grouped */}
                                               {isSubcatExpanded && (
                                                 <div className="p-2 bg-white">
-                                                  <PageGroupedProvisions
+                                                  <PageGroupedProvisions provisionTheme="green"
                                                     provisions={subcatProvisions}
                                                     expandedProvisions={expandedProvisions}
                                                     onToggleProvision={toggleProvision}
@@ -1327,6 +1327,7 @@ export function ProvisionsByTopic({
                                                                   <FormattedProvisionText
                                                                     text={stripSectionHeader(provision.provision_text, undefined)}
                                                                     compact
+                                                                    theme="green"
                                                                   />
                                                                 </div>
                                                                 {provision.provision_text.length > 200 && (
@@ -1398,7 +1399,7 @@ export function ProvisionsByTopic({
                                                                       {ELEMENT_LABELS[selectedElement] || selectedElement} only ({splitResults.onlyThis.length})
                                                                     </p>
                                                                   </div>
-                                                                  <PageGroupedProvisions
+                                                                  <PageGroupedProvisions provisionTheme="green"
                                                                     provisions={splitResults.onlyThis}
                                                                     expandedProvisions={expandedProvisions}
                                                                     onToggleProvision={toggleProvision}
@@ -1435,7 +1436,7 @@ export function ProvisionsByTopic({
                                                                       {ELEMENT_LABELS[selectedElement] || selectedElement} + other elements ({splitResults.plusOthers.length})
                                                                     </p>
                                                                   </div>
-                                                                  <PageGroupedProvisions
+                                                                  <PageGroupedProvisions provisionTheme="green"
                                                                     provisions={splitResults.plusOthers}
                                                                     expandedProvisions={expandedProvisions}
                                                                     onToggleProvision={toggleProvision}
@@ -1467,7 +1468,7 @@ export function ProvisionsByTopic({
                                                           ) : (
                                                             /* Regular flat list for All or General */
                                                             <>
-                                                              <PageGroupedProvisions
+                                                              <PageGroupedProvisions provisionTheme="green"
                                                                 provisions={filteredProvisions}
                                                                 expandedProvisions={expandedProvisions}
                                                                 onToggleProvision={toggleProvision}
@@ -1656,7 +1657,7 @@ export function ProvisionsByTopic({
                                                     {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} only ({partSplitResults.onlyThis.length})
                                                   </p>
                                                 </div>
-                                                <PageGroupedProvisions
+                                                <PageGroupedProvisions provisionTheme="green"
                                                   provisions={partSplitResults.onlyThis}
                                                   expandedProvisions={expandedProvisions}
                                                   onToggleProvision={toggleProvision}
@@ -1676,7 +1677,7 @@ export function ProvisionsByTopic({
                                                     {ELEMENT_LABELS[selectedPartElement!] || selectedPartElement} + other elements ({partSplitResults.plusOthers.length})
                                                   </p>
                                                 </div>
-                                                <PageGroupedProvisions
+                                                <PageGroupedProvisions provisionTheme="green"
                                                   provisions={partSplitResults.plusOthers}
                                                   expandedProvisions={expandedProvisions}
                                                   onToggleProvision={toggleProvision}
@@ -1692,7 +1693,7 @@ export function ProvisionsByTopic({
                                           </>
                                         ) : (
                                           /* Page-grouped provisions list */
-                                          <PageGroupedProvisions
+                                          <PageGroupedProvisions provisionTheme="green"
                                             provisions={partFilteredProvisions}
                                             expandedProvisions={expandedProvisions}
                                             onToggleProvision={toggleProvision}
@@ -1716,7 +1717,7 @@ export function ProvisionsByTopic({
                       </div>
                     ) : (
                       // Small topic: Page-grouped provisions with collapsible page headers
-                      <PageGroupedProvisions
+                      <PageGroupedProvisions provisionTheme="green"
                         provisions={provisions}
                         expandedProvisions={expandedProvisions}
                         onToggleProvision={toggleProvision}

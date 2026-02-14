@@ -716,9 +716,35 @@ function parseUnstructuredText(text: string, options?: ParseOptions): FormattedE
 }
 
 /**
- * Get CSS classes for element type
+ * Theme color variants for provision text elements
  */
-export function getElementClasses(element: FormattedElement): string {
+export type ProvisionTheme = 'purple' | 'green' | 'amber';
+
+/**
+ * Get CSS classes for element type with theme support
+ */
+export function getElementClasses(element: FormattedElement, theme: ProvisionTheme = 'purple'): string {
+  // Theme-specific color mappings
+  const themeColors = {
+    purple: {
+      bg: 'bg-purple-100',
+      text: 'text-purple-700',
+      bullet: 'before:text-purple-500'
+    },
+    green: {
+      bg: 'bg-green-100',
+      text: 'text-green-700',
+      bullet: 'before:text-green-500'
+    },
+    amber: {
+      bg: 'bg-amber-100',
+      text: 'text-amber-700',
+      bullet: 'before:text-amber-500'
+    }
+  };
+
+  const colors = themeColors[theme];
+
   switch (element.type) {
     case 'heading':
       return element.level === 1
@@ -730,10 +756,10 @@ export function getElementClasses(element: FormattedElement): string {
         : 'text-sm font-semibold text-gray-700 mb-2 mt-2';
 
     case 'subheading':
-      return 'text-xs font-bold text-purple-700 uppercase tracking-wide mb-2 mt-3';
+      return `text-xs font-bold ${colors.text} uppercase tracking-wide mb-2 mt-3`;
 
     case 'control-marker':
-      return 'inline-flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-700 font-bold text-xs mr-2 flex-shrink-0';
+      return `inline-flex items-center justify-center w-8 h-8 rounded-full ${colors.bg} ${colors.text} font-bold text-xs mr-2 flex-shrink-0`;
 
     case 'control-text':
       return 'text-sm text-gray-800 leading-relaxed';
@@ -742,7 +768,7 @@ export function getElementClasses(element: FormattedElement): string {
       return 'text-sm text-gray-700 leading-relaxed mb-2';
 
     case 'list-item':
-      return 'text-sm text-gray-700 leading-relaxed pl-4 relative before:content-["•"] before:absolute before:left-0 before:text-purple-500';
+      return `text-sm text-gray-700 leading-relaxed pl-4 relative before:content-["•"] before:absolute before:left-0 ${colors.bullet}`;
 
     case 'figure-ref':
       return 'text-xs text-blue-600 italic mt-2';

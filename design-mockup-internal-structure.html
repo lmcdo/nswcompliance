@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PlotDetect - Internal Card Structure Mockup</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+    .level-label {
+      position: absolute;
+      right: -80px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      white-space: nowrap;
+    }
+    .card-section { position: relative; }
+  </style>
+</head>
+<body class="bg-gray-50 p-8">
+
+  <div class="max-w-5xl mx-auto mb-8">
+    <h1 class="text-2xl font-bold text-gray-900 mb-2">Internal Card Structure Design</h1>
+    <p class="text-sm text-gray-600">Consistent 4-level hierarchy across all tabs</p>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- SEPP TAB EXAMPLES -->
+  <!-- ============================================ -->
+  <div class="max-w-5xl mx-auto mb-12">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="px-3 py-1 bg-purple-700 text-white text-sm font-bold rounded">SEPP</div>
+      <h2 class="text-xl font-bold text-gray-900">State Planning Policies - Internal Structure</h2>
+    </div>
+
+    <!-- Example 1: E&C Card (Keep Emerald) -->
+    <div class="bg-white border-2 border-purple-200 rounded-lg overflow-hidden mb-8 shadow-sm" style="margin-right: 100px;">
+
+      <!-- Card Header -->
+      <div class="border-l-4 border-emerald-600 bg-emerald-50 p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <div>
+              <div class="font-semibold text-emerald-900">Exempt & Complying Development Standards</div>
+              <div class="text-xs text-emerald-700">SEPP (Exempt & Complying) 2008</div>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- LEVEL 1: Status Bar -->
+      <div class="card-section">
+        <div class="bg-emerald-50 border-b border-emerald-200 px-4 py-3">
+          <div class="text-sm font-medium text-emerald-900">Part 3 — Housing Code • Applies to R2 zone • 44 actionable standards</div>
+        </div>
+        <div class="level-label">Level 1: Status</div>
+      </div>
+
+      <!-- LEVEL 2: Primary Content (Work Type Tabs + Provisions) -->
+      <div class="card-section">
+        <div class="p-4 bg-white">
+          <!-- Work Type Tabs -->
+          <div class="flex gap-2 mb-4">
+            <button class="px-3 py-1.5 bg-emerald-700 text-white rounded text-sm font-medium">Deck</button>
+            <button class="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-700 rounded text-sm">Fence</button>
+            <button class="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-700 rounded text-sm">Carport</button>
+            <button class="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-700 rounded text-sm">Pool</button>
+          </div>
+
+          <!-- Provision Example -->
+          <div class="bg-white border border-emerald-100 rounded p-3 mb-2">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Part 3 (a)</span>
+              <span class="text-xs text-gray-400">Deck</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm text-gray-800 leading-relaxed flex-1">
+                (a) not have a solid enclosing wall, and (b) if it encloses a structure, be at least 20m from the structure
+              </p>
+              <div class="flex items-center gap-1.5">
+                <button class="p-1 rounded hover:bg-emerald-100">
+                  <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <span class="text-xs text-gray-400">p.128</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-white border border-emerald-100 rounded p-3">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">Part 3 (1)</span>
+              <span class="text-xs text-gray-400">Deck</span>
+            </div>
+            <div class="flex items-start justify-between gap-2">
+              <p class="text-sm text-gray-800 leading-relaxed flex-1">
+                (1) the maximum area of the deck must not exceed 25m²
+              </p>
+              <div class="flex items-center gap-1.5">
+                <button class="p-1 rounded hover:bg-emerald-100">
+                  <svg class="w-4 h-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </button>
+                <span class="text-xs text-gray-400">p.128</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="level-label">Level 2: Primary Content</div>
+      </div>
+
+      <!-- LEVEL 3: Supporting Info (Workflow Guidance) -->
+      <div class="card-section">
+        <div class="bg-amber-50 border-l-4 border-amber-500 rounded-r mx-4 mb-4 p-3">
+          <p class="text-xs font-medium text-amber-900 mb-2">⚠️ Complying Development Compliance Pathway</p>
+          <ol class="text-xs text-amber-800 space-y-1 ml-4 list-decimal">
+            <li>Verify all Part 3 standards above are met</li>
+            <li>Check <strong>LEP tab</strong> confirms the proposed use is permitted in this zone</li>
+            <li>Check <strong>DCP tab</strong> for additional local controls that may apply</li>
+          </ol>
+          <p class="text-xs text-amber-700 mt-2 italic">Meeting E&C standards alone does not guarantee approval.</p>
+        </div>
+        <div class="level-label">Level 3: Supporting Info</div>
+      </div>
+
+      <!-- LEVEL 4: Actions -->
+      <div class="card-section">
+        <div class="border-t border-emerald-100 bg-gray-50 px-4 py-3">
+          <a href="#" class="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-900 font-medium">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View full SEPP on NSW Legislation
+          </a>
+        </div>
+        <div class="level-label">Level 4: Actions</div>
+      </div>
+
+    </div>
+
+    <!-- Example 2: BASIX Card (Purple Theme) -->
+    <div class="bg-white border-2 border-purple-200 rounded-lg overflow-hidden mb-8 shadow-sm" style="margin-right: 100px;">
+
+      <!-- Card Header -->
+      <div class="border-l-4 border-purple-600 bg-purple-50 p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-purple-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <div>
+              <div class="font-semibold text-purple-900">BASIX Sustainability Requirements</div>
+              <div class="text-xs text-purple-700">SEPP (Sustainable Buildings) 2022</div>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- LEVEL 1: Status Bar -->
+      <div class="card-section">
+        <div class="bg-purple-50 border-b border-purple-200 px-4 py-3">
+          <div class="flex items-center justify-between">
+            <div class="text-sm font-medium text-purple-900">Climate Zone 6 • INNER WEST region</div>
+            <div class="text-xs text-purple-700">Applied from NSW Planning Portal</div>
+          </div>
+        </div>
+        <div class="level-label">Level 1: Status</div>
+      </div>
+
+      <!-- LEVEL 2: Primary Content -->
+      <div class="card-section">
+        <div class="p-4 bg-white space-y-3">
+
+          <!-- Water Target -->
+          <div class="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              </svg>
+              <div>
+                <div class="text-sm font-semibold text-blue-900">Water Target</div>
+                <div class="text-xs text-blue-700">Mandatory for all residential development</div>
+              </div>
+            </div>
+            <div class="text-2xl font-bold text-blue-900">40%</div>
+          </div>
+
+          <!-- Energy/Thermal -->
+          <div class="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <div class="flex items-center gap-3">
+              <svg class="w-5 h-5 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              <div>
+                <div class="text-sm font-semibold text-orange-900">Energy & Thermal Comfort</div>
+                <div class="text-xs text-orange-700">Climate-specific performance requirements</div>
+              </div>
+            </div>
+            <button class="px-3 py-1 bg-orange-600 text-white rounded text-xs font-medium hover:bg-orange-700">View Details</button>
+          </div>
+
+        </div>
+        <div class="level-label">Level 2: Primary Content</div>
+      </div>
+
+      <!-- LEVEL 3: Supporting Info -->
+      <div class="card-section">
+        <div class="bg-purple-50 border-l-4 border-purple-500 rounded-r mx-4 mb-4 p-3">
+          <p class="text-xs font-medium text-purple-900 mb-1">ℹ️ BASIX Certificate Required</p>
+          <p class="text-xs text-purple-800">
+            A BASIX certificate must be submitted with your DA or CDC application. Use the official BASIX tool to generate your certificate.
+          </p>
+        </div>
+        <div class="level-label">Level 3: Supporting Info</div>
+      </div>
+
+      <!-- LEVEL 4: Actions -->
+      <div class="card-section">
+        <div class="border-t border-purple-100 bg-gray-50 px-4 py-3">
+          <a href="#" class="inline-flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 font-medium">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            Generate BASIX Certificate
+          </a>
+        </div>
+        <div class="level-label">Level 4: Actions</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ============================================ -->
+  <!-- LEP TAB EXAMPLE -->
+  <!-- ============================================ -->
+  <div class="max-w-5xl mx-auto mb-12">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="px-3 py-1 bg-amber-700 text-white text-sm font-bold rounded">LEP</div>
+      <h2 class="text-xl font-bold text-gray-900">Local Environmental Plan - Internal Structure</h2>
+    </div>
+
+    <!-- Example: Land Use Zoning Card -->
+    <div class="bg-white border-2 border-amber-200 rounded-lg overflow-hidden mb-8 shadow-sm" style="margin-right: 100px;">
+
+      <!-- Card Header -->
+      <div class="border-l-4 border-amber-600 bg-amber-50 p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-amber-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <div>
+              <div class="font-semibold text-amber-900">Land Use Zoning: R2 - Low Density Residential</div>
+              <div class="text-xs text-amber-700">Inner West LEP 2022 • Clause 2.3</div>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- LEVEL 1: Status Bar -->
+      <div class="card-section">
+        <div class="bg-amber-50 border-b border-amber-200 px-4 py-3">
+          <div class="text-sm font-medium text-amber-900">8 permitted uses • 4 prohibited uses</div>
+        </div>
+        <div class="level-label">Level 1: Status</div>
+      </div>
+
+      <!-- LEVEL 2: Primary Content -->
+      <div class="card-section">
+        <div class="p-4 bg-white">
+
+          <!-- Permitted Uses -->
+          <div class="mb-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+              </svg>
+              Permitted Uses
+            </h4>
+            <ul class="space-y-1 text-sm text-gray-700">
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Dwelling houses
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Dual occupancies
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Secondary dwellings
+              </li>
+            </ul>
+          </div>
+
+          <!-- Prohibited Uses -->
+          <div>
+            <h4 class="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
+              <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+              </svg>
+              Prohibited Uses
+            </h4>
+            <ul class="space-y-1 text-sm text-gray-700">
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Industries
+              </li>
+              <li class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                Warehouse or distribution centres
+              </li>
+            </ul>
+          </div>
+
+        </div>
+        <div class="level-label">Level 2: Primary Content</div>
+      </div>
+
+      <!-- LEVEL 3: Supporting Info -->
+      <div class="card-section">
+        <div class="bg-amber-50 border-l-4 border-amber-500 rounded-r mx-4 mb-4 p-3">
+          <p class="text-xs font-medium text-amber-900 mb-1">ℹ️ Land Use Note</p>
+          <p class="text-xs text-amber-800">
+            Some uses may be permitted with consent or prohibited. Check the full LEP Land Use Table for details.
+          </p>
+        </div>
+        <div class="level-label">Level 3: Supporting Info</div>
+      </div>
+
+      <!-- LEVEL 4: Actions -->
+      <div class="card-section">
+        <div class="border-t border-amber-100 bg-gray-50 px-4 py-3">
+          <a href="#" class="inline-flex items-center gap-1.5 text-xs text-amber-700 hover:text-amber-900 font-medium">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View Full Land Use Table for R2
+          </a>
+        </div>
+        <div class="level-label">Level 4: Actions</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ============================================ -->
+  <!-- DCP TAB EXAMPLE -->
+  <!-- ============================================ -->
+  <div class="max-w-5xl mx-auto mb-12">
+    <div class="flex items-center gap-2 mb-4">
+      <div class="px-3 py-1 bg-green-700 text-white text-sm font-bold rounded">DCP</div>
+      <h2 class="text-xl font-bold text-gray-900">Council Controls - Internal Structure</h2>
+    </div>
+
+    <!-- Example: Precinct Card (GREEN THEME!) -->
+    <div class="bg-white border-2 border-green-200 rounded-lg overflow-hidden mb-8 shadow-sm" style="margin-right: 100px;">
+
+      <!-- Card Header -->
+      <div class="border-l-4 border-green-600 bg-green-50 p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-green-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <div>
+              <div class="font-semibold text-green-900">Part 9: Precincts</div>
+              <div class="text-xs text-green-700">9.211 Ness Park (Precinct 21)</div>
+            </div>
+          </div>
+          <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- LEVEL 1: Status Bar -->
+      <div class="card-section">
+        <div class="bg-green-50 border-b border-green-200 px-4 py-3">
+          <div class="text-sm font-medium text-green-900">5 provisions apply to this precinct</div>
+        </div>
+        <div class="level-label">Level 1: Status</div>
+      </div>
+
+      <!-- LEVEL 2: Primary Content (Provisions with GREEN badges) -->
+      <div class="card-section">
+        <div class="p-4 bg-white space-y-3">
+
+          <!-- Provision 1 with GREEN C/O badge -->
+          <div class="bg-white border border-green-100 rounded-lg p-3">
+            <div class="flex items-start gap-3">
+              <!-- GREEN Control Marker (changed from purple!) -->
+              <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-xs flex-shrink-0">
+                C1
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <!-- GREEN Badge (changed from purple!) -->
+                  <span class="inline-block px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                    Precinct Character
+                  </span>
+                  <span class="text-xs text-gray-400">Building Form</span>
+                </div>
+                <p class="text-sm text-gray-800 leading-relaxed mb-2">
+                  9.211 Existing character This precinct is located in the western part of the suburb of Marrickville, with a small section located in Dulwich Hill. The precinct is bounded by the Bankstown Railway line, Livingstone Road, Marrickville Road and Wardell Road.
+                </p>
+                <div class="flex items-center justify-end">
+                  <button class="p-1 rounded hover:bg-green-100">
+                    <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <span class="text-xs text-gray-400 ml-1.5">Page 5</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Provision 2 with GREEN C/O badge -->
+          <div class="bg-white border border-green-100 rounded-lg p-3">
+            <div class="flex items-start gap-3">
+              <!-- GREEN Control Marker -->
+              <div class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 font-bold text-xs flex-shrink-0">
+                C2
+              </div>
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-2">
+                  <!-- GREEN Badge -->
+                  <span class="inline-block px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded">
+                    Building Form
+                  </span>
+                  <span class="text-xs text-gray-400">Height</span>
+                </div>
+                <p class="text-sm text-gray-800 leading-relaxed mb-2">
+                  The height of proposed buildings on the land shaded in Figure (38.1a) must not exceed 9.5m above existing ground level (Australian Height Datum).
+                </p>
+                <div class="flex items-center justify-end">
+                  <button class="p-1 rounded hover:bg-green-100">
+                    <svg class="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                  <span class="text-xs text-gray-400 ml-1.5">Page 8</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+        <div class="level-label">Level 2: Primary Content</div>
+      </div>
+
+      <!-- LEVEL 3: Supporting Info (GREEN theme) -->
+      <div class="card-section">
+        <div class="bg-green-50 border-l-4 border-green-500 rounded-r mx-4 mb-4 p-3">
+          <p class="text-xs font-medium text-green-900 mb-1">ℹ️ Precinct Context</p>
+          <p class="text-xs text-green-800">
+            Ness Park precinct contains heritage streetscapes and Victorian-era cottages. Development should respect the existing character and scale.
+          </p>
+        </div>
+        <div class="level-label">Level 3: Supporting Info</div>
+      </div>
+
+      <!-- LEVEL 4: Actions -->
+      <div class="card-section">
+        <div class="border-t border-green-100 bg-gray-50 px-4 py-3">
+          <a href="#" class="inline-flex items-center gap-1.5 text-xs text-green-700 hover:text-green-900 font-medium">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+            View DCP Part 9 (PDF)
+          </a>
+        </div>
+        <div class="level-label">Level 4: Actions</div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Key Changes Summary -->
+  <div class="max-w-5xl mx-auto mt-12 bg-blue-50 border-l-4 border-blue-500 p-6 rounded-r-lg">
+    <h3 class="font-bold text-blue-900 mb-4">Key Internal Structure Changes:</h3>
+
+    <div class="space-y-4 text-sm text-blue-800">
+      <div>
+        <strong class="text-blue-900">✓ 4-Level Hierarchy (Consistent across all tabs):</strong>
+        <ol class="ml-4 mt-1 space-y-1">
+          <li>1. <strong>Status Bar</strong> - Quick summary in light card color (purple-50, amber-50, green-50)</li>
+          <li>2. <strong>Primary Content</strong> - Main info on white background (structure varies by card)</li>
+          <li>3. <strong>Supporting Info</strong> - Context/guidance in colored box with left border</li>
+          <li>4. <strong>Actions</strong> - Links/buttons in gray footer with border-top</li>
+        </ol>
+      </div>
+
+      <div>
+        <strong class="text-blue-900">✓ DCP Color Changes (Purple → Green):</strong>
+        <ul class="ml-4 mt-1 space-y-1">
+          <li>• C/O control marker badges: <code class="bg-white px-1">bg-purple-100</code> → <code class="bg-white px-1">bg-green-100</code></li>
+          <li>• "Precinct Character" badges: Purple → Green</li>
+          <li>• Supporting info boxes: Purple border → Green border</li>
+          <li>• All icons and links: Purple → Green</li>
+        </ul>
+      </div>
+
+      <div>
+        <strong class="text-blue-900">✓ E&C Card (Keep Emerald):</strong>
+        <ul class="ml-4 mt-1 space-y-1">
+          <li>• Maintains emerald theme (special certifier gateway status)</li>
+          <li>• Workflow guidance uses amber (cross-tab reference)</li>
+          <li>• Otherwise follows 4-level pattern</li>
+        </ul>
+      </div>
+
+      <div>
+        <strong class="text-blue-900">✓ Supporting Info Boxes:</strong>
+        <ul class="ml-4 mt-1 space-y-1">
+          <li>• E&C workflow guidance: Amber (references LEP/DCP tabs)</li>
+          <li>• BASIX notes: Purple (matches SEPP theme)</li>
+          <li>• LEP land use notes: Amber (matches LEP theme)</li>
+          <li>• DCP precinct context: Green (matches DCP theme)</li>
+        </ul>
+      </div>
+
+      <div>
+        <strong class="text-blue-900">✓ Consistent White Space:</strong>
+        <ul class="ml-4 mt-1 space-y-1">
+          <li>• Status bar: <code class="bg-white px-1">px-4 py-3</code></li>
+          <li>• Primary content: <code class="bg-white px-1">p-4</code></li>
+          <li>• Supporting info: <code class="bg-white px-1">mx-4 mb-4 p-3</code> (inset from edges)</li>
+          <li>• Actions footer: <code class="bg-white px-1">px-4 py-3</code></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

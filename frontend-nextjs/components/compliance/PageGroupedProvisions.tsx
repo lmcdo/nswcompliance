@@ -165,6 +165,7 @@ interface PageGroupedProvisionsProps {
   onToggleProvision?: (id: number) => void;  // Optional - uses internal toggle if not provided
   onViewPdf?: (url: string, page: number) => void;  // Optional - opens in new tab if not provided
   theme?: Partial<ThemeConfig>;
+  provisionTheme?: 'purple' | 'green' | 'amber';  // Color theme for control markers (C1, O1, etc.)
   showMarkers?: boolean;
   showDcpPart?: boolean;
   showLayerBadges?: boolean;    // Show layer badges (default: true)
@@ -344,6 +345,7 @@ export function PageGroupedProvisions({
   onToggleProvision: externalToggleProvision,
   onViewPdf: externalViewPdf,
   theme: themeOverrides,
+  provisionTheme = 'purple',
   showMarkers = true,
   showDcpPart = false,
   showLayerBadges = true,
@@ -689,6 +691,7 @@ export function PageGroupedProvisions({
                             compact
                             stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
                             highlightQuery={highlightQuery}
+                            theme={provisionTheme}
                           />
                         ) : (
                           <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>
