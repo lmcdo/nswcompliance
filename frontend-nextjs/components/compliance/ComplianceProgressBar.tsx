@@ -1,4 +1,5 @@
 import React from 'react';
+import { SemanticColors } from '@/lib/design-tokens';
 
 interface ComplianceProgressBarProps {
  progress: number;
@@ -18,10 +19,10 @@ export const ComplianceProgressBar: React.FC<ComplianceProgressBarProps> = ({
  };
 
  const getProgressColor = (progress: number) => {
- if (progress >= 100) return 'bg-green-500';
+ if (progress >= 100) return 'bg-emerald-500';
  if (progress >= 75) return 'bg-blue-500';
- if (progress >= 50) return 'bg-yellow-500';
- return 'bg-orange-500';
+ if (progress >= 50) return 'bg-amber-500';
+ return 'bg-amber-600';
  };
 
  return (

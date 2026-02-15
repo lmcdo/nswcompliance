@@ -8,17 +8,48 @@ module.exports = {
         './src/**/*.{ts,tsx}',
     ],
     safelist: [
-        // Provision theme colors for dynamic theming (purple/green/amber)
-        'bg-purple-100', 'text-purple-700', 'before:text-purple-500',
-        'bg-green-100', 'text-green-700', 'before:text-green-500',
-        'bg-amber-100', 'text-amber-700', 'before:text-amber-500',
-        // Card colors for tab theming
-        'bg-purple-50', 'bg-purple-200', 'text-purple-600', 'text-purple-800', 'text-purple-900',
-        'border-purple-100', 'border-purple-200', 'border-purple-300', 'hover:bg-purple-50', 'hover:bg-purple-100',
-        'bg-green-50', 'bg-green-200', 'text-green-600', 'text-green-800', 'text-green-900',
-        'border-green-100', 'border-green-200', 'hover:bg-green-100', 'hover:text-green-800',
-        'bg-amber-50', 'bg-amber-200', 'text-amber-600', 'text-amber-800', 'text-amber-900',
-        'border-amber-200', 'border-amber-300', 'border-amber-500', 'hover:text-amber-700', 'hover:text-amber-800',
+        // Authority Colors - SEPP (Purple)
+        'bg-purple-50', 'bg-purple-100', 'bg-purple-200', 'bg-purple-600', 'bg-purple-700',
+        'text-purple-100', 'text-purple-400', 'text-purple-600', 'text-purple-700', 'text-purple-800', 'text-purple-900',
+        'border-purple-100', 'border-purple-200', 'border-purple-300', 'border-purple-500',
+        'hover:bg-purple-50', 'hover:bg-purple-100', 'hover:bg-purple-100/50', 'hover:text-purple-800',
+
+        // Authority Colors - LEP (Blue)
+        'bg-blue-50', 'bg-blue-100', 'bg-blue-200', 'bg-blue-600', 'bg-blue-700',
+        'text-blue-100', 'text-blue-400', 'text-blue-600', 'text-blue-700', 'text-blue-800', 'text-blue-900',
+        'border-blue-100', 'border-blue-200', 'border-blue-300', 'border-blue-500',
+        'hover:bg-blue-50', 'hover:bg-blue-100', 'hover:bg-blue-100/50', 'hover:text-blue-800',
+
+        // Authority Colors - DCP (Teal)
+        'bg-teal-50', 'bg-teal-100', 'bg-teal-200', 'bg-teal-600', 'bg-teal-700',
+        'text-teal-100', 'text-teal-400', 'text-teal-600', 'text-teal-700', 'text-teal-800', 'text-teal-900',
+        'border-teal-100', 'border-teal-200', 'border-teal-300', 'border-teal-500',
+        'hover:bg-teal-50', 'hover:bg-teal-100', 'hover:bg-teal-100/50', 'hover:text-teal-800',
+
+        // Semantic Colors - Prohibited (Rose/Burgundy)
+        'bg-rose-50', 'bg-rose-100', 'text-rose-600', 'text-rose-800', 'text-rose-900',
+        'border-rose-400', 'hover:bg-rose-100',
+
+        // Semantic Colors - Permitted (Emerald/Sage)
+        'bg-emerald-50', 'bg-emerald-100', 'text-emerald-600', 'text-emerald-900',
+        'border-emerald-500', 'hover:bg-emerald-100',
+
+        // Semantic Colors - Conditional (Amber/Gold)
+        'bg-amber-50', 'bg-amber-100', 'text-amber-600', 'text-amber-900',
+        'border-amber-400', 'hover:bg-amber-100',
+
+        // Semantic Colors - Informational (Slate)
+        'bg-slate-50', 'bg-slate-100', 'text-slate-500', 'text-slate-700',
+        'border-slate-300', 'hover:bg-slate-100',
+
+        // Layer Badges
+        'bg-teal-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500',
+
+        // Universal
+        'text-white', 'ring-2',
+
+        // Provision text formatter theme colors
+        'before:text-purple-500', 'before:text-blue-500', 'before:text-teal-500',
     ],
     theme: {
         container: {

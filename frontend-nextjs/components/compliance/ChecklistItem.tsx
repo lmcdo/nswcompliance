@@ -16,9 +16,9 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({
 }) => {
  const getStatusColor = (status: string) => {
  switch (status) {
- case 'compliant': return 'bg-green-100 text-green-800 border-green-200';
- case 'non-compliant': return 'bg-red-100 text-red-800 border-red-200';
- case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+ case 'compliant': return 'bg-emerald-50 text-emerald-900 border-emerald-500';
+ case 'non-compliant': return 'bg-rose-50 text-rose-800 border-rose-400';
+ case 'pending': return 'bg-amber-50 text-amber-900 border-amber-400';
  case 'not-applicable': return 'bg-gray-100 text-gray-800 border-gray-200';
  default: return 'bg-gray-100 text-gray-800 border-gray-200';
  }
@@ -27,7 +27,7 @@ export const ChecklistItem: React.FC<ChecklistItemProps> = ({
  const getTierBadge = (tier: string) => {
  const colors = {
  tier1: 'bg-red-100 text-red-800',
- tier2: 'bg-orange-100 text-orange-800',
+ tier2: 'bg-amber-100 text-amber-800',
  tier3: 'bg-blue-100 text-blue-800'
  };
  return colors[tier as keyof typeof colors] || 'bg-gray-100 text-gray-800';

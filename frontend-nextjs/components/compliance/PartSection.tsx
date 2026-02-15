@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Book, Target } from 'lucide-react';
 import CategorySection from './CategorySection';
+import { AuthorityColors, SemanticColors } from '@/lib/design-tokens';
 
 interface GeneralRequirement {
   id: number;
@@ -44,40 +45,16 @@ interface PartSectionProps {
 }
 
 /**
- * Council-specific color theming
+ * DCP authority color theming (teal for all councils)
  */
 const getCouncilTheme = (council: string, partName: string) => {
-  const lowerCouncil = council.toLowerCase();
-  const lowerPart = partName.toLowerCase();
-
-  // Leichhardt: Green theme (sustainability focus)
-  if (lowerCouncil === 'leichhardt') {
-    return {
-      border: 'border-green-200',
-      bg: 'bg-green-50',
-      text: 'text-green-900',
-      icon: 'text-green-600',
-      objective: 'bg-amber-50 border-amber-200 text-amber-900'
-    };
-  }
-
-  // Ashfield: Blue theme (heritage/traditional)
-  if (lowerCouncil === 'ashfield') {
-    return {
-      border: 'border-blue-200',
-      bg: 'bg-blue-50',
-      text: 'text-blue-900',
-      icon: 'text-blue-600',
-      objective: 'bg-amber-50 border-amber-200 text-amber-900'
-    };
-  }
-
-  // Marrickville: Orange theme (creative/diverse)
-  if (lowerCouncil === 'marrickville') {
-    return {
-      border: 'border-orange-200',
-      bg: 'bg-orange-50',
-      text: 'text-orange-900',
+  // All DCP provisions use teal authority color
+  return {
+    border: 'border-teal-200',
+    bg: 'bg-teal-50',
+    text: 'text-teal-900',
+    icon: 'text-teal-600',
+    objective: 'bg-amber-50 border-amber-200 text-amber-900'
       icon: 'text-orange-600',
       objective: 'bg-amber-50 border-amber-200 text-amber-900'
     };

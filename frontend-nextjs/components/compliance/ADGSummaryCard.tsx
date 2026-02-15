@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { AuthorityColors } from '@/lib/design-tokens';
 
 interface SummaryMetric {
   criteriaId: string;

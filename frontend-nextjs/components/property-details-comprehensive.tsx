@@ -113,7 +113,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  href={value}
  target="_blank"
  rel="noopener noreferrer"
- className="text-teal-600 hover:text-teal-700 underline inline-flex items-center gap-1"
+ className="text-blue-600 hover:text-blue-700 underline inline-flex items-center gap-1"
  >
  View Legislation
  <ExternalLink className="h-3 w-3" />
@@ -132,7 +132,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  href={url}
  target="_blank"
  rel="noopener noreferrer"
- className="text-teal-600 hover:text-teal-800 underline font-medium"
+ className="text-blue-600 hover:text-blue-800 underline font-medium"
  >
  {text}
  </a>
@@ -238,14 +238,12 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
  })
 
  return (
-   <Card className="bg-teal-100 border-teal-300">
+   <Card className="bg-gray-100 border-gray-200">
      <CardHeader className="cursor-pointer" onClick={() => setIsCardCollapsed(!isCardCollapsed)}>
-       <CardTitle className="text-lg font-semibold flex items-center justify-between text-teal-900">
-         <div className="flex items-center gap-2">
-           <FileText className="h-5 w-5 text-teal-700" />
-           NSW Planning Layers ({expectedLayers.length})
-         </div>
-         {isCardCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+       <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
+         {isCardCollapsed ? <ChevronRight className="h-4 w-4 flex-shrink-0" /> : <ChevronDown className="h-4 w-4 flex-shrink-0" />}
+         <FileText className="h-5 w-5 text-gray-700" />
+         <span className="flex-1">NSW Planning Layers ({expectedLayers.length})</span>
        </CardTitle>
      </CardHeader>
      {!isCardCollapsed && (
@@ -452,11 +450,11 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
          // Display name mapping
          const displayName = isSEPP ? 'SEPP Requirements' : layerName
 
-         // Color scheme: SEPP/Special Provisions=Purple (matches "Applied from NSW Planning Portal"), LEP=Teal, N/A=Gray
+         // Color scheme: SEPP/Special Provisions=Purple (matches "Applied from NSW Planning Portal"), LEP=Blue, N/A=Gray
          const colors = isPresent
            ? (isSEPP
              ? { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-800', circleBg: 'bg-purple-100', circleText: 'text-purple-700', circleBorder: 'border-purple-300', circleActiveBg: 'bg-purple-600' }
-             : { bg: 'bg-white', border: 'border-gray-200', text: 'text-teal-700', circleBg: 'bg-teal-50', circleText: 'text-teal-700', circleBorder: 'border-teal-200', circleActiveBg: 'bg-teal-600' })
+             : { bg: 'bg-white', border: 'border-gray-200', text: 'text-blue-700', circleBg: 'bg-blue-50', circleText: 'text-blue-700', circleBorder: 'border-blue-200', circleActiveBg: 'bg-blue-600' })
            : { bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-500', circleBg: '', circleText: '', circleBorder: '', circleActiveBg: '' }
 
          return (
@@ -599,7 +597,7 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
                           href="https://www.planning.nsw.gov.au/policy-and-legislation/environment/acid-sulfate-soils"
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-xs text-teal-700 hover:text-teal-900 hover:underline"
+                          className="flex items-center gap-2 text-xs text-blue-700 hover:text-blue-900 hover:underline"
                         >
                           <ExternalLink className="h-3 w-3" />
                           Check Acid Sulfate Soils Map

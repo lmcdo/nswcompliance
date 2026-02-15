@@ -40,6 +40,7 @@ import {
   type CdcCheckResult,
   type CdcExclusion,
 } from '@/hooks/useCdcEligibility';
+import { SemanticColors } from '@/lib/design-tokens';
 
 interface CdcEligibilityIndicatorProps {
   /** Property address to check */
@@ -58,11 +59,11 @@ interface CdcEligibilityIndicatorProps {
 function getStatusIcon(eligible: 'yes' | 'no' | 'maybe', className: string = 'w-5 h-5') {
   switch (eligible) {
     case 'no':
-      return <XCircle className={`${className} text-red-500`} />;
+      return <XCircle className={`${className} text-rose-600`} />;
     case 'maybe':
-      return <AlertTriangle className={`${className} text-amber-500`} />;
+      return <AlertTriangle className={`${className} text-amber-600`} />;
     case 'yes':
-      return <CheckCircle2 className={`${className} text-green-500`} />;
+      return <CheckCircle2 className={`${className} text-emerald-600`} />;
     default:
       return <HelpCircle className={`${className} text-gray-400`} />;
   }
@@ -74,11 +75,11 @@ function getStatusIcon(eligible: 'yes' | 'no' | 'maybe', className: string = 'w-
 function getStatusBgClass(eligible: 'yes' | 'no' | 'maybe'): string {
   switch (eligible) {
     case 'no':
-      return 'bg-red-50 border-red-200';
+      return 'bg-rose-50 border-rose-400';
     case 'maybe':
-      return 'bg-amber-50 border-amber-200';
+      return 'bg-amber-50 border-amber-400';
     case 'yes':
-      return 'bg-green-50 border-green-200';
+      return 'bg-emerald-50 border-emerald-500';
     default:
       return 'bg-gray-50 border-gray-200';
   }
@@ -90,11 +91,11 @@ function getStatusBgClass(eligible: 'yes' | 'no' | 'maybe'): string {
 function getStatusTextClass(eligible: 'yes' | 'no' | 'maybe'): string {
   switch (eligible) {
     case 'no':
-      return 'text-red-700';
+      return 'text-rose-800';
     case 'maybe':
-      return 'text-amber-700';
+      return 'text-amber-900';
     case 'yes':
-      return 'text-green-700';
+      return 'text-emerald-900';
     default:
       return 'text-gray-700';
   }

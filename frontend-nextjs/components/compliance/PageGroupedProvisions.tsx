@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { FormattedProvisionText } from './FormattedProvisionText';
-import { LayerBadges } from '@/lib/design-tokens';
+import { LayerBadges, AuthorityColors } from '@/lib/design-tokens';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
 import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
 import type { CrossReference } from '@/hooks/useCrossReferences';
@@ -152,9 +152,9 @@ interface PageGroup {
 }
 
 interface ThemeConfig {
-  zebraStripeBg: string;        // e.g., 'bg-green-50' or 'bg-amber-50/50'
+  zebraStripeBg: string;        // e.g., 'bg-teal-50' or 'bg-amber-50/50'
   zebraStripeAltBg: string;     // e.g., 'bg-white' or 'bg-transparent'
-  borderColorClass: string;     // e.g., 'border-green-200'
+  borderColorClass: string;     // e.g., 'border-teal-200'
   textClampLines: 2 | 3;        // line-clamp-2 or line-clamp-3
   expandThreshold: number;      // chars before showing expand button (200 or 300)
 }
@@ -187,9 +187,9 @@ interface PageGroupedProvisionsProps {
 
 // Default theme (teal, used by most paths)
 const DEFAULT_THEME: ThemeConfig = {
-  zebraStripeBg: 'bg-green-50',
+  zebraStripeBg: 'bg-teal-50',
   zebraStripeAltBg: 'bg-white',
-  borderColorClass: 'border-green-200',
+  borderColorClass: 'border-teal-200',
   textClampLines: 3,
   expandThreshold: 300,
 };
@@ -293,14 +293,14 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
  */
 function MarkerLegend() {
   return (
-    <div className="flex items-center gap-4 text-xs text-gray-600 py-1.5 px-3 bg-purple-50 border border-purple-100 rounded-lg mb-3">
-      <span className="font-medium text-purple-700">DCP Markers:</span>
+    <div className="flex items-center gap-4 text-xs text-gray-600 py-1.5 px-3 bg-teal-50 border border-teal-100 rounded-lg mb-3">
+      <span className="font-medium text-teal-700">DCP Markers:</span>
       <div className="flex items-center gap-1.5">
-        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">C</span>
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-teal-100 text-teal-700 font-bold text-[10px]">C</span>
         <span>Control (development requirement)</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-purple-100 text-purple-700 font-bold text-[10px]">O</span>
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded bg-teal-100 text-teal-700 font-bold text-[10px]">O</span>
         <span>Objective (design goal)</span>
       </div>
     </div>
@@ -547,7 +547,7 @@ export function PageGroupedProvisions({
                 <span className="text-sm text-gray-600">
                   {/* TOC Section info (if available) */}
                   {group.tocSectionNumber && (
-                    <span className="font-semibold text-green-700">{group.tocSectionNumber}</span>
+                    <span className="font-semibold text-teal-700">{group.tocSectionNumber}</span>
                   )}
                   {group.tocSectionNumber && group.tocSectionTitle && ' '}
                   {group.tocSectionTitle && (
@@ -585,10 +585,10 @@ export function PageGroupedProvisions({
                     e.stopPropagation();
                     onViewPdf(group.pageUrl!, group.displayPageNumber || 0);
                   }}
-                  className="p-1.5 rounded hover:bg-green-100 transition-colors flex-shrink-0"
+                  className="p-1.5 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
                   title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}Page ${group.displayPageNumber || 1}`}
                 >
-                  <FileText className="w-4 h-4 text-green-600 hover:text-green-800" />
+                  <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
                 </button>
               )}
             </div>

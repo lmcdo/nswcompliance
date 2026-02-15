@@ -240,12 +240,12 @@ export function ConstraintCard({
     switch (level) {
       case 'SEPP':
         return {
-          border: 'border-orange-500',
-          bg: 'bg-orange-50',
-          badge: 'bg-orange-100 text-orange-800 border-orange-300',
-          icon: 'text-orange-600',
-          header: 'bg-orange-100',
-          text: 'text-orange-900'
+          border: 'border-amber-500',
+          bg: 'bg-amber-50',
+          badge: 'bg-amber-100 text-amber-800 border-amber-300',
+          icon: 'text-amber-600',
+          header: 'bg-amber-100',
+          text: 'text-amber-900'
         };
       case 'LEP':
         return {

@@ -49,7 +49,7 @@ export function SeppOverlayIndicator({
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'high': return 'border-orange-500 bg-orange-50 text-orange-800';
+      case 'high': return 'border-amber-500 bg-amber-50 text-amber-800';
       case 'medium': return 'border-amber-500 bg-amber-50 text-amber-800';
       case 'low': return 'border-blue-500 bg-blue-50 text-blue-800';
       default: return 'border-gray-500 bg-gray-50 text-gray-800';
@@ -59,14 +59,14 @@ export function SeppOverlayIndicator({
   return (
     <div className={`space-y-3 ${className}`}>
       {/* SEPP Summary Bar */}
-      <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+      <div className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg">
         <div className="flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-orange-600" />
+          <AlertTriangle className="h-5 w-5 text-amber-600" />
           <div>
-            <div className="font-medium text-orange-900">
+            <div className="font-medium text-amber-900">
               {seppProvisions.length} SEPP Provision{seppProvisions.length > 1 ? 's' : ''} Apply
             </div>
-            <div className="text-sm text-orange-700">
+            <div className="text-sm text-amber-700">
               State Environmental Planning Policies override local controls
             </div>
           </div>
@@ -75,7 +75,7 @@ export function SeppOverlayIndicator({
           variant="ghost"
           size="sm"
           onClick={() => setIsExpanded(!isExpanded)}
-          className="text-orange-700 hover:text-orange-900"
+          className="text-amber-700 hover:text-amber-900"
         >
           {isExpanded ? (
             <ChevronDown className="h-4 w-4" />
@@ -107,9 +107,9 @@ export function SeppOverlayIndicator({
 
       {/* Override Alert */}
       {affectedConstraints.length > 0 && (
-        <Alert className="border-orange-200 bg-orange-50">
-          <AlertTriangle className="h-4 w-4 text-orange-600" />
-          <AlertDescription className="text-orange-800">
+        <Alert className="border-amber-200 bg-amber-50">
+          <AlertTriangle className="h-4 w-4 text-amber-600" />
+          <AlertDescription className="text-amber-800">
             <strong>SEPP Override:</strong> These provisions may modify{' '}
             {affectedConstraints.join(', ')} requirements from LEP/DCP.
           </AlertDescription>
@@ -118,9 +118,9 @@ export function SeppOverlayIndicator({
 
       {/* Expanded SEPP Details */}
       {isExpanded && (
-        <Card className="border-orange-200">
+        <Card className="border-amber-200">
           <CardContent className="p-4 space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-orange-900">
+            <div className="flex items-center gap-2 text-sm font-medium text-amber-900">
               <Info className="h-4 w-4" />
               SEPP Provisions Detail
             </div>
@@ -168,7 +168,7 @@ export function SeppOverlayIndicator({
             })}
 
             {/* Planning Note */}
-            <div className="text-xs text-orange-700 bg-orange-100 p-2 rounded">
+            <div className="text-xs text-amber-700 bg-amber-100 p-2 rounded">
               <strong>Planning Note:</strong> SEPP provisions take precedence over Local Environmental Plan
               and Development Control Plan requirements. Consult the full SEPP text for complete requirements.
             </div>

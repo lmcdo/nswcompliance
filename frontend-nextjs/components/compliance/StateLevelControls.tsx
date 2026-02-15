@@ -672,7 +672,7 @@ export function StateLevelControls({
           <CardHeader>
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-purple-600" />
-              <CardTitle className="text-lg text-orange-900">Transport Infrastructure Requirements</CardTitle>
+              <CardTitle className="text-lg text-purple-900">Transport Infrastructure Requirements</CardTitle>
             </div>
             <Badge className="bg-purple-100 text-purple-800 mt-2">SEPP (Transport and Infrastructure) 2021</Badge>
             <p className="text-sm text-purple-700 mt-2">
@@ -769,7 +769,7 @@ export function StateLevelControls({
               {/* Dynamic ADG Requirements from Planning Portal SEPP Detection */}
               {loadingAdg ? (
                 <div className="animate-pulse space-y-2">
-                  <div className="h-4 bg-indigo-200 rounded w-3/4"></div>
+                  <div className="h-4 bg-purple-200 rounded w-3/4"></div>
                   <div className="h-4 bg-indigo-200 rounded w-1/2"></div>
                 </div>
               ) : adgRequirements.length > 0 ? (
@@ -778,7 +778,7 @@ export function StateLevelControls({
                     Showing {adgRequirements.length} high-value design criteria
                   </div>
                   {adgRequirements.map((req: any) => (
-                    <div key={req.criteriaId} className="border-l-4 border-indigo-300 pl-4 py-2">
+                    <div key={req.criteriaId} className="border-l-4 border-purple-300 pl-4 py-2">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="font-semibold text-indigo-900">
@@ -797,7 +797,7 @@ export function StateLevelControls({
                               url: `/pdf-pages/adg-part3/page-${req.sourcePage}.png`,
                               label: `ADG ${req.criteriaId}`
                             })}
-                            className="ml-3 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                            className="ml-3 text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
                           >
                             <FileImage className="w-3 h-3" />
                             p.{req.sourcePage}

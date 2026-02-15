@@ -334,7 +334,8 @@ const CategorySection: React.FC<{
         className="bg-gray-50 p-4 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-between"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-3">
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-700 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-700 flex-shrink-0" />}
+        <div className="flex items-center gap-3 flex-1">
           <CategoryIcon category={category.category} />
           <div>
             <h4 className="font-semibold text-gray-900">
@@ -364,13 +365,10 @@ const CategorySection: React.FC<{
             </Badge>
           )}
           {(showOnly === 'precinct' || showOnly === 'both') && category.precinct_count > 0 && (
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 text-xs">
+            <Badge variant="outline" className="bg-teal-50 text-teal-700 border-teal-300 text-xs">
               {category.precinct_count} Precinct
             </Badge>
           )}
-          <div className="p-2 rounded-full hover:bg-gray-200 transition-colors">
-            {expanded ? <ChevronDown className="w-6 h-6 text-gray-700" /> : <ChevronRight className="w-6 h-6 text-gray-700" />}
-          </div>
         </div>
       </div>
 
@@ -799,11 +797,12 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
             className="flex items-center gap-3 mb-4 cursor-pointer"
             onClick={() => setGeneralExpanded(!generalExpanded)}
           >
-            <div className="w-1 h-8 bg-green-500 rounded"></div>
+            {generalExpanded ? <ChevronDown className="w-4 h-4 text-gray-700 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-700 flex-shrink-0" />}
+            <div className="w-1 h-8 bg-teal-500 rounded"></div>
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 DCP General Controls
-                <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-300">
+                <Badge variant="outline" className="text-xs bg-teal-50 text-teal-700 border-teal-300">
                   {generalData.requirements_count} Requirements
                 </Badge>
               </h3>
@@ -813,9 +812,6 @@ export const GeneralDCPSection: React.FC<GeneralDCPSectionProps> = ({
               <p className="text-sm text-gray-600 mt-1">
                 {developmentType.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}{formerCouncil && ` · Former council area: ${formerCouncil} Council`}
               </p>
-            </div>
-            <div className="ml-2 p-2 rounded-full hover:bg-green-100 transition-colors">
-              {generalExpanded ? <ChevronDown className="w-6 h-6 text-green-700" /> : <ChevronRight className="w-6 h-6 text-green-700" />}
             </div>
           </div>
 

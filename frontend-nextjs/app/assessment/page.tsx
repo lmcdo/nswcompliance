@@ -57,10 +57,10 @@ export default function AssessmentPage() {
 
       {/* Header */}
       <header className="relative border-b shadow-sm overflow-hidden flex">
-        {/* Tulip glyph - teal shape on white, curves into white logo area */}
+        {/* Tulip glyph - dark gray shape on white, curves into white logo area */}
         <div className="relative flex-shrink-0 bg-white">
           <svg className="h-full w-12" viewBox="0 0 48 56" fill="none" preserveAspectRatio="none">
-            <path d="M0 0 L16 0 Q36 14 28 28 Q20 42 36 56 L0 56 Z" fill="#0d9488" />
+            <path d="M0 0 L16 0 Q36 14 28 28 Q20 42 36 56 L0 56 Z" fill="#374151" />
           </svg>
         </div>
         {/* Logo + name on white */}
@@ -73,14 +73,14 @@ export default function AssessmentPage() {
           <img src="/logo.png" alt="PlotDetect" className="h-8 w-auto" />
           <span className="text-base font-semibold text-gray-900">PlotDetect</span>
         </a>
-        {/* Rest of header in teal */}
-        <div className="flex-1 bg-teal-50 flex items-center gap-4 px-4 py-3 md:py-4">
+        {/* Rest of header - neutral white */}
+        <div className="flex-1 bg-white flex items-center gap-4 px-4 py-3 md:py-4">
           {/* Page title */}
           <div className="flex-1">
-            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-teal-800">
+            <h1 className="text-lg md:text-xl font-semibold tracking-tight text-gray-800">
               NSW Planning Assessment
             </h1>
-            <p className="text-teal-600 text-xs hidden sm:block">
+            <p className="text-gray-600 text-xs hidden sm:block">
               Professional compliance assessment using real-time planning data
             </p>
           </div>
@@ -110,7 +110,7 @@ export default function AssessmentPage() {
             </span>
           </div>
           <div className="hidden sm:flex items-center">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-emerald-200 bg-emerald-50 text-emerald-700">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-100 text-gray-700">
               <MapPin className="h-3.5 w-3.5" />
               Inner West Council
             </span>
@@ -135,7 +135,7 @@ export default function AssessmentPage() {
           {/* Left Panel - Static Property Context (1/4 width on desktop) */}
           {/* Muted styling signals "reference context" vs dynamic right panel */}
           <div className="lg:col-span-1 space-y-4 md:space-y-6">
-            <div className="bg-stone-100 border-l-4 border-l-stone-400 rounded-r-lg p-4 md:p-6">
+            <div className="bg-stone-200 border-l-4 border-l-stone-500 rounded-r-lg p-4 md:p-6">
               <p className="text-xs font-medium text-stone-500 uppercase tracking-wide mb-1">The Property</p>
               <h3 className="text-base md:text-lg font-semibold mb-3 md:mb-4 text-stone-800">Property Summary</h3>
 
@@ -341,7 +341,7 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('sepp')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] relative ${
                         viewMode === 'sepp'
-                          ? 'bg-purple-700 text-white'
+                          ? 'bg-purple-600 text-white'
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
@@ -356,12 +356,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('lep')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'lep'
-                          ? 'bg-amber-700 text-white'
-                          : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                       }`}
                     >
                       <span className="block text-base font-bold">LEP</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-amber-100' : 'text-amber-400'}`}>Local Environmental Plan</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-blue-100' : 'text-blue-400'}`}>Local Environmental Plan</span>
                     </button>
                     <button
                       role="tab"
@@ -371,12 +371,12 @@ export default function AssessmentPage() {
                       onClick={() => setViewMode('dcp')}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
-                          ? 'bg-green-700 text-white'
-                          : 'bg-green-50 text-green-700 hover:bg-green-100'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-teal-100 text-teal-700 hover:bg-teal-200'
                       }`}
                     >
                       <span className="block text-base font-bold">DCP</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-green-100' : 'text-green-400'}`}>Council Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'dcp' ? 'text-teal-100' : 'text-teal-600'}`}>Council Controls</span>
                     </button>
                   </div>
                 </div>

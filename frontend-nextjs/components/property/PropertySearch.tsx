@@ -243,7 +243,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
                 ? 'bg-gray-400 text-white cursor-wait'
                 : !inputValue.trim()
                 ? 'bg-gray-400 text-white cursor-not-allowed'
-                : 'bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white'
+                : 'bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white'
             }`}
           >
             {loading ? (

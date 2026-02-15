@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { LocalProvision } from '@/lib/nsw-planning-portal';
+import { SemanticColors } from '@/lib/design-tokens';
 
 interface LocalProvisionsCardProps {
   localProvisions: LocalProvision[];
@@ -229,7 +230,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
   };
 
   return (
-    <Card className="border-amber-200">
+    <Card className="border-amber-200 bg-amber-50/30">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
           <span>{isKeySite ? 'Key Site (LEP Part 6)' : 'Local Provisions (LEP Part 6)'}</span>
@@ -277,8 +278,8 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           </div>
         )}
 
-        <div className="mt-4 p-3 bg-blue-50 rounded-md border border-blue-200">
-          <p className="text-xs text-blue-800">
+        <div className="mt-4 p-3 bg-amber-50 rounded-md border border-amber-200">
+          <p className="text-xs text-amber-800">
             <strong>Note:</strong> Local Provisions are Part 6 additional local provisions that may impose specific requirements. This includes Schedule 7 overlays (Special Entertainment Precincts, Heritage Conservation Areas) and site-specific provisions that apply to particular addresses.
           </p>
         </div>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Shield, ExternalLink, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SemanticColors } from '@/lib/design-tokens';
 
 interface HeritageProvisionsCardProps {
   heritage: boolean;

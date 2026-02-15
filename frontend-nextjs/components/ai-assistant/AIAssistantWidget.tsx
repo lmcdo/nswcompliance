@@ -156,10 +156,10 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
       <button
         onClick={() => !isDisabled && setIsOpen(true)}
         disabled={isDisabled}
-        className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+        className={`fixed bottom-6 left-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 ${
           isDisabled
             ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-            : 'bg-emerald-600 text-white hover:bg-emerald-700 hover:scale-105'
+            : 'bg-gray-600 text-white hover:bg-gray-700 hover:scale-105'
         }`}
         aria-label={buttonLabel}
       >
@@ -187,7 +187,7 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
           className="w-full flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg"
         >
           <div className="flex items-center gap-2">
-            <Home size={18} className="text-emerald-600" />
+            <Home size={18} className="text-gray-600" />
             <span className="font-medium text-gray-900">Planning Lookup</span>
           </div>
           <ChevronUp size={18} className="text-gray-400" />
@@ -200,10 +200,10 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
   return (
     <div className="fixed bottom-6 left-6 z-50 w-[420px] max-w-[calc(100vw-3rem)] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col max-h-[600px]">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-emerald-50 to-white rounded-t-lg">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white rounded-t-lg">
         <div className="flex flex-col">
           <div className="flex items-center gap-2">
-            <Home size={20} className="text-emerald-600" />
+            <Home size={20} className="text-gray-600" />
             <h3 className="font-semibold text-gray-900">Quick Reference</h3>
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
           {messages.length > 0 && (
             <button
               onClick={clearHistory}
-              className="p-1.5 text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+              className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded transition-colors"
               aria-label="New question"
               title="New question"
             >
@@ -237,12 +237,12 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
 
       {/* Property Context Banner */}
       {propertyContext?.address ? (
-        <div className="px-4 py-2 bg-emerald-50 border-b border-emerald-100">
-          <p className="text-xs text-emerald-800">
+        <div className="px-4 py-2 bg-slate-50 border-b border-slate-200">
+          <p className="text-xs text-slate-800">
             <span className="font-medium">Property:</span> {propertyContext.address}
           </p>
           {propertyContext.zone && (
-            <p className="text-xs text-emerald-700">
+            <p className="text-xs text-slate-700">
               {propertyContext.zone}
               {propertyContext.constraints?.heritage && ' • Heritage Listed'}
             </p>
@@ -261,11 +261,11 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
         {messages.length === 0 ? (
           <div className="py-2">
             {/* Prominent scope note */}
-            <div className="bg-emerald-50 border-2 border-emerald-300 rounded-lg p-3 mb-4">
-              <p className="text-sm font-medium text-emerald-900">
+            <div className="bg-gray-100 border-2 border-gray-300 rounded-lg p-3 mb-4">
+              <p className="text-sm font-medium text-gray-900">
                 Instant lookup of planning requirements
               </p>
-              <p className="text-xs text-emerald-700 mt-1">
+              <p className="text-xs text-gray-700 mt-1">
                 Shows what LEP, DCP, and SEPP rules say — not whether your project complies. Click a topic below.
               </p>
             </div>
@@ -312,13 +312,13 @@ export default function AIAssistantWidget({ propertyContext, isPropertyLoading =
             onChange={(e) => setInputValue(e.target.value)}
             placeholder="Type keywords: height limit, FSR, granny flat..."
             disabled={isLoading}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-500 focus:border-gray-500 text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
             maxLength={500}
           />
           <button
             type="submit"
             disabled={isLoading || !inputValue.trim()}
-            className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+            className="px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             aria-label="Send message"
           >
             <Send size={18} />

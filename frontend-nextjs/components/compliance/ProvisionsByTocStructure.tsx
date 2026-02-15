@@ -315,7 +315,7 @@ export function ProvisionsByTocStructure({
     return (
       <Card>
         <CardContent className="p-8 flex items-center justify-center">
-          <Loader2 className="h-6 w-6 animate-spin text-teal-600 mr-2" />
+          <Loader2 className="h-6 w-6 animate-spin text-green-600 mr-2" />
           <span className="text-gray-600">Loading DCP structure...</span>
         </CardContent>
       </Card>
@@ -374,9 +374,9 @@ export function ProvisionsByTocStructure({
             onClick={() => setShowAbout(!showAbout)}
             className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
           >
+            {showAbout ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
             <HelpCircle className="h-4 w-4" />
-            <span className="font-medium">About Inner West DCPs</span>
-            {showAbout ? <ChevronDown className="h-4 w-4 ml-auto" /> : <ChevronRight className="h-4 w-4 ml-auto" />}
+            <span className="font-medium flex-1">About Inner West DCPs</span>
           </button>
           {showAbout && (
             <div className="px-4 pb-4 border-t bg-slate-50">
@@ -471,7 +471,7 @@ export function ProvisionsByTocStructure({
               )}
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-teal-700 font-medium">
+              <span className="text-green-700 font-medium">
                 {filteredProvisions.length} provisions in this section
               </span>
               <span className="text-gray-400">|</span>
@@ -490,7 +490,7 @@ export function ProvisionsByTocStructure({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search provisions..."
-                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
@@ -586,7 +586,7 @@ export function ProvisionsByTocStructure({
                     onClick={() => setTopicFilter(null)}
                     className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
                       !topicFilter
-                        ? 'bg-teal-600 text-white'
+                        ? 'bg-green-600 text-white'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -603,7 +603,7 @@ export function ProvisionsByTocStructure({
                         onClick={() => setTopicFilter(topicFilter === topicKey ? null : topicKey)}
                         className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
                           topicFilter === topicKey
-                            ? 'bg-teal-600 text-white'
+                            ? 'bg-green-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -675,7 +675,7 @@ export function ProvisionsByTocStructure({
               {topicFilter && (
                 <button
                   onClick={() => setTopicFilter(null)}
-                  className="mt-2 text-teal-600 text-sm hover:underline"
+                  className="mt-2 text-green-600 text-sm hover:underline"
                 >
                   Clear filter
                 </button>

@@ -11,6 +11,7 @@ import { ChevronDown, ChevronRight, CheckCircle2, FileImage } from 'lucide-react
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { AuthorityColors, SemanticColors } from '@/lib/design-tokens';
 
 /**
  * Fix common UTF-8 encoding artifacts (mojibake)
@@ -174,7 +175,7 @@ export function StructuredSeppRequirements({
 
           {/* Show citation (item-specific or category-level) */}
           {(legal_citation || categoryLegalCitation) && (
-            <div className="mt-1 text-xs text-blue-700">
+            <div className="mt-1 text-xs text-purple-700">
               📎 {sanitizeText(legal_citation || categoryLegalCitation)}
             </div>
           )}
@@ -273,7 +274,7 @@ export function StructuredSeppRequirements({
                       <div>
                         {/* Show category legal citation */}
                         {category.legal_citation && (
-                          <div className="mt-2 ml-6 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                          <div className="mt-2 ml-6 text-xs text-purple-700 bg-purple-100 border border-purple-200 rounded px-2 py-1">
                             📎 {sanitizeText(category.legal_citation)}
                           </div>
                         )}
@@ -340,11 +341,11 @@ export function StructuredSeppRequirements({
 
               {/* How to Use This Section */}
               {!compact && (
-                <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
-                  <div className="font-semibold text-blue-900 mb-1">
+                <div className="mt-4 bg-purple-100 border border-purple-200 rounded-lg p-3 text-xs">
+                  <div className="font-semibold text-purple-900 mb-1">
                     💡 How to Use This Section
                   </div>
-                  <ul className="space-y-1 text-blue-800">
+                  <ul className="space-y-1 text-purple-800">
                     <li>• Click category headers to expand/collapse requirements</li>
                     <li>• Each ✓ represents a specific compliance requirement</li>
                     <li>• All requirements must be met for SEPP compliance</li>

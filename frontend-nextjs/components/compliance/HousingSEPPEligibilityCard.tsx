@@ -33,6 +33,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
+import { AuthorityColors } from '@/lib/design-tokens';
 
 interface DevelopmentStandard {
   standardType: string;
@@ -107,7 +108,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
       <div className={`rounded-lg border ${result.isEligible
-        ? 'border-green-200 bg-green-50/50'
+        ? 'border-purple-200 bg-purple-50/50'
         : 'border-gray-200 bg-gray-50/50'
         }`}>
         <CollapsibleTrigger asChild>
@@ -117,7 +118,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
           >
             <div className="flex items-center gap-3">
               {result.isEligible ? (
-                <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-purple-600 flex-shrink-0" />
               ) : (
                 <XCircle className="w-5 h-5 text-gray-400 flex-shrink-0" />
               )}
@@ -132,7 +133,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
             </div>
             <div className="flex items-center gap-2">
               {result.isEligible ? (
-                <Badge className="bg-green-100 text-green-800 border-green-200">
+                <Badge className="bg-purple-100 text-purple-800 border-purple-200">
                   Eligible
                 </Badge>
               ) : (
@@ -153,7 +154,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
           <div className="px-3 pb-3 pt-0">
             {/* Eligibility reason */}
             <div className={`text-xs p-2 rounded mb-2 ${result.isEligible
-              ? 'bg-green-100 text-green-800'
+              ? 'bg-purple-100 text-purple-800'
               : 'bg-amber-50 text-amber-800'
               }`}>
               {result.eligibilityReason}
@@ -205,10 +206,10 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
                           e.stopPropagation();
                           setViewingPdfImage(std.pdfPageImageUrl);
                         }}
-                        className="p-1 rounded hover:bg-emerald-100 transition-colors"
+                        className="p-1 rounded hover:bg-purple-100 transition-colors"
                         title={`View PDF for Clause ${std.sourceClause}`}
                       >
-                        <FileImage className="w-5 h-5 text-emerald-500 hover:text-emerald-700" />
+                        <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
                       </button>
                     )}
                   </div>
@@ -221,7 +222,7 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
               href={result.legislationUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 mt-2"
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800 mt-2"
             >
               View SEPP (Housing) 2021
               <ExternalLink className="w-3 h-3" />
@@ -304,20 +305,20 @@ export function HousingSEPPEligibilityCard({
   // Loading state
   if (loading) {
     return (
-      <Card className="border-emerald-200 bg-emerald-50/50">
+      <Card className="border-purple-200 bg-purple-50/50">
         <CardHeader className="pb-2">
           <div className="flex items-center gap-2">
-            <Home className="w-5 h-5 text-emerald-600" />
-            <CardTitle className="text-base font-semibold text-emerald-900">
+            <Home className="w-5 h-5 text-purple-600" />
+            <CardTitle className="text-base font-semibold text-purple-900">
               Multiple Occupancy Options
             </CardTitle>
           </div>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-2">
-            <div className="h-12 bg-emerald-200 rounded"></div>
-            <div className="h-12 bg-emerald-200 rounded"></div>
-            <div className="h-12 bg-emerald-200 rounded"></div>
+            <div className="h-12 bg-purple-200 rounded"></div>
+            <div className="h-12 bg-purple-200 rounded"></div>
+            <div className="h-12 bg-purple-200 rounded"></div>
           </div>
         </CardContent>
       </Card>
@@ -363,19 +364,19 @@ export function HousingSEPPEligibilityCard({
   const visibleResults = showAll ? data.eligibleTypes : data.eligibleTypes.slice(0, 4);
 
   return (
-    <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/80 to-white">
+    <Card className="border-purple-200 bg-gradient-to-br from-purple-50/80 to-white">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Building className="w-5 h-5 text-emerald-600" />
-            <CardTitle className="text-base font-semibold text-emerald-900">
+            <Building className="w-5 h-5 text-purple-600" />
+            <CardTitle className="text-base font-semibold text-purple-900">
               Multiple Occupancy Options
             </CardTitle>
           </div>
           <Badge
             variant="outline"
             className={eligibleCount > 0
-              ? "text-green-700 border-green-300 bg-green-100/50"
+              ? "text-purple-700 border-purple-300 bg-purple-100/50"
               : "text-gray-600 border-gray-300 bg-gray-100/50"
             }
           >
@@ -412,7 +413,7 @@ export function HousingSEPPEligibilityCard({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full mt-2 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-100"
+            className="w-full mt-2 text-purple-600 hover:text-purple-800 hover:bg-purple-100"
             onClick={() => setShowAll(!showAll)}
           >
             {showAll ? (
@@ -430,7 +431,7 @@ export function HousingSEPPEligibilityCard({
         )}
 
         {/* Footer with explanation */}
-        <div className="mt-3 pt-2 border-t border-emerald-100">
+        <div className="mt-3 pt-2 border-t border-purple-100">
           <p className="text-xs text-gray-500 mb-2">
             These options are based on NSW Low and Mid-Rise Housing reforms (July 2024 &amp; Feb 2025).
             Development standards override local council controls for eligible properties.
@@ -443,7 +444,7 @@ export function HousingSEPPEligibilityCard({
               href="https://legislation.nsw.gov.au/view/whole/html/inforce/current/epi-2021-0714"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-emerald-600 hover:text-emerald-800 flex items-center gap-1"
+              className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
             >
               View official legislation
               <ExternalLink className="w-3 h-3" />

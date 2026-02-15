@@ -319,22 +319,18 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   return (
     <div className="border rounded-lg overflow-hidden">
       <div
-        className="bg-gray-50 p-3 cursor-pointer hover:bg-gray-100 transition-colors flex items-center justify-between"
+        className="bg-gray-50 p-3 cursor-pointer hover:bg-gray-100 transition-colors flex items-center gap-2"
         onClick={() => setExpanded(!expanded)}
       >
-        <div className="flex items-center gap-2">
-          <CategoryIcon category={category} />
-          <div>
-            <h4 className="font-semibold text-gray-900 text-sm">
-              {formatCategoryName(category)}
-            </h4>
-            <p className="text-xs text-gray-600">
-              {requirements.length} requirement{requirements.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
-        <div className="p-1.5 rounded-full hover:bg-gray-200 transition-colors">
-          {expanded ? <ChevronDown className="w-5 h-5 text-gray-600" /> : <ChevronRight className="w-5 h-5 text-gray-600" />}
+        {expanded ? <ChevronDown className="w-4 h-4 text-gray-600 flex-shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-600 flex-shrink-0" />}
+        <CategoryIcon category={category} />
+        <div className="flex-1">
+          <h4 className="font-semibold text-gray-900 text-sm">
+            {formatCategoryName(category)}
+          </h4>
+          <p className="text-xs text-gray-600">
+            {requirements.length} requirement{requirements.length !== 1 ? 's' : ''}
+          </p>
         </div>
       </div>
 

@@ -121,9 +121,9 @@ export const EnhancedComplianceStatus: React.FC<ComplianceStatusProps> = ({
 
  const getOverallStatusColor = (overallStatus: string) => {
  switch (overallStatus) {
- case 'pass': return 'text-green-600';
- case 'fail': return 'text-red-600';
- case 'conditional': return 'text-yellow-600';
+ case 'pass': return 'text-emerald-600';
+ case 'fail': return 'text-rose-600';
+ case 'conditional': return 'text-amber-600';
  case 'incomplete': return 'text-blue-600';
  default: return 'text-gray-600';
  }
@@ -185,12 +185,12 @@ export const EnhancedComplianceStatus: React.FC<ComplianceStatusProps> = ({
  <ComplianceMetricCard
  title="Critical Issues"
  value={status.criticalIssues.length}
- color={status.criticalIssues.length > 0 ? 'text-red-600' : 'text-green-600'}
+ color={status.criticalIssues.length > 0 ? 'text-rose-600' : 'text-emerald-600'}
  />
  <ComplianceMetricCard
  title="Warnings"
  value={status.warnings.length}
- color={status.warnings.length > 0 ? 'text-yellow-600' : 'text-green-600'}
+ color={status.warnings.length > 0 ? 'text-amber-600' : 'text-emerald-600'}
  />
  </div>
 

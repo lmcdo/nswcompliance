@@ -1,19 +1,20 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { XCircle } from 'lucide-react';
+import { AuthorityColors } from '@/lib/design-tokens';
 
 interface NotApplicableCardProps {
   title: string;
   reason: string;
-  color?: 'amber' | 'purple' | 'green';
+  color?: 'blue' | 'purple' | 'teal';
 }
 
-export function NotApplicableCard({ title, reason, color = 'amber' }: NotApplicableCardProps) {
+export function NotApplicableCard({ title, reason, color = 'blue' }: NotApplicableCardProps) {
   const colorClasses = {
-    amber: {
-      border: 'border-amber-200',
-      bg: 'bg-amber-50/30',
-      title: 'text-amber-900',
+    blue: {
+      border: 'border-blue-200',
+      bg: 'bg-blue-50/30',
+      title: 'text-blue-900',
       badge: 'bg-gray-100 text-gray-600',
       text: 'text-gray-600'
     },
@@ -24,10 +25,10 @@ export function NotApplicableCard({ title, reason, color = 'amber' }: NotApplica
       badge: 'bg-gray-100 text-gray-600',
       text: 'text-gray-600'
     },
-    green: {
-      border: 'border-green-200',
-      bg: 'bg-green-50/30',
-      title: 'text-green-900',
+    teal: {
+      border: 'border-teal-200',
+      bg: 'bg-teal-50/30',
+      title: 'text-teal-900',
       badge: 'bg-gray-100 text-gray-600',
       text: 'text-gray-600'
     }

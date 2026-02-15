@@ -22,6 +22,7 @@ import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig 
 // HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
+import { AuthorityColors, SemanticColors } from '@/lib/design-tokens';
 import { LayerExplanation } from './LayerExplanation';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
 
@@ -587,9 +588,9 @@ export function ProvisionsByTopic({
   const HERITAGE_TYPE_CONFIG: Record<string, { label: string; bg: string; border: string; accent: string }> = {
     control: {
       label: 'Controls',
-      bg: 'bg-green-50',
-      border: 'border-green-200',
-      accent: 'text-green-700'
+      bg: 'bg-teal-50',
+      border: 'border-teal-200',
+      accent: 'text-teal-700'
     },
     guidance: {
       label: 'Guidance',
@@ -846,9 +847,9 @@ export function ProvisionsByTopic({
           onClick={() => setShowInnerWestOverview(!showInnerWestOverview)}
           className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-lg transition-colors"
         >
+          {showInnerWestOverview ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
           <HelpCircle className="h-4 w-4" />
-          <span>About Inner West DCPs</span>
-          {showInnerWestOverview ? <ChevronDown className="h-4 w-4 ml-auto" /> : <ChevronRight className="h-4 w-4 ml-auto" />}
+          <span className="flex-1">About Inner West DCPs</span>
         </button>
       )}
       {showInnerWestOverview && (
@@ -889,7 +890,7 @@ export function ProvisionsByTopic({
                     term === 'Base Controls' || term === 'Universal' ? 'bg-slate-100 text-slate-700' :
                     term === 'Zone Controls' ? 'bg-sky-100 text-sky-700' :
                     term === 'Heritage' ? 'bg-amber-100 text-amber-700' :
-                    term === 'Precinct Character' || term === 'Village Precinct' || term === 'Distinct Neighbourhood' ? 'bg-emerald-100 text-emerald-700' :
+                    term === 'Precinct Character' || term === 'Village Precinct' || term === 'Distinct Neighbourhood' ? 'bg-purple-100 text-purple-700' :
                     'bg-gray-100 text-gray-700';
                   return (
                     <span key={i} className={`${colorClass} px-1.5 py-0.5 rounded text-xs font-medium`}>
@@ -1024,7 +1025,7 @@ export function ProvisionsByTopic({
                         <span className={`inline-block w-2 h-2 rounded-full mr-1 ${layer === 'generic' ? 'bg-slate-500' :
                             layer === 'use_specific' ? 'bg-sky-500' :
                               layer === 'condition' ? 'bg-amber-500' :
-                                layer === 'precinct' ? 'bg-emerald-500' : 'bg-gray-300'
+                                layer === 'precinct' ? 'bg-purple-500' : 'bg-gray-300'
                           }`}></span>
                         {count}
                       </span>
@@ -1037,7 +1038,7 @@ export function ProvisionsByTopic({
                     if (controlCount > 0 || guidanceCount > 0) {
                       return (
                         <span className="text-xs text-gray-600 ml-2 hidden md:inline">
-                          {controlCount > 0 && <span className="text-green-700 font-medium">{controlCount} controls</span>}
+                          {controlCount > 0 && <span className="text-teal-700 font-medium">{controlCount} controls</span>}
                           {controlCount > 0 && guidanceCount > 0 && <span className="mx-1">·</span>}
                           {guidanceCount > 0 && <span className="text-blue-700">{guidanceCount} guidance</span>}
                         </span>
@@ -1160,19 +1161,19 @@ export function ProvisionsByTopic({
                                         };
 
                                         return (
-                                          <div key={hcaKey} className={`border rounded-lg overflow-hidden ${isThisPropertyHca ? 'border-teal-400 ring-2 ring-teal-200' : 'border-amber-200'}`}>
+                                          <div key={hcaKey} className={`border rounded-lg overflow-hidden ${isThisPropertyHca ? 'border-amber-400 ring-2 ring-amber-200' : 'border-amber-200'}`}>
                                             {/* HCA Header */}
                                             <button
                                               onClick={() => toggleHca(hcaKey)}
-                                              className={`w-full flex items-center justify-between px-3 py-2 transition-colors ${isThisPropertyHca ? 'bg-teal-50 hover:bg-teal-100' : 'bg-amber-50 hover:bg-amber-100'}`}
+                                              className={`w-full flex items-center justify-between px-3 py-2 transition-colors ${isThisPropertyHca ? 'bg-green-50 hover:bg-green-100' : 'bg-amber-50 hover:bg-amber-100'}`}
                                             >
                                               <div className="flex items-center gap-2">
                                                 {isHcaExpanded ? (
-                                                  <ChevronDown className={`h-3 w-3 ${isThisPropertyHca ? 'text-teal-600' : 'text-amber-600'}`} />
+                                                  <ChevronDown className={`h-3 w-3 ${isThisPropertyHca ? 'text-green-600' : 'text-amber-600'}`} />
                                                 ) : (
-                                                  <ChevronRight className={`h-3 w-3 ${isThisPropertyHca ? 'text-teal-600' : 'text-amber-600'}`} />
+                                                  <ChevronRight className={`h-3 w-3 ${isThisPropertyHca ? 'text-green-600' : 'text-amber-600'}`} />
                                                 )}
-                                                <span className={`font-medium text-xs ${isThisPropertyHca ? 'text-teal-800' : 'text-amber-800'}`}>
+                                                <span className={`font-medium text-xs ${isThisPropertyHca ? 'text-green-800' : 'text-amber-800'}`}>
                                                   {isThisPropertyHca ? '★ ' : ''}{formatHcaName(hca)}
                                                   {isThisPropertyHca ? ' (Your Property)' : ''}
                                                 </span>
@@ -1256,7 +1257,7 @@ export function ProvisionsByTopic({
                                                           const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                                             layer === 'use_specific' ? 'border-l-sky-400' :
                                                             layer === 'condition' ? 'border-l-amber-400' :
-                                                            layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
+                                                            layer === 'precinct' ? 'border-l-purple-400' : 'border-l-gray-300';
                                                           const zebraStripe = idx % 2 === 1 ? `${typeConfig.bg}` : 'bg-white';
 
                                                           // Check if this provision is part of a multi-provision page group
@@ -1347,14 +1348,14 @@ export function ProvisionsByTopic({
                                                         <div className="p-2 space-y-1.5 bg-white">
                                                           {/* Element Filter - Only for Controls */}
                                                           {heritageType === 'control' && elementTotals && (
-                                                            <div className="mb-3 p-2 bg-green-50 rounded-lg border border-green-200">
+                                                            <div className="mb-3 p-2 bg-teal-50 rounded-lg border border-teal-200">
                                                               <div className="flex flex-wrap gap-1">
                                                                 <button
                                                                   onClick={() => setElementFilter(typeKey, null)}
                                                                   className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
                                                                     !selectedElement
-                                                                      ? 'bg-green-600 text-white'
-                                                                      : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                      ? 'bg-teal-600 text-white'
+                                                                      : 'bg-white text-teal-700 border border-teal-300 hover:bg-teal-100'
                                                                   }`}
                                                                 >
                                                                   All ({typeProvisions.length})
@@ -1365,8 +1366,8 @@ export function ProvisionsByTopic({
                                                                     onClick={() => setElementFilter(typeKey, selectedElement === elem ? null : elem)}
                                                                     className={`px-2 py-0.5 text-[10px] rounded-full transition-all ${
                                                                       selectedElement === elem
-                                                                        ? 'bg-green-600 text-white'
-                                                                        : 'bg-white text-green-700 border border-green-300 hover:bg-green-100'
+                                                                        ? 'bg-teal-600 text-white'
+                                                                        : 'bg-white text-teal-700 border border-teal-300 hover:bg-teal-100'
                                                                     }`}
                                                                   >
                                                                     {ELEMENT_LABELS[elem] || elem} ({count})
@@ -1528,8 +1529,8 @@ export function ProvisionsByTopic({
                                         const layerBorderColor = layer === 'generic' ? 'border-l-slate-400' :
                                           layer === 'use_specific' ? 'border-l-sky-400' :
                                           layer === 'condition' ? 'border-l-amber-400' :
-                                          layer === 'precinct' ? 'border-l-emerald-400' : 'border-l-gray-300';
-                                        const zebraStripe = idx % 2 === 1 ? 'bg-teal-50' : 'bg-white';
+                                          layer === 'precinct' ? 'border-l-purple-400' : 'border-l-gray-300';
+                                        const zebraStripe = idx % 2 === 1 ? 'bg-green-50' : 'bg-white';
 
                                         return (
                                           <div
@@ -1564,7 +1565,7 @@ export function ProvisionsByTopic({
                                                 const sectionInfo = provision.v2_dcp_part || '';
                                                 return (
                                                   <button
-                                                    className="p-1 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
+                                                    className="p-1 rounded hover:bg-green-100 transition-colors flex-shrink-0"
                                                     title={`${sectionInfo ? sectionInfo + ' - ' : ''}Page ${displayPage}`}
                                                     onClick={(e) => {
                                                       e.stopPropagation();
@@ -1574,7 +1575,7 @@ export function ProvisionsByTopic({
                                                       });
                                                     }}
                                                   >
-                                                    <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
+                                                    <FileText className="w-4 h-4 text-green-600 hover:text-green-800" />
                                                   </button>
                                                 );
                                               })()}

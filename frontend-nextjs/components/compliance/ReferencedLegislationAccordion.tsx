@@ -3,6 +3,7 @@
 
 import { useState, useCallback } from 'react';
 import { ChevronDown, ChevronRight, FileText, Scale, Book, AlertCircle } from 'lucide-react';
+import { AuthorityColors } from '@/lib/design-tokens';
 
 interface LegislationClause {
  id: number;
@@ -106,18 +107,18 @@ export function ReferencedLegislationAccordion({
 
  const getAuthorityIcon = (authority: string) => {
  switch (authority) {
- case 'SEPP': return <Scale className="h-4 w-4 text-red-600" />;
+ case 'SEPP': return <Scale className="h-4 w-4 text-purple-600" />;
  case 'LEP': return <FileText className="h-4 w-4 text-blue-600" />;
- case 'DCP': return <Book className="h-4 w-4 text-green-600" />;
+ case 'DCP': return <Book className="h-4 w-4 text-teal-600" />;
  default: return <AlertCircle className="h-4 w-4 text-gray-500" />;
  }
  };
 
  const getAuthorityColor = (authority: string) => {
  switch (authority) {
- case 'SEPP': return 'border-red-200 bg-red-50';
+ case 'SEPP': return 'border-purple-200 bg-purple-50';
  case 'LEP': return 'border-blue-200 bg-blue-50';
- case 'DCP': return 'border-green-200 bg-green-50';
+ case 'DCP': return 'border-teal-200 bg-teal-50';
  default: return 'border-gray-200 bg-gray-50';
  }
  };

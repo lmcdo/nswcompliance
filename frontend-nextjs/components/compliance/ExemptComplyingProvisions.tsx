@@ -90,32 +90,32 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
   const partName = PART_NAMES[part] || `Part ${part}`;
 
   return (
-    <Card className="border-emerald-200 bg-emerald-50/30">
+    <Card className="border-purple-200 bg-purple-50/30">
       <CardHeader
         className="cursor-pointer select-none"
         onClick={() => setExpanded(e => !e)}
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-emerald-700" />
-            <CardTitle className="text-lg text-emerald-900">
+            <FileText className="h-5 w-5 text-purple-700" />
+            <CardTitle className="text-lg text-purple-900">
               Exempt &amp; Complying Development Standards
             </CardTitle>
           </div>
           {expanded
-            ? <ChevronUp className="h-4 w-4 text-emerald-600" />
-            : <ChevronDown className="h-4 w-4 text-emerald-600" />
+            ? <ChevronUp className="h-4 w-4 text-purple-600" />
+            : <ChevronDown className="h-4 w-4 text-purple-600" />
           }
         </div>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
-          <Badge className="bg-emerald-100 text-emerald-800 text-xs pointer-events-none">
+          <Badge className="bg-purple-100 text-purple-800 text-xs pointer-events-none">
             {partName}
           </Badge>
-          <span className="text-xs text-emerald-600">
+          <span className="text-xs text-purple-600">
             Applies to {zoneCode} zone
           </span>
           {!expanded && totalCount > 0 && (
-            <span className="text-xs text-emerald-600">
+            <span className="text-xs text-purple-600">
               · {totalCount} actionable standards across {Object.keys(counts).length} work types
             </span>
           )}
@@ -124,7 +124,7 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
 
       {expanded && (
         <CardContent className="pt-0">
-          <p className="text-sm text-emerald-700 mb-4">
+          <p className="text-sm text-purple-700 mb-4">
             Standards that apply to development that may proceed as complying development
             on this property. Click a work type to view the applicable standards.
           </p>
@@ -141,16 +141,16 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
                   className={[
                     'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
                     active
-                      ? 'bg-emerald-700 text-white border-emerald-700'
+                      ? 'bg-purple-700 text-white border-purple-700'
                       : count > 0
-                        ? 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
+                        ? 'bg-white text-purple-800 border-purple-300 hover:bg-purple-50'
                         : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed',
                   ].join(' ')}
                   disabled={count === 0}
                 >
                   {label}
                   {count > 0 && (
-                    <span className={`ml-1.5 text-xs ${active ? 'text-emerald-200' : 'text-emerald-500'}`}>
+                    <span className={`ml-1.5 text-xs ${active ? 'text-purple-200' : 'text-purple-500'}`}>
                       {count}
                     </span>
                   )}
@@ -161,7 +161,7 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
 
           {/* Provisions list */}
           {loading && (
-            <div className="text-sm text-emerald-600 py-4">Loading provisions…</div>
+            <div className="text-sm text-purple-600 py-4">Loading provisions…</div>
           )}
 
           {!loading && selectedType && provisions.length === 0 && (
@@ -182,11 +182,11 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
                 return (
                   <div
                     key={p.id}
-                    className="bg-white rounded border border-emerald-100 px-3 py-2.5"
+                    className="bg-white rounded border border-purple-100 px-3 py-2.5"
                   >
                     {/* Provision number badge */}
                     <div className="flex items-center gap-2 mb-1.5">
-                      <span className="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
+                      <span className="text-xs font-medium text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
                         {displayNumber}
                       </span>
                       <span className="text-xs text-gray-400">
@@ -208,10 +208,10 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
                                 url: `/pdf-pages/sepp-exempt-complying/page_${page}.png`,
                                 label: `SEPP E&C Part ${p.v2_part} - Page ${page}`
                               })}
-                              className="p-1 rounded hover:bg-emerald-100 transition-colors"
+                              className="p-1 rounded hover:bg-purple-100 transition-colors"
                               title="View PDF page"
                             >
-                              <FileImage className="w-4 h-4 text-emerald-600 hover:text-emerald-800" />
+                              <FileImage className="w-4 h-4 text-purple-600 hover:text-purple-800" />
                             </button>
                             <span className="text-xs text-gray-400 whitespace-nowrap">
                               p.{page}
@@ -227,7 +227,7 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
           )}
 
           {/* Footer */}
-          <div className="mt-4 pt-3 border-t border-emerald-100 space-y-3">
+          <div className="mt-4 pt-3 border-t border-purple-100 space-y-3">
             {/* Workflow guidance */}
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
               <p className="text-xs font-medium text-amber-900 mb-2">
@@ -252,7 +252,7 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
                 href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-572"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-xs text-emerald-700 hover:underline"
+                className="inline-flex items-center gap-1 text-xs text-purple-700 hover:underline"
               >
                 <ExternalLink className="h-3 w-3" />
                 View full SEPP on NSW Legislation

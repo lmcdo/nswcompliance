@@ -5,6 +5,7 @@ import { LocalProvisionsCard } from './LocalProvisionsCard';
 import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
+import { AuthorityColors } from '@/lib/design-tokens';
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
@@ -30,12 +31,12 @@ export function LepControls({
 
   return (
     <div className="space-y-6">
-      <Card className="border-amber-200 bg-amber-50/30">
+      <Card className="border-blue-200 bg-blue-50/30">
         <CardHeader>
-          <CardTitle className="text-lg text-amber-900">
+          <CardTitle className="text-lg text-blue-900">
             Local Environmental Plan
           </CardTitle>
-          <Badge className="bg-amber-100 text-amber-800 mt-2">
+          <Badge className="bg-blue-100 text-blue-800 mt-2">
             {lepName}
           </Badge>
         </CardHeader>
@@ -68,7 +69,7 @@ export function LepControls({
         <NotApplicableCard
           title="Additional Local Provisions"
           reason="No site-specific local provisions (LEP Part 6) or key site controls apply to this address."
-          color="amber"
+          color="blue"
         />
       )}
 
@@ -88,7 +89,7 @@ export function LepControls({
         <NotApplicableCard
           title="Heritage Conservation"
           reason="This property is not in a Heritage Conservation Area and is not listed as a heritage item."
-          color="amber"
+          color="blue"
         />
       )}
     </div>
