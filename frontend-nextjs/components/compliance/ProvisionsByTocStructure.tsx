@@ -153,7 +153,7 @@ export function ProvisionsByTocStructure({
   const [viewMode, setViewMode] = useState<'task' | 'structure'>('task');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
-  const [topicFilter, setTopicFilter] = useState<string | null>(null);
+  const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -314,7 +314,7 @@ export function ProvisionsByTocStructure({
     return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
   }, [baseProvisions, layerFilter]);
 
-  // Apply search + topic filter on top of layer-filtered base, then sort by priority
+  // Apply search + topic filters on top of layer-filtered base, then sort by priority
   const filteredProvisions = useMemo(() => {
     let filtered = layerFilteredProvisions;
 
@@ -325,10 +325,12 @@ export function ProvisionsByTocStructure({
       );
     }
 
-    if (topicFilter) {
-      filtered = filtered.filter(p =>
-        p.v2_topic?.toLowerCase().replace(/ /g, '_') === topicFilter
-      );
+    // Multi-topic filter with OR logic
+    if (topicFilters.length > 0) {
+      filtered = filtered.filter(p => {
+        const provisionTopic = p.v2_topic?.toLowerCase().replace(/ /g, '_');
+        return topicFilters.some(topic => topic === provisionTopic);
+      });
     }
 
     return filtered.sort((a, b) => {
@@ -337,7 +339,7 @@ export function ProvisionsByTocStructure({
       const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
       return aPriority - bPriority;
     });
-  }, [layerFilteredProvisions, debouncedSearch, topicFilter]);
+  }, [layerFilteredProvisions, debouncedSearch, topicFilters]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
@@ -429,15 +431,24 @@ export function ProvisionsByTocStructure({
   const handleSelectPart = (partId: string) => {
     setSelectedPart(partId);
     setSelectedSection(null);
-    setTopicFilter(null);
+    setTopicFilters([]); // Reset topic filters when changing parts
     setLayerFilter(null); // Reset layer filter when changing parts
   };
 
   const handleSelectSection = (partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
-    setTopicFilter(null);
+    setTopicFilters([]); // Reset topic filters when changing sections
     setLayerFilter(null); // Reset layer filter when changing sections
+  };
+
+  // Toggle topic filter (multi-select)
+  const toggleTopic = (topic: string) => {
+    setTopicFilters(prev =>
+      prev.includes(topic)
+        ? prev.filter(t => t !== topic)
+        : [...prev, topic]
+    );
   };
 
   // Mode switch handlers
@@ -618,13 +629,13 @@ export function ProvisionsByTocStructure({
         const label = councilLabels ? councilLabels[layerFilter] : DEFAULT_LAYER_LABELS[layerFilter];
         activeFilters.push(label);
       }
-      if (topicFilter) {
-        activeFilters.push(topicFilter.replace(/_/g, ' '));
+      if (topicFilters.length > 0) {
+        activeFilters.push(topicFilters.map(t => t.replace(/_/g, ' ')).join(' + '));
       }
       if (debouncedSearch) {
         activeFilters.push(`Search: "${debouncedSearch}"`);
       }
-      if (!layerFilter && !topicFilter && !debouncedSearch) {
+      if (!layerFilter && topicFilters.length === 0 && !debouncedSearch) {
         activeFilters.push('All provisions for this property');
       }
 
@@ -1026,36 +1037,36 @@ export function ProvisionsByTocStructure({
             {availableTopics.length > 1 && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topic:</span>
-                  <button
-                    onClick={() => setTopicFilter(null)}
-                    className={`px-2 py-0.5 text-xs rounded-full transition-colors ${
-                      !topicFilter
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    All topics
-                  </button>
+                  <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topics:</span>
+                  {topicFilters.length > 0 && (
+                    <button
+                      onClick={() => setTopicFilters([])}
+                      className="px-2 py-0.5 text-xs rounded-full transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1"
+                    >
+                      Clear topics <X className="w-3 h-3" />
+                    </button>
+                  )}
                   {availableTopics.map(topic => {
                     const topicKey = topic.toLowerCase().replace(/ /g, '_');
                     const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
                     const hasCritical = stats.critical > 0;
+                    const isSelected = topicFilters.includes(topicKey);
 
                     return (
                       <button
                         key={topic}
-                        onClick={() => setTopicFilter(topicFilter === topicKey ? null : topicKey)}
+                        onClick={() => toggleTopic(topicKey)}
                         className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                          topicFilter === topicKey
-                            ? 'bg-green-600 text-white'
+                          isSelected
+                            ? 'bg-teal-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
                         {topic} ({stats.total})
                         {hasCritical && (
-                          <Ruler className={`w-3 h-3 ${topicFilter === topicKey ? 'text-white/80' : 'text-gray-500'}`} />
+                          <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
                         )}
+                        {isSelected && <X className="w-3 h-3 ml-0.5" />}
                       </button>
                     );
                   })}
@@ -1064,17 +1075,19 @@ export function ProvisionsByTocStructure({
             )}
 
             {/* Status line — plain-language summary of active filters */}
-            {(layerFilter || topicFilter) && (
+            {(layerFilter || topicFilters.length > 0) && (
               <div className="text-xs text-gray-500 pt-1 border-t border-gray-100 mt-0.5">
                 {(() => {
                   const labels = COUNCIL_LAYER_LABELS[(formerCouncil || '').toLowerCase()] || DEFAULT_LAYER_LABELS;
                   const count = filteredProvisions.length;
                   const base = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
                   const layerLabel = layerFilter ? labels[layerFilter] : null;
-                  const topicLabel = topicFilter ? topicFilter.replace(/_/g, ' ') : null;
-                  if (layerLabel && topicLabel) return `${base} — ${topicLabel} within ${layerLabel}`;
+                  const topicLabels = topicFilters.length > 0
+                    ? topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')
+                    : null;
+                  if (layerLabel && topicLabels) return `${base} — ${topicLabels} within ${layerLabel}`;
                   if (layerLabel) return `${base} from ${layerLabel}`;
-                  return `${base} about ${topicLabel}`;
+                  return `${base} about ${topicLabels}`;
                 })()}
               </div>
             )}
