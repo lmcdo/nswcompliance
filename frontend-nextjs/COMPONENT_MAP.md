@@ -3,6 +3,10 @@
 **PURPOSE:** Map user-visible UI to actual components rendering them.
 **USAGE:** When debugging UI bugs, look up route/view here to find exact component to fix.
 
+**Related Docs:**
+- [DESIGN_SYSTEM.md](./DESIGN_SYSTEM.md) - Complete CSS/color scheme reference
+- [HERITAGE_UI_DESIGN.md](./HERITAGE_UI_DESIGN.md) - Heritage-specific UI patterns
+
 ---
 
 ## Main Routes
