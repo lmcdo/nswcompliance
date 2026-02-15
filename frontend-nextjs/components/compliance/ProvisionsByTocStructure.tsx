@@ -149,6 +149,8 @@ export function ProvisionsByTocStructure({
   propertyData,
   lepClauseData
 }: ProvisionsByTocStructureProps) {
+  // View mode: 'task' shows all provisions, 'structure' requires TOC selection
+  const [viewMode, setViewMode] = useState<'task' | 'structure'>('task');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilter, setTopicFilter] = useState<string | null>(null);
@@ -218,15 +220,15 @@ export function ProvisionsByTocStructure({
   const hcaSpecificCount = heritageProvisions.filter((p: any) => p.v2_heritage_hca).length;
   const totalHeritageCount = heritageProvisions.length;
 
-  // Auto-select first part on load (use complete TOC)
+  // Auto-select first part on load ONLY in structure mode
   useEffect(() => {
-    if (data?.data?.complete_toc && !selectedPart) {
+    if (viewMode === 'structure' && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
         setSelectedPart(parts[0]);
       }
     }
-  }, [data, selectedPart]);
+  }, [viewMode, data, selectedPart]);
 
   // Debounce search input with 300ms delay
   useEffect(() => {
@@ -266,21 +268,51 @@ export function ProvisionsByTocStructure({
     });
   }, [rawSelectedProvisions]);
 
-  // Count provisions by layer (always from full set — layer buttons always visible)
+  // Get ALL provisions across all parts (for "export all" option and task mode)
+  // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
+  const allProvisions = useMemo(() => {
+    if (!tocStructure || Object.keys(tocStructure).length === 0) return [];
+    const allParts = Object.values(tocStructure);
+    const provisions = allParts.flatMap((part: any) =>
+      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
+    );
+    // Deduplicate
+    const seenTexts = new Set<string>();
+    return provisions.filter((p: any) => {
+      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+      if (seenTexts.has(key)) return false;
+      seenTexts.add(key);
+      return true;
+    });
+  }, [tocStructure]);
+
+  // Base provisions - mode-aware: task mode shows all, structure mode shows selected
+  const baseProvisions = useMemo(() => {
+    if (viewMode === 'task') {
+      // Task mode: ALL provisions across all parts
+      return allProvisions;
+    } else {
+      // Structure mode: Current behavior (TOC-filtered)
+      return selectedProvisions;
+    }
+  }, [viewMode, allProvisions, selectedProvisions]);
+
+  // Count provisions by layer (from base provisions - mode-aware)
   const layerCounts = useMemo(() => ({
-    generic: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
-    use_specific: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
-    condition: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
-    precinct: selectedProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-  }), [selectedProvisions]);
+    generic: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+    use_specific: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+    condition: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+    precinct: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+  }), [baseProvisions]);
 
   // Layer-filtered base: excludes TOC entries and applies active layer.
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
+  // Now uses baseProvisions (mode-aware) instead of selectedProvisions
   const layerFilteredProvisions = useMemo(() => {
-    const base = selectedProvisions.filter(p => p.v2_provision_type !== 'TOC');
+    const base = baseProvisions.filter(p => p.v2_provision_type !== 'TOC');
     if (!layerFilter) return base;
     return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
-  }, [selectedProvisions, layerFilter]);
+  }, [baseProvisions, layerFilter]);
 
   // Apply search + topic filter on top of layer-filtered base, then sort by priority
   const filteredProvisions = useMemo(() => {
@@ -306,24 +338,6 @@ export function ProvisionsByTocStructure({
       return aPriority - bPriority;
     });
   }, [layerFilteredProvisions, debouncedSearch, topicFilter]);
-
-  // Get ALL provisions across all parts (for "export all" option)
-  // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
-  const allProvisions = useMemo(() => {
-    if (!tocStructure || Object.keys(tocStructure).length === 0) return [];
-    const allParts = Object.values(tocStructure);
-    const provisions = allParts.flatMap((part: any) =>
-      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
-    );
-    // Deduplicate
-    const seenTexts = new Set<string>();
-    return provisions.filter((p: any) => {
-      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
-      if (seenTexts.has(key)) return false;
-      seenTexts.add(key);
-      return true;
-    });
-  }, [tocStructure]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
@@ -354,10 +368,10 @@ export function ProvisionsByTocStructure({
     return Array.from(topicMap.values()).sort();
   }, [layerFilteredProvisions]);
 
-  // Check if any provisions have C/O markers
+  // Check if any provisions have C/O markers (use baseProvisions - mode-aware)
   const hasMarkers = useMemo(() =>
-    selectedProvisions.some(p => p.v2_marker),
-    [selectedProvisions]
+    baseProvisions.some(p => p.v2_marker),
+    [baseProvisions]
   );
 
   // Calculate priority stats per topic — scoped to selected layer
@@ -424,6 +438,22 @@ export function ProvisionsByTocStructure({
     setSelectedSection(sectionId);
     setTopicFilter(null);
     setLayerFilter(null); // Reset layer filter when changing sections
+  };
+
+  // Mode switch handlers
+  const enterTaskMode = () => {
+    setViewMode('task');
+    setSelectedPart(null);
+    setSelectedSection(null);
+  };
+
+  const enterStructureMode = () => {
+    setViewMode('structure');
+    // Auto-select first part if none selected
+    if (!selectedPart && Object.keys(completeTocStructure).length > 0) {
+      const firstPart = Object.keys(completeTocStructure)[0];
+      setSelectedPart(firstPart);
+    }
   };
 
   // Export PDF handler
@@ -781,20 +811,54 @@ export function ProvisionsByTocStructure({
         </div>
       )}
 
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-2 mb-4 bg-white border rounded-lg p-2">
+        <span className="text-sm text-gray-600 font-medium">View:</span>
+        <button
+          onClick={enterTaskMode}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            viewMode === 'task'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          🎯 By Topic
+        </button>
+        <button
+          onClick={enterStructureMode}
+          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+            viewMode === 'structure'
+              ? 'bg-teal-600 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          📁 By Structure
+        </button>
+        <div className="ml-auto text-xs text-gray-500">
+          {viewMode === 'task' ? (
+            <>Showing all {allProvisions.length} provisions • <button onClick={enterStructureMode} className="text-teal-600 hover:underline">Browse by DCP structure</button></>
+          ) : (
+            <>Navigate DCP sections • <button onClick={enterTaskMode} className="text-teal-600 hover:underline">Search all provisions</button></>
+          )}
+        </div>
+      </div>
+
       {/* Main two-panel layout */}
       <div className="flex border rounded-lg bg-white overflow-hidden">
-      {/* Left: TOC Sidebar */}
-      <div className="w-64 border-r bg-gray-50 flex-shrink-0">
-        <TocSidebar
-          tocStructure={completeTocStructure}
-          filteredTocStructure={tocStructure}
-          selectedPart={selectedPart}
-          selectedSection={selectedSection}
-          onSelectPart={handleSelectPart}
-          onSelectSection={handleSelectSection}
-          formerCouncil={formerCouncil}
-        />
-      </div>
+      {/* Left: TOC Sidebar - Only in structure mode */}
+      {viewMode === 'structure' && (
+        <div className="w-64 border-r bg-gray-50 flex-shrink-0">
+          <TocSidebar
+            tocStructure={completeTocStructure}
+            filteredTocStructure={tocStructure}
+            selectedPart={selectedPart}
+            selectedSection={selectedSection}
+            onSelectPart={handleSelectPart}
+            onSelectSection={handleSelectSection}
+            formerCouncil={formerCouncil}
+          />
+        </div>
+      )}
 
       {/* Right: Provisions content */}
       <div className="flex-1 flex flex-col">
@@ -803,23 +867,28 @@ export function ProvisionsByTocStructure({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {selectedPart
-                  ? sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
-                  : 'Select a section'}
+                {viewMode === 'task' ? (
+                  'All DCP Provisions'
+                ) : selectedPart ? (
+                  sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
+                ) : (
+                  'Select a section'
+                )}
               </h3>
-              {selectedSection && selectedPart && (
+              {viewMode === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-green-700 font-medium">
-                {filteredProvisions.length} provisions in this section
+              <span className="text-teal-700 font-medium">
+                {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
+                {viewMode === 'structure' && ' in this section'}
               </span>
               <span className="text-gray-400">|</span>
               <span className="text-gray-500">
-                {totalProvisions} total for this property
+                {viewMode === 'task' ? `${allProvisions.length} total` : `${totalProvisions} total for this property`}
               </span>
             </div>
           </div>
