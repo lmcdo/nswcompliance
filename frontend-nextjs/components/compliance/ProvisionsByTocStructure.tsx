@@ -22,7 +22,7 @@ import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
-import { matchesSearchWithSynonyms } from '@/lib/search-utils';
+import { matchesSearchWithSynonyms, scoreProvision } from '@/lib/search-utils';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -316,7 +316,7 @@ export function ProvisionsByTocStructure({
     return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
   }, [baseProvisions, layerFilter]);
 
-  // Apply search + topic filters, then sort by priority
+  // Apply search + topic filters, then sort by relevance or priority
   const filteredProvisions = useMemo(() => {
     // Determine search base based on scope
     const searchBase = searchScope === 'all'
@@ -343,13 +343,30 @@ export function ProvisionsByTocStructure({
       });
     }
 
-    return filtered.sort((a, b) => {
-      const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
-      const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
-      const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
-      return aPriority - bPriority;
-    });
-  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters]);
+    // Sort by relevance if searching, otherwise by priority
+    if (debouncedSearch) {
+      // Rank by search relevance
+      const context = { heritage, zone, precinct: precinctId };
+      const scored = filtered.map(p => ({
+        provision: p,
+        score: scoreProvision(p, debouncedSearch, context)
+      }));
+
+      // Sort by score (highest first)
+      scored.sort((a, b) => b.score - a.score);
+
+      // Return just provisions
+      return scored.map(s => s.provision);
+    } else {
+      // Sort by priority (default)
+      return filtered.sort((a, b) => {
+        const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
+        const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
+        const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
+        return aPriority - bPriority;
+      });
+    }
+  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters, heritage, zone, precinctId]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {

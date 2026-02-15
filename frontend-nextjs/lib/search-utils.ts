@@ -117,3 +117,72 @@ export function getSearchSuggestions(query: string, maxResults = 5): string[] {
     .filter(term => term.toLowerCase().includes(queryLower))
     .slice(0, maxResults);
 }
+
+/**
+ * Score provision relevance to search query
+ * Higher score = more relevant
+ */
+export function scoreProvision(
+  provision: any,
+  query: string,
+  context: {
+    heritage?: boolean;
+    zone?: string;
+    precinct?: string;
+  } = {}
+): number {
+  let score = 0;
+  const queryLower = query.toLowerCase();
+  const text = provision.provision_text?.toLowerCase() || '';
+
+  // 1. Exact phrase in topic/title (highest priority)
+  if (provision.v2_topic?.toLowerCase().includes(queryLower)) {
+    score += 100;
+  }
+
+  if (provision.v2_dcp_part?.toLowerCase().includes(queryLower)) {
+    score += 80;
+  }
+
+  // 2. Match in first 100 characters
+  const first100 = text.substring(0, 100);
+  if (first100.includes(queryLower)) {
+    score += 50;
+  }
+
+  // 3. Match anywhere in text
+  if (text.includes(queryLower)) {
+    score += 10;
+  }
+
+  // 4. Control provisions rank higher than objectives
+  if (provision.v2_marker?.startsWith('C')) {
+    score += 20;
+  } else if (provision.v2_marker?.startsWith('O')) {
+    score += 5;
+  }
+
+  // 5. Mandatory provisions rank higher
+  if (provision.v2_display_priority === 'critical') {
+    score += 15;
+  }
+
+  // 6. Property context relevance
+  if (context.heritage && provision.v2_dcp_layer === 'condition') {
+    score += 10;
+  }
+
+  if (context.zone && provision.v2_dcp_layer === 'use_specific') {
+    score += 10;
+  }
+
+  if (context.precinct && provision.v2_dcp_layer === 'precinct') {
+    score += 10;
+  }
+
+  // 7. Frequency of match (how many times query appears)
+  const matches = (text.match(new RegExp(queryLower, 'g')) || []).length;
+  score += Math.min(matches * 2, 10); // Cap at +10
+
+  return score;
+}
