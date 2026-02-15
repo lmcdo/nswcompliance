@@ -161,6 +161,10 @@ export function ProvisionsByTocStructure({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
   const [showAutocomplete, setShowAutocomplete] = useState(false);
+  const [refinements, setRefinements] = useState({
+    mandatoryOnly: false,
+    withMeasurements: false,
+  });
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
@@ -345,6 +349,23 @@ export function ProvisionsByTocStructure({
       });
     }
 
+    // Apply refinement filters
+    if (refinements.mandatoryOnly) {
+      filtered = filtered.filter(p => {
+        // Mandatory = Controls (C) or critical priority
+        return p.v2_marker?.startsWith('C') || p.v2_display_priority === 'critical';
+      });
+    }
+
+    if (refinements.withMeasurements) {
+      filtered = filtered.filter(p => {
+        const text = p.provision_text || '';
+        // Contains numeric measurements
+        const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|sqm|ha)\b/i.test(text);
+        return hasNumeric;
+      });
+    }
+
     // Sort by relevance if searching, otherwise by priority
     if (debouncedSearch) {
       // Rank by search relevance
@@ -368,7 +389,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters, heritage, zone, precinctId]);
+  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters, refinements, heritage, zone, precinctId]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
@@ -478,6 +499,11 @@ export function ProvisionsByTocStructure({
         ? prev.filter(t => t !== topic)
         : [...prev, topic]
     );
+  };
+
+  // Toggle refinement filter
+  const toggleRefinement = (key: keyof typeof refinements) => {
+    setRefinements(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
   // Mode switch handlers
@@ -664,7 +690,13 @@ export function ProvisionsByTocStructure({
       if (debouncedSearch) {
         activeFilters.push(`Search: "${debouncedSearch}"`);
       }
-      if (!layerFilter && topicFilters.length === 0 && !debouncedSearch) {
+      if (refinements.mandatoryOnly) {
+        activeFilters.push('Mandatory only');
+      }
+      if (refinements.withMeasurements) {
+        activeFilters.push('With measurements');
+      }
+      if (!layerFilter && topicFilters.length === 0 && !debouncedSearch && !refinements.mandatoryOnly && !refinements.withMeasurements) {
         activeFilters.push('All provisions for this property');
       }
 
@@ -1152,20 +1184,72 @@ export function ProvisionsByTocStructure({
               </div>
             )}
 
+            {/* Refinement filters - only show when there are results to refine */}
+            {(layerFilter || topicFilters.length > 0 || debouncedSearch) && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-gray-500 font-medium">Refine:</span>
+
+                <button
+                  onClick={() => toggleRefinement('mandatoryOnly')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                    refinements.mandatoryOnly
+                      ? 'bg-red-100 text-red-800 border border-red-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {refinements.mandatoryOnly && <X className="w-3 h-3" />}
+                  Mandatory only
+                </button>
+
+                <button
+                  onClick={() => toggleRefinement('withMeasurements')}
+                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                    refinements.withMeasurements
+                      ? 'bg-blue-100 text-blue-800 border border-blue-300'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {refinements.withMeasurements ? (
+                    <X className="w-3 h-3" />
+                  ) : (
+                    <Ruler className="w-3 h-3" />
+                  )}
+                  With measurements
+                </button>
+              </div>
+            )}
+
             {/* Status line — plain-language summary of active filters */}
-            {(layerFilter || topicFilters.length > 0) && (
+            {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
               <div className="text-xs text-gray-500 pt-1 border-t border-gray-100 mt-0.5">
                 {(() => {
                   const labels = COUNCIL_LAYER_LABELS[(formerCouncil || '').toLowerCase()] || DEFAULT_LAYER_LABELS;
                   const count = filteredProvisions.length;
-                  const base = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
+                  let message = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
+
                   const layerLabel = layerFilter ? labels[layerFilter] : null;
                   const topicLabels = topicFilters.length > 0
                     ? topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')
                     : null;
-                  if (layerLabel && topicLabels) return `${base} — ${topicLabels} within ${layerLabel}`;
-                  if (layerLabel) return `${base} from ${layerLabel}`;
-                  return `${base} about ${topicLabels}`;
+
+                  // Add layer/topic context
+                  if (layerLabel && topicLabels) {
+                    message += ` — ${topicLabels} within ${layerLabel}`;
+                  } else if (layerLabel) {
+                    message += ` from ${layerLabel}`;
+                  } else if (topicLabels) {
+                    message += ` about ${topicLabels}`;
+                  }
+
+                  // Add refinement context
+                  const refinementParts = [];
+                  if (refinements.mandatoryOnly) refinementParts.push('mandatory only');
+                  if (refinements.withMeasurements) refinementParts.push('with measurements');
+                  if (refinementParts.length > 0) {
+                    message += ` (${refinementParts.join(', ')})`;
+                  }
+
+                  return message;
                 })()}
               </div>
             )}
