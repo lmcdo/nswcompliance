@@ -17,8 +17,11 @@ import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X, Ruler } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X, Ruler, Download } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
+import { pdf } from '@react-pdf/renderer';
+import { ProvisionReport } from '@/components/pdf';
+import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -101,6 +104,15 @@ interface ProvisionsByTocStructureProps {
   hcaName?: string;
   precinctId?: string;
   precinctName?: string;
+  // PDF export data
+  address?: string;
+  hcaCode?: string;
+  heritageItem?: boolean;
+  heritageItemName?: string;
+  heritageItemNumber?: string;
+  // Real data for PDF context
+  propertyData?: any;  // Full property data from NSW Planning Portal
+  lepClauseData?: any; // LEP clause data (height, FSR, zone table, etc.)
 }
 
 const fetcher = async (url: string) => {
@@ -128,7 +140,14 @@ export function ProvisionsByTocStructure({
   heritage,
   hcaName,
   precinctId,
-  precinctName
+  precinctName,
+  address,
+  hcaCode,
+  heritageItem,
+  heritageItemName,
+  heritageItemNumber,
+  propertyData,
+  lepClauseData
 }: ProvisionsByTocStructureProps) {
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -138,6 +157,8 @@ export function ProvisionsByTocStructure({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
+  // PDF export always uses filtered provisions (respects layer, topic, and search filters)
+  const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -286,11 +307,52 @@ export function ProvisionsByTocStructure({
     });
   }, [layerFilteredProvisions, debouncedSearch, topicFilter]);
 
+  // Get ALL provisions across all parts (for "export all" option)
+  // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
+  const allProvisions = useMemo(() => {
+    if (!tocStructure || Object.keys(tocStructure).length === 0) return [];
+    const allParts = Object.values(tocStructure);
+    const provisions = allParts.flatMap((part: any) =>
+      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
+    );
+    // Deduplicate
+    const seenTexts = new Set<string>();
+    return provisions.filter((p: any) => {
+      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+      if (seenTexts.has(key)) return false;
+      seenTexts.add(key);
+      return true;
+    });
+  }, [tocStructure]);
+
+  // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
+  const numericProvisions = useMemo(() => {
+    return allProvisions.filter((p: any) => {
+      const text = p.provision_text || '';
+      // Check if provision contains numeric measurements - comprehensive pattern for planning regulations
+      // Matches: 6m, 9.5m, 450m², 50sqm, 60 square metres, 15%, 900mm, 2.5cm, etc.
+      const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimetres?|centimeters?|sqm|square metres?|ha|hectares?)\b/i.test(text);
+      // Exclude if it's primarily an objective, principle, or qualitative statement
+      const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
+      return hasNumeric && !isObjective;
+    });
+  }, [allProvisions]);
+
   // Get unique topics for filter chips — scoped to selected layer
-  const availableTopics = useMemo(() =>
-    [...new Set(layerFilteredProvisions.map(p => p.v2_topic).filter(Boolean))].sort(),
-    [layerFilteredProvisions]
-  );
+  // Deduplicate by normalized key (lowercase) to avoid "Signage" and "signage" appearing separately
+  const availableTopics = useMemo(() => {
+    const topicMap = new Map<string, string>();
+    layerFilteredProvisions.forEach(p => {
+      if (p.v2_topic) {
+        const normalized = p.v2_topic.toLowerCase().replace(/ /g, '_');
+        // Prefer lowercase version if we have both "Signage" and "signage"
+        if (!topicMap.has(normalized) || p.v2_topic === p.v2_topic.toLowerCase()) {
+          topicMap.set(normalized, p.v2_topic);
+        }
+      }
+    });
+    return Array.from(topicMap.values()).sort();
+  }, [layerFilteredProvisions]);
 
   // Check if any provisions have C/O markers
   const hasMarkers = useMemo(() =>
@@ -305,7 +367,14 @@ export function ProvisionsByTocStructure({
       const topic = p.v2_topic?.toLowerCase().replace(/ /g, '_') || 'other';
       if (!stats[topic]) stats[topic] = { critical: 0, total: 0 };
       stats[topic].total++;
-      if (p.v2_display_priority === 'critical') stats[topic].critical++;
+
+      // Only mark as "critical/numeric" if provision actually contains measurements
+      const text = p.provision_text || '';
+      // Comprehensive pattern matching planning regulation measurements
+      const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimetres?|centimeters?|sqm|square metres?|ha|hectares?)\b/i.test(text);
+      const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
+
+      if (hasNumeric && !isObjective) stats[topic].critical++;
     });
     return stats;
   }, [layerFilteredProvisions]);
@@ -355,6 +424,280 @@ export function ProvisionsByTocStructure({
     setSelectedSection(sectionId);
     setTopicFilter(null);
     setLayerFilter(null); // Reset layer filter when changing sections
+  };
+
+  // Export PDF handler
+  const handleExportPdf = async () => {
+    try {
+      // Helper to sanitize numbers for PDF rendering (convert to safe strings)
+      const sanitizeNumberToString = (value: any, fieldName?: string): string | undefined => {
+        if (value === null || value === undefined) return undefined;
+
+        // Log the raw value
+        console.log(`[PDF Number Sanitize] ${fieldName || 'unknown'}: raw value =`, value, `(type: ${typeof value})`);
+
+        const num = typeof value === 'number' ? value : parseFloat(value);
+
+        // Filter out: NaN, Infinity, very large numbers, AND NEGATIVE NUMBERS (invalid page numbers)
+        if (isNaN(num) || !isFinite(num) || Math.abs(num) > 1e15 || num < 0) {
+          console.error(`[PDF Number Sanitize] REJECTED ${fieldName || 'unknown'}: ${value} (parsed: ${num})`);
+          return undefined;
+        }
+
+        const result = String(Math.round(num * 100) / 100);
+        console.log(`[PDF Number Sanitize] ${fieldName || 'unknown'}: accepted = ${result}`);
+        return result;
+      };
+
+      // Detect corner lot from nearby roads
+      const nearbyRoads = propertyData?.nearbyRoads || [];
+      const isCornerLot = nearbyRoads.length >= 2;
+      const cornerRoadNames = isCornerLot ? nearbyRoads.slice(0, 2).map((r: any) => r.road_name) : [];
+
+      // Extract lot dimensions from property data (sanitize all numbers to strings)
+      const areaStr = sanitizeNumberToString(propertyData?.lotDimensions?.area, 'lot_area');
+      const frontageStr = sanitizeNumberToString(propertyData?.lotDimensions?.frontage, 'lot_frontage');
+      const depthStr = sanitizeNumberToString(propertyData?.lotDimensions?.depth, 'lot_depth');
+
+      const lotDimensions = (areaStr || frontageStr || depthStr) ? {
+        area: areaStr ? parseFloat(areaStr) : undefined,
+        frontage: frontageStr ? parseFloat(frontageStr) : undefined,
+        depth: depthStr ? parseFloat(depthStr) : undefined,
+        is_corner: isCornerLot,
+        corner_roads: cornerRoadNames,
+      } : undefined;
+
+      // Extract LEP controls from lepClauseData
+      const lepControls = lepClauseData ? {
+        height: lepClauseData.height_limit || undefined,
+        fsr: lepClauseData.fsr || undefined,
+        acid_sulfate_soils: lepClauseData.acid_sulfate_soils || undefined,
+        permitted_uses: lepClauseData.permitted_uses || [],
+        prohibited_uses: lepClauseData.prohibited_uses || [],
+      } : undefined;
+
+      // Extract ALL planning portal layers with their numeric values (sanitize to strings)
+      // Log to debug what layers we actually have
+      console.log('=== PLANNING LAYERS DEBUG ===');
+      console.log('propertyData exists?', !!propertyData);
+      console.log('propertyData.planningLayers exists?', !!propertyData?.planningLayers);
+      console.log('propertyData.planningLayers:', propertyData?.planningLayers);
+      console.log('propertyData.planningLayers length:', propertyData?.planningLayers?.length);
+
+      // Log each layer's results to see actual field names
+      if (propertyData?.planningLayers) {
+        propertyData.planningLayers.forEach((layer: any) => {
+          console.log(`\nLayer: ${layer.layerName}`);
+          console.log(`  Results count: ${layer.results?.length}`);
+          if (layer.results?.[0]) {
+            console.log(`  First result keys:`, Object.keys(layer.results[0]));
+            console.log(`  First result data:`, layer.results[0]);
+          }
+        });
+      }
+
+      // Extract actual constraint values from each planning portal layer
+      // Helper to get the primary value field (exclude metadata like Legislative Clause, EPI Name, etc.)
+      const getLayerValue = (results: any[] | undefined): string | undefined => {
+        if (!results?.[0]) return undefined;
+        const result = results[0];
+        const metadataKeys = ['Legislative Clause', 'legislationUrl', 'EPI Name', 'Amendment', 'Commenced Date',
+                             'Published Date', 'Currency Date', 'LGA Name', 'Units', 'title', 'OBJECTID',
+                             'Shape', 'Shape_Length', 'Shape_Area', 'GlobalID'];
+        const valuesToSkip = ['LEP', 'SEPP', '']; // Skip generic "LEP" labels
+
+        // Find first non-metadata key with a meaningful value
+        for (const key of Object.keys(result)) {
+          const value = result[key];
+          if (!metadataKeys.includes(key) && value != null && !valuesToSkip.includes(value)) {
+            return String(value);
+          }
+        }
+        return undefined;
+      };
+
+      const planningPortalLayers = propertyData?.planningLayers ? {
+        heritage_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Heritage'))?.results),
+        fsr_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Floor Space'))?.results),
+        height_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Height'))?.results),
+        acid_sulfate_soils_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Acid Sulfate'))?.results),
+        local_aboriginal_land_council: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Aboriginal'))?.results),
+        sepp_requirements: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Special Provisions'))?.results),
+        land_application_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Land Application'))?.results),
+        regional_plan_boundary: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Regional Plan'))?.results),
+        land_zoning_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Zoning'))?.results),
+        tree_canopy_2019: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2019'))?.results),
+        tree_canopy_2022: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2022'))?.results),
+        terrestrial_biodiversity_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Biodiversity'))?.results),
+      } : undefined;
+
+      console.log('[PDF Planning Layers] Mapped values:', planningPortalLayers);
+
+      // Check for any scientific notation in the raw layer data
+      if (propertyData?.planningLayers) {
+        propertyData.planningLayers.forEach((layer: any, idx: number) => {
+          if (layer.results?.[0]) {
+            console.log(`[PDF Layer ${idx}] ${layer.layerName}:`, JSON.stringify(layer.results[0]).substring(0, 200));
+            // Check for scientific notation
+            const jsonStr = JSON.stringify(layer.results[0]);
+            if (/e[+-]\d+/i.test(jsonStr)) {
+              console.error(`[PDF Layer ${idx}] CONTAINS SCIENTIFIC NOTATION:`, layer.layerName);
+            }
+          }
+        });
+      }
+
+      // TODO: Extract Additional Local Provisions from LEP
+      const additionalLocalProvisions: string[] | undefined = undefined;
+
+      // Build property context with real data
+      const propertyContext: PropertyContext = {
+        address: address || propertyData?.address || 'Property Address',
+        zone: zone || 'Unknown',
+        former_council: formerCouncil,
+        heritage_status: {
+          in_hca: heritage || false,
+          hca_name: hcaName,
+          hca_code: hcaCode || hcaName,
+          heritage_item: heritageItem,
+          item_name: heritageItemName,
+          item_number: heritageItemNumber,
+        },
+        lot_dimensions: lotDimensions,
+        lep_controls: lepControls,
+        planning_portal_layers: planningPortalLayers,
+        additional_local_provisions: additionalLocalProvisions,
+        hca_details: undefined, // TODO: Fetch from HCA data
+      };
+
+      // Always export filtered provisions (respects layer, topic, and search filters)
+      const provisionsToExport = filteredProvisions;
+
+      // Check if we have provisions to export
+      if (!provisionsToExport || provisionsToExport.length === 0) {
+        alert('No provisions to export. Please adjust your filters.');
+        return;
+      }
+
+      console.log(`Exporting ${provisionsToExport.length} filtered provisions`);
+
+      // Build active filters array for context
+      const activeFilters: string[] = [];
+      if (layerFilter) {
+        const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
+        const label = councilLabels ? councilLabels[layerFilter] : DEFAULT_LAYER_LABELS[layerFilter];
+        activeFilters.push(label);
+      }
+      if (topicFilter) {
+        activeFilters.push(topicFilter.replace(/_/g, ' '));
+      }
+      if (debouncedSearch) {
+        activeFilters.push(`Search: "${debouncedSearch}"`);
+      }
+      if (!layerFilter && !topicFilter && !debouncedSearch) {
+        activeFilters.push('All provisions for this property');
+      }
+
+      // Filter out Table of Contents entries before converting to PDF
+      const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
+      const actualProvisions = provisionsToExport.filter((p: any) => {
+        const isTOC = isTableOfContents(p.provision_text || '');
+        if (isTOC) {
+          console.log(`[PDF Filter] Excluding TOC entry: ID ${p.id}`);
+        }
+        return !isTOC;
+      });
+
+      // Convert provisions to PDF format (sanitize ALL numeric fields)
+      const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any, idx: number) => {
+        // Sanitize page numbers
+        console.log(`[PDF Provision ${idx}] ID: ${p.id}, processing...`);
+        const pdfPage = sanitizeNumberToString(p.pdf_page, `provision_${p.id}_pdf_page`);
+        const pdfPrintedPage = sanitizeNumberToString(p.pdf_printed_page, `provision_${p.id}_pdf_printed_page`);
+
+        // Log if we're sanitizing the known problematic provisions
+        if (p.id === 78593 || p.id === 86746) {
+          console.log(`Sanitizing provision ${p.id}:`);
+          console.log(`  Original: pdf_page=${p.pdf_page}, pdf_printed_page=${p.pdf_printed_page}`);
+          console.log(`  Sanitized: pdfPage=${pdfPage}, pdfPrintedPage=${pdfPrintedPage}`);
+        }
+
+        const finalPdfPage = pdfPage ? parseInt(pdfPage) : undefined;
+        const finalPdfPrintedPage = pdfPrintedPage ? parseInt(pdfPrintedPage) : pdfPage ? parseInt(pdfPage) : 1;
+
+        if (p.id === 78593 || p.id === 86746) {
+          console.log(`  Final: pdf_page=${finalPdfPage}, pdf_printed_page=${finalPdfPrintedPage}`);
+        }
+
+        return {
+          id: p.id,
+          provision_text: sanitizeText(p.provision_text),
+          v2_marker: p.v2_marker || '',
+          v2_topic: p.v2_topic || '',
+          document_name: p.document_name || '',
+          v2_dcp_part: p.v2_dcp_part || '',
+          section_header: p.section_header,
+          pdf_page: finalPdfPage,
+          pdf_printed_page: finalPdfPrintedPage,
+          v2_is_actionable: p.v2_is_actionable,
+          zone_applicability: p.zone_applicability,
+          ref_number: p.ref_number,
+        };
+      });
+
+      // Log to find any bad data
+      console.log('Provisions for PDF (first 3):', provisionsForPdf.slice(0, 3));
+
+      // Check for scientific notation in provision text
+      let scientificNotationFound = false;
+      provisionsForPdf.forEach((p, idx) => {
+        const text = p.provision_text || '';
+        if (/e[+-]\d+/i.test(text)) {
+          console.error(`[PDF SCIENTIFIC NOTATION] Found in provision ${p.id} (index ${idx}): ${text.substring(0, 100)}`);
+          scientificNotationFound = true;
+        }
+      });
+      if (!scientificNotationFound) {
+        console.log('[PDF] No scientific notation found in provision text');
+      }
+
+      // Log property context for debugging
+      console.log('Property context for PDF:', JSON.stringify(propertyContext, null, 2));
+      console.log('Number of provisions:', provisionsForPdf.length);
+
+      // Generate PDF
+      const doc = (
+        <ProvisionReport
+          provisions={provisionsForPdf}
+          property={propertyContext}
+          totalProvisions={totalProvisions}
+          activeFilters={activeFilters}
+        />
+      );
+
+      console.log('[PDF Generation] Creating PDF with property context:', propertyContext);
+      console.log('[PDF Generation] Lot dimensions:', propertyContext.lot_dimensions);
+      console.log('[PDF Generation] Total provisions:', provisionsForPdf.length);
+
+      console.log('Generating PDF blob...');
+      const blob = await pdf(doc).toBlob();
+      console.log('PDF blob generated successfully');
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `DCP-Provisions-${formerCouncil}-${new Date().toISOString().split('T')[0]}.pdf`;
+      link.click();
+
+      // Cleanup
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('PDF export failed:', error);
+      console.error('Error details:', error instanceof Error ? error.message : String(error));
+      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
+      alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
+    }
   };
 
   return (
@@ -508,76 +851,109 @@ export function ProvisionsByTocStructure({
             )}
           </div>
 
-          {/* Why am I seeing these provisions? */}
+          {/* Export PDF Modal */}
+          {showExportModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
+              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Export to PDF</h3>
+
+                  {/* What will be exported */}
+                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
+                    <div className="text-sm font-medium text-teal-900 mb-2">
+                      Exporting {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
+                    </div>
+                    <div className="text-xs text-teal-700 space-y-1">
+                      {(() => {
+                        const items = [];
+                        const firstProv = filteredProvisions[0];
+
+                        // Get DCP name (short form like "Marrickville DCP 2011")
+                        const dcpName = formerCouncil === 'Ashfield' ? 'Ashfield DCP 2016'
+                          : formerCouncil === 'Leichhardt' ? 'Leichhardt DCP 2013'
+                          : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
+                          : 'DCP';
+
+                        // Get part name from first provision's v2_dcp_part field
+                        if (selectedPart && firstProv?.v2_dcp_part) {
+                          items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
+                        } else if (firstProv?.v2_dcp_part) {
+                          items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
+                        } else {
+                          items.push(dcpName);
+                        }
+
+                        // Layer (e.g., "Marrickville-wide", "All")
+                        if (layerFilter) {
+                          const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
+                          const layerLabel = councilLabels ? councilLabels[layerFilter] : DEFAULT_LAYER_LABELS[layerFilter];
+                          items.push(`Layer: ${layerLabel}`);
+                        } else {
+                          items.push(`Layer: All`);
+                        }
+
+                        // Topic
+                        if (topicFilter) {
+                          items.push(`Topic: ${topicFilter.replace(/_/g, ' ')}`);
+                        }
+
+                        // Search
+                        if (debouncedSearch) {
+                          items.push(`Search: "${debouncedSearch}"`);
+                        }
+
+                        if (items.length === 0) {
+                          return <div>• All provisions for this property</div>;
+                        }
+
+                        return items.map((item, idx) => <div key={idx}>• {item}</div>);
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowExportModal(false)}
+                      className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowExportModal(false);
+                        handleExportPdf();
+                      }}
+                      disabled={filteredProvisions.length === 0}
+                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Generate PDF
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Why am I seeing these provisions? - now includes layer filters */}
           <LayerExplanation
             zone={zone}
             heritage={heritage}
             hcaName={hcaName}
             precinctName={precinctName}
             formerCouncil={formerCouncil}
+            layerCounts={layerCounts}
+            layerFilter={layerFilter}
+            onLayerFilterChange={(layer) => {
+              setLayerFilter(layer);
+              setTopicFilter(null);  // Clear topic filter when changing layer
+            }}
           />
 
-          {/* Combined filters section */}
+          {/* Topic filter section */}
           <div className="mt-3 space-y-2">
-            {/* Layer filter - primary filter row */}
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs text-gray-500 font-medium min-w-[70px]">Applies because:</span>
-              {[
-                { key: null, label: 'All layers', color: '#6b7280' },
-                { key: 'generic', color: '#14b8a6' },
-                { key: 'use_specific', color: '#3b82f6' },
-                { key: 'condition', color: '#f59e0b' },
-                { key: 'precinct', color: '#8b5cf6' },
-              ].map((item) => {
-                if (item.key === null) {
-                  // "All layers" button
-                  const totalCount = Object.values(layerCounts).reduce((a, b) => a + b, 0);
-                  return (
-                    <button
-                      key="all"
-                      onClick={() => { setLayerFilter(null); setTopicFilter(null); }}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
-                        !layerFilter && !topicFilter
-                          ? 'bg-gray-800 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      All ({totalCount})
-                    </button>
-                  );
-                }
-
-                const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
-                const label = councilLabels ? councilLabels[item.key] : DEFAULT_LAYER_LABELS[item.key];
-                const count = layerCounts[item.key as keyof typeof layerCounts] || 0;
-                const hasProvisions = count > 0;
-
-                return (
-                  <button
-                    key={item.key}
-                    onClick={() => hasProvisions && (setLayerFilter(layerFilter === item.key ? null : item.key), setTopicFilter(null))}
-                    disabled={!hasProvisions}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
-                      !hasProvisions
-                        ? 'bg-gray-50 text-gray-400 cursor-not-allowed opacity-50'
-                        : layerFilter === item.key
-                        ? 'text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                    style={layerFilter === item.key ? { backgroundColor: item.color } : undefined}
-                    title={!hasProvisions ? 'No provisions with this layer' : undefined}
-                  >
-                    <div
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: hasProvisions ? item.color : '#d1d5db' }}
-                    />
-                    {label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Topic filter chips - secondary filter row */}
+            {/* Topic filter chips */}
             {availableTopics.length > 1 && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -635,9 +1011,32 @@ export function ProvisionsByTocStructure({
             )}
           </div>
 
-          {/* Marker key - explains C1/O1 badges (only show if markers exist) */}
-          {hasMarkers && (
-            <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
+        </div>
+
+        {/* Action Toolbar - Export */}
+        {filteredProvisions.length > 0 && (
+          <div className="px-4 py-3 border-b bg-gray-50 space-y-2">
+            <div className="text-xs text-gray-600 text-center">
+              <span className="font-medium text-gray-900">{filteredProvisions.length}</span> of <span className="font-medium text-gray-900">{allProvisions.length}</span> provisions
+            </div>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              <Download className="h-4 w-4" />
+              Export PDF
+            </button>
+          </div>
+        )}
+
+        {/* Provisions list */}
+        <div className="p-4">
+          {console.log(`[ProvisionsByTocStructure] filteredProvisions: ${filteredProvisions.length}, selectedPart: ${selectedPart}`)}
+          {filteredProvisions.length > 0 && filteredProvisions.some(p => p.v2_marker === 'heritage' && p.pdf_page === 20) && console.log(`[ProvisionsByTocStructure] FOUND page 20 provision:`, { id: filteredProvisions.find(p => p.pdf_page === 20)?.id, pdf_printed_page: filteredProvisions.find(p => p.pdf_page === 20)?.pdf_printed_page })}
+
+          {/* Marker key - explains C/O reference codes (only show if markers exist) */}
+          {filteredProvisions.length > 0 && hasMarkers && (
+            <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">
               <span className="italic">Some provisions include DCP reference codes:</span>
               <span className="flex items-center gap-1">
                 <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">C</span>
@@ -649,12 +1048,7 @@ export function ProvisionsByTocStructure({
               </span>
             </div>
           )}
-        </div>
 
-        {/* Provisions list */}
-        <div className="p-4">
-          {console.log(`[ProvisionsByTocStructure] filteredProvisions: ${filteredProvisions.length}, selectedPart: ${selectedPart}`)}
-          {filteredProvisions.length > 0 && filteredProvisions.some(p => p.v2_marker === 'heritage' && p.pdf_page === 20) && console.log(`[ProvisionsByTocStructure] FOUND page 20 provision:`, { id: filteredProvisions.find(p => p.pdf_page === 20)?.id, pdf_printed_page: filteredProvisions.find(p => p.pdf_page === 20)?.pdf_printed_page })}
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions provisionTheme="green"
               provisions={filteredProvisions}

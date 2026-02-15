@@ -185,7 +185,11 @@ function PartNode({
             const { label, desc } = formatPartDisplay(part.part_id);
             return (
               <div>
-                <span className={cn("text-sm font-medium", hasProvisions ? "text-gray-800" : "text-gray-400")}>
+                <span className={cn(
+                  "text-sm",
+                  isSelected ? "font-bold" : "font-medium",
+                  hasProvisions ? "text-gray-800" : "text-gray-400"
+                )}>
                   {label}
                 </span>
                 {desc && (
@@ -254,7 +258,11 @@ function SectionNode({ section, filteredSection, hasProvisions, isSelected, onCl
       )}
       onClick={onClick}
     >
-      <span className={cn("text-xs break-words pr-2", hasProvisions ? "text-gray-700" : "text-gray-400")}>
+      <span className={cn(
+        "text-xs break-words pr-2",
+        isSelected ? "font-bold" : "",
+        hasProvisions ? "text-gray-700" : "text-gray-400"
+      )}>
         {display.primary}
         {display.secondary && (
           <span className={cn("ml-1", hasProvisions ? "text-gray-500" : "text-gray-400")}>{display.secondary}</span>

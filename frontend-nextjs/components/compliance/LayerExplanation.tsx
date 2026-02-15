@@ -28,6 +28,14 @@ interface LayerExplanationProps {
   hcaName?: string;
   precinctName?: string;
   formerCouncil?: string;
+  layerCounts?: {
+    generic: number;
+    use_specific: number;
+    condition: number;
+    precinct: number;
+  };
+  layerFilter?: string | null;
+  onLayerFilterChange?: (layer: string | null) => void;
 }
 
 export function LayerExplanation({
@@ -35,50 +43,92 @@ export function LayerExplanation({
   heritage,
   hcaName,
   precinctName,
-  formerCouncil
+  formerCouncil,
+  layerCounts,
+  layerFilter,
+  onLayerFilterChange
 }: LayerExplanationProps) {
   const labels = (formerCouncil && LAYER_LABELS[formerCouncil.toLowerCase()]) || DEFAULT_LABELS;
   const genericLabel = labels.generic;
   const precinctLabel = labels.precinct;
 
+  const totalCount = layerCounts
+    ? Object.values(layerCounts).reduce((a, b) => a + b, 0)
+    : 0;
+
+  const layers = [
+    {
+      key: 'generic',
+      label: genericLabel,
+      description: `Apply to all properties in ${formerCouncil || 'this council'}`,
+      color: '#14b8a6',
+      count: layerCounts?.generic || 0,
+      active: true
+    },
+    ...(zone ? [{
+      key: 'use_specific',
+      label: 'Zone-Specific',
+      description: `Apply because your property is in ${zone} zone`,
+      color: '#3b82f6',
+      count: layerCounts?.use_specific || 0,
+      active: true
+    }] : []),
+    ...(heritage ? [{
+      key: 'condition',
+      label: 'Heritage',
+      description: `Apply because your property is ${hcaName ? `in ${hcaName}` : 'heritage listed'}`,
+      color: '#f59e0b',
+      count: layerCounts?.condition || 0,
+      active: true
+    }] : []),
+    ...(precinctName ? [{
+      key: 'precinct',
+      label: precinctLabel,
+      description: `Apply because your property is in ${precinctName}`,
+      color: '#8b5cf6',
+      count: layerCounts?.precinct || 0,
+      active: true
+    }] : []),
+  ];
+
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-      <div className="flex items-start gap-2">
-        <Info className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-        <div className="flex-1">
-          <div className="text-xs font-semibold text-blue-900 mb-1.5">
-            Why am I seeing these provisions?
-          </div>
-          <div className="space-y-1 text-xs text-blue-800">
+    <div className="border border-gray-200 rounded-lg p-2.5 mt-2">
+      <div className="flex items-center gap-2 flex-wrap">
+            {/* All layers button */}
+            <button
+              onClick={() => onLayerFilterChange?.(null)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                !layerFilter
+                  ? 'bg-gray-800 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              All ({totalCount})
+            </button>
 
-            <div className="flex items-center gap-2">
-              <span className="inline-block w-2 h-2 bg-teal-500 rounded-full flex-shrink-0"></span>
-              <span><strong>{genericLabel}:</strong> Apply to all properties in {formerCouncil || 'this council'}</span>
-            </div>
-
-            {zone && (
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></span>
-                <span><strong>Zone-Specific:</strong> Apply because your property is in <strong>{zone}</strong> zone</span>
-              </div>
-            )}
-
-            {heritage && (
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-amber-500 rounded-full flex-shrink-0"></span>
-                <span><strong>Heritage:</strong> Apply because your property is {hcaName ? `in ${hcaName}` : 'heritage listed'}</span>
-              </div>
-            )}
-
-            {precinctName && (
-              <div className="flex items-center gap-2">
-                <span className="inline-block w-2 h-2 bg-purple-500 rounded-full flex-shrink-0"></span>
-                <span><strong>{precinctLabel}:</strong> Apply because your property is in <strong>{precinctName}</strong></span>
-              </div>
-            )}
-
-          </div>
-        </div>
+            {/* Individual layer buttons */}
+            {layers.map(layer => (
+              <button
+                key={layer.key}
+                onClick={() => onLayerFilterChange?.(layerFilter === layer.key ? null : layer.key)}
+                disabled={layer.count === 0}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  layerFilter === layer.key
+                    ? 'text-white'
+                    : layer.count > 0
+                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+                }`}
+                style={layerFilter === layer.key ? { backgroundColor: layer.color } : {}}
+                title={layer.description}
+              >
+                <span
+                  className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ backgroundColor: layer.color }}
+                ></span>
+                <span>{layer.label} ({layer.count})</span>
+              </button>
+            ))}
       </div>
     </div>
   );

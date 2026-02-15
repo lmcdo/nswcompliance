@@ -1,0 +1,227 @@
+// PDF Provision Table Component - Scannable table format
+
+import { Text, View, Link } from '@react-pdf/renderer';
+import { ProvisionGroup } from '@/lib/pdf/types';
+import { formatCitation, parseParagraphsWithHighlights, sanitizeForPdf } from '@/lib/pdf/formatProvisions';
+import { styles } from './styles';
+
+interface ProvisionTableProps {
+  group: ProvisionGroup;
+  sectionNumber: number;
+  isFirst?: boolean;
+}
+
+export function ProvisionTable({ group, sectionNumber, isFirst = false }: ProvisionTableProps) {
+  let provisionNumber = 1;
+
+  return (
+    <View style={{ marginTop: isFirst ? 0 : 16 }}>
+      {/* Section Title */}
+      <Text style={styles.sectionTitle}>
+        {(() => {
+          const firstProv = group.provisions[0] || (group.subtopics?.[0]?.provisions[0]);
+          const partName = firstProv?.v2_dcp_part;
+          return partName
+            ? `${sectionNumber}. ${partName.toUpperCase()}: ${group.topicLabel.toUpperCase()} (${group.count} PROVISIONS)`
+            : `${sectionNumber}. ${group.topicLabel.toUpperCase()} (${group.count} PROVISIONS)`;
+        })()}
+      </Text>
+
+      {/* Table Header */}
+      <View style={styles.tableHeader}>
+        <Text style={[styles.tableHeaderCell, styles.colNumber]}>#</Text>
+        <Text style={[styles.tableHeaderCell, styles.colSubtopic]}>Subtopic</Text>
+        <Text style={[styles.tableHeaderCell, styles.colProvision]}>Provision Summary</Text>
+        <Text style={[styles.tableHeaderCell, styles.colSource]}>Source</Text>
+      </View>
+
+      {/* Table Rows */}
+      {group.subtopics && group.subtopics.length > 0 ? (
+        // Heritage: Group by subtopic
+        group.subtopics.map((subtopic, subIdx) => (
+          <View key={subIdx}>
+            {/* Subtopic Header Row */}
+            <View style={styles.subtopicRow}>
+              <Text style={styles.colNumber}> </Text>
+              <Text style={{ flexGrow: 1, flexShrink: 1, flexBasis: 'auto', color: '#374151' }}>
+                {(subtopic.subtopic || 'General').toUpperCase()} ({subtopic.count} provisions)
+              </Text>
+            </View>
+
+            {/* Subtopic Provisions */}
+            {subtopic.provisions.map((provision, pIdx) => {
+              const sanitizedText = sanitizeForPdf(provision.provision_text || '');
+              const paragraphs = parseParagraphsWithHighlights(sanitizedText);
+
+              return (
+                <View key={provision.id} style={styles.tableRow}>
+                  <Text style={[styles.cellNumber, styles.colNumber]}>
+                    {sectionNumber}.{provisionNumber++}
+                  </Text>
+                  <Text style={[styles.cellSubtopic, styles.colSubtopic]}>
+                    {subtopic.subtopic || 'General'}
+                  </Text>
+                  <View style={[styles.colProvision]}>
+                    {paragraphs.map((para, pIdx) => (
+                      <View key={pIdx}>
+                        {/* Control/Objective markers - styled as badges */}
+                        {para.isControlMarker ? (
+                          <View style={{
+                            backgroundColor: para.paragraph.startsWith('C') ? '#0c4a6e' : '#92400e',
+                            paddingVertical: 3,
+                            paddingHorizontal: 8,
+                            borderRadius: 10,
+                            alignSelf: 'flex-start',
+                            marginVertical: 4
+                          }}>
+                            <Text style={{
+                              color: '#ffffff',
+                              fontFamily: 'Helvetica-Bold',
+                              fontSize: 8
+                            }}>
+                              {para.paragraph}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={[
+                            styles.cellProvision,
+                            para.isHeader ? { fontFamily: 'Helvetica-Bold', fontSize: 11 } : {},
+                            (para.isList || para.isNestedList) ? {
+                              marginLeft: para.isNestedList ? 20 : 10,
+                              fontSize: 9
+                            } : {}
+                          ]}>
+                            {para.segments.map((segment, sIdx) => {
+                              if (segment.isNumeric) {
+                                return (
+                                  <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold', color: '#0f766e' }}>
+                                    {segment.text}
+                                  </Text>
+                                );
+                              } else if (segment.isControl) {
+                                return (
+                                  <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold', color: '#0c4a6e' }}>
+                                    {segment.text}
+                                  </Text>
+                                );
+                              } else if (para.isHeader) {
+                                // Headers: wrap all text in Text component to inherit bold
+                                return (
+                                  <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold' }}>
+                                    {segment.text}
+                                  </Text>
+                                );
+                              } else {
+                                return segment.text;
+                              }
+                            })}
+                          </Text>
+                        )}
+                        {pIdx < paragraphs.length - 1 && (
+                          <View style={{ height: para.isList ? 3 : 8 }} />
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                  <Text style={[styles.cellSource, styles.colSource]}>
+                    {formatCitation(provision) || ' '}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        ))
+      ) : (
+        // Non-heritage: Flat list
+        group.provisions.map((provision, pIdx) => {
+          const sanitizedText = sanitizeForPdf(provision.provision_text || '');
+          const paragraphs = parseParagraphsWithHighlights(sanitizedText);
+
+          return (
+            <View key={provision.id} style={styles.tableRow}>
+              <Text style={[styles.cellNumber, styles.colNumber]}>
+                {sectionNumber}.{provisionNumber++}
+              </Text>
+              <Text style={[styles.cellSubtopic, styles.colSubtopic]}>
+                {provision.v2_dcp_part && provision.v2_topic
+                  ? `${provision.v2_dcp_part}: ${provision.v2_topic}`
+                  : provision.v2_dcp_part || provision.v2_topic || '—'}
+              </Text>
+              <View style={[styles.colProvision]}>
+                {paragraphs.map((para, pIdx) => {
+                  // TEST: Computed style approach (spread operator)
+                  const textStyle = {
+                    ...styles.cellProvision,
+                    ...(para.isHeader && { fontFamily: 'Helvetica-Bold', fontSize: 11 }),
+                    ...((para.isList || para.isNestedList) && {
+                      marginLeft: para.isNestedList ? 20 : 10,
+                      fontSize: 9
+                    })
+                  };
+
+                  return (
+                  <View key={pIdx}>
+                    {/* Control/Objective markers - styled as badges */}
+                    {para.isControlMarker ? (
+                      <View style={{
+                        backgroundColor: para.paragraph.startsWith('C') ? '#0c4a6e' : '#92400e',
+                        paddingVertical: 3,
+                        paddingHorizontal: 8,
+                        borderRadius: 10,
+                        alignSelf: 'flex-start',
+                        marginVertical: 4
+                      }}>
+                        <Text style={{
+                          color: '#ffffff',
+                          fontFamily: 'Helvetica-Bold',
+                          fontSize: 8
+                        }}>
+                          {para.paragraph}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={textStyle}>
+                        {para.segments.map((segment, sIdx) => {
+                          if (segment.isNumeric) {
+                            return (
+                              <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold', color: '#0f766e' }}>
+                                {segment.text}
+                              </Text>
+                            );
+                          } else if (segment.isControl) {
+                            return (
+                              <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold', color: '#0c4a6e' }}>
+                                {segment.text}
+                              </Text>
+                            );
+                          } else if (para.isHeader) {
+                            // Headers: wrap all text in Text component to inherit bold
+                            return (
+                              <Text key={sIdx} style={{ fontFamily: 'Helvetica-Bold' }}>
+                                {segment.text}
+                              </Text>
+                            );
+                          } else {
+                            return segment.text;
+                          }
+                        })}
+                      </Text>
+                    )}
+                    {pIdx < paragraphs.length - 1 && (
+                      <View style={{ height: para.isList ? 3 : 8 }} />
+                    )}
+                  </View>
+                  );
+                })}
+              </View>
+              <Text style={[styles.cellSource, styles.colSource]}>
+                {formatCitation(provision) || ' '}
+              </Text>
+            </View>
+          );
+        })
+      )}
+
+    </View>
+  );
+}
