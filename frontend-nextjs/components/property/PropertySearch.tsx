@@ -23,6 +23,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
   const [inputValue, setInputValue] = useState('');
   const [lgaError, setLgaError] = useState<string | null>(null);
+  const [usedAutocomplete, setUsedAutocomplete] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
@@ -90,6 +91,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
         autocompleteRef.current.addListener('place_changed', () => {
           const place = autocompleteRef.current?.getPlace();
           setLgaError(null); // Clear any previous error
+          setUsedAutocomplete(true); // Mark that autocomplete was used
 
           if (place?.formatted_address) {
             let address = place.formatted_address;
@@ -107,14 +109,18 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
             );
             const lga = lgaComponent?.long_name || '';
 
+            console.log(`[PropertySearch] Address: ${address}, LGA: ${lga || '(not found)'}`);
+
             // Validate: Only allow Inner West addresses
-            const isInnerWest = lga.toLowerCase().includes('inner west');
+            const isInnerWest = lga && lga.toLowerCase().includes('inner west');
 
             if (!isInnerWest) {
               // Show error for non-Inner West addresses
               const lgaDisplay = lga || 'unknown area';
               setLgaError(`This address is in ${lgaDisplay}. Only Inner West LGA addresses are currently supported.`);
-              console.warn(`Address rejected: ${address} is in ${lgaDisplay}, not Inner West`);
+              console.warn(`[PropertySearch] Address rejected: ${address} is in ${lgaDisplay}, not Inner West`);
+            } else {
+              console.log(`[PropertySearch] Address accepted: ${address} is in Inner West`);
             }
             // Don't auto-trigger - let user click the button to analyze
           }
@@ -171,10 +177,20 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Block submission if there's an LGA error
+    if (lgaError) {
+      return;
+    }
+
+    // Block manual submission - require Google Places selection
+    if (!usedAutocomplete) {
+      setLgaError('Please select an address from the dropdown suggestions');
+      return;
+    }
+
     setLgaError(null);
     if (inputValue.trim()) {
-      // Allow manual entry - just pass the address through
-      // Note: Manual entries bypass LGA validation (validated server-side)
       onAddressSelect(inputValue.trim());
     }
   };
@@ -182,6 +198,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
     setLgaError(null); // Clear error when user types
+    setUsedAutocomplete(false); // Reset - they're typing manually now
   };
 
   const handleClearInput = (e?: React.MouseEvent) => {
@@ -189,6 +206,8 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
     e?.stopPropagation(); // Stop event bubbling
 
     setInputValue('');
+    setLgaError(null);
+    setUsedAutocomplete(false);
     if (inputRef.current) {
       inputRef.current.value = ''; // Also clear the actual input element value
       inputRef.current.focus();
@@ -237,11 +256,11 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
           <button
             type="submit"
-            disabled={loading || !inputValue.trim()}
+            disabled={loading || !inputValue.trim() || !!lgaError}
             className={`h-12 sm:h-10 px-6 min-w-[160px] font-medium text-base sm:text-sm rounded-lg transition-all shadow-sm whitespace-nowrap flex items-center justify-center ${
               loading
                 ? 'bg-gray-400 text-white cursor-wait'
-                : !inputValue.trim()
+                : !inputValue.trim() || lgaError
                 ? 'bg-gray-400 text-white cursor-not-allowed'
                 : 'bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white'
             }`}

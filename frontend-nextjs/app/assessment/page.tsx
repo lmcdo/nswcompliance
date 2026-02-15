@@ -11,7 +11,7 @@
  */
 
 import React from 'react';
-import { MapPin, Share2 } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
@@ -88,6 +88,8 @@ export default function AssessmentPage() {
           <div className="hidden sm:flex items-center">
             <a
               href="/quick-guide"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-teal-600 bg-white text-teal-700 hover:bg-teal-50 transition-colors"
             >
               <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -95,19 +97,6 @@ export default function AssessmentPage() {
               </svg>
               Quick Guide
             </a>
-          </div>
-          {/* Share Report - Coming Soon */}
-          <div className="hidden sm:flex items-center relative">
-            <button
-              disabled
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed opacity-60"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              Share Report
-            </button>
-            <span className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-teal-500 text-white">
-              Soon
-            </span>
           </div>
           <div className="hidden sm:flex items-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-100 text-gray-700">
@@ -418,6 +407,13 @@ export default function AssessmentPage() {
                         : undefined}
                       precinctId={selectedProperty.constraints?.precinctId}
                       precinctName={selectedProperty.constraints?.precinctName}
+                      address={selectedProperty.address}
+                      hcaCode={selectedProperty.heritage?.heritageItemNumber}
+                      heritageItem={selectedProperty.heritage?.heritageType?.toLowerCase().includes('item')}
+                      heritageItemName={selectedProperty.heritage?.heritageItemName}
+                      heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
+                      propertyData={selectedProperty}
+                      lepClauseData={lepClauseData}
                     />
                   </div>
                 )}
@@ -544,6 +540,8 @@ export default function AssessmentPage() {
               </a>
               <a
                 href="/user-guide"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 px-4 py-1.5 bg-teal-600 text-white rounded-md text-sm font-medium hover:bg-teal-700 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
