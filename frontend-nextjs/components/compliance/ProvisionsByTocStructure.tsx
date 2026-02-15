@@ -22,7 +22,8 @@ import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
-import { matchesSearchWithSynonyms, scoreProvision } from '@/lib/search-utils';
+import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
+import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -159,6 +160,7 @@ export function ProvisionsByTocStructure({
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
+  const [showAutocomplete, setShowAutocomplete] = useState(false);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
@@ -959,21 +961,45 @@ export function ProvisionsByTocStructure({
             </div>
 
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowAutocomplete(true);
+                }}
+                onFocus={() => setShowAutocomplete(true)}
+                onBlur={() => {
+                  // Delay to allow click on suggestion
+                  setTimeout(() => setShowAutocomplete(false), 200);
+                }}
                 placeholder="Search provisions... (try: setback, FSR, heritage)"
                 className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setShowAutocomplete(false);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
                 >
                   <X className="h-4 w-4" />
                 </button>
+              )}
+
+              {/* Autocomplete dropdown */}
+              {showAutocomplete && (
+                <SearchAutocomplete
+                  query={searchQuery}
+                  suggestions={getSearchSuggestions(searchQuery)}
+                  onSelect={(term) => {
+                    setSearchQuery(term);
+                    setShowAutocomplete(false);
+                  }}
+                  onClose={() => setShowAutocomplete(false)}
+                />
               )}
             </div>
             {debouncedSearch && (
