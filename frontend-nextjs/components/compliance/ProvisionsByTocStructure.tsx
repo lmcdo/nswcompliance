@@ -22,6 +22,7 @@ import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
+import { matchesSearchWithSynonyms } from '@/lib/search-utils';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -157,6 +158,7 @@ export function ProvisionsByTocStructure({
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
@@ -314,18 +316,26 @@ export function ProvisionsByTocStructure({
     return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
   }, [baseProvisions, layerFilter]);
 
-  // Apply search + topic filters on top of layer-filtered base, then sort by priority
+  // Apply search + topic filters, then sort by priority
   const filteredProvisions = useMemo(() => {
-    let filtered = layerFilteredProvisions;
+    // Determine search base based on scope
+    const searchBase = searchScope === 'all'
+      ? baseProvisions  // All provisions (mode-aware)
+      : layerFilteredProvisions;  // Within layer filter
 
+    let filtered = searchBase;
+
+    // Apply search if present (multi-field with synonyms)
     if (debouncedSearch) {
-      const searchLower = debouncedSearch.toLowerCase();
-      filtered = filtered.filter(p =>
-        p.provision_text?.toLowerCase().includes(searchLower)
-      );
+      filtered = filtered.filter(p => matchesSearchWithSynonyms(p, debouncedSearch));
+    } else {
+      // If no search, use layer filter (only when not searching)
+      if (searchScope === 'filtered') {
+        filtered = layerFilteredProvisions;
+      }
     }
 
-    // Multi-topic filter with OR logic
+    // Multi-topic filter with OR logic (applied after search)
     if (topicFilters.length > 0) {
       filtered = filtered.filter(p => {
         const provisionTopic = p.v2_topic?.toLowerCase().replace(/ /g, '_');
@@ -339,7 +349,7 @@ export function ProvisionsByTocStructure({
       const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
       return aPriority - bPriority;
     });
-  }, [layerFilteredProvisions, debouncedSearch, topicFilters]);
+  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
@@ -906,14 +916,39 @@ export function ProvisionsByTocStructure({
 
           {/* Search box */}
           <div className="mt-3 relative">
+            {/* Search scope toggle */}
+            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+              <span>Search in:</span>
+              <button
+                onClick={() => setSearchScope('all')}
+                className={`px-2 py-1 rounded-md transition-colors ${
+                  searchScope === 'all'
+                    ? 'bg-teal-100 text-teal-700 font-medium'
+                    : 'hover:bg-gray-100'
+                }`}
+              >
+                All provisions ({baseProvisions.length})
+              </button>
+              <button
+                onClick={() => setSearchScope('filtered')}
+                className={`px-2 py-1 rounded-md transition-colors ${
+                  searchScope === 'filtered'
+                    ? 'bg-teal-100 text-teal-700 font-medium'
+                    : 'hover:bg-gray-100'
+                }`}
+              >
+                Filtered results only ({layerFilteredProvisions.length})
+              </button>
+            </div>
+
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search provisions..."
-                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                placeholder="Search provisions... (try: setback, FSR, heritage)"
+                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
@@ -1146,15 +1181,61 @@ export function ProvisionsByTocStructure({
             />
           ) : (
             <div className="text-center py-12 text-gray-500">
-              <FileText className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              <p>No provisions in this section</p>
-              {topicFilter && (
-                <button
-                  onClick={() => setTopicFilter(null)}
-                  className="mt-2 text-green-600 text-sm hover:underline"
-                >
-                  Clear filter
-                </button>
+              <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              {debouncedSearch ? (
+                <>
+                  <p className="font-medium mb-2">
+                    No provisions match "{debouncedSearch}"
+                  </p>
+
+                  {searchScope === 'filtered' && (
+                    <button
+                      onClick={() => setSearchScope('all')}
+                      className="text-teal-600 hover:underline mb-2 block mx-auto"
+                    >
+                      Try searching all {baseProvisions.length} provisions instead?
+                    </button>
+                  )}
+
+                  <div className="text-sm mt-4">
+                    <p className="mb-2">Try searching for:</p>
+                    <div className="flex gap-2 justify-center flex-wrap">
+                      {['setback', 'FSR', 'heritage', 'parking', 'height'].map(term => (
+                        <button
+                          key={term}
+                          onClick={() => setSearchQuery(term)}
+                          className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 text-xs"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>No provisions {viewMode === 'structure' ? 'in this section' : 'match your filters'}</p>
+                  {(topicFilters.length > 0 || layerFilter) && (
+                    <div className="mt-2 space-x-2">
+                      {topicFilters.length > 0 && (
+                        <button
+                          onClick={() => setTopicFilters([])}
+                          className="text-teal-600 text-sm hover:underline"
+                        >
+                          Clear topics
+                        </button>
+                      )}
+                      {layerFilter && (
+                        <button
+                          onClick={() => setLayerFilter(null)}
+                          className="text-teal-600 text-sm hover:underline"
+                        >
+                          Clear layer filter
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
