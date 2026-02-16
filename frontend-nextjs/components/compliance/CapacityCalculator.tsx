@@ -84,19 +84,35 @@ export function CapacityCalculator({
       // Estimate frontage from lot area if not available (square root approximation)
       const estimatedFrontage = Math.sqrt(lotArea);
 
+      // Valid development types accepted by API
+      const validDevTypes = [
+        'dwelling_house', 'dual_occupancy', 'multi_dwelling_housing',
+        'residential_flat_building', 'manor_house', 'terrace_house',
+        'semi_detached_dwelling', 'attached_dwelling', 'secondary_dwelling',
+        'shop_top_housing', 'boarding_house', 'group_home', 'hostels',
+        'seniors_housing', 'shop', 'commercial_premises', 'office_premises',
+        'retail_premises', 'warehouse', 'light_industry', 'general_industry', 'other'
+      ];
+
+      // Only include developmentType if it's valid
+      const requestBody: any = {
+        address: propertyAddress,
+        coordinates: coordinates,
+        lotSize: lotArea,  // API expects 'lotSize', not 'lotArea'
+        frontage: estimatedFrontage,  // Required by API schema
+        zone: zone,
+        lga: lga,
+        formerCouncil: formerCouncil
+      };
+
+      if (developmentType && validDevTypes.includes(developmentType)) {
+        requestBody.developmentType = developmentType;
+      }
+
       const response = await fetch('/api/capacity/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          address: propertyAddress,
-          coordinates: coordinates,
-          developmentType: developmentType,
-          lotSize: lotArea,  // API expects 'lotSize', not 'lotArea'
-          frontage: estimatedFrontage,  // Required by API schema
-          zone: zone,
-          lga: lga,
-          formerCouncil: formerCouncil
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
