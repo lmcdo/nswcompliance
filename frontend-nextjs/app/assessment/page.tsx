@@ -16,6 +16,7 @@ import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
+import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -413,6 +414,20 @@ export default function AssessmentPage() {
                         DA Mode
                       </button>
                     </div>
+
+                    {/* Capacity Calculator */}
+                    <div className="mb-4">
+                      <CapacityCalculator
+                        propertyAddress={selectedProperty.address}
+                        coordinates={selectedCoordinates}
+                        developmentType={developmentType}
+                        lotArea={selectedProperty.lotDimensions?.area || null}
+                        zone={selectedProperty.constraints?.zone || ''}
+                        lga={selectedProperty.constraints?.lga || 'Inner West'}
+                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                      />
+                    </div>
+
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
                       formerCouncil={selectedProperty.constraints?.formerCouncil || ''}

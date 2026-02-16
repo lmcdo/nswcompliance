@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Ruler } from 'lucide-react';
+import { Ruler, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
+import type { ComplianceResult } from '@/lib/numericCompliance';
 
 export interface NumericCheckValues {
   height: string;
@@ -14,6 +15,7 @@ export interface NumericCheckValues {
 
 interface NumericCheckerProps {
   onValuesChange: (values: NumericCheckValues) => void;
+  results?: ComplianceResult[];
 }
 
 const FIELDS: Array<{ key: keyof NumericCheckValues; label: string; unit: string; placeholder: string }> = [
@@ -23,7 +25,7 @@ const FIELDS: Array<{ key: keyof NumericCheckValues; label: string; unit: string
   { key: 'carSpaces', label: 'Car spaces', unit: '', placeholder: '0' },
 ];
 
-export function NumericChecker({ onValuesChange }: NumericCheckerProps) {
+export function NumericChecker({ onValuesChange, results = [] }: NumericCheckerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [values, setValues] = useState<NumericCheckValues>({
     height: '',
@@ -81,6 +83,55 @@ export function NumericChecker({ onValuesChange }: NumericCheckerProps) {
               </div>
             ))}
           </div>
+
+          {/* Results Section */}
+          {results.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="text-xs font-medium text-gray-700 mb-2">
+                {results.length} provision{results.length !== 1 ? 's' : ''} checked:
+              </p>
+              <div className="space-y-2">
+                {results.map((result) => {
+                  const Icon = result.status === 'complies' ? CheckCircle2 : result.status === 'borderline' ? AlertTriangle : XCircle;
+                  const colorClasses =
+                    result.status === 'complies'
+                      ? 'bg-green-50 border-green-200 text-green-800'
+                      : result.status === 'borderline'
+                      ? 'bg-amber-50 border-amber-200 text-amber-800'
+                      : 'bg-red-50 border-red-200 text-red-800';
+                  const iconColor = result.status === 'complies' ? 'text-green-600' : result.status === 'borderline' ? 'text-amber-600' : 'text-red-600';
+
+                  return (
+                    <div key={result.provisionId} className={`flex items-start gap-2 p-2 rounded border ${colorClasses}`}>
+                      <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${iconColor}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium">
+                          {result.provisionTitle}
+                        </p>
+                        <p className="text-xs opacity-80 mt-0.5">
+                          {result.limitType === 'max' ? 'Maximum' : 'Minimum'} {result.limitValue}{result.limitUnit} —{' '}
+                          {result.status === 'complies' && 'Your value complies'}
+                          {result.status === 'borderline' && 'Borderline (within 10%)'}
+                          {result.status === 'fails' && `Exceeds by ${Math.abs(result.userValue - result.limitValue).toFixed(1)}${result.limitUnit}`}
+                        </p>
+                        <p className="text-xs opacity-60 mt-1 italic">
+                          "{result.limitSnippet.length > 80 ? result.limitSnippet.substring(0, 80) + '...' : result.limitSnippet}"
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {results.length === 0 && Object.values(values).some(v => v !== '') && (
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <p className="text-xs text-gray-500 italic">
+                No matching provisions with numeric limits found for the entered values.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -26,6 +26,7 @@ import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from 
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { NumericChecker, type NumericCheckValues } from './NumericChecker';
+import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -178,6 +179,7 @@ export function ProvisionsByTocStructure({
 
   // Numeric checker values
   const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
+  const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
   const { sessionToken, daResponses, refreshResponses } = useDASession(
@@ -255,6 +257,24 @@ export function ProvisionsByTocStructure({
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Compute numeric compliance results when check values or provisions change
+  useEffect(() => {
+    if (!numericCheckValues || !tocStructure) {
+      setComplianceResults([]);
+      return;
+    }
+
+    // Extract all provisions from TOC structure
+    const allParts = Object.values(tocStructure);
+    const allProvisions = allParts.flatMap((part: any) =>
+      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
+    );
+
+    // Check provisions against user values
+    const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
+    setComplianceResults(results);
+  }, [numericCheckValues, tocStructure]);
 
   // Extract data with safe defaults (for use in hooks below)
   const tocStructure = data?.data?.by_toc || {};  // Filtered provisions for selected part
@@ -1423,10 +1443,13 @@ export function ProvisionsByTocStructure({
           )}
 
           {/* Numeric Compliance Checker - always available when DCP provisions are loaded */}
-          <NumericChecker onValuesChange={(vals) => {
-            const hasAnyValue = Object.values(vals).some(v => v !== '');
-            setNumericCheckValues(hasAnyValue ? vals : undefined);
-          }} />
+          <NumericChecker
+            onValuesChange={(vals) => {
+              const hasAnyValue = Object.values(vals).some(v => v !== '');
+              setNumericCheckValues(hasAnyValue ? vals : undefined);
+            }}
+            results={complianceResults}
+          />
 
           {isDaMode && (
             <div className="mb-3 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center gap-2">
