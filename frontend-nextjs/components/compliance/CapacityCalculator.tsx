@@ -211,12 +211,12 @@ export function CapacityCalculator({
 
               {/* Calculation Methodology */}
               {(result.capacity?.maxGFA || result.capacity?.maxFSR || result.lepClauses?.length > 0) && (
-                <details className="border rounded">
-                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium text-sm flex items-center gap-2">
+                <details open className="border border-teal-200 rounded bg-teal-50">
+                  <summary className="p-3 cursor-pointer hover:bg-teal-100 font-medium text-sm flex items-center gap-2 text-teal-900">
                     <span>📐 Calculation Methodology</span>
-                    <span className="text-xs text-gray-500 font-normal">(show working)</span>
+                    <span className="text-xs text-teal-600 font-normal">(click to hide/show)</span>
                   </summary>
-                  <div className="p-4 bg-gray-50 border-t space-y-3">
+                  <div className="p-4 bg-white border-t border-teal-200 space-y-3">
                     {/* GFA Calculation */}
                     {result.capacity?.maxFSR && result.capacity?.maxGFA && (
                       <div className="p-3 bg-white border rounded">
