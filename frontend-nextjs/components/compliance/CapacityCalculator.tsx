@@ -11,6 +11,8 @@ interface CapacityCalculatorProps {
   zone: string;
   lga: string;
   formerCouncil: string;
+  fsr?: number | null;  // From Planning Portal
+  maxHeight?: number | null;  // From Planning Portal
 }
 
 interface CapacityResult {
@@ -64,11 +66,35 @@ export function CapacityCalculator({
   lotArea,
   zone,
   lga,
-  formerCouncil
+  formerCouncil,
+  fsr,
+  maxHeight
 }: CapacityCalculatorProps) {
   const [result, setResult] = useState<CapacityResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [autoCalculate, setAutoCalculate] = useState(false);
+
+  // Auto-calculate immediately if we have Planning Portal data
+  useEffect(() => {
+    if (lotArea && fsr && maxHeight) {
+      // Calculate directly from Planning Portal data
+      const maxGFA = lotArea * fsr;
+      const approxStoreys = Math.floor(maxHeight / 3.0);
+
+      setResult({
+        success: true,
+        capacity: {
+          maxGFA: maxGFA,
+          gfaSource: 'Planning Portal FSR data',
+          maxHeight: maxHeight,
+          maxFSR: fsr,
+          approxStoreys: approxStoreys,
+          lotArea: lotArea
+        }
+      });
+      setAutoCalculate(true);
+    }
+  }, [lotArea, fsr, maxHeight]);
 
   async function calculateCapacity() {
     if (!lotArea) {

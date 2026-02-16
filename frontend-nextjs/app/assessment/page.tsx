@@ -425,6 +425,30 @@ export default function AssessmentPage() {
                         zone={selectedProperty.constraints?.zone || ''}
                         lga={selectedProperty.constraints?.lga || 'Inner West'}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                        fsr={(() => {
+                          // Extract FSR from Planning Portal layers
+                          const fsrLayer = selectedProperty.planningLayers?.find((l: any) =>
+                            l.layerName === 'Floor Space Ratio Map'
+                          );
+                          const fsrText = fsrLayer?.results?.[0]?.['Floor Space Ratio'];
+                          if (fsrText) {
+                            const match = fsrText.match(/(\d+\.?\d*)\s*:\s*1/);
+                            return match ? parseFloat(match[1]) : null;
+                          }
+                          return null;
+                        })()}
+                        maxHeight={(() => {
+                          // Extract max height from Planning Portal layers
+                          const heightLayer = selectedProperty.planningLayers?.find((l: any) =>
+                            l.layerName === 'Height of Buildings Map'
+                          );
+                          const heightText = heightLayer?.results?.[0]?.['Maximum Height of Buildings'];
+                          if (heightText) {
+                            const match = heightText.match(/(\d+\.?\d*)\s*m/);
+                            return match ? parseFloat(match[1]) : null;
+                          }
+                          return null;
+                        })()}
                       />
                     </div>
 
