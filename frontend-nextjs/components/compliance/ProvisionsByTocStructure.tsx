@@ -317,7 +317,17 @@ export function ProvisionsByTocStructure({
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
   // Now uses baseProvisions (mode-aware) instead of selectedProvisions
   const layerFilteredProvisions = useMemo(() => {
-    const base = baseProvisions.filter(p => p.v2_provision_type !== 'TOC');
+    const base = baseProvisions.filter(p => {
+      // Exclude TOC entries
+      if (p.v2_provision_type === 'TOC') return false;
+
+      // Exclude negative page numbers (TOC, preamble, definitions)
+      const page = p.pdf_page ?? p.pdf_printed_page;
+      if (page !== null && page !== undefined && page < 0) return false;
+
+      return true;
+    });
+
     if (!layerFilter) return base;
     return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
   }, [baseProvisions, layerFilter]);
