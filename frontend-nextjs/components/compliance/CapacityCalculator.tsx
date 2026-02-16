@@ -162,13 +162,14 @@ export function CapacityCalculator({
   }, [developmentType, autoCalculate]);
 
   return (
-    <div className="bg-white border rounded-lg p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-2">Development Capacity</h2>
-      <p className="text-sm text-gray-600 mb-4">
-        Calculate maximum buildable area, height, and site requirements
-      </p>
+    <details className="bg-white border rounded-lg mb-4">
+      <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium text-sm flex items-center justify-between">
+        <span>📊 Development Capacity Calculator</span>
+        <span className="text-xs text-gray-500">FSR · Height · GFA</span>
+      </summary>
 
-      <div className="flex gap-4 items-center mb-4">
+      <div className="px-3 pb-3 space-y-2">
+        <div className="flex gap-2 items-center">
         <Button
           onClick={() => {
             calculateCapacity();
@@ -187,7 +188,7 @@ export function CapacityCalculator({
       </div>
 
       {result && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-2 space-y-2">
           {result.error ? (
             <div className="p-4 bg-red-50 border border-red-200 rounded">
               <p className="text-sm text-red-700">{result.error}</p>
@@ -195,51 +196,46 @@ export function CapacityCalculator({
           ) : (
             <>
               {/* Main Capacity Card */}
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded">
-                <h3 className="font-semibold text-lg mb-3">Maximum Building Envelope</h3>
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded">
+                <h3 className="font-semibold text-sm mb-2">Maximum Building Envelope</h3>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   {/* Lot Area */}
                   <div>
-                    <p className="text-sm text-gray-600">Lot Area</p>
-                    <p className="text-xl font-semibold">{result.capacity?.lotArea}m²</p>
+                    <p className="text-gray-600">Lot Area</p>
+                    <p className="text-base font-semibold">{result.capacity?.lotArea}m²</p>
                   </div>
 
                   {/* Max GFA */}
                   {result.capacity?.maxGFA && (
                     <div>
-                      <p className="text-sm text-gray-600">Max Gross Floor Area</p>
-                      <p className="text-xl font-semibold">{result.capacity.maxGFA.toFixed(1)}m²</p>
-                      <p className="text-xs text-gray-500">{result.capacity.gfaSource}</p>
+                      <p className="text-gray-600">Max GFA</p>
+                      <p className="text-base font-semibold">{result.capacity.maxGFA.toFixed(1)}m²</p>
                     </div>
                   )}
 
                   {/* Max Height */}
                   {result.capacity?.maxHeight && (
                     <div>
-                      <p className="text-sm text-gray-600">Max Height</p>
-                      <p className="text-xl font-semibold">{result.capacity.maxHeight}m</p>
-                      {result.capacity.approxStoreys && (
-                        <p className="text-xs text-gray-500">~{result.capacity.approxStoreys} storeys</p>
-                      )}
+                      <p className="text-gray-600">Max Height</p>
+                      <p className="text-base font-semibold">{result.capacity.maxHeight}m <span className="text-xs text-gray-500">~{result.capacity.approxStoreys} storeys</span></p>
                     </div>
                   )}
 
                   {/* Max FSR */}
                   {result.capacity?.maxFSR && (
                     <div>
-                      <p className="text-sm text-gray-600">Max FSR</p>
-                      <p className="text-xl font-semibold">{result.capacity.maxFSR}:1</p>
+                      <p className="text-gray-600">Max FSR</p>
+                      <p className="text-base font-semibold">{result.capacity.maxFSR}:1</p>
                     </div>
                   )}
                 </div>
 
-                {/* No Calculations Available Message */}
-                {!result.capacity?.maxGFA && !result.capacity?.maxHeight && !result.capacity?.maxFSR && (
-                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
-                    <p className="text-sm text-amber-900 font-medium">⚠️ No FSR or height limits found</p>
-                    <p className="text-xs text-amber-800 mt-1">
-                      LEP data not available for this zone/development type combination.
+                {/* No Calculations Available Message - only if NO data at all */}
+                {!result.capacity?.maxGFA && !result.capacity?.maxHeight && !result.capacity?.maxFSR && (!result.lepClauses || result.lepClauses.length === 0) && (
+                  <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-xs">
+                    <p className="text-amber-900 font-medium">⚠️ No FSR or height limits found</p>
+                    <p className="text-amber-800 mt-1">
                       Check the {zone} zone table in {lga} LEP or contact council for capacity controls.
                     </p>
                   </div>
@@ -248,12 +244,11 @@ export function CapacityCalculator({
 
               {/* Calculation Methodology */}
               {(result.capacity?.maxGFA || result.capacity?.maxFSR || result.lepClauses?.length > 0) && (
-                <details open className="border border-teal-200 rounded bg-teal-50">
-                  <summary className="p-3 cursor-pointer hover:bg-teal-100 font-medium text-sm flex items-center gap-2 text-teal-900">
-                    <span>📐 Calculation Methodology</span>
-                    <span className="text-xs text-teal-600 font-normal">(click to hide/show)</span>
+                <details className="border rounded text-sm">
+                  <summary className="p-2 cursor-pointer hover:bg-gray-50 font-medium text-xs flex items-center gap-2">
+                    <span>📐 Working</span>
                   </summary>
-                  <div className="p-4 bg-white border-t border-teal-200 space-y-3">
+                  <div className="p-2 bg-gray-50 border-t space-y-2 text-xs">
                     {/* GFA Calculation */}
                     {result.capacity?.maxFSR && result.capacity?.maxGFA && (
                       <div className="p-3 bg-white border rounded">
@@ -444,6 +439,7 @@ export function CapacityCalculator({
           )}
         </div>
       )}
-    </div>
+      </div>
+    </details>
   );
 }
