@@ -258,24 +258,6 @@ export function ProvisionsByTocStructure({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Compute numeric compliance results when check values or provisions change
-  useEffect(() => {
-    if (!numericCheckValues || !tocStructure) {
-      setComplianceResults([]);
-      return;
-    }
-
-    // Extract all provisions from TOC structure
-    const allParts = Object.values(tocStructure);
-    const allProvisions = allParts.flatMap((part: any) =>
-      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
-    );
-
-    // Check provisions against user values
-    const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
-    setComplianceResults(results);
-  }, [numericCheckValues, tocStructure]);
-
   // Extract data with safe defaults (for use in hooks below)
   const tocStructure = data?.data?.by_toc || {};  // Filtered provisions for selected part
   const completeTocStructure = data?.data?.complete_toc || {};  // Complete TOC for sidebar navigation
@@ -340,6 +322,24 @@ export function ProvisionsByTocStructure({
       return true;
     });
   }, [rawSelectedProvisions]);
+
+  // Compute numeric compliance results when check values or provisions change
+  useEffect(() => {
+    if (!numericCheckValues || !tocStructure) {
+      setComplianceResults([]);
+      return;
+    }
+
+    // Extract all provisions from TOC structure
+    const allParts = Object.values(tocStructure);
+    const allProvisions = allParts.flatMap((part: any) =>
+      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
+    );
+
+    // Check provisions against user values
+    const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
+    setComplianceResults(results);
+  }, [numericCheckValues, tocStructure]);
 
   // Get ALL provisions across all parts (for "export all" option and task mode)
   // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)

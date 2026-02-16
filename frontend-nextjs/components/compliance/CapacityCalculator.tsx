@@ -81,6 +81,9 @@ export function CapacityCalculator({
 
     setLoading(true);
     try {
+      // Estimate frontage from lot area if not available (square root approximation)
+      const estimatedFrontage = Math.sqrt(lotArea);
+
       const response = await fetch('/api/capacity/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,7 +91,8 @@ export function CapacityCalculator({
           address: propertyAddress,
           coordinates: coordinates,
           developmentType: developmentType,
-          lotArea: lotArea,
+          lotSize: lotArea,  // API expects 'lotSize', not 'lotArea'
+          frontage: estimatedFrontage,  // Required by API schema
           zone: zone,
           lga: lga,
           formerCouncil: formerCouncil
