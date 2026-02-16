@@ -1020,30 +1020,32 @@ export function ProvisionsByTocStructure({
 
           {/* Search box */}
           <div className="mt-3 relative">
-            {/* Search scope toggle */}
-            <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-              <span>Search in:</span>
-              <button
-                onClick={() => setSearchScope('all')}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  searchScope === 'all'
-                    ? 'bg-teal-100 text-teal-700 font-medium'
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                All provisions ({baseProvisions.length})
-              </button>
-              <button
-                onClick={() => setSearchScope('filtered')}
-                className={`px-2 py-1 rounded-md transition-colors ${
-                  searchScope === 'filtered'
-                    ? 'bg-teal-100 text-teal-700 font-medium'
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                Filtered results only ({layerFilteredProvisions.length})
-              </button>
-            </div>
+            {/* Search scope toggle - only show when user has applied filters */}
+            {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                <span>Search in:</span>
+                <button
+                  onClick={() => setSearchScope('all')}
+                  className={`px-2 py-1 rounded-md transition-colors ${
+                    searchScope === 'all'
+                      ? 'bg-teal-100 text-teal-700 font-medium'
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  All provisions ({baseProvisions.length})
+                </button>
+                <button
+                  onClick={() => setSearchScope('filtered')}
+                  className={`px-2 py-1 rounded-md transition-colors ${
+                    searchScope === 'filtered'
+                      ? 'bg-teal-100 text-teal-700 font-medium'
+                      : 'hover:bg-gray-100'
+                  }`}
+                >
+                  Filtered results only ({layerFilteredProvisions.length})
+                </button>
+              </div>
+            )}
 
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
