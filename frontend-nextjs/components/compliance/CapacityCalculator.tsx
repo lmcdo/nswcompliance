@@ -207,6 +207,17 @@ export function CapacityCalculator({
                     </div>
                   )}
                 </div>
+
+                {/* No Calculations Available Message */}
+                {!result.capacity?.maxGFA && !result.capacity?.maxHeight && !result.capacity?.maxFSR && (
+                  <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded">
+                    <p className="text-sm text-amber-900 font-medium">⚠️ No FSR or height limits found</p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      LEP data not available for this zone/development type combination.
+                      Check the {zone} zone table in {lga} LEP or contact council for capacity controls.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Calculation Methodology */}
