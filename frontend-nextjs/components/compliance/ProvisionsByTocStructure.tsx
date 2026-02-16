@@ -324,21 +324,15 @@ export function ProvisionsByTocStructure({
 
   // Apply search + topic filters, then sort by relevance or priority
   const filteredProvisions = useMemo(() => {
-    // Determine search base based on scope
-    const searchBase = searchScope === 'all'
-      ? baseProvisions  // All provisions (mode-aware)
-      : layerFilteredProvisions;  // Within layer filter
-
-    let filtered = searchBase;
+    // ALWAYS start with layer-filtered provisions if layer filter is active
+    // This ensures layer filter works in both task and structure modes
+    let filtered = layerFilter ? layerFilteredProvisions : baseProvisions;
 
     // Apply search if present (multi-field with synonyms)
     if (debouncedSearch) {
-      filtered = filtered.filter(p => matchesSearchWithSynonyms(p, debouncedSearch));
-    } else {
-      // If no search, use layer filter (only when not searching)
-      if (searchScope === 'filtered') {
-        filtered = layerFilteredProvisions;
-      }
+      // Search scope: 'all' searches baseProvisions, 'filtered' searches current filtered set
+      const searchBase = searchScope === 'all' ? baseProvisions : filtered;
+      filtered = searchBase.filter(p => matchesSearchWithSynonyms(p, debouncedSearch));
     }
 
     // Multi-topic filter with OR logic (applied after search)
@@ -389,7 +383,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, searchScope, debouncedSearch, topicFilters, refinements, heritage, zone, precinctId]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritage, zone, precinctId]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
