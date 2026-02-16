@@ -1131,7 +1131,7 @@ export function ProvisionsByTocStructure({
             layerFilter={layerFilter}
             onLayerFilterChange={(layer) => {
               setLayerFilter(layer);
-              setTopicFilter(null);  // Clear topic filter when changing layer
+              setTopicFilters([]);  // Clear topic filters when changing layer
             }}
           />
 
