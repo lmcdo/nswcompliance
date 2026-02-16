@@ -30,9 +30,26 @@ export interface ComplianceResult {
  * Extract numeric limit from provision text
  */
 export function extractNumericLimit(text: string): { value: number; isMin: boolean; isMax: boolean; snippet: string } | null {
+  // Exclude provisions about freeboard, dimensions under 1m (mm/cm), or non-building contexts
+  const excludePatterns = [
+    /freeboard/i,
+    /clearance/i,
+    /\bmm\b/i,  // millimeters
+    /\bcm\b/i,  // centimeters
+    /diameter/i,
+    /thickness/i,
+    /width.*tree/i, // tree dimensions
+    /fence.*height/i, // fence height (different from building height)
+  ];
+
+  for (const pattern of excludePatterns) {
+    if (pattern.test(text)) return null;
+  }
+
   // Look for values adjacent to direction keywords
-  const maxPattern = /(?:maximum|must not exceed|not exceed|no more than)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?|spaces?)/gi;
-  const minPattern = /(?:minimum|not less than|at least)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?|spaces?)/gi;
+  // Use negative lookahead to exclude mm/cm ((?!mm|cm))
+  const maxPattern = /(?:maximum|must not exceed|not exceed|no more than)\s+(\d+(?:\.\d+)?)\s*(?:m(?!m|c)|metres?|m²|m2|%|spaces?)\b/gi;
+  const minPattern = /(?:minimum|not less than|at least)\s+(\d+(?:\.\d+)?)\s*(?:m(?!m|c)|metres?|m²|m2|%|spaces?)\b/gi;
 
   let match;
   maxPattern.lastIndex = 0;
@@ -52,7 +69,7 @@ export function extractNumericLimit(text: string): { value: number; isMin: boole
 
   // Fallback: look for bare numbers with direction keywords elsewhere in text
   if (text.toLowerCase().includes('maximum') || text.toLowerCase().includes('not exceed')) {
-    const bareNumPattern = /\b(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?|spaces?)\b/gi;
+    const bareNumPattern = /\b(\d+(?:\.\d+)?)\s*(?:m(?!m|c)|metres?|m²|m2|%|spaces?)\b/gi;
     bareNumPattern.lastIndex = 0;
     const bareMatch = bareNumPattern.exec(text);
     if (bareMatch) {
@@ -62,7 +79,7 @@ export function extractNumericLimit(text: string): { value: number; isMin: boole
   }
 
   if (text.toLowerCase().includes('minimum') || text.toLowerCase().includes('not less than')) {
-    const bareNumPattern = /\b(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?|spaces?)\b/gi;
+    const bareNumPattern = /\b(\d+(?:\.\d+)?)\s*(?:m(?!m|c)|metres?|m²|m2|%|spaces?)\b/gi;
     bareNumPattern.lastIndex = 0;
     const bareMatch = bareNumPattern.exec(text);
     if (bareMatch) {
