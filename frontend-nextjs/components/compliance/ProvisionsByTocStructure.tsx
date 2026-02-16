@@ -157,6 +157,7 @@ export function ProvisionsByTocStructure({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
+  const [hcaInfoExpanded, setHcaInfoExpanded] = useState(false); // Heritage info box collapsed by default
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
@@ -197,8 +198,9 @@ export function ProvisionsByTocStructure({
       };
     };
   }>(apiUrl, fetcher, {
-    dedupingInterval: 60000,  // Dedupe requests within 60 seconds
+    dedupingInterval: 2000,   // Reduced from 60s to 2s - allow fresh data
     revalidateOnFocus: false, // Don't refetch on window focus
+    revalidateOnMount: true,  // Always fetch on mount
     errorRetryCount: 3,       // Retry up to 3 times on error
     errorRetryInterval: 1000, // Wait 1s between retries
     shouldRetryOnError: true, // Enable retry on error
@@ -266,10 +268,17 @@ export function ProvisionsByTocStructure({
   }, [selectedPart, selectedSection, tocStructure]);
 
   // Deduplicate provisions by text content (safety net for any DB/API duplicates)
+  // Strip C1/O1/01 markers and normalize whitespace before comparison
   const selectedProvisions = useMemo(() => {
     const seenTexts = new Set<string>();
     return rawSelectedProvisions.filter(p => {
-      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+      // Normalize: strip markers, collapse whitespace
+      const normalized = (p.provision_text || '')
+        .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
+        .replace(/\s+/g, ' ')  // Collapse all whitespace to single spaces
+        .trim()
+        .substring(0, 100);
+      const key = `${normalized}|${p.pdf_page || 0}`;
       if (seenTexts.has(key)) return false;
       seenTexts.add(key);
       return true;
@@ -284,10 +293,16 @@ export function ProvisionsByTocStructure({
     const provisions = allParts.flatMap((part: any) =>
       Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
     );
-    // Deduplicate
+    // Deduplicate - strip markers and normalize whitespace
     const seenTexts = new Set<string>();
     return provisions.filter((p: any) => {
-      const key = `${(p.provision_text || '').substring(0, 100)}|${p.pdf_page || 0}`;
+      // Normalize: strip markers, collapse whitespace
+      const normalized = (p.provision_text || '')
+        .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
+        .replace(/\s+/g, ' ')  // Collapse all whitespace to single spaces
+        .trim()
+        .substring(0, 100);
+      const key = `${normalized}|${p.pdf_page || 0}`;
       if (seenTexts.has(key)) return false;
       seenTexts.add(key);
       return true;
@@ -317,19 +332,44 @@ export function ProvisionsByTocStructure({
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
   // Now uses baseProvisions (mode-aware) instead of selectedProvisions
   const layerFilteredProvisions = useMemo(() => {
+    console.log('[Filter Debug] Starting with baseProvisions:', baseProvisions.length);
+
     const base = baseProvisions.filter(p => {
       // Exclude TOC entries
-      if (p.v2_provision_type === 'TOC') return false;
+      if (p.v2_provision_type === 'TOC') {
+        console.log('[Filter Debug] Excluding TOC provision:', p.id, p.provision_text?.substring(0, 50));
+        return false;
+      }
 
       // Exclude negative page numbers (TOC, preamble, definitions)
       const page = p.pdf_page ?? p.pdf_printed_page;
-      if (page !== null && page !== undefined && page < 0) return false;
+      if (page !== null && page !== undefined && page < 0) {
+        console.log('[Filter Debug] Excluding negative page:', page, 'ID:', p.id, p.provision_text?.substring(0, 50));
+        return false;
+      }
+
+      // Exclude definitions (informational reference, not actionable controls)
+      // Definitions are identified by text patterns (KEY TERMS, glossary format)
+      const text = p.provision_text || '';
+      const isDefinitions =
+        text.includes('KEY TERMS') ||
+        (text.includes('Definitions') && text.includes('means a')) ||
+        p.v2_topic?.toLowerCase() === 'definitions';
+
+      if (isDefinitions) {
+        console.log('[Filter Debug] Excluding definitions provision:', p.id);
+        return false;
+      }
 
       return true;
     });
 
+    console.log('[Filter Debug] After TOC/negative filter:', base.length);
+
     if (!layerFilter) return base;
-    return base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
+    const filtered = base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
+    console.log('[Filter Debug] After layer filter:', filtered.length, 'Layer:', layerFilter);
+    return filtered;
   }, [baseProvisions, layerFilter]);
 
   // Apply search + topic filters, then sort by relevance or priority
@@ -854,34 +894,41 @@ export function ProvisionsByTocStructure({
       {/* EP&A Act s 4.15 Compliance Disclaimer */}
       <EPAAct415ComplianceNotice />
 
-      {/* HCA Summary Card - compact info card for heritage properties */}
+      {/* HCA Summary Badge - compact collapsible for heritage properties */}
       {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && totalHeritageCount > 0 && (
-        <div id="dcp-hca-section" className="border border-amber-300 rounded-lg bg-amber-50 px-4 py-3 mb-4">
+        <div id="dcp-hca-section" className="border-l-4 border-amber-500 bg-amber-50/30 px-4 py-3 mb-3">
           <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-amber-700 mt-0.5 flex-shrink-0" />
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-amber-900">
-                  {hcaName ? `Your Heritage Conservation Area: ${hcaName}` : 'Heritage Conservation Area'}
-                </h3>
-              </div>
-              <div className="space-y-1 text-sm text-amber-800">
-                <p>
-                  <strong>{generalHeritageCount} general heritage controls</strong> apply to all heritage properties in Inner West
-                </p>
-                {hcaSpecificCount > 0 && (
-                  <p>
-                    <strong>{hcaSpecificCount} {hcaName ? hcaName.split(' ')[0] : 'HCA'}-specific controls</strong> apply only to this Heritage Conservation Area
-                  </p>
+            <Shield className="h-4 w-4 text-amber-700 mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <button
+                onClick={() => setHcaInfoExpanded(!hcaInfoExpanded)}
+                className="flex items-center gap-2 text-sm font-semibold text-amber-900 hover:text-amber-700 transition-colors w-full text-left"
+              >
+                <span className="truncate">
+                  {hcaName ? hcaName : 'Heritage Conservation Area'} · {generalHeritageCount}+{hcaSpecificCount} controls
+                </span>
+                {hcaInfoExpanded ? (
+                  <ChevronUp className="h-4 w-4 flex-shrink-0" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
                 )}
-                <p className="text-xs text-amber-700 mt-2 pt-2 border-t border-amber-200">
-                  → See <strong>heritage provisions</strong> in the DCP structure below ({totalHeritageCount} total across {
-                    councilLower === 'ashfield' ? 'Chapter E1 and other sections' :
-                    councilLower === 'leichhardt' ? 'Part C.1, Part G, and other sections' :
-                    'Part 8 and other sections'
-                  })
-                </p>
-              </div>
+              </button>
+
+              {hcaInfoExpanded && (
+                <div className="mt-2 space-y-1 text-xs text-amber-800">
+                  <p>
+                    <strong>{generalHeritageCount} general controls</strong> apply to all heritage properties in Inner West
+                  </p>
+                  {hcaSpecificCount > 0 && (
+                    <p>
+                      <strong>{hcaSpecificCount} {hcaName ? hcaName.split(' ')[0] : 'HCA'}-specific controls</strong> apply only to this HCA
+                    </p>
+                  )}
+                  <p className="text-xs text-amber-600 mt-1 pt-1 border-t border-amber-200">
+                    See heritage provisions in DCP structure below ({totalHeritageCount} total)
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -957,15 +1004,17 @@ export function ProvisionsByTocStructure({
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm">
-              <span className="text-teal-700 font-medium">
-                {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
-                {viewMode === 'structure' && ' in this section'}
-              </span>
-              <span className="text-gray-400">|</span>
-              <span className="text-gray-500">
-                {viewMode === 'task' ? `${allProvisions.length} total` : `${totalProvisions} total for this property`}
-              </span>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-gray-900">
+                {filteredProvisions.length}
+              </div>
+              <div className="text-xs text-gray-500 mt-0.5">
+                {viewMode === 'task' ? (
+                  <>of {allProvisions.length} total</>
+                ) : (
+                  <>of {totalProvisions} for property</>
+                )}
+              </div>
             </div>
           </div>
 
@@ -1263,10 +1312,7 @@ export function ProvisionsByTocStructure({
 
         {/* Action Toolbar - Export */}
         {filteredProvisions.length > 0 && (
-          <div className="px-4 py-3 border-b bg-gray-50 space-y-2">
-            <div className="text-xs text-gray-600 text-center">
-              <span className="font-medium text-gray-900">{filteredProvisions.length}</span> of <span className="font-medium text-gray-900">{allProvisions.length}</span> provisions
-            </div>
+          <div className="px-4 py-3 border-b bg-gray-50">
             <button
               onClick={() => setShowExportModal(true)}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
