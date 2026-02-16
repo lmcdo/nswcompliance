@@ -12,7 +12,7 @@
 
 import React, { useState } from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
-import { CDCScreener } from '@/components/compliance/CDCScreener';
+import { CDCPathway } from '@/components/compliance/CDCPathway';
 import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { usePropertyAssessment } from '@/hooks';
 import { Home, Ruler, CheckCircle2, HelpCircle } from 'lucide-react';
@@ -162,7 +162,7 @@ export default function CheckPage() {
           </div>
         )}
 
-        {/* CDC Screener */}
+        {/* CDC Pathway Decision Tree */}
         {selectedProperty && (
           <div className="bg-white rounded-xl border border-teal-200 p-6 shadow-sm">
             <div className="flex items-start gap-3 mb-4">
@@ -170,13 +170,13 @@ export default function CheckPage() {
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">CDC Eligibility Check</h3>
                 <p className="text-sm text-gray-600 mt-1">
-                  Does your proposed work qualify for a Complying Development Certificate?
+                  Answer these questions to find out if your work qualifies for a Complying Development Certificate.
                 </p>
               </div>
             </div>
-            <CDCScreener
+            <CDCPathway
               propertyData={selectedProperty}
-              coordinates={selectedCoordinates}
+              proposedWorkType={proposedWorks}
             />
           </div>
         )}
