@@ -871,7 +871,6 @@ export function ProvisionsByTocStructure({
             onClick={() => setShowAbout(!showAbout)}
             className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
           >
-            {showAbout ? <ChevronDown className="h-4 w-4 flex-shrink-0" /> : <ChevronRight className="h-4 w-4 flex-shrink-0" />}
             <HelpCircle className="h-4 w-4" />
             <span className="font-medium flex-1">About Inner West DCPs</span>
           </button>
