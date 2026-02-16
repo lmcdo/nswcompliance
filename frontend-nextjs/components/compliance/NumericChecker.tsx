@@ -17,10 +17,8 @@ interface NumericCheckerProps {
 }
 
 const FIELDS: Array<{ key: keyof NumericCheckValues; label: string; unit: string; placeholder: string }> = [
-  { key: 'height', label: 'Height', unit: 'm', placeholder: '0.0' },
-  { key: 'frontSetback', label: 'Front setback', unit: 'm', placeholder: '0.0' },
-  { key: 'sideSetback', label: 'Side setback', unit: 'm', placeholder: '0.0' },
-  { key: 'gfa', label: 'GFA', unit: 'm²', placeholder: '0' },
+  { key: 'height', label: 'Building height', unit: 'm', placeholder: '0.0' },
+  { key: 'gfa', label: 'Gross floor area (GFA)', unit: 'm²', placeholder: '0' },
   { key: 'siteCoverage', label: 'Site coverage', unit: '%', placeholder: '0' },
   { key: 'carSpaces', label: 'Car spaces', unit: '', placeholder: '0' },
 ];
@@ -50,15 +48,22 @@ export function NumericChecker({ onValuesChange }: NumericCheckerProps) {
       >
         <div className="flex items-center gap-2">
           <Ruler className="w-4 h-4 text-teal-600" />
-          <span className="text-sm font-medium text-teal-800">Numeric Compliance Check</span>
-          <span className="text-xs text-teal-600">Enter proposed values to check against limits</span>
+          <span className="text-sm font-medium text-teal-800">Check Fixed-Number Limits</span>
+          <span className="text-xs text-teal-500 ml-1">height · GFA · coverage · parking</span>
         </div>
         <span className="text-teal-600 text-xs">{isOpen ? '▲ Hide' : '▼ Show'}</span>
       </button>
 
       {isOpen && (
         <div className="px-4 py-3 bg-white">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <p className="text-xs text-gray-500 mb-3">
+            Flags provisions with hard numeric limits —
+            <span className="text-green-700 font-medium"> complies</span>,
+            <span className="text-amber-700 font-medium"> borderline</span>, or
+            <span className="text-red-700 font-medium"> fails</span>.
+            Contextual controls (setbacks, character, heritage) require professional judgment and are not checked here.
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {FIELDS.map(({ key, label, unit, placeholder }) => (
               <div key={key}>
                 <label className="block text-xs text-gray-600 mb-1">
@@ -76,9 +81,6 @@ export function NumericChecker({ onValuesChange }: NumericCheckerProps) {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2">
-            Provisions with numeric limits will be highlighted green (pass), amber (borderline), or red (fail).
-          </p>
         </div>
       )}
     </div>

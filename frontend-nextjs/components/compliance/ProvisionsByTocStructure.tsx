@@ -1040,10 +1040,10 @@ export function ProvisionsByTocStructure({
       </div>
 
       {/* Main two-panel layout */}
-      <div className="flex border rounded-lg bg-white overflow-hidden">
+      <div className="flex border rounded-lg bg-white">
       {/* Left: TOC Sidebar - Only in structure mode */}
       {viewMode === 'structure' && (
-        <div className="w-64 border-r bg-gray-50 flex-shrink-0">
+        <div className="w-64 border-r bg-gray-50 flex-shrink-0 overflow-hidden rounded-l-lg">
           <TocSidebar
             tocStructure={completeTocStructure}
             filteredTocStructure={tocStructure}

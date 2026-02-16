@@ -34,12 +34,23 @@ import type { NumericCheckValues } from './NumericChecker';
  * Returns { value, isMin, isMax } or null.
  */
 function extractNumericLimit(text: string): { value: number; isMin: boolean; isMax: boolean } | null {
-  // Detect direction keywords
+  // Find all numeric values with context — look for a value adjacent to a direction keyword
+  // Pattern: "maximum X m" or "must not exceed X m" or "minimum X m" etc.
+  const maxPattern = /(?:maximum|must not exceed|not exceed|no more than)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/gi;
+  const minPattern = /(?:minimum|not less than|at least)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/gi;
+
+  const maxMatch = maxPattern.exec(text);
+  const minMatch = minPattern.exec(text);
+
+  if (maxMatch) return { value: parseFloat(maxMatch[1]), isMin: false, isMax: true };
+  if (minMatch) return { value: parseFloat(minMatch[1]), isMin: true, isMax: false };
+
+  // Fallback: bare number with unit near direction word anywhere in text
   const isMin = /\bminimum\b|\bnot less than\b|\bat least\b/i.test(text);
   const isMax = /\bmaximum\b|\bnot exceed\b|\bmust not exceed\b|\bno more than\b/i.test(text);
+  if (!isMin && !isMax) return null;
 
-  // Extract first number with unit
-  const match = text.match(/\b(\d+(?:\.\d+)?)\s*(?:m²|m|mm|cm|%|metres?|meters?|sqm|square metres?)\b/i);
+  const match = text.match(/\b(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)\b/i);
   if (!match) return null;
 
   return { value: parseFloat(match[1]), isMin, isMax };
@@ -63,9 +74,6 @@ function checkNumericCompliance(
   let userValueStr = '';
   if (topic.includes('height') || marker === 'height') {
     userValueStr = checkValues.height;
-  } else if (topic.includes('setback')) {
-    // Use front setback as primary (could be improved with sub-topic)
-    userValueStr = checkValues.frontSetback || checkValues.sideSetback;
   } else if (topic.includes('built_form') || topic.includes('floor_space') || topic.includes('fsr')) {
     userValueStr = checkValues.gfa;
   } else if (topic.includes('site_coverage') || topic.includes('coverage')) {
