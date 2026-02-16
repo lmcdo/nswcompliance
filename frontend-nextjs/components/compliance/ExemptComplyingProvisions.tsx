@@ -17,6 +17,7 @@ import { ChevronDown, ChevronUp, ExternalLink, FileText, FileImage } from 'lucid
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
+import { CDCScreener } from './CDCScreener';
 
 const WORK_TYPES = [
   { key: 'Deck',    label: 'Deck / Balcony' },
@@ -45,10 +46,12 @@ interface Provision {
 }
 
 interface Props {
-  zoneCode: string; // e.g. "R2"
+  zoneCode: string;       // e.g. "R2"
+  lotArea?: number | null;    // m² — from property context
+  heritageItem?: boolean;     // from property context
 }
 
-export function ExemptComplyingProvisions({ zoneCode }: Props) {
+export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false }: Props) {
   const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
   const [expanded, setExpanded] = useState(residentialZones.includes(zoneCode));
   const [selectedType, setSelectedType] = useState<WorkTypeKey | null>(null);
@@ -128,6 +131,14 @@ export function ExemptComplyingProvisions({ zoneCode }: Props) {
             Standards that apply to development that may proceed as complying development
             on this property. Click a work type to view the applicable standards.
           </p>
+
+          {/* CDC Eligibility Screener */}
+          <CDCScreener
+            zoneCode={zoneCode}
+            lotArea={lotArea}
+            heritageItem={heritageItem}
+            provisions={provisions}
+          />
 
           {/* Work type tabs */}
           <div className="flex flex-wrap gap-2 mb-4">

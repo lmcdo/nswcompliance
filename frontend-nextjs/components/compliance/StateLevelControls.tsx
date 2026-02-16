@@ -463,7 +463,11 @@ export function StateLevelControls({
 
       {/* Exempt & Complying Development Standards - certifier CDC gateway, shown first */}
       {zoneCode && (
-        <ExemptComplyingProvisions zoneCode={zoneCode} />
+        <ExemptComplyingProvisions
+          zoneCode={zoneCode}
+          lotArea={lotSize}
+          heritageItem={propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item')}
+        />
       )}
 
       {/* SEPP Section */}

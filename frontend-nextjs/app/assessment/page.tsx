@@ -47,6 +47,8 @@ export default function AssessmentPage() {
     setShowZoneInfo,
     buildingHeight,
     setBuildingHeight,
+    isDaMode,
+    setIsDaMode,
   } = useAssessmentUI();
 
 
@@ -397,6 +399,20 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content - Structure View Only */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
+                    {/* DA Mode Toggle */}
+                    <div className="flex justify-end mb-3">
+                      <button
+                        onClick={() => setIsDaMode(!isDaMode)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                          isDaMode
+                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                            : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
+                        }`}
+                      >
+                        <span className={`w-3 h-3 rounded-full inline-block transition-colors ${isDaMode ? 'bg-white' : 'bg-teal-300'}`} />
+                        DA Mode
+                      </button>
+                    </div>
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
                       formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
@@ -414,6 +430,7 @@ export default function AssessmentPage() {
                       heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
                       propertyData={selectedProperty}
                       lepClauseData={lepClauseData}
+                      isDaMode={isDaMode}
                     />
                   </div>
                 )}

@@ -164,15 +164,25 @@ export const styles = StyleSheet.create({
     paddingRight: 4,
   },
   colSubtopic: {
-    width: 50,
+    width: 40,
     paddingRight: 4,
   },
   colProvision: {
-    width: 360,
+    width: 280,
     paddingRight: 4,
   },
   colSource: {
-    width: 50,
+    width: 34,
+  },
+  colResponse: {
+    width: 106,
+    paddingLeft: 4,
+  },
+  responseBox: {
+    border: '1pt solid #e5e7eb',
+    backgroundColor: '#f9fafb',
+    minHeight: 40,
+    borderRadius: 2,
   },
 
   // Cell text

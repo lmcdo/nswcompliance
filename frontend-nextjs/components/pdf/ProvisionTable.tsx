@@ -33,6 +33,7 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
         <Text style={[styles.tableHeaderCell, styles.colSubtopic]}>Subtopic</Text>
         <Text style={[styles.tableHeaderCell, styles.colProvision]}>Provision Summary</Text>
         <Text style={[styles.tableHeaderCell, styles.colSource]}>Source</Text>
+        <Text style={[styles.tableHeaderCell, styles.colResponse]}>Compliance / Response</Text>
       </View>
 
       {/* Table Rows */}
@@ -126,6 +127,24 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                   <Text style={[styles.cellSource, styles.colSource]}>
                     {formatCitation(provision) || ' '}
                   </Text>
+                  <View style={styles.colResponse}>
+                    {provision.da_response ? (
+                      <View style={[styles.responseBox, {
+                        backgroundColor: provision.da_status === 'complies' ? '#f0fdf4'
+                          : provision.da_status === 'varies' ? '#fffbeb'
+                          : '#f9fafb',
+                        borderColor: provision.da_status === 'complies' ? '#86efac'
+                          : provision.da_status === 'varies' ? '#fcd34d'
+                          : '#e5e7eb',
+                      }]}>
+                        <Text style={{ fontSize: 8, color: '#374151', padding: 4 }}>
+                          {provision.da_response}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.responseBox} />
+                    )}
+                  </View>
                 </View>
               );
             })}
@@ -217,6 +236,24 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
               <Text style={[styles.cellSource, styles.colSource]}>
                 {formatCitation(provision) || ' '}
               </Text>
+              <View style={styles.colResponse}>
+                {provision.da_response ? (
+                  <View style={[styles.responseBox, {
+                    backgroundColor: provision.da_status === 'complies' ? '#f0fdf4'
+                      : provision.da_status === 'varies' ? '#fffbeb'
+                      : '#f9fafb',
+                    borderColor: provision.da_status === 'complies' ? '#86efac'
+                      : provision.da_status === 'varies' ? '#fcd34d'
+                      : '#e5e7eb',
+                  }]}>
+                    <Text style={{ fontSize: 8, color: '#374151', padding: 4 }}>
+                      {provision.da_response}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.responseBox} />
+                )}
+              </View>
             </View>
           );
         })

@@ -42,8 +42,13 @@ const TOPIC_LABELS: Record<string, string> = {
 };
 
 export function groupProvisionsByTopic(
-  provisions: ProvisionForPDF[]
+  provisions: ProvisionForPDF[],
+  options: { includeNonActionable?: boolean } = {}
 ): ProvisionGroup[] {
+  const { includeNonActionable = true } = options;
+  if (!includeNonActionable) {
+    provisions = provisions.filter(p => p.v2_is_actionable !== false);
+  }
   // Group by v2_marker (main topic), fallback to v2_topic if marker empty
   const byMarker = provisions.reduce((acc, p) => {
     // Use v2_marker if available, otherwise use v2_topic, otherwise 'other'

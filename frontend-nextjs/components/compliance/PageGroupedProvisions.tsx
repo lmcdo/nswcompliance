@@ -24,6 +24,95 @@ import { LayerBadges, AuthorityColors } from '@/lib/design-tokens';
 import { stripSectionHeader } from '@/lib/provision-text-formatter';
 import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
 import type { CrossReference } from '@/hooks/useCrossReferences';
+import { DAResponseCapture } from './DAResponseCapture';
+import type { NumericCheckValues } from './NumericChecker';
+
+// ─── Numeric Compliance Check Utilities ──────────────────────────────────────
+
+/**
+ * Extract the first numeric value (with unit) from provision text.
+ * Returns { value, isMin, isMax } or null.
+ */
+function extractNumericLimit(text: string): { value: number; isMin: boolean; isMax: boolean } | null {
+  // Detect direction keywords
+  const isMin = /\bminimum\b|\bnot less than\b|\bat least\b/i.test(text);
+  const isMax = /\bmaximum\b|\bnot exceed\b|\bmust not exceed\b|\bno more than\b/i.test(text);
+
+  // Extract first number with unit
+  const match = text.match(/\b(\d+(?:\.\d+)?)\s*(?:m²|m|mm|cm|%|metres?|meters?|sqm|square metres?)\b/i);
+  if (!match) return null;
+
+  return { value: parseFloat(match[1]), isMin, isMax };
+}
+
+type NumericComplianceResult = 'complies' | 'borderline' | 'fails' | null;
+
+/**
+ * Compare a user's proposed value against a provision's numeric limit.
+ */
+function checkNumericCompliance(
+  provisionText: string,
+  v2Topic: string | undefined,
+  v2Marker: string | undefined,
+  checkValues: NumericCheckValues
+): { result: NumericComplianceResult; chip: string } | null {
+  const topic = (v2Topic || '').toLowerCase();
+  const marker = (v2Marker || '').toLowerCase();
+
+  // Route metric to the right input field
+  let userValueStr = '';
+  if (topic.includes('height') || marker === 'height') {
+    userValueStr = checkValues.height;
+  } else if (topic.includes('setback')) {
+    // Use front setback as primary (could be improved with sub-topic)
+    userValueStr = checkValues.frontSetback || checkValues.sideSetback;
+  } else if (topic.includes('built_form') || topic.includes('floor_space') || topic.includes('fsr')) {
+    userValueStr = checkValues.gfa;
+  } else if (topic.includes('site_coverage') || topic.includes('coverage')) {
+    userValueStr = checkValues.siteCoverage;
+  } else if (topic.includes('parking') || marker === 'parking') {
+    userValueStr = checkValues.carSpaces;
+  } else {
+    return null; // No matching metric
+  }
+
+  if (!userValueStr) return null;
+  const userValue = parseFloat(userValueStr);
+  if (isNaN(userValue)) return null;
+
+  const limit = extractNumericLimit(provisionText);
+  if (!limit) return null;
+
+  const { value: limitValue, isMin, isMax } = limit;
+  const BORDERLINE_THRESHOLD = 0.1; // 10% within limit
+
+  let result: NumericComplianceResult = null;
+  let chip = '';
+
+  if (isMax) {
+    if (userValue <= limitValue) {
+      const ratio = userValue / limitValue;
+      result = ratio >= (1 - BORDERLINE_THRESHOLD) ? 'borderline' : 'complies';
+      chip = result === 'complies' ? `✓ ${userValue} ≤ ${limitValue} max` : `~ ${userValue} ≈ ${limitValue} max`;
+    } else {
+      result = 'fails';
+      chip = `✗ ${userValue} > ${limitValue} max`;
+    }
+  } else if (isMin) {
+    if (userValue >= limitValue) {
+      const ratio = limitValue / userValue;
+      result = ratio >= (1 - BORDERLINE_THRESHOLD) ? 'borderline' : 'complies';
+      chip = result === 'complies' ? `✓ ${userValue} ≥ ${limitValue} min` : `~ ${userValue} ≈ ${limitValue} min`;
+    } else {
+      result = 'fails';
+      chip = `✗ ${userValue} < ${limitValue} min`;
+    }
+  } else {
+    return null; // No direction detected
+  }
+
+  return { result, chip };
+}
 
 /**
  * Page offsets for Leichhardt DCP parts.
@@ -183,6 +272,12 @@ interface PageGroupedProvisionsProps {
   showCrossReferences?: boolean;  // Whether to display cross-references (default: false)
   onNavigateCrossRef?: (provisionId: number, docType: DocumentType) => void;  // Navigate to different doc
   onScrollToCrossRef?: (provisionId: number) => void;  // Scroll to provision in same doc
+  // DA Mode
+  isDaMode?: boolean;
+  sessionToken?: string | null;
+  daResponses?: Map<number, { response_text: string | null; compliance_status: string | null }>;
+  // Numeric compliance check
+  numericCheckValues?: NumericCheckValues;
 }
 
 // Default theme (teal, used by most paths)
@@ -361,6 +456,10 @@ export function PageGroupedProvisions({
   heritage,
   hcaName,
   precinctName,
+  isDaMode = false,
+  sessionToken,
+  daResponses,
+  numericCheckValues,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -680,6 +779,28 @@ export function PageGroupedProvisions({
                         )}
                       </div>
 
+                      {/* Numeric Compliance Check Chip */}
+                      {numericCheckValues && provision.v2_has_numeric_value && (() => {
+                        const check = checkNumericCompliance(
+                          provision.provision_text,
+                          provision.v2_topic,
+                          provision.v2_marker,
+                          numericCheckValues
+                        );
+                        if (!check) return null;
+                        const chipStyle = check.result === 'complies'
+                          ? 'bg-green-100 text-green-800 border-green-300'
+                          : check.result === 'borderline'
+                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                          : 'bg-red-100 text-red-800 border-red-300';
+                        return (
+                          <div className={`inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded border mb-1 ${chipStyle}`}>
+                            <Ruler className="w-3 h-3" />
+                            {check.chip}
+                          </div>
+                        );
+                      })()}
+
                       {/* Provision Text - truncated when collapsed, formatted when expanded */}
                       <div
                         className="text-sm text-gray-700 cursor-pointer"
@@ -737,6 +858,15 @@ export function PageGroupedProvisions({
                             maxVisible={3}
                           />
                         </div>
+                      )}
+
+                      {/* DA Mode Response Capture */}
+                      {isDaMode && (
+                        <DAResponseCapture
+                          provisionId={provision.id}
+                          sessionToken={sessionToken ?? null}
+                          existingResponse={daResponses?.get(provision.id) as any}
+                        />
                       )}
                     </div>
                   );

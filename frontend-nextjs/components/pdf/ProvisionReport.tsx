@@ -6,6 +6,7 @@ import { groupProvisionsByTopic, generateReportId } from '@/lib/pdf/formatProvis
 import { CoverPage } from './CoverPage';
 import { ContextSection } from './ContextSection';
 import { ProvisionTable } from './ProvisionTable';
+import { TableOfContents } from './TableOfContents';
 import { styles } from './styles';
 
 interface ProvisionReportProps {
@@ -13,16 +14,22 @@ interface ProvisionReportProps {
   property: PropertyContext;
   totalProvisions?: number; // Total provisions for this property (unfiltered)
   activeFilters?: string[]; // Active filter labels
+  includeNonActionable?: boolean; // Whether to include non-actionable provisions (default: true)
+  isSeeMode?: boolean; // Whether to render as Draft SEE document
+  devType?: string; // Development type for SEE mode
 }
 
 export function ProvisionReport({
   provisions,
   property,
   totalProvisions,
-  activeFilters = []
+  activeFilters = [],
+  includeNonActionable = true,
+  isSeeMode = false,
+  devType,
 }: ProvisionReportProps) {
-  // Group provisions by topic
-  const groups = groupProvisionsByTopic(provisions);
+  // Group provisions by topic (optionally filter non-actionable)
+  const groups = groupProvisionsByTopic(provisions, { includeNonActionable });
 
   // Generate report metadata
   const reportDate = new Date().toLocaleDateString('en-AU', {
@@ -50,6 +57,20 @@ export function ProvisionReport({
         {/* Compact Cover Header */}
         <CoverPage property={property} groups={groups} metadata={metadata} />
 
+        {isSeeMode && (
+          <View style={{ marginTop: 8, padding: 10, backgroundColor: '#fefce8', borderLeft: '3pt solid #f59e0b', marginBottom: 8 }}>
+            <Text style={{ fontSize: 9, color: '#92400e', fontFamily: 'Helvetica-Bold' }}>
+              DRAFT — for review by qualified planning consultant before submission
+            </Text>
+          </View>
+        )}
+
+        {isSeeMode && devType && (
+          <View style={{ marginBottom: 8 }}>
+            <Text style={{ fontSize: 9, color: '#4b5563' }}>Development Type: <Text style={{ fontFamily: 'Helvetica-Bold', color: '#1f2937' }}>{devType}</Text></Text>
+          </View>
+        )}
+
         {/* Context Content */}
         <ContextSection
           property={property}
@@ -60,10 +81,15 @@ export function ProvisionReport({
         />
       </Page>
 
+      {/* Table of Contents - only when >30 provisions */}
+      {provisions.length > 30 && (
+        <TableOfContents groups={groups} />
+      )}
+
       {/* DCP Provisions - Continuous Flow */}
       <Page size="A4" style={styles.page} wrap>
         <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 8, marginTop: 0, color: '#1f2937' }}>
-          DCP Provisions Schedule
+          {isSeeMode ? 'Draft Statement of Environmental Effects' : 'DCP Provisions Schedule'}
         </Text>
 
         {/* All provision tables flow continuously */}

@@ -17,6 +17,10 @@ interface UseAssessmentUIReturn {
   // Building height input
   buildingHeight: number | null;
   setBuildingHeight: (height: number | null) => void;
+
+  // DA Mode
+  isDaMode: boolean;
+  setIsDaMode: (mode: boolean) => void;
 }
 
 /**
@@ -27,6 +31,7 @@ export function useAssessmentUI(): UseAssessmentUIReturn {
   const [viewMode, setViewMode] = useState<ViewMode>('sepp');
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
+  const [isDaMode, setIsDaMode] = useState(false);
 
   const toggleZoneInfo = () => setShowZoneInfo((prev) => !prev);
 
@@ -38,5 +43,7 @@ export function useAssessmentUI(): UseAssessmentUIReturn {
     toggleZoneInfo,
     buildingHeight,
     setBuildingHeight,
+    isDaMode,
+    setIsDaMode,
   };
 }

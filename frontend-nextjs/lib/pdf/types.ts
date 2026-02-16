@@ -73,6 +73,8 @@ export interface ProvisionForPDF {
   v2_is_actionable?: boolean;
   zone_applicability?: string;
   ref_number?: string;
+  da_response?: string;
+  da_status?: 'complies' | 'varies' | 'not_applicable';
 }
 
 export interface ProvisionGroup {

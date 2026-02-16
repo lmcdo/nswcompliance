@@ -24,6 +24,8 @@ import { ProvisionReport } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
+import { useDASession } from '@/hooks/useDASession';
+import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -115,6 +117,8 @@ interface ProvisionsByTocStructureProps {
   // Real data for PDF context
   propertyData?: any;  // Full property data from NSW Planning Portal
   lepClauseData?: any; // LEP clause data (height, FSR, zone table, etc.)
+  // DA Mode
+  isDaMode?: boolean;
 }
 
 const fetcher = async (url: string) => {
@@ -149,7 +153,8 @@ export function ProvisionsByTocStructure({
   heritageItemName,
   heritageItemNumber,
   propertyData,
-  lepClauseData
+  lepClauseData,
+  isDaMode = false,
 }: ProvisionsByTocStructureProps) {
   // View mode: 'task' shows all provisions, 'structure' requires TOC selection
   const [viewMode, setViewMode] = useState<'task' | 'structure'>('task');
@@ -170,6 +175,23 @@ export function ProvisionsByTocStructure({
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
+
+  // Numeric checker values
+  const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
+
+  // DA Mode session
+  const { sessionToken, daResponses, refreshResponses } = useDASession(
+    isDaMode ? (address || null) : null,
+    formerCouncil,
+    zone
+  );
+
+  // Load responses when DA Mode activates
+  useEffect(() => {
+    if (isDaMode && address) {
+      refreshResponses();
+    }
+  }, [isDaMode, address, refreshResponses]);
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -807,6 +829,7 @@ export function ProvisionsByTocStructure({
           console.log(`  Final: pdf_page=${finalPdfPage}, pdf_printed_page=${finalPdfPrintedPage}`);
         }
 
+        const daResponse = isDaMode ? daResponses?.get(p.id) : undefined;
         return {
           id: p.id,
           provision_text: sanitizeText(p.provision_text),
@@ -820,6 +843,10 @@ export function ProvisionsByTocStructure({
           v2_is_actionable: p.v2_is_actionable,
           zone_applicability: p.zone_applicability,
           ref_number: p.ref_number,
+          ...(daResponse?.response_text && {
+            da_response: daResponse.response_text,
+            da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
+          }),
         };
       });
 
@@ -844,12 +871,17 @@ export function ProvisionsByTocStructure({
       console.log('Number of provisions:', provisionsForPdf.length);
 
       // Generate PDF
+      const noFiltersActive = !layerFilter && topicFilters.length === 0 && !debouncedSearch;
+      const hasResponses = isDaMode && daResponses && daResponses.size > 0;
       const doc = (
         <ProvisionReport
           provisions={provisionsForPdf}
           property={propertyContext}
           totalProvisions={totalProvisions}
           activeFilters={activeFilters}
+          includeNonActionable={!noFiltersActive}
+          isSeeMode={hasResponses}
+          devType={propertyData?.constraints?.devType}
         />
       );
 
@@ -865,7 +897,10 @@ export function ProvisionsByTocStructure({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `DCP-Provisions-${formerCouncil}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.download = hasResponses
+        ? `Draft-SEE-${formerCouncil}-${dateStr}.pdf`
+        : `DCP-Provisions-${formerCouncil}-${dateStr}.pdf`;
       link.click();
 
       // Cleanup
@@ -1387,6 +1422,19 @@ export function ProvisionsByTocStructure({
             </div>
           )}
 
+          {/* Numeric Compliance Checker - always available when DCP provisions are loaded */}
+          <NumericChecker onValuesChange={(vals) => {
+            const hasAnyValue = Object.values(vals).some(v => v !== '');
+            setNumericCheckValues(hasAnyValue ? vals : undefined);
+          }} />
+
+          {isDaMode && (
+            <div className="mb-3 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
+              DA Mode — responses saved to your session
+            </div>
+          )}
+
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions provisionTheme="green"
               provisions={filteredProvisions}
@@ -1399,6 +1447,10 @@ export function ProvisionsByTocStructure({
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctId}
+              isDaMode={isDaMode}
+              sessionToken={sessionToken}
+              daResponses={daResponses}
+              numericCheckValues={numericCheckValues}
             />
           ) : (
             <div className="text-center py-12 text-gray-500">
