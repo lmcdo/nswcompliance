@@ -432,8 +432,8 @@ export default function AssessmentPage() {
                           );
                           const fsrText = fsrLayer?.results?.[0]?.['Floor Space Ratio'];
                           if (fsrText) {
-                            const match = fsrText.match(/(\d+\.?\d*)\s*:\s*1/);
-                            return match ? parseFloat(match[1]) : null;
+                            // FSR comes as "1.5" not "1.5:1"
+                            return parseFloat(fsrText);
                           }
                           return null;
                         })()}
@@ -442,7 +442,7 @@ export default function AssessmentPage() {
                           const heightLayer = selectedProperty.planningLayers?.find((l: any) =>
                             l.layerName === 'Height of Buildings Map'
                           );
-                          const heightText = heightLayer?.results?.[0]?.['Maximum Height of Buildings'];
+                          const heightText = heightLayer?.results?.[0]?.['Maximum Building Height'];
                           if (heightText) {
                             const match = heightText.match(/(\d+\.?\d*)\s*m/);
                             return match ? parseFloat(match[1]) : null;
