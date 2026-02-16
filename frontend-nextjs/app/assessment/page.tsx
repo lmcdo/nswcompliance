@@ -442,10 +442,11 @@ export default function AssessmentPage() {
                           const heightLayer = selectedProperty.planningLayers?.find((l: any) =>
                             l.layerName === 'Height of Buildings Map'
                           );
-                          const heightText = heightLayer?.results?.[0]?.['Maximum Building Height'];
-                          if (heightText) {
-                            const match = heightText.match(/(\d+\.?\d*)\s*m/);
-                            return match ? parseFloat(match[1]) : null;
+                          const heightValue = heightLayer?.results?.[0]?.['Maximum Building Height'];
+                          if (heightValue) {
+                            // Try direct parse first (might be "10" as string or number)
+                            const parsed = parseFloat(String(heightValue).replace(/[^\d.]/g, ''));
+                            return isNaN(parsed) ? null : parsed;
                           }
                           return null;
                         })()}
