@@ -50,16 +50,31 @@ export async function POST(request: NextRequest) {
 
     const pool = getPool();
 
-    // 1. Get LEP height and FSR controls
+    // 1. Get LEP height and FSR controls with PDF citations
     const lepControlsQuery = `
-      SELECT clause_number, clause_title, requirements, applies_to_zones
-      FROM lep_development_type_clauses
-      WHERE lga = $1
-        AND (development_type = $2 OR applies_to_zones::jsonb ? $3)
-      ORDER BY clause_number
+      SELECT
+        ldc.clause_number,
+        ldc.clause_title,
+        ldc.requirements,
+        ldc.applies_to_zones,
+        rp.pdf_page,
+        rp.pdf_printed_page,
+        rp.pdf_page_image_url
+      FROM lep_development_type_clauses ldc
+      LEFT JOIN regulatory_provisions rp ON ldc.source_provision_id = rp.id
+      WHERE ldc.lga = $1
+        AND (ldc.development_type = $2 OR ldc.applies_to_zones::jsonb ? $3)
+      ORDER BY ldc.clause_number
     `;
 
     const lepResult = await pool.query(lepControlsQuery, [normalizedLGA, developmentType, zone]);
+
+    console.log('LEP clauses with PDF info:', JSON.stringify(lepResult.rows.map(r => ({
+      clause: r.clause_number,
+      pdf_page: r.pdf_page,
+      pdf_page_image_url: r.pdf_page_image_url,
+      source_provision_id: r.source_provision_id
+    })), null, 2));
 
     // Extract max GFA, height from LEP clauses
     let maxGFAFromClause: number | null = null;
@@ -115,7 +130,13 @@ export async function POST(request: NextRequest) {
 
     // 5. Get landscaping requirements
     const landscapingQuery = `
-      SELECT requirement_text, value_numeric, unit
+      SELECT
+        requirement_text,
+        value_numeric,
+        unit,
+        part_name,
+        pdf_page,
+        pdf_page_image_url
       FROM dcp_general_requirements
       WHERE lga = $1
         AND former_council = $2
@@ -163,9 +184,19 @@ export async function POST(request: NextRequest) {
       landscaping: landscapingResult.rows.map(row => ({
         text: row.requirement_text,
         value: row.value_numeric,
-        unit: row.unit
+        unit: row.unit,
+        partName: row.part_name,
+        pdfPage: row.pdf_page,
+        pdfPageImageUrl: row.pdf_page_image_url
       })),
-      lepClauses: lepResult.rows
+      lepClauses: lepResult.rows.map(row => ({
+        clause_number: row.clause_number,
+        clause_title: row.clause_title,
+        requirements: row.requirements,
+        pdfPage: row.pdf_page,
+        pdfPrintedPage: row.pdf_printed_page,
+        pdfPageImageUrl: row.pdf_page_image_url
+      }))
     });
 
   } catch (error) {

@@ -425,31 +425,7 @@ export default function AssessmentPage() {
                         zone={selectedProperty.constraints?.zone || ''}
                         lga={selectedProperty.constraints?.lga || 'Inner West'}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                        fsr={(() => {
-                          // Extract FSR from Planning Portal layers
-                          const fsrLayer = selectedProperty.planningLayers?.find((l: any) =>
-                            l.layerName === 'Floor Space Ratio Map'
-                          );
-                          const fsrText = fsrLayer?.results?.[0]?.['Floor Space Ratio'];
-                          if (fsrText) {
-                            // FSR comes as "1.5" not "1.5:1"
-                            return parseFloat(fsrText);
-                          }
-                          return null;
-                        })()}
-                        maxHeight={(() => {
-                          // Extract max height from Planning Portal layers
-                          const heightLayer = selectedProperty.planningLayers?.find((l: any) =>
-                            l.layerName === 'Height of Buildings Map'
-                          );
-                          const heightValue = heightLayer?.results?.[0]?.['Maximum Building Height'];
-                          if (heightValue) {
-                            // Try direct parse first (might be "10" as string or number)
-                            const parsed = parseFloat(String(heightValue).replace(/[^\d.]/g, ''));
-                            return isNaN(parsed) ? null : parsed;
-                          }
-                          return null;
-                        })()}
+                        planningLayers={selectedProperty.planningLayers || []}
                       />
                     </div>
 

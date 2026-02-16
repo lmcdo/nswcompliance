@@ -258,9 +258,9 @@ export function ProvisionsByTocStructure({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Extract data with safe defaults (for use in hooks below)
-  const tocStructure = data?.data?.by_toc || {};  // Filtered provisions for selected part
-  const completeTocStructure = data?.data?.complete_toc || {};  // Complete TOC for sidebar navigation
+  // Extract data with safe defaults (for use in hooks below) - memoized to prevent infinite loops
+  const tocStructure = useMemo(() => data?.data?.by_toc || {}, [data?.data?.by_toc]);
+  const completeTocStructure = useMemo(() => data?.data?.complete_toc || {}, [data?.data?.complete_toc]);
   const totalProvisions = data?.data?.summary?.total_provisions || 0;
 
   // Get provisions for selected part/section - memoized to avoid unnecessary recalculations

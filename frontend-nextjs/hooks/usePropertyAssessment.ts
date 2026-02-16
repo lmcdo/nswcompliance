@@ -113,14 +113,15 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
       if (!lotArea) return;
 
       try {
+        const estimatedFrontage = Math.sqrt(lotArea);
         const response = await fetch('/api/capacity/calculate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             address: selectedProperty.address,
             coordinates: selectedCoordinates,
-            developmentType: developmentType,
-            lotArea: lotArea,
+            lotSize: lotArea,  // API expects 'lotSize', not 'lotArea'
+            frontage: estimatedFrontage,  // Required by API
             zone: selectedProperty.constraints?.zone || '',
             lga: selectedProperty.constraints?.lga || '',
             formerCouncil: selectedProperty.constraints?.formerCouncil || ''
