@@ -76,10 +76,7 @@ export function CapacityCalculator({
 
   // Auto-calculate immediately if we have Planning Portal data
   useEffect(() => {
-    console.log('[CapacityCalculator] Props:', { lotArea, fsr, maxHeight });
-
     if (lotArea && fsr && maxHeight) {
-      console.log('[CapacityCalculator] Auto-calculating from Planning Portal data');
       // Calculate directly from Planning Portal data
       const maxGFA = lotArea * fsr;
       const approxStoreys = Math.floor(maxHeight / 3.0);
@@ -96,8 +93,6 @@ export function CapacityCalculator({
         }
       });
       setAutoCalculate(true);
-    } else {
-      console.log('[CapacityCalculator] Missing data - will need API call');
     }
   }, [lotArea, fsr, maxHeight]);
 
@@ -172,11 +167,6 @@ export function CapacityCalculator({
       <p className="text-sm text-gray-600 mb-4">
         Calculate maximum buildable area, height, and site requirements
       </p>
-
-      {/* DEBUG: Show extracted values */}
-      <div className="mb-3 p-2 bg-yellow-100 rounded text-xs border border-yellow-300">
-        <p className="font-mono">DEBUG: FSR={String(fsr)}, Height={String(maxHeight)}, LotArea={String(lotArea)}</p>
-      </div>
 
       <div className="flex gap-4 items-center mb-4">
         <Button
