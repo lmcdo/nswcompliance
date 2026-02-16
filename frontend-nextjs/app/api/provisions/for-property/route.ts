@@ -503,32 +503,35 @@ async function queryHeritageByHca(
   }
 
   // Query regulatory_provisions for HCA-specific provisions
+  // LEFT JOIN heritage_conservation_areas to get human-readable HCA name for keyword search
   let sql = `
     SELECT
-      id,
-      document_id,
-      provision_text,
-      v2_dcp_layer,
-      v2_dcp_part,
-      v2_topic,
-      v2_provision_type,
-      v2_precinct_id,
-      v2_marker,
-      v2_display_behavior,
-      v2_display_priority,
-      v2_has_numeric_value,
-      pdf_page,
-      pdf_printed_page,
-      pdf_source_file,
-      pdf_page_image_url,
-      v2_heritage_type,
-      v2_heritage_element,
-      v2_heritage_hca,
-      v2_applicable_dev_types
+      rp.id,
+      rp.document_id,
+      rp.provision_text,
+      rp.v2_dcp_layer,
+      rp.v2_dcp_part,
+      rp.v2_topic,
+      rp.v2_provision_type,
+      rp.v2_precinct_id,
+      rp.v2_marker,
+      rp.v2_display_behavior,
+      rp.v2_display_priority,
+      rp.v2_has_numeric_value,
+      rp.pdf_page,
+      rp.pdf_printed_page,
+      rp.pdf_source_file,
+      rp.pdf_page_image_url,
+      rp.v2_heritage_type,
+      rp.v2_heritage_element,
+      rp.v2_heritage_hca,
+      rp.v2_applicable_dev_types,
+      hca.h_name AS hca_display_name
       ${relevanceSelect}
-    FROM regulatory_provisions
-    WHERE v2_is_actionable = true
-      AND v2_marker = 'heritage'
+    FROM regulatory_provisions rp
+    LEFT JOIN heritage_conservation_areas hca ON hca.db_slug = rp.v2_heritage_hca
+    WHERE rp.v2_is_actionable = true
+      AND rp.v2_marker = 'heritage'
   `;
 
   // Include HCA-specific controls only when a specific HCA is provided.
@@ -536,45 +539,45 @@ async function queryHeritageByHca(
   if (filters.hca) {
     sql += `
       AND (
-        v2_heritage_hca IS NULL  -- General heritage controls
-        OR v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
+        rp.v2_heritage_hca IS NULL  -- General heritage controls
+        OR rp.v2_heritage_hca = $${paramIndex++}  -- Property's specific HCA
       )
     `;
     params.push(filters.hca);
   } else {
-    sql += ` AND v2_heritage_hca IS NULL`;
+    sql += ` AND rp.v2_heritage_hca IS NULL`;
   }
 
   // Filter by former council
   if (filters.former_council) {
     const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
-    sql += ` AND document_id ILIKE $${paramIndex++}`;
+    sql += ` AND rp.document_id ILIKE $${paramIndex++}`;
     params.push(`%${councilName}%`);
   }
 
   // Filter by precinct - only include general provisions or property's precinct
   // Exclude Part 9 precinct-specific provisions for other precincts
   if (filters.precinct_id) {
-    sql += ` AND (v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
+    sql += ` AND (rp.v2_precinct_id IS NULL OR rp.v2_precinct_id = $${paramIndex++})`;
     params.push(filters.precinct_id);
   } else {
     // No precinct specified - exclude all precinct-specific provisions
-    sql += ` AND v2_precinct_id IS NULL`;
+    sql += ` AND rp.v2_precinct_id IS NULL`;
   }
 
   // Filter by heritage_type (control, character, descriptive)
   if (filters.heritage_type) {
-    sql += ` AND v2_heritage_type = $${paramIndex++}`;
+    sql += ` AND rp.v2_heritage_type = $${paramIndex++}`;
     params.push(filters.heritage_type);
   }
 
   // Filter by topic (e.g., "Roof", "Materials", "Additions")
   if (filters.topic) {
-    sql += ` AND LOWER(REPLACE(v2_topic, ' ', '_')) = LOWER($${paramIndex++})`;
+    sql += ` AND LOWER(REPLACE(rp.v2_topic, ' ', '_')) = LOWER($${paramIndex++})`;
     params.push(filters.topic.replace(/ /g, '_'));
   }
 
-  sql += ` ORDER BY v2_dcp_part, id LIMIT 500`;
+  sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT 500`;
 
   const result = await client.query(sql, params);
   return result.rows;

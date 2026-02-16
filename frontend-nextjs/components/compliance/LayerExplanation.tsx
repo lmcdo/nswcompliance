@@ -36,6 +36,10 @@ interface LayerExplanationProps {
   };
   layerFilter?: string | null;
   onLayerFilterChange?: (layer: string | null) => void;
+  // Heritage HCA details
+  generalHeritageCount?: number;
+  hcaSpecificCount?: number;
+  totalHeritageCount?: number;
 }
 
 export function LayerExplanation({
@@ -46,7 +50,10 @@ export function LayerExplanation({
   formerCouncil,
   layerCounts,
   layerFilter,
-  onLayerFilterChange
+  onLayerFilterChange,
+  generalHeritageCount,
+  hcaSpecificCount,
+  totalHeritageCount
 }: LayerExplanationProps) {
   const labels = (formerCouncil && LAYER_LABELS[formerCouncil.toLowerCase()]) || DEFAULT_LABELS;
   const genericLabel = labels.generic;
@@ -130,6 +137,33 @@ export function LayerExplanation({
               </button>
             ))}
       </div>
+
+      {/* Heritage HCA details - show when heritage layer is selected */}
+      {layerFilter === 'condition' && heritage && totalHeritageCount && totalHeritageCount > 0 && (
+        <div className="mt-3 pt-3 border-t border-amber-200">
+          <div className="bg-amber-50/50 rounded-md p-3 space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+              <span className="text-xs font-semibold text-amber-900">
+                {hcaName || 'Heritage Conservation Area'}
+              </span>
+            </div>
+            <div className="space-y-1.5 text-xs text-amber-800">
+              <p>
+                <strong>{generalHeritageCount} general heritage provisions</strong> apply to all heritage properties in Inner West
+              </p>
+              {hcaSpecificCount && hcaSpecificCount > 0 && (
+                <p>
+                  <strong>{hcaSpecificCount} {hcaName ? hcaName.split(' ')[0] : 'HCA'}-specific provisions</strong> apply only to this HCA
+                </p>
+              )}
+              <p className="text-xs text-amber-600 pt-2 border-t border-amber-200">
+                {totalHeritageCount} total heritage provisions for this property
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

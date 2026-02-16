@@ -292,6 +292,7 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     // IMPORTANT: Only detect SHORT headings (< 80 chars, < 10 words) to avoid
     // capturing body text as headings. Long titles are likely descriptions, not headers.
     if (!skipHeadings) {
+      // Pattern 1: Section header at start of line (e.g., "2.16.4 Subdivision...")
       const sectionMatch = line.match(/^(\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
       if (sectionMatch) {
         const titleText = sectionMatch[2];
@@ -309,6 +310,24 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
           continue;
         }
         // If too long, treat as regular paragraph (fall through to default handling)
+      }
+
+      // Pattern 2: Section header within numbered list (e.g., "1. 2.16.4 Subdivision...")
+      // Strip list number, check if section header follows
+      const listSectionMatch = line.match(/^\d+\.\s+(\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
+      if (listSectionMatch) {
+        const titleText = listSectionMatch[2];
+        const wordCount = titleText.split(/\s+/).length;
+
+        // Same constraints: short headings only
+        if (titleText.length <= 80 && wordCount <= 10) {
+          elements.push({
+            type: 'heading',
+            content: `${listSectionMatch[1]} ${titleText}`,
+            level: 3
+          });
+          continue;
+        }
       }
     }
 

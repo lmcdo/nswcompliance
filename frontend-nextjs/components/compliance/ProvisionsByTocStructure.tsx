@@ -17,7 +17,7 @@ import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronRight, Shield, Search, X, Ruler, Download } from 'lucide-react';
+import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Shield, Search, X, Ruler, Download } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport } from '@/components/pdf';
@@ -157,7 +157,8 @@ export function ProvisionsByTocStructure({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
-  const [hcaInfoExpanded, setHcaInfoExpanded] = useState(false); // Heritage info box collapsed by default
+  // Unified info panel state - only one expanded at a time
+  const [expandedInfo, setExpandedInfo] = useState<'about' | 'compliance' | 'heritage' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
@@ -167,7 +168,6 @@ export function ProvisionsByTocStructure({
     withMeasurements: false,
   });
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
-  const [showAbout, setShowAbout] = useState(false); // Collapsed by default
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
 
@@ -216,20 +216,6 @@ export function ProvisionsByTocStructure({
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
 
-  // Get heritage provisions from the main API response's condition layer
-  const conditionLayer = data?.data?.by_layer?.[2]; // Layer 3 = condition
-  const allConditionProvisions = conditionLayer?.provisions || [];
-
-  // Filter for heritage marker provisions
-  const heritageProvisions = allConditionProvisions.filter((p: any) =>
-    p.v2_marker?.toLowerCase() === 'heritage'
-  );
-
-  // Count general vs HCA-specific provisions
-  const generalHeritageCount = heritageProvisions.filter((p: any) => !p.v2_heritage_hca).length;
-  const hcaSpecificCount = heritageProvisions.filter((p: any) => p.v2_heritage_hca).length;
-  const totalHeritageCount = heritageProvisions.length;
-
   // Auto-select first part on load ONLY in structure mode
   useEffect(() => {
     if (viewMode === 'structure' && data?.data?.complete_toc && !selectedPart) {
@@ -269,19 +255,25 @@ export function ProvisionsByTocStructure({
 
   // Deduplicate provisions by text content (safety net for any DB/API duplicates)
   // Strip C1/O1/01 markers and normalize whitespace before comparison
-  // Also exclude TOC, negative pages, and definitions
+  // Also exclude TOC, definitions, and non-actionable provisions
+  // NOTE: Do NOT filter by negative page numbers - they're just PDF numbering artifacts
   const selectedProvisions = useMemo(() => {
     // First pass: Exclude non-provisions
     const validProvisions = rawSelectedProvisions.filter(p => {
-      // Exclude TOC entries
+      const text = p.provision_text || '';
+
+      // Exclude TOC entries (by type or pattern)
       if (p.v2_provision_type === 'TOC') return false;
 
-      // Exclude negative page numbers
-      const page = p.pdf_page ?? p.pdf_printed_page;
-      if (page !== null && page !== undefined && page < 0) return false;
+      // Text-based TOC detection: multiple section numbers in sequence
+      const sectionNumberPattern = /\d+\.\d+(?:\.\d+)*\s+[A-Z][a-z]/g;
+      const sectionMatches = text.match(sectionNumberPattern);
+      if (sectionMatches && sectionMatches.length >= 3) return false;
+
+      // Exclude non-actionable provisions (intro text, section headers, cross-references)
+      if (p.v2_is_actionable === false) return false;
 
       // Exclude definitions
-      const text = p.provision_text || '';
       const isDefinitions =
         text.includes('KEY TERMS') ||
         (text.includes('Definitions') && text.includes('means a')) ||
@@ -317,17 +309,25 @@ export function ProvisionsByTocStructure({
       Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
     );
 
-    // First pass: Exclude non-provisions (TOC, negative pages, definitions)
+    // First pass: Exclude non-provisions (TOC, definitions, non-actionable)
+    // NOTE: Do NOT filter by negative page numbers - they're just PDF numbering artifacts.
+    // Heritage controls for HCAs often have negative printed page numbers but are real provisions.
     const validProvisions = provisions.filter((p: any) => {
-      // Exclude TOC entries
+      const text = p.provision_text || '';
+
+      // Exclude TOC entries (by type or pattern)
       if (p.v2_provision_type === 'TOC') return false;
 
-      // Exclude negative page numbers (preamble, definitions)
-      const page = p.pdf_page ?? p.pdf_printed_page;
-      if (page !== null && page !== undefined && page < 0) return false;
+      // Text-based TOC detection: multiple section numbers in sequence
+      // e.g., "8.4.1.1 Public domain elements 8.4.1.2 Subdivision 8.4.1.3 Setbacks..."
+      const sectionNumberPattern = /\d+\.\d+(?:\.\d+)*\s+[A-Z][a-z]/g;
+      const sectionMatches = text.match(sectionNumberPattern);
+      if (sectionMatches && sectionMatches.length >= 3) return false; // 3+ section numbers = TOC
+
+      // Exclude non-actionable provisions (intro text, section headers, cross-references)
+      if (p.v2_is_actionable === false) return false;
 
       // Exclude definitions (informational reference, not actionable controls)
-      const text = p.provision_text || '';
       const isDefinitions =
         text.includes('KEY TERMS') ||
         (text.includes('Definitions') && text.includes('means a')) ||
@@ -364,6 +364,26 @@ export function ProvisionsByTocStructure({
     }
   }, [viewMode, allProvisions, selectedProvisions]);
 
+  // Heritage counts: Always use allProvisions (full unfiltered set) so the badge
+  // shows stable property-level totals regardless of selected part/topic/search.
+  const heritageProvisions = useMemo(() => {
+    if (!allProvisions) return [];
+    return allProvisions.filter((p: any) =>
+      (p.v2_dcp_layer || p.layer) === 'condition' &&
+      p.v2_marker?.toLowerCase() === 'heritage'
+    );
+  }, [allProvisions]);
+
+  const generalHeritageCount = useMemo(() =>
+    heritageProvisions.filter((p: any) => !p.v2_heritage_hca).length,
+    [heritageProvisions]
+  );
+  const hcaSpecificCount = useMemo(() =>
+    heritageProvisions.filter((p: any) => p.v2_heritage_hca).length,
+    [heritageProvisions]
+  );
+  const totalHeritageCount = heritageProvisions.length;
+
   // Count provisions by layer (from base provisions - mode-aware)
   const layerCounts = useMemo(() => ({
     generic: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
@@ -388,8 +408,12 @@ export function ProvisionsByTocStructure({
 
     // Apply search if present (multi-field with synonyms)
     if (debouncedSearch) {
-      // Search scope: 'all' searches baseProvisions, 'filtered' searches current filtered set
-      const searchBase = searchScope === 'all' ? baseProvisions : filtered;
+      // Search scope: 'all' searches across all provisions (ignoring topic filter),
+      // but layer filter is always respected — searching "Summer Hill" in a layer-filtered
+      // view should not pull in provisions from other layers.
+      const searchBase = searchScope === 'all'
+        ? (layerFilter ? layerFilteredProvisions : baseProvisions)
+        : filtered;
       filtered = searchBase.filter(p => matchesSearchWithSynonyms(p, debouncedSearch));
     }
 
@@ -855,91 +879,98 @@ export function ProvisionsByTocStructure({
   };
 
   return (
-    <div className="space-y-4">
-      {/* DCP Tab Intro Banner */}
-      {formerCouncil && councilConfig && (
-        <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-          <div className="font-semibold text-green-900 mb-1">{councilConfig.dcpCitation}</div>
-          <div className="text-sm text-green-800">Detailed local design controls for building form, character, setbacks, and heritage.</div>
-        </div>
-      )}
+    <div className="space-y-0">
+      {/* CONTEXT ZONE - Property-specific background information */}
+      <div className="bg-gradient-to-b from-slate-50 to-slate-100/50 border-b-4 border-slate-300 pb-0 mb-8 space-y-3">
+        {/* DCP Tab Intro Banner */}
+        {formerCouncil && councilConfig && (
+          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
+            <div className="font-semibold text-green-900 mb-1">{councilConfig.dcpCitation}</div>
+            <div className="text-sm text-green-800">Detailed local design controls for building form, character, setbacks, and heritage.</div>
+          </div>
+        )}
 
-      {/* About Inner West DCPs - Collapsible */}
-      {formerCouncil && (
-        <div className="bg-white border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setShowAbout(!showAbout)}
-            className="w-full flex items-center gap-2 px-4 py-3 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
-          >
-            <HelpCircle className="h-4 w-4" />
-            <span className="font-medium flex-1">About Inner West DCPs</span>
-          </button>
-          {showAbout && (
+        {/* Info Tabs - Compact horizontal layout, only one expands at a time */}
+        <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
+          {/* Tab buttons row */}
+          <div className="flex items-center divide-x">
+            {/* About Inner West DCPs tab */}
+            {formerCouncil && (
+              <button
+                onClick={() => setExpandedInfo(expandedInfo === 'about' ? null : 'about')}
+                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                  expandedInfo === 'about'
+                    ? 'bg-slate-100 text-slate-800'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <HelpCircle className="h-3.5 w-3.5" />
+                <span>About DCPs</span>
+                {expandedInfo === 'about' ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+            )}
+
+            {/* EP&A Act s 4.15 Compliance tab */}
+            <button
+              onClick={() => setExpandedInfo(expandedInfo === 'compliance' ? null : 'compliance')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
+                expandedInfo === 'compliance'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+              }`}
+            >
+              <span>ℹ️</span>
+              <span>EP&A s 4.15</span>
+              {expandedInfo === 'compliance' ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+          </div>
+
+          {/* Expanded content - shared space */}
+          {expandedInfo === 'about' && formerCouncil && councilConfig && (
             <div className="px-4 pb-4 border-t bg-slate-50">
               {/* DCP Title Bar */}
-              {councilConfig && (
-                <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 -mx-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-white" />
-                      <span className="font-semibold text-white text-sm">
-                        {councilConfig.dcpCitation}
-                      </span>
-                    </div>
-                    <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
-                      {totalProvisions} provisions applicable to this address
-                    </Badge>
+              <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 -mx-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-white" />
+                    <span className="font-semibold text-white text-sm">
+                      {councilConfig.dcpCitation}
+                    </span>
                   </div>
+                  <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
+                    {totalProvisions} provisions applicable to this address
+                  </Badge>
                 </div>
-              )}
+              </div>
               <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{INNER_WEST_OVERVIEW}</p>
             </div>
           )}
-        </div>
-      )}
 
-      {/* EP&A Act s 4.15 Compliance Disclaimer */}
-      <EPAAct415ComplianceNotice />
-
-      {/* HCA Summary Badge - compact collapsible for heritage properties */}
-      {heritage && ['leichhardt', 'ashfield', 'marrickville'].includes(councilLower) && totalHeritageCount > 0 && (
-        <div id="dcp-hca-section" className="border-l-4 border-amber-500 bg-amber-50/30 px-4 py-3 mb-3">
-          <div className="flex items-start gap-3">
-            <Shield className="h-4 w-4 text-amber-700 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <button
-                onClick={() => setHcaInfoExpanded(!hcaInfoExpanded)}
-                className="flex items-center gap-2 text-sm font-semibold text-amber-900 hover:text-amber-700 transition-colors w-full text-left"
-              >
-                <span className="truncate">
-                  {hcaName ? hcaName : 'Heritage Conservation Area'} · {generalHeritageCount}+{hcaSpecificCount} controls
-                </span>
-                {hcaInfoExpanded ? (
-                  <ChevronUp className="h-4 w-4 flex-shrink-0" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                )}
-              </button>
-
-              {hcaInfoExpanded && (
-                <div className="mt-2 space-y-1 text-xs text-amber-800">
-                  <p>
-                    <strong>{generalHeritageCount} general controls</strong> apply to all heritage properties in Inner West
-                  </p>
-                  {hcaSpecificCount > 0 && (
-                    <p>
-                      <strong>{hcaSpecificCount} {hcaName ? hcaName.split(' ')[0] : 'HCA'}-specific controls</strong> apply only to this HCA
-                    </p>
-                  )}
-                  <p className="text-xs text-amber-600 mt-1 pt-1 border-t border-amber-200">
-                    See heritage provisions in DCP structure below ({totalHeritageCount} total)
-                  </p>
-                </div>
-              )}
+          {expandedInfo === 'compliance' && (
+            <div className="px-4 py-4 border-t bg-blue-50/30">
+              <div className="text-sm text-blue-800 leading-relaxed">
+                <p>
+                  All provisions shown must be considered when assessing compliance with
+                  <strong> Environmental Planning and Assessment Act 1979 s 4.15</strong>.
+                  Priority indicators surface critical requirements first but do not exclude
+                  any provisions from consideration. Certifiers must review all applicable
+                  provisions before issuing certificates.
+                </p>
+              </div>
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* WORKING AREA - Primary task space for searching and filtering */}
 
       {/* Mode Toggle */}
       <div className="flex items-center gap-2 mb-4 bg-white border rounded-lg p-2">
@@ -1126,12 +1157,11 @@ export function ProvisionsByTocStructure({
                           : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
                           : 'DCP';
 
-                        // Get part name from first provision's v2_dcp_part field
-                        if (selectedPart && firstProv?.v2_dcp_part) {
-                          items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
-                        } else if (firstProv?.v2_dcp_part) {
+                        // Only show part if in structure mode with a selected part
+                        if (viewMode === 'structure' && selectedPart && firstProv?.v2_dcp_part) {
                           items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
                         } else {
+                          // In task mode, just show DCP name without specific part
                           items.push(dcpName);
                         }
 
@@ -1144,9 +1174,10 @@ export function ProvisionsByTocStructure({
                           items.push(`Layer: All`);
                         }
 
-                        // Topic
-                        if (topicFilter) {
-                          items.push(`Topic: ${topicFilter.replace(/_/g, ' ')}`);
+                        // Topic (multi-select)
+                        if (topicFilters.length > 0) {
+                          const topics = topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ');
+                          items.push(`Topics: ${topics}`);
                         }
 
                         // Search
@@ -1201,6 +1232,10 @@ export function ProvisionsByTocStructure({
               setLayerFilter(layer);
               setTopicFilters([]);  // Clear topic filters when changing layer
             }}
+            // Heritage HCA details
+            generalHeritageCount={generalHeritageCount}
+            hcaSpecificCount={hcaSpecificCount}
+            totalHeritageCount={totalHeritageCount}
           />
 
           {/* Topic filter section */}

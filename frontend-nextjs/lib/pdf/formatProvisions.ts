@@ -366,6 +366,36 @@ export function parseParagraphsWithHighlights(text: string): Array<{
   isHeader: boolean;
   isControlMarker: boolean;
 }> {
+  // PRE-PROCESSING: Add newlines for better paragraph detection
+
+  // 1. Split inline control/objective markers (C1, O1, etc)
+  // Matches: "C1 Text" or "O2 Text" -> "C1\nText"
+  text = text.replace(/(\s)([CO]\d+)(\s+)([A-Z])/g, '$1$2\n$4');
+
+  // 2. Add breaks before section headers in multiple contexts:
+
+  // 2a. Section headers at start of text or after newline (e.g., "2.16.4 Subdivision...")
+  text = text.replace(/(^|\n)(\d+\.\d+\.\d+(?:\.\d+)?)\s+([A-Z])/gm, '$1$2 $3\n');
+
+  // 2b. Section headers in numbered lists (e.g., "1. 2.16.4 Subdivision...")
+  // Preserve the list number, add break before section number
+  text = text.replace(/(\d+\.)\s+(\d+\.\d+\.\d+(?:\.\d+)?)\s+([A-Z])/g, '$1\n$2 $3\n');
+
+  // 2c. Section headers after periods (e.g., "text. 8.4.1 Header...")
+  text = text.replace(/(\.)(\s+)(\d+\.\d+\.\d+(?:\.\d+)?)\s+([A-Z])/g, '$1\n$3 $4');
+
+  // 3. Add breaks before lettered list items that follow periods
+  // "controls. a. Text" -> "controls.\na. Text"
+  text = text.replace(/(\.)(\s+)([a-h]\.)\s+([A-Z])/g, '$1\n$3 $4');
+
+  // 4. Add breaks before "The HCA/area/estate..." (new topic paragraphs)
+  text = text.replace(/(\.)\s+(The\s+(?:HCA|area|estate|property|development))/g, '$1\n$2');
+
+  // 5. Add breaks before "It is also/of significance..." (new significance points)
+  text = text.replace(/(\.)\s+(It\s+is\s+(?:also|of|significant))/g, '$1\n$2');
+
+  console.log('[PDF Parse] Pre-processed text sample:', text.substring(0, 200));
+
   // If text has newlines, split on them; otherwise use intelligent splitting
   const hasNewlines = text.includes('\n');
   let lines: string[];

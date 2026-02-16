@@ -128,7 +128,7 @@ export function ContextSection({
       </View>
 
       {/* LEP Controls */}
-      <View style={{ ...styles.section, marginTop: 12 }}>
+      <View style={{ ...styles.section, marginTop: 8 }}>
         <Text style={styles.sectionTitle}>Local Environmental Plan (LEP)</Text>
 
         <View style={styles.dataTable}>
@@ -182,8 +182,8 @@ export function ContextSection({
         </View>
 
         {/* Additional Local Provisions */}
-        <View style={{ marginTop: 8 }}>
-          <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#374151', marginBottom: 4 }}>
+        <View style={{ marginTop: 6 }}>
+          <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#374151', marginBottom: 3 }}>
             Additional Local Provisions (Clause 6.x):
           </Text>
           <View style={styles.dataTable}>
@@ -228,7 +228,7 @@ export function ContextSection({
       </View>
 
       {/* SEPP Status */}
-      <View style={{ ...styles.section, marginTop: 12 }}>
+      <View style={{ ...styles.section, marginTop: 8 }}>
         <Text style={styles.sectionTitle}>State Environmental Planning Policies (SEPP)</Text>
 
         <View style={styles.dataTable}>
@@ -282,7 +282,7 @@ export function ContextSection({
 
       {/* NSW Planning Portal Layers */}
       {planning_portal_layers && (
-        <View style={{ ...styles.section, marginTop: 12 }}>
+        <View style={{ ...styles.section, marginTop: 8 }}>
           <Text style={styles.sectionTitle}>NSW Planning Portal Layers</Text>
 
           <View style={styles.dataTable}>
@@ -378,7 +378,7 @@ export function ContextSection({
       )}
 
       {/* DCP Export Summary */}
-      <View style={{ ...styles.section, marginTop: 12 }}>
+      <View style={{ ...styles.section, marginTop: 8 }}>
         <Text style={styles.sectionTitle}>DCP Provisions Export</Text>
 
         <View style={styles.dataTable}>

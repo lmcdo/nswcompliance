@@ -15,7 +15,8 @@ export function matchesSearch(provision: any, query: string): boolean {
     provision.v2_dcp_part,
     provision.v2_topic,
     provision.section_title,
-    provision.v2_marker
+    provision.v2_marker,
+    provision.hca_display_name,  // Human-readable HCA name (e.g. "Summer Hill Central HCA")
   ]
     .filter(Boolean)
     .join(' ')

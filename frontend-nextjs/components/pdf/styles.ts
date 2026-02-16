@@ -119,12 +119,12 @@ export const styles = StyleSheet.create({
 
   // Table header
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 12,       // Reduced from 13 to 12
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 6,    // Reduced from 10 to 6
     marginTop: 0,
     color: '#0f766e',
-    paddingBottom: 6,
+    paddingBottom: 4,   // Reduced from 6 to 4
     borderBottom: '2pt solid #0f766e',
   },
   tableHeader: {
@@ -201,27 +201,30 @@ export const styles = StyleSheet.create({
 
   // Context section
   section: {
-    marginBottom: 20,
-    paddingBottom: 12,
+    marginBottom: 10,  // Reduced from 20 to 10
+    paddingBottom: 8,   // Reduced from 12 to 8
   },
   dataTable: {
   },
   contextTableRow: {
     flexDirection: 'row',
-    padding: 6,
+    padding: 4,  // Reduced from 6 to 4
   },
   tableCellLabel: {
-    width: 140,
-    fontSize: 8,
-    fontWeight: 'bold',
+    width: 250,          // Increased from 200 to 250 for long labels like "Additional Local Provisions (Clause 6.x):"
+    fontSize: 10,
+    fontWeight: 'normal',
     color: '#4b5563',
+    paddingRight: 8,     // Add padding between label and value
   },
   tableCellValue: {
     flexGrow: 1,
     flexShrink: 1,
     flexBasis: 'auto',
-    fontSize: 8,
+    fontSize: 10,
+    fontWeight: 'bold',   // Added bold - data should be emphasized
     color: '#1f2937',
+    lineHeight: 1.3,
   },
   contextSubtitle: {
     fontSize: 10,
