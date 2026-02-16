@@ -207,7 +207,7 @@ export function CapacityCalculator({
     <React.Fragment>
     <Collapsible className="bg-white border rounded-lg mb-4">
       <CollapsibleTrigger className="w-full p-3 hover:bg-gray-50 font-medium text-sm flex items-center gap-3 group">
-        <ChevronDown className="w-5 h-5 transition-transform group-data-[state=open]:rotate-0 group-data-[state=closed]:-rotate-90" />
+        <ChevronDown className="w-5 h-5 transition-transform group-data-[state=open]:rotate-0 group-data-[state=closed]:rotate-180" />
         <span className="flex-1 text-left">📊 Development Capacity Calculator</span>
         <span className="text-xs text-gray-500">FSR · Height · GFA</span>
       </CollapsibleTrigger>
@@ -230,14 +230,15 @@ export function CapacityCalculator({
               {/* Calculation Methodology - ABOVE results */}
               {(result.capacity?.maxGFA || result.capacity?.maxFSR || (result.landscaping && result.landscaping.length > 0)) && (
                 <Collapsible className="border rounded text-sm">
-                  <CollapsibleTrigger className="w-full p-2 hover:bg-gray-50 font-medium text-xs flex items-center gap-2">
-                    <ChevronDown className="w-4 h-4 transition-transform group-data-[state=open]:rotate-0 group-data-[state=closed]:-rotate-90" />
+                  <CollapsibleTrigger className="w-full p-2 hover:bg-gray-50 font-medium text-xs flex items-center gap-2 group">
+                    <ChevronDown className="w-4 h-4 transition-transform group-data-[state=open]:rotate-0 group-data-[state=closed]:rotate-180" />
                     <span>📐 Working</span>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="p-2 bg-gray-50 border-t space-y-2 text-xs">
                     {/* GFA Calculation */}
                     {result.capacity?.maxFSR && result.capacity?.maxGFA && (
                       <div className="p-2 bg-white border rounded font-mono text-xs space-y-0.5">
+                        <p className="text-gray-600 font-sans mb-1">GFA = Gross Floor Area (total across all storeys)</p>
                         <p>Max GFA = FSR × Lot Area</p>
                         <p>Max GFA = {result.capacity.maxFSR}:1 × {result.capacity.lotArea}m²</p>
                         <p className="text-green-700 font-bold">= {result.capacity.maxGFA.toFixed(1)}m²</p>
@@ -293,8 +294,9 @@ export function CapacityCalculator({
                   {/* Max GFA */}
                   {result.capacity?.maxGFA && (
                     <div>
-                      <p className="text-gray-600">Max GFA</p>
+                      <p className="text-gray-600">Gross Floor Area (GFA)</p>
                       <p className="text-base font-semibold">{result.capacity.maxGFA.toFixed(1)}m²</p>
+                      <p className="text-xs text-gray-500 mt-0.5">Total across all floors</p>
                     </div>
                   )}
 

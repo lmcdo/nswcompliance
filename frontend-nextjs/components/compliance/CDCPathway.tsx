@@ -104,7 +104,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     }
   }, [propertyData, answers]);
 
-  const handleAnswer = (questionId: string, value: any) => {
+  const handleAnswer = (questionId: string, value: any, autoAdvance: boolean = false) => {
     setAnswers(prev => {
       const existing = prev.findIndex(a => a.questionId === questionId);
       if (existing >= 0) {
@@ -115,10 +115,31 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       return [...prev, { questionId, value }];
     });
 
-    // Auto-advance to next question
-    if (currentStep < QUESTIONS.length - 1) {
+    // Auto-advance only for boolean questions (single-click Yes/No)
+    if (autoAdvance && currentStep < QUESTIONS.length - 1) {
       setTimeout(() => setCurrentStep(currentStep + 1), 300);
     }
+  };
+
+  const handleNext = () => {
+    if (currentStep < QUESTIONS.length - 1) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const canAdvance = () => {
+    const answer = answers.find(a => a.questionId === currentQuestion?.id);
+    if (!answer) return false;
+    if (currentQuestion?.type === 'number') {
+      return !isNaN(answer.value) && answer.value > 0;
+    }
+    return answer.value !== undefined;
   };
 
   // Check eligibility based on answers
@@ -315,7 +336,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                   {isActive && question.type === 'boolean' && (
                     <div className="flex gap-3 mt-2">
                       <button
-                        onClick={() => handleAnswer(question.id, true)}
+                        onClick={() => handleAnswer(question.id, true, true)}
                         className={`flex-1 px-4 py-2 rounded border-2 text-sm font-medium transition-all ${
                           answer?.value === true
                             ? 'border-red-500 bg-red-50 text-red-700'
@@ -325,7 +346,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                         Yes
                       </button>
                       <button
-                        onClick={() => handleAnswer(question.id, false)}
+                        onClick={() => handleAnswer(question.id, false, true)}
                         className={`flex-1 px-4 py-2 rounded border-2 text-sm font-medium transition-all ${
                           answer?.value === false
                             ? 'border-green-500 bg-green-50 text-green-700'
@@ -432,13 +453,31 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       )}
 
       {/* Navigation */}
-      {currentStep > 0 && currentStep < QUESTIONS.length && (
-        <button
-          onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-          className="text-sm text-gray-600 hover:text-gray-900 font-medium"
-        >
-          ← Back to previous question
-        </button>
+      {currentStep < QUESTIONS.length && (
+        <div className="flex items-center justify-between gap-4 pt-2">
+          <button
+            onClick={handleBack}
+            disabled={currentStep === 0}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              currentStep === 0
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            ← Back
+          </button>
+          <button
+            onClick={handleNext}
+            disabled={!canAdvance() || currentStep === QUESTIONS.length - 1}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+              !canAdvance() || currentStep === QUESTIONS.length - 1
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm'
+            }`}
+          >
+            {currentStep === QUESTIONS.length - 1 ? 'Complete' : 'Next →'}
+          </button>
+        </div>
       )}
     </div>
   );
