@@ -209,6 +209,70 @@ export function CapacityCalculator({
                 </div>
               </div>
 
+              {/* Calculation Methodology */}
+              {(result.capacity?.maxGFA || result.capacity?.maxFSR || result.lepClauses?.length > 0) && (
+                <details className="border rounded">
+                  <summary className="p-3 cursor-pointer hover:bg-gray-50 font-medium text-sm flex items-center gap-2">
+                    <span>📐 Calculation Methodology</span>
+                    <span className="text-xs text-gray-500 font-normal">(show working)</span>
+                  </summary>
+                  <div className="p-4 bg-gray-50 border-t space-y-3">
+                    {/* GFA Calculation */}
+                    {result.capacity?.maxFSR && result.capacity?.maxGFA && (
+                      <div className="p-3 bg-white border rounded">
+                        <p className="text-sm font-semibold mb-2">Floor Space Ratio (FSR) Calculation:</p>
+                        <div className="text-sm text-gray-700 space-y-1 font-mono">
+                          <p>Max GFA = FSR × Lot Area</p>
+                          <p>Max GFA = {result.capacity.maxFSR}:1 × {result.capacity.lotArea}m²</p>
+                          <p className="text-green-700 font-bold">Max GFA = {result.capacity.maxGFA.toFixed(1)}m²</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Height Calculation */}
+                    {result.capacity?.maxHeight && result.capacity?.approxStoreys && (
+                      <div className="p-3 bg-white border rounded">
+                        <p className="text-sm font-semibold mb-2">Height to Storeys Conversion:</p>
+                        <div className="text-sm text-gray-700 space-y-1 font-mono">
+                          <p>Storeys = Max Height ÷ 3m per storey</p>
+                          <p>Storeys = {result.capacity.maxHeight}m ÷ 3m</p>
+                          <p className="text-green-700 font-bold">~{result.capacity.approxStoreys} storeys</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* LEP Clauses Referenced */}
+                    {result.lepClauses && result.lepClauses.length > 0 && (
+                      <div className="p-3 bg-white border rounded">
+                        <p className="text-sm font-semibold mb-2">LEP Clauses Referenced:</p>
+                        <div className="space-y-2">
+                          {result.lepClauses.map((clause: any, idx: number) => (
+                            <div key={idx} className="text-sm border-l-2 border-blue-400 pl-3">
+                              <p className="font-medium text-blue-900">
+                                Clause {clause.clause_number}: {clause.clause_title}
+                              </p>
+                              {clause.requirements && (
+                                <ul className="text-xs text-gray-700 mt-1 space-y-1">
+                                  {clause.requirements.map((req: string, i: number) => (
+                                    <li key={i}>• {req}</li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Source Attribution */}
+                    <div className="text-xs text-gray-600 italic">
+                      <p>Calculations based on {lga} Local Environmental Plan and Development Control Plan provisions.</p>
+                      <p className="mt-1">Always verify with qualified planning consultant before lodging applications.</p>
+                    </div>
+                  </div>
+                </details>
+              )}
+
               {/* Setbacks */}
               {result.setbacks && (
                 <div className="p-4 border rounded">
