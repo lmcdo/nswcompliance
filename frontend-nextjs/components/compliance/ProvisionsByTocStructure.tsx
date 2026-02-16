@@ -269,9 +269,31 @@ export function ProvisionsByTocStructure({
 
   // Deduplicate provisions by text content (safety net for any DB/API duplicates)
   // Strip C1/O1/01 markers and normalize whitespace before comparison
+  // Also exclude TOC, negative pages, and definitions
   const selectedProvisions = useMemo(() => {
+    // First pass: Exclude non-provisions
+    const validProvisions = rawSelectedProvisions.filter(p => {
+      // Exclude TOC entries
+      if (p.v2_provision_type === 'TOC') return false;
+
+      // Exclude negative page numbers
+      const page = p.pdf_page ?? p.pdf_printed_page;
+      if (page !== null && page !== undefined && page < 0) return false;
+
+      // Exclude definitions
+      const text = p.provision_text || '';
+      const isDefinitions =
+        text.includes('KEY TERMS') ||
+        (text.includes('Definitions') && text.includes('means a')) ||
+        p.v2_topic?.toLowerCase() === 'definitions';
+      if (isDefinitions) return false;
+
+      return true;
+    });
+
+    // Second pass: Deduplicate
     const seenTexts = new Set<string>();
-    return rawSelectedProvisions.filter(p => {
+    return validProvisions.filter(p => {
       // Normalize: strip markers, collapse whitespace
       const normalized = (p.provision_text || '')
         .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
@@ -287,15 +309,37 @@ export function ProvisionsByTocStructure({
 
   // Get ALL provisions across all parts (for "export all" option and task mode)
   // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
+  // Excludes TOC entries, negative pages, and definitions at source (not counted anywhere)
   const allProvisions = useMemo(() => {
     if (!tocStructure || Object.keys(tocStructure).length === 0) return [];
     const allParts = Object.values(tocStructure);
     const provisions = allParts.flatMap((part: any) =>
       Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
     );
-    // Deduplicate - strip markers and normalize whitespace
+
+    // First pass: Exclude non-provisions (TOC, negative pages, definitions)
+    const validProvisions = provisions.filter((p: any) => {
+      // Exclude TOC entries
+      if (p.v2_provision_type === 'TOC') return false;
+
+      // Exclude negative page numbers (preamble, definitions)
+      const page = p.pdf_page ?? p.pdf_printed_page;
+      if (page !== null && page !== undefined && page < 0) return false;
+
+      // Exclude definitions (informational reference, not actionable controls)
+      const text = p.provision_text || '';
+      const isDefinitions =
+        text.includes('KEY TERMS') ||
+        (text.includes('Definitions') && text.includes('means a')) ||
+        p.v2_topic?.toLowerCase() === 'definitions';
+      if (isDefinitions) return false;
+
+      return true;
+    });
+
+    // Second pass: Deduplicate - strip markers and normalize whitespace
     const seenTexts = new Set<string>();
-    return provisions.filter((p: any) => {
+    return validProvisions.filter((p: any) => {
       // Normalize: strip markers, collapse whitespace
       const normalized = (p.provision_text || '')
         .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
@@ -328,48 +372,12 @@ export function ProvisionsByTocStructure({
     precinct: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
   }), [baseProvisions]);
 
-  // Layer-filtered base: excludes TOC entries and applies active layer.
+  // Layer-filtered base: applies active layer filter only
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
-  // Now uses baseProvisions (mode-aware) instead of selectedProvisions
+  // TOC/negative pages/definitions already excluded upstream in baseProvisions
   const layerFilteredProvisions = useMemo(() => {
-    console.log('[Filter Debug] Starting with baseProvisions:', baseProvisions.length);
-
-    const base = baseProvisions.filter(p => {
-      // Exclude TOC entries
-      if (p.v2_provision_type === 'TOC') {
-        console.log('[Filter Debug] Excluding TOC provision:', p.id, p.provision_text?.substring(0, 50));
-        return false;
-      }
-
-      // Exclude negative page numbers (TOC, preamble, definitions)
-      const page = p.pdf_page ?? p.pdf_printed_page;
-      if (page !== null && page !== undefined && page < 0) {
-        console.log('[Filter Debug] Excluding negative page:', page, 'ID:', p.id, p.provision_text?.substring(0, 50));
-        return false;
-      }
-
-      // Exclude definitions (informational reference, not actionable controls)
-      // Definitions are identified by text patterns (KEY TERMS, glossary format)
-      const text = p.provision_text || '';
-      const isDefinitions =
-        text.includes('KEY TERMS') ||
-        (text.includes('Definitions') && text.includes('means a')) ||
-        p.v2_topic?.toLowerCase() === 'definitions';
-
-      if (isDefinitions) {
-        console.log('[Filter Debug] Excluding definitions provision:', p.id);
-        return false;
-      }
-
-      return true;
-    });
-
-    console.log('[Filter Debug] After TOC/negative filter:', base.length);
-
-    if (!layerFilter) return base;
-    const filtered = base.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
-    console.log('[Filter Debug] After layer filter:', filtered.length, 'Layer:', layerFilter);
-    return filtered;
+    if (!layerFilter) return baseProvisions;
+    return baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === layerFilter);
   }, [baseProvisions, layerFilter]);
 
   // Apply search + topic filters, then sort by relevance or priority
