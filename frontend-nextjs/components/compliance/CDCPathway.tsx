@@ -42,41 +42,41 @@ const QUESTIONS: Question[] = [
     text: 'What is your lot area?',
     type: 'number',
     unit: 'm²',
-    guidance: 'Minimum lot size requirements vary by zone and work type. See SEPP Housing Code Part 3.',
+    guidance: 'Minimum 450m² required for most CDC works in residential zones.',
   },
   {
     id: 'heritage_item',
     text: 'Is your property a heritage item or in a heritage conservation area?',
     type: 'boolean',
-    guidance: 'CDC works are generally restricted on heritage properties. Check property constraints above.',
+    guidance: 'CDC works are restricted on heritage properties. Check your property constraints above.',
   },
   {
     id: 'max_height',
     text: 'What is the maximum height of your proposed works?',
     type: 'number',
     unit: 'm',
-    guidance: 'Height limits vary by zone. SEPP Housing Code specifies maximum heights for complying development.',
+    guidance: 'CDC generally limited to 8.5m building height in residential zones.',
   },
   {
     id: 'floor_area',
     text: 'What is the total floor area of the new works?',
     type: 'number',
     unit: 'm²',
-    guidance: 'Include all floor area for decks, garages, extensions. Limits vary by work type and zone.',
+    guidance: 'Including decks, garages, extensions. CDC typically allows up to 60m² additions.',
   },
   {
     id: 'setback_front',
     text: 'How far is the structure from the front boundary?',
     type: 'number',
     unit: 'm',
-    guidance: 'Front setback must match or exceed the prevailing setback of neighboring properties.',
+    guidance: 'Minimum setbacks apply. Check prevailing streetscape for context.',
   },
   {
     id: 'setback_side',
     text: 'How far is the structure from the side boundary?',
     type: 'number',
     unit: 'm',
-    guidance: 'Side setback requirements depend on lot width and building height. See SEPP Clause 3.10.',
+    guidance: 'Typically minimum 0.9m for single-storey, 1.2m for two-storey.',
   },
 ];
 
@@ -142,57 +142,128 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     return answer.value !== undefined;
   };
 
-  // Collect answers and show summary - NO VALIDATION (requirements are complex and context-dependent)
+  // Check eligibility based on answers
   useEffect(() => {
-    // Only show summary after all questions answered
-    if (answers.length === QUESTIONS.length) {
-      const summary: CheckResult[] = [
-        {
-          passed: true,
-          criterion: 'Information Collected',
-          reason: 'Your project details have been collected. CDC eligibility requires assessment against SEPP Housing Code provisions.',
-        },
-      ];
-
-      // Check heritage status as a clear blocker
-      const isHeritage = answers.find(a => a.questionId === 'heritage_item')?.value as boolean;
-      if (isHeritage) {
-        summary.push({
-          passed: false,
-          criterion: 'Heritage Property',
-          reason: 'Property is a heritage item or in a heritage conservation area.',
-          suggestion: 'CDC eligibility is severely restricted on heritage properties. Consult a heritage specialist and Private Certifier.',
-        });
-        setResults(summary);
-        setVerdict('review');
-        return;
-      }
-
-      // Add project summary
-      const lotArea = answers.find(a => a.questionId === 'lot_area')?.value as number;
-      const height = answers.find(a => a.questionId === 'max_height')?.value as number;
-      const floorArea = answers.find(a => a.questionId === 'floor_area')?.value as number;
-      const frontSetback = answers.find(a => a.questionId === 'setback_front')?.value as number;
-      const sideSetback = answers.find(a => a.questionId === 'setback_side')?.value as number;
-
-      summary.push({
-        passed: true,
-        criterion: 'Your Project Details',
-        reason: `Lot: ${lotArea}m² | Height: ${height}m | Floor Area: ${floorArea}m² | Front Setback: ${frontSetback}m | Side Setback: ${sideSetback}m`,
-      });
-
-      summary.push({
-        passed: true,
-        criterion: 'Next Steps',
-        reason: 'Engage a Private Certifier to assess your specific project against SEPP (Exempt and Complying Development Codes) 2008.',
-        suggestion: 'For official CDC guidance, visit the NSW Planning Portal: https://www.planningportal.nsw.gov.au/development-assessment/codes-sepp/housing-code',
-      });
-
-      setResults(summary);
-      setVerdict('review');
-    } else {
+    if (answers.length < QUESTIONS.length) {
       setResults([]);
       setVerdict(null);
+      return;
+    }
+
+    const checks: CheckResult[] = [];
+
+    // Lot area check
+    const lotArea = answers.find(a => a.questionId === 'lot_area')?.value as number;
+    if (lotArea < 450) {
+      checks.push({
+        passed: false,
+        criterion: 'Minimum lot area',
+        reason: `Lot area is ${lotArea}m², minimum 450m² required.`,
+        suggestion: 'Consider a DA instead, or reduce the scope of works.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Minimum lot area',
+        reason: `Lot area ${lotArea}m² meets 450m² minimum.`,
+      });
+    }
+
+    // Heritage check
+    const isHeritage = answers.find(a => a.questionId === 'heritage_item')?.value as boolean;
+    if (isHeritage) {
+      checks.push({
+        passed: false,
+        criterion: 'Heritage restrictions',
+        reason: 'Property is a heritage item or in a heritage conservation area.',
+        suggestion: 'CDC eligibility is very limited on heritage properties. Consult a heritage consultant.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Heritage status',
+        reason: 'Property is not heritage-listed.',
+      });
+    }
+
+    // Height check
+    const height = answers.find(a => a.questionId === 'max_height')?.value as number;
+    if (height > 8.5) {
+      checks.push({
+        passed: false,
+        criterion: 'Maximum height',
+        reason: `Proposed height ${height}m exceeds 8.5m limit.`,
+        suggestion: 'Reduce building height to 8.5m or lodge a DA.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Maximum height',
+        reason: `Proposed height ${height}m within 8.5m limit.`,
+      });
+    }
+
+    // Floor area check
+    const floorArea = answers.find(a => a.questionId === 'floor_area')?.value as number;
+    if (floorArea > 60) {
+      checks.push({
+        passed: false,
+        criterion: 'Maximum floor area',
+        reason: `Proposed floor area ${floorArea}m² exceeds typical 60m² CDC limit.`,
+        suggestion: 'Reduce floor area to 60m² or lodge a DA for larger works.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Maximum floor area',
+        reason: `Proposed floor area ${floorArea}m² within 60m² limit.`,
+      });
+    }
+
+    // Setback checks
+    const frontSetback = answers.find(a => a.questionId === 'setback_front')?.value as number;
+    const sideSetback = answers.find(a => a.questionId === 'setback_side')?.value as number;
+
+    if (frontSetback < 5.5) {
+      checks.push({
+        passed: false,
+        criterion: 'Front setback',
+        reason: `Front setback ${frontSetback}m is less than typical 5.5m minimum.`,
+        suggestion: 'Check prevailing streetscape — setbacks must match adjoining properties.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Front setback',
+        reason: `Front setback ${frontSetback}m meets minimum.`,
+      });
+    }
+
+    if (sideSetback < 0.9) {
+      checks.push({
+        passed: false,
+        criterion: 'Side setback',
+        reason: `Side setback ${sideSetback}m is less than 0.9m minimum for single-storey.`,
+        suggestion: 'Move structure at least 0.9m from side boundary.',
+      });
+    } else {
+      checks.push({
+        passed: true,
+        criterion: 'Side setback',
+        reason: `Side setback ${sideSetback}m meets minimum.`,
+      });
+    }
+
+    setResults(checks);
+
+    // Determine overall verdict
+    const failCount = checks.filter(c => !c.passed).length;
+    if (failCount === 0) {
+      setVerdict('eligible');
+    } else if (failCount <= 2) {
+      setVerdict('review');
+    } else {
+      setVerdict('ineligible');
     }
   }, [answers]);
 
@@ -218,17 +289,15 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
           const answer = answers.find(a => a.questionId === question.id);
           const isActive = index === currentStep;
           const isAnswered = answer !== undefined;
-          const canEdit = isAnswered && !isActive;
 
           return (
             <div
               key={question.id}
-              onClick={() => canEdit && setCurrentStep(index)}
-              className={`group border rounded-lg p-4 transition-all ${
+              className={`border rounded-lg p-4 transition-all ${
                 isActive
                   ? 'border-teal-400 bg-teal-50 shadow-sm'
                   : isAnswered
-                  ? 'border-gray-200 bg-white cursor-pointer hover:border-teal-300 hover:shadow-sm'
+                  ? 'border-gray-200 bg-white'
                   : 'border-gray-100 bg-gray-50 opacity-60'
               }`}
             >
@@ -291,20 +360,15 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
 
                   {/* Show answered value */}
                   {isAnswered && !isActive && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <p className="text-sm text-gray-700">
-                        <strong>
-                          {question.type === 'boolean'
-                            ? answer.value
-                              ? 'Yes'
-                              : 'No'
-                            : `${answer.value}${question.unit || ''}`}
-                        </strong>
-                      </p>
-                      <span className="text-xs text-teal-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                        Click to edit
-                      </span>
-                    </div>
+                    <p className="text-sm text-gray-700 mt-1">
+                      <strong>
+                        {question.type === 'boolean'
+                          ? answer.value
+                            ? 'Yes'
+                            : 'No'
+                          : `${answer.value}${question.unit || ''}`}
+                      </strong>
+                    </p>
                   )}
                 </div>
               </div>
@@ -316,28 +380,49 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       {/* Results */}
       {results.length > 0 && (
         <div className="mt-6 space-y-4">
-          {/* Summary Card */}
-          <div className="rounded-xl p-6 border-2 border-blue-500 bg-blue-50">
+          {/* Verdict */}
+          <div
+            className={`rounded-xl p-6 border-2 ${
+              verdict === 'eligible'
+                ? 'border-green-500 bg-green-50'
+                : verdict === 'review'
+                ? 'border-amber-500 bg-amber-50'
+                : 'border-red-500 bg-red-50'
+            }`}
+          >
             <div className="flex items-center gap-3 mb-2">
-              <AlertTriangle className="w-8 h-8 text-blue-600" />
+              {verdict === 'eligible' && <CheckCircle2 className="w-8 h-8 text-green-600" />}
+              {verdict === 'review' && <AlertTriangle className="w-8 h-8 text-amber-600" />}
+              {verdict === 'ineligible' && <XCircle className="w-8 h-8 text-red-600" />}
               <div>
-                <h3 className="text-xl font-bold text-blue-900">
-                  CDC Assessment Required
+                <h3
+                  className={`text-xl font-bold ${
+                    verdict === 'eligible' ? 'text-green-900' : verdict === 'review' ? 'text-amber-900' : 'text-red-900'
+                  }`}
+                >
+                  {verdict === 'eligible' && 'CDC Likely Eligible'}
+                  {verdict === 'review' && 'CDC Possible — Requires Review'}
+                  {verdict === 'ineligible' && 'CDC Not Eligible'}
                 </h3>
-                <p className="text-sm mt-1 text-blue-800">
-                  CDC eligibility depends on specific SEPP provisions for your work type, zone, and property characteristics.
-                  Consult a Private Certifier for a formal CDC assessment.
+                <p
+                  className={`text-sm mt-1 ${
+                    verdict === 'eligible' ? 'text-green-800' : verdict === 'review' ? 'text-amber-800' : 'text-red-800'
+                  }`}
+                >
+                  {verdict === 'eligible' &&
+                    'Your proposed works appear to meet CDC criteria. Engage a Private Certifier to lodge your CDC application.'}
+                  {verdict === 'review' &&
+                    'Some criteria may need adjustment. Consult a planning consultant or certifier to refine your design.'}
+                  {verdict === 'ineligible' &&
+                    'Your proposed works do not meet CDC standards. You will need to lodge a Development Application (DA) with council.'}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Project Summary */}
+          {/* Detailed Checks */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-gray-900">Project Information:</h4>
-              <p className="text-xs text-gray-600 italic">💡 Click any question above to edit your answer</p>
-            </div>
+            <h4 className="text-sm font-semibold text-gray-900">Detailed Checks:</h4>
             {results.map((result, index) => (
               <div
                 key={index}
