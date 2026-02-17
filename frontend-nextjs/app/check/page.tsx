@@ -169,8 +169,9 @@ export default function CheckPage() {
               developmentType={proposedWorks}
               lotArea={selectedProperty.lotDimensions?.area || null}
               zone={selectedProperty.constraints?.zone || ''}
-              lga={selectedProperty.constraints?.lga || ''}
+              lga={selectedProperty.constraints?.lga || 'Inner West'}
               formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+              planningLayers={selectedProperty.planningLayers || []}
             />
           </div>
         )}
