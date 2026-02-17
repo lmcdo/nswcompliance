@@ -519,19 +519,14 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
         </div>
       )}
 
-      {/* Start Over when results shown */}
+      {/* Back to questions when results shown */}
       {currentStep >= questions.length && (
         <div className="pt-2">
           <button
-            onClick={() => {
-              setCurrentStep(0);
-              setAnswers([]);
-              setResults([]);
-              setVerdict(null);
-            }}
+            onClick={() => setCurrentStep(questions.length - 1)}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            ← Start Over
+            ← Adjust Answers
           </button>
         </div>
       )}
