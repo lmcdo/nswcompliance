@@ -39,7 +39,7 @@ interface CheckResult {
 const QUESTIONS: Question[] = [
   {
     id: 'work_type',
-    text: 'What type of work are you planning?',
+    text: 'What are you building?',
     type: 'select',
     options: [
       { value: 'Deck', label: 'Deck, Patio, or Verandah' },
@@ -47,13 +47,21 @@ const QUESTIONS: Question[] = [
       { value: 'Pool', label: 'Swimming Pool' },
       { value: 'Fence', label: 'Fence or Gate' },
     ],
-    guidance: 'Different CDC requirements apply to different work types.',
+    guidance: 'Select the type of structure you want to build.',
   },
   {
-    id: 'heritage_item',
-    text: 'Is your property a heritage item or in a heritage conservation area?',
-    type: 'boolean',
-    guidance: 'CDC works are generally restricted on heritage properties.',
+    id: 'area',
+    text: 'What is the floor area?',
+    type: 'number',
+    unit: 'm²',
+    guidance: 'Total floor area of the structure (length × width).',
+  },
+  {
+    id: 'height',
+    text: 'What is the maximum height?',
+    type: 'number',
+    unit: 'm',
+    guidance: 'Highest point of the structure above ground level.',
   },
 ];
 
@@ -144,104 +152,114 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     return answer.value !== undefined;
   };
 
-  // Parse SEPP provisions and check eligibility
+  // 3-Tier Pathway Check: EXEMPT → CDC → DA
   useEffect(() => {
-    if (answers.length < QUESTIONS.length || seppProvisions.length === 0) {
+    if (answers.length < QUESTIONS.length) {
       setResults([]);
       setVerdict(null);
       return;
     }
 
-    const checks: CheckResult[] = [];
+    const workType = answers.find(a => a.questionId === 'work_type')?.value;
+    const area = answers.find(a => a.questionId === 'area')?.value as number;
+    const height = answers.find(a => a.questionId === 'height')?.value as number;
     const lotArea = propertyData?.lotDimensions?.area || 0;
+    const isHeritage = propertyData?.heritage?.isHeritage || false;
+    const zone = propertyData?.zone || '';
 
-    // Heritage check (hard blocker)
-    const isHeritage = answers.find(a => a.questionId === 'heritage_item')?.value as boolean;
-    if (isHeritage) {
-      checks.push({
-        passed: false,
-        criterion: 'Heritage Property',
-        reason: 'Property is a heritage item or in a heritage conservation area.',
-        suggestion: 'CDC eligibility is severely restricted on heritage properties. Consult a Private Certifier.',
-      });
-      setResults(checks);
-      setVerdict('ineligible');
-      return;
-    }
+    const checks: CheckResult[] = [];
 
-    // Parse lot area requirements from SEPP provisions
-    const lotAreaProvisions = seppProvisions.filter(p =>
-      p.provision_text.toLowerCase().includes('area of the lot')
-    );
+    // TIER 1: EXEMPT DEVELOPMENT (Holy Grail - No Approval Needed)
+    let isExempt = false;
+    let exemptReason = '';
 
-    if (lotAreaProvisions.length > 0) {
-      // Extract minimum lot area from provisions like "area of the lot is more than 300 m²"
-      const lotAreaMatch = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
-      if (lotAreaMatch) {
-        const minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
-        if (lotArea < minLotArea) {
-          checks.push({
-            passed: false,
-            criterion: 'Minimum Lot Area',
-            reason: `Your lot is ${Math.round(lotArea)}m². SEPP requires lot area more than ${minLotArea}m² for this work type (SEPP Housing Code Part ${seppProvisions[0].v2_part}).`,
-            suggestion: `Consider a smaller work type or lodge a Development Application. See PDF page ${lotAreaProvisions[0].pdf_page}.`,
-          });
-        } else {
-          checks.push({
-            passed: true,
-            criterion: 'Minimum Lot Area',
-            reason: `Your lot is ${Math.round(lotArea)}m², which meets the ${minLotArea}m² minimum (SEPP Part ${seppProvisions[0].v2_part}).`,
-          });
-        }
+    if (workType === 'Garage') {
+      // Garage: < 36m², < 3m height, 900mm setbacks
+      if (area < 36 && height <= 3) {
+        isExempt = true;
+        exemptReason = `✅ Your ${area}m² garage qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\nRequirements met:\n✅ Area ${area}m² < 36m² limit\n✅ Height ${height}m ≤ 3m limit\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
+      }
+    } else if (workType === 'Deck') {
+      // Deck: < 10m², < 1m high
+      if (area < 10 && height <= 1) {
+        isExempt = true;
+        exemptReason = `✅ Your ${area}m² deck qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\nRequirements met:\n✅ Area ${area}m² < 10m² limit\n✅ Height ${height}m ≤ 1m limit (ground level)\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
+      }
+    } else if (workType === 'Pool') {
+      // Pool: < 30m²
+      if (area < 30) {
+        isExempt = true;
+        exemptReason = `✅ Your ${area}m² pool qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\n⚠️ IMPORTANT: Pool fencing must still comply with safety standards.\n\nRequirements met:\n✅ Area ${area}m² < 30m² limit\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
       }
     }
 
-    // Show other applicable provisions as informational
-    const setbackProvisions = seppProvisions.filter(p =>
-      p.provision_text.toLowerCase().includes('setback')
-    );
-
-    if (setbackProvisions.length > 0) {
+    if (isExempt) {
       checks.push({
         passed: true,
-        criterion: 'Setback Requirements',
-        reason: `${setbackProvisions.length} setback provisions apply. These are table-based and require assessment by a Private Certifier.`,
-        suggestion: `Review SEPP provisions on PDF pages: ${setbackProvisions.map(p => p.pdf_page).join(', ')}.`,
+        criterion: 'EXEMPT - Start Building Today',
+        reason: exemptReason,
       });
+      setResults(checks);
+      setVerdict('eligible');
+      return;
     }
 
-    // Show height provisions if any
-    const heightProvisions = seppProvisions.filter(p =>
-      p.provision_text.toLowerCase().includes('maximum height') ||
-      p.provision_text.toLowerCase().includes('height of the floor level')
-    );
+    // TIER 2: COMPLYING DEVELOPMENT (CDC - 20 days)
+    // Fetch provisions to check CDC eligibility
+    if (seppProvisions.length > 0) {
+      // Parse lot area requirements
+      const lotAreaProvisions = seppProvisions.filter(p =>
+        p.provision_text.toLowerCase().includes('area of the lot')
+      );
 
-    if (heightProvisions.length > 0) {
-      checks.push({
-        passed: true,
-        criterion: 'Height Requirements',
-        reason: `${heightProvisions.length} height provisions apply. These often reference tables and require certifier assessment.`,
-        suggestion: `Review SEPP provisions on PDF pages: ${heightProvisions.map(p => p.pdf_page).join(', ')}.`,
-      });
+      let isCDC = true;
+      let cdcBlockers: string[] = [];
+
+      if (lotAreaProvisions.length > 0) {
+        const lotAreaMatch = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
+        if (lotAreaMatch) {
+          const minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
+          if (lotArea < minLotArea) {
+            isCDC = false;
+            cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² < ${minLotArea}m² required`);
+          }
+        }
+      }
+
+      if (isHeritage) {
+        isCDC = false;
+        cdcBlockers.push('Heritage property');
+      }
+
+      if (isCDC) {
+        checks.push({
+          passed: true,
+          criterion: 'CDC - Get Certifier Approval (20 days)',
+          reason: `⚠️ Your ${area}m² ${workType.toLowerCase()} needs a Complying Development Certificate (CDC).\n\nTimeline: 20 business days\nCost: ~$2,000-$3,000 (certifier fee)\n\nWhy not exempt:\n❌ Exceeds exempt development limits\n\nCDC requirements:\n✅ Lot size ${Math.round(lotArea)}m²\n✅ Zone ${zone}\n⚠️ Must meet setback tables (certifier to assess)\n\nNext steps: Contact a Private Certifier\n\nSource: SEPP Housing Code Part ${seppProvisions[0]?.v2_part}, ${seppProvisions.length} provisions apply`,
+        });
+        setResults(checks);
+        setVerdict('review');
+        return;
+      } else {
+        // TIER 3: DA REQUIRED
+        checks.push({
+          passed: false,
+          criterion: 'DA Required - Lodge with Council',
+          reason: `❌ Your ${area}m² ${workType.toLowerCase()} requires a Development Application (DA).\n\nTimeline: 3-6 months\nCost: ~$5,000-$15,000 (planner + council fees)\n\nWhy not CDC:\n${cdcBlockers.map(b => `❌ ${b}`).join('\n')}\n\nNext steps: Engage a town planner\n\nSource: Inner West DCP, SEPP Housing Code`,
+        });
+        setResults(checks);
+        setVerdict('ineligible');
+        return;
+      }
     }
 
-    // Summary
+    // Still loading provisions
     checks.push({
       passed: true,
-      criterion: 'Next Steps',
-      reason: `${seppProvisions.length} SEPP ${seppProvisions[0]?.v2_topic} provisions apply to your property (Zone ${propertyData?.zone}, Part ${seppProvisions[0]?.v2_part}).`,
-      suggestion: 'Engage a Private Certifier to assess compliance against these specific provisions.',
+      criterion: 'Checking eligibility...',
+      reason: 'Loading provisions from database...',
     });
-
     setResults(checks);
-
-    // Determine verdict
-    const failCount = checks.filter(c => !c.passed).length;
-    if (failCount === 0) {
-      setVerdict('review'); // Never say "eligible" - always requires certifier review
-    } else {
-      setVerdict('ineligible');
-    }
   }, [answers, seppProvisions, propertyData]);
 
   const currentQuestion = QUESTIONS[currentStep];
@@ -394,29 +412,17 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                     verdict === 'eligible' ? 'text-green-900' : verdict === 'review' ? 'text-amber-900' : 'text-red-900'
                   }`}
                 >
-                  {verdict === 'eligible' && 'CDC Likely Eligible'}
-                  {verdict === 'review' && 'CDC Possible — Requires Review'}
-                  {verdict === 'ineligible' && 'CDC Not Eligible'}
+                  {verdict === 'eligible' && '✅ EXEMPT - Start Building Today'}
+                  {verdict === 'review' && '⚠️ CDC Required - 20 Business Days'}
+                  {verdict === 'ineligible' && '❌ DA Required - 3-6 Months'}
                 </h3>
-                <p
-                  className={`text-sm mt-1 ${
-                    verdict === 'eligible' ? 'text-green-800' : verdict === 'review' ? 'text-amber-800' : 'text-red-800'
-                  }`}
-                >
-                  {verdict === 'eligible' &&
-                    'Your proposed works appear to meet CDC criteria. Engage a Private Certifier to lodge your CDC application.'}
-                  {verdict === 'review' &&
-                    'Some criteria may need adjustment. Consult a planning consultant or certifier to refine your design.'}
-                  {verdict === 'ineligible' &&
-                    'Your proposed works do not meet CDC standards. You will need to lodge a Development Application (DA) with council.'}
-                </p>
               </div>
             </div>
           </div>
 
-          {/* Detailed Checks */}
+          {/* Pathway Details */}
           <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-900">Detailed Checks:</h4>
+            <h4 className="text-sm font-semibold text-gray-900">Approval Pathway:</h4>
             {results.map((result, index) => (
               <div
                 key={index}
