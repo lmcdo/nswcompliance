@@ -247,12 +247,13 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
 
       if (cdcBlockers.length === 0) {
         // Why not exempt
+        const sepp2 = 'SEPP (Exempt and Complying Development Codes) 2008, Part 2';
         const exemptBlockers: string[] = [];
         if (limit) {
-          if (area >= limit.area) exemptBlockers.push(`Area ${area}m² — exceeds ${limit.area}m² exempt limit for ${workLabel}`);
-          if (limit.height !== null && height > limit.height) exemptBlockers.push(`Height ${height}m — exceeds ${limit.height}m exempt limit for ${workLabel}`);
+          if (area >= limit.area) exemptBlockers.push(`Area ${area}m² — exceeds ${limit.area}m² exempt limit for ${workLabel} (${sepp2})`);
+          if (limit.height !== null && height > limit.height) exemptBlockers.push(`Height ${height}m — exceeds ${limit.height}m exempt limit for ${workLabel} (${sepp2})`);
         } else {
-          exemptBlockers.push(`${workType} — no exempt development pathway available`);
+          exemptBlockers.push(`${workType} — no exempt development pathway available (${sepp2})`);
         }
 
         setResult({
@@ -510,12 +511,18 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
 
       {/* Navigation — results mode */}
       {showResults && (
-        <div className="pt-2">
+        <div className="flex items-center gap-3 pt-2">
           <button
             onClick={() => setCurrentStep(questions.length - 1)}
             className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
             ← Adjust Answers
+          </button>
+          <button
+            onClick={() => { setCurrentStep(0); setAnswers([]); setResult(null); }}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-500 hover:bg-gray-200"
+          >
+            Start Over
           </button>
         </div>
       )}

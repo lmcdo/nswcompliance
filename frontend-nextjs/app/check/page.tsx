@@ -15,7 +15,7 @@ import { PropertySearch } from '@/components/property/PropertySearch';
 import { CDCPathway } from '@/components/compliance/CDCPathway';
 import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { usePropertyAssessment } from '@/hooks';
-import { Home, Ruler, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Home, CheckCircle2, HelpCircle } from 'lucide-react';
 
 export default function CheckPage() {
   const {
@@ -28,7 +28,7 @@ export default function CheckPage() {
     handleAddressSelect,
   } = usePropertyAssessment();
 
-  const [proposedWorks, setProposedWorks] = useState<'deck' | 'garage' | 'extension' | 'other'>('deck');
+  const [proposedWorks] = useState<'deck' | 'garage' | 'extension' | 'other'>('deck');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50">
@@ -131,36 +131,6 @@ export default function CheckPage() {
           </div>
         )}
 
-        {/* What are you planning to build? */}
-        {selectedProperty && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Ruler className="w-5 h-5 text-teal-600" />
-              What are you planning to build?
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {[
-                { id: 'deck', label: 'Deck', icon: '🏡' },
-                { id: 'garage', label: 'Garage', icon: '🚗' },
-                { id: 'extension', label: 'Extension', icon: '🏠' },
-                { id: 'other', label: 'Other', icon: '🔨' },
-              ].map((work) => (
-                <button
-                  key={work.id}
-                  onClick={() => setProposedWorks(work.id as any)}
-                  className={`p-4 rounded-lg border-2 transition-all text-center ${
-                    proposedWorks === work.id
-                      ? 'border-teal-500 bg-teal-50 text-teal-700 font-medium'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{work.icon}</div>
-                  <div className="text-sm">{work.label}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* CDC Pathway Decision Tree */}
         {selectedProperty && (
