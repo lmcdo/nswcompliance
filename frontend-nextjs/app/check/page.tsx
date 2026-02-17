@@ -10,25 +10,21 @@
  * - Plain-English explanations
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { CDCPathway } from '@/components/compliance/CDCPathway';
-import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { usePropertyAssessment } from '@/hooks';
-import { Home, CheckCircle2, HelpCircle } from 'lucide-react';
+import { Home, CheckCircle2 } from 'lucide-react';
 
 export default function CheckPage() {
   const {
     selectedAddress,
     selectedProperty,
-    selectedCoordinates,
     loading,
     error,
-    developmentType,
     handleAddressSelect,
   } = usePropertyAssessment();
 
-  const [proposedWorks] = useState<'deck' | 'garage' | 'extension' | 'other'>('deck');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-teal-50 via-white to-blue-50">
@@ -146,35 +142,10 @@ export default function CheckPage() {
             </div>
             <CDCPathway
               propertyData={selectedProperty}
-              proposedWorkType={proposedWorks}
             />
           </div>
         )}
 
-        {/* Capacity Calculator */}
-        {selectedProperty && (
-          <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <div className="flex items-start gap-3 mb-4">
-              <HelpCircle className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Development Capacity</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  Maximum building size allowed on your property based on planning controls.
-                </p>
-              </div>
-            </div>
-            <CapacityCalculator
-              propertyAddress={selectedProperty.address}
-              coordinates={selectedCoordinates}
-              developmentType={proposedWorks}
-              lotArea={selectedProperty.lotDimensions?.area || null}
-              zone={selectedProperty.constraints?.zone || ''}
-              lga={selectedProperty.constraints?.lga || 'Inner West'}
-              formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-              planningLayers={selectedProperty.planningLayers || []}
-            />
-          </div>
-        )}
 
         {/* What's Next Section */}
         {selectedProperty && (
