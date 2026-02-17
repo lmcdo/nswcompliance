@@ -8,20 +8,11 @@
  */
 
 import { useState, useEffect } from 'react';
-import { CheckCircle2, XCircle, AlertTriangle, ChevronRight, Home } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface CDCPathwayProps {
   propertyData: any;
   proposedWorkType?: 'deck' | 'garage' | 'extension' | 'other';
-}
-
-interface Question {
-  id: string;
-  text: string;
-  type: 'boolean' | 'number' | 'select';
-  unit?: string;
-  options?: Array<{ value: string; label: string }>;
-  guidance?: string;
 }
 
 interface Answer {
@@ -29,11 +20,31 @@ interface Answer {
   value: any;
 }
 
+interface Requirement {
+  pass: boolean;
+  warn?: boolean;
+  text: string;
+}
+
 interface CheckResult {
-  passed: boolean;
-  criterion: string;
-  reason: string;
-  suggestion?: string;
+  verdict: 'eligible' | 'review' | 'ineligible';
+  tier: string;
+  summary: string;
+  blockers?: string[];
+  requirements?: Requirement[];
+  notes?: string[];
+  timeline: string;
+  cost: string;
+  nextStep: string;
+  source: string;
+}
+
+interface SeppProvision {
+  id: number;
+  provision_text: string;
+  pdf_page: number;
+  v2_part: string;
+  v2_topic: string;
 }
 
 const QUESTIONS = (maxGFA: number | null) => [
@@ -55,37 +66,29 @@ const QUESTIONS = (maxGFA: number | null) => [
     type: 'number' as const,
     unit: 'm²',
     guidance: maxGFA
-      ? `Floor area = length × width of the structure's footprint. Example: a 5m × 4m garage = 20m². Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control — a DA is required if exceeded).`
-      : 'Floor area = length × width of the structure\'s footprint. Example: a 5m × 4m garage = 20m².',
+      ? `Floor area = length × width of the footprint. Example: a 5m × 4m garage = 20m². Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control — DA required if exceeded).`
+      : "Floor area = length × width of the footprint. Example: a 5m × 4m garage = 20m².",
   },
   {
     id: 'height',
     text: 'What is the maximum height?',
     type: 'number' as const,
     unit: 'm',
-    guidance: 'Highest point of the structure above ground level.',
+    guidance: 'Highest point of the structure above natural ground level.',
   },
 ];
 
-interface SeppProvision {
-  id: number;
-  provision_text: string;
-  pdf_page: number;
-  v2_part: string;
-  v2_topic: string;
-}
-
-export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPathwayProps) {
+export function CDCPathway({ propertyData }: CDCPathwayProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
-  const [results, setResults] = useState<CheckResult[]>([]);
-  const [verdict, setVerdict] = useState<'eligible' | 'ineligible' | 'review' | null>(null);
+  const [result, setResult] = useState<CheckResult | null>(null);
   const [seppProvisions, setSeppProvisions] = useState<SeppProvision[]>([]);
   const [loadingProvisions, setLoadingProvisions] = useState(false);
 
-  const maxGFA = propertyData?.constraints?.maxFsr && propertyData?.lotDimensions?.area
-    ? propertyData.constraints.maxFsr * propertyData.lotDimensions.area
-    : null;
+  const maxGFA =
+    propertyData?.constraints?.maxFsr && propertyData?.lotDimensions?.area
+      ? propertyData.constraints.maxFsr * propertyData.lotDimensions.area
+      : null;
 
   const questions = QUESTIONS(maxGFA);
 
@@ -93,217 +96,201 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
   useEffect(() => {
     const workType = answers.find(a => a.questionId === 'work_type')?.value;
     const zone = propertyData?.zone;
-
     if (workType && zone) {
       setLoadingProvisions(true);
       fetch(`/api/sepp/exempt-complying?zone=${zone}&workType=${workType}`)
         .then(res => res.json())
-        .then(data => {
-          setSeppProvisions(data.provisions || []);
-          setLoadingProvisions(false);
-        })
-        .catch(err => {
-          console.error('Failed to fetch SEPP provisions:', err);
-          setLoadingProvisions(false);
-        });
+        .then(data => { setSeppProvisions(data.provisions || []); setLoadingProvisions(false); })
+        .catch(() => setLoadingProvisions(false));
     }
   }, [answers, propertyData]);
 
-  // Pre-fill heritage from property data
-  useEffect(() => {
-    if (propertyData?.heritage && answers.length <= 1) {
-      const isHeritage = propertyData.heritage.isHeritage;
-      if (!answers.find(a => a.questionId === 'heritage_item')) {
-        setAnswers(prev => [...prev, { questionId: 'heritage_item', value: isHeritage }]);
-      }
-    }
-  }, [propertyData, answers]);
-
-  const handleAnswer = (questionId: string, value: any, autoAdvance: boolean = false) => {
+  const handleAnswer = (questionId: string, value: any, autoAdvance = false) => {
     setAnswers(prev => {
-      const existing = prev.findIndex(a => a.questionId === questionId);
-      if (existing >= 0) {
+      const idx = prev.findIndex(a => a.questionId === questionId);
+      if (idx >= 0) {
         const updated = [...prev];
-        updated[existing] = { questionId, value };
+        updated[idx] = { questionId, value };
         return updated;
       }
       return [...prev, { questionId, value }];
     });
-
-    // Auto-advance only for boolean questions (single-click Yes/No)
     if (autoAdvance && currentStep < questions.length - 1) {
-      setTimeout(() => setCurrentStep(currentStep + 1), 300);
+      setTimeout(() => setCurrentStep(s => s + 1), 300);
     }
   };
 
   const handleNext = () => {
     if (currentStep < questions.length - 1) {
-      setCurrentStep(currentStep + 1);
-    } else if (currentStep === questions.length - 1) {
-      // Last question answered — advance to results
-      setCurrentStep(questions.length);
+      setCurrentStep(s => s + 1);
+    } else {
+      setCurrentStep(questions.length); // advance to results
     }
   };
 
   const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
+    if (currentStep > 0) setCurrentStep(s => s - 1);
   };
+
+  const currentQuestion = questions[currentStep];
 
   const canAdvance = () => {
     const answer = answers.find(a => a.questionId === currentQuestion?.id);
     if (!answer) return false;
-    if (currentQuestion?.type === 'number') {
-      const v = answer.value;
-      return !isNaN(v) && v > 0;
-    }
-    if (currentQuestion?.type === 'select') {
-      return answer.value !== '' && answer.value !== undefined;
-    }
+    if (currentQuestion?.type === 'number') return !isNaN(answer.value) && answer.value > 0;
+    if (currentQuestion?.type === 'select') return !!answer.value;
     return answer.value !== undefined;
   };
 
-  // 3-Tier Pathway Check: EXEMPT → CDC → DA
-  // Only runs after user explicitly clicks "Check Eligibility" (currentStep === questions.length)
+  // 3-Tier Pathway Check — only runs when user clicks "Check Eligibility"
   useEffect(() => {
-    if (currentStep < questions.length || answers.length < questions.length) {
-      setResults([]);
-      setVerdict(null);
+    if (currentStep < questions.length) {
+      setResult(null);
       return;
     }
 
-    const workType = answers.find(a => a.questionId === 'work_type')?.value;
+    const workType = answers.find(a => a.questionId === 'work_type')?.value as string;
     const area = answers.find(a => a.questionId === 'area')?.value as number;
     const height = answers.find(a => a.questionId === 'height')?.value as number;
 
-    // Guard: don't compute with invalid numeric inputs
-    if (isNaN(area) || area <= 0 || isNaN(height) || height <= 0) {
-      setResults([]);
-      setVerdict(null);
+    if (!workType || isNaN(area) || area <= 0 || isNaN(height) || height <= 0) {
+      setResult(null);
       return;
     }
+
     const lotArea = propertyData?.lotDimensions?.area || 0;
     const isHeritage = propertyData?.heritage?.isHeritage || false;
     const zone = propertyData?.zone || '';
+    const workLabel = workType.toLowerCase();
 
-    const checks: CheckResult[] = [];
-
-    // PRE-CHECK: Exceeds Max GFA (LEP FSR control) → DA required regardless of pathway
+    // PRE-CHECK: Exceeds Max GFA → DA required regardless
     if (maxGFA !== null && area > maxGFA) {
-      checks.push({
-        passed: false,
-        criterion: 'Exceeds Maximum GFA (LEP FSR Control)',
-        reason: `Your proposed floor area of ${area}m² exceeds the maximum permitted GFA of ${Math.round(maxGFA)}m² for this lot (FSR ${propertyData.constraints.maxFsr}:1 × ${Math.round(lotArea)}m²).\n\nNeither exempt development nor CDC can authorise works that exceed the LEP FSR control. A Development Application (DA) is required.\n\nTimeline: 3-6 months\nCost: ~$5,000-$15,000\n\nSource: Inner West LEP 2022, Clause 4.4 (Floor Space Ratio)`,
+      setResult({
+        verdict: 'ineligible',
+        tier: 'DA Required',
+        summary: `Proposed floor area (${area}m²) exceeds the maximum GFA of ${Math.round(maxGFA)}m² for this lot.`,
+        blockers: [
+          `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${Math.round(lotArea)}m² lot)`,
+          'LEP FSR control is a hard ceiling — neither exempt nor CDC can authorise works above it',
+        ],
+        timeline: '3–6 months',
+        cost: '~$5,000–$15,000 (town planner + council fees)',
+        nextStep: 'Engage a town planner to prepare a Development Application (DA)',
+        source: 'Inner West LEP 2022, Clause 4.4 — Floor Space Ratio',
       });
-      setResults(checks);
-      setVerdict('ineligible');
       return;
     }
 
-    // TIER 1: EXEMPT DEVELOPMENT (Holy Grail - No Approval Needed)
-    let isExempt = false;
-    let exemptReason = '';
-
-    if (workType === 'Garage') {
-      // Garage: < 36m², < 3m height, 900mm setbacks
-      if (area < 36 && height <= 3) {
-        isExempt = true;
-        exemptReason = `✅ Your ${area}m² garage qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\nRequirements met:\n✅ Area ${area}m² < 36m² limit\n✅ Height ${height}m ≤ 3m limit\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
-      }
-    } else if (workType === 'Deck') {
-      // Deck: < 10m², < 1m high
-      if (area < 10 && height <= 1) {
-        isExempt = true;
-        exemptReason = `✅ Your ${area}m² deck qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\nRequirements met:\n✅ Area ${area}m² < 10m² limit\n✅ Height ${height}m ≤ 1m limit (ground level)\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
-      }
-    } else if (workType === 'Pool') {
-      // Pool: < 30m²
-      if (area < 30) {
-        isExempt = true;
-        exemptReason = `✅ Your ${area}m² pool qualifies as EXEMPT development.\n\nNo approval needed. You can start building immediately.\n\n⚠️ IMPORTANT: Pool fencing must still comply with safety standards.\n\nRequirements met:\n✅ Area ${area}m² < 30m² limit\n✅ Zone ${zone}\n${isHeritage ? '⚠️ Heritage property - confirm with certifier' : '✅ Not heritage property'}\n\nSource: SEPP Exempt & Complying Development Codes 2008, Part 2`;
+    // TIER 1: EXEMPT
+    const exemptLimits: Record<string, { area: number; height: number | null }> = {
+      Garage: { area: 36, height: 3 },
+      Deck:   { area: 10, height: 1 },
+      Pool:   { area: 30, height: null },
+    };
+    const limit = exemptLimits[workType];
+    if (limit) {
+      const areaOk = area < limit.area;
+      const heightOk = limit.height === null || height <= limit.height;
+      if (areaOk && heightOk) {
+        const reqs: Requirement[] = [
+          { pass: true, text: `Area ${area}m² — under ${limit.area}m² exempt limit` },
+          ...(limit.height !== null
+            ? [{ pass: true, text: `Height ${height}m — at or under ${limit.height}m exempt limit` }]
+            : []),
+          {
+            pass: !isHeritage,
+            warn: isHeritage,
+            text: isHeritage
+              ? 'Heritage property — confirm with certifier before starting'
+              : `Zone ${zone} — permitted`,
+          },
+        ];
+        setResult({
+          verdict: 'eligible',
+          tier: 'Exempt Development',
+          summary: `Your ${area}m² ${workLabel} qualifies as exempt development — no approval needed.`,
+          requirements: reqs,
+          notes: workType === 'Pool' ? ['Pool fencing must comply with NSW pool safety standards regardless of approval pathway'] : undefined,
+          timeline: 'No approval process — start immediately',
+          cost: 'No approval fees',
+          nextStep: 'Proceed to construction',
+          source: 'SEPP (Exempt and Complying Development Codes) 2008, Part 2',
+        });
+        return;
       }
     }
 
-    if (isExempt) {
-      checks.push({
-        passed: true,
-        criterion: 'EXEMPT - Start Building Today',
-        reason: exemptReason,
-      });
-      setResults(checks);
-      setVerdict('eligible');
-      return;
-    }
-
-    // TIER 2: COMPLYING DEVELOPMENT (CDC - 20 days)
-    // Check CDC even if provisions haven't loaded — use lot area from property data
-    if (seppProvisions.length > 0 || !loadingProvisions) {
-      // Parse lot area requirements
+    // TIER 2 / 3: CDC or DA — need SEPP provisions loaded (or fallback)
+    if (!loadingProvisions) {
       const lotAreaProvisions = seppProvisions.filter(p =>
         p.provision_text.toLowerCase().includes('area of the lot')
       );
 
-      let isCDC = true;
-      let cdcBlockers: string[] = [];
-      let minLotArea = 0;
-      let lotAreaSource = '';
+      let minLotArea = 200;
+      let lotAreaSource = 'SEPP Housing Code Part 3, clause 3.1';
 
       if (lotAreaProvisions.length > 0) {
-        // Parse from actual SEPP provisions in database
-        const lotAreaMatch = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
-        if (lotAreaMatch) {
-          minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
+        const match = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
+        if (match) {
+          minLotArea = parseInt(match[1].replace(/\s/g, ''));
           lotAreaSource = `SEPP Housing Code Part ${seppProvisions[0]?.v2_part}, page ${lotAreaProvisions[0].pdf_page}`;
         }
-      } else {
-        // Fallback: known CDC lot minimums from SEPP Part 3 (confirmed from our database)
-        // Deck/Pool/Garage: 200m² minimum for CDC on R2 lots (SEPP Part 3, clause 3.1)
-        minLotArea = 200;
-        lotAreaSource = 'SEPP Housing Code Part 3, clause 3.1';
       }
 
-      if (minLotArea > 0 && lotArea < minLotArea) {
-        isCDC = false;
-        cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² < ${minLotArea}m² minimum (${lotAreaSource})`);
+      const cdcBlockers: string[] = [];
+      if (lotArea > 0 && lotArea < minLotArea) {
+        cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minLotArea}m² CDC minimum (${lotAreaSource})`);
       }
-
       if (isHeritage) {
-        isCDC = false;
-        cdcBlockers.push('Heritage property');
+        cdcBlockers.push('Heritage property — CDC not available, DA required');
       }
 
-      if (isCDC) {
-        checks.push({
-          passed: true,
-          criterion: 'CDC - Get Certifier Approval (20 days)',
-          reason: `⚠️ Your ${area}m² ${workType.toLowerCase()} needs a Complying Development Certificate (CDC).\n\nTimeline: 20 business days\nCost: ~$2,000-$3,000 (certifier fee)\n\nWhy not exempt:\n❌ Exceeds exempt development limits\n\nCDC requirements:\n✅ Lot size ${Math.round(lotArea)}m² meets minimum\n✅ Zone ${zone}\n⚠️ Setback requirements apply — certifier to assess\n\nNext steps: Contact a Private Certifier\n\nSource: ${lotAreaSource || 'SEPP Housing Code Part 3'}`,
+      if (cdcBlockers.length === 0) {
+        // Why not exempt
+        const exemptBlockers: string[] = [];
+        if (limit) {
+          if (area >= limit.area) exemptBlockers.push(`Area ${area}m² — exceeds ${limit.area}m² exempt limit for ${workLabel}`);
+          if (limit.height !== null && height > limit.height) exemptBlockers.push(`Height ${height}m — exceeds ${limit.height}m exempt limit for ${workLabel}`);
+        } else {
+          exemptBlockers.push(`${workType} — no exempt development pathway available`);
+        }
+
+        setResult({
+          verdict: 'review',
+          tier: 'Complying Development (CDC)',
+          summary: `Your ${area}m² ${workLabel} cannot proceed as exempt — a CDC is required.`,
+          blockers: exemptBlockers,
+          requirements: [
+            { pass: true, text: `Lot size ${Math.round(lotArea)}m² — meets ${minLotArea}m² minimum` },
+            { pass: true, text: `Zone ${zone} — CDC permitted` },
+            { pass: false, warn: true, text: 'Setback requirements — certifier to measure and confirm on site' },
+          ],
+          timeline: '20 business days',
+          cost: '~$2,000–$3,000 (private certifier fee)',
+          nextStep: 'Contact a Private Certifier — they assess setbacks and issue the CDC',
+          source: lotAreaSource,
         });
-        setResults(checks);
-        setVerdict('review');
-        return;
       } else {
-        // TIER 3: DA REQUIRED
-        checks.push({
-          passed: false,
-          criterion: 'DA Required - Lodge with Council',
-          reason: `❌ Your ${area}m² ${workType.toLowerCase()} requires a Development Application (DA).\n\nTimeline: 3-6 months\nCost: ~$5,000-$15,000 (planner + council fees)\n\nWhy not CDC:\n${cdcBlockers.map(b => `❌ ${b}`).join('\n')}\n\nNext steps: Engage a town planner\n\nSource: Inner West DCP, SEPP Housing Code`,
+        setResult({
+          verdict: 'ineligible',
+          tier: 'DA Required',
+          summary: `Your ${area}m² ${workLabel} cannot proceed as CDC — a Development Application is required.`,
+          blockers: cdcBlockers,
+          timeline: '3–6 months',
+          cost: '~$5,000–$15,000 (town planner + council fees)',
+          nextStep: 'Engage a town planner to prepare a DA lodged with Inner West Council',
+          source: 'Inner West DCP 2022, SEPP Housing Code',
         });
-        setResults(checks);
-        setVerdict('ineligible');
-        return;
       }
     }
-
   }, [answers, seppProvisions, loadingProvisions, propertyData, currentStep]);
 
-  const currentQuestion = questions[currentStep];
-  const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
+  const showResults = currentStep >= questions.length;
 
   return (
     <div className="space-y-4">
       {/* Progress */}
-      {currentStep < questions.length && (
+      {!showResults && (
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <span className="font-medium">Step {currentStep + 1} of {questions.length}</span>
           <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -315,184 +302,186 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
         </div>
       )}
 
-      {/* Questions — hidden once results are shown */}
-      <div className={`space-y-3 ${currentStep >= questions.length ? 'hidden' : ''}`}>
-        {questions.map((question, index) => {
-          const answer = answers.find(a => a.questionId === question.id);
-          const isActive = index === currentStep;
-          const isAnswered = answer !== undefined;
+      {/* Questions */}
+      {!showResults && (
+        <div className="space-y-3">
+          {questions.map((question, index) => {
+            const answer = answers.find(a => a.questionId === question.id);
+            const isActive = index === currentStep;
+            const isAnswered = answer !== undefined;
 
-          return (
-            <div
-              key={question.id}
-              className={`border rounded-lg p-4 transition-all ${
-                isActive
-                  ? 'border-teal-400 bg-teal-50 shadow-sm'
-                  : isAnswered
-                  ? 'border-gray-200 bg-white'
-                  : 'border-gray-100 bg-gray-50 opacity-60'
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <div
-                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    isAnswered ? 'bg-teal-600 text-white' : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  {isAnswered ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-gray-900 mb-1">{question.text}</p>
-                  {question.guidance && isActive && (
-                    <p className="text-xs text-gray-600 mb-2 italic">{question.guidance}</p>
-                  )}
-
-                  {/* Input */}
-                  {isActive && question.type === 'number' && (
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="number"
-                        value={answer?.value || ''}
-                        onChange={(e) => handleAnswer(question.id, parseFloat(e.target.value))}
-                        placeholder="Enter value"
-                        className="flex-1 text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                      />
-                      {question.unit && (
-                        <span className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-600">
-                          {question.unit}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {isActive && question.type === 'select' && question.options && (
-                    <div className="mt-2">
-                      <select
-                        value={answer?.value || ''}
-                        onChange={(e) => handleAnswer(question.id, e.target.value, true)}
-                        className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                      >
-                        <option value="">Select...</option>
-                        {question.options.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {isActive && question.type === 'boolean' && (
-                    <div className="flex gap-3 mt-2">
-                      <button
-                        onClick={() => handleAnswer(question.id, true, true)}
-                        className={`flex-1 px-4 py-2 rounded border-2 text-sm font-medium transition-all ${
-                          answer?.value === true
-                            ? 'border-red-500 bg-red-50 text-red-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        Yes
-                      </button>
-                      <button
-                        onClick={() => handleAnswer(question.id, false, true)}
-                        className={`flex-1 px-4 py-2 rounded border-2 text-sm font-medium transition-all ${
-                          answer?.value === false
-                            ? 'border-green-500 bg-green-50 text-green-700'
-                            : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                        }`}
-                      >
-                        No
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Show answered value */}
-                  {isAnswered && !isActive && (
-                    <p className="text-sm text-gray-700 mt-1">
-                      <strong>
-                        {question.type === 'boolean'
-                          ? answer.value
-                            ? 'Yes'
-                            : 'No'
-                          : question.type === 'select'
-                          ? question.options?.find(opt => opt.value === answer.value)?.label || answer.value
-                          : (isNaN(answer.value) || answer.value <= 0)
-                          ? <span className="text-red-500 italic">Enter a value ↑</span>
-                          : `${answer.value}${question.unit || ''}`}
-                      </strong>
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Results */}
-      {results.length > 0 && verdict !== null && (
-        <div className="mt-6 space-y-4">
-          {/* Verdict */}
-          <div
-            className={`rounded-xl p-6 border-2 ${
-              verdict === 'eligible'
-                ? 'border-green-500 bg-green-50'
-                : verdict === 'review'
-                ? 'border-amber-500 bg-amber-50'
-                : 'border-red-500 bg-red-50'
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-2">
-              {verdict === 'eligible' && <CheckCircle2 className="w-8 h-8 text-green-600" />}
-              {verdict === 'review' && <AlertTriangle className="w-8 h-8 text-amber-600" />}
-              {verdict === 'ineligible' && <XCircle className="w-8 h-8 text-red-600" />}
-              <div>
-                <h3
-                  className={`text-xl font-bold ${
-                    verdict === 'eligible' ? 'text-green-900' : verdict === 'review' ? 'text-amber-900' : 'text-red-900'
-                  }`}
-                >
-                  {verdict === 'eligible' && '✅ EXEMPT - Start Building Today'}
-                  {verdict === 'review' && '⚠️ CDC Required - 20 Business Days'}
-                  {verdict === 'ineligible' && '❌ DA Required - 3-6 Months'}
-                </h3>
-              </div>
-            </div>
-          </div>
-
-          {/* Pathway Details */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-semibold text-gray-900">Approval Pathway:</h4>
-            {results.map((result, index) => (
+            return (
               <div
-                key={index}
-                className={`flex items-start gap-3 p-3 rounded-lg border ${
-                  result.passed ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                key={question.id}
+                className={`border rounded-lg p-4 transition-all ${
+                  isActive
+                    ? 'border-teal-400 bg-teal-50 shadow-sm'
+                    : isAnswered
+                    ? 'border-gray-200 bg-white'
+                    : 'border-gray-100 bg-gray-50 opacity-60'
                 }`}
               >
-                {result.passed ? (
-                  <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-                )}
-                <div className="flex-1">
-                  <p className={`text-sm font-medium ${result.passed ? 'text-green-900' : 'text-red-900'}`}>
-                    {result.criterion}
-                  </p>
-                  <p className={`text-xs mt-1 ${result.passed ? 'text-green-800' : 'text-red-800'}`}>{result.reason}</p>
-                  {result.suggestion && (
-                    <p className="text-xs mt-2 italic text-gray-700 bg-white bg-opacity-50 rounded p-2 border border-gray-200">
-                      💡 {result.suggestion}
-                    </p>
-                  )}
+                <div className="flex items-start gap-3">
+                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${isAnswered ? 'bg-teal-600 text-white' : 'bg-gray-300 text-gray-600'}`}>
+                    {isAnswered ? <CheckCircle2 className="w-4 h-4" /> : index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 mb-1">{question.text}</p>
+                    {question.guidance && isActive && (
+                      <p className="text-xs text-gray-500 mb-2">{question.guidance}</p>
+                    )}
+
+                    {isActive && question.type === 'number' && (
+                      <div className="flex gap-2 mt-2">
+                        <input
+                          type="number"
+                          value={answer?.value || ''}
+                          onChange={e => handleAnswer(question.id, parseFloat(e.target.value))}
+                          placeholder="Enter value"
+                          className="flex-1 text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                        />
+                        {question.unit && (
+                          <span className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-600">
+                            {question.unit}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {isActive && question.type === 'select' && question.options && (
+                      <div className="mt-2">
+                        <select
+                          value={answer?.value || ''}
+                          onChange={e => handleAnswer(question.id, e.target.value, true)}
+                          className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                        >
+                          <option value="">Select...</option>
+                          {question.options.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {isAnswered && !isActive && (
+                      <p className="text-sm text-gray-700 mt-1">
+                        <strong>
+                          {question.type === 'select'
+                            ? question.options?.find(o => o.value === answer.value)?.label || answer.value
+                            : (isNaN(answer.value) || answer.value <= 0)
+                            ? <span className="text-red-500 italic">Enter a value</span>
+                            : `${answer.value}${question.unit || ''}`}
+                        </strong>
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
       )}
 
-      {/* Navigation */}
-      {currentStep < questions.length && (
+      {/* Results */}
+      {showResults && result && (
+        <div className="space-y-3">
+          {/* Verdict banner */}
+          <div className={`rounded-xl p-5 border-2 ${
+            result.verdict === 'eligible' ? 'border-green-500 bg-green-50'
+            : result.verdict === 'review' ? 'border-amber-500 bg-amber-50'
+            : 'border-red-500 bg-red-50'
+          }`}>
+            <div className="flex items-start gap-3">
+              {result.verdict === 'eligible' && <CheckCircle2 className="w-7 h-7 text-green-600 flex-shrink-0 mt-0.5" />}
+              {result.verdict === 'review' && <AlertTriangle className="w-7 h-7 text-amber-600 flex-shrink-0 mt-0.5" />}
+              {result.verdict === 'ineligible' && <XCircle className="w-7 h-7 text-red-600 flex-shrink-0 mt-0.5" />}
+              <div>
+                <p className={`text-base font-bold ${
+                  result.verdict === 'eligible' ? 'text-green-900'
+                  : result.verdict === 'review' ? 'text-amber-900'
+                  : 'text-red-900'
+                }`}>{result.tier}</p>
+                <p className={`text-sm mt-0.5 ${
+                  result.verdict === 'eligible' ? 'text-green-800'
+                  : result.verdict === 'review' ? 'text-amber-800'
+                  : 'text-red-800'
+                }`}>{result.summary}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Why blocked (fails) */}
+          {result.blockers && result.blockers.length > 0 && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+              <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">
+                {result.verdict === 'review' ? 'Why Not Exempt' : 'Reason'}
+              </p>
+              <ul className="space-y-1">
+                {result.blockers.map((b, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-red-800">
+                    <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Requirements (pass/warn/fail rows) */}
+          {result.requirements && result.requirements.length > 0 && (
+            <div className="rounded-lg border border-gray-200 bg-white p-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Requirements</p>
+              <ul className="space-y-1.5">
+                {result.requirements.map((req, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm">
+                    {req.warn ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    ) : req.pass ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <XCircle className="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                    )}
+                    <span className={req.warn ? 'text-amber-800' : req.pass ? 'text-gray-700' : 'text-red-700'}>
+                      {req.text}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Notes */}
+          {result.notes && result.notes.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+              {result.notes.map((n, i) => (
+                <p key={i} className="text-sm text-amber-800">⚠ {n}</p>
+              ))}
+            </div>
+          )}
+
+          {/* Timeline / Cost / Next Step */}
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 font-medium">Timeline</span>
+              <span className="text-gray-900 font-semibold">{result.timeline}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500 font-medium">Approx. cost</span>
+              <span className="text-gray-900 font-semibold">{result.cost}</span>
+            </div>
+            <div className="border-t border-gray-200 pt-2 mt-2">
+              <p className="text-xs text-gray-500 font-medium mb-0.5">Next step</p>
+              <p className="text-sm text-gray-900">{result.nextStep}</p>
+            </div>
+          </div>
+
+          {/* Source */}
+          <p className="text-xs text-gray-400 italic px-1">Source: {result.source}</p>
+        </div>
+      )}
+
+      {/* Navigation — questions mode */}
+      {!showResults && (
         <div className="flex items-center justify-between gap-4 pt-2">
           <button
             onClick={handleBack}
@@ -519,8 +508,8 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
         </div>
       )}
 
-      {/* Back to questions when results shown */}
-      {currentStep >= questions.length && (
+      {/* Navigation — results mode */}
+      {showResults && (
         <div className="pt-2">
           <button
             onClick={() => setCurrentStep(questions.length - 1)}
