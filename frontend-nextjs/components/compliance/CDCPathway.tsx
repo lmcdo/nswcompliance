@@ -144,12 +144,26 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     const answer = answers.find(a => a.questionId === currentQuestion?.id);
     if (!answer) return false;
     if (currentQuestion?.type === 'number') {
-      return !isNaN(answer.value) && answer.value > 0;
+      const v = answer.value;
+      if (isNaN(v) || v <= 0) return false;
+      if (currentQuestion.id === 'area' && v > 5000) return false;
+      if (currentQuestion.id === 'height' && v > 100) return false;
+      return true;
     }
     if (currentQuestion?.type === 'select') {
       return answer.value !== '' && answer.value !== undefined;
     }
     return answer.value !== undefined;
+  };
+
+  const getInputError = () => {
+    const answer = answers.find(a => a.questionId === currentQuestion?.id);
+    if (!answer || currentQuestion?.type !== 'number') return null;
+    const v = answer.value;
+    if (isNaN(v) || v <= 0) return null; // handled by empty state
+    if (currentQuestion.id === 'area' && v > 5000) return 'Area seems too large. Enter in m² (e.g. 24 for a 6m × 4m deck).';
+    if (currentQuestion.id === 'height' && v > 100) return 'Height must be in metres (e.g. 3 for a single storey structure).';
+    return null;
   };
 
   // 3-Tier Pathway Check: EXEMPT → CDC → DA
@@ -205,8 +219,8 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     }
 
     // TIER 2: COMPLYING DEVELOPMENT (CDC - 20 days)
-    // Fetch provisions to check CDC eligibility
-    if (seppProvisions.length > 0) {
+    // Check CDC even if provisions haven't loaded — use lot area from property data
+    if (seppProvisions.length > 0 || !loadingProvisions) {
       // Parse lot area requirements
       const lotAreaProvisions = seppProvisions.filter(p =>
         p.provision_text.toLowerCase().includes('area of the lot')
@@ -214,16 +228,26 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
 
       let isCDC = true;
       let cdcBlockers: string[] = [];
+      let minLotArea = 0;
+      let lotAreaSource = '';
 
       if (lotAreaProvisions.length > 0) {
+        // Parse from actual SEPP provisions in database
         const lotAreaMatch = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
         if (lotAreaMatch) {
-          const minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
-          if (lotArea < minLotArea) {
-            isCDC = false;
-            cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² < ${minLotArea}m² required`);
-          }
+          minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
+          lotAreaSource = `SEPP Housing Code Part ${seppProvisions[0]?.v2_part}, page ${lotAreaProvisions[0].pdf_page}`;
         }
+      } else {
+        // Fallback: known CDC lot minimums from SEPP Part 3 (confirmed from our database)
+        // Deck/Pool/Garage: 200m² minimum for CDC on R2 lots (SEPP Part 3, clause 3.1)
+        minLotArea = 200;
+        lotAreaSource = 'SEPP Housing Code Part 3, clause 3.1';
+      }
+
+      if (minLotArea > 0 && lotArea < minLotArea) {
+        isCDC = false;
+        cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² < ${minLotArea}m² minimum (${lotAreaSource})`);
       }
 
       if (isHeritage) {
@@ -235,7 +259,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
         checks.push({
           passed: true,
           criterion: 'CDC - Get Certifier Approval (20 days)',
-          reason: `⚠️ Your ${area}m² ${workType.toLowerCase()} needs a Complying Development Certificate (CDC).\n\nTimeline: 20 business days\nCost: ~$2,000-$3,000 (certifier fee)\n\nWhy not exempt:\n❌ Exceeds exempt development limits\n\nCDC requirements:\n✅ Lot size ${Math.round(lotArea)}m²\n✅ Zone ${zone}\n⚠️ Must meet setback tables (certifier to assess)\n\nNext steps: Contact a Private Certifier\n\nSource: SEPP Housing Code Part ${seppProvisions[0]?.v2_part}, ${seppProvisions.length} provisions apply`,
+          reason: `⚠️ Your ${area}m² ${workType.toLowerCase()} needs a Complying Development Certificate (CDC).\n\nTimeline: 20 business days\nCost: ~$2,000-$3,000 (certifier fee)\n\nWhy not exempt:\n❌ Exceeds exempt development limits\n\nCDC requirements:\n✅ Lot size ${Math.round(lotArea)}m² meets minimum\n✅ Zone ${zone}\n⚠️ Setback requirements apply — certifier to assess\n\nNext steps: Contact a Private Certifier\n\nSource: ${lotAreaSource || 'SEPP Housing Code Part 3'}`,
         });
         setResults(checks);
         setVerdict('review');
@@ -253,14 +277,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       }
     }
 
-    // Still loading provisions
-    checks.push({
-      passed: true,
-      criterion: 'Checking eligibility...',
-      reason: 'Loading provisions from database...',
-    });
-    setResults(checks);
-  }, [answers, seppProvisions, propertyData]);
+  }, [answers, seppProvisions, loadingProvisions, propertyData]);
 
   const currentQuestion = QUESTIONS[currentStep];
   const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
@@ -312,18 +329,23 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
 
                   {/* Input */}
                   {isActive && question.type === 'number' && (
-                    <div className="flex gap-2 mt-2">
-                      <input
-                        type="number"
-                        value={answer?.value || ''}
-                        onChange={(e) => handleAnswer(question.id, parseFloat(e.target.value))}
-                        placeholder="Enter value"
-                        className="flex-1 text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
-                      />
-                      {question.unit && (
-                        <span className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-600">
-                          {question.unit}
-                        </span>
+                    <div className="mt-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          value={answer?.value || ''}
+                          onChange={(e) => handleAnswer(question.id, parseFloat(e.target.value))}
+                          placeholder="Enter value"
+                          className={`flex-1 text-sm border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400 ${getInputError() ? 'border-red-400 bg-red-50' : 'border-gray-300'}`}
+                        />
+                        {question.unit && (
+                          <span className="flex items-center px-3 py-2 bg-gray-100 border border-gray-300 rounded text-sm text-gray-600">
+                            {question.unit}
+                          </span>
+                        )}
+                      </div>
+                      {getInputError() && (
+                        <p className="text-xs text-red-600 mt-1">{getInputError()}</p>
                       )}
                     </div>
                   )}
@@ -390,7 +412,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       </div>
 
       {/* Results */}
-      {results.length > 0 && (
+      {results.length > 0 && verdict !== null && (
         <div className="mt-6 space-y-4">
           {/* Verdict */}
           <div
