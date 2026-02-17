@@ -36,11 +36,11 @@ interface CheckResult {
   suggestion?: string;
 }
 
-const QUESTIONS: Question[] = [
+const QUESTIONS = (maxGFA: number | null) => [
   {
     id: 'work_type',
     text: 'What are you building?',
-    type: 'select',
+    type: 'select' as const,
     options: [
       { value: 'Deck', label: 'Deck, Patio, or Verandah' },
       { value: 'Garage', label: 'Garage or Carport' },
@@ -52,14 +52,16 @@ const QUESTIONS: Question[] = [
   {
     id: 'area',
     text: 'What is the floor area?',
-    type: 'number',
+    type: 'number' as const,
     unit: 'm²',
-    guidance: 'Total floor area of the structure (length × width).',
+    guidance: maxGFA
+      ? `Total floor area of the structure (length × width). Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP FSR control).`
+      : 'Total floor area of the structure (length × width).',
   },
   {
     id: 'height',
     text: 'What is the maximum height?',
-    type: 'number',
+    type: 'number' as const,
     unit: 'm',
     guidance: 'Highest point of the structure above ground level.',
   },
@@ -80,6 +82,12 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
   const [verdict, setVerdict] = useState<'eligible' | 'ineligible' | 'review' | null>(null);
   const [seppProvisions, setSeppProvisions] = useState<SeppProvision[]>([]);
   const [loadingProvisions, setLoadingProvisions] = useState(false);
+
+  const maxGFA = propertyData?.constraints?.maxFsr && propertyData?.lotDimensions?.area
+    ? propertyData.constraints.maxFsr * propertyData.lotDimensions.area
+    : null;
+
+  const questions = QUESTIONS(maxGFA);
 
   // Fetch SEPP provisions when work type is selected
   useEffect(() => {
@@ -123,13 +131,13 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     });
 
     // Auto-advance only for boolean questions (single-click Yes/No)
-    if (autoAdvance && currentStep < QUESTIONS.length - 1) {
+    if (autoAdvance && currentStep < questions.length - 1) {
       setTimeout(() => setCurrentStep(currentStep + 1), 300);
     }
   };
 
   const handleNext = () => {
-    if (currentStep < QUESTIONS.length - 1) {
+    if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -155,7 +163,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
 
   // 3-Tier Pathway Check: EXEMPT → CDC → DA
   useEffect(() => {
-    if (answers.length < QUESTIONS.length) {
+    if (answers.length < questions.length) {
       setResults([]);
       setVerdict(null);
       return;
@@ -169,6 +177,18 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     const zone = propertyData?.zone || '';
 
     const checks: CheckResult[] = [];
+
+    // PRE-CHECK: Exceeds Max GFA (LEP FSR control) → DA required regardless of pathway
+    if (maxGFA !== null && area > maxGFA) {
+      checks.push({
+        passed: false,
+        criterion: 'Exceeds Maximum GFA (LEP FSR Control)',
+        reason: `Your proposed floor area of ${area}m² exceeds the maximum permitted GFA of ${Math.round(maxGFA)}m² for this lot (FSR ${propertyData.constraints.maxFsr}:1 × ${Math.round(lotArea)}m²).\n\nNeither exempt development nor CDC can authorise works that exceed the LEP FSR control. A Development Application (DA) is required.\n\nTimeline: 3-6 months\nCost: ~$5,000-$15,000\n\nSource: Inner West LEP 2022, Clause 4.4 (Floor Space Ratio)`,
+      });
+      setResults(checks);
+      setVerdict('ineligible');
+      return;
+    }
 
     // TIER 1: EXEMPT DEVELOPMENT (Holy Grail - No Approval Needed)
     let isExempt = false;
@@ -266,25 +286,25 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
 
   }, [answers, seppProvisions, loadingProvisions, propertyData]);
 
-  const currentQuestion = QUESTIONS[currentStep];
+  const currentQuestion = questions[currentStep];
   const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
 
   return (
     <div className="space-y-4">
       {/* Progress */}
       <div className="flex items-center gap-2 text-sm text-gray-600">
-        <span className="font-medium">Step {Math.min(currentStep + 1, QUESTIONS.length)} of {QUESTIONS.length}</span>
+        <span className="font-medium">Step {Math.min(currentStep + 1, questions.length)} of {questions.length}</span>
         <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div
             className="h-full bg-teal-600 transition-all duration-300"
-            style={{ width: `${((currentStep + 1) / QUESTIONS.length) * 100}%` }}
+            style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
           />
         </div>
       </div>
 
       {/* Questions */}
       <div className="space-y-3">
-        {QUESTIONS.map((question, index) => {
+        {questions.map((question, index) => {
           const answer = answers.find(a => a.questionId === question.id);
           const isActive = index === currentStep;
           const isAnswered = answer !== undefined;
@@ -457,7 +477,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       )}
 
       {/* Navigation */}
-      {currentStep < QUESTIONS.length && (
+      {currentStep < questions.length && (
         <div className="flex items-center justify-between gap-4 pt-2">
           <button
             onClick={handleBack}
@@ -472,14 +492,14 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
           </button>
           <button
             onClick={handleNext}
-            disabled={!canAdvance() || currentStep === QUESTIONS.length - 1}
+            disabled={!canAdvance() || currentStep === questions.length - 1}
             className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-              !canAdvance() || currentStep === QUESTIONS.length - 1
+              !canAdvance() || currentStep === questions.length - 1
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm'
             }`}
           >
-            {currentStep === QUESTIONS.length - 1 ? 'Complete' : 'Next →'}
+            {currentStep === questions.length - 1 ? 'Complete' : 'Next →'}
           </button>
         </div>
       )}
