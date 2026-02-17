@@ -38,61 +38,60 @@ interface CheckResult {
 
 const QUESTIONS: Question[] = [
   {
-    id: 'lot_area',
-    text: 'What is your lot area?',
-    type: 'number',
-    unit: 'm²',
-    guidance: 'Minimum 450m² required for most CDC works in residential zones.',
+    id: 'work_type',
+    text: 'What type of work are you planning?',
+    type: 'select',
+    options: [
+      { value: 'Deck', label: 'Deck, Patio, or Verandah' },
+      { value: 'Garage', label: 'Garage or Carport' },
+      { value: 'Pool', label: 'Swimming Pool' },
+      { value: 'Fence', label: 'Fence or Gate' },
+    ],
+    guidance: 'Different CDC requirements apply to different work types.',
   },
   {
     id: 'heritage_item',
     text: 'Is your property a heritage item or in a heritage conservation area?',
     type: 'boolean',
-    guidance: 'CDC works are restricted on heritage properties. Check your property constraints above.',
-  },
-  {
-    id: 'max_height',
-    text: 'What is the maximum height of your proposed works?',
-    type: 'number',
-    unit: 'm',
-    guidance: 'CDC generally limited to 8.5m building height in residential zones.',
-  },
-  {
-    id: 'floor_area',
-    text: 'What is the total floor area of the new works?',
-    type: 'number',
-    unit: 'm²',
-    guidance: 'Including decks, garages, extensions. CDC typically allows up to 60m² additions.',
-  },
-  {
-    id: 'setback_front',
-    text: 'How far is the structure from the front boundary?',
-    type: 'number',
-    unit: 'm',
-    guidance: 'Minimum setbacks apply. Check prevailing streetscape for context.',
-  },
-  {
-    id: 'setback_side',
-    text: 'How far is the structure from the side boundary?',
-    type: 'number',
-    unit: 'm',
-    guidance: 'Typically minimum 0.9m for single-storey, 1.2m for two-storey.',
+    guidance: 'CDC works are generally restricted on heritage properties.',
   },
 ];
+
+interface SeppProvision {
+  id: number;
+  provision_text: string;
+  pdf_page: number;
+  v2_part: string;
+  v2_topic: string;
+}
 
 export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPathwayProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [results, setResults] = useState<CheckResult[]>([]);
   const [verdict, setVerdict] = useState<'eligible' | 'ineligible' | 'review' | null>(null);
+  const [seppProvisions, setSeppProvisions] = useState<SeppProvision[]>([]);
+  const [loadingProvisions, setLoadingProvisions] = useState(false);
 
-  // Pre-fill lot area from property data
+  // Fetch SEPP provisions when work type is selected
   useEffect(() => {
-    if (propertyData?.lotDimensions?.area && answers.length === 0) {
-      const lotArea = Math.round(propertyData.lotDimensions.area);
-      setAnswers([{ questionId: 'lot_area', value: lotArea }]);
+    const workType = answers.find(a => a.questionId === 'work_type')?.value;
+    const zone = propertyData?.zone;
+
+    if (workType && zone) {
+      setLoadingProvisions(true);
+      fetch(`/api/sepp/exempt-complying?zone=${zone}&workType=${workType}`)
+        .then(res => res.json())
+        .then(data => {
+          setSeppProvisions(data.provisions || []);
+          setLoadingProvisions(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch SEPP provisions:', err);
+          setLoadingProvisions(false);
+        });
     }
-  }, [propertyData, answers.length]);
+  }, [answers, propertyData]);
 
   // Pre-fill heritage from property data
   useEffect(() => {
@@ -139,133 +138,111 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     if (currentQuestion?.type === 'number') {
       return !isNaN(answer.value) && answer.value > 0;
     }
+    if (currentQuestion?.type === 'select') {
+      return answer.value !== '' && answer.value !== undefined;
+    }
     return answer.value !== undefined;
   };
 
-  // Check eligibility based on answers
+  // Parse SEPP provisions and check eligibility
   useEffect(() => {
-    if (answers.length < QUESTIONS.length) {
+    if (answers.length < QUESTIONS.length || seppProvisions.length === 0) {
       setResults([]);
       setVerdict(null);
       return;
     }
 
     const checks: CheckResult[] = [];
+    const lotArea = propertyData?.lotDimensions?.area || 0;
 
-    // Lot area check
-    const lotArea = answers.find(a => a.questionId === 'lot_area')?.value as number;
-    if (lotArea < 450) {
-      checks.push({
-        passed: false,
-        criterion: 'Minimum lot area',
-        reason: `Lot area is ${lotArea}m², minimum 450m² required.`,
-        suggestion: 'Consider a DA instead, or reduce the scope of works.',
-      });
-    } else {
-      checks.push({
-        passed: true,
-        criterion: 'Minimum lot area',
-        reason: `Lot area ${lotArea}m² meets 450m² minimum.`,
-      });
-    }
-
-    // Heritage check
+    // Heritage check (hard blocker)
     const isHeritage = answers.find(a => a.questionId === 'heritage_item')?.value as boolean;
     if (isHeritage) {
       checks.push({
         passed: false,
-        criterion: 'Heritage restrictions',
+        criterion: 'Heritage Property',
         reason: 'Property is a heritage item or in a heritage conservation area.',
-        suggestion: 'CDC eligibility is very limited on heritage properties. Consult a heritage consultant.',
+        suggestion: 'CDC eligibility is severely restricted on heritage properties. Consult a Private Certifier.',
       });
-    } else {
+      setResults(checks);
+      setVerdict('ineligible');
+      return;
+    }
+
+    // Parse lot area requirements from SEPP provisions
+    const lotAreaProvisions = seppProvisions.filter(p =>
+      p.provision_text.toLowerCase().includes('area of the lot')
+    );
+
+    if (lotAreaProvisions.length > 0) {
+      // Extract minimum lot area from provisions like "area of the lot is more than 300 m²"
+      const lotAreaMatch = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
+      if (lotAreaMatch) {
+        const minLotArea = parseInt(lotAreaMatch[1].replace(/\s/g, ''));
+        if (lotArea < minLotArea) {
+          checks.push({
+            passed: false,
+            criterion: 'Minimum Lot Area',
+            reason: `Your lot is ${Math.round(lotArea)}m². SEPP requires lot area more than ${minLotArea}m² for this work type (SEPP Housing Code Part ${seppProvisions[0].v2_part}).`,
+            suggestion: `Consider a smaller work type or lodge a Development Application. See PDF page ${lotAreaProvisions[0].pdf_page}.`,
+          });
+        } else {
+          checks.push({
+            passed: true,
+            criterion: 'Minimum Lot Area',
+            reason: `Your lot is ${Math.round(lotArea)}m², which meets the ${minLotArea}m² minimum (SEPP Part ${seppProvisions[0].v2_part}).`,
+          });
+        }
+      }
+    }
+
+    // Show other applicable provisions as informational
+    const setbackProvisions = seppProvisions.filter(p =>
+      p.provision_text.toLowerCase().includes('setback')
+    );
+
+    if (setbackProvisions.length > 0) {
       checks.push({
         passed: true,
-        criterion: 'Heritage status',
-        reason: 'Property is not heritage-listed.',
+        criterion: 'Setback Requirements',
+        reason: `${setbackProvisions.length} setback provisions apply. These are table-based and require assessment by a Private Certifier.`,
+        suggestion: `Review SEPP provisions on PDF pages: ${setbackProvisions.map(p => p.pdf_page).join(', ')}.`,
       });
     }
 
-    // Height check
-    const height = answers.find(a => a.questionId === 'max_height')?.value as number;
-    if (height > 8.5) {
-      checks.push({
-        passed: false,
-        criterion: 'Maximum height',
-        reason: `Proposed height ${height}m exceeds 8.5m limit.`,
-        suggestion: 'Reduce building height to 8.5m or lodge a DA.',
-      });
-    } else {
+    // Show height provisions if any
+    const heightProvisions = seppProvisions.filter(p =>
+      p.provision_text.toLowerCase().includes('maximum height') ||
+      p.provision_text.toLowerCase().includes('height of the floor level')
+    );
+
+    if (heightProvisions.length > 0) {
       checks.push({
         passed: true,
-        criterion: 'Maximum height',
-        reason: `Proposed height ${height}m within 8.5m limit.`,
+        criterion: 'Height Requirements',
+        reason: `${heightProvisions.length} height provisions apply. These often reference tables and require certifier assessment.`,
+        suggestion: `Review SEPP provisions on PDF pages: ${heightProvisions.map(p => p.pdf_page).join(', ')}.`,
       });
     }
 
-    // Floor area check
-    const floorArea = answers.find(a => a.questionId === 'floor_area')?.value as number;
-    if (floorArea > 60) {
-      checks.push({
-        passed: false,
-        criterion: 'Maximum floor area',
-        reason: `Proposed floor area ${floorArea}m² exceeds typical 60m² CDC limit.`,
-        suggestion: 'Reduce floor area to 60m² or lodge a DA for larger works.',
-      });
-    } else {
-      checks.push({
-        passed: true,
-        criterion: 'Maximum floor area',
-        reason: `Proposed floor area ${floorArea}m² within 60m² limit.`,
-      });
-    }
-
-    // Setback checks
-    const frontSetback = answers.find(a => a.questionId === 'setback_front')?.value as number;
-    const sideSetback = answers.find(a => a.questionId === 'setback_side')?.value as number;
-
-    if (frontSetback < 5.5) {
-      checks.push({
-        passed: false,
-        criterion: 'Front setback',
-        reason: `Front setback ${frontSetback}m is less than typical 5.5m minimum.`,
-        suggestion: 'Check prevailing streetscape — setbacks must match adjoining properties.',
-      });
-    } else {
-      checks.push({
-        passed: true,
-        criterion: 'Front setback',
-        reason: `Front setback ${frontSetback}m meets minimum.`,
-      });
-    }
-
-    if (sideSetback < 0.9) {
-      checks.push({
-        passed: false,
-        criterion: 'Side setback',
-        reason: `Side setback ${sideSetback}m is less than 0.9m minimum for single-storey.`,
-        suggestion: 'Move structure at least 0.9m from side boundary.',
-      });
-    } else {
-      checks.push({
-        passed: true,
-        criterion: 'Side setback',
-        reason: `Side setback ${sideSetback}m meets minimum.`,
-      });
-    }
+    // Summary
+    checks.push({
+      passed: true,
+      criterion: 'Next Steps',
+      reason: `${seppProvisions.length} SEPP ${seppProvisions[0]?.v2_topic} provisions apply to your property (Zone ${propertyData?.zone}, Part ${seppProvisions[0]?.v2_part}).`,
+      suggestion: 'Engage a Private Certifier to assess compliance against these specific provisions.',
+    });
 
     setResults(checks);
 
-    // Determine overall verdict
+    // Determine verdict
     const failCount = checks.filter(c => !c.passed).length;
     if (failCount === 0) {
-      setVerdict('eligible');
-    } else if (failCount <= 2) {
-      setVerdict('review');
+      setVerdict('review'); // Never say "eligible" - always requires certifier review
     } else {
       setVerdict('ineligible');
     }
-  }, [answers]);
+  }, [answers, seppProvisions, propertyData]);
 
   const currentQuestion = QUESTIONS[currentStep];
   const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
@@ -333,6 +310,21 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                     </div>
                   )}
 
+                  {isActive && question.type === 'select' && question.options && (
+                    <div className="mt-2">
+                      <select
+                        value={answer?.value || ''}
+                        onChange={(e) => handleAnswer(question.id, e.target.value, true)}
+                        className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                      >
+                        <option value="">Select...</option>
+                        {question.options.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
                   {isActive && question.type === 'boolean' && (
                     <div className="flex gap-3 mt-2">
                       <button
@@ -366,6 +358,8 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                           ? answer.value
                             ? 'Yes'
                             : 'No'
+                          : question.type === 'select'
+                          ? question.options?.find(opt => opt.value === answer.value)?.label || answer.value
                           : `${answer.value}${question.unit || ''}`}
                       </strong>
                     </p>
