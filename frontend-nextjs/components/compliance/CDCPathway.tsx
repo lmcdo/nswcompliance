@@ -51,12 +51,12 @@ const QUESTIONS = (maxGFA: number | null) => [
   },
   {
     id: 'area',
-    text: 'What is the floor area?',
+    text: 'What is the floor area of your structure?',
     type: 'number' as const,
     unit: 'm²',
     guidance: maxGFA
-      ? `Total floor area of the structure (length × width). Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP FSR control).`
-      : 'Total floor area of the structure (length × width).',
+      ? `Floor area = length × width of the structure's footprint. Example: a 5m × 4m garage = 20m². Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control — a DA is required if exceeded).`
+      : 'Floor area = length × width of the structure\'s footprint. Example: a 5m × 4m garage = 20m².',
   },
   {
     id: 'height',
@@ -139,6 +139,9 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
   const handleNext = () => {
     if (currentStep < questions.length - 1) {
       setCurrentStep(currentStep + 1);
+    } else if (currentStep === questions.length - 1) {
+      // Last question answered — advance to results
+      setCurrentStep(questions.length);
     }
   };
 
@@ -162,8 +165,9 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
   };
 
   // 3-Tier Pathway Check: EXEMPT → CDC → DA
+  // Only runs after user explicitly clicks "Check Eligibility" (currentStep === questions.length)
   useEffect(() => {
-    if (answers.length < questions.length) {
+    if (currentStep < questions.length || answers.length < questions.length) {
       setResults([]);
       setVerdict(null);
       return;
@@ -172,6 +176,13 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
     const workType = answers.find(a => a.questionId === 'work_type')?.value;
     const area = answers.find(a => a.questionId === 'area')?.value as number;
     const height = answers.find(a => a.questionId === 'height')?.value as number;
+
+    // Guard: don't compute with invalid numeric inputs
+    if (isNaN(area) || area <= 0 || isNaN(height) || height <= 0) {
+      setResults([]);
+      setVerdict(null);
+      return;
+    }
     const lotArea = propertyData?.lotDimensions?.area || 0;
     const isHeritage = propertyData?.heritage?.isHeritage || false;
     const zone = propertyData?.zone || '';
@@ -284,7 +295,7 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
       }
     }
 
-  }, [answers, seppProvisions, loadingProvisions, propertyData]);
+  }, [answers, seppProvisions, loadingProvisions, propertyData, currentStep]);
 
   const currentQuestion = questions[currentStep];
   const currentAnswer = answers.find(a => a.questionId === currentQuestion?.id);
@@ -292,18 +303,20 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
   return (
     <div className="space-y-4">
       {/* Progress */}
-      <div className="flex items-center gap-2 text-sm text-gray-600">
-        <span className="font-medium">Step {Math.min(currentStep + 1, questions.length)} of {questions.length}</span>
-        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-teal-600 transition-all duration-300"
-            style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
-          />
+      {currentStep < questions.length && (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <span className="font-medium">Step {currentStep + 1} of {questions.length}</span>
+          <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-teal-600 transition-all duration-300"
+              style={{ width: `${((currentStep + 1) / questions.length) * 100}%` }}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Questions */}
-      <div className="space-y-3">
+      {/* Questions — hidden once results are shown */}
+      <div className={`space-y-3 ${currentStep >= questions.length ? 'hidden' : ''}`}>
         {questions.map((question, index) => {
           const answer = answers.find(a => a.questionId === question.id);
           const isActive = index === currentStep;
@@ -402,6 +415,8 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
                             : 'No'
                           : question.type === 'select'
                           ? question.options?.find(opt => opt.value === answer.value)?.label || answer.value
+                          : (isNaN(answer.value) || answer.value <= 0)
+                          ? <span className="text-red-500 italic">Enter a value ↑</span>
                           : `${answer.value}${question.unit || ''}`}
                       </strong>
                     </p>
@@ -492,14 +507,31 @@ export function CDCPathway({ propertyData, proposedWorkType = 'other' }: CDCPath
           </button>
           <button
             onClick={handleNext}
-            disabled={!canAdvance() || currentStep === questions.length - 1}
+            disabled={!canAdvance()}
             className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
-              !canAdvance() || currentStep === questions.length - 1
+              !canAdvance()
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-teal-600 text-white hover:bg-teal-700 shadow-sm'
             }`}
           >
-            {currentStep === questions.length - 1 ? 'Complete' : 'Next →'}
+            {currentStep === questions.length - 1 ? 'Check Eligibility →' : 'Next →'}
+          </button>
+        </div>
+      )}
+
+      {/* Start Over when results shown */}
+      {currentStep >= questions.length && (
+        <div className="pt-2">
+          <button
+            onClick={() => {
+              setCurrentStep(0);
+              setAnswers([]);
+              setResults([]);
+              setVerdict(null);
+            }}
+            className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200"
+          >
+            ← Start Over
           </button>
         </div>
       )}
