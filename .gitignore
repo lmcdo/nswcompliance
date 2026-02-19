@@ -373,3 +373,5 @@ lancedb_data/
 
 # Archived investigation/fix scripts (kept locally for reference)
 archive/
+parramatta/
+frontend-nextjs/check-lep-data.js
