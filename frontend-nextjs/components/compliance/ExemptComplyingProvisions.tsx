@@ -13,7 +13,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, ExternalLink, FileText, FileImage } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage, Clock, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
@@ -100,15 +100,15 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {expanded
+              ? <ChevronDown className="h-5 w-5 text-purple-600" />
+              : <ChevronRight className="h-5 w-5 text-purple-600" />
+            }
             <FileText className="h-5 w-5 text-purple-700" />
             <CardTitle className="text-lg text-purple-900">
               Exempt &amp; Complying Development Standards
             </CardTitle>
           </div>
-          {expanded
-            ? <ChevronUp className="h-4 w-4 text-purple-600" />
-            : <ChevronDown className="h-4 w-4 text-purple-600" />
-          }
         </div>
         <div className="flex items-center gap-2 mt-2 flex-wrap">
           <Badge className="bg-purple-100 text-purple-800 text-xs pointer-events-none">
@@ -117,6 +117,10 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
           <span className="text-xs text-purple-600">
             Applies to {zoneCode} zone
           </span>
+          <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            Updated Feb 2026
+          </Badge>
           {!expanded && totalCount > 0 && (
             <span className="text-xs text-purple-600">
               · {totalCount} actionable standards across {Object.keys(counts).length} work types
@@ -150,7 +154,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
                   key={key}
                   onClick={() => setSelectedType(active ? null : key)}
                   className={[
-                    'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors',
+                    'px-3 py-1.5 rounded-md text-sm font-medium border transition-colors flex items-center gap-1',
                     active
                       ? 'bg-purple-700 text-white border-purple-700'
                       : count > 0
@@ -159,7 +163,8 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
                   ].join(' ')}
                   disabled={count === 0}
                 >
-                  {label}
+                  {active && <ChevronUp className="h-4 w-4" />}
+                  <span>{label}</span>
                   {count > 0 && (
                     <span className={`ml-1.5 text-xs ${active ? 'text-purple-200' : 'text-purple-500'}`}>
                       {count}
@@ -179,7 +184,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
             <div className="text-sm text-gray-500 py-4">No actionable standards found for this work type and zone.</div>
           )}
 
-          {!loading && provisions.length > 0 && (
+          {!loading && selectedType && provisions.length > 0 && (
             <div className="space-y-2">
               {provisions.map(p => {
                 const page = p.pdf_printed_page || p.pdf_page;
@@ -268,6 +273,12 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
                 <ExternalLink className="h-3 w-3" />
                 View full SEPP on NSW Legislation
               </a>
+            </div>
+
+            {/* Compliance-grade guarantee */}
+            <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-purple-100 pt-3">
+              <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <span>Compliance-grade guarantee: Deterministic extraction from SEPP Exempt & Complying 2008, no AI interpretation of regulations</span>
             </div>
           </div>
         </CardContent>

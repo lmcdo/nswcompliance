@@ -225,15 +225,17 @@ export class NSWPlanningPortalService {
 
  /**
  * Search for property by address using NSW Planning Portal
- * Returns the first matching result (follows same pattern as map-viewer project)
+ * Returns the best matching result from multiple candidates
+ * Fetches multiple results and filters for best match to avoid keyword collisions
  */
  static async searchProperty(address: string): Promise<{ propId: number; address: string; GURASID: number } | null> {
  try {
  const controller = new AbortController();
  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
+ // Fetch multiple results to find best match (fixes "Ashfield St" returning "Ashfield Place Glen Alpine" bug)
  const response = await fetch(
- `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=1`,
+ `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=5`,
  {
  signal: controller.signal,
  headers: {
@@ -255,7 +257,50 @@ export class NSWPlanningPortalService {
  return null;
  }
 
- return results[0];
+ // Extract search components for matching
+ const searchLower = address.toLowerCase();
+ const postcodeMatch = address.match(/\b(\d{4})\b/);
+ const searchPostcode = postcodeMatch ? postcodeMatch[1] : null;
+
+ // Score each result by relevance
+ const scored = results.map((result: any) => {
+   const resultLower = result.address.toLowerCase();
+   let score = 0;
+
+   // Exact match = highest priority
+   if (resultLower === searchLower) score += 100;
+
+   // Postcode match = high priority (filters out wrong suburbs)
+   if (searchPostcode && resultLower.includes(searchPostcode)) score += 50;
+
+   // Suburb name match (but not just any keyword match)
+   const searchWords = searchLower.split(/\s+/).filter(w => w.length > 2 && !w.match(/^\d/));
+   const resultWords = resultLower.split(/\s+/);
+   const matchingWords = searchWords.filter(w => resultWords.includes(w)).length;
+   score += matchingWords * 10;
+
+   // Penalize if different state or far-off postcode
+   if (searchPostcode && !resultLower.includes(searchPostcode)) {
+     const resultPostcodeMatch = result.address.match(/\b(\d{4})\b/);
+     if (resultPostcodeMatch) {
+       const diff = Math.abs(parseInt(searchPostcode) - parseInt(resultPostcodeMatch[1]));
+       if (diff > 100) score -= 50; // Very different postcode area
+     }
+   }
+
+   return { result, score };
+ });
+
+ // Sort by score descending and return best match
+ scored.sort((a, b) => b.score - a.score);
+
+ console.log(`[NSW Planning Portal] Address search: "${address}"`);
+ console.log(`[NSW Planning Portal] Top match: "${scored[0].result.address}" (score: ${scored[0].score})`);
+ if (scored.length > 1) {
+   console.log(`[NSW Planning Portal] Alt matches: ${scored.slice(1).map(s => `"${s.result.address}" (${s.score})`).join(', ')}`);
+ }
+
+ return scored[0].result;
  
  } catch (error) {
  console.error('Property search error:', error);
