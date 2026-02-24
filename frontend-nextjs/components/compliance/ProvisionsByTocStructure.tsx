@@ -25,8 +25,9 @@ import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
-import { NumericChecker, type NumericCheckValues } from './NumericChecker';
-import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
+// TODO: Rework numeric checker feature - temporarily disabled
+// import { NumericChecker, type NumericCheckValues } from './NumericChecker';
+// import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -177,9 +178,10 @@ export function ProvisionsByTocStructure({
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
 
+  // TODO: Rework numeric checker feature - temporarily disabled
   // Numeric checker values
-  const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
-  const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
+  // const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
+  // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
   const { sessionToken, daResponses, refreshResponses } = useDASession(
@@ -323,23 +325,24 @@ export function ProvisionsByTocStructure({
     });
   }, [rawSelectedProvisions]);
 
+  // TODO: Rework numeric checker feature - temporarily disabled
   // Compute numeric compliance results when check values or provisions change
-  useEffect(() => {
-    if (!numericCheckValues || !tocStructure) {
-      setComplianceResults([]);
-      return;
-    }
+  // useEffect(() => {
+  //   if (!numericCheckValues || !tocStructure) {
+  //     setComplianceResults([]);
+  //     return;
+  //   }
 
-    // Extract all provisions from TOC structure
-    const allParts = Object.values(tocStructure);
-    const allProvisions = allParts.flatMap((part: any) =>
-      Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
-    );
+  //   // Extract all provisions from TOC structure
+  //   const allParts = Object.values(tocStructure);
+  //   const allProvisions = allParts.flatMap((part: any) =>
+  //     Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
+  //   );
 
-    // Check provisions against user values
-    const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
-    setComplianceResults(results);
-  }, [numericCheckValues, tocStructure]);
+  //   // Check provisions against user values
+  //   const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
+  //   setComplianceResults(results);
+  // }, [numericCheckValues, tocStructure]);
 
   // Get ALL provisions across all parts (for "export all" option and task mode)
   // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
@@ -1523,14 +1526,15 @@ export function ProvisionsByTocStructure({
             </div>
           )}
 
+          {/* TODO: Rework numeric checker feature - temporarily disabled */}
           {/* Numeric Compliance Checker - always available when DCP provisions are loaded */}
-          <NumericChecker
+          {/* <NumericChecker
             onValuesChange={(vals) => {
               const hasAnyValue = Object.values(vals).some(v => v !== '');
               setNumericCheckValues(hasAnyValue ? vals : undefined);
             }}
             results={complianceResults}
-          />
+          /> */}
 
           {isDaMode && (
             <div className="mb-3 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center gap-2">
@@ -1554,7 +1558,7 @@ export function ProvisionsByTocStructure({
               isDaMode={isDaMode}
               sessionToken={sessionToken}
               daResponses={daResponses}
-              numericCheckValues={numericCheckValues}
+              // numericCheckValues={numericCheckValues} // TODO: Rework numeric checker feature
             />
           ) : (
             <div className="text-center py-12 text-gray-500">
