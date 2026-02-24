@@ -1192,11 +1192,7 @@ export function ProvisionsByTocStructure({
                 {filteredProvisions.length}
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
-                {viewMode === 'task' ? (
-                  <>of {allProvisions.length} total</>
-                ) : (
-                  <>of {totalProvisions} for property</>
-                )}
+                <>of {allProvisions.length} for property</>
               </div>
             </div>
           </div>
