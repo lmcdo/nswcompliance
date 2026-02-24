@@ -55,10 +55,8 @@ const getCouncilTheme = (council: string, partName: string) => {
     text: 'text-teal-900',
     icon: 'text-teal-600',
     objective: 'bg-amber-50 border-amber-200 text-amber-900'
-      icon: 'text-orange-600',
-      objective: 'bg-amber-50 border-amber-200 text-amber-900'
-    };
-  }
+  };
+}
 
   // Fallback: Gray theme
   return {
