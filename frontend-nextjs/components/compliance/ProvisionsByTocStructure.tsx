@@ -247,7 +247,13 @@ export function ProvisionsByTocStructure({
     if (viewMode === 'structure' && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
-        setSelectedPart(parts[0]);
+        // Sort parts numerically (extract number from "Part X" or "Chapter X")
+        const sortedParts = parts.sort((a, b) => {
+          const numA = parseInt(a.match(/\d+/)?.[0] || '999');
+          const numB = parseInt(b.match(/\d+/)?.[0] || '999');
+          return numA - numB;
+        });
+        setSelectedPart(sortedParts[0]);
       }
     }
   }, [viewMode, data, selectedPart]);
