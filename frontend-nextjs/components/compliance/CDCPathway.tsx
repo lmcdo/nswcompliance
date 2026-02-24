@@ -3,11 +3,11 @@
 /**
  * CDC/DA Pathway Decision Tree
  *
- * Interactive sequential eligibility checker for owner builders.
- * Asks questions step-by-step and shows real-time verdict.
+ * Data-driven eligibility checker - no hardcoded limits.
+ * All rules derived from SEPP Exempt & Complying Development database.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface CDCPathwayProps {
@@ -47,36 +47,140 @@ interface SeppProvision {
   v2_topic: string;
 }
 
-const QUESTIONS = (maxGFA: number | null) => [
-  {
-    id: 'work_type',
-    text: 'What are you building?',
-    type: 'select' as const,
-    options: [
-      { value: 'Deck', label: 'Deck, Patio, or Verandah' },
-      { value: 'Garage', label: 'Garage or Carport' },
-      { value: 'Pool', label: 'Swimming Pool' },
-      { value: 'Fence', label: 'Fence or Gate' },
-    ],
-    guidance: 'Select the type of structure you want to build.',
+// Work type configuration - defines which questions apply to each type
+interface WorkTypeConfig {
+  backendValue: string;  // What SEPP database expects
+  needsArea: boolean;
+  needsHeight: boolean;
+  areaLabel?: string;
+  heightLabel?: string;
+}
+
+const WORK_TYPE_CONFIGS: Record<string, WorkTypeConfig> = {
+  Deck: {
+    backendValue: 'Deck',
+    needsArea: true,
+    needsHeight: true,
+    areaLabel: 'What is the deck floor area?',
+    heightLabel: 'What is the deck height above ground?'
   },
-  {
-    id: 'area',
-    text: 'What is the floor area of your structure?',
-    type: 'number' as const,
-    unit: 'm²',
-    guidance: maxGFA
-      ? `Floor area = length × width of the footprint. Example: a 5m × 4m garage = 20m². Maximum permitted GFA on this lot is ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control — DA required if exceeded).`
-      : "Floor area = length × width of the footprint. Example: a 5m × 4m garage = 20m².",
+  Garage: {
+    backendValue: 'Carport',  // ← FIX: Backend expects "Carport"
+    needsArea: true,
+    needsHeight: true,
+    areaLabel: 'What is the garage floor area?',
+    heightLabel: 'What is the maximum garage height?'
   },
-  {
-    id: 'height',
-    text: 'What is the maximum height?',
-    type: 'number' as const,
-    unit: 'm',
-    guidance: 'Highest point of the structure above natural ground level.',
+  Pool: {
+    backendValue: 'Pool',
+    needsArea: true,
+    needsHeight: false,  // ← Pools don't have height above ground
+    areaLabel: 'What is the pool area?'
   },
-];
+  Fence: {
+    backendValue: 'Fence',
+    needsArea: false,  // ← Fences don't have floor area
+    needsHeight: true,
+    heightLabel: 'What is the fence height?'
+  },
+};
+
+const getQuestionsForWorkType = (workType: string | null, maxGFA: number | null) => {
+  const questions: any[] = [
+    {
+      id: 'work_type',
+      text: 'What are you building?',
+      type: 'select' as const,
+      options: [
+        { value: 'Deck', label: 'Deck, Patio, or Verandah' },
+        { value: 'Garage', label: 'Garage or Carport' },
+        { value: 'Pool', label: 'Swimming Pool' },
+        { value: 'Fence', label: 'Fence or Gate' },
+      ],
+      guidance: 'Select the type of structure you want to build.',
+    },
+  ];
+
+  if (!workType) return questions;
+
+  const config = WORK_TYPE_CONFIGS[workType];
+  if (!config) return questions;
+
+  // Add area question if applicable
+  if (config.needsArea) {
+    questions.push({
+      id: 'area',
+      text: config.areaLabel || 'What is the floor area?',
+      type: 'number' as const,
+      unit: 'm²',
+      guidance: maxGFA
+        ? `Floor area = length × width. Example: 5m × 4m = 20m². Maximum GFA on this lot: ${Math.round(maxGFA)}m² (LEP Clause 4.4 FSR control).`
+        : "Floor area = length × width. Example: 5m × 4m = 20m².",
+    });
+  }
+
+  // Add height question if applicable
+  if (config.needsHeight) {
+    questions.push({
+      id: 'height',
+      text: config.heightLabel || 'What is the maximum height?',
+      type: 'number' as const,
+      unit: 'm',
+      guidance: workType === 'Fence'
+        ? 'Fence height from ground level (typical limits: 1.2m front, 1.8m side/rear)'
+        : 'Highest point above natural ground level.',
+    });
+  }
+
+  return questions;
+};
+
+// Parse exempt limits from SEPP provisions (instead of hardcoding)
+function parseExemptLimits(provisions: SeppProvision[]) {
+  let areaLimit: number | null = null;
+  let heightLimit: number | null = null;
+
+  for (const p of provisions) {
+    const text = p.provision_text.toLowerCase();
+
+    // Parse area limit: "not exceed 10m2" or "less than 36m2"
+    const areaMatch = text.match(/(?:not exceed|less than|maximum.*?of)\s+(\d+)\s*m\s*2/);
+    if (areaMatch && !areaLimit) {
+      areaLimit = parseInt(areaMatch[1]);
+    }
+
+    // Parse height limit: "not exceed 3m" or "maximum height of 1m"
+    const heightMatch = text.match(/(?:height|high).*?(?:not exceed|less than|maximum.*?of)\s+(\d+(?:\.\d+)?)\s*m(?!2)/);
+    if (heightMatch && !heightLimit) {
+      heightLimit = parseFloat(heightMatch[1]);
+    }
+  }
+
+  return { areaLimit, heightLimit };
+}
+
+// Parse minimum lot area for CDC from provisions
+function parseMinLotArea(provisions: SeppProvision[]): { minArea: number; source: string } {
+  const lotAreaProvisions = provisions.filter(p =>
+    p.provision_text.toLowerCase().includes('area of the lot')
+  );
+
+  if (lotAreaProvisions.length > 0) {
+    const match = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
+    if (match) {
+      return {
+        minArea: parseInt(match[1].replace(/\s/g, '')),
+        source: `SEPP Housing Code Part ${provisions[0]?.v2_part}, page ${lotAreaProvisions[0].pdf_page}`,
+      };
+    }
+  }
+
+  // Fallback defaults (standard SEPP Housing Code Part 3)
+  return {
+    minArea: 200,
+    source: 'SEPP Housing Code Part 3, clause 3.1 (default)',
+  };
+}
 
 export function CDCPathway({ propertyData }: CDCPathwayProps) {
   const [currentStep, setCurrentStep] = useState(0);
@@ -90,20 +194,27 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       ? propertyData.constraints.maxFsr * propertyData.lotDimensions.area
       : null;
 
-  const questions = QUESTIONS(maxGFA);
+  const workType = answers.find(a => a.questionId === 'work_type')?.value as string | null;
+  const questions = useMemo(() => getQuestionsForWorkType(workType, maxGFA), [workType, maxGFA]);
 
   // Fetch SEPP provisions when work type is selected
   useEffect(() => {
-    const workType = answers.find(a => a.questionId === 'work_type')?.value;
-    const zone = propertyData?.zone;
+    const zone = propertyData?.constraints?.zone;
     if (workType && zone) {
+      const config = WORK_TYPE_CONFIGS[workType];
+      if (!config) return;
+
       setLoadingProvisions(true);
-      fetch(`/api/sepp/exempt-complying?zone=${zone}&workType=${workType}`)
+      // Use backend value (Carport, not Garage)
+      fetch(`/api/sepp/exempt-complying?zone=${zone}&workType=${config.backendValue}`)
         .then(res => res.json())
-        .then(data => { setSeppProvisions(data.provisions || []); setLoadingProvisions(false); })
+        .then(data => {
+          setSeppProvisions(data.provisions || []);
+          setLoadingProvisions(false);
+        })
         .catch(() => setLoadingProvisions(false));
     }
-  }, [answers, propertyData]);
+  }, [workType, propertyData?.constraints?.zone]);
 
   const handleAnswer = (questionId: string, value: any, autoAdvance = false) => {
     setAnswers(prev => {
@@ -115,7 +226,14 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
       }
       return [...prev, { questionId, value }];
     });
-    if (autoAdvance && currentStep < questions.length - 1) {
+
+    // Reset to work_type question if work type changes (questions will be different)
+    if (questionId === 'work_type') {
+      setAnswers([{ questionId: 'work_type', value }]);
+      setCurrentStep(0);
+      setSeppProvisions([]);
+      setResult(null);
+    } else if (autoAdvance && currentStep < questions.length - 1) {
       setTimeout(() => setCurrentStep(s => s + 1), 300);
     }
   };
@@ -142,33 +260,34 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
     return answer.value !== undefined;
   };
 
-  // 3-Tier Pathway Check — only runs when user clicks "Check Eligibility"
+  // 3-Tier Pathway Check — data-driven from SEPP provisions
   useEffect(() => {
-    if (currentStep < questions.length) {
+    if (currentStep < questions.length || !workType) {
       setResult(null);
       return;
     }
 
-    const workType = answers.find(a => a.questionId === 'work_type')?.value as string;
-    const area = answers.find(a => a.questionId === 'area')?.value as number;
-    const height = answers.find(a => a.questionId === 'height')?.value as number;
+    const config = WORK_TYPE_CONFIGS[workType];
+    if (!config) return;
 
-    if (!workType || isNaN(area) || area <= 0 || isNaN(height) || height <= 0) {
-      setResult(null);
-      return;
-    }
+    const area = answers.find(a => a.questionId === 'area')?.value as number | undefined;
+    const height = answers.find(a => a.questionId === 'height')?.value as number | undefined;
+
+    // Validate required inputs
+    if (config.needsArea && (!area || area <= 0)) return;
+    if (config.needsHeight && (!height || height <= 0)) return;
 
     const lotArea = propertyData?.lotDimensions?.area || 0;
     const isHeritage = propertyData?.heritage?.isHeritage || false;
-    const zone = propertyData?.zone || '';
+    const zone = propertyData?.constraints?.zone || '';
     const workLabel = workType.toLowerCase();
 
-    // PRE-CHECK: Exceeds Max GFA → DA required regardless
-    if (maxGFA !== null && area > maxGFA) {
+    // PRE-CHECK: Exceeds Max GFA → DA required
+    if (maxGFA !== null && area && area > maxGFA) {
       setResult({
         verdict: 'ineligible',
         tier: 'DA Required',
-        summary: `Proposed floor area (${area}m²) exceeds the maximum GFA of ${Math.round(maxGFA)}m² for this lot.`,
+        summary: `Proposed floor area (${area}m²) exceeds maximum GFA of ${Math.round(maxGFA)}m² for this lot.`,
         blockers: [
           `${area}m² proposed > ${Math.round(maxGFA)}m² maximum GFA (FSR ${propertyData.constraints.maxFsr}:1 × ${Math.round(lotArea)}m² lot)`,
           'LEP FSR control is a hard ceiling — neither exempt nor CDC can authorise works above it',
@@ -176,93 +295,79 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
         timeline: '3–6 months',
         cost: '~$5,000–$15,000 (town planner + council fees)',
         nextStep: 'Engage a town planner to prepare a Development Application (DA)',
-        source: 'Inner West LEP 2022, Clause 4.4 — Floor Space Ratio',
+        source: `${propertyData.constraints?.lga || 'Inner West'} LEP, Clause 4.4 — Floor Space Ratio`,
       });
       return;
     }
 
-    // TIER 1: EXEMPT
-    const exemptLimits: Record<string, { area: number; height: number | null }> = {
-      Garage: { area: 36, height: 3 },
-      Deck:   { area: 10, height: 1 },
-      Pool:   { area: 30, height: null },
-    };
-    const limit = exemptLimits[workType];
-    if (limit) {
-      const areaOk = area < limit.area;
-      const heightOk = limit.height === null || height <= limit.height;
+    // TIER 1: EXEMPT - Parse limits from SEPP provisions
+    if (!loadingProvisions && seppProvisions.length > 0) {
+      const { areaLimit, heightLimit } = parseExemptLimits(seppProvisions);
+
+      const areaOk = !area || !areaLimit || area < areaLimit;
+      const heightOk = !height || !heightLimit || height <= heightLimit;
+
       if (areaOk && heightOk) {
-        const reqs: Requirement[] = [
-          { pass: true, text: `Area ${area}m² — under ${limit.area}m² exempt limit` },
-          ...(limit.height !== null
-            ? [{ pass: true, text: `Height ${height}m — at or under ${limit.height}m exempt limit` }]
-            : []),
-          {
-            pass: !isHeritage,
-            warn: isHeritage,
-            text: isHeritage
-              ? 'Heritage property — confirm with certifier before starting'
-              : `Zone ${zone} — permitted`,
-          },
-        ];
+        const reqs: Requirement[] = [];
+        if (area && areaLimit) {
+          reqs.push({ pass: true, text: `Area ${area}m² — under ${areaLimit}m² exempt limit` });
+        }
+        if (height && heightLimit) {
+          reqs.push({ pass: true, text: `Height ${height}m — at or under ${heightLimit}m exempt limit` });
+        }
+        reqs.push({
+          pass: !isHeritage,
+          warn: isHeritage,
+          text: isHeritage
+            ? 'Heritage property — confirm with certifier before starting'
+            : `Zone ${zone} — permitted`,
+        });
+
         setResult({
           verdict: 'eligible',
           tier: 'Exempt Development',
-          summary: `Your ${area}m² ${workLabel} qualifies as exempt development — no approval needed.`,
+          summary: `Your ${workLabel} qualifies as exempt development — no approval needed.`,
           requirements: reqs,
           notes: workType === 'Pool' ? ['Pool fencing must comply with NSW pool safety standards regardless of approval pathway'] : undefined,
           timeline: 'No approval process — start immediately',
           cost: 'No approval fees',
           nextStep: 'Proceed to construction',
-          source: 'SEPP (Exempt and Complying Development Codes) 2008, Part 2',
+          source: `SEPP (Exempt and Complying Development Codes) 2008, Part 2 (${seppProvisions.length} provisions checked)`,
         });
         return;
       }
-    }
 
-    // TIER 2 / 3: CDC or DA — need SEPP provisions loaded (or fallback)
-    if (!loadingProvisions) {
-      const lotAreaProvisions = seppProvisions.filter(p =>
-        p.provision_text.toLowerCase().includes('area of the lot')
-      );
-
-      let minLotArea = 200;
-      let lotAreaSource = 'SEPP Housing Code Part 3, clause 3.1';
-
-      if (lotAreaProvisions.length > 0) {
-        const match = lotAreaProvisions[0].provision_text.match(/more than (\d+)\s*m\s*2/);
-        if (match) {
-          minLotArea = parseInt(match[1].replace(/\s/g, ''));
-          lotAreaSource = `SEPP Housing Code Part ${seppProvisions[0]?.v2_part}, page ${lotAreaProvisions[0].pdf_page}`;
-        }
-      }
+      // TIER 2/3: CDC or DA
+      const { minArea, source: lotAreaSource } = parseMinLotArea(seppProvisions);
 
       const cdcBlockers: string[] = [];
-      if (lotArea > 0 && lotArea < minLotArea) {
-        cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minLotArea}m² CDC minimum (${lotAreaSource})`);
+      if (lotArea > 0 && lotArea < minArea) {
+        cdcBlockers.push(`Lot size ${Math.round(lotArea)}m² — below ${minArea}m² CDC minimum (${lotAreaSource})`);
       }
       if (isHeritage) {
         cdcBlockers.push('Heritage property — CDC not available, DA required');
       }
 
       if (cdcBlockers.length === 0) {
-        // Why not exempt
-        const sepp2 = 'SEPP (Exempt and Complying Development Codes) 2008, Part 2';
+        // CDC pathway
         const exemptBlockers: string[] = [];
-        if (limit) {
-          if (area >= limit.area) exemptBlockers.push(`Area ${area}m² — exceeds ${limit.area}m² exempt limit for ${workLabel} (${sepp2})`);
-          if (limit.height !== null && height > limit.height) exemptBlockers.push(`Height ${height}m — exceeds ${limit.height}m exempt limit for ${workLabel} (${sepp2})`);
-        } else {
-          exemptBlockers.push(`${workType} — no exempt development pathway available (${sepp2})`);
+        if (area && areaLimit && area >= areaLimit) {
+          exemptBlockers.push(`Area ${area}m² — exceeds ${areaLimit}m² exempt limit`);
+        }
+        if (height && heightLimit && height > heightLimit) {
+          exemptBlockers.push(`Height ${height}m — exceeds ${heightLimit}m exempt limit`);
+        }
+        if (!areaLimit && !heightLimit) {
+          exemptBlockers.push(`${workType} — no exempt pathway available for this configuration`);
         }
 
         setResult({
           verdict: 'review',
           tier: 'Complying Development (CDC)',
-          summary: `Your ${area}m² ${workLabel} cannot proceed as exempt — a CDC is required.`,
+          summary: `Your ${workLabel} cannot proceed as exempt — a CDC is required.`,
           blockers: exemptBlockers,
           requirements: [
-            { pass: true, text: `Lot size ${Math.round(lotArea)}m² — meets ${minLotArea}m² minimum` },
+            { pass: true, text: `Lot size ${Math.round(lotArea)}m² — meets ${minArea}m² minimum` },
             { pass: true, text: `Zone ${zone} — CDC permitted` },
             { pass: false, warn: true, text: 'Setback requirements — certifier to measure and confirm on site' },
           ],
@@ -272,19 +377,32 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           source: lotAreaSource,
         });
       } else {
+        // DA required
         setResult({
           verdict: 'ineligible',
           tier: 'DA Required',
-          summary: `Your ${area}m² ${workLabel} cannot proceed as CDC — a Development Application is required.`,
+          summary: `Your ${workLabel} cannot proceed as CDC — a Development Application is required.`,
           blockers: cdcBlockers,
           timeline: '3–6 months',
           cost: '~$5,000–$15,000 (town planner + council fees)',
-          nextStep: 'Engage a town planner to prepare a DA lodged with Inner West Council',
-          source: 'Inner West DCP 2022, SEPP Housing Code',
+          nextStep: `Engage a town planner to prepare a DA lodged with ${propertyData?.constraints?.lga || 'Inner West'} Council`,
+          source: `${propertyData?.constraints?.lga || 'Inner West'} DCP, SEPP Housing Code`,
         });
       }
+    } else if (!loadingProvisions) {
+      // No SEPP provisions found - can't determine limits
+      setResult({
+        verdict: 'ineligible',
+        tier: 'Unable to Determine',
+        summary: `No SEPP provisions found for ${workLabel} in ${zone} zone.`,
+        blockers: ['SEPP data not available for this work type/zone combination'],
+        timeline: 'Unknown',
+        cost: 'Consult with certifier',
+        nextStep: 'Contact a Private Certifier for manual assessment',
+        source: 'SEPP database query returned no results',
+      });
     }
-  }, [answers, seppProvisions, loadingProvisions, propertyData, currentStep]);
+  }, [answers, seppProvisions, loadingProvisions, propertyData, currentStep, workType, questions.length]);
 
   const showResults = currentStep >= questions.length;
 

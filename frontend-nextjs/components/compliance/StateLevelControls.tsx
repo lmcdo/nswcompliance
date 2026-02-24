@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage } from 'lucide-react';
+import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield } from 'lucide-react';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
@@ -18,15 +18,17 @@ import { MinimumLotSizeCard } from './MinimumLotSizeCard';
 import { ADGBuildingSeparationTable } from './ADGBuildingSeparationTable';
 import { ADGSummaryCard } from './ADGSummaryCard';
 import { HousingSEPPEligibilityCard } from './HousingSEPPEligibilityCard';
+import { PatternBookEligibilityCard } from './PatternBookEligibilityCard';
 import { NearbyTransportCard } from '../tod/NearbyTransportCard';
-import { CdcComplianceCalculator } from '../cdc/CdcComplianceCalculator';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
+import { PathwaySummaryCard } from './PathwaySummaryCard';
 
 interface StateLevelControlsProps {
   propertyData: any;
   developmentType: string;
   buildingHeight?: number;
+  onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
 }
 
 const APARTMENT_DEV_TYPES = [
@@ -58,7 +60,8 @@ const APARTMENT_PERMITTING_ZONES = [
 export function StateLevelControls({
   propertyData,
   developmentType,
-  buildingHeight
+  buildingHeight,
+  onNavigateToDcp
 }: StateLevelControlsProps) {
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
   const [adgRequirements, setAdgRequirements] = useState<any[]>([]);
@@ -76,6 +79,10 @@ export function StateLevelControls({
     adg: false,
     tod: false // TOD expanded by default when shown
   });
+
+  // Pathway summary state for cross-pathway intelligence card
+  const [patternBookStatus, setPatternBookStatus] = useState<'ELIGIBLE' | 'INELIGIBLE' | 'CONDITIONAL' | undefined>();
+  const [exemptComplyingCount, setExemptComplyingCount] = useState<number>(0);
 
   const isApartmentDevelopment = APARTMENT_DEV_TYPES.includes(developmentType);
 
@@ -336,6 +343,47 @@ export function StateLevelControls({
     fetchTransport();
   }, [propertyLat, propertyLng]);
 
+  // Fetch pathway summary data for PathwaySummaryCard
+  useEffect(() => {
+    const fetchPathwaySummary = async () => {
+      if (!propertyData) return;
+
+      const zoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+
+      // Fetch Pattern Book eligibility
+      try {
+        const pbResponse = await fetch('/api/pathway/pattern-book-eligibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyData })
+        });
+        if (pbResponse.ok) {
+          const data = await pbResponse.json();
+          setPatternBookStatus(data.status);
+        }
+      } catch (err) {
+        console.error('[PathwaySummary] Failed to fetch Pattern Book status:', err);
+      }
+
+      // Fetch Exempt & Complying counts
+      if (zoneCode) {
+        try {
+          const ecResponse = await fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`);
+          if (ecResponse.ok) {
+            const data = await ecResponse.json();
+            const counts = data.counts || {};
+            const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0);
+            setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
+          }
+        } catch (err) {
+          console.error('[PathwaySummary] Failed to fetch E&C counts:', err);
+        }
+      }
+    };
+
+    fetchPathwaySummary();
+  }, [propertyData]);
+
   // Extract zone and lot size data from propertyData
   const zone = propertyData?.constraints?.zone;
   const zoneDescription = propertyData?.constraints?.zoneDescription;
@@ -461,6 +509,15 @@ export function StateLevelControls({
         <div className="text-sm text-amber-800">Mandatory state-wide requirements that apply to this property</div>
       </div>
 
+      {/* Pathway Summary - Cross-pathway intelligence card */}
+      <PathwaySummaryCard
+        propertyData={propertyData}
+        patternBookStatus={patternBookStatus}
+        exemptComplyingCount={exemptComplyingCount}
+        housingLmrApplicable={isLMRArea}
+        zoneCode={zoneCode}
+      />
+
       {/* Exempt & Complying Development Standards - certifier CDC gateway, shown first */}
       {zoneCode && (
         <ExemptComplyingProvisions
@@ -469,6 +526,15 @@ export function StateLevelControls({
           heritageItem={propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item')}
         />
       )}
+
+      {/* Pattern Book CDC Pathway - Pathway triage for housing developments */}
+      <PatternBookEligibilityCard
+        propertyData={propertyData}
+        onNavigateToDcp={onNavigateToDcp}
+        lotDimensions={propertyData?.lotDimensions || null}
+        lotSize={lotSize || null}
+        address={propertyData?.address || null}
+      />
 
       {/* SEPP Section */}
       <Card className={`${AuthorityColors.SEPP.border.replace('500', '200')} ${AuthorityColors.SEPP.bg}`}>
@@ -488,6 +554,10 @@ export function StateLevelControls({
             </div>
             <div className="flex items-center gap-2">
               <Badge className={`${AuthorityColors.SEPP.bg.replace('50', '100')} ${AuthorityColors.SEPP.text.replace('700', '800')}`}>State Policy</Badge>
+              <Badge variant="outline" className="text-xs text-gray-500 flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                Updated Feb 2026
+              </Badge>
             </div>
           </div>
           <p className={`text-sm ${AuthorityColors.SEPP.text} mt-1 ml-7`}>
@@ -665,6 +735,12 @@ export function StateLevelControls({
                 </div>
               </div>
             )}
+
+            {/* Compliance-grade guarantee */}
+            <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-purple-100 pt-3 mt-4">
+              <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
+              <span>Compliance-grade guarantee: Deterministic extraction from state planning policies, no AI interpretation of regulations</span>
+            </div>
           </CardContent>
         )}
       </Card>
@@ -690,16 +766,6 @@ export function StateLevelControls({
             />
           </CardContent>
         </Card>
-      )}
-
-      {/* CDC Compliance Calculator - Shows for residential zones eligible for CDC */}
-      {isLMRArea && (
-        <CdcComplianceCalculator
-          address={propertyData?.address || null}
-          initialCollapsed={true}
-          lotDimensions={propertyData?.lotDimensions || null}
-          lotSize={lotSize || null}
-        />
       )}
 
       {/* Housing SEPP LMR Section - Always shown */}

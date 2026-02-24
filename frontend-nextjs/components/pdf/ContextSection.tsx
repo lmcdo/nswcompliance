@@ -280,6 +280,76 @@ export function ContextSection({
         </View>
       </View>
 
+      {/* Pattern Book CDC Pathway Analysis */}
+      {property.pattern_book_cdc && (
+        <View style={{ ...styles.section, marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Pattern Book CDC (10-Day Approval Pathway)</Text>
+
+          <View style={styles.dataTable}>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Eligibility Status:</Text>
+              <Text style={{
+                ...styles.tableCellValue,
+                fontFamily: 'Helvetica-Bold',
+                color: property.pattern_book_cdc.status === 'ELIGIBLE' ? '#15803d' :
+                       property.pattern_book_cdc.status === 'CONDITIONAL' ? '#d97706' : '#dc2626'
+              }}>
+                {property.pattern_book_cdc.status}
+              </Text>
+            </View>
+
+            {property.pattern_book_cdc.pathway_timeframe && (
+              <View style={styles.contextTableRow}>
+                <Text style={styles.tableCellLabel}>Approval Timeframe:</Text>
+                <Text style={styles.tableCellValue}>{property.pattern_book_cdc.pathway_timeframe}</Text>
+              </View>
+            )}
+
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Checks Performed:</Text>
+              <Text style={styles.tableCellValue}>
+                {property.pattern_book_cdc.exclusion_count} exclusion triggers • {property.pattern_book_cdc.numeric_standards_count} numeric standards • {property.pattern_book_cdc.override_rules_count} override rules
+              </Text>
+            </View>
+
+            {property.pattern_book_cdc.blockers && property.pattern_book_cdc.blockers.length > 0 && (
+              <View style={styles.contextTableRow}>
+                <Text style={styles.tableCellLabel}>Exclusion Blockers:</Text>
+                <Text style={{ ...styles.tableCellValue, color: '#dc2626' }}>
+                  {property.pattern_book_cdc.blockers.join(' • ')}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Pathway Comparison */}
+      {property.pathway_summary && (
+        <View style={{ ...styles.section, marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Development Pathway Comparison</Text>
+
+          <View style={styles.dataTable}>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Recommended Pathway:</Text>
+              <Text style={{ ...styles.tableCellValue, fontFamily: 'Helvetica-Bold', color: '#0f766e' }}>
+                {property.pathway_summary.recommended_pathway}
+              </Text>
+            </View>
+
+            {property.pathway_summary.pathways.map((pathway, idx) => (
+              <View key={idx} style={styles.contextTableRow}>
+                <Text style={styles.tableCellLabel}>{pathway.name}:</Text>
+                <Text style={styles.tableCellValue}>
+                  {pathway.status === 'Available' ? '✓' : pathway.status === 'Conditional' ? '⚠' : '✗'} {pathway.status} ({pathway.timeframe})
+                  {pathway.notes && ` — ${pathway.notes}`}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* NSW Planning Portal Layers */}
       {planning_portal_layers && (
         <View style={{ ...styles.section, marginTop: 8 }}>

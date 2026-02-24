@@ -125,6 +125,16 @@ export function ProvisionReport({
               verify.plotdetect.com.au
             </Text>
           </View>
+
+          {/* Legal Disclaimer */}
+          <View style={{ marginTop: 24, paddingTop: 12, borderTop: '1pt solid #f59e0b', backgroundColor: '#fefce8', padding: 12, borderRadius: 4 }}>
+            <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 4, fontFamily: 'Helvetica-Bold' }}>
+              Important Legal Disclaimer
+            </Text>
+            <Text style={{ fontSize: 7, color: '#78350f', lineHeight: 1.4 }}>
+              PlotDetect presents DCP, LEP and SEPP provisions as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>

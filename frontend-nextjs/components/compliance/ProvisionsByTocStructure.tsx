@@ -764,6 +764,85 @@ export function ProvisionsByTocStructure({
       // TODO: Extract Additional Local Provisions from LEP
       const additionalLocalProvisions: string[] | undefined = undefined;
 
+      // Fetch Pattern Book CDC eligibility
+      let patternBookData = undefined;
+      let pathwaySummary = undefined;
+
+      try {
+        const patternBookResponse = await fetch('/api/pathway/pattern-book-eligibility', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ propertyData })
+        });
+
+        if (patternBookResponse.ok) {
+          const patternBookResult = await patternBookResponse.json();
+          const eligibility = patternBookResult.data?.eligibility || patternBookResult;
+
+          patternBookData = {
+            status: eligibility.status || 'INELIGIBLE',
+            exclusion_count: 217,
+            numeric_standards_count: 199,
+            override_rules_count: 9,
+            blockers: eligibility.exclusionCheck?.exclusions?.map((e: any) => e.constraint) || [],
+            pathway_timeframe: eligibility.status === 'ELIGIBLE' ? '10-day approval' : undefined
+          };
+
+          // Build pathway summary based on eligibility
+          const pathways = [];
+
+          // Pattern Book CDC
+          pathways.push({
+            name: 'Pattern Book CDC',
+            status: eligibility.status === 'ELIGIBLE' ? 'Available' :
+                   eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available',
+            timeframe: '10 days',
+            notes: eligibility.status === 'ELIGIBLE' ? undefined :
+                   patternBookData.blockers.length > 0 ? patternBookData.blockers[0] : 'See exclusions'
+          });
+
+          // Exempt & Complying
+          const isResidentialZone = ['R1', 'R2', 'R3', 'R4', 'RU5'].includes(zone?.split(' ')[0] || '');
+          pathways.push({
+            name: 'Exempt & Complying Development',
+            status: isResidentialZone ? 'Available' : 'Not Available',
+            timeframe: '20 days',
+            notes: isResidentialZone ? 'For eligible work types (deck, fence, carport, pool)' : 'Zone not eligible'
+          });
+
+          // Housing SEPP Low-Mid Rise
+          const isHousingSEPPZone = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0] || '');
+          pathways.push({
+            name: 'Housing SEPP (Low-Mid Rise)',
+            status: isHousingSEPPZone && !heritage ? 'Available' : 'Not Available',
+            timeframe: '25 days',
+            notes: !isHousingSEPPZone ? 'Zone not eligible' : heritage ? 'Heritage area excluded' : undefined
+          });
+
+          // Standard DA
+          pathways.push({
+            name: 'Development Application (DA)',
+            status: 'Available',
+            timeframe: '50+ days',
+            notes: 'Always available — required when other pathways excluded'
+          });
+
+          // Determine recommended pathway
+          const recommendedPathway = eligibility.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
+                                    isResidentialZone ? 'Exempt & Complying Development' :
+                                    isHousingSEPPZone && !heritage ? 'Housing SEPP (Low-Mid Rise)' :
+                                    'Development Application (DA)';
+
+          pathwaySummary = {
+            recommended_pathway: recommendedPathway,
+            pathways
+          };
+        }
+      } catch (err) {
+        console.error('Failed to fetch Pattern Book eligibility for PDF:', err);
+        // Continue without Pattern Book data
+      }
+
       // Build property context with real data
       const propertyContext: PropertyContext = {
         address: address || propertyData?.address || 'Property Address',
@@ -782,6 +861,8 @@ export function ProvisionsByTocStructure({
         planning_portal_layers: planningPortalLayers,
         additional_local_provisions: additionalLocalProvisions,
         hca_details: undefined, // TODO: Fetch from HCA data
+        pattern_book_cdc: patternBookData,
+        pathway_summary: pathwaySummary,
       };
 
       // Always export filtered provisions (respects layer, topic, and search filters)

@@ -58,6 +58,27 @@ export interface PropertyContext {
 
   // Additional Local Provisions (clause 6.x items)
   additional_local_provisions?: string[];  // e.g., ["Clause 6.1: Acid sulfate soils", "Clause 6.2: Earthworks"]
+
+  // Pattern Book CDC Eligibility
+  pattern_book_cdc?: {
+    status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE';
+    exclusion_count: number;  // 217 total exclusion triggers
+    numeric_standards_count: number;  // 199 total numeric standards
+    override_rules_count: number;  // 9 total override rules
+    blockers?: string[];  // e.g., ["Heritage item", "Lot area below minimum"]
+    pathway_timeframe?: string;  // e.g., "10-day approval"
+  };
+
+  // Pathway Comparison
+  pathway_summary?: {
+    recommended_pathway: string;  // e.g., "Pattern Book CDC"
+    pathways: {
+      name: string;  // e.g., "Pattern Book CDC"
+      status: 'Available' | 'Not Available' | 'Conditional';
+      timeframe: string;  // e.g., "10 days"
+      notes?: string;  // e.g., "Subject to exclusion checks"
+    }[];
+  };
 }
 
 export interface ProvisionForPDF {

@@ -52,6 +52,13 @@ export default function AssessmentPage() {
     setIsDaMode,
   } = useAssessmentUI();
 
+  // Navigation handler for Pattern Book -> DCP cross-references
+  const handleNavigateToDcp = (topic: string, hcaSlug?: string) => {
+    setViewMode('dcp');
+    // TODO: Apply topic and HCA filters to ProvisionsByTocStructure
+    // This will require adding filter state and props to ProvisionsByTocStructure
+    console.log('[Pattern Book Navigation] Switching to DCP tab:', { topic, hcaSlug });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,6 +125,15 @@ export default function AssessmentPage() {
             selectedAddress={selectedAddress}
             loading={loading}
           />
+        </div>
+      </div>
+
+      {/* Legal Disclaimer Banner */}
+      <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
+        <div className="max-w-7xl mx-auto">
+          <p className="text-xs text-amber-900 leading-relaxed">
+            <strong>Disclaimer:</strong> PlotDetect presents DCP, LEP and SEPP provisions as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+          </p>
         </div>
       </div>
 
@@ -380,6 +396,7 @@ export default function AssessmentPage() {
                       propertyData={selectedProperty}
                       developmentType={developmentType}
                       buildingHeight={buildingHeight || undefined}
+                      onNavigateToDcp={handleNavigateToDcp}
                     />
                   </div>
                 )}
@@ -526,27 +543,29 @@ export default function AssessmentPage() {
         </div>
       )}
 
-      {/* AI Assistant Widget */}
-      <AIAssistantWidget
-        propertyContext={selectedProperty ? {
-          address: selectedProperty.address,
-          zone: selectedProperty.constraints?.zone,
-          lga: selectedProperty.constraints?.lga,
-          formerCouncil: selectedProperty.constraints?.formerCouncil,
-          lotSize: selectedProperty.lotDimensions?.area,
-          lotWidth: selectedProperty.lotDimensions?.frontage,
-          precinctId: selectedProperty.constraints?.precinctId,
-          maxHeight: selectedProperty.constraints?.maxHeight,
-          maxFsr: selectedProperty.constraints?.maxFsr,
-          constraints: {
-            heritage: selectedProperty.heritage?.isHeritage,
-            heritageName: selectedProperty.heritage?.heritageItemName,
-            // Pass HCA code for HCA-specific provisions (e.g., "C98", "HCA 26")
-            hca: selectedProperty.heritage?.heritageItemNumber,
-          },
-        } as PropertyContext : undefined}
-        isPropertyLoading={loading}
-      />
+      {/* AI Assistant Widget - toggle via NEXT_PUBLIC_ENABLE_AI_ASSISTANT env var */}
+      {process.env.NEXT_PUBLIC_ENABLE_AI_ASSISTANT !== 'false' && (
+        <AIAssistantWidget
+          propertyContext={selectedProperty ? {
+            address: selectedProperty.address,
+            zone: selectedProperty.constraints?.zone,
+            lga: selectedProperty.constraints?.lga,
+            formerCouncil: selectedProperty.constraints?.formerCouncil,
+            lotSize: selectedProperty.lotDimensions?.area,
+            lotWidth: selectedProperty.lotDimensions?.frontage,
+            precinctId: selectedProperty.constraints?.precinctId,
+            maxHeight: selectedProperty.constraints?.maxHeight,
+            maxFsr: selectedProperty.constraints?.maxFsr,
+            constraints: {
+              heritage: selectedProperty.heritage?.isHeritage,
+              heritageName: selectedProperty.heritage?.heritageItemName,
+              // Pass HCA code for HCA-specific provisions (e.g., "C98", "HCA 26")
+              hca: selectedProperty.heritage?.heritageItemNumber,
+            },
+          } as PropertyContext : undefined}
+          isPropertyLoading={loading}
+        />
+      )}
 
       {/* Feedback Widget */}
       <FeedbackWidget
