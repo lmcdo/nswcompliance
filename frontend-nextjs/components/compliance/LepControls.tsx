@@ -6,7 +6,7 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin } from 'lucide-react';
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
@@ -319,6 +319,105 @@ export function LepControls({
                     {constraints.landslideRisk.epiName}
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Contaminated Land */}
+            {constraints?.contaminatedLand?.hasNotifiedSites && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3 md:col-span-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-red-600" />
+                  <span className="text-sm font-medium">Contaminated Land Nearby</span>
+                  <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
+                    {constraints.contaminatedLand.nearestSite?.distance}m away
+                  </Badge>
+                </div>
+                <div className="text-xs text-red-800 space-y-1">
+                  {constraints.contaminatedLand.nearestSite?.name && (
+                    <p className="font-medium">{constraints.contaminatedLand.nearestSite.name}</p>
+                  )}
+                  {constraints.contaminatedLand.nearestSite?.address && (
+                    <p className="text-red-600">{constraints.contaminatedLand.nearestSite.address}</p>
+                  )}
+                  {constraints.contaminatedLand.nearestSite?.managementClass && (
+                    <p className="mt-1">
+                      <span className="font-medium">Status:</span> {constraints.contaminatedLand.nearestSite.managementClass}
+                    </p>
+                  )}
+                  {constraints.contaminatedLand.nearestSite?.contaminationType && (
+                    <p>
+                      <span className="font-medium">Type:</span> {constraints.contaminatedLand.nearestSite.contaminationType}
+                    </p>
+                  )}
+                  <p className="text-xs text-red-700 mt-2 italic">
+                    EPA notified site - contamination assessment may be required for development
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Drinking Water Catchment */}
+            {constraints?.drinkingWaterCatchment?.inCatchment && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Droplets className="h-4 w-4 text-blue-600" />
+                  <span className="text-sm font-medium">Drinking Water Catchment</span>
+                </div>
+                <div className="text-lg font-bold text-blue-900">
+                  Protected Area
+                </div>
+                <p className="text-xs text-blue-700 mt-1">
+                  SEPP (Sydney Drinking Water Catchment) 2011 - Additional development controls apply
+                </p>
+                {constraints.drinkingWaterCatchment.epiName && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    {constraints.drinkingWaterCatchment.epiName}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Terrestrial Biodiversity */}
+            {constraints?.terrestrialBiodiversity?.inBiodiversityArea && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <TreePine className="h-4 w-4 text-green-600" />
+                  <span className="text-sm font-medium">Terrestrial Biodiversity</span>
+                </div>
+                <div className="text-lg font-bold text-green-900">
+                  Biodiversity Area
+                </div>
+                <p className="text-xs text-green-700 mt-1">
+                  LEP Part 6 - Biodiversity assessment required for development, vegetation clearing restricted
+                </p>
+                {constraints.terrestrialBiodiversity.epiName && (
+                  <p className="text-xs text-green-600 mt-1">
+                    {constraints.terrestrialBiodiversity.epiName}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Coastal Environment */}
+            {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0 && (
+              <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <Waves className="h-4 w-4 text-cyan-600" />
+                  <span className="text-sm font-medium">Coastal Management Area</span>
+                </div>
+                <div className="text-lg font-bold text-cyan-900">
+                  {constraints.coastalEnvironment.zones.length} Zone{constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}
+                </div>
+                <p className="text-xs text-cyan-700 mt-1">
+                  Coastal Management SEPP 2018 - Special development controls apply
+                </p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {constraints.coastalEnvironment.zones.map((zone, i) => (
+                    <Badge key={i} className="text-xs bg-cyan-100 text-cyan-800 border-cyan-300">
+                      {zone}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
           </div>

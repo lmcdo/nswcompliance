@@ -73,6 +73,30 @@ export interface PlanningConstraints {
    layClass?: string;
    epiType?: string;
  } | null;
+ contaminatedLand?: {
+   hasNotifiedSites: boolean;
+   nearestSite?: {
+     name?: string;
+     address?: string;
+     managementClass?: string;
+     contaminationType?: string;
+     distance?: number; // meters
+   };
+ } | null;
+ drinkingWaterCatchment?: {
+   inCatchment: boolean;
+   epiName?: string;
+   lgaName?: string;
+ } | null;
+ terrestrialBiodiversity?: {
+   inBiodiversityArea: boolean;
+   epiName?: string;
+   lgaName?: string;
+ } | null;
+ coastalEnvironment?: {
+   inCoastalArea: boolean;
+   zones?: string[]; // e.g., ["Coastal Wetlands", "Coastal Environment Area"]
+ } | null;
  basixClimate: string | null;
  basixWater: string | null;
 
@@ -953,12 +977,16 @@ export class NSWPlanningPortalService {
  let bushfireData: any = null;
  let mineSubsidenceData: any = null;
  let landslideData: any = null;
+ let contaminatedLandData: any = null;
+ let drinkingWaterData: any = null;
+ let biodiversityData: any = null;
+ let coastalData: any = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
 
-   [todLayers, roadClassifications, anefData, floodData, bushfireData, mineSubsidenceData, landslideData] = await Promise.all([
+   [todLayers, roadClassifications, anefData, floodData, bushfireData, mineSubsidenceData, landslideData, contaminatedLandData, drinkingWaterData, biodiversityData, coastalData] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
      fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`)
@@ -984,7 +1012,38 @@ export class NSWPlanningPortalService {
      fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Hazard/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME,LAY_CLASS,EPI_TYPE&returnGeometry=false&f=json&inSR=4283`)
        .then(res => res.json())
        .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null)
+       .catch(() => null),
+     // Contaminated land (within 500m)
+     fetch(`https://mapprod2.environment.nsw.gov.au/arcgis/rest/services/EPA/Contaminated_land_notified_sites/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&distance=500&units=esriSRUnit_Meter&spatialRel=esriSpatialRelIntersects&outFields=SiteName,SiteStreet,Suburb,ManagementClass,ContaminationActivityType&returnGeometry=true&f=json&inSR=4283&orderByFields=OBJECTID ASC`)
+       .then(res => res.json())
+       .then(data => {
+         if (!data.features || data.features.length === 0) return null;
+         const site = data.features[0].attributes;
+         const geom = data.features[0].geometry;
+         // Calculate approximate distance
+         const dx = (geom.x - lon) * 111320 * Math.cos(lat * Math.PI / 180);
+         const dy = (geom.y - lat) * 110540;
+         const distance = Math.sqrt(dx * dx + dy * dy);
+         return { ...site, distance };
+       })
+       .catch(() => null),
+     // Drinking water catchment
+     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
+       .catch(() => null),
+     // Terrestrial biodiversity
+     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/10/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
+       .catch(() => null),
+     // Coastal environment (check multiple coastal layers)
+     Promise.all([
+       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/1/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Wetlands' : null).catch(() => null),
+       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/6/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Environment Area' : null).catch(() => null),
+       fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/3/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Littoral Rainforests' : null).catch(() => null),
+     ]).then(results => results.filter(Boolean))
+       .catch(() => [])
    ]);
  }
 
@@ -1022,6 +1081,38 @@ export class NSWPlanningPortalService {
      lgaName: landslideData.LGA_NAME,
      layClass: landslideData.LAY_CLASS,
      epiType: landslideData.EPI_TYPE
+   };
+ }
+ if (contaminatedLandData) {
+   constraints.contaminatedLand = {
+     hasNotifiedSites: true,
+     nearestSite: {
+       name: contaminatedLandData.SiteName,
+       address: contaminatedLandData.SiteStreet + (contaminatedLandData.Suburb ? ', ' + contaminatedLandData.Suburb : ''),
+       managementClass: contaminatedLandData.ManagementClass,
+       contaminationType: contaminatedLandData.ContaminationActivityType,
+       distance: Math.round(contaminatedLandData.distance)
+     }
+   };
+ }
+ if (drinkingWaterData) {
+   constraints.drinkingWaterCatchment = {
+     inCatchment: true,
+     epiName: drinkingWaterData.EPI_NAME,
+     lgaName: drinkingWaterData.LGA_NAME
+   };
+ }
+ if (biodiversityData) {
+   constraints.terrestrialBiodiversity = {
+     inBiodiversityArea: true,
+     epiName: biodiversityData.EPI_NAME,
+     lgaName: biodiversityData.LGA_NAME
+   };
+ }
+ if (coastalData && coastalData.length > 0) {
+   constraints.coastalEnvironment = {
+     inCoastalArea: true,
+     zones: coastalData
    };
  }
 
