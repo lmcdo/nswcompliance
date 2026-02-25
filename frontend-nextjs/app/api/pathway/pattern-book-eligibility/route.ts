@@ -9,10 +9,14 @@ import { assessPatternBookEligibility, PropertyConstraints } from '@/lib/pattern
  * Checks if a property is eligible for the Pattern Book 10-day CDC pathway
  * BEFORE users spend $1,000-$25,000 on pattern designs.
  *
- * Uses 425 extracted SEPP requirements:
- * - 217 exclusion triggers
- * - 199 numeric standards
- * - 9 override rules
+ * Housing Code Schedule 1 provisions (validated database extraction):
+ * - 32 exclusion triggers (Schedule 1 automated extraction)
+ * - 37 numeric standards (extractable quantifiable standards)
+ * - 68 override rules (59 Schedule 1 + 9 other SEPPs)
+ *
+ * Source: SEPP (Exempt and Complying Development Codes) 2008 Schedule 1
+ * Database: sepp_structured_requirements table (128 Schedule 1 provisions)
+ * Extracted: 2026-02-26
  */
 
 interface RequestBody {

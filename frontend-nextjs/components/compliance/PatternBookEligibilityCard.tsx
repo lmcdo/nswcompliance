@@ -341,18 +341,21 @@ export function PatternBookEligibilityCard({
               <p className="text-xs font-medium text-blue-900 mb-2">Comprehensive Pathway Analysis</p>
               <div className="text-xs text-blue-800 space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">217</span>
+                  <span className="font-medium">32</span>
                   <span>exclusion triggers checked</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">199</span>
+                  <span className="font-medium">37</span>
                   <span>numeric standards verified</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="font-medium">9</span>
+                  <span className="font-medium">68</span>
                   <span>override rules evaluated</span>
                 </div>
               </div>
+              <p className="text-[10px] text-blue-600 mt-2 italic">
+                Source: SEPP Codes 2008 Schedule 1 (validated extraction)
+              </p>
             </div>
 
             {/* ELIGIBLE: Show summary and next steps */}
