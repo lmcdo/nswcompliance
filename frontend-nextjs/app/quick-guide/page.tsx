@@ -139,7 +139,7 @@ export default function QuickGuidePage() {
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-xs font-bold">3</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm">LEP Tab → Check Zone Permissibility</div>
+                  <div className="font-semibold text-gray-900 text-sm">Planning Controls tab → Check Zone Permissibility</div>
                   <div className="text-xs text-gray-600 mt-1">Dwelling house must be permitted in the zone (usually R2, R3, R4).</div>
                 </div>
               </div>
@@ -200,7 +200,7 @@ export default function QuickGuidePage() {
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">3</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm">LEP Tab → Confirm Use Permitted</div>
+                  <div className="font-semibold text-gray-900 text-sm">Planning Controls tab → Confirm Use Permitted</div>
                   <div className="text-xs text-gray-600 mt-1">Base land use must be allowed in zone.</div>
                 </div>
               </div>
@@ -251,7 +251,7 @@ export default function QuickGuidePage() {
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center text-xs font-bold">2</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm">LEP Tab → HCA Card → Read Objectives</div>
+                  <div className="font-semibold text-gray-900 text-sm">Planning Controls tab → HCA Card → Read Objectives</div>
                   <div className="text-xs text-gray-600 mt-1">Each HCA has specific conservation objectives. Design must align with these.</div>
                 </div>
               </div>
@@ -311,7 +311,7 @@ export default function QuickGuidePage() {
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-bold">1</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm">LEP Tab → Primary Development Standards</div>
+                  <div className="font-semibold text-gray-900 text-sm">Planning Controls tab → Primary Development Standards</div>
                   <div className="text-xs text-gray-600 mt-1">Check: (1) Use permitted in zone? (2) Height limit? (3) FSR limit? These are mandatory.</div>
                 </div>
               </div>

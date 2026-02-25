@@ -369,7 +369,7 @@ export default function UserGuidePage() {
                   <li className="flex gap-2 md:gap-3">
                     <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-xs">3</span>
                     <div className="flex-1 min-w-0">
-                      <strong>LEP Tab → Check Zone Permissibility</strong>
+                      <strong>Planning Controls tab → Check Zone Permissibility</strong>
                       <p className="text-emerald-700 mt-1">Dwelling house must be permitted in the zone (usually R2, R3, R4). Check height and FSR limits.</p>
                     </div>
                   </li>
@@ -429,7 +429,7 @@ export default function UserGuidePage() {
                   <li className="flex gap-2 md:gap-3">
                     <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-purple-200 text-purple-800 flex items-center justify-center text-xs">3</span>
                     <div className="flex-1 min-w-0">
-                      <strong>LEP Tab → Confirm Use Permitted</strong>
+                      <strong>Planning Controls tab → Confirm Use Permitted</strong>
                       <p className="text-purple-700 mt-1">Base land use must be allowed in zone. For example, pools require dwelling house to be permitted.</p>
                     </div>
                   </li>
@@ -478,7 +478,7 @@ export default function UserGuidePage() {
                   <li className="flex gap-2 md:gap-3">
                     <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-xs">2</span>
                     <div className="flex-1 min-w-0">
-                      <strong>LEP Tab → HCA Card → Read Objectives</strong>
+                      <strong>Planning Controls tab → HCA Card → Read Objectives</strong>
                       <p className="text-amber-700 mt-1">Each HCA has specific conservation objectives describing heritage significance and character. Design must align with these objectives.</p>
                     </div>
                   </li>
@@ -535,7 +535,7 @@ export default function UserGuidePage() {
                   <li className="flex gap-2 md:gap-3">
                     <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-200 text-blue-800 flex items-center justify-center text-xs">1</span>
                     <div className="flex-1 min-w-0">
-                      <strong>LEP Tab → Primary Development Standards</strong>
+                      <strong>Planning Controls tab → Primary Development Standards</strong>
                       <p className="text-blue-700 mt-1">Check three mandatory requirements: (1) Is use permitted in zone? (2) Does design meet height limit? (3) Does design meet FSR limit? These are pass/fail — no variations without clause 4.6 justification.</p>
                     </div>
                   </li>

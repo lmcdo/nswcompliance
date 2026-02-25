@@ -6,7 +6,8 @@
  * Two-column layout:
  * - Left (1/4): Property search + NSW Planning API data (all layers with clickable URLs)
  * - Right (3/4): Tabbed view with:
- *   - Tab 1 "SEPP & LEP": State-level controls (StructuredSeppRequirements, LandUseZoning, ADG, TOD)
+ *   - Tab 1 "SEPP": State-level controls (StructuredSeppRequirements, LandUseZoning, ADG, TOD)
+ *   - Tab 2 "Planning Controls": Zone, height, FSR, overlays from Planning Portal
  *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTocStructure (TOC-based view)
  */
 
@@ -132,7 +133,7 @@ export default function AssessmentPage() {
       <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">
         <div className="max-w-7xl mx-auto">
           <p className="text-xs text-amber-900 leading-relaxed">
-            <strong>Disclaimer:</strong> PlotDetect presents DCP, LEP and SEPP provisions as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
+            <strong>Disclaimer:</strong> PlotDetect presents DCP provisions and state/local planning data (from NSW Planning Portal and SEPP sources) as published by relevant authorities. It does not constitute planning advice. Users should verify provisions against current council instruments and seek professional advice for development applications.
           </p>
         </div>
       </div>
@@ -368,8 +369,8 @@ export default function AssessmentPage() {
                           : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                       }`}
                     >
-                      <span className="block text-base font-bold">LEP</span>
-                      <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-blue-100' : 'text-blue-400'}`}>Local Environmental Plan</span>
+                      <span className="block text-base font-bold">Planning Controls</span>
+                      <span className={`text-xs hidden sm:block ${viewMode === 'lep' ? 'text-blue-100' : 'text-blue-400'}`}>Zone & Development Standards</span>
                     </button>
                     <button
                       role="tab"
@@ -507,11 +508,11 @@ export default function AssessmentPage() {
 
               <div className="text-sm text-gray-700 space-y-3">
                 <p>
-                  Zone objectives, permitted uses, and prohibited uses are defined in the Local Environmental Plan (LEP) for this property.
+                  Zone information, permitted uses, and development standards are sourced from NSW Planning Portal (derived from the Local Environmental Plan for this property).
                 </p>
 
                 <p className="font-semibold text-gray-900 mt-4">
-                  To view the complete zone provisions:
+                  To view the complete zone provisions in the official LEP:
                 </p>
 
                 <a
