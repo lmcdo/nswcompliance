@@ -261,33 +261,16 @@ export function LepControls({
               </div>
               {propertyData?.anefData?.inAnefZone && (
                 <div className="text-xs text-sky-800 space-y-1 mt-2">
-                  <p>
-                    <span className="font-medium">{propertyData.anefData.airport?.name}</span>
-                    {propertyData.anefData.airport?.version && (
-                      <span className="text-sky-600 ml-1">({propertyData.anefData.airport.version})</span>
-                    )}
-                  </p>
-                  {propertyData.anefData.buildingAcceptability && (
-                    <div className="mt-2 pt-2 border-t border-sky-200">
-                      <p className="font-medium mb-1">Building Acceptability (AS2021:2015):</p>
-                      <div className="grid grid-cols-2 gap-1">
-                        {propertyData.anefData.buildingAcceptability
-                          .filter((b: any) => b.buildingType === 'house' || b.buildingType === 'commercial')
-                          .map((b: any) => (
-                            <div key={b.buildingType} className="flex items-center gap-1">
-                              <span className={`w-2 h-2 rounded-full ${
-                                b.status === 'acceptable' ? 'bg-green-500' :
-                                b.status === 'conditional' ? 'bg-amber-500' : 'bg-red-500'
-                              }`} />
-                              <span className="truncate">{b.displayName.split(',')[0]}: {b.status}</span>
-                            </div>
-                          ))
-                        }
-                      </div>
-                    </div>
+                  {propertyData.anefData.anefCode && (
+                    <p>
+                      <span className="font-medium">ANEF Zone:</span> {propertyData.anefData.anefCode} decibels
+                    </p>
+                  )}
+                  {propertyData.anefData.epiName && (
+                    <p className="text-sky-600">{propertyData.anefData.epiName}</p>
                   )}
                   <p className="text-xs text-sky-700 mt-2 italic">
-                    Aircraft noise controls apply - acoustic design requirements may be triggered
+                    Aircraft noise controls apply - acoustic design requirements may be triggered (AS2021:2015)
                   </p>
                 </div>
               )}

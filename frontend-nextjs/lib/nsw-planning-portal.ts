@@ -989,9 +989,31 @@ export class NSWPlanningPortalService {
    [todLayers, roadClassifications, anefData, floodData, bushfireData, mineSubsidenceData, landslideData, contaminatedLandData, drinkingWaterData, biodiversityData, coastalData] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
-     fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`)
-       .then(res => res.ok ? res.json() : null)
-       .then(result => result?.success ? result.data : null)
+     // ANEF (Aircraft Noise) - Using NSW Planning Portal Protection Layer 2
+     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=ANEF_CODE,EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
+       .then(res => res.json())
+       .then(data => {
+         if (!data.features || data.features.length === 0) return null;
+         const attrs = data.features[0].attributes;
+         // Parse ANEF level from ANEF_CODE (e.g., "20-25", "25-30", ">40")
+         const anefCode = attrs.ANEF_CODE || '';
+         let anefLevel = null;
+         if (anefCode.includes('>')) {
+           anefLevel = 40; // ">40" means 40+
+         } else if (anefCode.includes('-')) {
+           const parts = anefCode.split('-');
+           anefLevel = parseInt(parts[0]); // Use lower bound of range
+         } else {
+           anefLevel = parseInt(anefCode) || null;
+         }
+         return {
+           inAnefZone: true,
+           anefLevel: anefLevel,
+           anefCode: anefCode,
+           epiName: attrs.EPI_NAME,
+           lgaName: attrs.LGA_NAME
+         };
+       })
        .catch(() => null),
      // Flood data
      fetch(`https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/Flood/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=Name,BlockType,BlockStartDate&returnGeometry=false&f=json`)

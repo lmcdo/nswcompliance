@@ -1,67 +1,51 @@
 {
-  "lga": "Inner West",
-  "councils": ["Marrickville", "Ashfield", "Leichhardt"],
-  "structure": {
-    "chapterTypes": {
-      "generic": "2_*",
-      "development": "4_*",
-      "heritage": "8_*",
-      "precincts": "9_*",
-      "definitions": "10*"
-    },
-    "precinctDocs": [
-      "9_1_Lewisham_North",
-      "9_2_Petersham_North",
-      "9_8_Enmore_North",
-      "9_11_Hoskins_Park",
-      "9_12_Marrickville_Park",
-      "9_20_Marrickville_Town_Centre_North",
-      "9_22_Dulwich_Hill_Station_South",
-      "9_25_St_Peters_Triangle",
-      "9_45_McGill_Street",
-      "9_46_Tempe_Lands"
+  "id": "inner_west",
+  "name": "Inner West",
+  "type": "amalgamated",
+  "former_councils": ["Ashfield", "Leichhardt", "Marrickville"],
+  "basix": {
+    "area_code": "Area 5",
+    "area_name": "Inner West",
+    "climate_zone": "56",
+    "water_target_percent": 40
+  },
+  "planning": {
+    "residential_zones": ["R1", "R2", "R3", "R4", "R5", "B1", "B2", "B4", "MU1", "RU5"],
+    "industrial_zones": ["IN1", "IN2", "E4", "E5", "B5", "B6", "B7", "E3", "B3"],
+    "apartment_permitting_zones": [
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "B1",
+      "B2",
+      "B3",
+      "B4",
+      "B5",
+      "B6",
+      "MU1",
+      "E1",
+      "E2"
     ]
   },
-  "conventions": {
-    "numberingStyle": "decimal",
-    "figurePattern": "[Ff]igure[s]?\\s+(\\d+\\.\\d+[a-z]?)",
-    "tablePattern": "[Tt]able[s]?\\s+(\\d+\\.\\d+[a-z]?)",
-    "diagramPattern": "[Dd]iagram[s]?\\s+(\\d+\\.\\d+[a-z]?)",
-    "controlCodes": true,
-    "controlCodePattern": "^[A-Z]\\d+"
-  },
-  "quirks": {
-    "figureAliases": ["Figure", "Figures", "Fig"],
-    "tableAliases": ["Table", "Tables"],
-    "appendixLocation": "inline",
-    "customHeaderPatterns": [
-      "## Figure \\d+\\.\\d+",
-      "### Figure \\d+\\.\\d+",
-      "## Table \\d+",
-      "## Appendix \\d+"
-    ],
-    "edgeCases": [
-      {
-        "description": "Some figures referenced in parentheses",
-        "pattern": "\\(Figures?\\s+\\d+\\.\\d+[a-z]?\\)",
-        "handling": "Extract number from parentheses"
-      },
-      {
-        "description": "Control codes can be ranges",
-        "pattern": "C17-C22|C17, C18, C19",
-        "handling": "Expand ranges to individual codes"
-      },
-      {
-        "description": "Heritage Conservation Area references",
-        "pattern": "HCA\\s+\\d+",
-        "handling": "Treat as special section reference"
-      }
+  "sepp": {
+    "applicable_sepps": [
+      "SEPP_HOUSING_2021",
+      "SEPP_SUSTAINABLE_BUILDINGS_2022",
+      "SEPP_RESILIENCE_HAZARDS_2021",
+      "SEPP_TRANSPORT_INFRASTRUCTURE_2021"
     ]
   },
-  "meta": {
-    "version": "1.0.0",
-    "lastUpdated": "2025-10-03",
-    "author": "Compliance Engine Team",
-    "notes": "Initial config based on Marrickville DCP 2011 structure. Covers all three former council areas."
+  "transport": {
+    "has_tod_precincts": true
+  },
+  "former_council_detection": {
+    "requires_detection": true
+  },
+  "metadata": {
+    "population": 217507,
+    "area_km2": 35.0,
+    "website_url": "https://www.innerwest.nsw.gov.au",
+    "notes": "Formed in 2016 from merger of Ashfield, Leichhardt, and Marrickville councils. Each former council retains its own DCP."
   }
 }

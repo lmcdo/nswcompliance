@@ -23,6 +23,9 @@ import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
+import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone } from '@/lib/regulatory-constants';
+import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
+import { tryGetLGAConfig } from '@/lib/lga-configs';
 
 interface StateLevelControlsProps {
   propertyData: any;
@@ -37,24 +40,6 @@ const APARTMENT_DEV_TYPES = [
   'shop_top_housing',
   'boarding_house',
   'mixed_use'
-];
-
-// Zones that permit apartment developments (including LMR reforms)
-// ADG should show for these zones regardless of development type selection
-const APARTMENT_PERMITTING_ZONES = [
-  'R1',   // General Residential - now permits low-rise apartments under LMR reforms (July 2024)
-  'R2',   // Low Density Residential - now permits low-rise apartments under LMR reforms (July 2024)
-  'R3',   // Medium Density Residential
-  'R4',   // High Density Residential
-  'B1',   // Neighbourhood Centre
-  'B2',   // Local Centre
-  'B3',   // Commercial Core
-  'B4',   // Mixed Use
-  'B5',   // Business Development
-  'B6',   // Enterprise Corridor
-  'MU1',  // Mixed Use (new naming)
-  'E1',   // Local Centre (new naming)
-  'E2',   // Commercial Centre (new naming)
 ];
 
 export function StateLevelControls({
@@ -94,11 +79,34 @@ export function StateLevelControls({
     }));
   };
 
-  // SEPP ID mapping: Planning Portal → Database
+  // ============================================================================
+  // LGA Configuration - Load LGA-specific config with graceful fallback
+  // ============================================================================
+  // Extract LGA from property data (provided by NSW Planning Portal)
+  const lga = propertyData?.constraints?.lga;
+
+  // Try to load LGA config. If LGA is not configured yet (returns null),
+  // the component will fall back to NSW-wide defaults.
+  // Currently configured LGAs: Inner West
+  const lgaConfig = lga ? tryGetLGAConfig(lga.toLowerCase().replace(/\s+/g, '_')) : null;
+
+  // Development logging for LGA config status
+  if (process.env.NODE_ENV === 'development' && lga) {
+    if (lgaConfig) {
+      console.log(`[StateLevelControls] LGA config loaded for: ${lgaConfig.name}`);
+    } else {
+      console.log(`[StateLevelControls] No config found for LGA: ${lga} (using NSW defaults)`);
+    }
+  }
+
+  // ============================================================================
+  // SEPP ID Mapping: Planning Portal → Database
+  // ============================================================================
+  // Default NSW-wide mapping. Can be overridden by LGA config if needed.
   // Note: Only sustainable_buildings_2022 currently has structured requirements in DB
   // Housing SEPP uses separate sepp_adg_requirements table
   // Others detected but no structured data available yet
-  const SEPP_MAPPING: Record<string, string> = {
+  const DEFAULT_SEPP_MAPPING: Record<string, string> = {
     'SEPP_HOUSING_2021': 'housing_2021',
     'SEPP_65': 'housing_2021',  // Old numbering, same SEPP
     'SEPP_SUSTAINABLE_BUILDINGS': 'sustainable_buildings_2022',
@@ -112,6 +120,9 @@ export function StateLevelControls({
     'SEPP_EXEMPT_COMPLYING_2008': 'exempt_complying_2008',
   };
 
+  // Use LGA-specific SEPP mapping if provided, otherwise use NSW default
+  const SEPP_MAPPING = lgaConfig?.sepp?.sepp_id_mapping || DEFAULT_SEPP_MAPPING;
+
   // Load ADG requirements when SEPP Housing 2021 detected AND zone permits residential
   const loadADGRequirements = useCallback(async () => {
     if (!developmentType) return;
@@ -122,7 +133,7 @@ export function StateLevelControls({
     // Check zone permits residential
     const zone = propertyData?.constraints?.zone;
     const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-    const residentialZones = ['R1', 'R2', 'R3', 'R4', 'R5', 'B1', 'B2', 'B4', 'MU1', 'RU5'];
+    const residentialZones = NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL;
     const permitsResidential = residentialZones.includes(zoneCode);
 
     if (!permitsResidential) {
@@ -154,7 +165,7 @@ export function StateLevelControls({
         if (data.success && data.data) {
           // Filter high-value requirements
           const keyRequirements = data.data.filter((r: any) => 
-            ['4A-1', '4D-1', '4E-1', '4B-1', '4C-1', '4F-1', '4G-1', '3F-1'].includes(r.criteriaId)
+            (NSW_PLANNING_CONSTANTS.ADG.KEY_CRITERIA_IDS as readonly string[]).includes(r.criteriaId)
           );
           setAdgRequirements(keyRequirements);
           console.log(`[StateLevelControls] Loaded ${keyRequirements.length} ADG requirements`);
@@ -204,8 +215,8 @@ export function StateLevelControls({
     const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
     
     // Define zones that permit residential development
-    const residentialZones = ['R1', 'R2', 'R3', 'R4', 'R5', 'B1', 'B2', 'B4', 'MU1', 'RU5'];
-    const industrialZones = ['IN1', 'IN2', 'E4', 'E5', 'B5', 'B6', 'B7', 'E3', 'B3'];
+    const residentialZones = NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL;
+    const industrialZones = NSW_PLANNING_CONSTANTS.ZONES.INDUSTRIAL;
     
     const permitsResidential = residentialZones.includes(zoneCode);
     const isIndustrialZone = industrialZones.includes(zoneCode);
@@ -329,7 +340,7 @@ export function StateLevelControls({
         if (response.ok) {
           const data = await response.json();
           // Filter to stops within 1km
-          const nearby = (data.suggestions || []).filter((s: any) => s.distance <= 1000);
+          const nearby = (data.suggestions || []).filter((s: any) => s.distance <= NSW_PLANNING_CONSTANTS.TOD.TRANSPORT_PROXIMITY_SEARCH_M);
           setNearbyTransport(nearby);
         }
       } catch (err) {
@@ -387,7 +398,7 @@ export function StateLevelControls({
   // Extract zone and lot size data from propertyData
   const zone = propertyData?.constraints?.zone;
   const zoneDescription = propertyData?.constraints?.zoneDescription;
-  const lga = propertyData?.constraints?.lga || 'Inner West';
+  // Note: lga is defined earlier in the component near LGA config loading
 
   // Extract lot dimensions for Housing SEPP LMR eligibility
   // First try calculated dimensions from lot geometry, then fallback to property data
@@ -401,7 +412,7 @@ export function StateLevelControls({
     || propertyData?.geometry?.frontageWidth
     || propertyData?.geometry?.estimatedWidth
     || propertyData?.constraints?.lotWidth
-    || 15; // Default estimate if not available
+    || NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
 
   // Lot depth - from calculated geometry
   const lotDepth = propertyData?.lotDimensions?.depth || null;
@@ -413,7 +424,7 @@ export function StateLevelControls({
   // Check if property is in LMR area (residential zone)
   // Zone may include colon (e.g., "R2: Low Density") - strip non-alphanumeric chars
   const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  const isLMRArea = ['R1', 'R2', 'R3', 'R4'].includes(zoneCode);
+  const isLMRArea = (NSW_PLANNING_CONSTANTS.HOUSING_SEPP.ELIGIBLE_ZONES as readonly string[]).includes(zoneCode);
 
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
@@ -483,9 +494,9 @@ export function StateLevelControls({
 
   // Check if any nearby transport qualifies for parking reductions (regulatory thresholds)
   const hasQualifyingTransport = nearbyTransport.some(stop => {
-    if (stop.type === 'heavy_rail' && stop.distance <= 800) return true;
-    if (stop.type === 'light_rail' && stop.distance <= 600) return true;
-    if (stop.type === 'bus' && stop.distance <= 400 &&
+    if (stop.type === 'heavy_rail' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M) return true;
+    if (stop.type === 'light_rail' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M) return true;
+    if (stop.type === 'bus' && stop.distance <= NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M &&
         (stop.frequency === 'high' || stop.frequency === 'medium')) return true;
     return false;
   });
@@ -498,6 +509,41 @@ export function StateLevelControls({
       <div className="bg-white border rounded-lg p-8 text-center text-gray-500">
         Select a property to view State-level controls
       </div>
+    );
+  }
+
+  // Validate LGA is present - required for state-level controls
+  if (!lga) {
+    return (
+      <Card className="border-red-200 bg-red-50">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-3">
+            <div className="text-red-500 text-2xl">⚠️</div>
+            <div className="flex-1">
+              <p className="text-red-900 font-semibold text-lg">LGA Information Required</p>
+              <p className="text-red-700 text-sm mt-2">
+                Unable to determine the Local Government Area (LGA) for this property.
+                State-level planning controls cannot be displayed without LGA context.
+              </p>
+              <div className="mt-4 bg-white border border-red-200 rounded p-3">
+                <p className="text-xs font-semibold text-red-800 mb-1">Why is this needed?</p>
+                <p className="text-xs text-red-700">
+                  SEPP requirements, BASIX zones, and other state controls vary by LGA.
+                  The LGA is typically provided by the NSW Planning Portal when you search for a property.
+                </p>
+              </div>
+              <div className="mt-3 text-xs text-red-600">
+                <p className="font-medium">Possible causes:</p>
+                <ul className="list-disc ml-4 mt-1 space-y-0.5">
+                  <li>Property not found in NSW Planning Portal database</li>
+                  <li>Address outside NSW jurisdiction</li>
+                  <li>API connection issue - try refreshing the page</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -614,7 +660,7 @@ export function StateLevelControls({
                       <button
                         onClick={() => setViewingPdfPage({
                           pageNumber: 11,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_11.png',
+                          url: getSeppPdfUrl('sustainable_buildings', 11),
                           label: 'Schedule 2: Water Fixtures (Toilets, Showers, Taps)'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
@@ -623,7 +669,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
-                    <div className="text-xs text-purple-700 ml-2">40% reduction from baseline water use via efficient fixtures</div>
+                    <div className="text-xs text-purple-700 ml-2">{NSW_PLANNING_CONSTANTS.BASIX.WATER_REDUCTION_PERCENT}% reduction from baseline water use via efficient fixtures</div>
                     </>
                   )}
                   {sustainableInfo.climateZone && (
@@ -635,7 +681,7 @@ export function StateLevelControls({
                       <button
                         onClick={() => setViewingPdfPage({
                           pageNumber: 9,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_9.png',
+                          url: getSeppPdfUrl('sustainable_buildings', 9),
                           label: 'Table 3: Thermal Performance by Climate Zone'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
@@ -699,7 +745,7 @@ export function StateLevelControls({
                       <button
                         onClick={() => setViewingPdfPage({
                           pageNumber: 13,
-                          url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-sustainable-buildings/sepp-sustainable-buildings_page_13.png',
+                          url: getSeppPdfUrl('sustainable_buildings', 13),
                           label: 'Insulation Standards (Floors/Ceilings R-values)'
                         })}
                         className="p-1 rounded hover:bg-purple-100 transition-colors flex-shrink-0"
@@ -864,7 +910,7 @@ export function StateLevelControls({
                           <button
                             onClick={() => setViewingPdfPage({
                               pageNumber: req.sourcePage,
-                              url: `/pdf-pages/adg-part3/page-${req.sourcePage}.png`,
+                              url: getAdgPdfUrl(req.sourcePage),
                               label: `ADG ${req.criteriaId}`
                             })}
                             className="ml-3 text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
@@ -939,14 +985,14 @@ export function StateLevelControls({
                 ? 'This property is within a designated TOD precinct under SEPP (Housing) 2021.'
                 : (() => {
                     const reasons: string[] = [];
-                    if (nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= 800)) {
-                      reasons.push('heavy rail station within 800m');
+                    if (nearbyTransport.some(s => s.type === 'heavy_rail' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M)) {
+                      reasons.push(`heavy rail station within ${NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M}m`);
                     }
-                    if (nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= 600)) {
-                      reasons.push('light rail stop within 600m');
+                    if (nearbyTransport.some(s => s.type === 'light_rail' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M)) {
+                      reasons.push(`light rail stop within ${NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M}m`);
                     }
-                    if (nearbyTransport.some(s => s.type === 'bus' && s.distance <= 400 && (s.frequency === 'high' || s.frequency === 'medium'))) {
-                      reasons.push('frequent bus service within 400m');
+                    if (nearbyTransport.some(s => s.type === 'bus' && s.distance <= NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M && (s.frequency === 'high' || s.frequency === 'medium'))) {
+                      reasons.push(`frequent bus service within ${NSW_PLANNING_CONSTANTS.TOD.BUS_WALKABLE_M}m`);
                     }
                     return `Parking reductions may apply due to ${reasons.join(' and ')}.`;
                   })()
@@ -1006,7 +1052,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 11,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_11.png',
+                        url: getSeppPdfUrl('housing', 11),
                         label: 'SEPP (Housing) 2021 - Boarding House Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1034,7 +1080,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 32,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_32.png',
+                        url: getSeppPdfUrl('housing', 32),
                         label: 'SEPP (Housing) 2021 - Co-Living Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1064,7 +1110,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 35,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_35.png',
+                        url: getSeppPdfUrl('housing', 35),
                         label: 'SEPP (Housing) 2021 - Build-to-Rent Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1090,7 +1136,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 35,
-                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-35_infill_affordable.png',
+                        url: getSeppPdfUrl('housing_2021', 35, 'infill_affordable'),
                         label: 'SEPP (Housing) 2021 - In-Fill Affordable Housing Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1118,7 +1164,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 47,
-                        url: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/sepp-housing-2021/page-47_seniors_independent.png',
+                        url: getSeppPdfUrl('housing_2021', 47, 'seniors_independent'),
                         label: 'SEPP (Housing) 2021 - Seniors Independent Living Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1150,7 +1196,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 18,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_18.png',
+                        url: getSeppPdfUrl('housing', 18),
                         label: 'SEPP (Housing) 2021 - Affordable Housing Parking'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"
@@ -1183,7 +1229,7 @@ export function StateLevelControls({
                     <button
                       onClick={() => setViewingPdfPage({
                         pageNumber: 115,
-                        url: '/pdf-pages/sepp-housing/sepp-housing_page_115.png',
+                        url: getSeppPdfUrl('housing', 115),
                         label: 'SEPP (Housing) 2021 - Accessible Area Definition'
                       })}
                       className="text-purple-600 hover:text-purple-800 transition-colors p-1 rounded hover:bg-purple-50"

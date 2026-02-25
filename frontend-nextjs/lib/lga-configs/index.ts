@@ -1,129 +1,162 @@
 /**
- * LGA Configuration Loader
+ * LGA Configuration Registry and Loader
  *
- * Loads and caches LGA-specific configuration for DCP document handling.
- * Supports multi-LGA expansion via JSON config files.
+ * Central registry for all configured LGAs. Add new LGA configs here
+ * as JSON files are created following the schema.
+ *
+ * @see schema.ts for config structure
+ * @see docs/ARCHITECTURE-LGA-EXPANSION.md for setup guide
  */
 
-import type { LGAConfig } from './types';
 import innerWestConfig from './inner-west.json';
-import lgaMappings from '../../config/lga-mappings.json';
+import { LGAConfig, validateLGAConfig, LGAConfigValidationError } from './schema';
 
-// Re-export council config functions for convenience
-export {
-  COUNCIL_CONFIGS,
-  detectCouncil,
-  getCouncilConfig,
-  getConfiguredCouncils,
-  isCouncilConfigured,
-  getCouncilConfigByLGA,
-  getSetbackFallback,
-} from '../council-config';
-
-// In-memory cache of loaded configs
-const configCache = new Map<string, LGAConfig>();
-
-// Type for LGA mapping entries
-interface LGAMapping {
-  lga_name: string;
-  status?: string;
-  formed_date?: string;
-  former_councils?: Array<{
-    name: string;
-    config_id?: string;
-    postcodes?: string[];
-    suburbs?: string[];
-    notes?: string;
-  }>;
-  postcodes?: string[];
-  suburbs?: string[];
-  special_cases?: Array<{
-    description: string;
-    rule?: string;
-    postcodes_affected: string[];
-    resolution: string;
-  }>;
-  dcp_priority_order?: string[];
-}
-
-// Map of LGA names to config files
-// Dynamically built from lga-mappings.json
-const LGA_CONFIGS: Record<string, LGAConfig> = {
-  // Inner West and its former councils all use the same base config
-  'inner west': innerWestConfig as LGAConfig,
-  'inner-west': innerWestConfig as LGAConfig,
-  'marrickville': innerWestConfig as LGAConfig,
-  'ashfield': innerWestConfig as LGAConfig,
-  'leichhardt': innerWestConfig as LGAConfig,
+/**
+ * LGA Configuration Registry
+ * Maps LGA IDs to their configuration objects
+ */
+const LGA_REGISTRY: Record<string, LGAConfig> = {
+  inner_west: innerWestConfig as LGAConfig,
+  // Add new LGA configs here as they're created:
+  // 'sydney': sydneyConfig as LGAConfig,
+  // 'woollahra': woollahraConfig as LGAConfig,
 };
 
 /**
- * Get all configured LGAs from the mappings file
+ * LGA Name Aliases (for fuzzy matching)
+ * Maps alternative names/spellings to canonical LGA IDs
+ */
+const LGA_ALIASES: Record<string, string> = {
+  'inner west': 'inner_west',
+  'innerwest': 'inner_west',
+  'inner west council': 'inner_west',
+  // Amalgamated councils can be looked up by former council names
+  'ashfield': 'inner_west',
+  'leichhardt': 'inner_west',
+  'marrickville': 'inner_west',
+};
+
+/**
+ * Validate all LGA configs at module load time (fail-fast)
+ */
+for (const [lgaId, config] of Object.entries(LGA_REGISTRY)) {
+  try {
+    validateLGAConfig(config);
+  } catch (error) {
+    if (error instanceof LGAConfigValidationError) {
+      console.error(`[LGA Config] Validation failed for '${lgaId}':`, error.message);
+      throw error;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Get LGA configuration by ID
+ * @throws LGAConfigValidationError if LGA not found
+ */
+export function getLGAConfig(lgaId: string): LGAConfig {
+  const normalizedId = lgaId.toLowerCase().replace(/\s+/g, '_');
+  const config = LGA_REGISTRY[normalizedId];
+
+  if (!config) {
+    throw new LGAConfigValidationError(
+      lgaId,
+      `LGA config not found. Available LGAs: ${Object.keys(LGA_REGISTRY).join(', ')}`
+    );
+  }
+
+  return config;
+}
+
+/**
+ * Try to get LGA configuration, returning null if not found
+ * Use this when LGA might not be configured yet (graceful degradation)
+ */
+export function tryGetLGAConfig(lgaId: string): LGAConfig | null {
+  try {
+    return getLGAConfig(lgaId);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect LGA from a name string (handles aliases and fuzzy matching)
+ *
+ * @example
+ * detectLGAFromName('Inner West Council') // => 'inner_west'
+ * detectLGAFromName('Ashfield') // => 'inner_west' (former council)
+ */
+export function detectLGAFromName(name: string): string | null {
+  const normalized = name.toLowerCase().trim();
+
+  // Direct registry match
+  if (LGA_REGISTRY[normalized.replace(/\s+/g, '_')]) {
+    return normalized.replace(/\s+/g, '_');
+  }
+
+  // Alias match
+  if (LGA_ALIASES[normalized]) {
+    return LGA_ALIASES[normalized];
+  }
+
+  // Partial match (e.g., "Inner West Council" contains "inner west")
+  for (const [alias, lgaId] of Object.entries(LGA_ALIASES)) {
+    if (normalized.includes(alias) || alias.includes(normalized)) {
+      return lgaId;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Check if an LGA is configured
+ */
+export function isLGAConfigured(lgaId: string): boolean {
+  return tryGetLGAConfig(lgaId) !== null;
+}
+
+/**
+ * Get all configured LGA IDs
  */
 export function getConfiguredLGAs(): string[] {
-  const lgas: string[] = [];
-  for (const [key, mapping] of Object.entries(lgaMappings)) {
-    if (key.startsWith('_')) continue; // Skip meta fields
-    const lgaMapping = mapping as LGAMapping;
-    if (lgaMapping.status === 'active') {
-      lgas.push(lgaMapping.lga_name);
-    }
-  }
-  return lgas;
+  return Object.keys(LGA_REGISTRY);
 }
 
 /**
- * Get all planned LGAs (not yet active)
+ * Check if LGA is an amalgamated council
  */
-export function getPlannedLGAs(): string[] {
-  const lgas: string[] = [];
-  for (const [key, mapping] of Object.entries(lgaMappings)) {
-    if (key.startsWith('_')) continue;
-    const lgaMapping = mapping as LGAMapping;
-    if (lgaMapping.status === 'planned') {
-      lgas.push(lgaMapping.lga_name);
-    }
-  }
-  return lgas;
+export function isAmalgamatedLGA(lgaId: string): boolean {
+  const config = tryGetLGAConfig(lgaId);
+  return config?.type === 'amalgamated';
 }
 
 /**
- * Check if an LGA is active (has provisions loaded)
+ * Get former council names for amalgamated LGA
+ * Returns empty array for single-council LGAs
  */
-export function isLGAActive(lgaName: string): boolean {
-  const normalized = lgaName.toLowerCase().trim().replace(/ /g, '_');
-  const mapping = (lgaMappings as Record<string, LGAMapping>)[normalized];
-  return mapping?.status === 'active';
+export function getFormerCouncils(lgaId: string): string[] {
+  const config = tryGetLGAConfig(lgaId);
+  return config?.former_councils || [];
 }
 
 /**
- * Get LGA config by name
- * Case-insensitive, handles variations
+ * Find LGA ID from a former council name
+ *
+ * @example
+ * findLGAByFormerCouncil('Ashfield') // => 'inner_west'
  */
-export function getLGAConfig(lgaName: string): LGAConfig | null {
-  if (!lgaName) return null;
+export function findLGAByFormerCouncil(formerCouncil: string): string | null {
+  const normalized = formerCouncil.toLowerCase().trim();
 
-  const normalized = lgaName.toLowerCase().trim();
-
-  // Check cache first
-  if (configCache.has(normalized)) {
-    return configCache.get(normalized)!;
-  }
-
-  // Look up config
-  const config = LGA_CONFIGS[normalized];
-
-  if (config) {
-    // Cache it
-    configCache.set(normalized, config);
-    return config;
-  }
-
-  // Try fuzzy match
-  for (const [key, cfg] of Object.entries(LGA_CONFIGS)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      configCache.set(normalized, cfg);
-      return cfg;
+  for (const [lgaId, config] of Object.entries(LGA_REGISTRY)) {
+    if (config.type === 'amalgamated' && config.former_councils) {
+      const match = config.former_councils.find(
+        (fc) => fc.toLowerCase() === normalized
+      );
+      if (match) return lgaId;
     }
   }
 
@@ -131,135 +164,36 @@ export function getLGAConfig(lgaName: string): LGAConfig | null {
 }
 
 /**
- * Get config from document ID
- * Extracts LGA from document name
+ * Get BASIX area code for an LGA
  */
-export function getConfigFromDocumentId(documentId: string): LGAConfig | null {
-  const lower = documentId.toLowerCase();
-
-  // Check Inner West councils
-  if (lower.includes('marrickville') || lower.includes('ashfield') || lower.includes('leichhardt')) {
-    return getLGAConfig('inner west');
-  }
-
-  // Check other configured LGAs
-  for (const [key, mapping] of Object.entries(lgaMappings)) {
-    if (key.startsWith('_')) continue;
-    const lgaMapping = mapping as LGAMapping;
-
-    // Check if document ID contains LGA name or former council name
-    if (lower.includes(key.replace(/_/g, ' '))) {
-      return getLGAConfig(key);
-    }
-
-    // Check former councils
-    if (lgaMapping.former_councils) {
-      for (const council of lgaMapping.former_councils) {
-        if (lower.includes(council.name.toLowerCase())) {
-          return getLGAConfig(key);
-        }
-      }
-    }
-  }
-
-  return null;
+export function getBasixAreaCode(lgaId: string): string | null {
+  const config = tryGetLGAConfig(lgaId);
+  return config?.basix.area_code || null;
 }
 
 /**
- * Check if LGA is configured
+ * Get climate zone for an LGA
  */
-export function isLGAConfigured(lgaName: string): boolean {
-  return getLGAConfig(lgaName) !== null;
+export function getClimateZone(lgaId: string): string | null {
+  const config = tryGetLGAConfig(lgaId);
+  return config?.basix.climate_zone || null;
 }
 
 /**
- * Get LGA mapping data (postcodes, suburbs, former councils)
+ * Check if LGA requires former council detection from address
  */
-export function getLGAMapping(lgaName: string): LGAMapping | null {
-  const normalized = lgaName.toLowerCase().trim().replace(/ /g, '_');
-  const mapping = (lgaMappings as Record<string, LGAMapping>)[normalized];
-  return mapping || null;
+export function requiresFormerCouncilDetection(lgaId: string): boolean {
+  const config = tryGetLGAConfig(lgaId);
+  return config?.former_council_detection?.requires_detection || false;
 }
 
 /**
- * Find LGA from postcode
+ * Export registry for debugging/testing
  */
-export function getLGAFromPostcode(postcode: string): string | null {
-  for (const [key, mapping] of Object.entries(lgaMappings)) {
-    if (key.startsWith('_')) continue;
-    const lgaMapping = mapping as LGAMapping;
-
-    // Check direct postcodes
-    if (lgaMapping.postcodes?.includes(postcode)) {
-      return lgaMapping.lga_name;
-    }
-
-    // Check former councils
-    if (lgaMapping.former_councils) {
-      for (const council of lgaMapping.former_councils) {
-        if (council.postcodes?.includes(postcode)) {
-          return lgaMapping.lga_name;
-        }
-      }
-    }
-  }
-  return null;
-}
+export { LGA_REGISTRY, LGA_ALIASES };
 
 /**
- * Find former council from postcode (for merged LGAs like Inner West)
+ * Export schema types for consumers
  */
-export function getFormerCouncilFromPostcode(postcode: string): string | null {
-  for (const [, mapping] of Object.entries(lgaMappings)) {
-    const lgaMapping = mapping as LGAMapping;
-    if (!lgaMapping.former_councils) continue;
-
-    for (const council of lgaMapping.former_councils) {
-      if (council.postcodes?.includes(postcode)) {
-        return council.name;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Find former council from suburb (for merged LGAs like Inner West)
- */
-export function getFormerCouncilFromSuburb(suburb: string): string | null {
-  const normalizedSuburb = suburb.toLowerCase().trim();
-
-  for (const [, mapping] of Object.entries(lgaMappings)) {
-    const lgaMapping = mapping as LGAMapping;
-    if (!lgaMapping.former_councils) continue;
-
-    for (const council of lgaMapping.former_councils) {
-      if (council.suburbs?.some(s => s.toLowerCase() === normalizedSuburb)) {
-        return council.name;
-      }
-    }
-  }
-  return null;
-}
-
-/**
- * Get the config_id for a council (used to load JSON configs)
- */
-export function getCouncilConfigId(councilName: string): string | null {
-  const normalized = councilName.toLowerCase().trim();
-
-  for (const [, mapping] of Object.entries(lgaMappings)) {
-    const lgaMapping = mapping as LGAMapping;
-    if (!lgaMapping.former_councils) continue;
-
-    for (const council of lgaMapping.former_councils) {
-      if (council.name.toLowerCase() === normalized) {
-        return council.config_id || council.name.toLowerCase();
-      }
-    }
-  }
-  return null;
-}
-
-// Export types
-export type { LGAConfig, LGAConventions, LGAStructure, LGAQuirks } from './types';
+export type { LGAConfig, LGAType } from './schema';
+export { LGAConfigValidationError } from './schema';
