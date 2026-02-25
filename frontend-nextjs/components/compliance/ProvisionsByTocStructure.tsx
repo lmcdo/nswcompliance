@@ -770,8 +770,39 @@ export function ProvisionsByTocStructure({
         });
       }
 
-      // TODO: Extract Additional Local Provisions from LEP
-      const additionalLocalProvisions: string[] | undefined = undefined;
+      // Build environmental constraints from propertyData
+      const envC = propertyData?.constraints;
+      const anef = propertyData?.anefData;
+      const environmentalConstraints = envC ? {
+        flood_prone: !!envC.floodProne,
+        bushfire_prone: !!envC.bushfireProne,
+        acid_sulfate_soils: envC.acidSulfateSoils || undefined,
+        anef_zone: !!anef?.inAnefZone,
+        anef_level: anef?.anefLevel,
+        anef_code: anef?.anefCode,
+        mine_subsidence: !!envC.mineSubsidence?.inDistrict,
+        mine_subsidence_district: envC.mineSubsidence?.districtName,
+        landslide_risk: !!envC.landslideRisk?.hasRisk,
+        contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
+        contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
+        contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
+        drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
+        terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
+        coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),
+        coastal_zones: envC.coastalEnvironment?.zones,
+      } : undefined;
+
+      // Extract Additional Local Provisions from constraints
+      const additionalLocalProvisions: string[] | undefined =
+        envC?.localProvisions && envC.localProvisions.length > 0
+          ? envC.localProvisions
+              .filter((p: any) => !p.isNearby)
+              .map((p: any) => {
+                const clause = p.clauseNumber ? `Clause ${p.clauseNumber}: ` : '';
+                const desc = p.description ? ` — ${p.description}` : '';
+                return `${clause}${p.title}${desc}`;
+              })
+          : undefined;
 
       // Fetch Pattern Book CDC eligibility
       let patternBookData = undefined;
@@ -868,6 +899,7 @@ export function ProvisionsByTocStructure({
         lot_dimensions: lotDimensions,
         lep_controls: lepControls,
         planning_portal_layers: planningPortalLayers,
+        environmental_constraints: environmentalConstraints,
         additional_local_provisions: additionalLocalProvisions,
         hca_details: undefined, // TODO: Fetch from HCA data
         pattern_book_cdc: patternBookData,

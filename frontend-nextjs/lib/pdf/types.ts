@@ -56,6 +56,26 @@ export interface PropertyContext {
     terrestrial_biodiversity_map?: number | string;
   };
 
+  // Environmental Constraints (from NSW Planning Portal + environmental datasets)
+  environmental_constraints?: {
+    flood_prone: boolean;
+    bushfire_prone: boolean;
+    acid_sulfate_soils?: string;       // e.g., "Class 5"
+    anef_zone: boolean;
+    anef_level?: number;
+    anef_code?: string;
+    mine_subsidence: boolean;
+    mine_subsidence_district?: string;
+    landslide_risk: boolean;
+    contaminated_land: boolean;
+    contaminated_site_name?: string;
+    contaminated_site_distance?: number;
+    drinking_water_catchment: boolean;
+    terrestrial_biodiversity: boolean;
+    coastal_management: boolean;
+    coastal_zones?: string[];
+  };
+
   // Additional Local Provisions (clause 6.x items)
   additional_local_provisions?: string[];  // e.g., ["Clause 6.1: Acid sulfate soils", "Clause 6.2: Earthworks"]
 

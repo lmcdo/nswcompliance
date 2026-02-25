@@ -73,7 +73,7 @@ export function ContextSection({
 }: ContextSectionProps) {
   const { pathway, reason } = determineDevelopmentPathway(property);
   const zoneDisplay = property.zone || 'Unknown';
-  const { lot_dimensions, lep_controls, planning_portal_layers, additional_local_provisions } = property;
+  const { lot_dimensions, lep_controls, planning_portal_layers, additional_local_provisions, environmental_constraints } = property;
 
   return (
     <View>
@@ -226,6 +226,76 @@ export function ContextSection({
           </View>
         )}
       </View>
+
+      {/* Environmental Constraints */}
+      {environmental_constraints && (
+        <View style={{ ...styles.section, marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>Environmental Constraints</Text>
+
+          <View style={styles.dataTable}>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Flood Prone Land:</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.flood_prone ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Bushfire Prone Land:</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.bushfire_prone ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Acid Sulfate Soils:</Text>
+              <Text style={styles.tableCellValue}>
+                {environmental_constraints.acid_sulfate_soils
+                  ? `${environmental_constraints.acid_sulfate_soils} — LEP Clause 6.1: acid sulfate soils management plan may be required`
+                  : 'No'}
+              </Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Aircraft Noise (ANEF):</Text>
+              <Text style={styles.tableCellValue}>
+                {environmental_constraints.anef_zone
+                  ? `Yes — ANEF ${environmental_constraints.anef_level ?? ''}${environmental_constraints.anef_code ? ` (${environmental_constraints.anef_code})` : ''}`
+                  : 'No'}
+              </Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Mine Subsidence:</Text>
+              <Text style={styles.tableCellValue}>
+                {environmental_constraints.mine_subsidence
+                  ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
+                  : 'No'}
+              </Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Landslide Risk:</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.landslide_risk ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Contaminated Land:</Text>
+              <Text style={styles.tableCellValue}>
+                {environmental_constraints.contaminated_land
+                  ? `Yes — Notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}`
+                  : 'No known sites within 500m'}
+              </Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Drinking Water Catchment:</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.drinking_water_catchment ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Terrestrial Biodiversity:</Text>
+              <Text style={styles.tableCellValue}>{environmental_constraints.terrestrial_biodiversity ? 'Yes' : 'No'}</Text>
+            </View>
+            <View style={styles.contextTableRow}>
+              <Text style={styles.tableCellLabel}>Coastal Management:</Text>
+              <Text style={styles.tableCellValue}>
+                {environmental_constraints.coastal_management
+                  ? `Yes${environmental_constraints.coastal_zones?.length ? ` — ${environmental_constraints.coastal_zones.join(', ')}` : ''}`
+                  : 'No'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* SEPP Status */}
       <View style={{ ...styles.section, marginTop: 8 }}>
