@@ -248,11 +248,11 @@ export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: Pr
      </CardHeader>
      {!isCardCollapsed && (
      <CardContent className="space-y-2">
-       {/* Property Compliance Info at top */}
+       {/* Property Summary */}
        <div className="border-b pb-3 mb-2">
          <p className="font-medium text-gray-900 text-sm mb-1">{propertyData.address}</p>
          <p className="text-xs text-gray-600">
-           {propertyData.constraints?.lga || 'Unknown'} LGA | {propertyData.constraints?.zone || 'Unknown'} | {propertyData.constraints?.maxHeight ? `${propertyData.constraints.maxHeight}m` : 'No height'} | {propertyData.constraints?.maxFsr ? `${propertyData.constraints.maxFsr}:1` : 'No FSR'} | Heritage: {propertyData.heritage?.isHeritage ? 'Yes' : 'No'} | Flood: {propertyData.constraints?.floodProne ? 'Yes' : 'No'} | {propertyData.constraints?.basixWater || 'N/A'} Water SEPP
+           {propertyData.constraints?.lga || 'Unknown'} LGA
          </p>
        </div>
 
