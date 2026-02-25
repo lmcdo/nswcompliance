@@ -218,27 +218,35 @@ export function LepControls({
             </div>
 
             {/* Acid Sulfate Soils */}
-            {constraints?.acidSulfateSoils && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <FlaskConical className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium">Acid Sulfate Soils</span>
-                </div>
-                <div className="text-lg font-bold text-purple-900">
-                  Class {constraints.acidSulfateSoils}
-                </div>
+            <div className={`border rounded-lg p-3 ${
+              constraints?.acidSulfateSoils
+                ? 'bg-purple-50 border-purple-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <FlaskConical className={`h-4 w-4 ${constraints?.acidSulfateSoils ? 'text-purple-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Acid Sulfate Soils</span>
+              </div>
+              <div className={`text-lg font-bold ${constraints?.acidSulfateSoils ? 'text-purple-900' : 'text-gray-500'}`}>
+                {constraints?.acidSulfateSoils ? `Class ${constraints.acidSulfateSoils}` : 'No'}
+              </div>
+              {constraints?.acidSulfateSoils && (
                 <p className="text-xs text-purple-700 mt-1">
                   LEP Clause 6.1 - Acid sulfate soils management plan may be required
                 </p>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Aircraft Noise (ANEF) */}
-            {propertyData?.anefData?.inAnefZone && (
-              <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 md:col-span-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Plane className="h-4 w-4 text-sky-700" />
-                  <span className="text-sm font-semibold text-sky-900">Aircraft Noise Exposure Forecast (ANEF)</span>
+            <div className={`border rounded-lg p-3 md:col-span-2 ${
+              propertyData?.anefData?.inAnefZone
+                ? 'bg-sky-50 border-sky-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Plane className={`h-4 w-4 ${propertyData?.anefData?.inAnefZone ? 'text-sky-700' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Aircraft Noise (ANEF)</span>
+                {propertyData?.anefData?.inAnefZone && (
                   <Badge className={`text-xs ${
                     propertyData.anefData.anefLevel && propertyData.anefData.anefLevel >= 25
                       ? 'bg-orange-100 text-orange-800 border-orange-300'
@@ -246,8 +254,13 @@ export function LepControls({
                   }`}>
                     ANEF {propertyData.anefData.anefLevel}
                   </Badge>
-                </div>
-                <div className="text-xs text-sky-800 space-y-1">
+                )}
+              </div>
+              <div className={`text-lg font-bold ${propertyData?.anefData?.inAnefZone ? 'text-sky-900' : 'text-gray-500'}`}>
+                {propertyData?.anefData?.inAnefZone ? 'Yes' : 'No'}
+              </div>
+              {propertyData?.anefData?.inAnefZone && (
+                <div className="text-xs text-sky-800 space-y-1 mt-2">
                   <p>
                     <span className="font-medium">{propertyData.anefData.airport?.name}</span>
                     {propertyData.anefData.airport?.version && (
@@ -277,62 +290,83 @@ export function LepControls({
                     Aircraft noise controls apply - acoustic design requirements may be triggered
                   </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Mine Subsidence */}
-            {constraints?.mineSubsidence?.inDistrict && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="h-4 w-4 text-indigo-600" />
-                  <span className="text-sm font-medium">Mine Subsidence</span>
-                </div>
-                <div className="text-lg font-bold text-indigo-900">
-                  {constraints.mineSubsidence.districtName || 'Mine Subsidence District'}
-                </div>
-                <p className="text-xs text-indigo-700 mt-1">
-                  Property is within a mine subsidence district - Subsidence Advisory NSW may require approval
-                </p>
-                {constraints.mineSubsidence.lastUpdate && (
-                  <p className="text-xs text-indigo-600 mt-1">
-                    Last updated: {new Date(constraints.mineSubsidence.lastUpdate).toLocaleDateString()}
-                  </p>
-                )}
+            <div className={`border rounded-lg p-3 ${
+              constraints?.mineSubsidence?.inDistrict
+                ? 'bg-indigo-50 border-indigo-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className={`h-4 w-4 ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Mine Subsidence</span>
               </div>
-            )}
+              <div className={`text-lg font-bold ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-900' : 'text-gray-500'}`}>
+                {constraints?.mineSubsidence?.inDistrict ? (constraints.mineSubsidence.districtName || 'Yes') : 'No'}
+              </div>
+              {constraints?.mineSubsidence?.inDistrict && (
+                <>
+                  <p className="text-xs text-indigo-700 mt-1">
+                    Subsidence Advisory NSW may require approval
+                  </p>
+                  {constraints.mineSubsidence.lastUpdate && (
+                    <p className="text-xs text-indigo-600 mt-1">
+                      Last updated: {new Date(constraints.mineSubsidence.lastUpdate).toLocaleDateString()}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Landslide Risk */}
-            {constraints?.landslideRisk?.hasRisk && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="h-4 w-4 text-amber-600" />
-                  <span className="text-sm font-medium">Landslide Risk</span>
-                </div>
-                <div className="text-lg font-bold text-amber-900">
-                  Identified Risk Area
-                </div>
-                <p className="text-xs text-amber-700 mt-1">
-                  LEP Part 6 - Geotechnical assessment may be required for development
-                </p>
-                {constraints.landslideRisk.epiName && (
-                  <p className="text-xs text-amber-600 mt-1">
-                    {constraints.landslideRisk.epiName}
-                  </p>
-                )}
+            <div className={`border rounded-lg p-3 ${
+              constraints?.landslideRisk?.hasRisk
+                ? 'bg-amber-50 border-amber-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className={`h-4 w-4 ${constraints?.landslideRisk?.hasRisk ? 'text-amber-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Landslide Risk</span>
               </div>
-            )}
+              <div className={`text-lg font-bold ${constraints?.landslideRisk?.hasRisk ? 'text-amber-900' : 'text-gray-500'}`}>
+                {constraints?.landslideRisk?.hasRisk ? 'Yes' : 'No'}
+              </div>
+              {constraints?.landslideRisk?.hasRisk && (
+                <>
+                  <p className="text-xs text-amber-700 mt-1">
+                    LEP Part 6 - Geotechnical assessment may be required
+                  </p>
+                  {constraints.landslideRisk.epiName && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {constraints.landslideRisk.epiName}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Contaminated Land */}
-            {constraints?.contaminatedLand?.hasNotifiedSites && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 md:col-span-2">
-                <div className="flex items-center gap-2 mb-1">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <span className="text-sm font-medium">Contaminated Land Nearby</span>
+            <div className={`border rounded-lg p-3 md:col-span-2 ${
+              constraints?.contaminatedLand?.hasNotifiedSites
+                ? 'bg-red-50 border-red-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <MapPin className={`h-4 w-4 ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Contaminated Land</span>
+                {constraints?.contaminatedLand?.hasNotifiedSites && (
                   <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
                     {constraints.contaminatedLand.nearestSite?.distance}m away
                   </Badge>
-                </div>
-                <div className="text-xs text-red-800 space-y-1">
+                )}
+              </div>
+              <div className={`text-lg font-bold ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-900' : 'text-gray-500'}`}>
+                {constraints?.contaminatedLand?.hasNotifiedSites ? 'Yes - Nearby Site' : 'No known sites within 500m'}
+              </div>
+              {constraints?.contaminatedLand?.hasNotifiedSites && (
+                <div className="text-xs text-red-800 space-y-1 mt-2">
                   {constraints.contaminatedLand.nearestSite?.name && (
                     <p className="font-medium">{constraints.contaminatedLand.nearestSite.name}</p>
                   )}
@@ -350,76 +384,96 @@ export function LepControls({
                     </p>
                   )}
                   <p className="text-xs text-red-700 mt-2 italic">
-                    EPA notified site - contamination assessment may be required for development
+                    EPA notified site - contamination assessment may be required
                   </p>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
             {/* Drinking Water Catchment */}
-            {constraints?.drinkingWaterCatchment?.inCatchment && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Droplets className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Drinking Water Catchment</span>
-                </div>
-                <div className="text-lg font-bold text-blue-900">
-                  Protected Area
-                </div>
-                <p className="text-xs text-blue-700 mt-1">
-                  SEPP (Sydney Drinking Water Catchment) 2011 - Additional development controls apply
-                </p>
-                {constraints.drinkingWaterCatchment.epiName && (
-                  <p className="text-xs text-blue-600 mt-1">
-                    {constraints.drinkingWaterCatchment.epiName}
-                  </p>
-                )}
+            <div className={`border rounded-lg p-3 ${
+              constraints?.drinkingWaterCatchment?.inCatchment
+                ? 'bg-blue-50 border-blue-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Droplets className={`h-4 w-4 ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Drinking Water Catchment</span>
               </div>
-            )}
+              <div className={`text-lg font-bold ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-900' : 'text-gray-500'}`}>
+                {constraints?.drinkingWaterCatchment?.inCatchment ? 'Yes' : 'No'}
+              </div>
+              {constraints?.drinkingWaterCatchment?.inCatchment && (
+                <>
+                  <p className="text-xs text-blue-700 mt-1">
+                    SEPP (Sydney Drinking Water Catchment) 2011 applies
+                  </p>
+                  {constraints.drinkingWaterCatchment.epiName && (
+                    <p className="text-xs text-blue-600 mt-1">
+                      {constraints.drinkingWaterCatchment.epiName}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Terrestrial Biodiversity */}
-            {constraints?.terrestrialBiodiversity?.inBiodiversityArea && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <TreePine className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">Terrestrial Biodiversity</span>
-                </div>
-                <div className="text-lg font-bold text-green-900">
-                  Biodiversity Area
-                </div>
-                <p className="text-xs text-green-700 mt-1">
-                  LEP Part 6 - Biodiversity assessment required for development, vegetation clearing restricted
-                </p>
-                {constraints.terrestrialBiodiversity.epiName && (
-                  <p className="text-xs text-green-600 mt-1">
-                    {constraints.terrestrialBiodiversity.epiName}
-                  </p>
-                )}
+            <div className={`border rounded-lg p-3 ${
+              constraints?.terrestrialBiodiversity?.inBiodiversityArea
+                ? 'bg-green-50 border-green-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <TreePine className={`h-4 w-4 ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Terrestrial Biodiversity</span>
               </div>
-            )}
+              <div className={`text-lg font-bold ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-900' : 'text-gray-500'}`}>
+                {constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'Yes' : 'No'}
+              </div>
+              {constraints?.terrestrialBiodiversity?.inBiodiversityArea && (
+                <>
+                  <p className="text-xs text-green-700 mt-1">
+                    LEP Part 6 - Biodiversity assessment required
+                  </p>
+                  {constraints.terrestrialBiodiversity.epiName && (
+                    <p className="text-xs text-green-600 mt-1">
+                      {constraints.terrestrialBiodiversity.epiName}
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
 
             {/* Coastal Environment */}
-            {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0 && (
-              <div className="bg-cyan-50 border border-cyan-200 rounded-lg p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <Waves className="h-4 w-4 text-cyan-600" />
-                  <span className="text-sm font-medium">Coastal Management Area</span>
-                </div>
-                <div className="text-lg font-bold text-cyan-900">
-                  {constraints.coastalEnvironment.zones.length} Zone{constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}
-                </div>
-                <p className="text-xs text-cyan-700 mt-1">
-                  Coastal Management SEPP 2018 - Special development controls apply
-                </p>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {constraints.coastalEnvironment.zones.map((zone, i) => (
-                    <Badge key={i} className="text-xs bg-cyan-100 text-cyan-800 border-cyan-300">
-                      {zone}
-                    </Badge>
-                  ))}
-                </div>
+            <div className={`border rounded-lg p-3 ${
+              constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0
+                ? 'bg-cyan-50 border-cyan-200'
+                : 'bg-white border-blue-100'
+            }`}>
+              <div className="flex items-center gap-2 mb-1">
+                <Waves className={`h-4 w-4 ${constraints?.coastalEnvironment?.inCoastalArea ? 'text-cyan-600' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">Coastal Management</span>
               </div>
-            )}
+              <div className={`text-lg font-bold ${constraints?.coastalEnvironment?.inCoastalArea ? 'text-cyan-900' : 'text-gray-500'}`}>
+                {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0
+                  ? `${constraints.coastalEnvironment.zones.length} Zone${constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}`
+                  : 'No'}
+              </div>
+              {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0 && (
+                <>
+                  <p className="text-xs text-cyan-700 mt-1">
+                    Coastal Management SEPP 2018 applies
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {constraints.coastalEnvironment.zones.map((zone, i) => (
+                      <Badge key={i} className="text-xs bg-cyan-100 text-cyan-800 border-cyan-300">
+                        {zone}
+                      </Badge>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
 
           {/* Link to Planning Portal */}
