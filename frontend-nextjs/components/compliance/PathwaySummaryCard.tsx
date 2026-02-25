@@ -54,6 +54,29 @@ export function PathwaySummaryCard({
         </div>
       </CardHeader>
       <CardContent>
+        {/* Fastest Pathway Highlight */}
+        {(patternBookStatus === 'ELIGIBLE' || exemptComplyingCount > 0) && (
+          <div className="bg-green-50 border-2 border-green-500 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <CheckCircle className="h-6 w-6 text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="font-semibold text-green-900 text-base mb-1">
+                  ✓ Fast-Track Available
+                </div>
+                <div className="text-sm text-green-800">
+                  {fastestPathway}
+                </div>
+                <div className="text-xs text-green-700 mt-1">
+                  {patternBookStatus === 'ELIGIBLE'
+                    ? 'Pre-approved designs with 10-day processing'
+                    : `${exemptComplyingCount} work ${exemptComplyingCount === 1 ? 'type' : 'types'} eligible for streamlined approval`
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
 
           {/* Pattern Book CDC */}
@@ -117,13 +140,9 @@ export function PathwaySummaryCard({
 
         </div>
 
-        {/* Summary recommendation */}
+        {/* Summary */}
         <div className="mt-3 pt-3 border-t border-blue-100">
-          <p className="text-xs text-gray-600">
-            <span className="font-medium text-blue-900">Fastest pathway: </span>
-            {fastestPathway}
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500">
             PlotDetect analyzed all approval pathways and compliance requirements for this property
           </p>
         </div>

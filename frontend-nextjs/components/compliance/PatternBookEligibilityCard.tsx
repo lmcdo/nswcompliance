@@ -233,8 +233,9 @@ export function PatternBookEligibilityCard({
         );
         setTransformedExclusions(transformed);
 
-        // Auto-expand if INELIGIBLE (professionals need to see blockers)
-        setExpanded(eligibilityData.status === 'INELIGIBLE' || eligibilityData.status === 'CONDITIONAL');
+        // Auto-collapse when INELIGIBLE to reduce visual clutter (users can expand if needed)
+        // Auto-expand if CONDITIONAL (needs user attention) or ELIGIBLE (celebrate!)
+        setExpanded(eligibilityData.status === 'CONDITIONAL' || eligibilityData.status === 'ELIGIBLE');
       } catch (err) {
         console.error('Pattern Book eligibility check failed:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -331,6 +332,17 @@ export function PatternBookEligibilityCard({
                 'Property is not eligible for Pattern Book CDC pathway - Development Application (DA) required'
               }
             </p>
+
+            {/* Show primary reason when collapsed and ineligible */}
+            {!expanded && isIneligible && eligibility.reasons && eligibility.reasons.length > 0 && (
+              <div className="text-xs text-red-700 ml-8 flex items-center gap-2">
+                <span className="font-medium">Reason:</span>
+                <span>{eligibility.reasons[0]}</span>
+                {eligibility.reasons.length > 1 && (
+                  <span className="text-red-600">+{eligibility.reasons.length - 1} more</span>
+                )}
+              </div>
+            )}
           </div>
         </CardHeader>
 

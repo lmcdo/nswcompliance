@@ -244,18 +244,31 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
 
           {/* Footer */}
           <div className="mt-4 pt-3 border-t border-purple-100 space-y-3">
-            {/* Workflow guidance */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <p className="text-xs font-medium text-amber-900 mb-2">
-                ⚠️ Complying Development Compliance Pathway
+            {/* Next Steps Checklist */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-xs font-medium text-blue-900 mb-2">
+                ✓ How to Use Complying Development
               </p>
-              <ol className="text-xs text-amber-800 space-y-1 ml-4 list-decimal">
-                <li>Verify all {partName} standards above are met</li>
-                <li>Check <strong>LEP tab</strong> confirms the proposed use is permitted in this zone</li>
-                <li>Check <strong>DCP tab</strong> for additional local controls that may apply</li>
-              </ol>
-              <p className="text-xs text-amber-700 mt-2 italic">
-                Meeting E&C standards alone does not guarantee approval. LEP and DCP controls also apply.
+              <div className="text-xs text-blue-800 space-y-2">
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 font-mono mt-0.5">☐</span>
+                  <span>Review all {partName} standards above for your work type</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 font-mono mt-0.5">☐</span>
+                  <span>Check <strong>LEP tab</strong> confirms your use is permitted in this zone</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 font-mono mt-0.5">☐</span>
+                  <span>Review <strong>DCP tab</strong> for additional local height/setback rules</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <span className="text-blue-500 font-mono mt-0.5">☐</span>
+                  <span>Engage a private certifier to lodge CDC application</span>
+                </div>
+              </div>
+              <p className="text-xs text-blue-700 mt-2">
+                All three requirements (SEPP + LEP + DCP) must be satisfied for Complying Development.
               </p>
             </div>
 
