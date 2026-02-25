@@ -53,8 +53,26 @@ export interface PlanningConstraints {
  heritageSignificance?: string;
  heritageLegislationUrl?: string;
  floodProne: boolean;
+ floodInfo?: {
+   name?: string;
+   blockType?: string;
+   blockStartDate?: string;
+ } | null;
  bushfireProne: boolean;
+ bushfireCategory?: string | null;
  acidSulfateSoils?: string;
+ mineSubsidence?: {
+   inDistrict: boolean;
+   districtName?: string;
+   lastUpdate?: string;
+ } | null;
+ landslideRisk?: {
+   hasRisk: boolean;
+   epiName?: string;
+   lgaName?: string;
+   layClass?: string;
+   epiType?: string;
+ } | null;
  basixClimate: string | null;
  basixWater: string | null;
 
@@ -931,17 +949,41 @@ export class NSWPlanningPortalService {
  let todLayers: PlanningLayer[] = [];
  let roadClassifications: any[] = [];
  let anefData: AnefInfo | null = null;
+ let floodData: any = null;
+ let bushfireData: any = null;
+ let mineSubsidenceData: any = null;
+ let landslideData: any = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
 
-   [todLayers, roadClassifications, anefData] = await Promise.all([
+   [todLayers, roadClassifications, anefData, floodData, bushfireData, mineSubsidenceData, landslideData] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
      fetch(`/api/environmental/anef?lat=${lat}&lon=${lon}`)
        .then(res => res.ok ? res.json() : null)
        .then(result => result?.success ? result.data : null)
+       .catch(() => null),
+     // Flood data
+     fetch(`https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/Flood/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=Name,BlockType,BlockStartDate&returnGeometry=false&f=json`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
+       .catch(() => null),
+     // Bushfire data
+     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Fire/BFPL/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
+       .catch(() => null),
+     // Mine subsidence data
+     fetch(`https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query?f=json&geometry=${JSON.stringify({x: lon, y: lat, spatialReference: {wkid: 4326}})}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=districtname,lastupdate&returnGeometry=false`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
+       .catch(() => null),
+     // Landslide risk data
+     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Hazard/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME,LAY_CLASS,EPI_TYPE&returnGeometry=false&f=json&inSR=4283`)
+       .then(res => res.json())
+       .then(data => data.features?.[0]?.attributes || null)
        .catch(() => null)
    ]);
  }
@@ -952,6 +994,36 @@ export class NSWPlanningPortalService {
 
  const allLayers = [...layers, ...todLayers];
  const constraints = this.extractPlanningConstraints(allLayers, address);
+
+ // Add environmental constraint data
+ if (floodData) {
+   constraints.floodProne = true;
+   constraints.floodInfo = {
+     name: floodData.Name,
+     blockType: floodData.BlockType,
+     blockStartDate: floodData.BlockStartDate
+   };
+ }
+ if (bushfireData) {
+   constraints.bushfireProne = true;
+   constraints.bushfireCategory = bushfireData.Category || bushfireData.TYPE || null;
+ }
+ if (mineSubsidenceData) {
+   constraints.mineSubsidence = {
+     inDistrict: true,
+     districtName: mineSubsidenceData.districtname,
+     lastUpdate: mineSubsidenceData.lastupdate
+   };
+ }
+ if (landslideData) {
+   constraints.landslideRisk = {
+     hasRisk: true,
+     epiName: landslideData.EPI_NAME,
+     lgaName: landslideData.LGA_NAME,
+     layClass: landslideData.LAY_CLASS,
+     epiType: landslideData.EPI_TYPE
+   };
+ }
 
  // Step 4: Clean up the address from search result
  // Hunter Street Lewisham has incorrect "8-12" in addresses - remove it

@@ -176,9 +176,17 @@ export function LepControls({
                 {constraints?.floodProne ? 'Yes' : 'No'}
               </div>
               {constraints?.floodProne && (
-                <p className="text-xs text-amber-700 mt-1">
-                  LEP Clause 5.21 - Additional controls apply
-                </p>
+                <>
+                  <p className="text-xs text-amber-700 mt-1">
+                    LEP Clause 5.21 - Additional controls apply
+                  </p>
+                  {constraints.floodInfo && (
+                    <p className="text-xs text-amber-600 mt-1">
+                      {constraints.floodInfo.blockType}
+                      {constraints.floodInfo.name && ` - ${constraints.floodInfo.name}`}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -196,9 +204,16 @@ export function LepControls({
                 {constraints?.bushfireProne ? 'Yes' : 'No'}
               </div>
               {constraints?.bushfireProne && (
-                <p className="text-xs text-orange-700 mt-1">
-                  LEP Clause 5.17 - Bushfire protection measures required
-                </p>
+                <>
+                  <p className="text-xs text-orange-700 mt-1">
+                    LEP Clause 5.17 - Bushfire protection measures required
+                  </p>
+                  {constraints.bushfireCategory && (
+                    <p className="text-xs text-orange-600 mt-1">
+                      Category: {constraints.bushfireCategory}
+                    </p>
+                  )}
+                </>
               )}
             </div>
 
@@ -262,6 +277,48 @@ export function LepControls({
                     Aircraft noise controls apply - acoustic design requirements may be triggered
                   </p>
                 </div>
+              </div>
+            )}
+
+            {/* Mine Subsidence */}
+            {constraints?.mineSubsidence?.inDistrict && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-indigo-600" />
+                  <span className="text-sm font-medium">Mine Subsidence</span>
+                </div>
+                <div className="text-lg font-bold text-indigo-900">
+                  {constraints.mineSubsidence.districtName || 'Mine Subsidence District'}
+                </div>
+                <p className="text-xs text-indigo-700 mt-1">
+                  Property is within a mine subsidence district - Subsidence Advisory NSW may require approval
+                </p>
+                {constraints.mineSubsidence.lastUpdate && (
+                  <p className="text-xs text-indigo-600 mt-1">
+                    Last updated: {new Date(constraints.mineSubsidence.lastUpdate).toLocaleDateString()}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Landslide Risk */}
+            {constraints?.landslideRisk?.hasRisk && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <span className="text-sm font-medium">Landslide Risk</span>
+                </div>
+                <div className="text-lg font-bold text-amber-900">
+                  Identified Risk Area
+                </div>
+                <p className="text-xs text-amber-700 mt-1">
+                  LEP Part 6 - Geotechnical assessment may be required for development
+                </p>
+                {constraints.landslideRisk.epiName && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    {constraints.landslideRisk.epiName}
+                  </p>
+                )}
               </div>
             )}
           </div>
