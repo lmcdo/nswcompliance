@@ -6,7 +6,7 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane } from 'lucide-react';
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
@@ -16,6 +16,7 @@ interface LepControlsProps {
 }
 
 export function LepControls({
+  propertyData,
   planningLayers,
   constraints,
   formerCouncil
@@ -214,6 +215,53 @@ export function LepControls({
                 <p className="text-xs text-purple-700 mt-1">
                   LEP Clause 6.1 - Acid sulfate soils management plan may be required
                 </p>
+              </div>
+            )}
+
+            {/* Aircraft Noise (ANEF) */}
+            {propertyData?.anefData?.inAnefZone && (
+              <div className="bg-sky-50 border border-sky-200 rounded-lg p-3 md:col-span-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Plane className="h-4 w-4 text-sky-700" />
+                  <span className="text-sm font-semibold text-sky-900">Aircraft Noise Exposure Forecast (ANEF)</span>
+                  <Badge className={`text-xs ${
+                    propertyData.anefData.anefLevel && propertyData.anefData.anefLevel >= 25
+                      ? 'bg-orange-100 text-orange-800 border-orange-300'
+                      : 'bg-sky-100 text-sky-800 border-sky-300'
+                  }`}>
+                    ANEF {propertyData.anefData.anefLevel}
+                  </Badge>
+                </div>
+                <div className="text-xs text-sky-800 space-y-1">
+                  <p>
+                    <span className="font-medium">{propertyData.anefData.airport?.name}</span>
+                    {propertyData.anefData.airport?.version && (
+                      <span className="text-sky-600 ml-1">({propertyData.anefData.airport.version})</span>
+                    )}
+                  </p>
+                  {propertyData.anefData.buildingAcceptability && (
+                    <div className="mt-2 pt-2 border-t border-sky-200">
+                      <p className="font-medium mb-1">Building Acceptability (AS2021:2015):</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {propertyData.anefData.buildingAcceptability
+                          .filter((b: any) => b.buildingType === 'house' || b.buildingType === 'commercial')
+                          .map((b: any) => (
+                            <div key={b.buildingType} className="flex items-center gap-1">
+                              <span className={`w-2 h-2 rounded-full ${
+                                b.status === 'acceptable' ? 'bg-green-500' :
+                                b.status === 'conditional' ? 'bg-amber-500' : 'bg-red-500'
+                              }`} />
+                              <span className="truncate">{b.displayName.split(',')[0]}: {b.status}</span>
+                            </div>
+                          ))
+                        }
+                      </div>
+                    </div>
+                  )}
+                  <p className="text-xs text-sky-700 mt-2 italic">
+                    Aircraft noise controls apply - acoustic design requirements may be triggered
+                  </p>
+                </div>
               </div>
             )}
           </div>

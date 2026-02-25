@@ -407,6 +407,7 @@ export default function AssessmentPage() {
                   <div role="tabpanel" id="panel-lep" aria-labelledby="tab-lep">
                     <ErrorBoundary fallbackTitle="Error loading LEP provisions">
                       <LepControls
+                        propertyData={selectedProperty}
                         planningLayers={selectedProperty.planningLayers || []}
                         constraints={selectedProperty.constraints}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
