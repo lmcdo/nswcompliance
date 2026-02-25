@@ -62,7 +62,7 @@ export default function QuickGuidePage() {
               <Building2 className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-amber-900 text-sm">LEP (Local Environmental Plan)</div>
-                <div className="text-xs text-amber-700 mt-0.5">Council zones and limits: Height, FSR, Land Use Permissibility</div>
+                <div className="text-xs text-amber-700 mt-0.5">Council zones and limits: Height, FSR, Land Use Permissibility, Environmental Constraints (Flood, Bushfire, ANEF, Mine Subsidence, Landslide, Contaminated Land, Water Catchment, Biodiversity, Coastal, Acid Sulfate)</div>
               </div>
             </div>
             {/* DCP Layer */}

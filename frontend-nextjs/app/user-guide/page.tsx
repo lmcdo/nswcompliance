@@ -129,6 +129,7 @@ export default function UserGuidePage() {
                       <li>Zone classification (R2, B4, etc.)</li>
                       <li>Height and FSR limits</li>
                       <li>Heritage conservation area status</li>
+                      <li>Environmental constraints (flood, bushfire, ANEF, mine subsidence, landslide, contaminated land, water catchment, biodiversity, coastal, acid sulfate)</li>
                       <li>Former council area (for amalgamated councils)</li>
                     </ul>
                   </div>
@@ -266,7 +267,7 @@ export default function UserGuidePage() {
                     <li><strong>FSR limits:</strong> Maximum floor space ratio (e.g., 0.5:1 means 500m² floor space on 1000m² lot)</li>
                     <li><strong>Land use table:</strong> What uses are permitted, prohibited, or require consent in this zone</li>
                     <li><strong>Heritage Conservation Areas:</strong> HCA boundaries and objectives for heritage properties</li>
-                    <li><strong>Special provisions:</strong> Flood controls, foreshore setbacks, acid sulfate soil restrictions</li>
+                    <li><strong>Environmental Constraints:</strong> Flood planning area, bushfire prone land, aircraft noise (ANEF), mine subsidence district, landslide risk, contaminated land register, drinking water catchment, terrestrial biodiversity, coastal management areas, acid sulfate soils</li>
                   </ul>
                 </div>
 

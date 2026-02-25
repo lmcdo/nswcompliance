@@ -413,9 +413,31 @@ export class ReportGenerator {
  }
 
  static async generateFindings(config: ReportConfig, sectionId: string): Promise<any> {
+ // Extract environmental constraints from property data
+ const constraints = config.property_data?.constraints || {};
+ const anefData = config.property_data?.anefData || null;
+
+ const environmentalConstraints = {
+ flood: constraints.floodPlanning ? 'Yes - Property is within flood planning area' : 'No',
+ bushfire: constraints.bushfireProne ? 'Yes - Property is bushfire prone land' : 'No',
+ acidSulfate: constraints.acidSulfateSoils ? `Yes - Class ${constraints.acidSulfateSoils}` : 'No',
+ anef: anefData?.inAnefZone ? `Yes - ANEF ${anefData.anefLevel} (${anefData.anefCode || 'N/A'})` : 'No',
+ mineSubsidence: constraints.mineSubsidenceDistrict ? `Yes - ${constraints.mineSubsidenceDistrict}` : 'No',
+ landslide: constraints.landslideRisk?.hasRisk ? 'Yes - Landslide risk identified' : 'No',
+ contaminatedLand: constraints.contaminatedLand?.hasNotifiedSites
+ ? `Yes - Notified site within 500m${constraints.contaminatedLand.nearestSite?.name ? ': ' + constraints.contaminatedLand.nearestSite.name : ''}`
+ : 'No known sites within 500m',
+ drinkingWater: constraints.drinkingWaterCatchment?.inCatchment ? 'Yes - Within drinking water catchment' : 'No',
+ biodiversity: constraints.terrestrialBiodiversity?.inBiodiversityArea ? 'Yes - Within terrestrial biodiversity area' : 'No',
+ coastal: constraints.coastalEnvironment?.inCoastalArea
+ ? `Yes - ${constraints.coastalEnvironment.zones?.length || 0} coastal management zone${(constraints.coastalEnvironment.zones?.length || 0) > 1 ? 's' : ''}`
+ : 'No'
+ };
+
  return {
  title: 'Assessment Findings',
  property_details: config.property_data,
+ environmental_constraints: environmentalConstraints,
  compliance_summary: config.compliance_data?.summary || {
  total_provisions: 0,
  compliant: 0,
@@ -525,22 +547,57 @@ export class ReportExporter {
  }
 
  static generateHTMLContent(content: any, options: ReportExportOptions): string {
- const sections = Object.values(content.sections).map((section: any) =>
- `<section class="report-section">
+ const sections = Object.values(content.sections).map((section: any) => {
+ // Special handling for environmental constraints section
+ if (section.environmental_constraints) {
+ const constraintsList = Object.entries(section.environmental_constraints)
+ .map(([key, value]) => {
+ const label = key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1');
+ const status = String(value).toLowerCase().includes('yes') ? 'constraint-yes' : 'constraint-no';
+ return `<div class="${status}"><strong>${label}:</strong> ${value}</div>`;
+ })
+ .join('\n');
+
+ return `<section class="report-section">
+ <h2>${section.title}</h2>
+ <div class="section-content">
+ ${section.property_details ? `
+ <h3>Property Details</h3>
+ <p><strong>Address:</strong> ${section.property_details.address || 'N/A'}</p>
+ <p><strong>Zone:</strong> ${section.property_details.constraints?.zone || 'N/A'}</p>
+ <p><strong>LGA:</strong> ${section.property_details.constraints?.lga || 'N/A'}</p>
+ ` : ''}
+ <h3 style="margin-top: 20px;">Environmental Constraints</h3>
+ <div class="constraints-grid">
+ ${constraintsList}
+ </div>
+ </div>
+ </section>`;
+ }
+
+ return `<section class="report-section">
  <h2>${section.title}</h2>
  <div class="section-content">${JSON.stringify(section, null, 2)}</div>
- </section>`
- ).join('\n');
+ </section>`;
+ }).join('\n');
 
  return `<!DOCTYPE html>
 <html>
 <head>
  <title>NSW Compliance Report</title>
  <style>
- body { font-family: Inter, sans-serif; margin: 40px; }
+ body { font-family: Inter, sans-serif; margin: 40px; max-width: 1200px; }
  .report-section { margin-bottom: 30px; page-break-inside: avoid; }
- h2 { color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 10px; }
+ h2 { color: #1e40af; border-bottom: 2px solid #1e40af; padding-bottom: 10px; margin-top: 30px; }
+ h3 { color: #334155; margin-top: 20px; margin-bottom: 10px; }
  .section-content { margin-top: 15px; }
+ .constraints-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+ .constraints-grid > div { padding: 10px; border-radius: 6px; font-size: 14px; }
+ .constraint-yes { background-color: #fef3c7; border-left: 4px solid #f59e0b; }
+ .constraint-no { background-color: #f0f9ff; border-left: 4px solid #0ea5e9; }
+ @media print {
+ .constraints-grid { page-break-inside: avoid; }
+ }
  </style>
 </head>
 <body>
