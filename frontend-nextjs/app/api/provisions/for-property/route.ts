@@ -83,6 +83,22 @@ function normalizePrecinctId(precinctId: string): string {
 }
 
 /**
+ * Strip OCR page-header prefix from Marrickville provision text.
+ *
+ * Marrickville DCP PDFs were OCR'd with running page headers captured alongside
+ * provision content. The header format is:
+ *   "PART N:  PART NAME \nPAGE_NUM \nMarrickville Development Control Plan 2011 \n"
+ * This prefix is not provision content and must be removed before display.
+ */
+const MARRICKVILLE_OCR_HEADER = /^PART \d+:\s+[^\n]+\n\d+\s*\n(?:\s*Marrickville[^\n]*\n)?(?:\s*\n)*/;
+
+function stripOcrHeaderPrefix(text: string | null): string | null {
+  if (!text) return text;
+  const cleaned = text.replace(MARRICKVILLE_OCR_HEADER, '').trim();
+  return cleaned || text; // never blank out a provision
+}
+
+/**
  * Dev type hierarchy for granular filtering (WITHOUT 'ALL' tag).
  * Generic provisions (tagged 'ALL') come from Layer 1 (v2_dcp_layer='generic'),
  * not from dev_type matching. This prevents 85% of provisions matching everything.
@@ -580,6 +596,15 @@ async function queryHeritageByHca(
   sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT 500`;
 
   const result = await client.query(sql, params);
+
+  // Strip OCR page-header prefix from Marrickville provisions before returning
+  if (filters.former_council?.toLowerCase() === 'marrickville') {
+    return result.rows.map((row: any) => ({
+      ...row,
+      provision_text: stripOcrHeaderPrefix(row.provision_text),
+    }));
+  }
+
   return result.rows;
 }
 
@@ -906,6 +931,15 @@ async function queryLayer(
   }
 
   const result = await client.query(sql, params);
+
+  // Strip OCR page-header prefix from Marrickville provisions before returning
+  if (filters.former_council?.toLowerCase() === 'marrickville') {
+    return result.rows.map((row: any) => ({
+      ...row,
+      provision_text: stripOcrHeaderPrefix(row.provision_text),
+    }));
+  }
+
   return result.rows;
 }
 
