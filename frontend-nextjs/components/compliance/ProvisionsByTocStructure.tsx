@@ -1135,9 +1135,10 @@ export function ProvisionsByTocStructure({
         const metadataKeys = ['Legislative Clause', 'legislationUrl', 'EPI Name', 'Amendment', 'Commenced Date',
                              'Published Date', 'Currency Date', 'LGA Name', 'Units', 'title', 'OBJECTID',
                              'Shape', 'Shape_Length', 'Shape_Area', 'GlobalID'];
+        const valuesToSkip = ['LEP', 'SEPP', ''];
         for (const key of Object.keys(result)) {
           const value = result[key];
-          if (!metadataKeys.includes(key) && value != null && value !== '') return String(value);
+          if (!metadataKeys.includes(key) && value != null && !valuesToSkip.includes(String(value))) return String(value);
         }
         return undefined;
       };

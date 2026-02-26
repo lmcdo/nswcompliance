@@ -1,7 +1,7 @@
 // SEE PDF Document — deterministic scaffold, 100% data-driven
 // No AI, no hardcoded LGA names, no hardcoded zone lists beyond domain logic
 
-import { Document, Page, Text, View } from '@react-pdf/renderer';
+import { Document, Page, Text, View, Link } from '@react-pdf/renderer';
 import { SEEDocumentData } from '@/lib/see/types';
 import { ProvisionForPDF } from '@/lib/pdf/types';
 import { ProvisionTable } from './ProvisionTable';
@@ -15,6 +15,20 @@ import { groupProvisionsByTopic } from '@/lib/pdf/formatProvisions';
 function capitalizeFirst(str: string): string {
   if (!str) return str;
   return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/** Returns true if value looks like a bare number (not already including a unit label) */
+function isNumeric(value: string | number | undefined): boolean {
+  if (value === undefined || value === null) return false;
+  return /^\d+(\.\d+)?$/.test(String(value).trim());
+}
+
+/** Extract URL and display text from an HTML anchor string, e.g. <a href="...">Label</a> */
+function parseHtmlLink(value: string): { text: string; url?: string } {
+  const urlMatch = value.match(/href="([^"]+)"/);
+  const textMatch = value.match(/>([^<]+)</);
+  const text = textMatch?.[1]?.trim() || value.replace(/<[^>]*>/g, '').trim() || value;
+  return { text, url: urlMatch?.[1] };
 }
 
 /**
@@ -346,10 +360,20 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 <DataRow label="Land Zoning Map:" value={String(planning_portal_layers.land_zoning_map)} />
               )}
               {planning_portal_layers.height_map !== undefined && (
-                <DataRow label="Height of Buildings:" value={`${planning_portal_layers.height_map}m`} />
+                <DataRow
+                  label="Height of Buildings:"
+                  value={isNumeric(planning_portal_layers.height_map)
+                    ? `${planning_portal_layers.height_map}m`
+                    : String(planning_portal_layers.height_map)}
+                />
               )}
               {planning_portal_layers.fsr_map !== undefined && planning_portal_layers.fsr_map !== null && (
-                <DataRow label="Floor Space Ratio:" value={`${planning_portal_layers.fsr_map}:1`} />
+                <DataRow
+                  label="Floor Space Ratio:"
+                  value={isNumeric(planning_portal_layers.fsr_map)
+                    ? `${planning_portal_layers.fsr_map}:1`
+                    : String(planning_portal_layers.fsr_map)}
+                />
               )}
               {planning_portal_layers.heritage_map !== undefined && (
                 <DataRow label="Heritage Map:" value={String(planning_portal_layers.heritage_map)} />
@@ -357,9 +381,23 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               {planning_portal_layers.acid_sulfate_soils_map !== undefined && (
                 <DataRow label="Acid Sulfate Soils Map:" value={String(planning_portal_layers.acid_sulfate_soils_map)} />
               )}
-              {planning_portal_layers.regional_plan_boundary !== undefined && (
-                <DataRow label="Regional Plan Boundary:" value={String(planning_portal_layers.regional_plan_boundary)} />
-              )}
+              {planning_portal_layers.regional_plan_boundary !== undefined && (() => {
+                const raw = String(planning_portal_layers.regional_plan_boundary);
+                const hasHtml = raw.includes('<');
+                const { text, url } = hasHtml ? parseHtmlLink(raw) : { text: raw, url: undefined };
+                return (
+                  <View style={styles.contextTableRow}>
+                    <Text style={styles.tableCellLabel}>Regional Plan Boundary:</Text>
+                    {url ? (
+                      <Link src={url} style={{ ...styles.tableCellValue, color: '#0c4a6e', textDecoration: 'underline' }}>
+                        {text}
+                      </Link>
+                    ) : (
+                      <Text style={styles.tableCellValue}>{text}</Text>
+                    )}
+                  </View>
+                );
+              })()}
               {planning_portal_layers.terrestrial_biodiversity_map !== undefined && (
                 <DataRow label="Terrestrial Biodiversity Map:" value={String(planning_portal_layers.terrestrial_biodiversity_map)} />
               )}
