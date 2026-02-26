@@ -12,6 +12,8 @@ interface UseDASessionReturn {
   isLoading: boolean;
   daResponses: Map<number, DaResponse>;
   refreshResponses: () => Promise<void>;
+  developmentDescription: string;
+  saveDescription: (text: string) => Promise<void>;
 }
 
 export function useDASession(
@@ -22,12 +24,17 @@ export function useDASession(
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [daResponses, setDaResponses] = useState<Map<number, DaResponse>>(new Map());
+  const [developmentDescription, setDevelopmentDescription] = useState<string>('');
 
   const loadResponses = useCallback(async (token: string) => {
     try {
       const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(token)}`);
       if (!res.ok) return;
       const data = await res.json();
+
+      // Load dev_type into description state
+      setDevelopmentDescription(data.session?.dev_type || '');
+
       const map = new Map<number, DaResponse>();
       for (const [provId, resp] of Object.entries(data.responses || {})) {
         map.set(Number(provId), resp as DaResponse);
@@ -43,6 +50,19 @@ export function useDASession(
       await loadResponses(sessionToken);
     }
   }, [sessionToken, loadResponses]);
+
+  const saveDescription = useCallback(async (text: string) => {
+    if (!sessionToken) return;
+    try {
+      await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dev_type: text || null }),
+      });
+    } catch (err) {
+      console.error('[useDASession] saveDescription error:', err);
+    }
+  }, [sessionToken]);
 
   useEffect(() => {
     if (!address) return;
@@ -81,5 +101,5 @@ export function useDASession(
     init();
   }, [address, formerCouncil, zone, loadResponses]);
 
-  return { sessionToken, isLoading, daResponses, refreshResponses };
+  return { sessionToken, isLoading, daResponses, refreshResponses, developmentDescription, saveDescription };
 }

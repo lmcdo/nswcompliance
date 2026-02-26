@@ -2,8 +2,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // POST /api/da-sessions — create or upsert a DA session
 // GET  /api/da-sessions?token=UUID — retrieve session with responses
+// PATCH /api/da-sessions?token=UUID — update dev_type
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -35,9 +38,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'token is required' }, { status: 400 });
     }
 
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(token)) {
+    if (!UUID_REGEX.test(token)) {
       return NextResponse.json({ error: 'invalid token format' }, { status: 400 });
     }
 
@@ -72,5 +73,31 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[DA Sessions] GET error:', error);
     return NextResponse.json({ error: 'Failed to retrieve session' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const token = request.nextUrl.searchParams.get('token');
+    if (!token) {
+      return NextResponse.json({ error: 'token is required' }, { status: 400 });
+    }
+
+    if (!UUID_REGEX.test(token)) {
+      return NextResponse.json({ error: 'invalid token format' }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { dev_type } = body;
+
+    await query(
+      `UPDATE da_sessions SET dev_type = $1 WHERE session_token = $2`,
+      [dev_type || null, token]
+    );
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('[DA Sessions] PATCH error:', error);
+    return NextResponse.json({ error: 'Failed to update session' }, { status: 500 });
   }
 }

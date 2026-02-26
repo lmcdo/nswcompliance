@@ -79,6 +79,9 @@ export interface PropertyContext {
   // Additional Local Provisions (clause 6.x items)
   additional_local_provisions?: string[];  // e.g., ["Clause 6.1: Acid sulfate soils", "Clause 6.2: Earthworks"]
 
+  // Development description (from DA session — user-entered)
+  development_description?: string;
+
   // Pattern Book CDC Eligibility
   pattern_book_cdc?: {
     status: 'ELIGIBLE' | 'CONDITIONAL' | 'INELIGIBLE';

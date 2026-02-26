@@ -8,7 +8,7 @@
  * - Right: Provisions for selected part/section
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
@@ -20,8 +20,9 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Shield, Search, X, Ruler, Download } from 'lucide-react';
 import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
-import { ProvisionReport } from '@/components/pdf';
+import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
+import { SEEDocumentData } from '@/lib/see/types';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
@@ -184,11 +185,31 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, daResponses, refreshResponses } = useDASession(
+  const { sessionToken, daResponses, refreshResponses, developmentDescription, saveDescription } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
   );
+
+  // Local state for development description textarea (syncs from session load)
+  const [devDescriptionLocal, setDevDescriptionLocal] = useState('');
+  const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync local state when session loads the persisted description
+  useEffect(() => {
+    if (developmentDescription) {
+      setDevDescriptionLocal(developmentDescription);
+    }
+  }, [developmentDescription]);
+
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setDevDescriptionLocal(text);
+    if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
+    descriptionDebounceTimer.current = setTimeout(() => {
+      saveDescription(text);
+    }, 800);
+  }, [saveDescription]);
 
   // Load responses when DA Mode activates
   useEffect(() => {
@@ -904,6 +925,7 @@ export function ProvisionsByTocStructure({
         hca_details: undefined, // TODO: Fetch from HCA data
         pattern_book_cdc: patternBookData,
         pathway_summary: pathwaySummary,
+        development_description: developmentDescription || undefined,
       };
 
       // Always export filtered provisions (respects layer, topic, and search filters)
@@ -1023,7 +1045,7 @@ export function ProvisionsByTocStructure({
           activeFilters={activeFilters}
           includeNonActionable={!noFiltersActive}
           isSeeMode={hasResponses}
-          devType={propertyData?.constraints?.devType}
+          devType={developmentDescription || undefined}
         />
       );
 
@@ -1052,6 +1074,157 @@ export function ProvisionsByTocStructure({
       console.error('Error details:', error instanceof Error ? error.message : String(error));
       console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
       alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
+    }
+  };
+
+  // SEE Draft export — uses SEEDocument with annotated provisions only
+  const handleExportSee = async () => {
+    try {
+      // Build provisionsForPdf (same pipeline as DCP export)
+      const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
+      const actualProvisions = filteredProvisions.filter((p: any) => !isTableOfContents(p.provision_text || ''));
+
+      const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any) => {
+        const pdfPage = p.pdf_page ? parseInt(String(p.pdf_page)) : undefined;
+        const pdfPrintedPage = p.pdf_printed_page ? parseInt(String(p.pdf_printed_page)) : pdfPage ?? 1;
+        const daResponse = daResponses?.get(p.id);
+        return {
+          id: p.id,
+          provision_text: sanitizeText(p.provision_text),
+          v2_marker: p.v2_marker || '',
+          v2_topic: p.v2_topic || '',
+          document_name: p.document_name || '',
+          v2_dcp_part: p.v2_dcp_part || '',
+          section_header: p.section_header,
+          pdf_page: pdfPage,
+          pdf_printed_page: pdfPrintedPage,
+          v2_is_actionable: p.v2_is_actionable,
+          zone_applicability: p.zone_applicability,
+          ref_number: p.ref_number,
+          ...(daResponse?.response_text && {
+            da_response: daResponse.response_text,
+            da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
+          }),
+        };
+      });
+
+      const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
+
+      // Build property context — same field paths as handleExportPdf (propertyData uses camelCase)
+      const nearbyRoads = propertyData?.nearbyRoads || [];
+      const isCornerLot = nearbyRoads.length >= 2;
+      const lotDimensions = (propertyData?.lotDimensions?.area || propertyData?.lotDimensions?.frontage) ? {
+        area: propertyData?.lotDimensions?.area,
+        frontage: propertyData?.lotDimensions?.frontage,
+        depth: propertyData?.lotDimensions?.depth,
+        is_corner: isCornerLot,
+        corner_roads: isCornerLot ? nearbyRoads.slice(0, 2).map((r: any) => r.road_name) : [],
+      } : undefined;
+
+      const lepControls = lepClauseData ? {
+        height: lepClauseData.height_limit || undefined,
+        fsr: lepClauseData.fsr || undefined,
+        acid_sulfate_soils: lepClauseData.acid_sulfate_soils || undefined,
+        permitted_uses: lepClauseData.permitted_uses || [],
+        prohibited_uses: lepClauseData.prohibited_uses || [],
+      } : undefined;
+
+      const getLayerValue = (results: any[] | undefined): string | undefined => {
+        if (!results?.[0]) return undefined;
+        const result = results[0];
+        const metadataKeys = ['Legislative Clause', 'legislationUrl', 'EPI Name', 'Amendment', 'Commenced Date',
+                             'Published Date', 'Currency Date', 'LGA Name', 'Units', 'title', 'OBJECTID',
+                             'Shape', 'Shape_Length', 'Shape_Area', 'GlobalID'];
+        for (const key of Object.keys(result)) {
+          const value = result[key];
+          if (!metadataKeys.includes(key) && value != null && value !== '') return String(value);
+        }
+        return undefined;
+      };
+
+      const planningPortalLayers = propertyData?.planningLayers ? {
+        heritage_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Heritage'))?.results),
+        fsr_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Floor Space'))?.results),
+        height_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Height'))?.results),
+        acid_sulfate_soils_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Acid Sulfate'))?.results),
+        regional_plan_boundary: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Regional Plan'))?.results),
+        land_zoning_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Zoning'))?.results),
+        tree_canopy_2022: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2022'))?.results),
+        terrestrial_biodiversity_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Biodiversity'))?.results),
+      } : undefined;
+
+      const envC = propertyData?.constraints;
+      const anef = propertyData?.anefData;
+      const environmentalConstraints = envC ? {
+        flood_prone: !!envC.floodProne,
+        bushfire_prone: !!envC.bushfireProne,
+        acid_sulfate_soils: envC.acidSulfateSoils || undefined,
+        anef_zone: !!anef?.inAnefZone,
+        anef_level: anef?.anefLevel,
+        anef_code: anef?.anefCode,
+        mine_subsidence: !!envC.mineSubsidence?.inDistrict,
+        mine_subsidence_district: envC.mineSubsidence?.districtName,
+        landslide_risk: !!envC.landslideRisk?.hasRisk,
+        contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
+        contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
+        contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
+        drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
+        terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
+        coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),
+        coastal_zones: envC.coastalEnvironment?.zones,
+      } : undefined;
+
+      const additionalLocalProvisions: string[] | undefined =
+        envC?.localProvisions && envC.localProvisions.length > 0
+          ? envC.localProvisions
+              .filter((p: any) => !p.isNearby)
+              .map((p: any) => {
+                const clause = p.clauseNumber ? `Clause ${p.clauseNumber}: ` : '';
+                const desc = p.description ? ` — ${p.description}` : '';
+                return `${clause}${p.title}${desc}`;
+              })
+          : undefined;
+
+      const propertyContext: PropertyContext = {
+        address: address || propertyData?.address || 'Property Address',
+        zone: zone || 'Unknown',
+        former_council: formerCouncil,
+        heritage_status: {
+          in_hca: heritage || false,
+          hca_name: hcaName,
+          hca_code: hcaCode || hcaName,
+          heritage_item: heritageItem,
+          item_name: heritageItemName,
+          item_number: heritageItemNumber,
+        },
+        lot_dimensions: lotDimensions,
+        lep_controls: lepControls,
+        planning_portal_layers: planningPortalLayers,
+        environmental_constraints: environmentalConstraints,
+        additional_local_provisions: additionalLocalProvisions,
+        development_description: devDescriptionLocal || undefined,
+      };
+
+      const seeData: SEEDocumentData = {
+        property: propertyContext,
+        development_description: devDescriptionLocal,
+        annotated_provisions: annotatedProvisions,
+        all_provisions: provisionsForPdf,
+        generated_date: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+      };
+
+      const doc = <SEEDocument data={seeData} />;
+      const blob = await pdf(doc).toBlob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const dateStr = new Date().toISOString().split('T')[0];
+      link.download = `Draft-SEE-${formerCouncil}-${dateStr}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('SEE export failed:', error);
+      alert(`Failed to generate SEE PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
     }
   };
 
@@ -1530,13 +1703,34 @@ export function ProvisionsByTocStructure({
         {/* Action Toolbar - Export */}
         {filteredProvisions.length > 0 && (
           <div className="px-4 py-3 border-b bg-gray-50">
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              Export PDF
-            </button>
+            {isDaMode ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-teal-300 text-teal-700 text-sm font-medium rounded-lg hover:bg-teal-50 transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  Export DCP Schedule
+                </button>
+                <button
+                  onClick={handleExportSee}
+                  disabled={!devDescriptionLocal.trim()}
+                  title={!devDescriptionLocal.trim() ? 'Add a development description above to enable' : 'Export Draft Statement of Environmental Effects'}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <FileText className="h-4 w-4" />
+                  Export SEE Draft
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowExportModal(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                Export PDF
+              </button>
+            )}
           </div>
         )}
 
@@ -1571,9 +1765,24 @@ export function ProvisionsByTocStructure({
           /> */}
 
           {isDaMode && (
-            <div className="mb-3 px-3 py-2 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-800 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" />
-              DA Mode — responses saved to your session
+            <div className="mb-3 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
+              <div className="px-3 py-2 flex items-center gap-2 text-xs text-teal-800">
+                <span className="w-2 h-2 rounded-full bg-teal-500 inline-block flex-shrink-0" />
+                <span className="font-medium">DA Mode</span>
+                <span className="text-teal-600">— responses saved to your session</span>
+              </div>
+              <div className="px-3 pb-3 border-t border-teal-100">
+                <label className="block text-xs font-medium text-teal-800 mb-1 mt-2">
+                  Describe the proposed development
+                </label>
+                <textarea
+                  value={devDescriptionLocal}
+                  onChange={handleDescriptionChange}
+                  placeholder="e.g. Two-storey rear extension to existing dwelling house"
+                  rows={2}
+                  className="w-full text-xs border border-teal-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
+                />
+              </div>
             </div>
           )}
 
