@@ -55,6 +55,7 @@ SECTION_PATTERNS = [
     ("numeric_1level",  r"^\d+\s+[A-Z]\S",              "1-level numeric",        "2 Generic Provisions"),
     ("alpha_3level",    r"^[A-Z]\d+\.\d+\.\d+\s+\S",   "alpha-prefixed 3-level", "C2.1.1 Objectives"),
     ("alpha_2level",    r"^[A-Z]\d+\.\d+\s+\S",         "alpha-prefixed 2-level", "C2.1 Building Form"),
+    ("alpha_code",      r"^[A-Z]\d{1,2}\s+[A-Z]\S",    "letter+number code",     "B1 Waste, C2 Residential"),
     ("part_alpha",      r"^Part\s+[A-Z]\b",             "Part + letter",          "Part C Section 1"),
     ("chapter_alpha",   r"^Chapter\s+[A-Z]\b",          "Chapter + letter",       "Chapter F Development Categories"),
     ("section_numeric", r"^Section\s+\d+\b",            "Section + number",       "Section 3.1 Heritage"),
@@ -129,18 +130,45 @@ TOC_PAGE_SIGNAL = re.compile(
     r"(table\s+of\s+contents|contents|index)\s*$",
     re.I | re.M,
 )
-# Matches "Section Title ........ 42" or "Section Title          42"
+# Single-line format: "Section Title ........ 42" or "Section Title          42"
 TOC_ENTRY_RE = re.compile(
     r"^(.{5,80}?)\s*\.{3,}\s*(\d+)\s*$|^(.{5,80}?)\s{4,}(\d+)\s*$",
     re.MULTILINE,
 )
 
+# Multi-line format: code on line 1, title on line 2, page on line 3
+#   B1\nWaste\n4  (only fires if pdfplumber actually splits them onto separate lines)
+MULTILINE_TOC_ENTRY_RE = re.compile(
+    r"^([A-Z]\d{1,2}(?:\.\d+)?|Part\s+[A-Z])\s*\n"
+    r"([A-Z][^\n]{4,79}?)\s*\n"
+    r"[ \t]*(\d+)[ \t]*(?:\n|$)",
+    re.MULTILINE,
+)
+
+# Inline alpha-code format: "B1 Waste 4" — code + title + page all on one line,
+# separated by single spaces (pdfplumber collapses leading/trailing whitespace).
+# Requires the line to START with an alpha-code (e.g. B1, A1, C2, B17).
+INLINE_TOC_CODE_RE = re.compile(
+    r"^([A-Z]\d{1,2}(?:\.\d+)?)\s+(.{3,70}?)\s+(\d+)\s*$",
+    re.MULTILINE,
+)
+
+# Part header format: "Part B General Provisions" — no page number.
+# Captured for layer classification only (tells us B = generic, C = residential, etc.)
+PART_HEADER_TOC_RE = re.compile(
+    r"^(Part\s+[A-Z])\s+([A-Z][^\n]{3,70}?)\s*$",
+    re.MULTILINE,
+)
+
 # ── Precinct name extraction ──────────────────────────────────────────────────
 
+# Precinct heading: must look like "Precinct 1: Lewisham North" or "E1 Bondi Junction Centre"
+# Requires a proper-noun-style name (starts uppercase, no lowercase run-on sentences)
 PRECINCT_HEADER_RE = re.compile(
-    r"(?:precinct|site[\s-]specific|key\s+site|character\s+area)"
-    r"\s*(?:\d+|[A-Z]\d*)?[:\s\u2013\-]+\s*([A-Z][^\n]{3,60})",
-    re.I,
+    r"(?:^|\n)"
+    r"(?:[A-Z]\d{1,2}\s+|(?:precinct|site[\s-]specific|key\s+site)\s*\d*\s*[:\-\u2013]\s*)"
+    r"([A-Z][A-Za-z ,'\-]{3,60}?)(?:\s*\n|\s{3,}|\Z)",
+    re.MULTILINE,
 )
 
 
@@ -325,17 +353,16 @@ def extract_toc(pdf, max_toc_pages: int = 20) -> list[dict]:
     Returns list of {title, page_number}.
     """
     entries: list[dict] = []
-    in_toc = False
 
+    # Apply both TOC patterns to all early pages unconditionally.
+    # The "TABLE OF CONTENTS" heading may appear AFTER the TOC content starts
+    # (e.g. Waverley: TOC content on page 2, heading on page 3), so we don't
+    # gate on finding the signal first. The patterns are tight enough to avoid
+    # significant false positives on body text.
     for page in pdf.pages[:max_toc_pages]:
         text = page.extract_text() or ""
 
-        if TOC_PAGE_SIGNAL.search(text):
-            in_toc = True
-
-        if not in_toc:
-            continue
-
+        # Pass 1: single-line entries ("Section Title ......... 42")
         for m in TOC_ENTRY_RE.finditer(text):
             title = (m.group(1) or m.group(3) or "").strip()
             page_num_str = m.group(2) or m.group(4)
@@ -345,8 +372,38 @@ def extract_toc(pdf, max_toc_pages: int = 20) -> list[dict]:
                     "page_number": int(page_num_str),
                 })
 
-        # Stop searching for TOC after it's clearly finished
-        if in_toc and len(entries) > 300:
+        # Pass 2: multi-line entries ("B1\nWaste\n4" — only if pdfplumber preserves newlines)
+        for m in MULTILINE_TOC_ENTRY_RE.finditer(text):
+            title = m.group(2).strip()
+            page_num_str = m.group(3)
+            if title and page_num_str and len(title) > 4:
+                entries.append({
+                    "title": title,
+                    "page_number": int(page_num_str),
+                })
+
+        # Pass 3: inline alpha-code entries ("B1 Waste 4" — pdfplumber collapses to one line)
+        for m in INLINE_TOC_CODE_RE.finditer(text):
+            title = m.group(2).strip()
+            page_num_str = m.group(3)
+            if title and page_num_str and len(title) > 3:
+                entries.append({
+                    "title": title,
+                    "page_number": int(page_num_str),
+                })
+
+        # Pass 4: Part headers without page numbers ("Part B General Provisions")
+        # These carry the section title used for layer classification even when the
+        # TOC row has no page number (common in Waverley-style DCPs).
+        for m in PART_HEADER_TOC_RE.finditer(text):
+            title = m.group(2).strip()
+            if title and len(title) > 3:
+                entries.append({
+                    "title": title,
+                    "page_number": 0,
+                })
+
+        if len(entries) > 300:
             break
 
     # Deduplicate by title
@@ -420,12 +477,17 @@ def detect_precincts(pdf, toc_entries: list[dict]) -> dict:
     ]
 
     # Scan document body for explicit precinct heading lines
+    # Reject matches that look like sentence fragments (contain lowercase runs or digits mid-word)
+    _sentence_fragment = re.compile(r"\b[a-z]{4,}\b.*\b[a-z]{4,}\b")
     names: list[str] = []
     for page in pdf.pages[:min(120, len(pdf.pages))]:
         text = page.extract_text() or ""
         for m in PRECINCT_HEADER_RE.finditer(text):
             name = m.group(1).strip().rstrip(".,;:")
-            if name and len(name) > 3:
+            if (name and len(name) > 3
+                    and not _sentence_fragment.search(name)
+                    and len(name.split()) <= 8         # precinct names are short
+                    and not name.isupper()):           # reject ALL-CAPS section headings
                 names.append(name)
         if len(names) > 150:
             break
