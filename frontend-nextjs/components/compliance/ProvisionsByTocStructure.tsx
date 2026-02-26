@@ -1354,6 +1354,32 @@ export function ProvisionsByTocStructure({
         </div>
       </div>
 
+      {/* DA Mode card — visible immediately above the provisions browser */}
+      {isDaMode && (
+        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
+          <div className="px-4 py-2.5 flex items-center gap-2 text-sm text-teal-800">
+            <span className="w-2 h-2 rounded-full bg-teal-500 inline-block flex-shrink-0" />
+            <span className="font-medium">DA Mode</span>
+            <span className="text-teal-600 text-xs">— compliance notes saved to your session</span>
+          </div>
+          <div className="px-4 pb-3 border-t border-teal-100">
+            <label className="block text-xs font-medium text-teal-800 mb-1 mt-2">
+              Describe the proposed development
+            </label>
+            <textarea
+              value={devDescriptionLocal}
+              onChange={handleDescriptionChange}
+              placeholder="e.g. Two-storey rear extension to existing dwelling house"
+              rows={2}
+              className="w-full text-sm border border-teal-200 rounded px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
+            />
+            {!devDescriptionLocal.trim() && (
+              <p className="text-xs text-amber-600 mt-1">Add a description to enable the SEE Draft export.</p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main two-panel layout */}
       <div className="flex border rounded-lg bg-white">
       {/* Left: TOC Sidebar - Only in structure mode */}
@@ -1763,28 +1789,6 @@ export function ProvisionsByTocStructure({
             }}
             results={complianceResults}
           /> */}
-
-          {isDaMode && (
-            <div className="mb-3 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
-              <div className="px-3 py-2 flex items-center gap-2 text-xs text-teal-800">
-                <span className="w-2 h-2 rounded-full bg-teal-500 inline-block flex-shrink-0" />
-                <span className="font-medium">DA Mode</span>
-                <span className="text-teal-600">— responses saved to your session</span>
-              </div>
-              <div className="px-3 pb-3 border-t border-teal-100">
-                <label className="block text-xs font-medium text-teal-800 mb-1 mt-2">
-                  Describe the proposed development
-                </label>
-                <textarea
-                  value={devDescriptionLocal}
-                  onChange={handleDescriptionChange}
-                  placeholder="e.g. Two-storey rear extension to existing dwelling house"
-                  rows={2}
-                  className="w-full text-xs border border-teal-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
-                />
-              </div>
-            </div>
-          )}
 
           {filteredProvisions.length > 0 ? (
             <PageGroupedProvisions provisionTheme="green"
