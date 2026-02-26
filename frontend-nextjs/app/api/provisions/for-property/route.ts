@@ -597,15 +597,13 @@ async function queryHeritageByHca(
 
   const result = await client.query(sql, params);
 
-  // Strip OCR page-header prefix from Marrickville provisions before returning
-  if (filters.former_council?.toLowerCase() === 'marrickville') {
-    return result.rows.map((row: any) => ({
-      ...row,
-      provision_text: stripOcrHeaderPrefix(row.provision_text),
-    }));
-  }
-
-  return result.rows;
+  // Strip OCR page-header prefix from all provisions (unconditional).
+  // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
+  // a no-op for any council that doesn't have this OCR artifact.
+  return result.rows.map((row: any) => ({
+    ...row,
+    provision_text: stripOcrHeaderPrefix(row.provision_text),
+  }));
 }
 
 /**
@@ -932,15 +930,13 @@ async function queryLayer(
 
   const result = await client.query(sql, params);
 
-  // Strip OCR page-header prefix from Marrickville provisions before returning
-  if (filters.former_council?.toLowerCase() === 'marrickville') {
-    return result.rows.map((row: any) => ({
-      ...row,
-      provision_text: stripOcrHeaderPrefix(row.provision_text),
-    }));
-  }
-
-  return result.rows;
+  // Strip OCR page-header prefix from all provisions (unconditional).
+  // The regex only matches the specific "PART N: ALL CAPS\nPAGE_NUM\n[council name]" pattern —
+  // a no-op for any council that doesn't have this OCR artifact.
+  return result.rows.map((row: any) => ({
+    ...row,
+    provision_text: stripOcrHeaderPrefix(row.provision_text),
+  }));
 }
 
 function groupByTopic(layers: LayerResult[]): Record<string, any[]> {
