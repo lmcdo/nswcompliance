@@ -13,6 +13,8 @@ interface DAResponseCaptureProps {
   sessionToken: string | null;
   existingResponse?: DaResponse;
   onSaved?: (response: DaResponse) => void;
+  /** When true: provision was auto-excluded by intake triage. Renders a locked badge instead of interactive controls. */
+  isLocked?: boolean;
 }
 
 const STATUS_OPTIONS = [
@@ -26,6 +28,7 @@ export function DAResponseCapture({
   sessionToken,
   existingResponse,
   onSaved,
+  isLocked = false,
 }: DAResponseCaptureProps) {
   const [responseText, setResponseText] = useState(existingResponse?.response_text || '');
   const [complianceStatus, setComplianceStatus] = useState<DaResponse['compliance_status']>(
@@ -81,6 +84,18 @@ export function DAResponseCapture({
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     save(responseText, newStatus);
   };
+
+  // Locked state: provision was auto-excluded by intake triage
+  if (isLocked) {
+    return (
+      <div className="mt-2 pt-2 border-t border-gray-100 bg-gray-50/60 rounded-b px-3 pb-2">
+        <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 border border-gray-200 rounded px-2 py-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block" />
+          N/A · set by intake
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="mt-2 pt-2 border-t border-teal-100 bg-teal-50/30 rounded-b px-3 pb-2">

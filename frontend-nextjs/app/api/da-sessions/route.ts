@@ -88,12 +88,25 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dev_type } = body;
+    const { dev_type, proposed_values } = body;
 
-    await query(
-      `UPDATE da_sessions SET dev_type = $1 WHERE session_token = $2`,
-      [dev_type || null, token]
-    );
+    // proposed_values must be a plain object if provided
+    const safeProposedValues =
+      proposed_values !== undefined && proposed_values !== null && typeof proposed_values === 'object' && !Array.isArray(proposed_values)
+        ? proposed_values
+        : undefined;
+
+    if (safeProposedValues !== undefined) {
+      await query(
+        `UPDATE da_sessions SET dev_type = $1, proposed_values = $2 WHERE session_token = $3`,
+        [dev_type || null, JSON.stringify(safeProposedValues), token]
+      );
+    } else {
+      await query(
+        `UPDATE da_sessions SET dev_type = $1 WHERE session_token = $2`,
+        [dev_type || null, token]
+      );
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

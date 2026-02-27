@@ -356,6 +356,76 @@ export default function QuickGuidePage() {
           </div>
         </div>
 
+        {/* DA Mode — Structured Intake & SEE Draft */}
+        <div className="bg-teal-50 border border-teal-300 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-teal-600 text-white px-4 py-3 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            <h2 className="text-base md:text-lg font-bold">DA Mode: Annotation &amp; SEE Draft</h2>
+            <span className="ml-auto bg-teal-700 px-2 py-0.5 rounded text-xs font-bold">NEW</span>
+          </div>
+          <div className="p-4 md:p-6">
+            <div className="bg-white border border-teal-200 rounded-lg p-3 mb-4">
+              <p className="text-xs md:text-sm text-teal-900">
+                <strong>For Standard DAs.</strong> Activate DA Mode in the DCP tab to annotate provisions
+                (Complies / Varies / N/A) and export a pre-populated Statement of Environmental Effects draft.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">1</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">DCP Tab → Enable DA Mode Toggle</div>
+                  <div className="text-xs text-gray-600 mt-1">Activates annotation controls on every provision. A structured intake dialog opens automatically on first activation.</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">2</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Answer 6 Factual Questions</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    Questions cover: new impervious surfaces, trees affected, pool or spa, new fencing,
+                    parking or driveway works, and signage. Provisions are only excluded when their trigger is
+                    factually impossible — answering “Don’t know” always keeps the provision included.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">3</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Review Auto-Triaged Provisions</div>
+                  <div className="text-xs text-gray-600 mt-1">Provisions whose topic trigger is impossible given your answers are locked as “N/A · set by intake” — no manual action needed.</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">4</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Annotate Remaining Provisions</div>
+                  <div className="text-xs text-gray-600 mt-1">For each remaining provision, select Complies / Varies / N/A and add a compliance note. Saves automatically as you work.</div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">5</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Export Statement of Environmental Effects</div>
+                  <div className="text-xs text-gray-600 mt-1">Click “Export SEE Draft” to generate a PDF with annotated provisions, compliance notes, and a cover page listing confirmed intake answers as the audit trail.</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 p-3 bg-teal-100 border border-teal-200 rounded-lg">
+              <p className="text-xs text-teal-900">
+                <strong>Audit trail:</strong> The SEE cover page records each confirmed intake answer.
+                Every N/A exclusion traces directly to a factual input — legally defensible, no guesswork.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Quick Reference Tips */}
         <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
           <h3 className="font-semibold text-teal-900 mb-3 text-sm flex items-center gap-2">

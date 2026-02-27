@@ -3,6 +3,7 @@
 
 import { Document, Page, Text, View, Link } from '@react-pdf/renderer';
 import { SEEDocumentData } from '@/lib/see/types';
+import { INTAKE_QUESTIONS, type IntakeAnswers } from '@/lib/see/intake';
 import { ProvisionForPDF } from '@/lib/pdf/types';
 import { ProvisionTable } from './ProvisionTable';
 import { styles } from './styles';
@@ -85,7 +86,7 @@ function DataRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 
 export function SEEDocument({ data }: { data: SEEDocumentData }) {
-  const { property, development_description, annotated_provisions, all_provisions, generated_date } = data;
+  const { property, development_description, annotated_provisions, all_provisions, generated_date, intake_answers } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -103,14 +104,20 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   // DCP Assessment buckets
   const variesProvisions = annotated_provisions.filter(p => p.da_status === 'varies');
   const compliesProvisions = annotated_provisions.filter(p => p.da_status === 'complies');
-  const naProvisions = annotated_provisions.filter(p => p.da_status === 'not_applicable');
+  const naAllProvisions = annotated_provisions.filter(p => p.da_status === 'not_applicable');
+
+  // Split N/A into intake-auto-excluded vs planner-assessed
+  const naIntakeProvisions = naAllProvisions.filter(p => p.da_response?.startsWith('Excluded by intake:'));
+  const naManualProvisions = naAllProvisions.filter(p => !p.da_response?.startsWith('Excluded by intake:'));
 
   const variesGroups = groupProvisionsByTopic(variesProvisions);
   const compliesGroups = groupProvisionsByTopic(compliesProvisions);
-  const naGroups = groupProvisionsByTopic(naProvisions);
+  const naManualGroups = groupProvisionsByTopic(naManualProvisions);
+  const naIntakeGroups = groupProvisionsByTopic(naIntakeProvisions);
 
   const annotatedCount = annotated_provisions.length;
   const totalCount = all_provisions.length;
+  const unannotatedCount = totalCount - annotatedCount;
 
   return (
     <Document>
@@ -196,6 +203,37 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             </Text>
           )}
         </View>
+
+        {/* ---- Proposal characteristics (intake answers audit trail) ---- */}
+        {intake_answers && (
+          <View style={{ backgroundColor: '#f0fdf4', border: '1pt solid #bbf7d0', padding: 10, marginBottom: 8 }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#166534', marginBottom: 6 }}>PROPOSAL CHARACTERISTICS — CONFIRMED INPUTS</Text>
+            <Text style={{ fontSize: 7, color: '#4b7a5a', marginBottom: 4, fontStyle: 'italic' }}>
+              Provisions were excluded from this schedule only where their applicability trigger was confirmed as absent below.
+            </Text>
+            {[
+              { key: 'new_impervious_surfaces', label: 'New impervious surfaces (deck, paving, extension)' },
+              { key: 'trees_affected', label: 'Trees affected or within works area' },
+              { key: 'pool_or_spa', label: 'Swimming pool or spa' },
+              { key: 'new_fencing', label: 'New or altered boundary fencing' },
+              { key: 'new_parking_or_driveway', label: 'New parking, carport or driveway' },
+              { key: 'new_signage', label: 'New or altered signage' },
+            ].map(item => (
+              <View key={item.key} style={{ flexDirection: 'row', marginBottom: 2 }}>
+                <Text style={{ fontSize: 8, color: '#374151', width: 200 }}>{item.label}</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold',
+                  color: intake_answers[item.key as keyof typeof intake_answers] === 'no' ? '#dc2626'
+                       : intake_answers[item.key as keyof typeof intake_answers] === 'yes' ? '#166534'
+                       : '#6b7280'
+                }}>
+                  {intake_answers[item.key as keyof typeof intake_answers] === 'yes' ? 'Yes'
+                   : intake_answers[item.key as keyof typeof intake_answers] === 'no' ? 'No — provisions excluded'
+                   : 'Unknown — provisions included'}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
@@ -424,27 +462,92 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           3. Development Control Plan Assessment
         </Text>
 
-        <Text style={{ fontSize: 9, color: '#4b5563', marginBottom: 12, lineHeight: 1.4 }}>
-          {`The following sections record the applicant's assessment of compliance with the applicable DCP provisions. ${annotatedCount} of ${totalCount} provisions have been annotated. Only annotated provisions are included in this assessment schedule.`}
-        </Text>
+        {/* ---- Assessment status summary ---- */}
+        <View style={{ border: '1pt solid #e5e7eb', marginBottom: 14 }}>
+          {/* Header row */}
+          <View style={{ backgroundColor: '#f3f4f6', flexDirection: 'row', borderBottom: '1pt solid #e5e7eb', padding: '4 8' }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Status</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Provisions</Text>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3, marginLeft: 8 }}>Notes</Text>
+          </View>
+          {/* Varies row */}
+          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: variesProvisions.length > 0 ? '#fffbeb' : '#ffffff' }}>
+            <Text style={{ fontSize: 8, color: '#d97706', fontFamily: 'Helvetica-Bold', flex: 2 }}>Requires attention (Varies)</Text>
+            <Text style={{ fontSize: 8, color: '#d97706', flex: 1, textAlign: 'right' }}>{variesProvisions.length}</Text>
+            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+              {variesProvisions.length > 0
+                ? 'Development may not fully comply — justification required. See section 3.1.'
+                : 'No provisions marked as Varies — either all assessed as compliant or not yet reviewed.'}
+            </Text>
+          </View>
+          {/* Complies row */}
+          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+            <Text style={{ fontSize: 8, color: '#15803d', fontFamily: 'Helvetica-Bold', flex: 2 }}>Complies</Text>
+            <Text style={{ fontSize: 8, color: '#15803d', flex: 1, textAlign: 'right' }}>{compliesProvisions.length}</Text>
+            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+              {compliesProvisions.length > 0
+                ? 'Assessed as compliant by the applicant. See section 3.2.'
+                : 'No provisions confirmed compliant — assessment may be incomplete.'}
+            </Text>
+          </View>
+          {/* N/A manual row */}
+          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+            <Text style={{ fontSize: 8, color: '#6b7280', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (planner)</Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', flex: 1, textAlign: 'right' }}>{naManualProvisions.length}</Text>
+            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+              {naManualProvisions.length > 0
+                ? 'Manually assessed as not applicable to this proposal. See section 3.3.'
+                : 'No provisions manually assessed as not applicable.'}
+            </Text>
+          </View>
+          {/* N/A intake row */}
+          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: '#f9fafb' }}>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (intake triage)</Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{naIntakeProvisions.length}</Text>
+            <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, marginLeft: 8 }}>
+              {naIntakeProvisions.length > 0
+                ? 'Auto-excluded: applicability trigger confirmed absent in intake. See section 3.4 and cover page.'
+                : intake_answers
+                  ? 'Structured intake was completed but no provisions were excluded by the answers provided.'
+                  : 'Structured intake was not completed — no automatic exclusions were applied.'}
+            </Text>
+          </View>
+          {/* Unannotated row */}
+          <View style={{ flexDirection: 'row', padding: '3 8', backgroundColor: unannotatedCount > 0 ? '#fef3c7' : '#f0fdf4' }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', flex: 2, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
+              {unannotatedCount > 0 ? '⚠ Not yet assessed' : '✓ Fully assessed'}
+            </Text>
+            <Text style={{ fontSize: 8, flex: 1, textAlign: 'right', color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>{unannotatedCount}</Text>
+            <Text style={{ fontSize: 7, flex: 3, marginLeft: 8, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
+              {unannotatedCount > 0
+                ? `${unannotatedCount} of ${totalCount} applicable provisions have not been annotated. This document is incomplete and must not be lodged until all provisions are addressed.`
+                : 'All applicable provisions have been assessed.'}
+            </Text>
+          </View>
+        </View>
 
         {/* ---- 3.1 Provisions Requiring Attention (varies) ---- */}
-        {variesGroups.length > 0 && (
+        {variesGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#d97706', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d97706' }}>
-              {`3.1 Provisions Requiring Attention (${variesProvisions.length})`}
+              {`3.1 Provisions Requiring Attention — Varies (${variesProvisions.length})`}
             </Text>
-            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 8, fontStyle: 'italic' }}>
-              These provisions have been marked as "varies" — the proposed development may not fully comply or requires further justification.
+            <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 8 }}>
+              These provisions have been identified as varying from the DCP standard. Each requires a planning response addressing how the variation is justified or will be resolved.
             </Text>
             {variesGroups.map((group, idx) => (
               <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
             ))}
           </View>
+        ) : (
+          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.1 Provisions Requiring Attention — Varies (0)</Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been marked as Varies.</Text>
+          </View>
         )}
 
         {/* ---- 3.2 Complying Provisions ---- */}
-        {compliesGroups.length > 0 && (
+        {compliesGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#15803d', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #15803d' }}>
               {`3.2 Complying Provisions (${compliesProvisions.length})`}
@@ -453,24 +556,53 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
             ))}
           </View>
-        )}
-
-        {/* ---- 3.3 Not Applicable Provisions ---- */}
-        {naGroups.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #9ca3af' }}>
-              {`3.3 Not Applicable Provisions (${naProvisions.length})`}
-            </Text>
-            {naGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
-            ))}
+        ) : (
+          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.2 Complying Provisions (0)</Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been confirmed as complying.</Text>
           </View>
         )}
 
-        {annotatedCount === 0 && (
-          <View style={{ backgroundColor: '#fef3c7', padding: 12, borderLeft: '3pt solid #f59e0b' }}>
-            <Text style={{ fontSize: 9, color: '#92400e' }}>
-              No provisions have been annotated. Use DA Mode in PlotDetect to annotate provisions before exporting the SEE.
+        {/* ---- 3.3 Not Applicable — Planner Assessment ---- */}
+        {naManualGroups.length > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #9ca3af' }}>
+              {`3.3 Not Applicable — Planner Assessment (${naManualProvisions.length})`}
+            </Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6 }}>
+              These provisions have been assessed by the applicant as not applicable to the proposed development.
+            </Text>
+            {naManualGroups.map((group, idx) => (
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+            ))}
+          </View>
+        ) : (
+          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.3 Not Applicable — Planner Assessment (0)</Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions were manually assessed as not applicable.</Text>
+          </View>
+        )}
+
+        {/* ---- 3.4 Not Applicable — Excluded by Intake Triage ---- */}
+        {naIntakeGroups.length > 0 ? (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
+              {`3.4 Not Applicable — Excluded by Intake Triage (${naIntakeProvisions.length})`}
+            </Text>
+            <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
+              These provisions were automatically excluded because their applicability trigger was confirmed as absent in the structured intake completed by the applicant. The confirmed inputs are recorded in the "PROPOSAL CHARACTERISTICS — CONFIRMED INPUTS" table on the cover page (page 1) of this document. A provision was only excluded when its trigger was factually impossible given the confirmed answers — answering "Unknown" retains the provision for manual assessment.
+            </Text>
+            {naIntakeGroups.map((group, idx) => (
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+            ))}
+          </View>
+        ) : (
+          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 2 }}>3.4 Not Applicable — Excluded by Intake Triage (0)</Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+              {intake_answers
+                ? 'Structured intake was completed. No provisions were automatically excluded by the answers provided — all provisions were retained for manual assessment.'
+                : 'Structured intake was not completed for this assessment. No automatic exclusions were applied.'}
             </Text>
           </View>
         )}
@@ -506,7 +638,14 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           <View style={styles.dataTable}>
             <DataRow label="Generated:" value={generated_date} />
             <DataRow label="Property:" value={property.address} />
-            <DataRow label="Provisions annotated:" value={`${annotatedCount} of ${totalCount} total`} />
+            <DataRow label="Total applicable provisions:" value={`${totalCount}`} />
+            <DataRow label="Annotated (Varies + Complies + N/A):" value={`${annotatedCount}`} />
+            <DataRow label="  — Requires attention (Varies):" value={`${variesProvisions.length}`} />
+            <DataRow label="  — Complies:" value={`${compliesProvisions.length}`} />
+            <DataRow label="  — Not applicable (planner):" value={`${naManualProvisions.length}`} />
+            <DataRow label="  — Not applicable (intake triage):" value={`${naIntakeProvisions.length}`} />
+            <DataRow label="Not yet assessed:" value={unannotatedCount > 0 ? `${unannotatedCount} — INCOMPLETE` : '0 — fully assessed'} />
+            <DataRow label="Structured intake:" value={intake_answers ? 'Completed' : 'Not completed — no automatic exclusions applied'} />
             <DataRow label="Development description:" value={development_description || '[Not provided]'} />
           </View>
         </View>

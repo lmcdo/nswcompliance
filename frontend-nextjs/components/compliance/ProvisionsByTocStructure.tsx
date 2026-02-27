@@ -26,6 +26,8 @@ import { SEEDocumentData } from '@/lib/see/types';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
+import { DAIntakeModal } from './DAIntakeModal';
+import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -185,11 +187,15 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, daResponses, refreshResponses, developmentDescription, saveDescription } = useDASession(
+  const { sessionToken, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
   );
+
+  // Intake modal state
+  const [showIntakeModal, setShowIntakeModal] = useState(false);
+  const [intakeSkipped, setIntakeSkipped] = useState(false);
 
   // Local state for development description textarea (syncs from session load)
   const [devDescriptionLocal, setDevDescriptionLocal] = useState('');
@@ -217,6 +223,20 @@ export function ProvisionsByTocStructure({
       refreshResponses();
     }
   }, [isDaMode, address, refreshResponses]);
+
+  // Show intake modal when DA mode first activates and no prior answers exist
+  useEffect(() => {
+    if (isDaMode && intakeAnswers === null && !intakeSkipped && sessionToken) {
+      setShowIntakeModal(true);
+    }
+  }, [isDaMode, intakeAnswers, intakeSkipped, sessionToken]);
+
+  // Compute excludable topics from intake answers
+  const excludableTopics = useMemo(() => {
+    if (!intakeAnswers) return new Set<string>();
+    return getExcludableTopics(intakeAnswers);
+  }, [intakeAnswers]);
+
 
   // Get council config
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
@@ -426,7 +446,32 @@ export function ProvisionsByTocStructure({
   }, [tocStructure]);
 
   // Base provisions - mode-aware: task mode shows all, structure mode shows selected
-  const baseProvisions = useMemo(() => {
+  const handleIntakeApply = useCallback(async (answers: IntakeAnswers) => {
+    await saveIntakeAnswers(answers);
+    const excludable = getExcludableTopics(answers);
+    const toExclude = allProvisions
+      .filter(prov => {
+        const t = normalizeTopicKey(prov.v2_topic);
+        return t && excludable.has(t);
+      })
+      .map(prov => ({
+        provision_id: prov.id,
+        compliance_status: 'not_applicable',
+        response_text: getTopicExclusionReason(normalizeTopicKey(prov.v2_topic)),
+      }));
+    if (toExclude.length > 0) {
+      await bulkSaveResponses(toExclude);
+      await refreshResponses();
+    }
+    setShowIntakeModal(false);
+  }, [allProvisions, saveIntakeAnswers, bulkSaveResponses, refreshResponses]);
+
+  const handleIntakeSkip = useCallback(() => {
+    setIntakeSkipped(true);
+    setShowIntakeModal(false);
+  }, []);
+
+    const baseProvisions = useMemo(() => {
     if (viewMode === 'task') {
       // Task mode: ALL provisions across all parts
       return allProvisions;
@@ -1212,6 +1257,7 @@ export function ProvisionsByTocStructure({
         annotated_provisions: annotatedProvisions,
         all_provisions: provisionsForPdf,
         generated_date: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
+        ...(intakeAnswers ? { intake_answers: intakeAnswers } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1231,6 +1277,14 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-0">
+      {/* Structured intake modal — appears when DA mode first activates */}
+      <DAIntakeModal
+        open={showIntakeModal}
+        onApply={handleIntakeApply}
+        onSkip={handleIntakeSkip}
+        provisions={allProvisions}
+      />
+
       {/* CONTEXT ZONE - Property-specific background information */}
       <div className="bg-gradient-to-b from-slate-50 to-slate-100/50 border-b-4 border-slate-300 pb-0 mb-8 space-y-3">
         {/* DCP Tab Intro Banner */}
@@ -1806,6 +1860,7 @@ export function ProvisionsByTocStructure({
               isDaMode={isDaMode}
               sessionToken={sessionToken}
               daResponses={daResponses}
+              excludableTopics={excludableTopics}
               // numericCheckValues={numericCheckValues} // TODO: Rework numeric checker feature
             />
           ) : (

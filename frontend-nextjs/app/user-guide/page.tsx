@@ -580,6 +580,69 @@ export default function UserGuidePage() {
                 </div>
               </div>
 
+              {/* DA Mode & SEE Drafting */}
+              <div className="bg-teal-50 border-l-4 border-teal-600 rounded-r-lg p-4 md:p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-teal-900 text-sm md:text-lg flex items-center gap-2">
+                    <span className="bg-teal-600 text-white px-2 py-0.5 rounded text-xs font-bold">DA MODE</span>
+                    DA Mode: Structured Intake &amp; SEE Draft
+                  </h3>
+                  <CheckCircle className="h-5 w-5 text-teal-600 flex-shrink-0" />
+                </div>
+
+                <div className="bg-white border border-teal-200 rounded-lg p-3 mb-4">
+                  <p className="text-xs md:text-sm text-teal-900">
+                    <strong>Annotate DCP provisions and export a Statement of Environmental Effects draft.</strong>{' '}
+                    Activate DA Mode in the DCP tab to record compliance status for each provision.
+                    A structured intake pre-triages inapplicable provisions automatically before annotation begins.
+                  </p>
+                </div>
+
+                <ol className="space-y-3 text-xs md:text-sm text-teal-900">
+                  <li className="flex gap-2 md:gap-3">
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">1</span>
+                    <div className="flex-1 min-w-0">
+                      <strong>DCP Tab &#8594; Enable DA Mode Toggle</strong>
+                      <p className="text-teal-700 mt-1">Annotation controls (Complies / Varies / N/A) appear on every provision. A structured intake dialog opens on first activation for this session.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2 md:gap-3">
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">2</span>
+                    <div className="flex-1 min-w-0">
+                      <strong>Complete the Structured Intake (6 Questions)</strong>
+                      <p className="text-teal-700 mt-1">Answer factual yes/no questions: new impervious surfaces, trees affected, pool or spa, new fencing, parking or driveway works, signage. A provision is only excluded when its trigger is factually impossible &#8212; answering &#8220;Don&#8217;t know&#8221; always keeps the provision included.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2 md:gap-3">
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">3</span>
+                    <div className="flex-1 min-w-0">
+                      <strong>Review Locked Provisions</strong>
+                      <p className="text-teal-700 mt-1">Provisions whose topic trigger is impossible given your answers (e.g., pool controls when no pool is proposed) are automatically set to &#8220;N/A &#183; set by intake&#8221; and locked. No manual action required for these.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2 md:gap-3">
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">4</span>
+                    <div className="flex-1 min-w-0">
+                      <strong>Annotate Remaining Provisions</strong>
+                      <p className="text-teal-700 mt-1">For each remaining provision, select Complies, Varies, or N/A and type a compliance note. All responses save automatically as you work. The session persists if you reload the page.</p>
+                    </div>
+                  </li>
+                  <li className="flex gap-2 md:gap-3">
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">5</span>
+                    <div className="flex-1 min-w-0">
+                      <strong>Export SEE Draft PDF</strong>
+                      <p className="text-teal-700 mt-1">Click &#8220;Export SEE Draft&#8221; to generate a Statement of Environmental Effects with annotated provisions, compliance notes, and a cover page listing confirmed intake answers. The cover page serves as the audit trail: every N/A exclusion traces to a confirmed factual input.</p>
+                    </div>
+                  </li>
+                </ol>
+
+                <div className="mt-4 p-3 bg-white border border-teal-200 rounded-lg">
+                  <p className="text-xs md:text-sm text-teal-900">
+                    <strong>Why structured intake?</strong> Free-text filtering by AI creates liability risk (false negatives). Structured intake only excludes provisions when their trigger is factually impossible &#8212; legally defensible, no interpretation required.
+                  </p>
+                </div>
+              </div>
+
             </div>
           )}
 
@@ -616,6 +679,10 @@ export default function UserGuidePage() {
                   <li className="flex gap-2">
                     <span className="text-teal-600 flex-shrink-0">✓</span>
                     <span><strong>Export for clients:</strong> Download PDF report with complete compliance checklist to send to clients</span>
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-teal-600 flex-shrink-0">✓</span>
+                    <span><strong>DA Mode &#8212; SEE drafting:</strong> Activate DA Mode in the DCP tab to annotate each provision (Complies / Varies / N/A). The structured intake pre-triages inapplicable provisions to N/A automatically. Export a Statement of Environmental Effects draft with confirmed intake answers recorded as an audit trail on the cover page</span>
                   </li>
                 </ul>
               </div>

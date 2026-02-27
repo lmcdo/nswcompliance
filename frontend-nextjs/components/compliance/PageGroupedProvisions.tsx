@@ -284,6 +284,8 @@ interface PageGroupedProvisionsProps {
   isDaMode?: boolean;
   sessionToken?: string | null;
   daResponses?: Map<number, { response_text: string | null; compliance_status: string | null }>;
+  /** Normalized v2_topic values that were auto-excluded by structured intake */
+  excludableTopics?: Set<string>;
   // Numeric compliance check
   numericCheckValues?: NumericCheckValues;
 }
@@ -467,6 +469,7 @@ export function PageGroupedProvisions({
   isDaMode = false,
   sessionToken,
   daResponses,
+  excludableTopics,
   numericCheckValues,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
@@ -874,6 +877,7 @@ export function PageGroupedProvisions({
                           provisionId={provision.id}
                           sessionToken={sessionToken ?? null}
                           existingResponse={daResponses?.get(provision.id) as any}
+                          isLocked={excludableTopics ? excludableTopics.has((provision.v2_topic || '').toLowerCase().replace(/ /g, '_')) : false}
                         />
                       )}
                     </div>

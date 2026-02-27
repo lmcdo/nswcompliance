@@ -1,6 +1,7 @@
 // SEE Document Types — deterministic, data-driven only
 
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
+import type { IntakeAnswers } from '@/lib/see/intake';
 
 export interface SEEDocumentData {
   property: PropertyContext;
@@ -8,4 +9,6 @@ export interface SEEDocumentData {
   annotated_provisions: ProvisionForPDF[];  // provisions with da_status set
   all_provisions: ProvisionForPDF[];
   generated_date: string;
+  /** Confirmed intake answers — used for the audit trail on the SEE cover page */
+  intake_answers?: IntakeAnswers;
 }
