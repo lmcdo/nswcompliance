@@ -23,7 +23,8 @@ jest.mock('next/router', () => ({
  },
 }))
 
-// Mock window.matchMedia
+// Mock window.matchMedia (guard for node test environment)
+if (typeof window !== 'undefined') {
 Object.defineProperty(window, 'matchMedia', {
  writable: true,
  value: jest.fn().mockImplementation(query => ({
@@ -37,6 +38,7 @@ Object.defineProperty(window, 'matchMedia', {
  dispatchEvent: jest.fn(),
  })),
 })
+} // end typeof window check
 
 // Mock localStorage
 const localStorageMock = {

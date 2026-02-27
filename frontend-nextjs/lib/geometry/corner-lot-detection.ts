@@ -8,8 +8,8 @@
  * that intersect at an angle of 135 degrees or less"
  *
  * API: NSW Land Parcel Property Theme - RoadCorridor layer
- * Uses a small buffer around the lot bounding box to find adjacent roads,
- * since road corridor polygons don't always touch lot boundaries exactly.
+ * Queries using the actual lot polygon so only roads genuinely touching
+ * the boundary are returned (envelope queries cause false positives).
  */
 
 import type { LotGeometry } from '@/types/property';
@@ -20,9 +20,6 @@ const NSW_SPATIAL_BASE = 'https://portal.spatial.nsw.gov.au/server/rest/services
 // Layer IDs
 const ROAD_CORRIDOR_LAYER = 5;
 
-// Buffer distance in meters for road detection
-// Road corridor polygons often don't touch lot boundaries exactly
-const ROAD_BUFFER_METERS = 10;
 
 export interface CornerLotResult {
   /** Whether lot is a corner lot (2+ adjacent roads) */
@@ -55,24 +52,17 @@ interface FeatureQueryResponse {
 }
 
 /**
- * Create a buffered envelope around the lot geometry for spatial query.
- * This accounts for small gaps between road corridors and lot boundaries.
+ * Serialize the lot polygon for spatial query.
+ * Uses the actual polygon shape (not a bounding box envelope) so that only
+ * roads genuinely touching the lot boundary are returned.
  */
-function createBufferedEnvelope(geometry: LotGeometry, bufferMeters: number): string {
-  const coords = geometry.rings[0];
-  const xs = coords.map(c => c[0]);
-  const ys = coords.map(c => c[1]);
-
-  const envelope = {
-    xmin: Math.min(...xs) - bufferMeters,
-    ymin: Math.min(...ys) - bufferMeters,
-    xmax: Math.max(...xs) + bufferMeters,
-    ymax: Math.max(...ys) + bufferMeters,
+function createPolygonGeometry(geometry: LotGeometry): string {
+  return JSON.stringify({
+    rings: geometry.rings,
     spatialReference: {
       wkid: geometry.spatialReference.wkid
     }
-  };
-  return JSON.stringify(envelope);
+  });
 }
 
 /**
@@ -90,14 +80,15 @@ export async function detectCornerLot(geometry: LotGeometry): Promise<CornerLotR
   }
 
   try {
-    // Build the spatial query URL with buffered envelope
-    // Using envelope + intersects instead of polygon + touches because
-    // road corridor polygons often have small gaps from lot boundaries
-    const envelopeJson = createBufferedEnvelope(geometry, ROAD_BUFFER_METERS);
+    // Build the spatial query URL using the actual lot polygon.
+    // Using the real polygon (not a bounding box envelope) ensures only roads
+    // genuinely touching the lot boundary are returned — envelope queries
+    // capture roads on the far side of the street and cause false positives.
+    const polygonJson = createPolygonGeometry(geometry);
 
     const queryParams = new URLSearchParams({
-      geometry: envelopeJson,
-      geometryType: 'esriGeometryEnvelope',
+      geometry: polygonJson,
+      geometryType: 'esriGeometryPolygon',
       spatialRel: 'esriSpatialRelIntersects',
       outFields: 'roadnamelabel,roadtype,cadid',
       returnGeometry: 'false',

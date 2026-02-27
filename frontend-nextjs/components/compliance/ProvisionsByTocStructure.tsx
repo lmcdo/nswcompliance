@@ -1007,9 +1007,9 @@ export function ProvisionsByTocStructure({
           v2_is_actionable: p.v2_is_actionable,
           zone_applicability: p.zone_applicability,
           ref_number: p.ref_number,
-          ...(daResponse?.response_text && {
-            da_response: daResponse.response_text,
+          ...(daResponse?.compliance_status && {
             da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
+            ...(daResponse.response_text && { da_response: daResponse.response_text }),
           }),
         };
       });
@@ -1101,9 +1101,9 @@ export function ProvisionsByTocStructure({
           v2_is_actionable: p.v2_is_actionable,
           zone_applicability: p.zone_applicability,
           ref_number: p.ref_number,
-          ...(daResponse?.response_text && {
-            da_response: daResponse.response_text,
+          ...(daResponse?.compliance_status && {
             da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
+            ...(daResponse.response_text && { da_response: daResponse.response_text }),
           }),
         };
       });
