@@ -121,6 +121,7 @@
 - `frontend-nextjs/app/assessment/README.md` - UI details
 - `docs/screencasts/INDEX.md` - Screencast scripts index
 - `docs/user-stories/` - User story documents
+- `docs/DCP_MONITORING.md` - DCP chapter PDF versioning & monitoring system (R2, dcp_chapter_registry, GitHub Actions)
 
 ## Deployment
 ```bash
