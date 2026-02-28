@@ -64,6 +64,7 @@ jobs:
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
+          set +e
           python scripts/r2_monitor.py ${{ steps.args.outputs.args }}
           echo "exit_code=$?" >> $GITHUB_OUTPUT
         # Exit code 2 = changes detected — not a failure, just informational
