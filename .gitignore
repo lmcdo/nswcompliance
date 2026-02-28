@@ -335,6 +335,7 @@ scripts/
 !scripts/r2_monitor.py
 !scripts/run_migration_007.py
 !scripts/check_registry.py
+!scripts/requirements-monitor.txt
 !scripts/validate_requirement_data.py
 !scripts/validate_pdf_coverage.py
 !scripts/README.md
