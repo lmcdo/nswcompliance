@@ -334,8 +334,11 @@ scripts/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
 !scripts/run_migration_007.py
+!scripts/run_migration_008.py
 !scripts/check_registry.py
 !scripts/requirements-monitor.txt
+!scripts/dcp_extract_changed.py
+!scripts/requirements-extract.txt
 !scripts/validate_requirement_data.py
 !scripts/validate_pdf_coverage.py
 !scripts/README.md

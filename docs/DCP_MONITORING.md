@@ -14,12 +14,17 @@ Weekly automated check: did any council DCP chapter PDF change since we last ext
 | File | Purpose |
 |------|---------|
 | `migrations/007_dcp_chapter_registry.sql` | DB table tracking each chapter's hash, R2 path, version label |
+| `migrations/008_extraction_columns.sql` | Adds `source_chapter_key`, `source_council`, `is_current` to `regulatory_provisions`; adds `last_extracted_at`, `last_extracted_version` to registry |
 | `scripts/r2_upload_pdfs.py` | One-time baseline upload — reads local `_origin.pdf` files, uploads to R2, populates registry |
 | `scripts/r2_monitor.py` | Weekly monitor — HEAD request + SHA check, uploads new version on change |
+| `scripts/dcp_extract_changed.py` | Extraction pipeline — downloads flagged chapters from R2, extracts with pdfplumber, soft-deletes old provisions, inserts new |
 | `scripts/check_registry.py` | Diagnostic — shows registry state (count by council, missing hashes) |
 | `scripts/run_migration_007.py` | Applies migration 007 via psycopg2 (psql not available on Windows) |
-| `scripts/requirements-monitor.txt` | pip deps for CI: boto3, psycopg2-binary, requests, python-dotenv |
-| `.github/workflows/dcp-monitor.yml` | GitHub Actions schedule + manual trigger |
+| `scripts/run_migration_008.py` | Applies migration 008 via psycopg2 |
+| `scripts/requirements-monitor.txt` | pip deps for CI monitor: boto3, psycopg2-binary, requests, python-dotenv |
+| `scripts/requirements-extract.txt` | pip deps for CI extraction: pdfplumber, psycopg2-binary, boto3, python-dotenv |
+| `.github/workflows/dcp-monitor.yml` | GitHub Actions schedule + manual trigger for monitor |
+| `.github/workflows/dcp-extract.yml` | GitHub Actions auto-trigger (after monitor) + manual trigger for extraction |
 
 ## R2 Bucket Structure
 
@@ -86,9 +91,76 @@ Fix (already applied): `set +e` before the python call in the "Run DCP monitor" 
 
 If >40% of chapters show changed in a single run, the monitor flags for human review rather than auto-uploading. This prevents false positives from council website restructures or CDN changes.
 
-## When a Chapter Changes
+## Automated Flow (End-to-End)
 
-1. Monitor uploads new PDF as `v1.N-{date}` to R2
-2. Sets `needs_extraction=TRUE` in `dcp_chapter_registry`
-3. Workflow exits 2 — "Changes detected" message in Actions log
-4. Manual action required: re-run extraction pipeline on flagged chapters
+```
+Monday 02:00 UTC
+  → dcp-monitor.yml (weekly schedule)
+    → r2_monitor.py
+      → detects change → uploads v1.N to R2 → sets needs_extraction=TRUE → exits 2
+  → dcp-extract.yml (workflow_run trigger fires on monitor completion)
+    → dcp_extract_changed.py
+      → queries needs_extraction=TRUE chapters
+      → for each chapter:
+          downloads PDF from R2
+          extracts sections with pdfplumber
+          [DB transaction]
+            UPDATE regulatory_provisions SET is_current=FALSE  (old provisions)
+            INSERT new provisions with source_chapter_key, source_council, is_current=TRUE
+            UPDATE dcp_chapter_registry SET needs_extraction=FALSE, last_extracted_at=NOW()
+          [commit]
+      → exits 2 (success) or 1 (all failed)
+```
+
+If no chapter has `needs_extraction=TRUE`, the extraction script exits 0 immediately (adds ~5 seconds to every Monday run).
+
+## Partial Failure Behaviour
+
+If chapter A succeeds and chapter B fails, A is committed with updated provisions. B rolls back — old provisions stay live, `needs_extraction` stays TRUE. The next monitor run (or manual trigger) retries B.
+
+## Extraction DB Columns
+
+Added by `migrations/008_extraction_columns.sql`:
+
+**`regulatory_provisions`**
+- `source_chapter_key` — matches `chapter_key` in `dcp_chapter_registry` (NULL for legacy provisions)
+- `source_council` — matches `council` in `dcp_chapter_registry` (NULL for legacy provisions)
+- `is_current` — FALSE for provisions superseded by a re-extraction (default TRUE)
+
+**`dcp_chapter_registry`**
+- `last_extracted_at` — timestamp of most recent successful extraction
+- `last_extracted_version` — R2 version label that was extracted (e.g. `v1.2-2026-03-01`)
+
+## Sanity Query
+
+After a chapter is re-extracted, verify soft-delete worked correctly:
+
+```sql
+SELECT source_council, source_chapter_key,
+  COUNT(*) FILTER (WHERE is_current)      AS current,
+  COUNT(*) FILTER (WHERE NOT is_current)  AS historical
+FROM regulatory_provisions
+WHERE source_chapter_key IS NOT NULL
+GROUP BY 1, 2
+ORDER BY 1, 2;
+```
+
+## Extraction Exit Codes
+
+| Code | Meaning | CI behaviour |
+|------|---------|-------------|
+| 0 | Nothing to extract | Green |
+| 1 | All chapters failed | Red (fails workflow) |
+| 2 | At least one chapter succeeded | Green (`continue-on-error: true`) |
+
+## Manual Extraction Trigger
+
+Go to: **Actions → DCP Chapter Extraction → Run workflow**
+
+Optional inputs:
+- `council` — filter to single council (blank = all flagged chapters)
+- `dry_run` — extract and report but no DB writes
+
+## Note: workflow_run Requires Default Branch
+
+`workflow_run` only fires when the calling workflow YAML (`dcp-extract.yml`) exists on the default branch (`main`). A new extraction workflow YAML on a feature branch will not auto-trigger.
