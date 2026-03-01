@@ -204,15 +204,6 @@ export function ProvisionsByTocStructure({
   const [devDescriptionLocal, setDevDescriptionLocal] = useState('');
   const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // On session load: populate devWorksText with any previously saved description.
-  // devType is left empty — user selects it to get the structured assembly.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (developmentDescription && !devWorksText) {
-      setDevWorksText(developmentDescription);
-      setDevDescriptionLocal(developmentDescription);
-    }
-  }, [developmentDescription]);
 
   const handleDevTypeChange = (newType: string) => {
     setDevType(newType);
