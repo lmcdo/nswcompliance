@@ -28,6 +28,7 @@ import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
+import { DEV_TYPE_OPTIONS, assembleDescription } from '@/lib/see/devTypes';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -197,25 +198,38 @@ export function ProvisionsByTocStructure({
   const [showIntakeModal, setShowIntakeModal] = useState(false);
   const [intakeSkipped, setIntakeSkipped] = useState(false);
 
-  // Local state for development description textarea (syncs from session load)
+  // Structured development description state
+  const [devType, setDevType] = useState<string>('');
+  const [devWorksText, setDevWorksText] = useState<string>('');
   const [devDescriptionLocal, setDevDescriptionLocal] = useState('');
   const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync local state when session loads the persisted description
+  // On session load: populate devWorksText with any previously saved description.
+  // devType is left empty — user selects it to get the structured assembly.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (developmentDescription) {
+    if (developmentDescription && !devWorksText) {
+      setDevWorksText(developmentDescription);
       setDevDescriptionLocal(developmentDescription);
     }
   }, [developmentDescription]);
 
-  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setDevDescriptionLocal(text);
+  const handleDevTypeChange = (newType: string) => {
+    setDevType(newType);
+    const assembled = assembleDescription(newType, devWorksText);
+    setDevDescriptionLocal(assembled);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
-    descriptionDebounceTimer.current = setTimeout(() => {
-      saveDescription(text);
-    }, 800);
-  }, [saveDescription]);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembled); }, 800);
+  };
+
+  const handleDevWorksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setDevWorksText(text);
+    const assembled = assembleDescription(devType, text);
+    setDevDescriptionLocal(assembled);
+    if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembled); }, 800);
+  };
 
   // Load responses when DA Mode activates
   useEffect(() => {
@@ -1423,21 +1437,52 @@ export function ProvisionsByTocStructure({
             <span className="font-medium">DA Mode</span>
             <span className="text-teal-600 text-xs">— compliance notes saved to your session</span>
           </div>
-          <div className="px-4 pb-3 border-t border-teal-100">
-            <label className="block text-xs font-medium text-teal-800 mb-1 mt-2">
-              Describe the proposed development
-            </label>
-            <textarea
-              value={devDescriptionLocal}
-              onChange={handleDescriptionChange}
-              placeholder="e.g. Two-storey rear extension to existing dwelling house"
-              rows={2}
-              className="w-full text-sm border border-teal-200 rounded px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
-            />
-            {!devDescriptionLocal.trim() && (
-              <p className="text-xs text-amber-600 mt-1">Add a description to enable the SEE Draft export.</p>
+
+          <div className="px-4 pb-3 border-t border-teal-100 space-y-2 mt-2">
+
+            {/* Development type */}
+            <div>
+              <label className="block text-xs font-medium text-teal-800 mb-1">
+                Development type <span className="text-red-400">*</span>
+              </label>
+              <select
+                value={devType}
+                onChange={e => handleDevTypeChange(e.target.value)}
+                className="w-full text-sm border border-teal-200 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
+              >
+                <option value="">Select type…</option>
+                {DEV_TYPE_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Works description */}
+            <div>
+              <label className="block text-xs font-medium text-teal-800 mb-1">
+                Works description <span className="text-red-400">*</span>
+              </label>
+              <textarea
+                value={devWorksText}
+                onChange={handleDevWorksChange}
+                placeholder="Dimensions, materials, location on site — e.g. Open-sided timber structure, 4.2m × 3.6m, 2.4m height, within the front setback"
+                rows={2}
+                className="w-full text-sm border border-teal-200 rounded px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Description preview / gate message */}
+            {devDescriptionLocal.trim() ? (
+              <div className="text-xs bg-white border border-teal-100 rounded px-2.5 py-1.5 text-gray-700">
+                <span className="font-medium text-teal-600">SEE will read: </span>
+                {devDescriptionLocal}
+              </div>
+            ) : (
+              <p className="text-xs text-amber-600">Select a type and describe the works to enable the SEE Draft export.</p>
             )}
-            <div className="mt-2 flex items-center justify-between">
+
+            {/* Intake status + re-run */}
+            <div className="flex items-center justify-between pt-0.5">
               {intakeAnswers ? (
                 <span className="text-xs text-teal-700">
                   <span className="font-medium">Intake completed</span>
@@ -1455,6 +1500,7 @@ export function ProvisionsByTocStructure({
                 {intakeAnswers ? 'Re-run intake' : 'Run intake'}
               </button>
             </div>
+
           </div>
         </div>
       )}
