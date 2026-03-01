@@ -106,7 +106,7 @@ export function DAIntakeModal({
             {excludedCount > 0 ? (
               <span className="inline-flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-                <strong>{excludedCount}</strong> provision{excludedCount !== 1 ? 's' : ''} will be set N/A
+                <strong>{excludedCount}</strong> provision{excludedCount !== 1 ? 's' : ''} across all topics will be set N/A
               </span>
             ) : (
               <span className="text-gray-400">No provisions excluded yet</span>

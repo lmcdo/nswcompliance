@@ -1131,7 +1131,9 @@ export function ProvisionsByTocStructure({
 
       // Build provisionsForPdf (same pipeline as DCP export)
       const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
-      const actualProvisions = filteredProvisions.filter((p: any) => !isTableOfContents(p.provision_text || ''));
+      // Use allProvisions — topic filter is a navigation tool, not a scope gate.
+      // The SEE must cover the full provision set regardless of what filter is active.
+      const actualProvisions = allProvisions.filter((p: any) => !isTableOfContents(p.provision_text || ''));
 
       const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any) => {
         const pdfPage = p.pdf_page ? parseInt(String(p.pdf_page)) : undefined;
@@ -1435,6 +1437,24 @@ export function ProvisionsByTocStructure({
             {!devDescriptionLocal.trim() && (
               <p className="text-xs text-amber-600 mt-1">Add a description to enable the SEE Draft export.</p>
             )}
+            <div className="mt-2 flex items-center justify-between">
+              {intakeAnswers ? (
+                <span className="text-xs text-teal-700">
+                  <span className="font-medium">Intake completed</span>
+                  <span className="text-teal-600"> — provisions triaged across full property set</span>
+                </span>
+              ) : intakeSkipped ? (
+                <span className="text-xs text-gray-500">Intake skipped — no automatic exclusions</span>
+              ) : (
+                <span className="text-xs text-gray-400">Intake not yet completed</span>
+              )}
+              <button
+                onClick={() => setShowIntakeModal(true)}
+                className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
+              >
+                {intakeAnswers ? 'Re-run intake' : 'Run intake'}
+              </button>
+            </div>
           </div>
         </div>
       )}
