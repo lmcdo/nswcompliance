@@ -1300,31 +1300,58 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-0">
-      {/* Structured intake modal — appears when DA mode first activates */}
+      {/* Structured intake modal */}
       <DAIntakeModal
         open={showIntakeModal}
         onApply={handleIntakeApply}
         onSkip={handleIntakeSkip}
         provisions={allProvisions}
+        heritage={heritage}
+        hcaName={hcaName}
+        precinctName={precinctName}
       />
 
+      {/* ② Set your scope */}
+      <div className="flex items-start gap-3 mb-5">
+        <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>2</span>
+        <div className="flex-1">
+          <p className={`text-sm font-semibold ${isDaMode ? 'text-gray-800' : 'text-gray-400'}`}>Set your scope</p>
+          <p className="text-xs text-gray-500 mt-0.5 mb-2">Select development type, describe the works, and run provision triage to remove inapplicable provisions. Heritage, precinct, and flood controls are always included.</p>
+          {isDaMode ? (
+            <DAModeCard
+              devType={devType}
+              devWorksText={devWorksText}
+              devDescriptionLocal={devDescriptionLocal}
+              intakeAnswers={intakeAnswers}
+              intakeSkipped={intakeSkipped}
+              daResponses={daResponses}
+              allProvisions={allProvisions}
+              excludableTopics={excludableTopics}
+              onDevTypeChange={handleDevTypeChange}
+              onDevWorksChange={handleDevWorksChange}
+              onRunIntake={() => setShowIntakeModal(true)}
+              heritage={heritage}
+              hcaName={hcaName}
+              precinctName={precinctName}
+            />
+          ) : (
+            <p className="text-xs text-gray-400 italic">Enable DA Mode above to unlock.</p>
+          )}
+        </div>
+      </div>
 
-      {/* DA Mode card — visible immediately above the provisions browser */}
-      {isDaMode && (
-        <DAModeCard
-          devType={devType}
-          devWorksText={devWorksText}
-          devDescriptionLocal={devDescriptionLocal}
-          intakeAnswers={intakeAnswers}
-          intakeSkipped={intakeSkipped}
-          daResponses={daResponses}
-          allProvisions={allProvisions}
-          excludableTopics={excludableTopics}
-          onDevTypeChange={handleDevTypeChange}
-          onDevWorksChange={handleDevWorksChange}
-          onRunIntake={() => setShowIntakeModal(true)}
-        />
-      )}
+      {/* ③ Review applicable provisions */}
+      <div className="flex items-start gap-3 mb-3">
+        <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>3</span>
+        <div>
+          <p className={`text-sm font-semibold ${isDaMode ? 'text-gray-800' : 'text-gray-400'}`}>Review applicable provisions</p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            {isDaMode
+              ? 'Work through each topic. Record Complies, Varies, or N/A for every provision. Export your SEE draft when ready.'
+              : 'Browse provisions by topic or search. Filter by layer to see which controls apply to your property.'}
+          </p>
+        </div>
+      </div>
 
       {/* Main two-panel layout */}
       <div className="flex border rounded-lg bg-white">

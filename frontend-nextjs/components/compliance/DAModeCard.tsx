@@ -17,6 +17,11 @@ interface DAModeCardProps {
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onRunIntake: () => void;
+  /** Property-level flags — used to surface first-class passengers */
+  heritage?: boolean;
+  hcaName?: string;
+  precinctName?: string;
+  intakeSetAt?: string | null;
 }
 
 export function DAModeCard({
@@ -31,8 +36,13 @@ export function DAModeCard({
   onDevTypeChange,
   onDevWorksChange,
   onRunIntake,
+  heritage,
+  hcaName,
+  precinctName,
+  intakeSetAt,
 }: DAModeCardProps) {
   const [showTopicBreakdown, setShowTopicBreakdown] = useState(false);
+  const [showExcluded, setShowExcluded] = useState(false);
 
   const completionStats = useMemo(() => {
     const intakeExcluded = allProvisions.filter(p => {
@@ -61,15 +71,39 @@ export function DAModeCard({
     return Object.entries(byTopic).sort((a, b) => b[1].total - a[1].total);
   }, [allProvisions, daResponses, excludableTopics]);
 
+  // Scope summary: topic counts for non-heritage-layer provisions only.
+  // Heritage-layer provisions (condition layer) are shown separately as a single "Heritage layer" entry.
+  const scopeSummary = useMemo(() => {
+    const included: { topic: string; count: number }[] = [];
+    const excluded: { topic: string; count: number }[] = [];
+    const byTopic: Record<string, number> = {};
+    for (const p of allProvisions) {
+      // Skip condition-layer (heritage) provisions — shown separately above
+      if ((p.v2_dcp_layer || p.layer) === 'condition') continue;
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      if (!t) continue;
+      byTopic[t] = (byTopic[t] || 0) + 1;
+    }
+    for (const [topic, count] of Object.entries(byTopic).sort((a, b) => b[1] - a[1])) {
+      if (excludableTopics.has(topic)) {
+        excluded.push({ topic, count });
+      } else {
+        included.push({ topic, count });
+      }
+    }
+    return { included, excluded };
+  }, [allProvisions, excludableTopics]);
+
+  // Heritage provisions = condition layer (all subtopics: Additions, Demolition, Character, etc.)
+  const heritagePros = useMemo(() =>
+    allProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+    [allProvisions]
+  );
+
   return (
     <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
-      <div className="px-4 py-2.5 flex items-center gap-2 text-sm text-teal-800">
-        <span className="w-2 h-2 rounded-full bg-teal-500 inline-block flex-shrink-0" />
-        <span className="font-medium">DA Mode</span>
-        <span className="text-teal-600 text-xs">— compliance notes saved to your session</span>
-      </div>
 
-      <div className="px-4 pb-3 border-t border-teal-100 space-y-2 mt-2">
+      <div className="px-4 pb-4 pt-3 space-y-3">
 
         {/* Development type */}
         <div>
@@ -102,39 +136,103 @@ export function DAModeCard({
           />
         </div>
 
-        {/* Description preview / gate message */}
+        {/* SEE description preview */}
         {devDescriptionLocal.trim() ? (
           <div className="text-xs bg-white border border-teal-100 rounded px-2.5 py-1.5 text-gray-700">
             <span className="font-medium text-teal-600">SEE will read: </span>
             {devDescriptionLocal}
           </div>
         ) : (
-          <p className="text-xs text-amber-600">Select a type and describe the works to enable the SEE Draft export.</p>
+          <p className="text-xs text-amber-600">Select a type and describe the works to enable SEE export.</p>
         )}
 
-        {/* Intake status + re-run */}
-        <div className="flex items-center justify-between pt-0.5">
-          {intakeAnswers ? (
-            <span className="text-xs text-teal-700">
-              <span className="font-medium">Intake completed</span>
-              <span className="text-teal-600"> — provisions triaged across full property set</span>
+        {/* Scope summary — shown after intake, replaces simple "intake completed" line */}
+        {intakeAnswers ? (
+          <div className="pt-2 border-t border-teal-100">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-teal-800">Your applicable scope</span>
+              <button
+                onClick={onRunIntake}
+                className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800"
+              >
+                Reconfigure
+              </button>
+            </div>
+
+            <div className="space-y-1">
+              {/* Heritage — always first if property has HCA */}
+              {heritage && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-teal-500 font-bold w-3">✓</span>
+                  <span className="font-medium text-gray-700">
+                    Heritage{hcaName ? ` — ${hcaName}` : ' Conservation Area'}
+                  </span>
+                  <span className="text-gray-400 ml-auto">{heritagePros}</span>
+                </div>
+              )}
+              {/* Precinct — second if applies */}
+              {precinctName && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-teal-500 font-bold w-3">✓</span>
+                  <span className="font-medium text-gray-700">{precinctName}</span>
+                </div>
+              )}
+              {/* Other included topics */}
+              {scopeSummary.included
+                .filter(({ topic }) => !topic.includes('heritage'))
+                .slice(0, 5)
+                .map(({ topic, count }) => (
+                  <div key={topic} className="flex items-center gap-2 text-xs">
+                    <span className="text-teal-500 font-bold w-3">✓</span>
+                    <span className="text-gray-600 capitalize">{topic.replace(/_/g, ' ')}</span>
+                    <span className="text-gray-400 ml-auto">{count}</span>
+                  </div>
+                ))}
+              {/* Excluded — subordinated */}
+              {scopeSummary.excluded.length > 0 && (
+                <div className="pt-1">
+                  <button
+                    onClick={() => setShowExcluded(v => !v)}
+                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                  >
+                    {showExcluded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} removed by triage
+                  </button>
+                  {showExcluded && (
+                    <div className="mt-1 space-y-0.5 ml-1">
+                      {scopeSummary.excluded.map(({ topic }) => (
+                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                          <span className="w-3">○</span>
+                          <span className="capitalize">{topic.replace(/_/g, ' ')}</span>
+                          <span className="italic ml-auto">excluded</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            {intakeSetAt && (
+              <p className="text-xs text-gray-400 mt-2">Scope set {intakeSetAt}</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between pt-1 border-t border-teal-100">
+            <span className="text-xs text-gray-500">
+              {intakeSkipped ? 'Triage skipped — all provisions included' : 'Run triage to remove inapplicable provisions'}
             </span>
-          ) : intakeSkipped ? (
-            <span className="text-xs text-gray-500">Intake skipped — no automatic exclusions</span>
-          ) : (
-            <span className="text-xs text-gray-400">Intake not yet completed</span>
-          )}
-          <button
-            onClick={onRunIntake}
-            className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
-          >
-            {intakeAnswers ? 'Re-run intake' : 'Run intake'}
-          </button>
-        </div>
+            <button
+              onClick={onRunIntake}
+              className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
+            >
+              {intakeSkipped ? 'Run triage' : 'Run triage →'}
+            </button>
+          </div>
+        )}
 
         {/* Completion dashboard */}
         {completionStats.total > 0 && (
-          <div className="pt-1.5 border-t border-teal-100">
+          <div className="pt-2 border-t border-teal-100">
             <div className="flex items-center gap-4 text-xs">
               <span className="flex items-center gap-1 text-teal-700">
                 <span className="text-teal-500 font-bold">✓</span>
@@ -142,23 +240,22 @@ export function DAModeCard({
               </span>
               <span className="flex items-center gap-1 text-gray-500">
                 <span className="font-bold">○</span>
-                <span className="font-medium">{completionStats.intakeExcluded}</span> intake-excluded
+                <span className="font-medium">{completionStats.intakeExcluded}</span> triaged out
               </span>
               <span className="flex items-center gap-1 text-amber-600">
                 <span className="font-bold">●</span>
-                <span className="font-medium">{completionStats.remaining}</span> not yet reviewed
+                <span className="font-medium">{completionStats.remaining}</span> to review
               </span>
             </div>
 
-            {/* Topic breakdown toggle */}
             <button
               onClick={() => setShowTopicBreakdown(v => !v)}
               className="mt-1.5 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800"
             >
               {showTopicBreakdown ? (
-                <><ChevronUp className="w-3 h-3" /> Hide topic breakdown</>
+                <><ChevronUp className="w-3 h-3" /> Hide topic progress</>
               ) : (
-                <><ChevronDown className="w-3 h-3" /> Show topic breakdown</>
+                <><ChevronDown className="w-3 h-3" /> Show topic progress</>
               )}
             </button>
 
@@ -178,7 +275,7 @@ export function DAModeCard({
                       </div>
                       <span className="text-gray-500 flex-shrink-0 w-12 text-right">
                         {stats.excluded ? (
-                          <span className="text-gray-400 italic">excluded</span>
+                          <span className="text-gray-400 italic">out</span>
                         ) : (
                           `${stats.assessed}/${stats.total}`
                         )}

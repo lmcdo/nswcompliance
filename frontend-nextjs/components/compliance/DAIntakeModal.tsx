@@ -11,14 +11,14 @@ import {
 
 interface DAIntakeModalProps {
   open: boolean;
-  /** Called with confirmed answers when user clicks Apply. */
   onApply: (answers: IntakeAnswers) => void;
-  /** Called when user clicks Skip — no answers saved. */
   onSkip: () => void;
-  /** Total number of provisions currently visible, used for the N/A count estimate. */
   totalProvisions?: number;
-  /** The full provision list for computing exact N/A count. */
-  provisions?: Array<{ v2_topic?: string | null }>;
+  provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null }>;
+  /** Property-level flags for first-class passenger display */
+  heritage?: boolean;
+  hcaName?: string;
+  precinctName?: string;
 }
 
 type AnswerValue = 'yes' | 'no' | 'unknown';
@@ -34,14 +34,18 @@ export function DAIntakeModal({
   onApply,
   onSkip,
   provisions = [],
+  heritage,
+  hcaName,
+  precinctName,
 }: DAIntakeModalProps) {
   const [answers, setAnswers] = useState<IntakeAnswers>({ ...DEFAULT_INTAKE_ANSWERS });
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmedAnswers, setConfirmedAnswers] = useState<IntakeAnswers | null>(null);
 
   const setAnswer = (field: keyof IntakeAnswers, value: AnswerValue) => {
     setAnswers(prev => ({ ...prev, [field]: value }));
   };
 
-  // Live count of provisions that will be auto-excluded given current answers
   const excludedCount = useMemo(() => {
     const excludable = getExcludableTopics(answers);
     if (excludable.size === 0) return 0;
@@ -51,82 +55,164 @@ export function DAIntakeModal({
     }).length;
   }, [answers, provisions]);
 
+  // Topic counts for confirmation screen — included topics with counts
+  const includedTopicCounts = useMemo(() => {
+    const answersToUse = confirmedAnswers || answers;
+    const excludable = getExcludableTopics(answersToUse);
+    const counts: Record<string, number> = {};
+    for (const p of provisions) {
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      if (!t || excludable.has(t)) continue;
+      counts[t] = (counts[t] || 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  }, [confirmedAnswers, answers, provisions]);
+
+  const applicableCount = useMemo(() => {
+    const answersToUse = confirmedAnswers || answers;
+    const excludable = getExcludableTopics(answersToUse);
+    return provisions.filter(p => {
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      return !t || !excludable.has(t);
+    }).length;
+  }, [confirmedAnswers, answers, provisions]);
+
   const handleApply = () => {
-    onApply(answers);
-    // Reset for next open (e.g. if user re-opens)
+    setConfirmedAnswers(answers);
+    setShowConfirmation(true);
+  };
+
+  const handleDone = () => {
+    if (confirmedAnswers) {
+      onApply(confirmedAnswers);
+    }
+    setShowConfirmation(false);
     setAnswers({ ...DEFAULT_INTAKE_ANSWERS });
+    setConfirmedAnswers(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {/* controlled — user must Apply or Skip */}}>
+    <Dialog open={open} onOpenChange={() => {}}>
       <DialogContent
         className="max-w-lg"
         onPointerDownOutside={e => e.preventDefault()}
         onEscapeKeyDown={e => e.preventDefault()}
       >
-        <DialogHeader>
-          <DialogTitle className="font-serif text-xl">Describe your development</DialogTitle>
-          <p className="text-sm text-gray-500 mt-1">
-            Answer these factual questions to automatically triage inapplicable provisions.
-            Provisions are only excluded when their trigger is factually impossible — if unsure, choose "Don't know".
-          </p>
-        </DialogHeader>
+        {showConfirmation ? (
+          /* Confirmation screen */
+          <div className="py-2">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="w-5 h-5 rounded-full bg-teal-500 flex items-center justify-center flex-shrink-0">
+                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
+              <h2 className="text-lg font-semibold text-gray-900">Scope configured</h2>
+            </div>
+            <p className="text-sm text-gray-500 mb-4 ml-7">
+              <span className="font-semibold text-gray-700">{applicableCount}</span> provisions apply to this assessment.
+            </p>
 
-        <div className="mt-4 space-y-4">
-          {INTAKE_QUESTIONS.map(q => (
-            <div key={q.field} className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
-              <p className="text-sm font-medium text-gray-800">{q.question}</p>
-              <p className="text-xs text-gray-500 mt-0.5 mb-2">{q.detail}</p>
-              <div className="flex gap-2">
-                {ANSWER_OPTIONS.map(opt => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setAnswer(q.field, opt.value)}
-                    className={`text-xs px-3 py-1 rounded border font-medium transition-all ${
-                      answers[q.field] === opt.value
-                        ? opt.value === 'no'
-                          ? 'bg-gray-200 border-gray-400 text-gray-800 ring-2 ring-offset-1 ring-gray-400'
-                          : opt.value === 'yes'
-                          ? 'bg-teal-100 border-teal-400 text-teal-800 ring-2 ring-offset-1 ring-teal-400'
-                          : 'bg-blue-50 border-blue-300 text-blue-700 ring-2 ring-offset-1 ring-blue-300'
-                        : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+            {/* First-class passengers */}
+            <div className="ml-7 space-y-1 mb-4">
+              {heritage && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-teal-500 font-bold text-xs">✓</span>
+                  <span className="font-medium text-gray-700">Heritage{hcaName ? ` — ${hcaName}` : ' Conservation Area'}</span>
+                  <span className="text-gray-400 text-xs ml-auto">
+                    {provisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length} provisions
+                  </span>
+                </div>
+              )}
+              {precinctName && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-teal-500 font-bold text-xs">✓</span>
+                  <span className="font-medium text-gray-700">{precinctName}</span>
+                </div>
+              )}
+              {includedTopicCounts.filter(([t]) => !t.includes('heritage')).map(([topic, count]) => (
+                <div key={topic} className="flex items-center gap-2 text-sm">
+                  <span className="text-teal-500 font-bold text-xs">✓</span>
+                  <span className="text-gray-600 capitalize">{topic.replace(/_/g, ' ')}</span>
+                  <span className="text-gray-400 text-xs ml-auto">{count}</span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleDone}
+              className="w-full rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          /* Intake questions */
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-serif text-xl">Triage your provisions</DialogTitle>
+              <p className="text-sm text-gray-500 mt-1">
+                Answer these factual questions to remove provisions that cannot apply to your development.
+                If unsure, choose "Don't know" — provisions are only excluded when their trigger is factually impossible.
+              </p>
+            </DialogHeader>
+
+            <div className="mt-4 space-y-4">
+              {INTAKE_QUESTIONS.map(q => (
+                <div key={q.field} className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
+                  <p className="text-sm font-medium text-gray-800">{q.question}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 mb-2">{q.detail}</p>
+                  <div className="flex gap-2">
+                    {ANSWER_OPTIONS.map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => setAnswer(q.field, opt.value)}
+                        className={`text-xs px-3 py-1 rounded border font-medium transition-all ${
+                          answers[q.field] === opt.value
+                            ? opt.value === 'no'
+                              ? 'bg-gray-200 border-gray-400 text-gray-800 ring-2 ring-offset-1 ring-gray-400'
+                              : opt.value === 'yes'
+                              ? 'bg-teal-100 border-teal-400 text-teal-800 ring-2 ring-offset-1 ring-teal-400'
+                              : 'bg-blue-50 border-blue-300 text-blue-700 ring-2 ring-offset-1 ring-blue-300'
+                            : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-100'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+              <div className="text-sm text-gray-500">
+                {excludedCount > 0 ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
+                    <strong>{excludedCount}</strong> provision{excludedCount !== 1 ? 's' : ''} will be removed
+                  </span>
+                ) : (
+                  <span className="text-gray-400">No provisions removed yet</span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={onSkip}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2"
+                >
+                  Skip for now
+                </button>
+                <button
+                  onClick={handleApply}
+                  className="rounded-full bg-teal-600 px-5 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+                >
+                  Apply
+                </button>
               </div>
             </div>
-          ))}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
-          <div className="text-sm text-gray-500">
-            {excludedCount > 0 ? (
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-gray-400 inline-block" />
-                <strong>{excludedCount}</strong> provision{excludedCount !== 1 ? 's' : ''} across all topics will be set N/A
-              </span>
-            ) : (
-              <span className="text-gray-400">No provisions excluded yet</span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onSkip}
-              className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2"
-            >
-              Skip for now
-            </button>
-            <button
-              onClick={handleApply}
-              className="rounded-full bg-teal-600 px-5 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
-            >
-              Apply triage
-            </button>
-          </div>
-        </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

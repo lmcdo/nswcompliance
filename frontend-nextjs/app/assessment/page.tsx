@@ -418,24 +418,24 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content - Structure View Only */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
-                    {/* DA Mode Toggle */}
-                    <div className="flex flex-col items-end mb-3">
-                      <button
-                        onClick={() => setIsDaMode(!isDaMode)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                          isDaMode
-                            ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                            : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
-                        }`}
-                      >
-                        <span className={`w-3 h-3 rounded-full inline-block transition-colors ${isDaMode ? 'bg-white' : 'bg-teal-300'}`} />
-                        DA Mode
-                      </button>
-                      {!isDaMode && (
-                        <p className="text-xs text-gray-400 mt-1 pr-1">
-                          Preparing a DA? Record compliance notes and export a SEE draft.
-                        </p>
-                      )}
+                    {/* ① Enable DA Mode */}
+                    <div className="flex items-start gap-3 mb-5">
+                      <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>1</span>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-800">Enable DA Mode</p>
+                        <p className="text-xs text-gray-500 mt-0.5 mb-2">Preparing a DA? Enable to record compliance notes against each provision and export a Statement of Environmental Effects.</p>
+                        <button
+                          onClick={() => setIsDaMode(!isDaMode)}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
+                            isDaMode
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                              : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
+                          }`}
+                        >
+                          <span className={`w-3 h-3 rounded-full inline-block transition-colors ${isDaMode ? 'bg-white' : 'bg-teal-300'}`} />
+                          {isDaMode ? 'DA Mode on' : 'DA Mode'}
+                        </button>
+                      </div>
                     </div>
 
 
