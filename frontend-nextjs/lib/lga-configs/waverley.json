@@ -1,0 +1,36 @@
+{
+  "id": "waverley",
+  "name": "Waverley",
+  "type": "single",
+  "basix": {
+    "area_code": "Area 5",
+    "area_name": "Eastern Suburbs",
+    "climate_zone": "56",
+    "water_target_percent": 40
+  },
+  "planning": {
+    "residential_zones": ["R2", "R3", "R4"],
+    "industrial_zones": ["IN1"],
+    "apartment_permitting_zones": ["R3", "R4", "B1", "B2", "B4"]
+  },
+  "sepp": {
+    "applicable_sepps": [
+      "SEPP_HOUSING_2021",
+      "SEPP_SUSTAINABLE_BUILDINGS_2022",
+      "SEPP_RESILIENCE_HAZARDS_2021",
+      "SEPP_TRANSPORT_INFRASTRUCTURE_2021"
+    ]
+  },
+  "transport": {
+    "has_tod_precincts": false
+  },
+  "former_council_detection": {
+    "requires_detection": false
+  },
+  "metadata": {
+    "population": 75000,
+    "area_km2": 9.1,
+    "website_url": "https://www.waverley.nsw.gov.au",
+    "notes": "Single council — not amalgamated. Waverley DCP 2022 (Amendment 5, 490 pages, Parts A–F). Suburbs: Waverley, Bondi, Bondi Beach, Bondi Junction, Bronte, Clovelly, Dover Heights, North Bondi, Tamarama, Queens Park."
+  }
+}

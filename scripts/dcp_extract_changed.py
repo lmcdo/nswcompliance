@@ -48,17 +48,61 @@ DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ["SUPABASE_DB
 R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 
 
+# ── Council-specific page range configs ─────────────────────────────────────
+# Used as fallback when SECTION_RE can't detect chapter boundaries (e.g., multi-line headers).
+# Tuple format: (section_key, title, page_start, page_end)  — 1-indexed page numbers.
+
+WAVERLEY_PAGE_RANGES: list[tuple[str, str, int, int]] = [
+    # Pages 1–3 are cover/TOC/policy — excluded deliberately, not inserted as provisions.
+    # Pages 150–183 are index/TOC for Part C onwards — also excluded.
+    ("B1",  "Waste",                                    4,  15),
+    ("B2",  "Sustainability",                          16,  27),
+    ("B3",  "Landscaping",                             28,  40),
+    ("B4",  "Coastal Hazards",                         41,  52),  # B4/B5 share range
+    ("B5",  "Water Management",                        41,  52),
+    ("B6",  "Accessibility",                           53,  57),
+    ("B7",  "Transport and Parking",                   58,  77),
+    ("B8",  "Heritage",                                78, 105),
+    ("B9",  "Safety and Security",                    106, 107),
+    ("B10", "Public Art",                             108, 108),
+    ("B11", "Design Excellence",                      109, 110),
+    ("B12", "Subdivision",                            111, 112),
+    ("B13", "Excavation and Earthworks",              113, 115),
+    ("B14", "Signage and Advertising",                116, 137),
+    ("B16", "Inter-War Buildings",                    138, 141),
+    ("B17", "Social Impact Assessment",               142, 149),
+    ("C1",  "Low Density Residential",                184, 216),
+    ("C2",  "Medium to High Density Residential",     217, 247),
+    ("D1",  "Commercial Premises",                    248, 255),
+    ("D2",  "Mixed Use",                              256, 256),
+    ("E1",  "Bondi Junction Centre",                  257, 310),
+    ("E2",  "Bondi Beachfront Area",                  311, 333),
+    ("E3",  "Local Village Centres",                  334, 368),
+    ("E4",  "Special Character Areas",                369, 374),
+    ("E5",  "113 Macpherson Street Bronte",           375, 453),
+    ("F1",  "Shared Accommodation",                   454, 455),
+    ("F2",  "Tourist and Visitor Accommodation",      456, 490),
+]
+
+COUNCIL_PAGE_RANGES: dict[str, list[tuple[str, str, int, int]]] = {
+    "waverley": WAVERLEY_PAGE_RANGES,
+}
+
+
 # ── PDF Extraction ──────────────────────────────────────────────────────────
 
 class DCPExtractor:
     """Extract provisions from a single DCP chapter PDF using pdfplumber."""
 
-    # Matches section numbers like "4.1.5" or "2" followed by a Title-cased heading
-    SECTION_RE = re.compile(r'^(\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE)
+    # Matches section numbers like "4.1.5", "2", "B1", or "C1.2" followed by a Title-cased heading.
+    # [A-Z]? makes the letter prefix optional so both numeric-only and letter-prefixed
+    # section codes (e.g. Waverley's "B1 WASTE", "C1 Low Density") are matched.
+    SECTION_RE = re.compile(r'^([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE)
 
     def __init__(self, pdf_path: Path, document_id: str):
         self.pdf_path = pdf_path
         self.document_id = document_id
+        self.page_count: int = 0
 
     def extract(self) -> list[dict[str, Any]]:
         """
@@ -70,6 +114,7 @@ class DCPExtractor:
 
         with pdfplumber.open(self.pdf_path) as pdf:
             total = len(pdf.pages)
+            self.page_count = total
             for page_num, page in enumerate(pdf.pages, start=1):
                 print(f"    page {page_num}/{total}", end="\r")
 
@@ -122,6 +167,45 @@ class DCPExtractor:
                 sections.append(current)
 
         print()  # clear progress line
+        return sections
+
+    def extract_by_page_ranges(
+        self, ranges: list[tuple[str, str, int, int]]
+    ) -> list[dict[str, Any]]:
+        """
+        Extract sections using explicit page-range config.
+        Used as fallback when SECTION_RE can't detect headers (e.g. multi-line headers).
+
+        Args:
+            ranges: list of (section_key, title, page_start, page_end) — 1-indexed
+        """
+        sections: list[dict[str, Any]] = []
+        with pdfplumber.open(self.pdf_path) as pdf:
+            self.page_count = len(pdf.pages)
+            for section_key, title, page_start, page_end in ranges:
+                content = ""
+                tables: list[dict] = []
+                pages_included: list[int] = []
+                clipped_end = min(page_end, self.page_count)
+                for page_num in range(page_start, clipped_end + 1):
+                    page = pdf.pages[page_num - 1]
+                    text = page.extract_text() or ""
+                    content += f"\n\n{text}"
+                    pages_included.append(page_num)
+                    for tbl in page.extract_tables() or []:
+                        html = self._table_to_html(tbl)
+                        if html:
+                            tables.append({"html": html, "page": page_num})
+                sections.append({
+                    "section_number": section_key,
+                    "section_title":  title,
+                    "content":        content,
+                    "tables":         tables,
+                    "page_start":     page_start,
+                    "page_end":       clipped_end,
+                    "pages":          pages_included,
+                })
+        print()
         return sections
 
     def _table_to_html(self, table_data: list[list[str | None]]) -> str:
@@ -289,6 +373,31 @@ def extract_chapter(
             cur.close()
             return False
 
+        # Sanity gate: require at least 1 section per 30 pages of PDF.
+        # If a page-range config exists for this council, use it as a fallback
+        # instead of aborting (handles councils with multi-line section headers).
+        min_sections = max(2, extractor.page_count // 30)
+        if len(sections) < min_sections:
+            page_ranges = COUNCIL_PAGE_RANGES.get(council)
+            if page_ranges:
+                print(
+                    f"    [WARN] {len(sections)} sections from "
+                    f"{extractor.page_count}-page PDF (min {min_sections}) "
+                    f"— trying page-range fallback"
+                )
+                sections = extractor.extract_by_page_ranges(page_ranges)
+                table_count = sum(len(s["tables"]) for s in sections)
+                print(f"    Page-range fallback: {len(sections)} sections, {table_count} tables")
+            else:
+                verdict = "WARN" if dry_run else "ABORT"
+                print(
+                    f"    [{verdict}] {len(sections)} sections from "
+                    f"{extractor.page_count}-page PDF (min {min_sections})"
+                )
+                if not dry_run:
+                    cur.close()
+                    return False
+
         if dry_run:
             print(f"    [dry-run] Would soft-delete old provisions and insert {len(sections)} new ones")
             cur.close()
@@ -320,6 +429,8 @@ def extract_chapter(
                 ref_number     = build_ref_number(document_id, section["section_number"])
                 provision_text = build_provision_text(section)
 
+                is_preamble = section["section_number"] == "preamble"
+
                 cur.execute(
                     """
                     INSERT INTO regulatory_provisions (
@@ -333,11 +444,12 @@ def extract_chapter(
                         extraction_method,
                         source_chapter_key,
                         source_council,
-                        is_current
+                        is_current,
+                        v2_is_actionable
                     ) VALUES (
                         %s, %s, %s, %s, %s, %s, %s,
                         'pdfplumber-ci',
-                        %s, %s, TRUE
+                        %s, %s, TRUE, %s
                     )
                     """,
                     (
@@ -350,6 +462,7 @@ def extract_chapter(
                         section.get("pages", [section["page_start"]]),
                         chapter_key,
                         council,
+                        False if is_preamble else None,
                     ),
                 )
                 inserted += 1

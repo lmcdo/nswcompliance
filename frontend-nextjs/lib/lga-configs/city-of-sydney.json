@@ -1,0 +1,36 @@
+{
+  "id": "city_of_sydney",
+  "name": "City of Sydney",
+  "type": "single",
+  "basix": {
+    "area_code": "Area 5",
+    "area_name": "Inner Sydney",
+    "climate_zone": "56",
+    "water_target_percent": 40
+  },
+  "planning": {
+    "residential_zones": ["R1", "R2", "R3", "R4"],
+    "industrial_zones": ["IN1", "IN2", "E1"],
+    "apartment_permitting_zones": ["R1", "R2", "R3", "R4", "B1", "B2", "B4", "MU1"]
+  },
+  "sepp": {
+    "applicable_sepps": [
+      "SEPP_HOUSING_2021",
+      "SEPP_SUSTAINABLE_BUILDINGS_2022",
+      "SEPP_RESILIENCE_HAZARDS_2021",
+      "SEPP_TRANSPORT_INFRASTRUCTURE_2021"
+    ]
+  },
+  "transport": {
+    "has_tod_precincts": true
+  },
+  "former_council_detection": {
+    "requires_detection": false
+  },
+  "metadata": {
+    "population": 246343,
+    "area_km2": 26.15,
+    "website_url": "https://www.cityofsydney.nsw.gov.au",
+    "notes": "Single council — not amalgamated. Sydney DCP 2012 (6 per-section PDFs). Heritage: Section 2 Locality Statements covers 75 HCAs. Section 5 covers specific precincts. Suburbs: Surry Hills, Glebe, Newtown, Chippendale, Pyrmont, Ultimo, Darlinghurst, Redfern, Haymarket, Alexandria, Erskineville, Eveleigh."
+  }
+}

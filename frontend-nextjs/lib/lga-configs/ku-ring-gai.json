@@ -1,0 +1,36 @@
+{
+  "id": "ku_ring_gai",
+  "name": "Ku-ring-gai",
+  "type": "single",
+  "basix": {
+    "area_code": "Area 3",
+    "area_name": "Northern Sydney",
+    "climate_zone": "56",
+    "water_target_percent": 40
+  },
+  "planning": {
+    "residential_zones": ["R2", "R3", "R4"],
+    "industrial_zones": ["IN1"],
+    "apartment_permitting_zones": ["R3", "R4", "B1", "B2", "B4"]
+  },
+  "sepp": {
+    "applicable_sepps": [
+      "SEPP_HOUSING_2021",
+      "SEPP_SUSTAINABLE_BUILDINGS_2022",
+      "SEPP_RESILIENCE_HAZARDS_2021",
+      "SEPP_TRANSPORT_INFRASTRUCTURE_2021"
+    ]
+  },
+  "transport": {
+    "has_tod_precincts": false
+  },
+  "former_council_detection": {
+    "requires_detection": false
+  },
+  "metadata": {
+    "population": 124000,
+    "area_km2": 84.6,
+    "website_url": "https://www.krg.nsw.gov.au",
+    "notes": "Single council — not amalgamated. Multiple numbered topic-DCPs (Principal + DCPs 28, 31, 38, 40, 43, 46, 47, 48). Topic encoded in DCP name, not section headers — uses chapter_topics config pattern. Suburbs: Gordon, Turramurra, Pymble, Wahroonga, St Ives, Killara, Lindfield, Roseville, Warrawee, North Turramurra."
+  }
+}

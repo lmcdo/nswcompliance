@@ -168,6 +168,30 @@ extraction_logs/
 extraction_outputs/
 extraction_temp/
 enrichment/
+# Whitelist enrichment config and extractor files (committed as part of core pipeline)
+!enrichment/__init__.py
+!enrichment/pipeline.py
+!enrichment/config/
+!enrichment/config/__init__.py
+!enrichment/config/ashfield_config.py
+!enrichment/config/leichhardt_config.py
+!enrichment/config/marrickville_config.py
+!enrichment/config/waverley_config.py
+!enrichment/config/woollahra_config.py
+!enrichment/config/city_of_sydney_config.py
+!enrichment/config/ku_ring_gai_config.py
+!enrichment/extractors/
+!enrichment/extractors/__init__.py
+!enrichment/extractors/layer_topic_tagger.py
+!enrichment/extractors/site_condition_tagger.py
+!enrichment/extractors/type_classifier.py
+!enrichment/extractors/numeric_extractor.py
+!enrichment/extractors/actionable_classifier.py
+!enrichment/extractors/applicability_tagger.py
+!enrichment/extractors/marker_extractor.py
+!enrichment/tests/
+!enrichment/tests/__init__.py
+!enrichment/tests/test_numeric_extractor.py
 extractors/
 
 # Temporary/working Python scripts
@@ -335,6 +359,11 @@ scripts/
 !scripts/r2_monitor.py
 !scripts/run_migration_007.py
 !scripts/run_migration_008.py
+!scripts/populate_waverley_registry.py
+!scripts/populate_woollahra_registry.py
+!scripts/populate_city_of_sydney_registry.py
+!scripts/populate_ku_ring_gai_registry.py
+!scripts/survey_dcp.py
 !scripts/check_registry.py
 !scripts/requirements-monitor.txt
 !scripts/dcp_extract_changed.py

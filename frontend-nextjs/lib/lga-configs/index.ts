@@ -9,6 +9,10 @@
  */
 
 import innerWestConfig from './inner-west.json';
+import waverleyConfig from './waverley.json';
+import woollahraConfig from './woollahra.json';
+import cityOfSydneyConfig from './city-of-sydney.json';
+import kuRingGaiConfig from './ku-ring-gai.json';
 import { LGAConfig, validateLGAConfig, LGAConfigValidationError } from './schema';
 
 /**
@@ -17,9 +21,10 @@ import { LGAConfig, validateLGAConfig, LGAConfigValidationError } from './schema
  */
 const LGA_REGISTRY: Record<string, LGAConfig> = {
   inner_west: innerWestConfig as LGAConfig,
-  // Add new LGA configs here as they're created:
-  // 'sydney': sydneyConfig as LGAConfig,
-  // 'woollahra': woollahraConfig as LGAConfig,
+  waverley: waverleyConfig as LGAConfig,
+  woollahra: woollahraConfig as LGAConfig,
+  city_of_sydney: cityOfSydneyConfig as LGAConfig,
+  ku_ring_gai: kuRingGaiConfig as LGAConfig,
 };
 
 /**
@@ -34,6 +39,53 @@ const LGA_ALIASES: Record<string, string> = {
   'ashfield': 'inner_west',
   'leichhardt': 'inner_west',
   'marrickville': 'inner_west',
+  // Waverley suburbs
+  'waverley council': 'waverley',
+  'bondi': 'waverley',
+  'bondi beach': 'waverley',
+  'bondi junction': 'waverley',
+  'bronte': 'waverley',
+  'clovelly': 'waverley',
+  'dover heights': 'waverley',
+  'north bondi': 'waverley',
+  'tamarama': 'waverley',
+  'queens park': 'waverley',
+  // Woollahra suburbs
+  'woollahra council': 'woollahra',
+  'paddington': 'woollahra',
+  'double bay': 'woollahra',
+  'watsons bay': 'woollahra',
+  'rose bay': 'woollahra',
+  'bellevue hill': 'woollahra',
+  'point piper': 'woollahra',
+  'edgecliff': 'woollahra',
+  // City of Sydney suburbs
+  'city of sydney council': 'city_of_sydney',
+  'sydney city': 'city_of_sydney',
+  'surry hills': 'city_of_sydney',
+  'glebe': 'city_of_sydney',
+  'chippendale': 'city_of_sydney',
+  'pyrmont': 'city_of_sydney',
+  'ultimo': 'city_of_sydney',
+  'darlinghurst': 'city_of_sydney',
+  'redfern': 'city_of_sydney',
+  'haymarket': 'city_of_sydney',
+  'alexandria': 'city_of_sydney',
+  'erskineville': 'city_of_sydney',
+  'eveleigh': 'city_of_sydney',
+  // Ku-ring-gai suburbs
+  'ku-ring-gai council': 'ku_ring_gai',
+  'ku ring gai': 'ku_ring_gai',
+  'gordon': 'ku_ring_gai',
+  'turramurra': 'ku_ring_gai',
+  'pymble': 'ku_ring_gai',
+  'wahroonga': 'ku_ring_gai',
+  'st ives': 'ku_ring_gai',
+  'killara': 'ku_ring_gai',
+  'lindfield': 'ku_ring_gai',
+  'roseville': 'ku_ring_gai',
+  'warrawee': 'ku_ring_gai',
+  'north turramurra': 'ku_ring_gai',
 };
 
 /**
