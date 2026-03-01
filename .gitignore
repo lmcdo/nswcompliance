@@ -298,6 +298,9 @@ dcp_*.txt
 .claude/DQ*.md
 .claude/SYSTEMATIC*.md
 
+# Obsidian vault config (local only)
+.claude/.obsidian/
+
 # GitHub workflows (if not ready)
 # .github/
 
