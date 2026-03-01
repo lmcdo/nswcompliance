@@ -17,7 +17,6 @@ import { PropertySearch } from '@/components/property/PropertySearch';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
-import { CapacityCalculator } from '@/components/compliance/CapacityCalculator';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
@@ -420,7 +419,7 @@ export default function AssessmentPage() {
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
                     {/* DA Mode Toggle */}
-                    <div className="flex justify-end mb-3">
+                    <div className="flex flex-col items-end mb-3">
                       <button
                         onClick={() => setIsDaMode(!isDaMode)}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
@@ -432,21 +431,13 @@ export default function AssessmentPage() {
                         <span className={`w-3 h-3 rounded-full inline-block transition-colors ${isDaMode ? 'bg-white' : 'bg-teal-300'}`} />
                         DA Mode
                       </button>
+                      {!isDaMode && (
+                        <p className="text-xs text-gray-400 mt-1 pr-1">
+                          Preparing a DA? Record compliance notes and export a SEE draft.
+                        </p>
+                      )}
                     </div>
 
-                    {/* Capacity Calculator */}
-                    <div className="mb-4">
-                      <CapacityCalculator
-                        propertyAddress={selectedProperty.address}
-                        coordinates={selectedCoordinates}
-                        developmentType={developmentType}
-                        lotArea={selectedProperty.lotDimensions?.area || null}
-                        zone={selectedProperty.constraints?.zone || ''}
-                        lga={selectedProperty.constraints?.lga || 'Inner West'}
-                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                        planningLayers={selectedProperty.planningLayers || []}
-                      />
-                    </div>
 
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}

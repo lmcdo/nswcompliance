@@ -8,7 +8,19 @@
 
 ## Quick Access Links
 
-### Critical Deployment Documents
+### Batch 1 Extraction (Active — 2026-03-01)
+
+**`.claude/docs/LGA_EXTRACTION_RUNBOOK.md`**
+- Step-by-step pipeline: pre-flight → PDF profiling → registry → dry-run → extract → enrich → frontend
+- Per-step pass/fail gates with exact SQL verification queries
+- Recovery procedures for common failure modes (SECTION_RE miss, enrichment config bug, partial extraction)
+- **Use this for:** Running Batch 1 extractions (Woollahra, City of Sydney, Ku-ring-gai)
+
+**Status:** Architecture (Phase 0–4) committed. PDFs not yet downloaded. Start with Woollahra.
+
+---
+
+### Historical Deployment Documents
 
 **Location:** `plans/lga-onboarding/` (project root)
 
@@ -531,6 +543,16 @@ if (lga.toLowerCase().includes('marrickville')) {
 ---
 
 ## Changelog
+
+**2026-03-01:**
+- Implemented Batch 1 LGA integration (Woollahra, City of Sydney, Ku-ring-gai)
+- Config-driven tagger: `_tag_from_config()` + `COUNCIL_CONFIGS` registry replaces per-council if/elif chain
+- Enrichment configs: woollahra_config.py, city_of_sydney_config.py, ku_ring_gai_config.py
+- Registry scripts: populate_woollahra/city_of_sydney/ku_ring_gai_registry.py
+- PDF profiler: survey_dcp.py
+- Frontend: LGA JSON configs + index.ts aliases for all 3 councils
+- Extraction runbook: `.claude/docs/LGA_EXTRACTION_RUNBOOK.md`
+- Committed: b2716ff4
 
 **2026-02-11:**
 - Created LGA Onboarding Index

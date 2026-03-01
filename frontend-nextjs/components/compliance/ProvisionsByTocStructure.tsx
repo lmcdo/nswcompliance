@@ -13,12 +13,10 @@ import useSWR from 'swr';
 import { TocSidebar } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
 import { LayerExplanation } from './LayerExplanation';
-import { EPAAct415ComplianceNotice } from './EPAAct415Notice';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, FileText, Filter, HelpCircle, ChevronDown, ChevronUp, ChevronRight, Shield, Search, X, Ruler, Download } from 'lucide-react';
-import { INNER_WEST_OVERVIEW, COUNCIL_CONFIGS } from '@/lib/council-config';
+import { Loader2, FileText, ChevronDown, Search, X, Ruler, Download } from 'lucide-react';
+import { COUNCIL_CONFIGS } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
@@ -27,8 +25,9 @@ import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from 
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
+import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
-import { DEV_TYPE_OPTIONS, assembleDescription } from '@/lib/see/devTypes';
+import { assembleDescription } from '@/lib/see/devTypes';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -168,8 +167,6 @@ export function ProvisionsByTocStructure({
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
   const [layerFilter, setLayerFilter] = useState<string | null>(null);
-  // Unified info panel state - only one expanded at a time
-  const [expandedInfo, setExpandedInfo] = useState<'about' | 'compliance' | 'heritage' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [searchScope, setSearchScope] = useState<'all' | 'filtered'>('all'); // Search all or filtered
@@ -181,6 +178,8 @@ export function ProvisionsByTocStructure({
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
+  const [showSeeReadinessModal, setShowSeeReadinessModal] = useState(false);
+  const [seeReadinessConfirmed, setSeeReadinessConfirmed] = useState(false);
 
   // TODO: Rework numeric checker feature - temporarily disabled
   // Numeric checker values
@@ -1128,11 +1127,24 @@ export function ProvisionsByTocStructure({
   };
 
   // SEE Draft export — uses SEEDocument with annotated provisions only
-  const handleExportSee = async () => {
+  const handleExportSee = async (confirmed = false) => {
     try {
       // Refresh responses from DB before building PDF — ensures per-provision annotations
       // saved by DAResponseCapture (which doesn't update parent daResponses state) are current.
       await refreshResponses();
+
+      // Readiness gate: warn if unannotated provisions remain
+      if (!confirmed && !seeReadinessConfirmed) {
+        const intakeExcludedCount = allProvisions.filter(p => {
+          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+          return t && excludableTopics.has(t);
+        }).length;
+        const unannotated = allProvisions.length - daResponses.size - intakeExcludedCount;
+        if (unannotated > 0) {
+          setShowSeeReadinessModal(true);
+          return;
+        }
+      }
 
       // Build provisionsForPdf (same pipeline as DCP export)
       const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
@@ -1296,204 +1308,22 @@ export function ProvisionsByTocStructure({
         provisions={allProvisions}
       />
 
-      {/* CONTEXT ZONE - Property-specific background information */}
-      <div className="bg-gradient-to-b from-slate-50 to-slate-100/50 border-b-4 border-slate-300 pb-0 mb-8 space-y-3">
-        {/* DCP Tab Intro Banner */}
-        {formerCouncil && councilConfig && (
-          <div className="bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg">
-            <div className="font-semibold text-green-900 mb-1">{councilConfig.dcpCitation}</div>
-            <div className="text-sm text-green-800">Detailed local design controls for building form, character, setbacks, and heritage.</div>
-          </div>
-        )}
-
-        {/* Info Tabs - Compact horizontal layout, only one expands at a time */}
-        <div className="bg-white border rounded-lg overflow-hidden shadow-sm">
-          {/* Tab buttons row */}
-          <div className="flex items-center divide-x">
-            {/* About Inner West DCPs tab */}
-            {formerCouncil && (
-              <button
-                onClick={() => setExpandedInfo(expandedInfo === 'about' ? null : 'about')}
-                className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
-                  expandedInfo === 'about'
-                    ? 'bg-slate-100 text-slate-800'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-              >
-                <HelpCircle className="h-3.5 w-3.5" />
-                <span>About DCPs</span>
-                {expandedInfo === 'about' ? (
-                  <ChevronUp className="h-3.5 w-3.5" />
-                ) : (
-                  <ChevronDown className="h-3.5 w-3.5" />
-                )}
-              </button>
-            )}
-
-            {/* EP&A Act s 4.15 Compliance tab */}
-            <button
-              onClick={() => setExpandedInfo(expandedInfo === 'compliance' ? null : 'compliance')}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-medium transition-colors ${
-                expandedInfo === 'compliance'
-                  ? 'bg-blue-100 text-blue-800'
-                  : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-              }`}
-            >
-              <span>ℹ️</span>
-              <span>EP&A s 4.15</span>
-              {expandedInfo === 'compliance' ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
-
-          {/* Expanded content - shared space */}
-          {expandedInfo === 'about' && formerCouncil && councilConfig && (
-            <div className="px-4 pb-4 border-t bg-slate-50">
-              {/* DCP Title Bar */}
-              <div className="bg-gradient-to-r from-slate-800 to-slate-700 px-4 py-3 -mx-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-white" />
-                    <span className="font-semibold text-white text-sm">
-                      {councilConfig.dcpCitation}
-                    </span>
-                  </div>
-                  <Badge variant="outline" className="bg-white/10 text-white border-white/20 text-xs">
-                    {totalProvisions} provisions applicable to this address
-                  </Badge>
-                </div>
-              </div>
-              <p className="text-sm text-slate-700 whitespace-pre-line leading-relaxed">{INNER_WEST_OVERVIEW}</p>
-            </div>
-          )}
-
-          {expandedInfo === 'compliance' && (
-            <div className="px-4 py-4 border-t bg-blue-50/30">
-              <div className="text-sm text-blue-800 leading-relaxed">
-                <p>
-                  All provisions shown must be considered when assessing compliance with
-                  <strong> Environmental Planning and Assessment Act 1979 s 4.15</strong>.
-                  Priority indicators surface critical requirements first but do not exclude
-                  any provisions from consideration. Certifiers must review all applicable
-                  provisions before issuing certificates.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* WORKING AREA - Primary task space for searching and filtering */}
-
-      {/* Mode Toggle */}
-      <div className="flex items-center gap-2 mb-4 bg-white border rounded-lg p-2">
-        <span className="text-sm text-gray-600 font-medium">View:</span>
-        <button
-          onClick={enterTaskMode}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            viewMode === 'task'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          🎯 By Topic
-        </button>
-        <button
-          onClick={enterStructureMode}
-          className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-            viewMode === 'structure'
-              ? 'bg-teal-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          📁 By Structure
-        </button>
-        <div className="ml-auto text-xs text-gray-500">
-          {viewMode === 'task' ? (
-            <>Showing all {allProvisions.length} provisions • <button onClick={enterStructureMode} className="text-teal-600 hover:underline">Browse by DCP structure</button></>
-          ) : (
-            <>Navigate DCP sections • <button onClick={enterTaskMode} className="text-teal-600 hover:underline">Search all provisions</button></>
-          )}
-        </div>
-      </div>
 
       {/* DA Mode card — visible immediately above the provisions browser */}
       {isDaMode && (
-        <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
-          <div className="px-4 py-2.5 flex items-center gap-2 text-sm text-teal-800">
-            <span className="w-2 h-2 rounded-full bg-teal-500 inline-block flex-shrink-0" />
-            <span className="font-medium">DA Mode</span>
-            <span className="text-teal-600 text-xs">— compliance notes saved to your session</span>
-          </div>
-
-          <div className="px-4 pb-3 border-t border-teal-100 space-y-2 mt-2">
-
-            {/* Development type */}
-            <div>
-              <label className="block text-xs font-medium text-teal-800 mb-1">
-                Development type <span className="text-red-400">*</span>
-              </label>
-              <select
-                value={devType}
-                onChange={e => handleDevTypeChange(e.target.value)}
-                className="w-full text-sm border border-teal-200 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
-              >
-                <option value="">Select type…</option>
-                {DEV_TYPE_OPTIONS.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Works description */}
-            <div>
-              <label className="block text-xs font-medium text-teal-800 mb-1">
-                Works description <span className="text-red-400">*</span>
-              </label>
-              <textarea
-                value={devWorksText}
-                onChange={handleDevWorksChange}
-                placeholder="Dimensions, materials, location on site — e.g. Open-sided timber structure, 4.2m × 3.6m, 2.4m height, within the front setback"
-                rows={2}
-                className="w-full text-sm border border-teal-200 rounded px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
-              />
-            </div>
-
-            {/* Description preview / gate message */}
-            {devDescriptionLocal.trim() ? (
-              <div className="text-xs bg-white border border-teal-100 rounded px-2.5 py-1.5 text-gray-700">
-                <span className="font-medium text-teal-600">SEE will read: </span>
-                {devDescriptionLocal}
-              </div>
-            ) : (
-              <p className="text-xs text-amber-600">Select a type and describe the works to enable the SEE Draft export.</p>
-            )}
-
-            {/* Intake status + re-run */}
-            <div className="flex items-center justify-between pt-0.5">
-              {intakeAnswers ? (
-                <span className="text-xs text-teal-700">
-                  <span className="font-medium">Intake completed</span>
-                  <span className="text-teal-600"> — provisions triaged across full property set</span>
-                </span>
-              ) : intakeSkipped ? (
-                <span className="text-xs text-gray-500">Intake skipped — no automatic exclusions</span>
-              ) : (
-                <span className="text-xs text-gray-400">Intake not yet completed</span>
-              )}
-              <button
-                onClick={() => setShowIntakeModal(true)}
-                className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
-              >
-                {intakeAnswers ? 'Re-run intake' : 'Run intake'}
-              </button>
-            </div>
-
-          </div>
-        </div>
+        <DAModeCard
+          devType={devType}
+          devWorksText={devWorksText}
+          devDescriptionLocal={devDescriptionLocal}
+          intakeAnswers={intakeAnswers}
+          intakeSkipped={intakeSkipped}
+          daResponses={daResponses}
+          allProvisions={allProvisions}
+          excludableTopics={excludableTopics}
+          onDevTypeChange={handleDevTypeChange}
+          onDevWorksChange={handleDevWorksChange}
+          onRunIntake={() => setShowIntakeModal(true)}
+        />
       )}
 
       {/* Main two-panel layout */}
@@ -1521,15 +1351,26 @@ export function ProvisionsByTocStructure({
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
                 {viewMode === 'task' ? (
-                  'All DCP Provisions'
+                  'DCP Provisions'
                 ) : selectedPart ? (
                   sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
                 ) : (
                   'Select a section'
                 )}
               </h3>
+              {viewMode === 'task' ? (
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {isDaMode
+                    ? 'Filter by topic, review each provision, record your compliance status.'
+                    : 'Filter by topic to focus on one area, or search. Preparing a DA? Enable DA Mode (top right).'}
+                </p>
+              ) : (
+                <button onClick={enterTaskMode} className="text-xs text-teal-600 hover:underline mt-0.5">
+                  ← Back to topic view
+                </button>
+              )}
               {viewMode === 'structure' && selectedSection && selectedPart && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-600 mt-0.5">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
@@ -1627,7 +1468,8 @@ export function ProvisionsByTocStructure({
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
               <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
                 <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Export to PDF</h3>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1">DCP Provisions Schedule</h3>
+                  <p className="text-xs text-gray-500 mb-4">Reference document — not a compliance assessment.</p>
 
                   {/* What will be exported */}
                   <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
@@ -1707,38 +1549,60 @@ export function ProvisionsByTocStructure({
             </div>
           )}
 
-          {/* Why am I seeing these provisions? - now includes layer filters */}
-          <LayerExplanation
-            zone={zone}
-            heritage={heritage}
-            hcaName={hcaName}
-            precinctName={precinctName}
-            formerCouncil={formerCouncil}
-            layerCounts={layerCounts}
-            layerFilter={layerFilter}
-            onLayerFilterChange={(layer) => {
-              setLayerFilter(layer);
-              setTopicFilters([]);  // Clear topic filters when changing layer
-            }}
-            // Heritage HCA details
-            generalHeritageCount={generalHeritageCount}
-            hcaSpecificCount={hcaSpecificCount}
-            totalHeritageCount={totalHeritageCount}
-          />
+          {/* SEE Readiness modal — shown when unannotated provisions remain */}
+          {showSeeReadinessModal && (() => {
+            const intakeExcludedCount = allProvisions.filter(p => {
+              const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+              return t && excludableTopics.has(t);
+            }).length;
+            const unannotated = allProvisions.length - daResponses.size - intakeExcludedCount;
+            return (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSeeReadinessModal(false)}>
+                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                  <div className="p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Export SEE Draft</h3>
+                    <p className="text-sm text-gray-700 mb-1">
+                      <span className="font-semibold text-amber-700">{unannotated} provision{unannotated !== 1 ? 's' : ''}</span> not yet reviewed will appear as &ldquo;Not yet assessed&rdquo; in the SEE.
+                    </p>
+                    <p className="text-sm text-gray-500 mb-6">
+                      This draft requires professional review before DA lodgement.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setShowSeeReadinessModal(false)}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        Go back and review
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowSeeReadinessModal(false);
+                          setSeeReadinessConfirmed(true);
+                          handleExportSee(true);
+                        }}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Export draft anyway
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
-          {/* Topic filter section */}
+          {/* Topic filter chips */}
           <div className="mt-3 space-y-2">
-            {/* Topic filter chips */}
             {availableTopics.length > 1 && (
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-gray-500 font-medium min-w-[70px]">Filter topics:</span>
                   {topicFilters.length > 0 && (
                     <button
                       onClick={() => setTopicFilters([])}
                       className="px-2 py-0.5 text-xs rounded-full transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1"
                     >
-                      Clear topics <X className="w-3 h-3" />
+                      Clear <X className="w-3 h-3" />
                     </button>
                   )}
                   {availableTopics.map(topic => {
@@ -1746,7 +1610,6 @@ export function ProvisionsByTocStructure({
                     const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
                     const hasCritical = stats.critical > 0;
                     const isSelected = topicFilters.includes(topicKey);
-
                     return (
                       <button
                         key={topic}
@@ -1840,6 +1703,25 @@ export function ProvisionsByTocStructure({
             )}
           </div>
 
+          {/* Why am I seeing these provisions? - now includes layer filters */}
+          <LayerExplanation
+            zone={zone}
+            heritage={heritage}
+            hcaName={hcaName}
+            precinctName={precinctName}
+            formerCouncil={formerCouncil}
+            layerCounts={layerCounts}
+            layerFilter={layerFilter}
+            onLayerFilterChange={(layer) => {
+              setLayerFilter(layer);
+              setTopicFilters([]);  // Clear topic filters when changing layer
+            }}
+            // Heritage HCA details
+            generalHeritageCount={generalHeritageCount}
+            hcaSpecificCount={hcaSpecificCount}
+            totalHeritageCount={totalHeritageCount}
+          />
+
         </div>
 
         {/* Action Toolbar - Export */}
@@ -1870,7 +1752,9 @@ export function ProvisionsByTocStructure({
                 className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
               >
                 <Download className="h-4 w-4" />
-                Export PDF
+                {topicFilters.length > 0
+                  ? `Export ${filteredProvisions.length} ${topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')} provision${filteredProvisions.length !== 1 ? 's' : ''}`
+                  : `Export ${filteredProvisions.length === allProvisions.length ? 'all ' : ''}${filteredProvisions.length} provision${filteredProvisions.length !== 1 ? 's' : ''}`}
               </button>
             )}
           </div>
@@ -1878,9 +1762,6 @@ export function ProvisionsByTocStructure({
 
         {/* Provisions list */}
         <div className="p-4">
-          {console.log(`[ProvisionsByTocStructure] filteredProvisions: ${filteredProvisions.length}, selectedPart: ${selectedPart}`)}
-          {filteredProvisions.length > 0 && filteredProvisions.some(p => p.v2_marker === 'heritage' && p.pdf_page === 20) && console.log(`[ProvisionsByTocStructure] FOUND page 20 provision:`, { id: filteredProvisions.find(p => p.pdf_page === 20)?.id, pdf_printed_page: filteredProvisions.find(p => p.pdf_page === 20)?.pdf_printed_page })}
-
           {/* Marker key - explains C/O reference codes (only show if markers exist) */}
           {filteredProvisions.length > 0 && hasMarkers && (
             <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">

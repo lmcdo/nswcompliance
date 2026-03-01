@@ -1,0 +1,226 @@
+{
+  "main": {
+    "id": "0ecc976ff428e58f",
+    "type": "split",
+    "children": [
+      {
+        "id": "5ef35fe3c0b077e9",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "dfc7f5cea5845b9e",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "ARCHITECTURE-LGA-EXPANSION.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "ARCHITECTURE-LGA-EXPANSION"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "7d823197288a0eeb",
+    "type": "split",
+    "children": [
+      {
+        "id": "ed78ae7151bce5c3",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "458962a4b942d763",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "1e514b9d59d482d2",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "da093db05a8d901f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "e5424c33626160a9",
+    "type": "split",
+    "children": [
+      {
+        "id": "912cdf1943fccebc",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "57513ac7dd16a648",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "ARCHITECTURE-LGA-EXPANSION.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for ARCHITECTURE-LGA-EXPANSION"
+            }
+          },
+          {
+            "id": "c67d248bf847d4cc",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "ARCHITECTURE-LGA-EXPANSION.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from ARCHITECTURE-LGA-EXPANSION"
+            }
+          },
+          {
+            "id": "338781f9d2817b46",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "416e6e0397ddd862",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "ee1cea910a09de53",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "ARCHITECTURE-LGA-EXPANSION.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of ARCHITECTURE-LGA-EXPANSION"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false,
+      "obsidian-git:Open Git source control": false
+    }
+  },
+  "active": "458962a4b942d763",
+  "lastOpenFiles": [
+    "plans/The Strategic Evolution of the NSW.md",
+    "plans/PythonNetworkX + web libraries - for network analysi.md",
+    "plans/pivot to pattern book and tda based planning.md",
+    "plans/gephi moneymaking.md",
+    "plans/gephi ideas and intro.md",
+    "plans/entrality Types What Each Tells You.md",
+    "plans/#gephi  Step-by-Step Newcastle Subdivisio.md",
+    "gephi/gephi moneymaking.md",
+    "gephi/gephi ideas and intro.md",
+    "gephi/entrality Types What Each Tells You.md",
+    "gephi/#gephi  Step-by-Step Newcastle Subdivisio.md",
+    "history/2026-01-implementation/COUNCIL_COMPLIANCE_PROFILES_UX_STRATEGY_UNIFIED.md",
+    "strategy/UX_STRATEGY_AI_LAYER.md",
+    "strategy/PHASE_INTEGRATION_ROADMAP.md",
+    "strategy/COMPLETE_DATA_EXPLOITATION_PLAN.md",
+    "strategy/AI_LAYER_INDEX.md",
+    "strategy",
+    "research/UX_RESEARCH_PLANNING_TOOLS.md",
+    "research/EXPANDED_STAKEHOLDER_WORKFLOW_MATRIX.md",
+    "research/COPIABILITY_ASSESSMENT.md",
+    "research/COMPLEX_WORKFLOW_CATALOG.md",
+    "research/ANTI_COPYCAT_SECURITY.md",
+    "research/AI_QUESTION_INVENTORY.md",
+    "research/AI_QUERY_SCOPE_AND_CAPABILITIES.md",
+    "research/ai-assistant-expansion-plan.md",
+    "research",
+    "plans/strategic/recent-documents-summary.md",
+    "plans/strategic/propcode-analysis-and-api-services.md",
+    "plans/strategic",
+    "plans/The Strategic Evolution of the NSW.txt",
+    "plans/PythonNetworkX + web libraries - for network analysi.txt",
+    "plans/pivot to pattern book and tda based planning.txt",
+    "plans/lga-onboarding",
+    "plans/gephi moneymaking.txt",
+    "plans/expansion",
+    "plans/gephi ideas and intro.txt"
+  ]
+}
