@@ -585,60 +585,95 @@ export default function UserGuidePage() {
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="font-bold text-teal-900 text-sm md:text-lg flex items-center gap-2">
                     <span className="bg-teal-600 text-white px-2 py-0.5 rounded text-xs font-bold">DA MODE</span>
-                    DA Mode: Structured Intake &amp; SEE Draft
+                    DA Mode: Annotation &amp; SEE Draft
                   </h3>
                   <CheckCircle className="h-5 w-5 text-teal-600 flex-shrink-0" />
                 </div>
 
                 <div className="bg-white border border-teal-200 rounded-lg p-3 mb-4">
                   <p className="text-xs md:text-sm text-teal-900">
-                    <strong>Annotate DCP provisions and export a Statement of Environmental Effects draft.</strong>{' '}
-                    Activate DA Mode in the DCP tab to record compliance status for each provision.
-                    A structured intake pre-triages inapplicable provisions automatically before annotation begins.
+                    <strong>Record compliance notes against each DCP provision and export a Statement of Environmental Effects draft.</strong>{' '}
+                    DA Mode is built around a three-step workflow shown with large ①②③ labels in the DCP tab.
+                    Assessment is non-linear — work by topic, across multiple sessions, at your own pace.
+                    The session auto-saves and persists across page reloads.
                   </p>
                 </div>
 
-                <ol className="space-y-3 text-xs md:text-sm text-teal-900">
+                <ol className="space-y-4 text-xs md:text-sm text-teal-900">
                   <li className="flex gap-2 md:gap-3">
-                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">1</span>
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">①</span>
                     <div className="flex-1 min-w-0">
-                      <strong>DCP Tab &#8594; Enable DA Mode Toggle</strong>
-                      <p className="text-teal-700 mt-1">Annotation controls (Complies / Varies / N/A) appear on every provision. A structured intake dialog opens on first activation for this session.</p>
+                      <strong>Enable DA Mode</strong>
+                      <p className="text-teal-700 mt-1">
+                        The DA Mode button sits at the top left of the DCP tab with a large ① label.
+                        Toggle it on — the button turns teal — to unlock the development description form
+                        (② panel) and annotation controls on every provision.
+                      </p>
                     </div>
                   </li>
                   <li className="flex gap-2 md:gap-3">
-                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">2</span>
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">②</span>
                     <div className="flex-1 min-w-0">
-                      <strong>Complete the Structured Intake (6 Questions)</strong>
-                      <p className="text-teal-700 mt-1">Answer factual yes/no questions: new impervious surfaces, trees affected, pool or spa, new fencing, parking or driveway works, signage. A provision is only excluded when its trigger is factually impossible &#8212; answering &#8220;Don&#8217;t know&#8221; always keeps the provision included.</p>
+                      <strong>Set Development Type &amp; Run Triage</strong>
+                      <p className="text-teal-700 mt-1">
+                        The ② panel has two fields: development type (dropdown — pergola, driveway,
+                        extension, etc.) and works description (free text: dimensions, materials, location).
+                        Together these form the SEE introduction sentence.
+                      </p>
+                      <p className="text-teal-700 mt-2">
+                        Click <strong>Run triage →</strong> to open the triage dialog. Answer 6 factual
+                        yes/no questions: new impervious surfaces, trees affected, pool or spa, new fencing,
+                        parking or driveway works, signage. Provisions are excluded only when their trigger
+                        is factually impossible — &#8220;Don&#8217;t know&#8221; always keeps provisions in scope.
+                      </p>
+                      <p className="text-teal-700 mt-2">
+                        <strong>First-class passengers:</strong> If the property is in a Heritage Conservation
+                        Area or Precinct, those provision groups are shown first in the scope summary and cannot
+                        be triaged out — they are always in scope. After triage, the ② panel shows a persistent
+                        scope summary: Heritage layer count (all 300+ heritage provisions across subtopics
+                        like Additions, Demolition, Character), other included topic counts, and excluded topics
+                        (collapsible). A live completion counter shows assessed / triaged out / still to review.
+                      </p>
                     </div>
                   </li>
                   <li className="flex gap-2 md:gap-3">
-                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">3</span>
+                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">③</span>
                     <div className="flex-1 min-w-0">
-                      <strong>Review Locked Provisions</strong>
-                      <p className="text-teal-700 mt-1">Provisions whose topic trigger is impossible given your answers (e.g., pool controls when no pool is proposed) are automatically set to &#8220;N/A &#183; set by intake&#8221; and locked. No manual action required for these.</p>
+                      <strong>Review &amp; Annotate Provisions</strong>
+                      <p className="text-teal-700 mt-1">
+                        Use topic filter chips above the provisions list to focus on one topic at a time
+                        (Heritage, Setbacks, Parking, etc.). For each provision, select
+                        <strong> Complies</strong>, <strong>Varies</strong>, or <strong>N/A</strong>
+                        and type a compliance note. Saves automatically as you work.
+                      </p>
+                      <p className="text-teal-700 mt-1">
+                        Triaged-out provisions are locked as &#8220;N/A &#183; set by intake&#8221; — no manual
+                        action required. Work across sessions: the completion counter in the ② panel
+                        always shows exactly where you are.
+                      </p>
                     </div>
                   </li>
                   <li className="flex gap-2 md:gap-3">
                     <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">4</span>
                     <div className="flex-1 min-w-0">
-                      <strong>Annotate Remaining Provisions</strong>
-                      <p className="text-teal-700 mt-1">For each remaining provision, select Complies, Varies, or N/A and type a compliance note. All responses save automatically as you work. The session persists if you reload the page.</p>
-                    </div>
-                  </li>
-                  <li className="flex gap-2 md:gap-3">
-                    <span className="font-bold flex-shrink-0 w-5 h-5 md:w-6 md:h-6 rounded-full bg-teal-200 text-teal-800 flex items-center justify-center text-xs">5</span>
-                    <div className="flex-1 min-w-0">
                       <strong>Export SEE Draft PDF</strong>
-                      <p className="text-teal-700 mt-1">Click &#8220;Export SEE Draft&#8221; to generate a Statement of Environmental Effects with annotated provisions, compliance notes, and a cover page listing confirmed intake answers. The cover page serves as the audit trail: every N/A exclusion traces to a confirmed factual input.</p>
+                      <p className="text-teal-700 mt-1">
+                        Click <strong>Export SEE Draft</strong>. If provisions remain unannotated, the dialog
+                        names the count — you decide whether to export now or continue reviewing.
+                        The PDF includes annotated provisions, compliance notes, and a cover page with confirmed
+                        triage answers as an audit trail. Re-export as many times as needed as the design evolves.
+                        Each export is a dated snapshot; the session stays fully editable after export.
+                      </p>
                     </div>
                   </li>
                 </ol>
 
-                <div className="mt-4 p-3 bg-white border border-teal-200 rounded-lg">
+                <div className="mt-4 p-3 bg-white border border-teal-200 rounded-lg space-y-2">
                   <p className="text-xs md:text-sm text-teal-900">
-                    <strong>Why structured intake?</strong> Free-text filtering by AI creates liability risk (false negatives). Structured intake only excludes provisions when their trigger is factually impossible &#8212; legally defensible, no interpretation required.
+                    <strong>Why structured triage?</strong> Free-text filtering by AI creates liability risk (false negatives). Structured triage only excludes provisions when their trigger is factually impossible &#8212; legally defensible, no interpretation required.
+                  </p>
+                  <p className="text-xs md:text-sm text-teal-900">
+                    <strong>Multi-session work:</strong> Return any time and the ② completion counter shows where you left off — Heritage 12/47, Setbacks 0/18 — so you know exactly where to continue without any re-orientation.
                   </p>
                 </div>
               </div>
@@ -682,7 +717,7 @@ export default function UserGuidePage() {
                   </li>
                   <li className="flex gap-2">
                     <span className="text-teal-600 flex-shrink-0">✓</span>
-                    <span><strong>DA Mode &#8212; SEE drafting:</strong> Activate DA Mode in the DCP tab to annotate each provision (Complies / Varies / N/A). The structured intake pre-triages inapplicable provisions to N/A automatically. Export a Statement of Environmental Effects draft with confirmed intake answers recorded as an audit trail on the cover page</span>
+                    <span><strong>DA Mode &#8212; SEE drafting:</strong> Enable DA Mode (① label, top of DCP tab) to unlock annotation controls. Set development type and description in the ② panel, run triage to confirm scope (Heritage HCA and Precinct provisions are always included as first-class passengers), then annotate provisions (③) by topic across sessions. Export a Statement of Environmental Effects draft with confirmed triage answers as an audit trail on the cover page. Re-export at any stage as the design evolves.</span>
                   </li>
                 </ul>
               </div>
