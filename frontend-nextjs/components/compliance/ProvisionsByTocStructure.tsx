@@ -1095,7 +1095,7 @@ export function ProvisionsByTocStructure({
           activeFilters={activeFilters}
           includeNonActionable={!noFiltersActive}
           isSeeMode={hasResponses}
-          devType={developmentDescription || undefined}
+          devType={devDescriptionLocal || undefined}
         />
       );
 
