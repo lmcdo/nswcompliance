@@ -24,11 +24,20 @@ function isNumeric(value: string | number | undefined): boolean {
   return /^\d+(\.\d+)?$/.test(String(value).trim());
 }
 
-/** Extract URL and display text from an HTML anchor string, e.g. <a href="...">Label</a> */
+/** Extract URL and display text from an HTML anchor string, e.g. <a href="...">Label</a>
+ *  Also handles values where the DB has stored HTML entities (e.g. &lt;em&gt;...&lt;/em&gt;).
+ */
 function parseHtmlLink(value: string): { text: string; url?: string } {
-  const urlMatch = value.match(/href="([^"]+)"/);
-  const textMatch = value.match(/>([^<]+)</);
-  const text = textMatch?.[1]?.trim() || value.replace(/<[^>]*>/g, '').trim() || value;
+  // Decode HTML entities first — DB values may contain &lt; &gt; &amp; etc.
+  const decoded = value
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+  const urlMatch = decoded.match(/href="([^"]+)"/);
+  const textMatch = decoded.match(/>([^<]+)</);
+  const text = textMatch?.[1]?.trim() || decoded.replace(/<[^>]*>/g, '').trim() || decoded;
   return { text, url: urlMatch?.[1] };
 }
 
@@ -421,7 +430,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               )}
               {planning_portal_layers.regional_plan_boundary !== undefined && (() => {
                 const raw = String(planning_portal_layers.regional_plan_boundary);
-                const hasHtml = raw.includes('<');
+                const hasHtml = raw.includes('<') || raw.includes('&lt;');
                 const { text, url } = hasHtml ? parseHtmlLink(raw) : { text: raw, url: undefined };
                 return (
                   <View style={styles.contextTableRow}>

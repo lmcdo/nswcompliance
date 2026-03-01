@@ -457,7 +457,7 @@ export function ProvisionsByTocStructure({
       .map(prov => ({
         provision_id: prov.id,
         compliance_status: 'not_applicable',
-        response_text: getTopicExclusionReason(normalizeTopicKey(prov.v2_topic)),
+        response_text: `Excluded by intake: ${getTopicExclusionReason(normalizeTopicKey(prov.v2_topic))}`,
       }));
     if (toExclude.length > 0) {
       await bulkSaveResponses(toExclude);
@@ -1125,6 +1125,10 @@ export function ProvisionsByTocStructure({
   // SEE Draft export — uses SEEDocument with annotated provisions only
   const handleExportSee = async () => {
     try {
+      // Refresh responses from DB before building PDF — ensures per-provision annotations
+      // saved by DAResponseCapture (which doesn't update parent daResponses state) are current.
+      await refreshResponses();
+
       // Build provisionsForPdf (same pipeline as DCP export)
       const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
       const actualProvisions = filteredProvisions.filter((p: any) => !isTableOfContents(p.provision_text || ''));
