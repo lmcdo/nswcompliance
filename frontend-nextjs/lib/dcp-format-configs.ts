@@ -42,6 +42,43 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     skipLinePrefixes: [
       'Marrickville Development Control Plan',
     ],
+    // LaTeX math artefacts from PDF equation extraction (36 provisions fixed 2026-03-04).
+    // pdfplumber extracts LaTeX math tokens verbatim: "6 0 0 { \mathsf { m } } ^ { 2 }$"
+    // instead of "600 m²". DB already patched; these rules catch any re-extractions.
+    // Rules applied sequentially; order is significant.
+    preProcessReplacements: [
+      // 1. LaTeX inline-math opening delimiter: $( → (,  $< / $> → < / >
+      { from: /\$\(/g, to: '(' },
+      { from: /\$\s*([<>])/g, to: '$1' },
+      // 2. \star_{\math*{NB}} note marker — typographical annotation, strip entirely
+      { from: /\\star\s*_\s*\{\s*\\math\w+\s*\{\s*N\s*B\s*\}\s*\}/g, to: '' },
+      // 3. \mathtt { ... } — strip wrapper, keep content (e.g. "x 0 . 6" multiplication ratio)
+      { from: /\\mathtt\s*\{([^}]+)\}/g, to: '$1' },
+      // 4. Convert \math* unit tokens — handles \mathsf, \mathfrak, \mathtt, etc.
+      //    mm:  \math*{mm}  →  mm
+      { from: /\\math\w+\s*\{\s*m\s*m\s*\}/g, to: 'mm' },
+      //    pm:  \math*{pm}$?  →  pm  (time suffix: 3.00pm)
+      { from: /\\math\w+\s*\{\s*p\s*m\s*\}\$?/g, to: 'pm' },
+      //    m² variant A: outer { } wrapper — "{ \math*{m} } ^ { 2 }$"
+      { from: /\{\s*\\math\w+\s*\{?\s*m\s*\}?\s*\}\s*\^\s*\{\s*2\s*\}\$?/g, to: 'm²' },
+      //    m² variant B: no outer wrapper — "\math*{m}^{2}$" or "\math* m ^ { 2 }$"
+      { from: /\\math\w+\s*\{?\s*m\s*\}?\s*\^\s*\{\s*2\s*\}\$?/g, to: 'm²' },
+      // 5. LaTeX thousands separator: { , } → ,
+      { from: /\{\s*,\s*\}/g, to: ',' },
+      // 6. Remove remaining $ (LaTeX math-mode delimiters — no dollar amounts in DCPs)
+      { from: /\$/g, to: '' },
+      // 7. Spaced thousands separator (spaces on BOTH sides of comma): "1 , 0" → "1,0"
+      //    Leaves normal list punctuation "item 1, item 2" untouched (no space before comma)
+      { from: /(\d)\s+,\s+(\d)/g, to: '$1,$2' },
+      // 8. Spaced decimal point: "3 . 0" → "3.0"
+      { from: /(\d)\s+\.\s+(\d)/g, to: '$1.$2' },
+      // 9. Collapse space-separated single digits (math mode inserts spaces between every token)
+      //    Lookahead/lookbehind prevents matching digits adjacent to other digits.
+      //    Longest match first so "1 2 3 4" → "1234" not "12 34".
+      { from: /(?<!\d)(\d) (\d) (\d) (\d)(?!\d)/g, to: '$1$2$3$4' },
+      { from: /(?<!\d)(\d) (\d) (\d)(?!\d)/g, to: '$1$2$3' },
+      { from: /(?<!\d)(\d) (\d)(?!\d)/g, to: '$1$2' },
+    ],
   },
 
   ashfield: {
