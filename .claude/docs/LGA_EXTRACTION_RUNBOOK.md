@@ -219,9 +219,45 @@ If enrichment tags are wrong: fix `enrichment/config/{lga}_config.py`, re-run en
 
 ---
 
+## Step 7a — Manual Provision Text Inspection
+
+Before running the automated checker, look at raw provision text with your own eyes.
+The automated checker only knows about artifact classes we've already seen. Novel formats
+need human detection first.
+
+```sql
+-- Run in Supabase SQL editor
+SELECT id, provision_text
+FROM regulatory_provisions
+WHERE former_council = '<name>'
+  AND v2_is_actionable = true
+ORDER BY random()
+LIMIT 10;
+```
+
+Copy the `provision_text` of 5–10 provisions and read them. Look for:
+- Repeated document title lines (e.g., "Waverley Development Control Plan 2022")
+- Running header lines (e.g., "Waste      B1" with multiple spaces before the code)
+- Bare page numbers (e.g., a line containing just "4" or "78")
+- Chapter/section prefix lines that aren't part of the control text
+- Any other line that clearly doesn't belong to the provision content
+
+If you spot a new artifact pattern not in `dcp-format-configs.ts` → add it, then proceed to Step 7b.
+
+**Known patterns by council (already configured):**
+
+| Council | Artifacts |
+|---------|-----------|
+| marrickville | `# N Title` hash headers, bare page numbers, "Marrickville Development Control Plan" |
+| ashfield | "Comprehensive Inner West DCP 2016", "Chapter X" prefix lines |
+| waverley | "Title      B1" right-aligned headers, "WAVERLEY DEVELOPMENT CONTROL PLAN 2022", bare page numbers |
+| leichhardt | None (clean) |
+
+---
+
 ## Step 7b — Format Verification
 
-After enrichment completes, check that provision text is free of PDF extraction artifacts before exposing to users.
+After the manual inspection and any config entries added, run the automated checker.
 
 ```bash
 python scripts/verify_dcp_formatting.py --council <name> --limit 50
@@ -230,15 +266,18 @@ python scripts/verify_dcp_formatting.py --council <name> --limit 50
 **Pass gate:** < 5% of sampled provisions have flagged artifact lines — no action needed.
 
 **Fail gate (≥ 5%):**
-1. Note which artifact labels are flagged (bare page numbers, hash-prefix headers, chapter prefix lines, long lines without punctuation)
-2. Add a config entry in `frontend-nextjs/lib/dcp-format-configs.ts` under the council key
+1. Note which artifact labels are flagged (bare page numbers, hash-prefix headers, right-aligned headers, chapter prefix lines)
+2. Add or update the config entry in `frontend-nextjs/lib/dcp-format-configs.ts` under the council key
 3. Rerun the script to confirm pass gate before proceeding
 
-Example config entry (adjust patterns to match actual artifacts):
+Example config entry — adapt patterns to what you saw in Step 7a:
 ```typescript
 my_council: {
-  skipLinePrefixes: ['My Council Development Control Plan'],
-  skipLinePatterns: [/^\d{1,3}$/],
+  skipLinePrefixes: ['My Council DCP 2024'],         // exact document title line
+  skipLinePatterns: [
+    /^\d{1,3}$/,                                    // bare page numbers
+    /\s{3,}[A-Z]\d{1,2}\s*$/,                      // right-aligned section header
+  ],
 },
 ```
 

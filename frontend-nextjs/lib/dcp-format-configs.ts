@@ -62,8 +62,25 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     // Entry present to document that the council was verified.
   },
 
+  waverley: {
+    // PDF: Waverley_DCP_2022_Full_Version_Amendment5.pdf (single 490-page PDF, Parts A–F)
+    // Every content page starts with two header lines before the actual text:
+    //   "Ecologically Sustainable Development      B2"  (section title, right-aligned to code)
+    //   "WAVERLEY DEVELOPMENT CONTROL PLAN 2022"        (document title)
+    //   "4"                                             (bare page number)
+    // Confirmed from waverley/waverley_dcp_analysis_first50.txt.
+    skipLinePatterns: [
+      /^\d{1,3}$/,                    // bare Arabic page numbers (4, 5, 78...)
+      /\s{3,}[A-F]\d{1,2}\s*$/,      // right-aligned running header: "Waste      B1"
+    ],
+    skipLinePrefixes: [
+      'WAVERLEY DEVELOPMENT CONTROL PLAN',  // document title on every page
+    ],
+  },
+
   // Future councils added here during onboarding.
   // Run: python scripts/verify_dcp_formatting.py --council <name> --limit 50
+  // Also manually inspect 10 raw provisions from DB (see LGA_EXTRACTION_RUNBOOK.md Step 6b).
 };
 
 /**
