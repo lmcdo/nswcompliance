@@ -336,6 +336,12 @@ const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
     condition: 'Heritage',
     precinct: 'Precinct Character',
   },
+  waverley: {
+    generic: 'Waverley-wide',
+    use_specific: 'Zone-Specific',
+    condition: 'Heritage',
+    precinct: 'Site-Specific Precinct',
+  },
 };
 
 /**

@@ -15,6 +15,7 @@ import {
 } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
+import { detectLGAFromName, tryGetLGAConfig } from './lga-configs';
 import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
 import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
@@ -232,6 +233,22 @@ export class PropertyDataService {
    }
  }
 
+ // For single-council LGAs (e.g. Waverley) the inner-west mapping returns null.
+ // Fall back to the LGA config key so the provisions API gets a former_council param.
+ if (!constraints.formerCouncil && constraints.lga) {
+   try {
+     const lgaId = detectLGAFromName(constraints.lga);
+     if (lgaId) {
+       const lgaConfig = tryGetLGAConfig(lgaId);
+       if (lgaConfig && lgaConfig.type === 'single') {
+         constraints.formerCouncil = lgaId;
+         console.log(`[PropertyDataService] Single-council LGA fallback: formerCouncil = '${lgaId}'`);
+       }
+     }
+   } catch (error) {
+     console.error('[PropertyDataService] LGA config fallback failed:', error);
+   }
+ }
 
     // Match site-specific Part 6 LEP clauses (based on address and heritage item)
     try {

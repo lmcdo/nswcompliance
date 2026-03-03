@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, MapPin, Loader2, X, AlertCircle } from 'lucide-react';
+import { detectLGAFromName } from '@/lib/lga-configs';
 
 interface PropertySearchProps {
   onAddressSelect: (address: string, coordinates?: google.maps.LatLngLiteral) => void;
@@ -11,12 +12,12 @@ interface PropertySearchProps {
   selectedAddress?: string;
 }
 
-// Inner West LGA bounding box (approximate)
-const INNER_WEST_BOUNDS = {
-  south: -33.92,  // Southern boundary
-  west: 151.12,   // Western boundary
-  north: -33.85,  // Northern boundary
-  east: 151.19    // Eastern boundary
+// Sydney metro bounding box — biases autocomplete toward Sydney without hard-restricting
+const SYDNEY_BOUNDS = {
+  south: -34.17,
+  west: 150.90,
+  north: -33.40,
+  east: 151.35,
 };
 
 export function PropertySearch({ onAddressSelect, loading = false, selectedAddress }: PropertySearchProps) {
@@ -51,10 +52,10 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
             types: ['address'],
             componentRestrictions: { country: 'AU' },
             fields: ['formatted_address', 'geometry', 'address_components'],
-            // Bias results toward Inner West LGA (but don't hard-restrict)
+            // Bias results toward Sydney metro (but don't hard-restrict)
             bounds: new window.google.maps.LatLngBounds(
-              new window.google.maps.LatLng(INNER_WEST_BOUNDS.south, INNER_WEST_BOUNDS.west),
-              new window.google.maps.LatLng(INNER_WEST_BOUNDS.north, INNER_WEST_BOUNDS.east)
+              new window.google.maps.LatLng(SYDNEY_BOUNDS.south, SYDNEY_BOUNDS.west),
+              new window.google.maps.LatLng(SYDNEY_BOUNDS.north, SYDNEY_BOUNDS.east)
             )
           }
         );
@@ -111,16 +112,15 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
             console.log(`[PropertySearch] Address: ${address}, LGA: ${lga || '(not found)'}`);
 
-            // Validate: Only allow Inner West addresses
-            const isInnerWest = lga && lga.toLowerCase().includes('inner west');
+            // Validate: only allow configured LGAs
+            const lgaId = lga ? detectLGAFromName(lga) : null;
 
-            if (!isInnerWest) {
-              // Show error for non-Inner West addresses
+            if (!lgaId) {
               const lgaDisplay = lga || 'unknown area';
-              setLgaError(`This address is in ${lgaDisplay}. Only Inner West LGA addresses are currently supported.`);
-              console.warn(`[PropertySearch] Address rejected: ${address} is in ${lgaDisplay}, not Inner West`);
+              setLgaError(`${lgaDisplay} is not yet supported. Supported areas: Inner West, Waverley.`);
+              console.warn(`[PropertySearch] Address rejected: ${address} is in ${lgaDisplay} (no LGA config)`);
             } else {
-              console.log(`[PropertySearch] Address accepted: ${address} is in Inner West`);
+              console.log(`[PropertySearch] Address accepted: ${address} → LGA config '${lgaId}'`);
             }
             // Don't auto-trigger - let user click the button to analyze
           }
@@ -225,7 +225,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
           Property Address
         </h2>
         <p className="text-gray-600 text-sm">
-          Enter an Inner West address to analyze
+          Enter a property address to analyze
         </p>
       </div>
 
