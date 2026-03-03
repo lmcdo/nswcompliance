@@ -1329,6 +1329,7 @@ export function ProvisionsByTopic({
                                                                     text={stripSectionHeader(provision.provision_text, undefined)}
                                                                     compact
                                                                     theme="green"
+                                                                    councilKey={council}
                                                                   />
                                                                 </div>
                                                                 {provision.provision_text.length > 200 && (
@@ -1588,6 +1589,7 @@ export function ProvisionsByTopic({
                                                 <FormattedProvisionText
                                                   text={stripSectionHeader(provision.provision_text, undefined)}
                                                   compact
+                                                  councilKey={council}
                                                 />
                                               </div>
                                               {provision.provision_text.length > 300 && (

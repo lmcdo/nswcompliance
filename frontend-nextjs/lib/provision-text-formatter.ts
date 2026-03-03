@@ -292,15 +292,8 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Skip PDF page header artifacts leaked from Marrickville DCP extraction.
-    // The DCP prints a running header "N  Marrickville Development Control Plan 2011"
-    // on every page. These appear in provision_text as:
-    //   "# 5 Marrickville Development Control Plan 2011"  (markdown heading form)
-    //   "5"                                                (bare page number)
-    //   "Marrickville Development Control Plan 2011"       (document title repeat)
-    if (/^\d{1,3}$/.test(line)) continue;
-    if (/^#\s*\d{1,3}\s+\w/.test(line)) continue;  // "# 5 Title..." page header
-    if (/^Marrickville Development Control Plan/.test(line)) continue;
+    // Council-specific artifact filtering is handled by preProcessProvisionText()
+    // in lib/dcp-format-configs.ts before text reaches this parser.
 
     // Check for section headers (e.g., "4.1.9 Additional controls")
     // Section headers MAY be in database (section_header field), but not always

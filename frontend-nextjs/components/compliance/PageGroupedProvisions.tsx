@@ -269,6 +269,7 @@ interface PageGroupedProvisionsProps {
   showLegend?: boolean;         // Show layer legend above results (default: false)
   maxProvisions?: number;       // Limit display count (e.g., 20)
   formerCouncil?: string;       // For council-specific layer labels
+  councilKey?: string;          // formerCouncil.toLowerCase() — for provision text artifact cleanup
   highlightQuery?: string;      // Search query to highlight in provision text
   // Layer tooltip context
   zone?: string;                // Property zone (for use_specific tooltip)
@@ -457,6 +458,7 @@ export function PageGroupedProvisions({
   showLegend = false,
   maxProvisions,
   formerCouncil,
+  councilKey,
   highlightQuery,
   crossReferencesMap,
   showCrossReferences = false,
@@ -827,6 +829,7 @@ export function PageGroupedProvisions({
                             stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
                             highlightQuery={highlightQuery}
                             theme={provisionTheme}
+                            councilKey={councilKey}
                           />
                         ) : (
                           <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>

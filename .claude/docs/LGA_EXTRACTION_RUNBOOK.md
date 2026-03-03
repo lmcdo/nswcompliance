@@ -219,6 +219,31 @@ If enrichment tags are wrong: fix `enrichment/config/{lga}_config.py`, re-run en
 
 ---
 
+## Step 7b — Format Verification
+
+After enrichment completes, check that provision text is free of PDF extraction artifacts before exposing to users.
+
+```bash
+python scripts/verify_dcp_formatting.py --council <name> --limit 50
+```
+
+**Pass gate:** < 5% of sampled provisions have flagged artifact lines — no action needed.
+
+**Fail gate (≥ 5%):**
+1. Note which artifact labels are flagged (bare page numbers, hash-prefix headers, chapter prefix lines, long lines without punctuation)
+2. Add a config entry in `frontend-nextjs/lib/dcp-format-configs.ts` under the council key
+3. Rerun the script to confirm pass gate before proceeding
+
+Example config entry (adjust patterns to match actual artifacts):
+```typescript
+my_council: {
+  skipLinePrefixes: ['My Council Development Control Plan'],
+  skipLinePatterns: [/^\d{1,3}$/],
+},
+```
+
+---
+
 ## Step 8 — Frontend Verification
 
 1. Deploy or run local dev server

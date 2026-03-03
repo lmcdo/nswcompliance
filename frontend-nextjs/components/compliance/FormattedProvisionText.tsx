@@ -11,6 +11,7 @@
 
 import React, { useMemo } from 'react';
 import { parseProvisionText, FormattedElement, getElementClasses, ParseOptions, ProvisionTheme } from '@/lib/provision-text-formatter';
+import { preProcessProvisionText } from '@/lib/dcp-format-configs';
 
 interface FormattedProvisionTextProps {
   text: string;
@@ -20,6 +21,7 @@ interface FormattedProvisionTextProps {
   skipHeadings?: boolean; // Skip bold heading detection - useful when under TOC structure
   highlightQuery?: string; // Search query to highlight in the text
   theme?: ProvisionTheme; // Color theme: 'purple' (SEPP), 'green' (DCP), 'amber' (LEP)
+  councilKey?: string; // formerCouncil.toLowerCase() — enables council-specific artifact cleanup
 }
 
 /**
@@ -47,20 +49,17 @@ export function FormattedProvisionText({
   stripMarker,
   skipHeadings = false,
   highlightQuery,
-  theme = 'purple'
+  theme = 'purple',
+  councilKey
 }: FormattedProvisionTextProps) {
-  // DEBUG: Log theme (only for control markers)
-  if (text.match(/^[CO]\d+/)) {
-    console.log(`[FormattedProvisionText] Rendering with theme: ${theme}, text preview: ${text.substring(0, 50)}`);
-  }
-
-  // Strip the marker from the beginning of text if it's already shown as a badge
+  // Apply council-specific artifact cleanup, then strip the control marker if shown as badge
   const processedText = useMemo(() => {
-    if (!stripMarker) return text;
+    let result = councilKey ? preProcessProvisionText(text, councilKey) : text;
+    if (!stripMarker) return result;
     // Pattern: marker at start, possibly with space, followed by content
     const markerPattern = new RegExp(`^\\s*${stripMarker}\\s+`, 'i');
-    return text.replace(markerPattern, '');
-  }, [text, stripMarker]);
+    return result.replace(markerPattern, '');
+  }, [text, stripMarker, councilKey]);
 
   const elements = useMemo(() => parseProvisionText(processedText, { skipHeadings }), [processedText, skipHeadings]);
 

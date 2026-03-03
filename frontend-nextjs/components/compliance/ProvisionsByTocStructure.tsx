@@ -1818,6 +1818,7 @@ export function ProvisionsByTocStructure({
             <PageGroupedProvisions provisionTheme="green"
               provisions={filteredProvisions}
               formerCouncil={formerCouncil}
+              councilKey={formerCouncil?.toLowerCase()}
               showLayerBadges={true}
               maxProvisions={100}
               onViewPdf={(url, page) => setPdfModal({ url, page })}
