@@ -17,9 +17,14 @@ Structure (Parts A–F, 490 pages, Amendment 5):
   - E3: Local Village Centres
   - E4: Special Character Areas
   - E5: 113 Macpherson Street, Bronte
+  - E6: 194-214 Oxford Street Bondi Junction
+  - E7: Edina Estate
 - Part F: Development-Specific Controls — type-filtered
-  - F1: Shared Accommodation
+  - F1: Shared Residential Accommodation
   - F2: Tourist and Visitor Accommodation
+  - F3: Child Care Centres
+  - F4: Places of Public Worship
+  - F5: Horticulture
 
 Source PDF: waverley/Waverley_DCP_2022_Full_Version_Amendment5.pdf
 Registry key: waverley/waverley-dcp-2022
@@ -33,7 +38,6 @@ SPECIAL_ZONES     = ["SP1", "SP2"]
 ALL_ZONES         = ["ALL"]
 
 # Part B section codes → topic slugs
-# B15 (Public Domain) not assigned page ranges in TOC — omitted from extraction config
 WAVERLEY_PART_B_TOPICS: dict[str, str] = {
     "B1":  "waste",
     "B2":  "sustainability",
@@ -61,6 +65,8 @@ WAVERLEY_PRECINCTS: dict[str, str] = {
     "E3": "Local Village Centres",
     "E4": "Special Character Areas",
     "E5": "113 Macpherson Street, Bronte",
+    "E6": "194-214 Oxford Street Bondi Junction",
+    "E7": "Edina Estate",
 }
 
 WAVERLEY_CONFIG = {

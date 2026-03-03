@@ -3,7 +3,7 @@
 verify_dcp_formatting.py — DCP provision text artifact detector
 
 Onboarding verification tool. Run after enrichment pipeline completes for a new council.
-Reads DB credentials from .env.local (NEXT_PUBLIC_SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY).
+Reads DB credentials from .env (DATABASE_URL).
 Read-only — no auto-fixes.
 
 Usage:
@@ -20,13 +20,18 @@ Exit codes:
 """
 
 import argparse
-import json
 import os
 import re
 import sys
-import urllib.request
 from collections import Counter
 from pathlib import Path
+
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+
+import psycopg2
+import psycopg2.extras
+from dotenv import load_dotenv
 
 
 # ─── Artifact heuristics ─────────────────────────────────────────────────────
@@ -86,91 +91,68 @@ def check_provision(text: str) -> tuple[list[str], list[str]]:
     return found, flagged_lines
 
 
-def load_env(root: Path) -> dict:
-    """Load .env.local key=value pairs (no shell expansion)."""
-    env_file = root / ".env.local"
-    if not env_file.exists():
-        raise FileNotFoundError(f".env.local not found at {env_file}")
-    env = {}
-    for raw in env_file.read_text(encoding="utf-8").splitlines():
-        line = raw.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, val = line.partition("=")
-        env[key.strip()] = val.strip().strip('"').strip("'")
-    return env
+def get_db_connection():
+    """Connect using DATABASE_URL from .env."""
+    load_dotenv(Path(__file__).parent.parent / ".env")
+    database_url = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+    if not database_url:
+        raise RuntimeError("DATABASE_URL not set in .env")
+    return psycopg2.connect(database_url)
 
 
-def fetch_provisions(supabase_url: str, service_key: str, council: str, limit: int) -> list[dict]:
-    """Fetch random actionable provisions for council from Supabase REST API."""
-    council_filter = council.lower()
-    url = (
-        f"{supabase_url.rstrip('/')}/rest/v1/regulatory_provisions"
-        f"?former_council=ilike.{council_filter}"
-        f"&v2_is_actionable=eq.true"
-        f"&select=id,provision_text,v2_topic"
-        f"&limit={limit}"
-        f"&order=random()"
+def fetch_provisions(conn, council: str, limit: int) -> list[dict]:
+    """Fetch random actionable provisions for council."""
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        """
+        SELECT id, provision_text, v2_topic
+        FROM regulatory_provisions
+        WHERE source_council = %s
+          AND v2_is_actionable = TRUE
+          AND is_current = TRUE
+        ORDER BY random()
+        LIMIT %s
+        """,
+        (council, limit),
     )
-    req = urllib.request.Request(url)
-    req.add_header("apikey", service_key)
-    req.add_header("Authorization", f"Bearer {service_key}")
-    req.add_header("Accept", "application/json")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    return [dict(r) for r in cur.fetchall()]
 
 
-def fetch_topic_distribution(supabase_url: str, service_key: str, council: str) -> list[dict]:
-    """Fetch topic counts for the council (all provisions, not just sample)."""
-    council_filter = council.lower()
-    # Supabase doesn't natively do GROUP BY, but we can fetch all topics and count in Python.
-    # Limit to 2000 to avoid timeout; enough for a distribution check.
-    url = (
-        f"{supabase_url.rstrip('/')}/rest/v1/regulatory_provisions"
-        f"?former_council=ilike.{council_filter}"
-        f"&v2_is_actionable=eq.true"
-        f"&select=v2_topic"
-        f"&limit=2000"
+def fetch_topic_distribution(conn, council: str) -> list[dict]:
+    """Fetch topic rows for the council (all provisions, for distribution check)."""
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(
+        """
+        SELECT v2_topic
+        FROM regulatory_provisions
+        WHERE source_council = %s
+          AND v2_is_actionable = TRUE
+          AND is_current = TRUE
+        LIMIT 2000
+        """,
+        (council,),
     )
-    req = urllib.request.Request(url)
-    req.add_header("apikey", service_key)
-    req.add_header("Authorization", f"Bearer {service_key}")
-    req.add_header("Accept", "application/json")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        rows = json.loads(resp.read().decode("utf-8"))
-    return rows
+    return [dict(r) for r in cur.fetchall()]
 
 
-def fetch_duplicate_is_current(supabase_url: str, service_key: str, council: str) -> int:
+def fetch_duplicate_is_current(conn, council: str) -> int:
     """Count provisions with NULL source_chapter_key and is_current=True.
 
     These are first-pass extractions that cannot be retired by the pipeline automatically.
     A non-zero count means manual retirement is needed if chapters are re-extracted.
     """
-    council_filter = council.lower()
-    url = (
-        f"{supabase_url.rstrip('/')}/rest/v1/regulatory_provisions"
-        f"?former_council=ilike.{council_filter}"
-        f"&source_chapter_key=is.null"
-        f"&is_current=eq.true"
-        f"&select=id"
-        f"&limit=1"
-        # Use Prefer: count=exact to get total without fetching all rows
+    cur = conn.cursor()
+    cur.execute(
+        """
+        SELECT COUNT(*)
+        FROM regulatory_provisions
+        WHERE source_council = %s
+          AND source_chapter_key IS NULL
+          AND is_current = TRUE
+        """,
+        (council,),
     )
-    req = urllib.request.Request(url)
-    req.add_header("apikey", service_key)
-    req.add_header("Authorization", f"Bearer {service_key}")
-    req.add_header("Accept", "application/json")
-    req.add_header("Prefer", "count=exact")
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        content_range = resp.headers.get("Content-Range", "")
-        # Content-Range: 0-0/N  — parse N
-        if "/" in content_range:
-            try:
-                return int(content_range.split("/")[1])
-            except (ValueError, IndexError):
-                pass
-        return len(json.loads(resp.read().decode("utf-8")))
+    return cur.fetchone()[0]
 
 
 def print_config_skeleton(council: str, detected_labels: set[str]) -> None:
@@ -231,19 +213,10 @@ def main() -> int:
     council = args.council.strip().lower()
     limit = max(10, min(args.limit, 500))
 
-    script_dir = Path(__file__).resolve().parent
-    project_root = script_dir.parent
-
     try:
-        env = load_env(project_root / "frontend-nextjs")
-    except FileNotFoundError as e:
-        print(f"ERROR: {e}", file=sys.stderr)
-        sys.exit(2)
-
-    supabase_url = env.get("NEXT_PUBLIC_SUPABASE_URL", "")
-    service_key = env.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    if not supabase_url or not service_key:
-        print("ERROR: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing from .env.local", file=sys.stderr)
+        conn = get_db_connection()
+    except Exception as e:
+        print(f"ERROR connecting to DB: {e}", file=sys.stderr)
         sys.exit(2)
 
     overall_pass = True
@@ -251,7 +224,7 @@ def main() -> int:
     # ─── Section 1: Text artifact checks ─────────────────────────────────────
     print(f"\nFetching {limit} random actionable provisions for '{council}'...")
     try:
-        provisions = fetch_provisions(supabase_url, service_key, council, limit)
+        provisions = fetch_provisions(conn, council, limit)
     except Exception as e:
         print(f"ERROR fetching provisions: {e}", file=sys.stderr)
         sys.exit(2)
@@ -307,7 +280,7 @@ def main() -> int:
     if not args.skip_topic_check:
         print(f"\n=== 2. Topic Distribution Check: {council} ===\n")
         try:
-            topic_rows = fetch_topic_distribution(supabase_url, service_key, council)
+            topic_rows = fetch_topic_distribution(conn, council)
             topic_counts: Counter = Counter()
             for row in topic_rows:
                 topic_counts[row.get("v2_topic") or "(null)"] += 1
@@ -347,7 +320,7 @@ def main() -> int:
     if not args.skip_is_current_check:
         print(f"\n=== 3. is_current Retirement Check: {council} ===\n")
         try:
-            null_chapter_count = fetch_duplicate_is_current(supabase_url, service_key, council)
+            null_chapter_count = fetch_duplicate_is_current(conn, council)
             print(f"  Provisions with is_current=True and NULL source_chapter_key: {null_chapter_count}")
             if null_chapter_count == 0:
                 print("  PASS  — all current provisions have a source_chapter_key (pipeline can retire them)")

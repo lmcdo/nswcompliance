@@ -109,6 +109,7 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     skipLinePatterns: [
       /^\d{1,3}$/,                    // bare Arabic page numbers (4, 5, 78...)
       /\s{3,}[A-F]\d{1,2}\s*$/,      // right-aligned running header: "Waste      B1"
+      /\.{5,}/,                       // internal TOC dotted leaders (e.g. "1.0 Objectives......184")
     ],
     skipLinePrefixes: [
       'WAVERLEY DEVELOPMENT CONTROL PLAN',  // document title on every page
