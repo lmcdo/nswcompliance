@@ -119,6 +119,7 @@
 - `.claude/prp/INDEX.md` - Architecture overview
 - `.claude/DATA_QUALITY_TRACKER.md` - DQ issues and fixes
 - `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` - Known artifact classes + pre-import QA checklist (READ AT START OF EVERY NEW LGA ONBOARDING)
+- `.claude/docs/LGA_EXTRACTION_RUNBOOK.md` - Step-by-step extraction pipeline with gates (READ WHEN DOING LGA ONBOARDING)
 - `DEPLOYMENT.md` - Deploy guide
 - `frontend-nextjs/app/assessment/README.md` - UI details
 - `docs/screencasts/INDEX.md` - Screencast scripts index
