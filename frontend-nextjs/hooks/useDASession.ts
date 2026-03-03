@@ -70,42 +70,43 @@ export function useDASession(
 
   const saveDescription = useCallback(async (text: string) => {
     if (!sessionToken) return;
-    try {
-      await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dev_type: text || null }),
-      });
-    } catch (err) {
-      console.error('[useDASession] saveDescription error:', err);
-    }
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dev_type: text || null }),
+    });
+    if (!res.ok) throw new Error('Failed to save description');
   }, [sessionToken]);
 
   const saveIntakeAnswers = useCallback(async (answers: IntakeAnswers) => {
     if (!sessionToken) return;
-    try {
-      await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ proposed_values: answers }),
-      });
-      setIntakeAnswers(answers);
-    } catch (err) {
-      console.error('[useDASession] saveIntakeAnswers error:', err);
-    }
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposed_values: answers }),
+    });
+    if (!res.ok) throw new Error('Failed to save intake answers');
+    setIntakeAnswers(answers);
   }, [sessionToken]);
 
   const bulkSaveResponses = useCallback(async (responses: BulkResponseItem[]) => {
     if (!sessionToken || responses.length === 0) return;
-    try {
-      await fetch(`/api/da-sessions/${sessionToken}/responses/bulk`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ responses }),
-      });
-    } catch (err) {
-      console.error('[useDASession] bulkSaveResponses error:', err);
-    }
+    const res = await fetch(`/api/da-sessions/${sessionToken}/responses/bulk`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ responses }),
+    });
+    if (!res.ok) throw new Error('Failed to save triage responses');
+    setDaResponses(prev => {
+      const next = new Map(prev);
+      for (const r of responses) {
+        next.set(r.provision_id, {
+          compliance_status: r.compliance_status as DaResponse['compliance_status'],
+          response_text: r.response_text ?? null,
+        });
+      }
+      return next;
+    });
   }, [sessionToken]);
 
   useEffect(() => {

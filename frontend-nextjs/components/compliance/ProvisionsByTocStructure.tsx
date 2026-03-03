@@ -161,8 +161,8 @@ export function ProvisionsByTocStructure({
   lepClauseData,
   isDaMode = false,
 }: ProvisionsByTocStructureProps) {
-  // View mode: 'task' shows all provisions, 'structure' requires TOC selection
-  const [viewMode, setViewMode] = useState<'task' | 'structure'>('task');
+  // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
+  const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
@@ -196,41 +196,62 @@ export function ProvisionsByTocStructure({
   // Intake modal state
   const [showIntakeModal, setShowIntakeModal] = useState(false);
   const [intakeSkipped, setIntakeSkipped] = useState(false);
+  // Increment on every open so the key prop remounts DAIntakeModal, resetting all internal state
+  const [intakeOpenCount, setIntakeOpenCount] = useState(0);
+
+  // Restore per-address UI state from localStorage when the address changes
+  useEffect(() => {
+    if (!address) return;
+    const skipped = localStorage.getItem(`ce_intakeSkipped_${address}`) === 'true';
+    const savedDevType = localStorage.getItem(`ce_devType_${address}`) || '';
+    const savedDevWorksText = localStorage.getItem(`ce_devWorksText_${address}`) || '';
+    setIntakeSkipped(skipped);
+    setDevType(savedDevType);
+    setDevWorksText(savedDevWorksText);
+  }, [address]);
 
   // Structured development description state
   const [devType, setDevType] = useState<string>('');
   const [devWorksText, setDevWorksText] = useState<string>('');
-  const [devDescriptionLocal, setDevDescriptionLocal] = useState('');
+  const devDescriptionLocal = useMemo(() => assembleDescription(devType, devWorksText), [devType, devWorksText]);
   const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Clear any pending debounce on unmount to avoid state updates after teardown
+  useEffect(() => {
+    return () => {
+      if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
+    };
+  }, []);
 
   const handleDevTypeChange = (newType: string) => {
     setDevType(newType);
-    const assembled = assembleDescription(newType, devWorksText);
-    setDevDescriptionLocal(assembled);
+    if (address) localStorage.setItem(`ce_devType_${address}`, newType);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
-    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembled); }, 800);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(newType, devWorksText)); }, 800);
   };
 
   const handleDevWorksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setDevWorksText(text);
-    const assembled = assembleDescription(devType, text);
-    setDevDescriptionLocal(assembled);
+    if (address) localStorage.setItem(`ce_devWorksText_${address}`, text);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
-    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembled); }, 800);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(devType, text)); }, 800);
   };
+
+  // Keep a ref so the effect below can call the latest refreshResponses without
+  // re-registering the effect whenever the callback identity changes
+  const refreshResponsesRef = useRef(refreshResponses);
+  refreshResponsesRef.current = refreshResponses;
 
   // Load responses when DA Mode activates
   useEffect(() => {
-    if (isDaMode && address) {
-      refreshResponses();
-    }
-  }, [isDaMode, address, refreshResponses]);
+    if (isDaMode && address) refreshResponsesRef.current();
+  }, [isDaMode, address]);
 
   // Show intake modal when DA mode first activates and no prior answers exist
   useEffect(() => {
     if (isDaMode && intakeAnswers === null && !intakeSkipped && sessionToken) {
+      setIntakeOpenCount(c => c + 1);
       setShowIntakeModal(true);
     }
   }, [isDaMode, intakeAnswers, intakeSkipped, sessionToken]);
@@ -289,7 +310,7 @@ export function ProvisionsByTocStructure({
 
   // Auto-select first part on load ONLY in structure mode
   useEffect(() => {
-    if (viewMode === 'structure' && data?.data?.complete_toc && !selectedPart) {
+    if (provisionView === 'structure' && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
         // Sort parts numerically (extract number from "Part X" or "Chapter X")
@@ -301,7 +322,7 @@ export function ProvisionsByTocStructure({
         setSelectedPart(sortedParts[0]);
       }
     }
-  }, [viewMode, data, selectedPart]);
+  }, [provisionView, data, selectedPart]);
 
   // Debounce search input with 300ms delay
   useEffect(() => {
@@ -451,7 +472,7 @@ export function ProvisionsByTocStructure({
 
   // Base provisions - mode-aware: task mode shows all, structure mode shows selected
   const handleIntakeApply = useCallback(async (answers: IntakeAnswers) => {
-    await saveIntakeAnswers(answers);
+    await saveIntakeAnswers(answers);        // throws on failure
     const excludable = getExcludableTopics(answers);
     const toExclude = allProvisions
       .filter(prov => {
@@ -464,26 +485,26 @@ export function ProvisionsByTocStructure({
         response_text: `Excluded by intake: ${getTopicExclusionReason(normalizeTopicKey(prov.v2_topic))}`,
       }));
     if (toExclude.length > 0) {
-      await bulkSaveResponses(toExclude);
-      await refreshResponses();
+      await bulkSaveResponses(toExclude);   // throws on failure, updates daResponses Map locally
     }
-    setShowIntakeModal(false);
-  }, [allProvisions, saveIntakeAnswers, bulkSaveResponses, refreshResponses]);
+    setShowIntakeModal(false);              // only reached on success
+  }, [allProvisions, saveIntakeAnswers, bulkSaveResponses]);
 
   const handleIntakeSkip = useCallback(() => {
     setIntakeSkipped(true);
+    if (address) localStorage.setItem(`ce_intakeSkipped_${address}`, 'true');
     setShowIntakeModal(false);
-  }, []);
+  }, [address]);
 
     const baseProvisions = useMemo(() => {
-    if (viewMode === 'task') {
+    if (provisionView === 'task') {
       // Task mode: ALL provisions across all parts
       return allProvisions;
     } else {
       // Structure mode: Current behavior (TOC-filtered)
       return selectedProvisions;
     }
-  }, [viewMode, allProvisions, selectedProvisions]);
+  }, [provisionView, allProvisions, selectedProvisions]);
 
   // Heritage counts: Always use allProvisions (full unfiltered set) so the badge
   // shows stable property-level totals regardless of selected part/topic/search.
@@ -705,13 +726,13 @@ export function ProvisionsByTocStructure({
 
   // Mode switch handlers
   const enterTaskMode = () => {
-    setViewMode('task');
+    setProvisionView('task');
     setSelectedPart(null);
     setSelectedSection(null);
   };
 
   const enterStructureMode = () => {
-    setViewMode('structure');
+    setProvisionView('structure');
     // Auto-select first part if none selected
     if (!selectedPart && Object.keys(completeTocStructure).length > 0) {
       const firstPart = Object.keys(completeTocStructure)[0];
@@ -1302,6 +1323,7 @@ export function ProvisionsByTocStructure({
     <div className="space-y-0">
       {/* Structured intake modal */}
       <DAIntakeModal
+        key={intakeOpenCount}
         open={showIntakeModal}
         onApply={handleIntakeApply}
         onSkip={handleIntakeSkip}
@@ -1311,13 +1333,13 @@ export function ProvisionsByTocStructure({
         precinctName={precinctName}
       />
 
-      {/* ② Set your scope */}
-      <div className="flex items-start gap-3 mb-5">
-        <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>2</span>
-        <div className="flex-1">
-          <p className={`text-sm font-semibold ${isDaMode ? 'text-gray-800' : 'text-gray-400'}`}>Set your scope</p>
-          <p className="text-xs text-gray-500 mt-0.5 mb-2">Select development type, describe the works, and run provision triage to remove inapplicable provisions. Heritage, precinct, and flood controls are always included.</p>
-          {isDaMode ? (
+      {/* ② Set your scope — DA mode only */}
+      {isDaMode && (
+        <div className="flex items-start gap-3 mb-5">
+          <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-gray-800">Set your scope</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">Name the development type, describe the works, and answer factual questions to automatically exclude provisions that can't apply to your project. What survives triage is your assessment scope — the provisions your SEE must address.</p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -1329,34 +1351,32 @@ export function ProvisionsByTocStructure({
               excludableTopics={excludableTopics}
               onDevTypeChange={handleDevTypeChange}
               onDevWorksChange={handleDevWorksChange}
-              onRunIntake={() => setShowIntakeModal(true)}
+              onRunIntake={() => { setIntakeOpenCount(c => c + 1); setShowIntakeModal(true); }}
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctName}
             />
-          ) : (
-            <p className="text-xs text-gray-400 italic">Enable DA Mode above to unlock.</p>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ③ Review applicable provisions */}
-      <div className="flex items-start gap-3 mb-3">
-        <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>3</span>
-        <div>
-          <p className={`text-sm font-semibold ${isDaMode ? 'text-gray-800' : 'text-gray-400'}`}>Review applicable provisions</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {isDaMode
-              ? 'Work through each topic. Record Complies, Varies, or N/A for every provision. Export your SEE draft when ready.'
-              : 'Browse provisions by topic or search. Filter by layer to see which controls apply to your property.'}
-          </p>
+      {/* ③ Review provisions — DA mode only */}
+      {isDaMode && (
+        <div className="flex items-start gap-3 mb-3">
+          <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">3</span>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Review applicable provisions</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Work through each applicable provision below. Record Complies, Varies, or N/A — triage has already removed controls that cannot apply. Export your SEE draft when done.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main two-panel layout */}
       <div className="flex border rounded-lg bg-white">
       {/* Left: TOC Sidebar - Only in structure mode */}
-      {viewMode === 'structure' && (
+      {provisionView === 'structure' && (
         <div className="w-64 border-r bg-gray-50 flex-shrink-0 overflow-hidden rounded-l-lg">
           <TocSidebar
             tocStructure={completeTocStructure}
@@ -1377,7 +1397,7 @@ export function ProvisionsByTocStructure({
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {viewMode === 'task' ? (
+                {provisionView === 'task' ? (
                   'DCP Provisions'
                 ) : selectedPart ? (
                   sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
@@ -1385,18 +1405,18 @@ export function ProvisionsByTocStructure({
                   'Select a section'
                 )}
               </h3>
-              {viewMode === 'task' ? (
+              {provisionView === 'task' ? (
                 <p className="text-xs text-gray-400 mt-0.5">
                   {isDaMode
                     ? 'Filter by topic, review each provision, record your compliance status.'
-                    : 'Filter by topic to focus on one area, or search. Preparing a DA? Enable DA Mode (top right).'}
+                    : 'Filter by topic to focus on one area, or search.'}
                 </p>
               ) : (
                 <button onClick={enterTaskMode} className="text-xs text-teal-600 hover:underline mt-0.5">
                   ← Back to topic view
                 </button>
               )}
-              {viewMode === 'structure' && selectedSection && selectedPart && (
+              {provisionView === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600 mt-0.5">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
@@ -1515,7 +1535,7 @@ export function ProvisionsByTocStructure({
                           : 'DCP';
 
                         // Only show part if in structure mode with a selected part
-                        if (viewMode === 'structure' && selectedPart && firstProv?.v2_dcp_part) {
+                        if (provisionView === 'structure' && selectedPart && firstProv?.v2_dcp_part) {
                           items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
                         } else {
                           // In task mode, just show DCP name without specific part
@@ -1758,19 +1778,25 @@ export function ProvisionsByTocStructure({
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowExportModal(true)}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-white border border-teal-300 text-teal-700 text-sm font-medium rounded-lg hover:bg-teal-50 transition-colors"
+                  className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-teal-300 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors"
                 >
-                  <Download className="h-4 w-4" />
-                  Export DCP Schedule
+                  <Download className="h-4 w-4 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium">DCP Schedule</div>
+                    <div className="text-xs font-normal opacity-70">All rules — reference only</div>
+                  </div>
                 </button>
                 <button
                   onClick={handleExportSee}
                   disabled={!devDescriptionLocal.trim()}
                   title={!devDescriptionLocal.trim() ? 'Add a development description above to enable' : 'Export Draft Statement of Environmental Effects'}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <FileText className="h-4 w-4" />
-                  Export SEE Draft
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium">SEE Draft</div>
+                    <div className="text-xs font-normal opacity-80">Your DA compliance record</div>
+                  </div>
                 </button>
               </div>
             ) : (
@@ -1868,7 +1894,7 @@ export function ProvisionsByTocStructure({
                 </>
               ) : (
                 <>
-                  <p>No provisions {viewMode === 'structure' ? 'in this section' : 'match your filters'}</p>
+                  <p>No provisions {provisionView === 'structure' ? 'in this section' : 'match your filters'}</p>
                   {(topicFilters.length > 0 || layerFilter) && (
                     <div className="mt-2 space-x-2">
                       {topicFilters.length > 0 && (

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import type { IntakeAnswers } from '@/lib/see/intake';
+import type { Provision } from './PageGroupedProvisions';
 
 interface DAModeCardProps {
   devType: string;
@@ -12,7 +13,7 @@ interface DAModeCardProps {
   intakeAnswers: IntakeAnswers | null;
   intakeSkipped: boolean;
   daResponses: Map<number, { response_text: string | null; compliance_status: string | null }>;
-  allProvisions: any[];
+  allProvisions: Provision[];
   excludableTopics: Set<string>;
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -44,61 +45,66 @@ export function DAModeCard({
   const [showTopicBreakdown, setShowTopicBreakdown] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
 
-  const completionStats = useMemo(() => {
-    const intakeExcluded = allProvisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return t && excludableTopics.has(t);
-    }).length;
-    const assessed = daResponses.size - intakeExcluded;
-    const remaining = allProvisions.length - daResponses.size;
-    return {
-      assessed: Math.max(0, assessed),
-      intakeExcluded,
-      remaining: Math.max(0, remaining),
-      total: allProvisions.length,
-    };
-  }, [allProvisions, daResponses, excludableTopics]);
-
-  const topicProgress = useMemo(() => {
+  // Single pass over allProvisions to derive all stats
+  const derivedStats = useMemo(() => {
     const byTopic: Record<string, { total: number; assessed: number; excluded: boolean }> = {};
+    const excludedIds = new Set<number>();
+    let heritagePros = 0;
+
     for (const p of allProvisions) {
+      const layer = p.v2_dcp_layer || p.layer;
+      if (layer === 'condition') heritagePros++;
+
       const topic = (p.v2_topic || 'general').toLowerCase().replace(/ /g, '_');
       if (!byTopic[topic]) byTopic[topic] = { total: 0, assessed: 0, excluded: false };
       byTopic[topic].total++;
       if (daResponses.has(p.id)) byTopic[topic].assessed++;
-      if (excludableTopics.has(topic)) byTopic[topic].excluded = true;
+      if (excludableTopics.has(topic)) {
+        byTopic[topic].excluded = true;
+        excludedIds.add(p.id);
+      }
     }
-    return Object.entries(byTopic).sort((a, b) => b[1].total - a[1].total);
-  }, [allProvisions, daResponses, excludableTopics]);
 
-  // Scope summary: topic counts for non-heritage-layer provisions only.
-  // Heritage-layer provisions (condition layer) are shown separately as a single "Heritage layer" entry.
-  const scopeSummary = useMemo(() => {
-    const included: { topic: string; count: number }[] = [];
-    const excluded: { topic: string; count: number }[] = [];
-    const byTopic: Record<string, number> = {};
+    // Assessed = responses whose provision is NOT intake-excluded
+    let intakeExcludedResponseCount = 0;
+    for (const id of daResponses.keys()) {
+      if (excludedIds.has(id)) intakeExcludedResponseCount++;
+    }
+    const assessed = Math.max(0, daResponses.size - intakeExcludedResponseCount);
+    const remaining = Math.max(0, allProvisions.length - daResponses.size);
+
+    // Scope summary — non-condition-layer provisions only
+    const includedTopics: { topic: string; count: number }[] = [];
+    const excludedTopics: { topic: string; count: number }[] = [];
+    const scopeByTopic: Record<string, number> = {};
     for (const p of allProvisions) {
-      // Skip condition-layer (heritage) provisions — shown separately above
       if ((p.v2_dcp_layer || p.layer) === 'condition') continue;
       const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
       if (!t) continue;
-      byTopic[t] = (byTopic[t] || 0) + 1;
+      scopeByTopic[t] = (scopeByTopic[t] || 0) + 1;
     }
-    for (const [topic, count] of Object.entries(byTopic).sort((a, b) => b[1] - a[1])) {
+    for (const [topic, count] of Object.entries(scopeByTopic).sort((a, b) => b[1] - a[1])) {
       if (excludableTopics.has(topic)) {
-        excluded.push({ topic, count });
+        excludedTopics.push({ topic, count });
       } else {
-        included.push({ topic, count });
+        includedTopics.push({ topic, count });
       }
     }
-    return { included, excluded };
-  }, [allProvisions, excludableTopics]);
 
-  // Heritage provisions = condition layer (all subtopics: Additions, Demolition, Character, etc.)
-  const heritagePros = useMemo(() =>
-    allProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
-    [allProvisions]
-  );
+    return {
+      completionStats: {
+        assessed,
+        intakeExcluded: intakeExcludedResponseCount,
+        remaining,
+        total: allProvisions.length,
+      },
+      topicProgress: Object.entries(byTopic).sort((a, b) => b[1].total - a[1].total),
+      scopeSummary: { included: includedTopics, excluded: excludedTopics },
+      heritagePros,
+    };
+  }, [allProvisions, daResponses, excludableTopics]);
+
+  const { completionStats, topicProgress, scopeSummary, heritagePros } = derivedStats;
 
   return (
     <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">

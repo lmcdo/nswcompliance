@@ -419,24 +419,33 @@ export default function AssessmentPage() {
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
                     {/* ① Enable DA Mode */}
-                    <div className="flex items-start gap-3 mb-5">
-                      <span className={`font-serif text-4xl font-black leading-none flex-shrink-0 transition-colors select-none ${isDaMode ? 'text-teal-500' : 'text-gray-200'}`}>1</span>
-                      <div>
-                        <p className="text-sm font-semibold text-gray-800">Enable DA Mode</p>
-                        <p className="text-xs text-gray-500 mt-0.5 mb-2">Preparing a DA? Enable to record compliance notes against each provision and export a Statement of Environmental Effects.</p>
+                    {isDaMode ? (
+                      <div className="flex items-start gap-3 mb-5">
+                        <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-800">Enable DA Mode</p>
+                          <p className="text-xs text-gray-500 mt-0.5 mb-2">Switch on to run a structured compliance assessment of your project.</p>
+                          <button
+                            onClick={() => setIsDaMode(false)}
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
+                          >
+                            <span className="w-3 h-3 rounded-full inline-block bg-white" />
+                            DA Mode on
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between mb-5">
+                        <p className="text-xs text-gray-500">Preparing a DA? Run a structured compliance assessment.</p>
                         <button
-                          onClick={() => setIsDaMode(!isDaMode)}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border transition-all ${
-                            isDaMode
-                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
-                              : 'bg-white text-teal-700 border-teal-300 hover:bg-teal-50'
-                          }`}
+                          onClick={() => setIsDaMode(true)}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
                         >
-                          <span className={`w-3 h-3 rounded-full inline-block transition-colors ${isDaMode ? 'bg-white' : 'bg-teal-300'}`} />
-                          {isDaMode ? 'DA Mode on' : 'DA Mode'}
+                          <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
+                          DA Mode
                         </button>
                       </div>
-                    </div>
+                    )}
 
 
                     <ProvisionsByTocStructure

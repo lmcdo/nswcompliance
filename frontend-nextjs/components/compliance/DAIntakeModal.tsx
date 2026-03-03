@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   INTAKE_QUESTIONS,
@@ -11,7 +12,7 @@ import {
 
 interface DAIntakeModalProps {
   open: boolean;
-  onApply: (answers: IntakeAnswers) => void;
+  onApply: (answers: IntakeAnswers) => Promise<void>;
   onSkip: () => void;
   totalProvisions?: number;
   provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null }>;
@@ -41,63 +42,66 @@ export function DAIntakeModal({
   const [answers, setAnswers] = useState<IntakeAnswers>({ ...DEFAULT_INTAKE_ANSWERS });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmedAnswers, setConfirmedAnswers] = useState<IntakeAnswers | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const setAnswer = (field: keyof IntakeAnswers, value: AnswerValue) => {
     setAnswers(prev => ({ ...prev, [field]: value }));
   };
 
+  // Single memo for excludable topics — used by all three derived counts below
+  const excludableTopics = useMemo(
+    () => getExcludableTopics(answers),
+    [answers]
+  );
+
   const excludedCount = useMemo(() => {
-    const excludable = getExcludableTopics(answers);
-    if (excludable.size === 0) return 0;
+    if (excludableTopics.size === 0) return 0;
     return provisions.filter(p => {
       const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return t && excludable.has(t);
+      return t && excludableTopics.has(t);
     }).length;
-  }, [answers, provisions]);
+  }, [excludableTopics, provisions]);
 
   // Topic counts for confirmation screen — included topics with counts
   const includedTopicCounts = useMemo(() => {
-    const answersToUse = confirmedAnswers || answers;
-    const excludable = getExcludableTopics(answersToUse);
     const counts: Record<string, number> = {};
     for (const p of provisions) {
       const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      if (!t || excludable.has(t)) continue;
+      if (!t || excludableTopics.has(t)) continue;
       counts[t] = (counts[t] || 0) + 1;
     }
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  }, [confirmedAnswers, answers, provisions]);
+  }, [excludableTopics, provisions]);
 
   const applicableCount = useMemo(() => {
-    const answersToUse = confirmedAnswers || answers;
-    const excludable = getExcludableTopics(answersToUse);
     return provisions.filter(p => {
       const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return !t || !excludable.has(t);
+      return !t || !excludableTopics.has(t);
     }).length;
-  }, [confirmedAnswers, answers, provisions]);
+  }, [excludableTopics, provisions]);
 
   const handleApply = () => {
     setConfirmedAnswers(answers);
     setShowConfirmation(true);
   };
 
-  const handleDone = () => {
-    if (confirmedAnswers) {
-      onApply(confirmedAnswers);
+  const handleDone = async () => {
+    if (!confirmedAnswers || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onApply(confirmedAnswers);
+      // parent calls setShowIntakeModal(false) on success — no state reset needed here
+    } catch {
+      setSubmitError('Failed to save. Check your connection and try again.');
+      setIsSubmitting(false);
     }
-    setShowConfirmation(false);
-    setAnswers({ ...DEFAULT_INTAKE_ANSWERS });
-    setConfirmedAnswers(null);
   };
 
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent
-        className="max-w-lg"
-        onPointerDownOutside={e => e.preventDefault()}
-        onEscapeKeyDown={e => e.preventDefault()}
-      >
+    <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onSkip(); }}>
+      <DialogContent className="max-w-lg flex flex-col max-h-[90vh]">
         {showConfirmation ? (
           /* Confirmation screen */
           <div className="py-2">
@@ -139,10 +143,16 @@ export function DAIntakeModal({
               ))}
             </div>
 
+            {submitError && (
+              <p className="text-sm text-red-600 mb-3">{submitError}</p>
+            )}
+
             <button
               onClick={handleDone}
-              className="w-full rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+              disabled={isSubmitting}
+              className="w-full rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-teal-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
+              {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
               Done
             </button>
           </div>
@@ -157,7 +167,7 @@ export function DAIntakeModal({
               </p>
             </DialogHeader>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-4 space-y-4 overflow-y-auto flex-1 pr-1">
               {INTAKE_QUESTIONS.map(q => (
                 <div key={q.field} className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
                   <p className="text-sm font-medium text-gray-800">{q.question}</p>
@@ -185,7 +195,7 @@ export function DAIntakeModal({
               ))}
             </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-gray-100 pt-4">
+            <div className="flex items-center justify-between border-t border-gray-100 pt-4 flex-shrink-0">
               <div className="text-sm text-gray-500">
                 {excludedCount > 0 ? (
                   <span className="inline-flex items-center gap-1.5">
