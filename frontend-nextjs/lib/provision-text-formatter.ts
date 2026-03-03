@@ -276,7 +276,11 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     .replace(/\n(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s*\n/gi, '\n$1. ')
     .replace(/\n([a-z])\.\s*\n/gi, '\n$1. ')
     .replace(/\n(\d+)\.\s*\n/g, '\n$1. ')
-    .replace(/\n([•\-–])\s*\n/g, '\n$1 ');
+    .replace(/\n([•\-–])\s*\n/g, '\n$1 ')
+    // Join word-wrapped section title continuations (Marrickville DCP artifact).
+    // fixOcrSpacing joins "2.1\nUrban" → "2.1 Urban"; this step merges a lone
+    // capitalised trailing word e.g., "2.1 Urban\nDesign\n" → "2.1 Urban Design\n"
+    .replace(/(\d+\.\d+(?:\.\d+)?\s+[A-Za-z][a-z]*)\n([A-Z][a-z]+)\n/g, '$1 $2\n');
 
   // Split by common delimiters while preserving structure
   const lines = preprocessed.split(/\n+/);
@@ -288,9 +292,15 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     line = line.trim();
     if (!line) continue;
 
-    // Skip standalone page/part numbers leaked from PDF extraction (e.g., "5", "42")
-    // These are PDF page numbers that appear before section headings in Marrickville DCP
+    // Skip PDF page header artifacts leaked from Marrickville DCP extraction.
+    // The DCP prints a running header "N  Marrickville Development Control Plan 2011"
+    // on every page. These appear in provision_text as:
+    //   "# 5 Marrickville Development Control Plan 2011"  (markdown heading form)
+    //   "5"                                                (bare page number)
+    //   "Marrickville Development Control Plan 2011"       (document title repeat)
     if (/^\d{1,3}$/.test(line)) continue;
+    if (/^#\s*\d{1,3}\s+\w/.test(line)) continue;  // "# 5 Title..." page header
+    if (/^Marrickville Development Control Plan/.test(line)) continue;
 
     // Check for section headers (e.g., "4.1.9 Additional controls")
     // Section headers MAY be in database (section_header field), but not always
