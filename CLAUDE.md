@@ -6,6 +6,7 @@
 - **NEVER run queries without WHERE clauses** on main tables
 - **NEVER create fake/placeholder data** - ask if real data unavailable
 - **BEFORE FIXING ANY UI BUG:** Read `frontend-nextjs/COMPONENT_MAP.md` to find the ACTUAL component being used
+- **BEFORE ANY LGA ONBOARDING WORK:** Read `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` — covers all known artifact classes, pre-import QA checklist, and onboarding sequence. Also read `frontend-nextjs/lib/dcp-format-configs.ts` to see existing council patterns.
 
 ## Investigation Before Action (NON-NEGOTIABLE)
 - **ALWAYS investigate thoroughly BEFORE making changes or proposing solutions**
@@ -117,6 +118,7 @@
 - `db-clean-tasks/README.md` - DB cleanup history (2026-02: dropped 16 tables)
 - `.claude/prp/INDEX.md` - Architecture overview
 - `.claude/DATA_QUALITY_TRACKER.md` - DQ issues and fixes
+- `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` - Known artifact classes + pre-import QA checklist (READ AT START OF EVERY NEW LGA ONBOARDING)
 - `DEPLOYMENT.md` - Deploy guide
 - `frontend-nextjs/app/assessment/README.md` - UI details
 - `docs/screencasts/INDEX.md` - Screencast scripts index
