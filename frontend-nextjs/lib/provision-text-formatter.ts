@@ -270,10 +270,13 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
 
   // Pre-process: join list markers that are on their own line with next line
   // e.g., "text\nii.\nMore text" -> "text\nii. More text"
+  // Also join lone bullet characters with the following line
+  // e.g., "•\nStreet type..." -> "• Street type..."
   const preprocessed = text
     .replace(/\n(i{1,3}|iv|v|vi{1,3}|ix|x)\.\s*\n/gi, '\n$1. ')
     .replace(/\n([a-z])\.\s*\n/gi, '\n$1. ')
-    .replace(/\n(\d+)\.\s*\n/g, '\n$1. ');
+    .replace(/\n(\d+)\.\s*\n/g, '\n$1. ')
+    .replace(/\n([•\-–])\s*\n/g, '\n$1 ');
 
   // Split by common delimiters while preserving structure
   const lines = preprocessed.split(/\n+/);
@@ -284,6 +287,10 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
   for (let line of lines) {
     line = line.trim();
     if (!line) continue;
+
+    // Skip standalone page/part numbers leaked from PDF extraction (e.g., "5", "42")
+    // These are PDF page numbers that appear before section headings in Marrickville DCP
+    if (/^\d{1,3}$/.test(line)) continue;
 
     // Check for section headers (e.g., "4.1.9 Additional controls")
     // Section headers MAY be in database (section_header field), but not always
