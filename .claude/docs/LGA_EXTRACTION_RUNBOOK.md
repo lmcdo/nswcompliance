@@ -210,8 +210,21 @@ Then re-run `dcp_extract_changed.py --council woollahra`.
 
 ## Step 7 — Enrichment
 
+The enrichment pipeline requires `v2_is_actionable` to be set before it runs. The extraction script inserts NULL for this column. Set it manually first:
+
+```sql
+UPDATE regulatory_provisions
+SET v2_is_actionable = TRUE
+WHERE source_council = 'woollahra' AND is_current = TRUE AND v2_is_actionable IS NULL;
+```
+
+Then run the pipeline phases in order:
+
 ```bash
-python -c "from enrichment.pipeline import run_pipeline; run_pipeline(council='woollahra')"
+python -m enrichment.pipeline --phase layer
+python -m enrichment.pipeline --phase site_condition
+python -m enrichment.pipeline --phase type
+# Skip --phase numeric (v2_enriched_at column not in current DB schema)
 ```
 
 This requires `enrichment/config/woollahra_config.py` to exist with the correct section-code → layer/topic mapping. If the config is missing or wrong, enrichment will either skip the council or tag everything as `generic`.
@@ -247,9 +260,8 @@ WHERE source_council = 'woollahra' AND is_current = TRUE;
 If enrichment tags are wrong: fix `enrichment/config/{lga}_config.py`, re-run enrichment, re-check.
 
 To re-run enrichment only (no re-extraction):
-```python
-from enrichment.pipeline import run_pipeline
-run_pipeline(council='woollahra', phases=['layer_topic'])
+```bash
+python -m enrichment.pipeline --phase layer
 ```
 
 ---
