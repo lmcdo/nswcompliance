@@ -157,7 +157,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               <Text style={{ fontSize: 11, color: '#1f2937' }}>{property.address}</Text>
             </View>
             {(client_ref || prepared_by) && (
-              <View style={{ alignItems: 'flex-end' }}>
+              <View style={{ alignItems: 'flex-end', maxWidth: 150, flexShrink: 0, marginLeft: 12 }}>
                 {client_ref && (
                   <View style={{ marginBottom: 3 }}>
                     <Text style={{ fontSize: 7, color: '#6b7280' }}>Prepared for</Text>

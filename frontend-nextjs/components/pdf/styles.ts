@@ -159,23 +159,20 @@ export const styles = StyleSheet.create({
   },
 
   // Table cells (column widths)
+  // Total usable width ~510pt. No subtopic column — topic is in section heading.
   colNumber: {
     width: 22,
     paddingRight: 4,
   },
-  colSubtopic: {
-    width: 40,
-    paddingRight: 4,
-  },
   colProvision: {
-    width: 280,
+    width: 348,
     paddingRight: 4,
   },
   colSource: {
-    width: 34,
+    width: 36,
   },
   colResponse: {
-    width: 106,
+    width: 104,
     paddingLeft: 4,
   },
   responseBox: {
@@ -189,11 +186,6 @@ export const styles = StyleSheet.create({
   cellNumber: {
     fontSize: 8,
     color: '#6b7280',
-    overflow: 'hidden',
-  },
-  cellSubtopic: {
-    fontSize: 8,
-    color: '#4b5563',
     overflow: 'hidden',
   },
   cellProvision: {
@@ -232,7 +224,7 @@ export const styles = StyleSheet.create({
     flexShrink: 1,
     flexBasis: 'auto',
     fontSize: 10,
-    fontWeight: 'bold',   // Added bold - data should be emphasized
+    fontWeight: 'normal',
     color: '#1f2937',
     lineHeight: 1.3,
   },

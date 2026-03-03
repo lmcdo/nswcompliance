@@ -30,7 +30,6 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
       {/* Table Header */}
       <View style={styles.tableHeader}>
         <Text style={[styles.tableHeaderCell, styles.colNumber]}>#</Text>
-        <Text style={[styles.tableHeaderCell, styles.colSubtopic]}>Subtopic</Text>
         <Text style={[styles.tableHeaderCell, styles.colProvision]}>Provision Summary</Text>
         <Text style={[styles.tableHeaderCell, styles.colSource]}>Source</Text>
         <Text style={[styles.tableHeaderCell, styles.colResponse]}>Compliance / Response</Text>
@@ -58,9 +57,6 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                 <View key={provision.id} style={styles.tableRow}>
                   <Text style={[styles.cellNumber, styles.colNumber]}>
                     {sectionNumber}.{provisionNumber++}
-                  </Text>
-                  <Text style={[styles.cellSubtopic, styles.colSubtopic]}>
-                    {subtopic.subtopic || 'General'}
                   </Text>
                   <View style={[styles.colProvision]}>
                     {paragraphs.map((para, pIdx) => (
@@ -160,11 +156,6 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
             <View key={provision.id} style={styles.tableRow}>
               <Text style={[styles.cellNumber, styles.colNumber]}>
                 {sectionNumber}.{provisionNumber++}
-              </Text>
-              <Text style={[styles.cellSubtopic, styles.colSubtopic]}>
-                {provision.v2_dcp_part && provision.v2_topic
-                  ? `${provision.v2_dcp_part}: ${provision.v2_topic}`
-                  : provision.v2_dcp_part || provision.v2_topic || '—'}
               </Text>
               <View style={[styles.colProvision]}>
                 {paragraphs.map((para, pIdx) => {
