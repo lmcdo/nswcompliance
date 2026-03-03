@@ -53,35 +53,52 @@ R2_ENDPOINT = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
 # Tuple format: (section_key, title, page_start, page_end)  — 1-indexed page numbers.
 
 WAVERLEY_PAGE_RANGES: list[tuple[str, str, int, int]] = [
-    # Pages 1–3 are cover/TOC/policy — excluded deliberately, not inserted as provisions.
-    # Pages 150–183 are index/TOC for Part C onwards — also excluded.
-    ("B1",  "Waste",                                    4,  15),
-    ("B2",  "Sustainability",                          16,  27),
-    ("B3",  "Landscaping",                             28,  40),
-    ("B4",  "Coastal Hazards",                         41,  52),  # B4/B5 share range
-    ("B5",  "Water Management",                        41,  52),
-    ("B6",  "Accessibility",                           53,  57),
-    ("B7",  "Transport and Parking",                   58,  77),
-    ("B8",  "Heritage",                                78, 105),
-    ("B9",  "Safety and Security",                    106, 107),
-    ("B10", "Public Art",                             108, 108),
-    ("B11", "Design Excellence",                      109, 110),
-    ("B12", "Subdivision",                            111, 112),
-    ("B13", "Excavation and Earthworks",              113, 115),
-    ("B14", "Signage and Advertising",                116, 137),
-    ("B16", "Inter-War Buildings",                    138, 141),
-    ("B17", "Social Impact Assessment",               142, 149),
-    ("C1",  "Low Density Residential",                184, 216),
-    ("C2",  "Medium to High Density Residential",     217, 247),
-    ("D1",  "Commercial Premises",                    248, 255),
-    ("D2",  "Mixed Use",                              256, 256),
-    ("E1",  "Bondi Junction Centre",                  257, 310),
-    ("E2",  "Bondi Beachfront Area",                  311, 333),
-    ("E3",  "Local Village Centres",                  334, 368),
-    ("E4",  "Special Character Areas",                369, 374),
-    ("E5",  "113 Macpherson Street Bronte",           375, 453),
-    ("F1",  "Shared Accommodation",                   454, 455),
-    ("F2",  "Tourist and Visitor Accommodation",      456, 490),
+    # All page numbers are PDF physical pages (1-indexed), verified against pdfplumber output.
+    # Pages 1–11: cover/TOC/policy — excluded.
+    # Part B — General Controls
+    ("B1",  "Waste",                                          12,  23),
+    ("B2",  "Ecologically Sustainable Development",           24,  35),
+    ("B3",  "Landscaping, Biodiversity and Vegetation",       36,  48),
+    ("B4",  "Coastal Risk Management",                        49,  49),
+    ("B5",  "Water Management",                               50,  61),
+    ("B6",  "Accessibility and Adaptability",                 62,  66),
+    ("B7",  "Transport",                                      67,  86),
+    ("B8",  "Heritage",                                       87, 114),
+    ("B9",  "Safety",                                        115, 116),
+    ("B10", "Public Art",                                    117, 117),
+    ("B11", "Design Excellence",                             118, 119),
+    ("B12", "Subdivision",                                   120, 121),
+    ("B13", "Excavation",                                    122, 124),
+    ("B14", "Advertising and Signage",                       125, 135),
+    ("B15", "Public Domain",                                 136, 146),
+    ("B16", "Inter-War Buildings",                           147, 150),
+    ("B17", "Social Impact Assessment",                      151, 151),
+    # Pages 152–185: Part B annexures + Part C intro — excluded.
+    # Part C — Residential Development
+    ("C1",  "Low Density Residential",                       186, 218),
+    ("C2",  "Other Residential Development",                 219, 249),
+    # Page 250: Part D contents — excluded.
+    # Part D — Commercial Development
+    ("D1",  "Commercial and Retail Development",             251, 258),
+    ("D2",  "Outdoor Dining",                                259, 259),
+    # Pages 260–261: Part E intro/contents — excluded.
+    # Part E — Site Specific Development
+    ("E1",  "Bondi Junction",                                262, 315),
+    ("E2",  "Bondi Beachfront Area",                         316, 338),
+    ("E3",  "Local Village Centres",                         339, 373),
+    ("E4",  "Special Character Areas",                       374, 379),
+    ("E5",  "113 Macpherson Street Bronte",                  380, 385),
+    ("E6",  "194-214 Oxford Street",                         386, 394),
+    ("E7",  "Edina Estate",                                  395, 413),
+    # Pages 414–458: Part E annexures — excluded.
+    # Page 459: Part F contents — excluded.
+    # Part F — Development Specific
+    ("F1",  "Shared Residential Accommodation",              460, 461),
+    ("F2",  "Tourist and Visitor Accommodation",             462, 465),
+    ("F3",  "Child Care Centres",                            466, 466),
+    ("F4",  "Places of Public Worship",                      467, 472),
+    ("F5",  "Horticulture",                                  473, 473),
+    # Pages 474+: Definitions — excluded.
 ]
 
 COUNCIL_PAGE_RANGES: dict[str, list[tuple[str, str, int, int]]] = {
@@ -358,37 +375,39 @@ def extract_chapter(
         print(f"    document_id: {document_id}")
 
         extractor = DCPExtractor(pdf_path, document_id)
-        try:
-            sections = extractor.extract()
-        except Exception as exc:
-            print(f"    [ERROR] PDF extraction failed: {exc}")
-            cur.close()
-            return False
 
-        table_count = sum(len(s["tables"]) for s in sections)
-        print(f"    Extracted: {len(sections)} sections, {table_count} tables")
-
-        if not sections:
-            print(f"    [WARN] No sections extracted — skipping chapter")
-            cur.close()
-            return False
-
-        # Sanity gate: require at least 1 section per 30 pages of PDF.
-        # If a page-range config exists for this council, use it as a fallback
-        # instead of aborting (handles councils with multi-line section headers).
-        min_sections = max(2, extractor.page_count // 30)
-        if len(sections) < min_sections:
-            page_ranges = COUNCIL_PAGE_RANGES.get(council)
-            if page_ranges:
-                print(
-                    f"    [WARN] {len(sections)} sections from "
-                    f"{extractor.page_count}-page PDF (min {min_sections}) "
-                    f"— trying page-range fallback"
-                )
+        # If a page-range config exists for this council, use it directly.
+        # This handles DCPs where SECTION_RE matches TOC entries instead of real
+        # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
+        # Page-range mode is PRIMARY for these councils, not a fallback.
+        page_ranges = COUNCIL_PAGE_RANGES.get(council)
+        if page_ranges:
+            try:
                 sections = extractor.extract_by_page_ranges(page_ranges)
-                table_count = sum(len(s["tables"]) for s in sections)
-                print(f"    Page-range fallback: {len(sections)} sections, {table_count} tables")
-            else:
+            except Exception as exc:
+                print(f"    [ERROR] Page-range extraction failed: {exc}")
+                cur.close()
+                return False
+            table_count = sum(len(s["tables"]) for s in sections)
+            print(f"    Page-range extraction: {len(sections)} sections, {table_count} tables")
+        else:
+            try:
+                sections = extractor.extract()
+            except Exception as exc:
+                print(f"    [ERROR] PDF extraction failed: {exc}")
+                cur.close()
+                return False
+            table_count = sum(len(s["tables"]) for s in sections)
+            print(f"    Extracted: {len(sections)} sections, {table_count} tables")
+
+            if not sections:
+                print(f"    [WARN] No sections extracted — skipping chapter")
+                cur.close()
+                return False
+
+            # Sanity gate: require at least 1 section per 30 pages of PDF.
+            min_sections = max(2, extractor.page_count // 30)
+            if len(sections) < min_sections:
                 verdict = "WARN" if dry_run else "ABORT"
                 print(
                     f"    [{verdict}] {len(sections)} sections from "

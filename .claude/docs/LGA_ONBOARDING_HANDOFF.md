@@ -93,13 +93,19 @@ After you complete Steps 1 and 2:
 
 ---
 
-## Waverley — Specific Issue Found (2026-03-04)
+## Waverley — Status (2026-03-04)
 
-Waverley has NOT been extracted yet. Before starting:
+Waverley has NOT been extracted yet. What's ready vs what you need to do:
 
-**Known problem:** `survey_dcp.py` shows 297 SECTION_RE matches on the 490-page PDF, but these are mostly TOC entries (the TOC repeats every section code). The actual content has only ~24 sections. The page-range config exists in `dcp_extract_changed.py` for this reason, but the sanity gate won't trigger (297 >> 16), so extraction would produce 297 garbage provisions.
+**Fixed (no action needed):**
+- Page-range mode is now PRIMARY for Waverley — SECTION_RE is bypassed entirely. The 297 TOC matches issue is resolved.
+- All 33 section boundaries verified against the actual PDF (B1–B17, C1–C2, D1–D2, E1–E7, F1–F5). Previously had wrong page offsets (+8 pages off) and was missing B15, E6, E7, F3, F4, F5.
 
-**Fix needed:** Force page-range mode for Waverley regardless of section count, OR add Waverley TOC-page filtering. Claude to resolve before running extraction.
+**Still needed (your action — Step 2):**
+1. Go to waverley.nsw.gov.au, find the DCP 2022 PDF download link
+2. Right-click → Copy Link Address
+3. Open `scripts/populate_waverley_registry.py`, find `WAVERLEY_COUNCIL_URL` at the top, replace `<FILL_IN>` with the URL
+4. Tell Claude "Waverley URL filled in" — Claude runs the rest
 
 ---
 
@@ -108,4 +114,4 @@ Waverley has NOT been extracted yet. Before starting:
 1. Woollahra (10 chapters, relatively clean structure)
 2. City of Sydney (6 PDFs, larger)
 3. Ku-ring-gai (9 topic-based DCPs)
-4. Waverley (fix the TOC issue first — see above)
+4. Waverley (needs council URL filled in — see above)
