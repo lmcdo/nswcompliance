@@ -357,26 +357,26 @@ export default function QuickGuidePage() {
         </div>
 
         {/* DA Mode — Structured Intake & SEE Draft */}
-        <div className=”bg-teal-50 border border-teal-300 rounded-lg shadow-sm overflow-hidden”>
-          <div className=”bg-teal-600 text-white px-4 py-3 flex items-center gap-2”>
-            <CheckCircle className=”h-5 w-5” />
-            <h2 className=”text-base md:text-lg font-bold”>DA Mode: Annotation &amp; SEE Draft</h2>
+        <div className="bg-teal-50 border border-teal-300 rounded-lg shadow-sm overflow-hidden">
+          <div className="bg-teal-600 text-white px-4 py-3 flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            <h2 className="text-base md:text-lg font-bold">DA Mode: Annotation &amp; SEE Draft</h2>
           </div>
-          <div className=”p-4 md:p-6”>
-            <div className=”bg-white border border-teal-200 rounded-lg p-3 mb-4”>
-              <p className=”text-xs md:text-sm text-teal-900”>
+          <div className="p-4 md:p-6">
+            <div className="bg-white border border-teal-200 rounded-lg p-3 mb-4">
+              <p className="text-xs md:text-sm text-teal-900">
                 <strong>For Standard DAs.</strong> Activate DA Mode in the DCP tab to record compliance notes
                 against each provision and export a pre-populated Statement of Environmental Effects draft.
                 The three-step workflow is shown in large numbered labels in the DCP tab.
               </p>
             </div>
 
-            <div className=”space-y-3”>
-              <div className=”flex gap-3”>
-                <span className=”flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold”>①</span>
-                <div className=”flex-1 min-w-0”>
-                  <div className=”font-semibold text-gray-900 text-sm”>Enable DA Mode</div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+            <div className="space-y-3">
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">①</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Enable DA Mode</div>
+                  <div className="text-xs text-gray-600 mt-1">
                     The DA Mode button sits at the top left of the DCP tab with a large ① label.
                     Toggle it on to unlock the development description form and annotation controls.
                     The button turns teal when active.
@@ -384,21 +384,21 @@ export default function QuickGuidePage() {
                 </div>
               </div>
 
-              <div className=”flex gap-3”>
-                <span className=”flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold”>②</span>
-                <div className=”flex-1 min-w-0”>
-                  <div className=”font-semibold text-gray-900 text-sm”>Set Development Type &amp; Run Triage</div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">②</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Set Development Type &amp; Run Triage</div>
+                  <div className="text-xs text-gray-600 mt-1">
                     The ② panel has two fields: development type (dropdown) and works description (free text).
                     These feed directly into the SEE cover page introduction.
                   </div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+                  <div className="text-xs text-gray-600 mt-1">
                     Below the fields, click <strong>Run triage →</strong> to open the triage dialog.
                     Answer 6 yes/no questions about your works (impervious surfaces, trees, pools, fencing,
                     parking, signage). Provisions are excluded only when their trigger is factually impossible —
-                    “Don’t know” always keeps provisions in scope.
+                    "Don’t know" always keeps provisions in scope.
                   </div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+                  <div className="text-xs text-gray-600 mt-1">
                     <strong>First-class passengers:</strong> Heritage Conservation Area and Precinct provisions
                     are shown first in the scope summary and cannot be triaged out — they are always in scope
                     for properties subject to them. After triage, the ② panel shows your confirmed scope:
@@ -408,28 +408,28 @@ export default function QuickGuidePage() {
                 </div>
               </div>
 
-              <div className=”flex gap-3”>
-                <span className=”flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold”>③</span>
-                <div className=”flex-1 min-w-0”>
-                  <div className=”font-semibold text-gray-900 text-sm”>Review &amp; Annotate Provisions</div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">③</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Review &amp; Annotate Provisions</div>
+                  <div className="text-xs text-gray-600 mt-1">
                     Use topic filter chips above the provisions list to focus on one area at a time.
                     For each provision, select <strong>Complies</strong>, <strong>Varies</strong>, or <strong>N/A</strong>
                     and add a compliance note. Saves automatically as you work.
-                    Triaged-out provisions are locked as “N/A · set by intake” with no manual action needed.
+                    Triaged-out provisions are locked as "N/A · set by intake" with no manual action needed.
                   </div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+                  <div className="text-xs text-gray-600 mt-1">
                     Assessment is non-linear — work by topic across multiple sessions.
                     The completion counter in the ② panel always reflects your current progress.
                   </div>
                 </div>
               </div>
 
-              <div className=”flex gap-3”>
-                <span className=”flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold”>4</span>
-                <div className=”flex-1 min-w-0”>
-                  <div className=”font-semibold text-gray-900 text-sm”>Export Statement of Environmental Effects</div>
-                  <div className=”text-xs text-gray-600 mt-1”>
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">4</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Export Statement of Environmental Effects</div>
+                  <div className="text-xs text-gray-600 mt-1">
                     Click <strong>Export SEE Draft</strong> to generate a PDF. If any provisions remain
                     unannotated, the dialog names the count so you can decide whether to export now or
                     continue reviewing. The exported PDF includes annotated provisions, compliance notes,
@@ -440,8 +440,8 @@ export default function QuickGuidePage() {
               </div>
             </div>
 
-            <div className=”mt-4 p-3 bg-teal-100 border border-teal-200 rounded-lg”>
-              <p className=”text-xs text-teal-900”>
+            <div className="mt-4 p-3 bg-teal-100 border border-teal-200 rounded-lg">
+              <p className="text-xs text-teal-900">
                 <strong>Audit trail:</strong> The SEE cover page records each confirmed triage answer.
                 Every N/A exclusion traces directly to a factual input — legally defensible, no guesswork.
                 The export is a dated snapshot; the session remains fully editable after export.
