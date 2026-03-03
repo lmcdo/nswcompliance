@@ -11,4 +11,10 @@ export interface SEEDocumentData {
   generated_date: string;
   /** Confirmed intake answers — used for the audit trail on the SEE cover page */
   intake_answers?: IntakeAnswers;
+  /** Client name or site reference — appears on SEE cover */
+  client_ref?: string;
+  /** Consultant or firm name preparing the document */
+  prepared_by?: string;
+  /** Pre-built natural-language introduction paragraph */
+  see_intro?: string;
 }

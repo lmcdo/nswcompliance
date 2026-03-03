@@ -23,6 +23,12 @@ const STATUS_OPTIONS = [
   { value: 'not_applicable', label: 'N/A', color: 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200' },
 ] as const;
 
+const STATUS_TEMPLATES: Record<string, string> = {
+  complies:        'The proposed development complies with this control.',
+  varies:          'The proposed development varies from this control. [Reason and justification to be completed.]',
+  not_applicable:  'This control does not apply to the proposed development.',
+};
+
 export function DAResponseCapture({
   provisionId,
   sessionToken,
@@ -82,7 +88,15 @@ export function DAResponseCapture({
     const newStatus = status === complianceStatus ? null : status;
     setComplianceStatus(newStatus);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    save(responseText, newStatus);
+    // Pre-fill template when text is empty or is a previous template value
+    const isTemplate = responseText.trim() === '' || Object.values(STATUS_TEMPLATES).includes(responseText);
+    if (newStatus && isTemplate) {
+      const template = STATUS_TEMPLATES[newStatus];
+      setResponseText(template);
+      save(template, newStatus);
+    } else {
+      save(responseText, newStatus);
+    }
   };
 
   // Locked state: provision was auto-excluded by intake triage
@@ -124,7 +138,7 @@ export function DAResponseCapture({
       <textarea
         value={responseText}
         onChange={handleTextChange}
-        placeholder="Compliance note..."
+        placeholder="Select a status to pre-fill — edit as needed"
         rows={2}
         className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 resize-none focus:outline-none focus:ring-1 focus:ring-teal-400 bg-white placeholder:text-gray-400"
       />

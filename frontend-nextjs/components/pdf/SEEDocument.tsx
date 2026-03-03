@@ -9,6 +9,7 @@ import { ProvisionTable } from './ProvisionTable';
 import { styles } from './styles';
 import { groupProvisionsByTopic } from '@/lib/pdf/formatProvisions';
 import { parseHtmlLink, containsHtml } from '@/lib/pdf/htmlUtils';
+import { buildSeeIntro } from '@/lib/see/devTypes';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -80,9 +81,14 @@ function DataRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 
 export function SEEDocument({ data }: { data: SEEDocumentData }) {
-  const { property, development_description, annotated_provisions, all_provisions, generated_date, intake_answers } = data;
+  const { property, development_description, see_intro, annotated_provisions, all_provisions,
+          generated_date, intake_answers, client_ref, prepared_by } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
+
+  // Provisions not yet annotated — listed in a final outstanding section
+  const annotatedIds = new Set(annotated_provisions.map(p => p.id));
+  const unannotatedProvisions = all_provisions.filter(p => !annotatedIds.has(p.id));
 
   const zoneCode = property.zone?.split(' ')[0] || '';
   const { pathway, reason } = determineDevelopmentPathway(
@@ -145,8 +151,28 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Property address block ---- */}
         <View style={{ backgroundColor: '#f0fdfa', padding: 12, borderLeft: '3pt solid #0f766e', marginBottom: 12 }}>
-          <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 4 }}>PROPERTY</Text>
-          <Text style={{ fontSize: 11, color: '#1f2937', marginBottom: 6 }}>{property.address}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 4 }}>PROPERTY</Text>
+              <Text style={{ fontSize: 11, color: '#1f2937' }}>{property.address}</Text>
+            </View>
+            {(client_ref || prepared_by) && (
+              <View style={{ alignItems: 'flex-end' }}>
+                {client_ref && (
+                  <View style={{ marginBottom: 3 }}>
+                    <Text style={{ fontSize: 7, color: '#6b7280' }}>Prepared for</Text>
+                    <Text style={{ fontSize: 9, color: '#1f2937' }}>{client_ref}</Text>
+                  </View>
+                )}
+                {prepared_by && (
+                  <View>
+                    <Text style={{ fontSize: 7, color: '#6b7280' }}>Prepared by</Text>
+                    <Text style={{ fontSize: 9, color: '#1f2937' }}>{prepared_by}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
           <View style={{ flexDirection: 'row', gap: 20 }}>
             <View>
               <Text style={{ fontSize: 7, color: '#6b7280' }}>Zone</Text>
@@ -171,7 +197,11 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             1. Introduction
           </Text>
 
-          {development_description ? (
+          {see_intro ? (
+            <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 8 }}>
+              {see_intro}
+            </Text>
+          ) : development_description ? (
             <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 8 }}>
               {`This Statement of Environmental Effects has been prepared in support of a Development Application for ${development_description} at ${property.address}. The proposed development is subject to assessment under the Environmental Planning and Assessment Act 1979 (NSW).`}
             </Text>
@@ -182,7 +212,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           )}
 
           <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5 }}>
-            {`This document provides a schedule of the Development Control Plan (DCP) provisions applicable to the subject site and records the applicant's assessment of compliance with each provision. This document must be reviewed, completed, and verified by a qualified planning consultant before submission with any Development Application.`}
+            {`This document provides a working schedule of the Development Control Plan (DCP) provisions applicable to the subject site and records compliance positions against each applicable provision. It is a working draft prepared as an aid to the planning consultant and must be reviewed, completed, and signed before submission with any Development Application.`}
           </Text>
         </View>
 
@@ -231,7 +261,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>PlotDetect — Draft SEE Scaffold</Text>
+          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 1</Text>
         </View>
@@ -442,7 +472,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>PlotDetect — Draft SEE Scaffold</Text>
+          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 2</Text>
         </View>
@@ -601,9 +631,40 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         )}
 
+        {/* ---- 3.5 Provisions Requiring Further Assessment ---- */}
+        {unannotatedProvisions.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #fed7aa' }}>
+              {`3.5 Provisions Requiring Further Assessment (${unannotatedProvisions.length})`}
+            </Text>
+            <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 6 }}>
+              The following provisions have not yet been assessed. This document is incomplete until all provisions below have been addressed.
+            </Text>
+            <View style={{ border: '1pt solid #e5e7eb' }}>
+              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 8' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Topic</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3 }}>Provision (first line)</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Source</Text>
+              </View>
+              {unannotatedProvisions.map((p, idx) => {
+                const firstLine = (p.provision_text || '').split('\n')[0].substring(0, 120);
+                const topic = p.v2_topic ? capitalizeFirst(p.v2_topic.toLowerCase().replace(/_/g, ' ')) : '—';
+                const source = p.pdf_printed_page ? `p.${p.pdf_printed_page}` : '';
+                return (
+                  <View key={p.id} style={{ flexDirection: 'row', borderBottom: idx < unannotatedProvisions.length - 1 ? '1pt solid #f3f4f6' : undefined, padding: '2 8', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                    <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{topic}</Text>
+                    <Text style={{ fontSize: 7, color: '#6b7280', flex: 3 }}>{firstLine}{firstLine.length >= 120 ? '…' : ''}</Text>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{source}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
+
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>PlotDetect — Draft SEE Scaffold</Text>
+          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 3</Text>
         </View>
@@ -656,7 +717,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>PlotDetect — Draft SEE Scaffold</Text>
+          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Generated {generated_date}</Text>
         </View>

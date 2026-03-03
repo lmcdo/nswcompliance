@@ -27,7 +27,7 @@ import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
-import { assembleDescription } from '@/lib/see/devTypes';
+import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -204,14 +204,20 @@ export function ProvisionsByTocStructure({
     const skipped = localStorage.getItem(`ce_intakeSkipped_${address}`) === 'true';
     const savedDevType = localStorage.getItem(`ce_devType_${address}`) || '';
     const savedDevWorksText = localStorage.getItem(`ce_devWorksText_${address}`) || '';
+    const savedClientRef = localStorage.getItem(`ce_clientRef_${address}`) || '';
+    const savedPreparedBy = localStorage.getItem(`ce_preparedBy_${address}`) || '';
     setIntakeSkipped(skipped);
     setDevType(savedDevType);
     setDevWorksText(savedDevWorksText);
+    setClientRef(savedClientRef);
+    setPreparedBy(savedPreparedBy);
   }, [address]);
 
   // Structured development description state
   const [devType, setDevType] = useState<string>('');
   const [devWorksText, setDevWorksText] = useState<string>('');
+  const [clientRef, setClientRef] = useState<string>('');
+  const [preparedBy, setPreparedBy] = useState<string>('');
   const devDescriptionLocal = useMemo(() => assembleDescription(devType, devWorksText), [devType, devWorksText]);
   const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -235,6 +241,16 @@ export function ProvisionsByTocStructure({
     if (address) localStorage.setItem(`ce_devWorksText_${address}`, text);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
     descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(devType, text)); }, 800);
+  };
+
+  const handleClientRefChange = (val: string) => {
+    setClientRef(val);
+    if (address) localStorage.setItem(`ce_clientRef_${address}`, val);
+  };
+
+  const handlePreparedByChange = (val: string) => {
+    setPreparedBy(val);
+    if (address) localStorage.setItem(`ce_preparedBy_${address}`, val);
   };
 
   // Keep a ref so the effect below can call the latest refreshResponses without
@@ -1281,13 +1297,17 @@ export function ProvisionsByTocStructure({
         development_description: devDescriptionLocal || undefined,
       };
 
+      const resolvedAddress = address || propertyData?.address || '';
       const seeData: SEEDocumentData = {
         property: propertyContext,
         development_description: devDescriptionLocal,
+        see_intro: devType ? buildSeeIntro(devType, devWorksText, resolvedAddress) : undefined,
         annotated_provisions: annotatedProvisions,
         all_provisions: provisionsForPdf,
         generated_date: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
         ...(intakeAnswers ? { intake_answers: intakeAnswers } : {}),
+        ...(clientRef.trim() ? { client_ref: clientRef.trim() } : {}),
+        ...(preparedBy.trim() ? { prepared_by: preparedBy.trim() } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1338,6 +1358,12 @@ export function ProvisionsByTocStructure({
               onDevTypeChange={handleDevTypeChange}
               onDevWorksChange={handleDevWorksChange}
               onRunIntake={() => { setIntakeOpenCount(c => c + 1); setShowIntakeModal(true); }}
+              clientRef={clientRef}
+              preparedBy={preparedBy}
+              onClientRefChange={handleClientRefChange}
+              onPreparedByChange={handlePreparedByChange}
+              lepHeight={lepClauseData?.height_limit || undefined}
+              lepFsr={lepClauseData?.fsr || undefined}
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctName}

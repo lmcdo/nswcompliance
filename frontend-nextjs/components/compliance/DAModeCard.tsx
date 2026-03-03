@@ -18,6 +18,14 @@ interface DAModeCardProps {
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onRunIntake: () => void;
+  /** Project identity — appear on SEE cover */
+  clientRef: string;
+  preparedBy: string;
+  onClientRefChange: (val: string) => void;
+  onPreparedByChange: (val: string) => void;
+  /** LEP controls for inline summary */
+  lepHeight?: string;
+  lepFsr?: string;
   /** Property-level flags — used to surface first-class passengers */
   heritage?: boolean;
   hcaName?: string;
@@ -37,6 +45,12 @@ export function DAModeCard({
   onDevTypeChange,
   onDevWorksChange,
   onRunIntake,
+  clientRef,
+  preparedBy,
+  onClientRefChange,
+  onPreparedByChange,
+  lepHeight,
+  lepFsr,
   heritage,
   hcaName,
   precinctName,
@@ -110,6 +124,48 @@ export function DAModeCard({
     <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
 
       <div className="px-4 pb-4 pt-3 space-y-3">
+
+        {/* LEP controls summary — height and FSR inline */}
+        {(lepHeight || lepFsr) && (
+          <div className="flex gap-4 text-xs bg-white border border-teal-100 rounded px-3 py-2">
+            {lepHeight && (
+              <div>
+                <span className="text-gray-400">Height limit</span>
+                <span className="ml-1.5 font-semibold text-gray-700">{lepHeight}</span>
+              </div>
+            )}
+            {lepFsr && (
+              <div>
+                <span className="text-gray-400">FSR</span>
+                <span className="ml-1.5 font-semibold text-gray-700">{lepFsr}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Project identity */}
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-teal-800 mb-1">Client / site reference</label>
+            <input
+              type="text"
+              value={clientRef}
+              onChange={e => onClientRefChange(e.target.value)}
+              placeholder="e.g. Smith — 120 Illawarra Rd"
+              className="w-full text-sm border border-teal-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 placeholder:text-gray-400"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-teal-800 mb-1">Prepared by</label>
+            <input
+              type="text"
+              value={preparedBy}
+              onChange={e => onPreparedByChange(e.target.value)}
+              placeholder="Consultant / firm name"
+              className="w-full text-sm border border-teal-200 rounded px-2.5 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 placeholder:text-gray-400"
+            />
+          </div>
+        </div>
 
         {/* Development type */}
         <div>
