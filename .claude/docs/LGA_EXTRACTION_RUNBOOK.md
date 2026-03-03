@@ -6,6 +6,27 @@ Step-by-step pipeline for integrating a new LGA. Each step has a pass/fail gate 
 
 ---
 
+## How the pipeline works
+
+The extraction is semi-automated, not fully automated. Here's what's automated vs. what requires per-LGA work:
+
+| Step | Automated? | Notes |
+|------|------------|-------|
+| PDF download to R2 + registry insert | ✅ `populate_*.py` | Council PDF URLs need to be filled in once |
+| PDF extraction to DB provisions | ✅ `dcp_extract_changed.py` | Downloads from R2, runs pdfplumber, bulk-inserts |
+| Section detection | ⚠️ Semi | `SECTION_RE` works for ~80% of councils; the rest need page ranges added manually |
+| Enrichment (layer/topic tagging) | ✅ `run_pipeline()` | Requires per-LGA config in `enrichment/config/<lga>_config.py` |
+| Formatting QA | ⚠️ Semi | Automated script catches known artifacts; novel artifacts need manual inspection first |
+| Scanned PDFs | ❌ Blocker | pdfplumber gets zero text; flag for manual or OCR solution |
+
+The extraction script is triggered by `needs_extraction=TRUE` in `dcp_chapter_registry`. The populate script sets this flag. On successful extraction, it's cleared to `FALSE`. Failed chapters stay `TRUE` and are retried on next run.
+
+**Reference docs (read before starting):**
+- `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` — known artifact classes, detection, and fixes
+- `frontend-nextjs/lib/dcp-format-configs.ts` — existing per-council formatting configs
+
+---
+
 ## Pre-flight (run once per session)
 
 ```bash
@@ -76,6 +97,7 @@ python scripts/survey_dcp.py ku-ring-gai/dcp-43-car-parking.pdf
 |---------------------|--------|
 | ≥ 50% | Proceed. Regex extraction will work. |
 | < 50% | **Stop.** Add `{LGA}_PAGE_RANGES` to `dcp_extract_changed.py` before Step 4. |
+| 0% | PDF may be scanned/image-based. Check with `pdfplumber.open(f).pages[0].extract_text()`. If None → flag for manual/OCR, do not proceed. |
 
 If page ranges are needed:
 1. Read the PDF TOC to identify section page ranges
@@ -98,6 +120,8 @@ If council uses redirect-based downloads, leave `<FILL_IN>` — the council page
 ---
 
 ## Step 4 — Populate Registry
+
+The populate script does two things in one run: uploads each PDF to R2 and inserts a row into `dcp_chapter_registry` with `needs_extraction=TRUE`. Both must succeed before extraction can run.
 
 ```bash
 # Dry-run first
@@ -131,6 +155,8 @@ If chapters are missing (PDF was not found), download the missing PDFs and re-ru
 python scripts/dcp_extract_changed.py --council woollahra --dry-run
 ```
 
+The script queries `dcp_chapter_registry` for `needs_extraction=TRUE` rows, downloads each PDF from R2 to a temp dir, runs pdfplumber, and reports what would be inserted — no DB writes.
+
 **Gate per chapter:**
 
 | Output | Status | Action |
@@ -148,6 +174,8 @@ python scripts/dcp_extract_changed.py --council woollahra --dry-run
 ```bash
 python scripts/dcp_extract_changed.py --council woollahra
 ```
+
+Each chapter is an atomic transaction: provisions are inserted and `needs_extraction` cleared to `FALSE` in one commit. If a chapter fails, it rolls back — old provisions stay live, `needs_extraction` stays `TRUE`.
 
 **Gate — DB checks:**
 
@@ -183,9 +211,10 @@ Then re-run `dcp_extract_changed.py --council woollahra`.
 ## Step 7 — Enrichment
 
 ```bash
-# Check enrichment/pipeline.py for exact invocation
 python -c "from enrichment.pipeline import run_pipeline; run_pipeline(council='woollahra')"
 ```
+
+This requires `enrichment/config/woollahra_config.py` to exist with the correct section-code → layer/topic mapping. If the config is missing or wrong, enrichment will either skip the council or tag everything as `generic`.
 
 **Gate — DB checks:**
 
@@ -217,16 +246,21 @@ WHERE source_council = 'woollahra' AND is_current = TRUE;
 
 If enrichment tags are wrong: fix `enrichment/config/{lga}_config.py`, re-run enrichment, re-check.
 
+To re-run enrichment only (no re-extraction):
+```python
+from enrichment.pipeline import run_pipeline
+run_pipeline(council='woollahra', phases=['layer_topic'])
+```
+
 ---
 
 ## Step 7a — Manual Provision Text Inspection
 
-Before running the automated checker, look at raw provision text with your own eyes.
-The automated checker only knows about artifact classes we've already seen. Novel formats
-need human detection first.
+**Read `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` before this step.** It lists every known artifact class with examples.
+
+Automated checks only catch patterns we've already seen. Novel patterns need human detection first.
 
 ```sql
--- Run in Supabase SQL editor
 SELECT id, provision_text
 FROM regulatory_provisions
 WHERE former_council = '<name>'
@@ -235,51 +269,74 @@ ORDER BY random()
 LIMIT 10;
 ```
 
-Copy the `provision_text` of 5–10 provisions and read them. Look for:
+Read 10 provisions. Look for:
 - Repeated document title lines (e.g., "Waverley Development Control Plan 2022")
 - Running header lines (e.g., "Waste      B1" with multiple spaces before the code)
-- Bare page numbers (e.g., a line containing just "4" or "78")
+- Bare page numbers (a line containing just "4" or "78")
 - Chapter/section prefix lines that aren't part of the control text
-- Any other line that clearly doesn't belong to the provision content
+- LaTeX math tokens (`\mathsf`, `{ , }`, spaced digits like `6 0 0`)
+- Word cross-references (`Error! Reference source not found.`)
+- TOC dotted leaders (`1.1  Site Analysis.............12`)
+- Any other line that clearly doesn't belong
 
-If you spot a new artifact pattern not in `dcp-format-configs.ts` → add it, then proceed to Step 7b.
+If you spot a new artifact pattern not in `frontend-nextjs/lib/dcp-format-configs.ts` → add it before Step 7b.
 
 **Known patterns by council (already configured):**
 
 | Council | Artifacts |
 |---------|-----------|
-| marrickville | `# N Title` hash headers, bare page numbers, "Marrickville Development Control Plan" |
+| marrickville | `# N Title` hash headers, bare page numbers, "Marrickville Development Control Plan", LaTeX math tokens, Word cross-references |
 | ashfield | "Comprehensive Inner West DCP 2016", "Chapter X" prefix lines |
 | waverley | "Title      B1" right-aligned headers, "WAVERLEY DEVELOPMENT CONTROL PLAN 2022", bare page numbers |
 | leichhardt | None (clean) |
 
 ---
 
-## Step 7b — Format Verification
-
-After the manual inspection and any config entries added, run the automated checker.
+## Step 7b — Format Verification (Automated)
 
 ```bash
-python scripts/verify_dcp_formatting.py --council <name> --limit 50
+python scripts/verify_dcp_formatting.py --council <name> --limit 100
 ```
 
-**Pass gate:** < 5% of sampled provisions have flagged artifact lines — no action needed.
+Runs 3 sections:
+1. **Text artifact checks** (8 patterns): bare_page_numbers, hash_prefix_headers, chapter_prefix_lines, right_aligned_headers, latex_tokens, word_cross_references, toc_dotted_leaders, short_provision
+2. **Topic distribution**: flags any topic > 40% of all provisions (suggests enrichment config issue)
+3. **is_current audit**: counts first-pass provisions with NULL source_chapter_key (these cannot be auto-retired if re-extracted)
+
+**Pass gate (Section 1):** < 5% of sampled provisions have flagged artifact lines.
 
 **Fail gate (≥ 5%):**
-1. Note which artifact labels are flagged (bare page numbers, hash-prefix headers, right-aligned headers, chapter prefix lines)
-2. Add or update the config entry in `frontend-nextjs/lib/dcp-format-configs.ts` under the council key
-3. Rerun the script to confirm pass gate before proceeding
+1. Note which labels are flagged
+2. Add or update the config entry in `frontend-nextjs/lib/dcp-format-configs.ts`
+3. Rerun to confirm pass gate before proceeding
 
-Example config entry — adapt patterns to what you saw in Step 7a:
-```typescript
-my_council: {
-  skipLinePrefixes: ['My Council DCP 2024'],         // exact document title line
-  skipLinePatterns: [
-    /^\d{1,3}$/,                                    // bare page numbers
-    /\s{3,}[A-Z]\d{1,2}\s*$/,                      // right-aligned section header
-  ],
-},
+The script prints a `dcp-format-configs.ts` skeleton automatically when format checks fail — use it as a starting point, but verify the exact patterns against what you saw in Step 7a.
+
+---
+
+## Step 7c — Heritage Verification (if council has heritage chapters)
+
+```sql
+-- All heritage provisions correctly tagged
+SELECT v2_marker, v2_dcp_layer, COUNT(*)
+FROM regulatory_provisions
+WHERE source_council = 'woollahra'
+  AND source_chapter_key LIKE 'part-c%'
+  AND is_current = TRUE
+GROUP BY 1, 2;
+-- v2_marker='heritage', v2_dcp_layer='condition'
+
+-- General subtopic should be non-actionable
+SELECT v2_topic, v2_is_actionable, COUNT(*)
+FROM regulatory_provisions
+WHERE source_council = 'woollahra'
+  AND v2_marker = 'heritage'
+  AND is_current = TRUE
+GROUP BY 1, 2 ORDER BY 1;
+-- v2_topic='General' → v2_is_actionable=FALSE (intro/objectives text)
 ```
+
+See `memory/heritage.md` for HCA tagging rules if this council has individual HCA sections.
 
 ---
 
