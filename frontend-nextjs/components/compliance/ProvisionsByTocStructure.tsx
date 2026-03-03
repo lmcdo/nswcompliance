@@ -178,8 +178,7 @@ export function ProvisionsByTocStructure({
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
-  const [showSeeReadinessModal, setShowSeeReadinessModal] = useState(false);
-  const [seeReadinessConfirmed, setSeeReadinessConfirmed] = useState(false);
+  const [showTriageExcluded, setShowTriageExcluded] = useState(false);
 
   // TODO: Rework numeric checker feature - temporarily disabled
   // Numeric checker values
@@ -1148,24 +1147,11 @@ export function ProvisionsByTocStructure({
   };
 
   // SEE Draft export — uses SEEDocument with annotated provisions only
-  const handleExportSee = async (confirmed = false) => {
+  const handleExportSee = async () => {
     try {
       // Refresh responses from DB before building PDF — ensures per-provision annotations
       // saved by DAResponseCapture (which doesn't update parent daResponses state) are current.
       await refreshResponses();
-
-      // Readiness gate: warn if unannotated provisions remain
-      if (!confirmed && !seeReadinessConfirmed) {
-        const intakeExcludedCount = allProvisions.filter(p => {
-          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-          return t && excludableTopics.has(t);
-        }).length;
-        const unannotated = allProvisions.length - daResponses.size - intakeExcludedCount;
-        if (unannotated > 0) {
-          setShowSeeReadinessModal(true);
-          return;
-        }
-      }
 
       // Build provisionsForPdf (same pipeline as DCP export)
       const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
@@ -1596,49 +1582,6 @@ export function ProvisionsByTocStructure({
             </div>
           )}
 
-          {/* SEE Readiness modal — shown when unannotated provisions remain */}
-          {showSeeReadinessModal && (() => {
-            const intakeExcludedCount = allProvisions.filter(p => {
-              const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-              return t && excludableTopics.has(t);
-            }).length;
-            const unannotated = allProvisions.length - daResponses.size - intakeExcludedCount;
-            return (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSeeReadinessModal(false)}>
-                <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Export SEE Draft</h3>
-                    <p className="text-sm text-gray-700 mb-1">
-                      <span className="font-semibold text-amber-700">{unannotated} provision{unannotated !== 1 ? 's' : ''}</span> not yet reviewed will appear as &ldquo;Not yet assessed&rdquo; in the SEE.
-                    </p>
-                    <p className="text-sm text-gray-500 mb-6">
-                      This draft requires professional review before DA lodgement.
-                    </p>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setShowSeeReadinessModal(false)}
-                        className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                      >
-                        Go back and review
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowSeeReadinessModal(false);
-                          setSeeReadinessConfirmed(true);
-                          handleExportSee(true);
-                        }}
-                        className="flex-1 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors flex items-center justify-center gap-2"
-                      >
-                        <FileText className="h-4 w-4" />
-                        Export draft anyway
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           {/* Topic filter chips */}
           <div className="mt-3 space-y-2">
             {availableTopics.length > 1 && (
@@ -1775,30 +1718,18 @@ export function ProvisionsByTocStructure({
         {filteredProvisions.length > 0 && (
           <div className="px-4 py-3 border-b bg-gray-50">
             {isDaMode ? (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowExportModal(true)}
-                  className="flex-1 flex items-center gap-2 px-3 py-2 bg-white border border-teal-300 text-teal-700 rounded-lg hover:bg-teal-50 transition-colors"
-                >
-                  <Download className="h-4 w-4 flex-shrink-0" />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">DCP Schedule</div>
-                    <div className="text-xs font-normal opacity-70">All rules — reference only</div>
-                  </div>
-                </button>
-                <button
-                  onClick={handleExportSee}
-                  disabled={!devDescriptionLocal.trim()}
-                  title={!devDescriptionLocal.trim() ? 'Add a development description above to enable' : 'Export Draft Statement of Environmental Effects'}
-                  className="flex-1 flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <FileText className="h-4 w-4 flex-shrink-0" />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">SEE Draft</div>
-                    <div className="text-xs font-normal opacity-80">Your DA compliance record</div>
-                  </div>
-                </button>
-              </div>
+              <button
+                onClick={handleExportSee}
+                disabled={!devDescriptionLocal.trim()}
+                title={!devDescriptionLocal.trim() ? 'Add a development description above to enable' : 'Export working draft — requires professional review before DA lodgement'}
+                className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <FileText className="h-4 w-4 flex-shrink-0" />
+                <div className="text-left">
+                  <div className="text-sm font-medium">Export SEE Draft</div>
+                  <div className="text-xs font-normal opacity-80">Working draft — requires professional review</div>
+                </div>
+              </button>
             ) : (
               <button
                 onClick={() => setShowExportModal(true)}
@@ -1840,26 +1771,81 @@ export function ProvisionsByTocStructure({
             results={complianceResults}
           /> */}
 
-          {filteredProvisions.length > 0 ? (
-            <PageGroupedProvisions provisionTheme="green"
-              provisions={filteredProvisions}
-              formerCouncil={formerCouncil}
-              councilKey={formerCouncil?.toLowerCase()}
-              showLayerBadges={true}
-              maxProvisions={100}
-              onViewPdf={(url, page) => setPdfModal({ url, page })}
-              highlightQuery={debouncedSearch}
-              zone={zone}
-              heritage={heritage}
-              hcaName={hcaName}
-              precinctName={precinctId}
-              isDaMode={isDaMode}
-              sessionToken={sessionToken}
-              daResponses={daResponses}
-              excludableTopics={excludableTopics}
-              // numericCheckValues={numericCheckValues} // TODO: Rework numeric checker feature
-            />
-          ) : (
+          {(() => {
+            const splitByTriage = isDaMode && intakeAnswers && excludableTopics.size > 0;
+            const displayProvisions = splitByTriage
+              ? filteredProvisions.filter(p => {
+                  const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+                  return !t || !excludableTopics.has(t);
+                })
+              : filteredProvisions;
+            const triageExcludedProvisions = splitByTriage
+              ? filteredProvisions.filter(p => {
+                  const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+                  return t && excludableTopics.has(t);
+                })
+              : [];
+
+            if (displayProvisions.length === 0 && triageExcludedProvisions.length === 0) return null;
+
+            return (
+              <>
+                {displayProvisions.length > 0 && (
+                  <PageGroupedProvisions provisionTheme="green"
+                    provisions={displayProvisions}
+                    formerCouncil={formerCouncil}
+                    councilKey={formerCouncil?.toLowerCase()}
+                    showLayerBadges={true}
+                    maxProvisions={100}
+                    onViewPdf={(url, page) => setPdfModal({ url, page })}
+                    highlightQuery={debouncedSearch}
+                    zone={zone}
+                    heritage={heritage}
+                    hcaName={hcaName}
+                    precinctName={precinctId}
+                    isDaMode={isDaMode}
+                    sessionToken={sessionToken}
+                    daResponses={daResponses}
+                    excludableTopics={excludableTopics}
+                    // numericCheckValues={numericCheckValues} // TODO: Rework numeric checker feature
+                  />
+                )}
+                {triageExcludedProvisions.length > 0 && (
+                  <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => setShowTriageExcluded(v => !v)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-sm text-gray-500"
+                    >
+                      <span>{triageExcludedProvisions.length} provision{triageExcludedProvisions.length !== 1 ? 's' : ''} removed by triage</span>
+                      <ChevronDown className={`w-4 h-4 transition-transform ${showTriageExcluded ? 'rotate-180' : ''}`} />
+                    </button>
+                    {showTriageExcluded && (
+                      <div className="border-t border-gray-200">
+                        <PageGroupedProvisions provisionTheme="green"
+                          provisions={triageExcludedProvisions}
+                          formerCouncil={formerCouncil}
+                          councilKey={formerCouncil?.toLowerCase()}
+                          showLayerBadges={true}
+                          maxProvisions={100}
+                          onViewPdf={(url, page) => setPdfModal({ url, page })}
+                          highlightQuery={debouncedSearch}
+                          zone={zone}
+                          heritage={heritage}
+                          hcaName={hcaName}
+                          precinctName={precinctId}
+                          isDaMode={isDaMode}
+                          sessionToken={sessionToken}
+                          daResponses={daResponses}
+                          excludableTopics={excludableTopics}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()}
+          {filteredProvisions.length === 0 && (
             <div className="text-center py-12 text-gray-500">
               <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
               {debouncedSearch ? (
