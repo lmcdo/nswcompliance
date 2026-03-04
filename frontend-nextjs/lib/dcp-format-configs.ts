@@ -108,11 +108,20 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     // Confirmed from waverley/waverley_dcp_analysis_first50.txt.
     skipLinePatterns: [
       /^\d{1,3}$/,                    // bare Arabic page numbers (4, 5, 78...)
-      /\s{3,}[A-F]\d{1,2}\s*$/,      // right-aligned running header: "Waste      B1"
+      /\s{3,}[A-F]\d{1,2}\s*$/,      // right-aligned running header wide-space: "Waste      B1"
+      /^[A-Za-z][A-Za-z\s,()&'.-]+\s+[A-F]\d{1,2}$/, // running header close-space: "Accessibility and Adaptability B6"
+      /^[A-F]\d{1,2}\s+[A-Z][A-Z\s]+$/, // all-caps chapter title: "B6 ACCESSIBILITY AND ADAPTABILITY"
       /\.{5,}/,                       // internal TOC dotted leaders (e.g. "1.0 Objectives......184")
+      /^Waverley-wide\s*$/,           // secondary running header subtitle (whole line only)
     ],
     skipLinePrefixes: [
       'WAVERLEY DEVELOPMENT CONTROL PLAN',  // document title on every page
+      'W AVERLEY DEVELOPMENT CONTROL PLAN', // pdfplumber line-wrap variant ("W" split from "AVERLEY")
+    ],
+    preProcessReplacements: [
+      // Inline "Waverley-wide" at page boundaries — appears mid-line when PDF page break
+      // falls inside a provision (e.g., "...blank walls Waverley-wide\nPublic Domain\n...").
+      { from: /\s*Waverley-wide\b/g, to: '' },
     ],
   },
 

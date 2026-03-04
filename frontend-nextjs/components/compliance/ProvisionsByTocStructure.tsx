@@ -28,6 +28,7 @@ import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
+import { DCPInterestForm } from './DCPInterestForm';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -113,6 +114,7 @@ interface TocPart {
 }
 
 interface ProvisionsByTocStructureProps {
+  lga?: string;
   formerCouncil: string;
   zone?: string;
   heritage?: boolean;
@@ -152,6 +154,7 @@ const hcaFetcher = async ([url, body]: [string, any]) => {
 };
 
 export function ProvisionsByTocStructure({
+  lga,
   formerCouncil,
   zone,
   heritage,
@@ -264,6 +267,15 @@ export function ProvisionsByTocStructure({
     if (isDaMode && address) refreshResponsesRef.current();
   }, [isDaMode, address]);
 
+  // Auto-open triage modal when DA mode is active and no answers have been saved yet.
+  // Only fires when deps change — dismissing the modal does not re-trigger it in the
+  // same session. On page reload, sessionToken changes and triggers again, reminding
+  // the user to complete triage. DAIntakeModal resets its own state via useLayoutEffect.
+  useEffect(() => {
+    if (isDaMode && intakeAnswers === null && sessionToken) {
+      setShowIntakeModal(true);
+    }
+  }, [isDaMode, intakeAnswers, sessionToken]);
 
   // Compute excludable topics from intake answers
   const excludableTopics = useMemo(() => {
@@ -286,7 +298,8 @@ export function ProvisionsByTocStructure({
   if (hcaName) params.set('hca', hcaName);
   if (precinctId) params.set('precinct_id', precinctId);
 
-  const apiUrl = `/api/provisions/for-property?${params.toString()}`;
+  // If no formerCouncil, council DCP is not processed — skip fetch entirely
+  const apiUrl = formerCouncil ? `/api/provisions/for-property?${params.toString()}` : null;
 
   const { data, error, isLoading } = useSWR<{
     success: boolean;
@@ -674,6 +687,17 @@ export function ProvisionsByTocStructure({
   }, [layerFilteredProvisions]);
 
   // NOW handle loading/error states AFTER all hooks are called
+
+  // No formerCouncil means council DCP not yet processed — show interest form immediately
+  if (!formerCouncil) {
+    return (
+      <DCPInterestForm
+        councilName={lga || 'your council'}
+        address={address || ''}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -695,14 +719,13 @@ export function ProvisionsByTocStructure({
     );
   }
 
-  // Safety check - if no TOC data, show message
+  // No DCP data — council processed but returned empty. Show register-interest UI.
   if (!data?.data?.by_toc || Object.keys(tocStructure).length === 0) {
     return (
-      <Card>
-        <CardContent className="p-8 text-center text-gray-500">
-          No DCP provisions found for this property.
-        </CardContent>
-      </Card>
+      <DCPInterestForm
+        councilName={lga || formerCouncil || 'your council'}
+        address={address || ''}
+      />
     );
   }
 

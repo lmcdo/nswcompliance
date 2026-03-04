@@ -425,7 +425,10 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     // Letter: a. b. c. or (a) (b) (c)
     // Number: 1. 2. 3. or (1) (2) (3)
     // Also catch corrupted bullets that weren't fully cleaned
-    const listMatch = line.match(/^((?:i{1,3}|iv|v|vi{1,3}|ix|x)\.?\s+|[•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
+    // \([a-z]\) matches single-letter parens: (a), (b)... but also (i), (v), (x) which are
+    // roman numeral single-letters. Exclude i, v, x from this pattern so they fall through
+    // to paragraph rendering with their labels preserved (consistent with (ii), (iii) etc.).
+    const listMatch = line.match(/^((?:i{1,3}|iv|v|vi{1,3}|ix|x)\.?\s+|[•\-–*]\s*|["""]?¢\s*|[a-z][.)]\s*|\([a-hj-uw-z]\)\s*|\d+[.)]\s*|\(\d+\)\s*)(.+)/i);
     if (listMatch) {
       elements.push({
         type: 'list-item',

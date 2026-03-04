@@ -147,320 +147,151 @@ export function LepControls({
 
       {/* Environmental Constraints Card */}
       <Card className="border-blue-200 bg-blue-50/30">
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-blue-700" />
-            <CardTitle className="text-lg text-blue-900">
-              Environmental Constraints
-            </CardTitle>
+        <CardContent className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-4 w-4 text-blue-700" />
+            <span className="text-sm font-semibold text-blue-900">Environmental Constraints</span>
+            <Badge className="bg-blue-100 text-blue-800 text-xs ml-auto">LEP Part 5</Badge>
           </div>
-          <Badge className="bg-blue-100 text-blue-800 mt-2">LEP Part 5</Badge>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-blue-700">
-            Environmental and natural hazard provisions that apply to this property.
-          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-1">
             {/* Flood Prone Land */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.floodProne
-                ? 'bg-amber-50 border-amber-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.floodProne ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Droplets className={`h-4 w-4 ${constraints?.floodProne ? 'text-amber-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Flood Prone Land</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.floodProne ? 'text-amber-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Flood Prone</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.floodProne ? 'text-amber-900' : 'text-gray-500'}`}>
-                {constraints?.floodProne ? 'Yes' : 'No'}
-              </div>
-              {constraints?.floodProne && (
-                <>
-                  <p className="text-xs text-amber-700 mt-1">
-                    LEP Clause 5.21 - Additional controls apply
-                  </p>
-                  {constraints.floodInfo && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      {constraints.floodInfo.blockType}
-                      {constraints.floodInfo.name && ` - ${constraints.floodInfo.name}`}
-                    </p>
-                  )}
-                </>
-              )}
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.floodProne ? 'text-amber-800' : 'text-gray-400'}`}>
+                {constraints?.floodProne ? (constraints.floodInfo?.blockType || 'Yes') : 'No'}
+              </span>
             </div>
 
             {/* Bushfire Prone Land */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.bushfireProne
-                ? 'bg-orange-50 border-orange-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.bushfireProne ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Flame className={`h-4 w-4 ${constraints?.bushfireProne ? 'text-orange-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Bushfire Prone Land</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Flame className={`h-3 w-3 flex-shrink-0 ${constraints?.bushfireProne ? 'text-orange-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Bushfire Prone</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.bushfireProne ? 'text-orange-900' : 'text-gray-500'}`}>
-                {constraints?.bushfireProne ? 'Yes' : 'No'}
-              </div>
-              {constraints?.bushfireProne && (
-                <>
-                  <p className="text-xs text-orange-700 mt-1">
-                    LEP Clause 5.17 - Bushfire protection measures required
-                  </p>
-                  {constraints.bushfireCategory && (
-                    <p className="text-xs text-orange-600 mt-1">
-                      Category: {constraints.bushfireCategory}
-                    </p>
-                  )}
-                </>
-              )}
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.bushfireProne ? 'text-orange-800' : 'text-gray-400'}`}>
+                {constraints?.bushfireProne ? (constraints.bushfireCategory || 'Yes') : 'No'}
+              </span>
             </div>
 
             {/* Acid Sulfate Soils */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.acidSulfateSoils
-                ? 'bg-purple-50 border-purple-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.acidSulfateSoils ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <FlaskConical className={`h-4 w-4 ${constraints?.acidSulfateSoils ? 'text-purple-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Acid Sulfate Soils</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <FlaskConical className={`h-3 w-3 flex-shrink-0 ${constraints?.acidSulfateSoils ? 'text-purple-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Acid Sulfate Soils</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.acidSulfateSoils ? 'text-purple-900' : 'text-gray-500'}`}>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.acidSulfateSoils ? 'text-purple-800' : 'text-gray-400'}`}>
                 {constraints?.acidSulfateSoils ? `Class ${constraints.acidSulfateSoils}` : 'No'}
-              </div>
-              {constraints?.acidSulfateSoils && (
-                <p className="text-xs text-purple-700 mt-1">
-                  LEP Clause 6.1 - Acid sulfate soils management plan may be required
-                </p>
-              )}
+              </span>
             </div>
 
-            {/* Aircraft Noise (ANEF) */}
-            <div className={`border rounded-lg p-3 md:col-span-2 ${
-              propertyData?.anefData?.inAnefZone
-                ? 'bg-sky-50 border-sky-200'
-                : 'bg-white border-blue-100'
+            {/* Aircraft Noise */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              propertyData?.anefData?.inAnefZone ? 'bg-sky-50 border-sky-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Plane className={`h-4 w-4 ${propertyData?.anefData?.inAnefZone ? 'text-sky-700' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Aircraft Noise (ANEF)</span>
-                {propertyData?.anefData?.inAnefZone && (
-                  <Badge className={`text-xs ${
-                    propertyData.anefData.anefLevel && propertyData.anefData.anefLevel >= 25
-                      ? 'bg-orange-100 text-orange-800 border-orange-300'
-                      : 'bg-sky-100 text-sky-800 border-sky-300'
-                  }`}>
-                    ANEF {propertyData.anefData.anefLevel}
-                  </Badge>
-                )}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Plane className={`h-3 w-3 flex-shrink-0 ${propertyData?.anefData?.inAnefZone ? 'text-sky-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Aircraft Noise</span>
               </div>
-              <div className={`text-lg font-bold ${propertyData?.anefData?.inAnefZone ? 'text-sky-900' : 'text-gray-500'}`}>
-                {propertyData?.anefData?.inAnefZone ? 'Yes' : 'No'}
-              </div>
-              {propertyData?.anefData?.inAnefZone && (
-                <div className="text-xs text-sky-800 space-y-1 mt-2">
-                  {propertyData.anefData.anefCode && (
-                    <p>
-                      <span className="font-medium">ANEF Zone:</span> {propertyData.anefData.anefCode} decibels
-                    </p>
-                  )}
-                  {propertyData.anefData.epiName && (
-                    <p className="text-sky-600">{propertyData.anefData.epiName}</p>
-                  )}
-                  <p className="text-xs text-sky-700 mt-2 italic">
-                    Aircraft noise controls apply - acoustic design requirements may be triggered (AS2021:2015)
-                  </p>
-                </div>
-              )}
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${propertyData?.anefData?.inAnefZone ? 'text-sky-800' : 'text-gray-400'}`}>
+                {propertyData?.anefData?.inAnefZone ? `ANEF ${propertyData.anefData.anefLevel}` : 'No'}
+              </span>
             </div>
 
             {/* Mine Subsidence */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.mineSubsidence?.inDistrict
-                ? 'bg-indigo-50 border-indigo-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.mineSubsidence?.inDistrict ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className={`h-4 w-4 ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Mine Subsidence</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <AlertTriangle className={`h-3 w-3 flex-shrink-0 ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Mine Subsidence</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-900' : 'text-gray-500'}`}>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.mineSubsidence?.inDistrict ? 'text-indigo-800' : 'text-gray-400'}`}>
                 {constraints?.mineSubsidence?.inDistrict ? (constraints.mineSubsidence.districtName || 'Yes') : 'No'}
-              </div>
-              {constraints?.mineSubsidence?.inDistrict && (
-                <>
-                  <p className="text-xs text-indigo-700 mt-1">
-                    Subsidence Advisory NSW may require approval
-                  </p>
-                  {constraints.mineSubsidence.lastUpdate && (
-                    <p className="text-xs text-indigo-600 mt-1">
-                      Last updated: {new Date(constraints.mineSubsidence.lastUpdate).toLocaleDateString()}
-                    </p>
-                  )}
-                </>
-              )}
+              </span>
             </div>
 
             {/* Landslide Risk */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.landslideRisk?.hasRisk
-                ? 'bg-amber-50 border-amber-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.landslideRisk?.hasRisk ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <AlertTriangle className={`h-4 w-4 ${constraints?.landslideRisk?.hasRisk ? 'text-amber-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Landslide Risk</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <AlertTriangle className={`h-3 w-3 flex-shrink-0 ${constraints?.landslideRisk?.hasRisk ? 'text-amber-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Landslide Risk</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.landslideRisk?.hasRisk ? 'text-amber-900' : 'text-gray-500'}`}>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.landslideRisk?.hasRisk ? 'text-amber-800' : 'text-gray-400'}`}>
                 {constraints?.landslideRisk?.hasRisk ? 'Yes' : 'No'}
-              </div>
-              {constraints?.landslideRisk?.hasRisk && (
-                <>
-                  <p className="text-xs text-amber-700 mt-1">
-                    LEP Part 6 - Geotechnical assessment may be required
-                  </p>
-                  {constraints.landslideRisk.epiName && (
-                    <p className="text-xs text-amber-600 mt-1">
-                      {constraints.landslideRisk.epiName}
-                    </p>
-                  )}
-                </>
-              )}
+              </span>
             </div>
 
             {/* Contaminated Land */}
-            <div className={`border rounded-lg p-3 md:col-span-2 ${
-              constraints?.contaminatedLand?.hasNotifiedSites
-                ? 'bg-red-50 border-red-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.contaminatedLand?.hasNotifiedSites ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <MapPin className={`h-4 w-4 ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Contaminated Land</span>
-                {constraints?.contaminatedLand?.hasNotifiedSites && (
-                  <Badge className="text-xs bg-red-100 text-red-800 border-red-300">
-                    {constraints.contaminatedLand.nearestSite?.distance}m away
-                  </Badge>
-                )}
+              <div className="flex items-center gap-1.5 min-w-0">
+                <MapPin className={`h-3 w-3 flex-shrink-0 ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Contaminated Land</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-900' : 'text-gray-500'}`}>
-                {constraints?.contaminatedLand?.hasNotifiedSites ? 'Yes - Nearby Site' : 'No known sites within 500m'}
-              </div>
-              {constraints?.contaminatedLand?.hasNotifiedSites && (
-                <div className="text-xs text-red-800 space-y-1 mt-2">
-                  {constraints.contaminatedLand.nearestSite?.name && (
-                    <p className="font-medium">{constraints.contaminatedLand.nearestSite.name}</p>
-                  )}
-                  {constraints.contaminatedLand.nearestSite?.address && (
-                    <p className="text-red-600">{constraints.contaminatedLand.nearestSite.address}</p>
-                  )}
-                  {constraints.contaminatedLand.nearestSite?.managementClass && (
-                    <p className="mt-1">
-                      <span className="font-medium">Status:</span> {constraints.contaminatedLand.nearestSite.managementClass}
-                    </p>
-                  )}
-                  {constraints.contaminatedLand.nearestSite?.contaminationType && (
-                    <p>
-                      <span className="font-medium">Type:</span> {constraints.contaminatedLand.nearestSite.contaminationType}
-                    </p>
-                  )}
-                  <p className="text-xs text-red-700 mt-2 italic">
-                    EPA notified site - contamination assessment may be required
-                  </p>
-                </div>
-              )}
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.contaminatedLand?.hasNotifiedSites ? 'text-red-800' : 'text-gray-400'}`}>
+                {constraints?.contaminatedLand?.hasNotifiedSites
+                  ? `${constraints.contaminatedLand.nearestSite?.distance}m`
+                  : 'No'}
+              </span>
             </div>
 
             {/* Drinking Water Catchment */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.drinkingWaterCatchment?.inCatchment
-                ? 'bg-blue-50 border-blue-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.drinkingWaterCatchment?.inCatchment ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Droplets className={`h-4 w-4 ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Drinking Water Catchment</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Drinking Water</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-900' : 'text-gray-500'}`}>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.drinkingWaterCatchment?.inCatchment ? 'text-blue-800' : 'text-gray-400'}`}>
                 {constraints?.drinkingWaterCatchment?.inCatchment ? 'Yes' : 'No'}
-              </div>
-              {constraints?.drinkingWaterCatchment?.inCatchment && (
-                <>
-                  <p className="text-xs text-blue-700 mt-1">
-                    SEPP (Sydney Drinking Water Catchment) 2011 applies
-                  </p>
-                  {constraints.drinkingWaterCatchment.epiName && (
-                    <p className="text-xs text-blue-600 mt-1">
-                      {constraints.drinkingWaterCatchment.epiName}
-                    </p>
-                  )}
-                </>
-              )}
+              </span>
             </div>
 
             {/* Terrestrial Biodiversity */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.terrestrialBiodiversity?.inBiodiversityArea
-                ? 'bg-green-50 border-green-200'
-                : 'bg-white border-blue-100'
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'bg-green-50 border-green-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <TreePine className={`h-4 w-4 ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Terrestrial Biodiversity</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <TreePine className={`h-3 w-3 flex-shrink-0 ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Biodiversity</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-900' : 'text-gray-500'}`}>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'text-green-800' : 'text-gray-400'}`}>
                 {constraints?.terrestrialBiodiversity?.inBiodiversityArea ? 'Yes' : 'No'}
-              </div>
-              {constraints?.terrestrialBiodiversity?.inBiodiversityArea && (
-                <>
-                  <p className="text-xs text-green-700 mt-1">
-                    LEP Part 6 - Biodiversity assessment required
-                  </p>
-                  {constraints.terrestrialBiodiversity.epiName && (
-                    <p className="text-xs text-green-600 mt-1">
-                      {constraints.terrestrialBiodiversity.epiName}
-                    </p>
-                  )}
-                </>
-              )}
+              </span>
             </div>
 
-            {/* Coastal Environment */}
-            <div className={`border rounded-lg p-3 ${
-              constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0
-                ? 'bg-cyan-50 border-cyan-200'
-                : 'bg-white border-blue-100'
+            {/* Coastal Management */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length
+                ? 'bg-cyan-50 border-cyan-200' : 'bg-white border-gray-100'
             }`}>
-              <div className="flex items-center gap-2 mb-1">
-                <Waves className={`h-4 w-4 ${constraints?.coastalEnvironment?.inCoastalArea ? 'text-cyan-600' : 'text-gray-400'}`} />
-                <span className="text-sm font-medium">Coastal Management</span>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Waves className={`h-3 w-3 flex-shrink-0 ${constraints?.coastalEnvironment?.inCoastalArea ? 'text-cyan-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Coastal</span>
               </div>
-              <div className={`text-lg font-bold ${constraints?.coastalEnvironment?.inCoastalArea ? 'text-cyan-900' : 'text-gray-500'}`}>
-                {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0
-                  ? `${constraints.coastalEnvironment.zones.length} Zone${constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}`
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length ? 'text-cyan-800' : 'text-gray-400'}`}>
+                {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length
+                  ? `${constraints.coastalEnvironment.zones.length} zone${constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}`
                   : 'No'}
-              </div>
-              {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones && constraints.coastalEnvironment.zones.length > 0 && (
-                <>
-                  <p className="text-xs text-cyan-700 mt-1">
-                    Coastal Management SEPP 2018 applies
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {constraints.coastalEnvironment.zones.map((zone, i) => (
-                      <Badge key={i} className="text-xs bg-cyan-100 text-cyan-800 border-cyan-300">
-                        {zone}
-                      </Badge>
-                    ))}
-                  </div>
-                </>
-              )}
+              </span>
             </div>
           </div>
 
-          {/* Link to Planning Portal */}
-          <div className="pt-3 border-t border-blue-100">
+          <div className="mt-2 pt-2 border-t border-blue-100">
             <a
               href="https://www.planningportal.nsw.gov.au/property"
               target="_blank"

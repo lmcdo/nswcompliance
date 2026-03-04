@@ -165,6 +165,11 @@ export function DAModeCard({
           </div>
         </div>
 
+        {/* SEE requirement warning — shown before inputs so user knows what's needed */}
+        {!devDescriptionLocal.trim() && (
+          <p className="text-xs text-amber-600">Select a development type and describe the works to enable SEE export.</p>
+        )}
+
         {/* Development type */}
         <div>
           <label className="block text-xs font-medium text-teal-800 mb-1">
@@ -197,19 +202,17 @@ export function DAModeCard({
         </div>
 
         {/* SEE description preview */}
-        {devDescriptionLocal.trim() ? (
+        {devDescriptionLocal.trim() && (
           <div className="text-xs bg-white border border-teal-100 rounded px-2.5 py-1.5 text-gray-700">
             <span className="font-medium text-teal-600">SEE will read: </span>
             {devDescriptionLocal}
           </div>
-        ) : (
-          <p className="text-xs text-amber-600">Select a type and describe the works to enable SEE export.</p>
         )}
 
         {/* Scope summary — shown after intake, replaces simple "intake completed" line */}
         {intakeAnswers ? (
           <div className="pt-2 border-t border-teal-100">
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center justify-between mb-0.5">
               <span className="text-xs font-medium text-teal-800">Your applicable scope</span>
               <button
                 onClick={onRunIntake}
@@ -218,6 +221,9 @@ export function DAModeCard({
                 Reconfigure
               </button>
             </div>
+            <p className="text-xs text-gray-400 mb-2">
+              Reconfigure answers factual questions to remove provisions that cannot apply to your works.
+            </p>
 
             <div className="space-y-1">
               {/* Heritage — always first if property has HCA */}
@@ -291,16 +297,17 @@ export function DAModeCard({
         {/* Completion dashboard */}
         {completionStats.total > 0 && (
           <div className="pt-2 border-t border-teal-100">
-            <div className="flex items-center gap-3 text-xs">
+            <span className="text-xs font-medium text-teal-800">Assessment progress</span>
+            <div className="flex items-center gap-3 text-xs mt-1">
               <span className="text-amber-700 font-semibold">
-                {completionStats.remaining} to assess
+                {completionStats.remaining} provisions to assess
               </span>
               <span className="text-gray-300">·</span>
-              <span className="text-teal-600">{completionStats.assessed} done</span>
+              <span className="text-teal-600">{completionStats.assessed} assessed</span>
               {completionStats.intakeExcluded > 0 && (
                 <>
                   <span className="text-gray-300">·</span>
-                  <span className="text-gray-400">{completionStats.intakeExcluded} excluded</span>
+                  <span className="text-gray-400">{completionStats.intakeExcluded} excluded by triage</span>
                 </>
               )}
             </div>
@@ -310,9 +317,9 @@ export function DAModeCard({
               className="mt-1.5 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800"
             >
               {showTopicBreakdown ? (
-                <><ChevronUp className="w-3 h-3" /> Hide topic progress</>
+                <><ChevronUp className="w-3 h-3" /> Hide breakdown by topic</>
               ) : (
-                <><ChevronDown className="w-3 h-3" /> Show topic progress</>
+                <><ChevronDown className="w-3 h-3" /> Show breakdown by topic</>
               )}
             </button>
 

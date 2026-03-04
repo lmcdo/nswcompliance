@@ -96,36 +96,36 @@ export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsCo
              <span className="text-sm font-semibold text-amber-900">Lot Dimensions</span>
              <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300">Cadastre</Badge>
            </div>
-           <div className="grid grid-cols-3 gap-3">
+           <div className="grid grid-cols-3 gap-1.5">
              <div className="bg-white rounded p-2 text-center border border-amber-100">
                <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                  <Square className="h-3 w-3" />
                  <span className="text-xs">Area</span>
                </div>
-               <span className="text-lg font-bold text-gray-900">
+               <span className="text-base font-bold text-gray-900">
                  {propertyData.lotDimensions.area.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                </span>
-               <span className="text-xs text-gray-500 ml-1">m²</span>
+               <span className="text-xs text-gray-500 ml-0.5">m²</span>
              </div>
              <div className="bg-white rounded p-2 text-center border border-amber-100">
                <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                  <Ruler className="h-3 w-3" />
                  <span className="text-xs">Frontage</span>
                </div>
-               <span className="text-lg font-bold text-gray-900">
+               <span className="text-base font-bold text-gray-900">
                  {propertyData.lotDimensions.frontage.toFixed(1)}
                </span>
-               <span className="text-xs text-gray-500 ml-1">m</span>
+               <span className="text-xs text-gray-500 ml-0.5">m</span>
              </div>
              <div className="bg-white rounded p-2 text-center border border-amber-100">
                <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
                  <Ruler className="h-3 w-3 rotate-90" />
                  <span className="text-xs">Depth</span>
                </div>
-               <span className="text-lg font-bold text-gray-900">
+               <span className="text-base font-bold text-gray-900">
                  {propertyData.lotDimensions.depth.toFixed(1)}
                </span>
-               <span className="text-xs text-gray-500 ml-1">m</span>
+               <span className="text-xs text-gray-500 ml-0.5">m</span>
              </div>
            </div>
            {propertyData.lotDimensions.confidence < 0.8 && (

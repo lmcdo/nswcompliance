@@ -270,6 +270,7 @@ interface PageGroupedProvisionsProps {
   maxProvisions?: number;       // Limit display count (e.g., 20)
   formerCouncil?: string;       // For council-specific layer labels
   councilKey?: string;          // formerCouncil.toLowerCase() — for provision text artifact cleanup
+  councilPdfUrl?: string;       // R2 public PDF URL for councils without per-page screenshots
   highlightQuery?: string;      // Search query to highlight in provision text
   // Layer tooltip context
   zone?: string;                // Property zone (for use_specific tooltip)
@@ -347,7 +348,7 @@ const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
 /**
  * Group provisions by PDF page and calculate display page numbers with offsets
  */
-function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
+function groupProvisionsByPage(provisions: Provision[], councilPdfUrl?: string): PageGroup[] {
   const pageMap = new Map<string, PageGroup>();
   const ungrouped: Provision[] = [];
 
@@ -382,6 +383,21 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
         }
       }
       pageMap.get(key)!.provisions.push(prov);
+    } else if (councilPdfUrl && prov.pdf_page) {
+      // No page image but we have a direct PDF URL — group by raw pdf_page
+      const key = `direct-${prov.pdf_page}`;
+      if (!pageMap.has(key)) {
+        pageMap.set(key, {
+          pageNumber: prov.pdf_page,
+          displayPageNumber: null,  // Direct-PDF: no reliable printed page number, omit label
+          pageUrl: `${councilPdfUrl}#page=${prov.pdf_page}`,
+          provisions: [],
+          dcpPart: prov.v2_dcp_part || null,
+          tocSectionNumber: prov.toc_section_number || null,
+          tocSectionTitle: prov.toc_section_title || null,
+        });
+      }
+      pageMap.get(key)!.provisions.push(prov);
     } else {
       ungrouped.push(prov);
     }
@@ -389,7 +405,7 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
 
   // Sort by display page number
   const groups = Array.from(pageMap.values())
-    .sort((a, b) => (a.displayPageNumber || 999) - (b.displayPageNumber || 999));
+    .sort((a, b) => (a.displayPageNumber ?? a.pageNumber ?? 999) - (b.displayPageNumber ?? b.pageNumber ?? 999));
 
   // Add ungrouped at end
   if (ungrouped.length > 0) {
@@ -465,6 +481,7 @@ export function PageGroupedProvisions({
   maxProvisions,
   formerCouncil,
   councilKey,
+  councilPdfUrl: councilPdfUrlProp,
   highlightQuery,
   crossReferencesMap,
   showCrossReferences = false,
@@ -502,7 +519,8 @@ export function PageGroupedProvisions({
   }
 
   // Group provisions by page
-  const pageGroups = useMemo(() => groupProvisionsByPage(provisions), [provisions]);
+  const councilPdfUrl = councilPdfUrlProp || undefined;
+  const pageGroups = useMemo(() => groupProvisionsByPage(provisions, councilPdfUrl), [provisions, councilPdfUrl]);
 
   // Track expanded page groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -559,8 +577,8 @@ export function PageGroupedProvisions({
 
   // Re-group after limiting
   const displayGroups = useMemo(
-    () => groupProvisionsByPage(displayProvisions),
-    [displayProvisions]
+    () => groupProvisionsByPage(displayProvisions, councilPdfUrl),
+    [displayProvisions, councilPdfUrl]
   );
 
   const getLayerColor = (layer: string | null | undefined): string => {
@@ -682,13 +700,13 @@ export function PageGroupedProvisions({
                   )}
                   {/* DCP Part (if no TOC info) - skip if "unknown" */}
                   {!group.tocSectionNumber && group.dcpPart && group.dcpPart !== 'unknown' && (
-                    <span className="font-medium text-gray-700">{group.dcpPart} · </span>
+                    <span className="font-medium text-gray-700">{group.dcpPart}</span>
                   )}
-                  {/* Page number */}
+                  {/* Page number — only for screenshot-based provisions with a reliable printed page */}
                   {group.displayPageNumber ? (
-                    <span className="text-gray-500">Page {group.displayPageNumber}</span>
-                  ) : (
-                    <span className="text-gray-400">No page reference</span>
+                    <span className="text-gray-500"> · Page {group.displayPageNumber}</span>
+                  ) : !group.pageUrl?.includes('#page=') && (
+                    <span className="text-gray-400"> · No page reference</span>
                   )}
                   <span className="text-gray-400 ml-1">
                     · {group.provisions.length} provision{group.provisions.length !== 1 ? 's' : ''}

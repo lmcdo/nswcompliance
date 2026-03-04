@@ -4,7 +4,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Search, MapPin, Loader2, X, AlertCircle } from 'lucide-react';
-import { detectLGAFromName } from '@/lib/lga-configs';
 
 interface PropertySearchProps {
   onAddressSelect: (address: string, coordinates?: google.maps.LatLngLiteral) => void;
@@ -111,17 +110,6 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
             const lga = lgaComponent?.long_name || '';
 
             console.log(`[PropertySearch] Address: ${address}, LGA: ${lga || '(not found)'}`);
-
-            // Validate: only allow configured LGAs
-            const lgaId = lga ? detectLGAFromName(lga) : null;
-
-            if (!lgaId) {
-              const lgaDisplay = lga || 'unknown area';
-              setLgaError(`${lgaDisplay} is not yet supported. Supported areas: Inner West, Waverley.`);
-              console.warn(`[PropertySearch] Address rejected: ${address} is in ${lgaDisplay} (no LGA config)`);
-            } else {
-              console.log(`[PropertySearch] Address accepted: ${address} → LGA config '${lgaId}'`);
-            }
             // Don't auto-trigger - let user click the button to analyze
           }
         });
@@ -177,11 +165,6 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    // Block submission if there's an LGA error
-    if (lgaError) {
-      return;
-    }
 
     // Block manual submission - require Google Places selection
     if (!usedAutocomplete) {
@@ -256,11 +239,11 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
 
           <button
             type="submit"
-            disabled={loading || !inputValue.trim() || !!lgaError}
+            disabled={loading || !inputValue.trim()}
             className={`h-12 sm:h-10 px-6 min-w-[160px] font-medium text-base sm:text-sm rounded-lg transition-all shadow-sm whitespace-nowrap flex items-center justify-center ${
               loading
                 ? 'bg-gray-400 text-white cursor-wait'
-                : !inputValue.trim() || lgaError
+                : !inputValue.trim()
                 ? 'bg-gray-400 text-white cursor-not-allowed'
                 : 'bg-gray-700 hover:bg-gray-800 active:bg-gray-900 text-white'
             }`}
@@ -282,7 +265,7 @@ export function PropertySearch({ onAddressSelect, loading = false, selectedAddre
         <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
           <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm text-amber-800 font-medium">Address not supported</p>
+            <p className="text-sm text-amber-800 font-medium">Address required</p>
             <p className="text-sm text-amber-700">{lgaError}</p>
           </div>
         </div>

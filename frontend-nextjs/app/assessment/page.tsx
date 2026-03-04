@@ -111,7 +111,7 @@ export default function AssessmentPage() {
           <div className="hidden sm:flex items-center">
             <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium border border-gray-300 bg-gray-100 text-gray-700">
               <MapPin className="h-3.5 w-3.5" />
-              Inner West Council
+              {selectedProperty?.constraints?.lga || 'NSW Planning'}
             </span>
           </div>
         </div>
@@ -418,8 +418,8 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content - Structure View Only */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
-                    {/* ① Enable DA Mode */}
-                    {isDaMode ? (
+                    {/* ① Enable DA Mode — only shown when council DCP is available */}
+                    {selectedProperty.constraints?.formerCouncil && isDaMode ? (
                       <div className="flex items-start gap-3 mb-5">
                         <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
                         <div>
@@ -434,7 +434,7 @@ export default function AssessmentPage() {
                           </button>
                         </div>
                       </div>
-                    ) : (
+                    ) : selectedProperty.constraints?.formerCouncil ? (
                       <div className="flex items-center justify-between mb-5">
                         <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
                         <button
@@ -445,11 +445,12 @@ export default function AssessmentPage() {
                           Enable DA Mode
                         </button>
                       </div>
-                    )}
+                    ) : null}
 
 
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
+                      lga={selectedProperty.constraints?.lga}
                       formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
                       zone={selectedProperty.constraints?.zone}
                       heritage={selectedProperty.heritage?.isHeritage || false}
