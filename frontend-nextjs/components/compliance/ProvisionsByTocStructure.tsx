@@ -200,19 +200,14 @@ export function ProvisionsByTocStructure({
 
   // Intake modal state
   const [showIntakeModal, setShowIntakeModal] = useState(false);
-  const [intakeSkipped, setIntakeSkipped] = useState(false);
-  // Increment on every open so the key prop remounts DAIntakeModal, resetting all internal state
-  const [intakeOpenCount, setIntakeOpenCount] = useState(0);
 
   // Restore per-address UI state from localStorage when the address changes
   useEffect(() => {
     if (!address) return;
-    const skipped = localStorage.getItem(`ce_intakeSkipped_${address}`) === 'true';
     const savedDevType = localStorage.getItem(`ce_devType_${address}`) || '';
     const savedDevWorksText = localStorage.getItem(`ce_devWorksText_${address}`) || '';
     const savedClientRef = localStorage.getItem(`ce_clientRef_${address}`) || '';
     const savedPreparedBy = localStorage.getItem(`ce_preparedBy_${address}`) || '';
-    setIntakeSkipped(skipped);
     setDevType(savedDevType);
     setDevWorksText(savedDevWorksText);
     setClientRef(savedClientRef);
@@ -269,13 +264,6 @@ export function ProvisionsByTocStructure({
     if (isDaMode && address) refreshResponsesRef.current();
   }, [isDaMode, address]);
 
-  // Show intake modal when DA mode first activates and no prior answers exist
-  useEffect(() => {
-    if (isDaMode && intakeAnswers === null && !intakeSkipped && sessionToken) {
-      setIntakeOpenCount(c => c + 1);
-      setShowIntakeModal(true);
-    }
-  }, [isDaMode, intakeAnswers, intakeSkipped, sessionToken]);
 
   // Compute excludable topics from intake answers
   const excludableTopics = useMemo(() => {
@@ -309,6 +297,9 @@ export function ProvisionsByTocStructure({
       summary: {
         total_provisions: number;
       };
+    };
+    meta?: {
+      council_pdf_url?: string | null;
     };
   }>(apiUrl, fetcher, {
     dedupingInterval: 2000,   // Reduced from 60s to 2s - allow fresh data
@@ -512,10 +503,8 @@ export function ProvisionsByTocStructure({
   }, [allProvisions, saveIntakeAnswers, bulkSaveResponses]);
 
   const handleIntakeSkip = useCallback(() => {
-    setIntakeSkipped(true);
-    if (address) localStorage.setItem(`ce_intakeSkipped_${address}`, 'true');
     setShowIntakeModal(false);
-  }, [address]);
+  }, []);
 
     const baseProvisions = useMemo(() => {
     if (provisionView === 'task') {
@@ -1335,11 +1324,11 @@ export function ProvisionsByTocStructure({
     <div className="space-y-0">
       {/* Structured intake modal */}
       <DAIntakeModal
-        key={intakeOpenCount}
         open={showIntakeModal}
         onApply={handleIntakeApply}
         onSkip={handleIntakeSkip}
         provisions={allProvisions}
+        initialAnswers={intakeAnswers ?? undefined}
         heritage={heritage}
         hcaName={hcaName}
         precinctName={precinctName}
@@ -1357,13 +1346,13 @@ export function ProvisionsByTocStructure({
               devWorksText={devWorksText}
               devDescriptionLocal={devDescriptionLocal}
               intakeAnswers={intakeAnswers}
-              intakeSkipped={intakeSkipped}
+
               daResponses={daResponses}
               allProvisions={allProvisions}
               excludableTopics={excludableTopics}
               onDevTypeChange={handleDevTypeChange}
               onDevWorksChange={handleDevWorksChange}
-              onRunIntake={() => { setIntakeOpenCount(c => c + 1); setShowIntakeModal(true); }}
+              onRunIntake={() => setShowIntakeModal(true)}
               clientRef={clientRef}
               preparedBy={preparedBy}
               onClientRefChange={handleClientRefChange}
@@ -1827,6 +1816,7 @@ export function ProvisionsByTocStructure({
                     provisions={displayProvisions}
                     formerCouncil={formerCouncil}
                     councilKey={formerCouncil?.toLowerCase()}
+                    councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
                     showLayerBadges={true}
                     maxProvisions={100}
                     onViewPdf={(url, page) => setPdfModal({ url, page })}
@@ -1857,6 +1847,7 @@ export function ProvisionsByTocStructure({
                           provisions={triageExcludedProvisions}
                           formerCouncil={formerCouncil}
                           councilKey={formerCouncil?.toLowerCase()}
+                          councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
                           showLayerBadges={true}
                           maxProvisions={100}
                           onViewPdf={(url, page) => setPdfModal({ url, page })}

@@ -11,7 +11,6 @@ interface DAModeCardProps {
   devWorksText: string;
   devDescriptionLocal: string;
   intakeAnswers: IntakeAnswers | null;
-  intakeSkipped: boolean;
   daResponses: Map<number, { response_text: string | null; compliance_status: string | null }>;
   allProvisions: Provision[];
   excludableTopics: Set<string>;
@@ -38,7 +37,6 @@ export function DAModeCard({
   devWorksText,
   devDescriptionLocal,
   intakeAnswers,
-  intakeSkipped,
   daResponses,
   allProvisions,
   excludableTopics,
@@ -279,15 +277,13 @@ export function DAModeCard({
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-between pt-1 border-t border-teal-100">
-            <span className="text-xs text-gray-500">
-              {intakeSkipped ? 'Triage skipped — all provisions included' : 'Run triage to remove inapplicable provisions'}
-            </span>
+          <div className="pt-2 border-t border-teal-100">
+            <p className="text-xs text-gray-500 mb-2">Answer a few factual questions to automatically remove provisions that cannot apply to your project.</p>
             <button
               onClick={onRunIntake}
-              className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
+              className="w-full rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors text-center"
             >
-              {intakeSkipped ? 'Run triage' : 'Run triage →'}
+              Set scope →
             </button>
           </div>
         )}

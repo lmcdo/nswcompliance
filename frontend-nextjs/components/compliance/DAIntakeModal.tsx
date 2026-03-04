@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useLayoutEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
@@ -16,6 +16,8 @@ interface DAIntakeModalProps {
   onSkip: () => void;
   totalProvisions?: number;
   provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null }>;
+  /** Pre-populate answers when reconfiguring (from a prior applied session) */
+  initialAnswers?: IntakeAnswers;
   /** Property-level flags for first-class passenger display */
   heritage?: boolean;
   hcaName?: string;
@@ -35,15 +37,36 @@ export function DAIntakeModal({
   onApply,
   onSkip,
   provisions = [],
+  initialAnswers,
   heritage,
   hcaName,
   precinctName,
 }: DAIntakeModalProps) {
-  const [answers, setAnswers] = useState<IntakeAnswers>({ ...DEFAULT_INTAKE_ANSWERS });
+  const [answers, setAnswers] = useState<IntakeAnswers>(
+    initialAnswers ? { ...initialAnswers } : { ...DEFAULT_INTAKE_ANSWERS }
+  );
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [confirmedAnswers, setConfirmedAnswers] = useState<IntakeAnswers | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // Reset all internal state whenever the modal transitions from closed → open,
+  // so stale confirmation/error state never bleeds into a fresh open.
+  // useLayoutEffect fires before paint → no visible flash.
+  const prevOpenRef = useRef(false);
+  const initialAnswersRef = useRef(initialAnswers);
+  initialAnswersRef.current = initialAnswers;
+  useLayoutEffect(() => {
+    if (open && !prevOpenRef.current) {
+      const ia = initialAnswersRef.current;
+      setAnswers(ia ? { ...ia } : { ...DEFAULT_INTAKE_ANSWERS });
+      setShowConfirmation(false);
+      setConfirmedAnswers(null);
+      setIsSubmitting(false);
+      setSubmitError(null);
+    }
+    prevOpenRef.current = open;
+  }, [open]);
 
   const setAnswer = (field: keyof IntakeAnswers, value: AnswerValue) => {
     setAnswers(prev => ({ ...prev, [field]: value }));
