@@ -277,13 +277,13 @@ export function DAModeCard({
             )}
           </div>
         ) : (
-          <div className="pt-2 border-t border-teal-100">
-            <p className="text-xs text-gray-500 mb-2">Answer a few factual questions to automatically remove provisions that cannot apply to your project.</p>
+          <div className="flex items-center justify-between pt-1 border-t border-teal-100">
+            <span className="text-xs text-gray-500">Run triage to remove inapplicable provisions</span>
             <button
               onClick={onRunIntake}
-              className="w-full rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors text-center"
+              className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
             >
-              Set scope →
+              Run triage →
             </button>
           </div>
         )}
