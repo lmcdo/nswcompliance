@@ -55,6 +55,7 @@ export function DAModeCard({
   intakeSetAt,
 }: DAModeCardProps) {
   const [showTopicBreakdown, setShowTopicBreakdown] = useState(false);
+  const [showExcluded, setShowExcluded] = useState(false);
 
   // Single pass over allProvisions to derive all stats
   const derivedStats = useMemo(() => {
@@ -247,14 +248,29 @@ export function DAModeCard({
                     <span className="text-gray-400 ml-auto">{count}</span>
                   </div>
                 ))}
-              {/* Excluded topics — always visible, visually subordinated */}
-              {scopeSummary.excluded.map(({ topic, count }) => (
-                <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="w-3 text-gray-300 font-bold">✕</span>
-                  <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
-                  <span className="ml-auto">{count}</span>
+              {/* Excluded — collapsible toggle */}
+              {scopeSummary.excluded.length > 0 && (
+                <div className="pt-0.5">
+                  <button
+                    onClick={() => setShowExcluded(v => !v)}
+                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+                  >
+                    {showExcluded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} removed by triage
+                  </button>
+                  {showExcluded && (
+                    <div className="mt-1 space-y-0.5 ml-1">
+                      {scopeSummary.excluded.map(({ topic, count }) => (
+                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                          <span className="w-3 text-gray-300 font-bold">✕</span>
+                          <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
+                          <span className="ml-auto">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
             </div>
             {intakeSetAt && (
               <p className="text-xs text-gray-400 mt-2">Scope set {intakeSetAt}</p>
