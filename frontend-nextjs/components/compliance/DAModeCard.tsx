@@ -55,7 +55,6 @@ export function DAModeCard({
   intakeSetAt,
 }: DAModeCardProps) {
   const [showTopicBreakdown, setShowTopicBreakdown] = useState(false);
-  const [showExcluded, setShowExcluded] = useState(false);
 
   // Single pass over allProvisions to derive all stats
   const derivedStats = useMemo(() => {
@@ -248,29 +247,14 @@ export function DAModeCard({
                     <span className="text-gray-400 ml-auto">{count}</span>
                   </div>
                 ))}
-              {/* Excluded — subordinated */}
-              {scopeSummary.excluded.length > 0 && (
-                <div className="pt-1">
-                  <button
-                    onClick={() => setShowExcluded(v => !v)}
-                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
-                  >
-                    {showExcluded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} removed by triage
-                  </button>
-                  {showExcluded && (
-                    <div className="mt-1 space-y-0.5 ml-1">
-                      {scopeSummary.excluded.map(({ topic }) => (
-                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                          <span className="w-3">○</span>
-                          <span className="capitalize">{topic.replace(/_/g, ' ')}</span>
-                          <span className="italic ml-auto">excluded</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {/* Excluded topics — always visible, visually subordinated */}
+              {scopeSummary.excluded.map(({ topic, count }) => (
+                <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="w-3 text-gray-300 font-bold">✕</span>
+                  <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
+                  <span className="ml-auto">{count}</span>
                 </div>
-              )}
+              ))}
             </div>
             {intakeSetAt && (
               <p className="text-xs text-gray-400 mt-2">Scope set {intakeSetAt}</p>
@@ -291,19 +275,18 @@ export function DAModeCard({
         {/* Completion dashboard */}
         {completionStats.total > 0 && (
           <div className="pt-2 border-t border-teal-100">
-            <div className="flex items-center gap-4 text-xs">
-              <span className="flex items-center gap-1 text-teal-700">
-                <span className="text-teal-500 font-bold">✓</span>
-                <span className="font-medium">{completionStats.assessed}</span> assessed
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-amber-700 font-semibold">
+                {completionStats.remaining} to assess
               </span>
-              <span className="flex items-center gap-1 text-gray-500">
-                <span className="font-bold">○</span>
-                <span className="font-medium">{completionStats.intakeExcluded}</span> triaged out
-              </span>
-              <span className="flex items-center gap-1 text-amber-600">
-                <span className="font-bold">●</span>
-                <span className="font-medium">{completionStats.remaining}</span> to review
-              </span>
+              <span className="text-gray-300">·</span>
+              <span className="text-teal-600">{completionStats.assessed} done</span>
+              {completionStats.intakeExcluded > 0 && (
+                <>
+                  <span className="text-gray-300">·</span>
+                  <span className="text-gray-400">{completionStats.intakeExcluded} excluded</span>
+                </>
+              )}
             </div>
 
             <button
