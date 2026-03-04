@@ -718,9 +718,10 @@ export class NSWPlanningPortalService {
 					constraints.localProvisions = [];
 				}
 
-				// Extract Map Type and get clause numbers
+				// Extract Map Type and get clause numbers (EPI-name-aware for LGA-specific lookup)
 				const mapType = result['Map Type'];
-				const clauseNumbers = mapType ? getClauseNumbersForMapType(mapType) : [];
+				const epiName = result['EPI Name'];
+				const clauseNumbers = mapType ? getClauseNumbersForMapType(mapType, epiName) : [];
 
 				// Store basic info from Planning Portal
 				const localProvision: LocalProvision = {
@@ -963,11 +964,38 @@ export class NSWPlanningPortalService {
  }
 
  // Stage 1: independent fetches in parallel (valuation called once only)
- const [layers, propertyData, lotGeometry] = await Promise.all([
+ const [layers, initialPropertyData, initialLotGeometry] = await Promise.all([
    this.getPlanningLayers(searchResult.propId),
    this.getPropertyValuation(searchResult.propId),
    this.getLotGeometry(searchResult.propId).catch(() => null)
  ]);
+
+ // Fallback: when the top-scored propId has no valuation (strata unit propIds),
+ // try other candidates from a broader search until one has valuation data.
+ let propertyData = initialPropertyData;
+ let lotGeometry = initialLotGeometry;
+ if (!propertyData) {
+   try {
+     const fbRes = await fetch(
+       `${this.BASE_URL}/address?a=${encodeURIComponent(address)}&noOfRecords=10`,
+       { headers: { 'Accept': 'application/json', 'User-Agent': 'ComplianceEngine/1.0' } }
+     );
+     if (fbRes.ok) {
+       const fbResults = await fbRes.json();
+       for (const candidate of fbResults) {
+         if (candidate.propId === searchResult.propId) continue;
+         const candidateData = await this.getPropertyValuation(candidate.propId);
+         if (candidateData) {
+           propertyData = candidateData;
+           lotGeometry = await this.getLotGeometry(candidate.propId).catch(() => null);
+           break;
+         }
+       }
+     }
+   } catch {
+     // fallback failed — propertyData stays null, will throw below
+   }
+ }
 
  // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion)
  let todLayers: PlanningLayer[] = [];
