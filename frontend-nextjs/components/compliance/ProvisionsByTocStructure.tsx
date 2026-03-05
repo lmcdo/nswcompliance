@@ -1764,9 +1764,8 @@ export function ProvisionsByTocStructure({
             {isDaMode ? (
               <button
                 onClick={handleExportSee}
-                disabled={!devDescriptionLocal.trim()}
-                title={!devDescriptionLocal.trim() ? 'Add a development description above to enable' : 'Export working draft — requires professional review before DA lodgement'}
-                className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Export working draft — requires professional review before DA lodgement"
+                className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
               >
                 <FileText className="h-4 w-4 flex-shrink-0" />
                 <div className="text-left">

@@ -167,7 +167,7 @@ export function DAModeCard({
 
         {/* SEE requirement warning — shown before inputs so user knows what's needed */}
         {!devDescriptionLocal.trim() && (
-          <p className="text-xs text-amber-600">Select a development type and describe the works to enable SEE export.</p>
+          <p className="text-xs text-amber-600">Select a development type and describe the works — these appear on the SEE cover page.</p>
         )}
 
         {/* Development type */}
