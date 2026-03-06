@@ -418,35 +418,6 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content - Structure View Only */}
                 {viewMode === 'dcp' && (
                   <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
-                    {/* ① Enable DA Mode — only shown when council DCP is available */}
-                    {selectedProperty.constraints?.formerCouncil && isDaMode ? (
-                      <div className="flex items-start gap-3 mb-5">
-                        <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
-                        <div>
-                          <p className="text-sm font-semibold text-gray-800">DA Mode</p>
-                          <p className="text-xs text-gray-500 mt-0.5 mb-2">Active — record compliance positions against each provision and export a working SEE draft. Complete steps 2 and 3 below.</p>
-                          <button
-                            onClick={() => setIsDaMode(false)}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
-                          >
-                            <span className="w-3 h-3 rounded-full inline-block bg-white" />
-                            DA Mode on
-                          </button>
-                        </div>
-                      </div>
-                    ) : selectedProperty.constraints?.formerCouncil ? (
-                      <div className="flex items-center justify-between mb-5">
-                        <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
-                        <button
-                          onClick={() => setIsDaMode(true)}
-                          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
-                        >
-                          <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
-                          Enable DA Mode
-                        </button>
-                      </div>
-                    ) : null}
-
 
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
@@ -467,6 +438,7 @@ export default function AssessmentPage() {
                       propertyData={selectedProperty}
                       lepClauseData={lepClauseData}
                       isDaMode={isDaMode}
+                      onToggleDaMode={setIsDaMode}
                     />
                   </div>
                 )}

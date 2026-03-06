@@ -133,6 +133,8 @@ interface ProvisionsByTocStructureProps {
   lepClauseData?: any; // LEP clause data (height, FSR, zone table, etc.)
   // DA Mode
   isDaMode?: boolean;
+  /** Callback to enable/disable DA mode — button renders inside this component after provisions load */
+  onToggleDaMode?: (enabled: boolean) => void;
 }
 
 const fetcher = async (url: string) => {
@@ -170,6 +172,7 @@ export function ProvisionsByTocStructure({
   propertyData,
   lepClauseData,
   isDaMode = false,
+  onToggleDaMode,
 }: ProvisionsByTocStructureProps) {
   // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
   const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
@@ -196,7 +199,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -272,11 +275,14 @@ export function ProvisionsByTocStructure({
   // Only fires when deps change — dismissing the modal does not re-trigger it in the
   // same session. On page reload, sessionToken changes and triggers again, reminding
   // the user to complete triage. DAIntakeModal resets its own state via useLayoutEffect.
+  // Gate modal auto-open on sessionIsLoading to avoid race condition:
+  // setSessionToken fires before loadResponses completes, so intakeAnswers is
+  // briefly null even when a saved session exists. Wait until loading is done.
   useEffect(() => {
-    if (isDaMode && intakeAnswers === null && sessionToken) {
+    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null) {
       setShowIntakeModal(true);
     }
-  }, [isDaMode, intakeAnswers, sessionToken]);
+  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading]);
 
   // Merge auto-answers from LEP constraints with saved intake answers.
   // Auto-answers fill unknowns; saved planner answers always override.
@@ -642,6 +648,23 @@ export function ProvisionsByTocStructure({
       });
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritage, zone, precinctId]);
+
+  // Triage split — lifted out of JSX so header count and provision list use the same values.
+  const splitByTriage = isDaMode && excludableTopics.size > 0;
+  const displayProvisions = useMemo(() => {
+    if (!splitByTriage) return filteredProvisions;
+    return filteredProvisions.filter(p => {
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      return !t || !excludableTopics.has(t);
+    });
+  }, [splitByTriage, filteredProvisions, excludableTopics]);
+  const triageExcludedProvisions = useMemo(() => {
+    if (!splitByTriage) return [];
+    return filteredProvisions.filter(p => {
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      return t && excludableTopics.has(t);
+    });
+  }, [splitByTriage, filteredProvisions, excludableTopics]);
 
   // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
   const numericProvisions = useMemo(() => {
@@ -1383,6 +1406,37 @@ export function ProvisionsByTocStructure({
         propertyConstraints={propertyData?.constraints}
       />
 
+      {/* ① Enable DA Mode — rendered here so it only appears after provisions load */}
+      {onToggleDaMode && (
+        isDaMode ? (
+          <div className="flex items-start gap-3 mb-5">
+            <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
+            <div>
+              <p className="text-sm font-semibold text-gray-800">DA Mode</p>
+              <p className="text-xs text-gray-500 mt-0.5 mb-2">Active — record compliance positions against each provision and export a working SEE draft. Complete steps 2 and 3 below.</p>
+              <button
+                onClick={() => onToggleDaMode(false)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
+              >
+                <span className="w-3 h-3 rounded-full inline-block bg-white" />
+                DA Mode on
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between mb-5">
+            <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
+            <button
+              onClick={() => onToggleDaMode(true)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
+            >
+              <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
+              Enable DA Mode
+            </button>
+          </div>
+        )
+      )}
+
       {/* ② Set your scope — DA mode only */}
       {isDaMode && (
         <div className="flex items-start gap-3 mb-5">
@@ -1480,7 +1534,7 @@ export function ProvisionsByTocStructure({
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900">
-                {filteredProvisions.length}
+                {displayProvisions.length}
               </div>
               <div className="text-xs text-gray-500 mt-0.5">
                 <>of {allProvisions.length} for property</>
@@ -1845,20 +1899,6 @@ export function ProvisionsByTocStructure({
           /> */}
 
           {(() => {
-            const splitByTriage = isDaMode && excludableTopics.size > 0;
-            const displayProvisions = splitByTriage
-              ? filteredProvisions.filter(p => {
-                  const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-                  return !t || !excludableTopics.has(t);
-                })
-              : filteredProvisions;
-            const triageExcludedProvisions = splitByTriage
-              ? filteredProvisions.filter(p => {
-                  const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-                  return t && excludableTopics.has(t);
-                })
-              : [];
-
             if (displayProvisions.length === 0 && triageExcludedProvisions.length === 0) return null;
 
             return (
