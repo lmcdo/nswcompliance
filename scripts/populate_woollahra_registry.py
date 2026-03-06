@@ -5,25 +5,30 @@ Woollahra DCP 2015 — R2 Upload + Registry Initialisation
 Uploads Woollahra DCP 2015 chapter PDFs to Cloudflare R2 and creates
 dcp_chapter_registry rows so the extraction pipeline picks them up.
 
-Woollahra publishes per-chapter PDFs (Parts A–G, ~15 chapters).
-Heritage chapters (C1 Paddington, C2 Woollahra, C3 Watsons Bay) have
-separate registry rows for per-HCA tagging.
+Woollahra publishes per-chapter PDFs (A1, A3, B1–B4, C1–C3, D4, E1–E6).
+Heritage chapters (C1 Paddington, C2 Woollahra, C3 Watsons Bay) each have
+their own registry row for per-HCA tagging.
 
 Usage:
     python3 scripts/populate_woollahra_registry.py            # upload + register
     python3 scripts/populate_woollahra_registry.py --dry-run  # show plan only
     python3 scripts/populate_woollahra_registry.py --skip-upload  # DB only
 
-TODO before first run:
-    1. Download chapter PDFs from Woollahra council website:
-       https://www.woollahra.nsw.gov.au/Building-and-development/Development-rules/dcps-background
-    2. Place PDFs in woollahra/ directory at project root (names below)
-    3. Fill in WOOLLAHRA_COUNCIL_PAGE with confirmed URL
-    4. Confirm chapter URLs per chapter (or leave as placeholder)
-    5. Run: python3 scripts/survey_dcp.py woollahra/{chapter}.pdf
-       to verify SECTION_RE hit rate before extracting
+Steps before first run:
+    1. Download chapter PDFs from the council website (URLs listed below)
+       and place them in  woollahra/  at the project root using the filenames below.
+    2. Run survey on a few chapters to verify SECTION_RE hit rate:
+           python3 scripts/survey_dcp.py woollahra/chapter-b3-general-development.pdf
+           python3 scripts/survey_dcp.py woollahra/chapter-c1-paddington-hca.pdf
+    3. Run this script (--dry-run first, then live):
+           python3 scripts/populate_woollahra_registry.py --dry-run
+           python3 scripts/populate_woollahra_registry.py
+    4. Extract provisions:
+           python3 scripts/dcp_extract_changed.py --council woollahra --dry-run
+           python3 scripts/dcp_extract_changed.py --council woollahra
 
-Chapter keys follow kebab-case: part-a-intro, part-b-general, part-c1-paddington-hca, etc.
+NOTE: D1, D2, D5, D6 chapter URLs still need confirmation from the council website.
+      Add their local_filename entries here once URLs are confirmed.
 """
 
 import argparse
@@ -53,105 +58,160 @@ SOURCE_PDF_PREFIX = "source-pdfs"
 VERSION_LABEL     = "v1.0-baseline"
 COUNCIL           = "woollahra"
 
-WOOLLAHRA_COUNCIL_PAGE = "https://www.woollahra.nsw.gov.au/Building-and-development/Development-rules/dcps-background"
+WOOLLAHRA_COUNCIL_PAGE = "https://www.woollahra.nsw.gov.au/Building-and-development/Development-rules"
+BASE_URL = "https://www.woollahra.nsw.gov.au/files/assets/public"
 
 # ── Chapter definitions ───────────────────────────────────────────────────────
-# local_filename: filename under woollahra/ directory (place PDFs there before running)
-# council_url:    direct PDF download URL from council website (<FILL_IN> = placeholder)
-# sort_order:     display order
+# local_filename: file to place under woollahra/ directory before running
+# council_url:    direct PDF download URL from council website
+# sort_order:     display order in UI
+#
+# Download URLs confirmed 2026-03-04.  Version numbers (v/N) may change as
+# amendments are published — re-run this script to upload the updated file.
 
 ROOT = Path(__file__).parent.parent / "woollahra"
 
 WOOLLAHRA_CHAPTERS = [
+    # ── Part A: Introduction & Definitions ──────────────────────────────────
     {
-        "chapter_key":   "part-a-intro",
-        "chapter_label": "Part A — Introduction",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-a-intro.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    1,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-a1-introduction",
+        "chapter_label":  "Chapter A1 — Introduction",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-a1-introduction.pdf",
+        "council_url":    f"{BASE_URL}/v/13/plans-policies-publications/development-control-plans/woollahra-development-control-plan-2015-chapter-a1-introduction.pdf",
+        "sort_order":     1,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-b-general",
-        "chapter_label": "Part B — General Provisions",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-b-general.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    2,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-a3-definitions",
+        "chapter_label":  "Chapter A3 — Definitions",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-a3-definitions.pdf",
+        "council_url":    f"{BASE_URL}/v/3/plans-policies-publications/development-control-plans/chapter-a3-definitions-23may2025.pdf",
+        "sort_order":     2,
+        "doc_type":       "dcp",
+    },
+    # ── Part B: General Residential ─────────────────────────────────────────
+    {
+        "chapter_key":    "chapter-b1-residential-precincts",
+        "chapter_label":  "Chapter B1 — Residential Precincts",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-b1-residential-precincts.pdf",
+        "council_url":    f"{BASE_URL}/v/1/plans-policies-publications/development-control-plans/chapter-b1-residential-precincts.pdf",
+        "sort_order":     10,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-c-heritage",
-        "chapter_label": "Part C — Heritage Conservation Areas (General)",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-c-heritage.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    3,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-b2-neighbourhood-hcas",
+        "chapter_label":  "Chapter B2 — Neighbourhood Heritage Conservation Areas",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-b2-neighbourhood-hcas.pdf",
+        "council_url":    f"{BASE_URL}/v/2/plans-policies-publications/development-control-plans/chapter-b2-neighbourhood-hcas.pdf",
+        "sort_order":     11,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-c1-paddington-hca",
-        "chapter_label": "Part C1 — Paddington Heritage Conservation Area",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-c1-paddington-hca.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    4,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-b3-general-development",
+        "chapter_label":  "Chapter B3 — General Development Controls",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-b3-general-development.pdf",
+        "council_url":    f"{BASE_URL}/v/6/plans-policies-publications/development-control-plans/chapter-b3-general-development.pdf",
+        "sort_order":     12,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-c2-woollahra-hca",
-        "chapter_label": "Part C2 — Woollahra Heritage Conservation Area",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-c2-woollahra-hca.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    5,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-b4-housing-accessible-areas",
+        "chapter_label":  "Chapter B4 — Housing in Accessible Areas",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-b4-housing-accessible-areas.pdf",
+        "council_url":    f"{BASE_URL}/v/1/building-and-development/documents/chapter-b4-housing-in-accessible-areas_2.pdf",
+        "sort_order":     13,
+        "doc_type":       "dcp",
+    },
+    # ── Part C: Heritage Conservation Areas ─────────────────────────────────
+    {
+        "chapter_key":    "chapter-c1-paddington-hca",
+        "chapter_label":  "Chapter C1 — Paddington Heritage Conservation Area",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-c1-paddington-hca.pdf",
+        "council_url":    f"{BASE_URL}/v/3/plans-policies-publications/development-control-plans/chapter-c1-paddington-hca.pdf",
+        "sort_order":     20,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-c3-watsons-bay-hca",
-        "chapter_label": "Part C3 — Watsons Bay Heritage Conservation Area",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-c3-watsons-bay-hca.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    6,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-c2-woollahra-hca",
+        "chapter_label":  "Chapter C2 — Woollahra Heritage Conservation Area",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-c2-woollahra-hca.pdf",
+        "council_url":    f"{BASE_URL}/v/3/plans-policies-publications/development-control-plans/chapter-c2-woollahra-hca.pdf",
+        "sort_order":     21,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-d-business",
-        "chapter_label": "Part D — Business and Commercial Development",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-d-business.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    7,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-c3-watsons-bay-hca",
+        "chapter_label":  "Chapter C3 — Watsons Bay Heritage Conservation Area",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-c3-watsons-bay-hca.pdf",
+        "council_url":    f"{BASE_URL}/v/3/plans-policies-publications/development-control-plans/chapter-c3-watsons-bay-hca.pdf",
+        "sort_order":     22,
+        "doc_type":       "dcp",
+    },
+    # ── Part D: Business & Mixed Use Centres ─────────────────────────────────
+    # D3 was repealed Dec 2023.  D1, D2, D5, D6 URLs need confirmation.
+    {
+        "chapter_key":    "chapter-d4-edgecliff-centre",
+        "chapter_label":  "Chapter D4 — Edgecliff Centre",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-d4-edgecliff-centre.pdf",
+        "council_url":    f"{BASE_URL}/v/3/plans-policies-publications/development-control-plans/chapter-d4-edgecliff-centre.pdf",
+        "sort_order":     30,
+        "doc_type":       "dcp",
+    },
+    # ── Part E: General Controls for All Development ─────────────────────────
+    {
+        "chapter_key":    "chapter-e1-parking-access",
+        "chapter_label":  "Chapter E1 — Parking and Access",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-e1-parking-access.pdf",
+        "council_url":    f"{BASE_URL}/v/6/plans-policies-publications/development-control-plans/chapter-e1-parking-and-access-23may2025.pdf",
+        "sort_order":     40,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-e-parking",
-        "chapter_label": "Part E — Parking and Transport",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-e-parking.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    8,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-e2-stormwater-flood",
+        "chapter_label":  "Chapter E2 — Stormwater, Flood and Geotechnical Risk",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-e2-stormwater-flood.pdf",
+        "council_url":    f"{BASE_URL}/v/1/plans-policies-publications/development-control-plans/chapter-e2-stormwater-and-flood-risk-management.pdf",
+        "sort_order":     41,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-f-residential",
-        "chapter_label": "Part F — Residential Development",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-f-residential.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    9,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-e3-tree-management",
+        "chapter_label":  "Chapter E3 — Tree Management",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-e3-tree-management.pdf",
+        "council_url":    f"{BASE_URL}/v/2/plans-policies-publications/development-control-plans/chapter-e3-tree-management.pdf",
+        "sort_order":     42,
+        "doc_type":       "dcp",
     },
     {
-        "chapter_key":   "part-g-landscaping",
-        "chapter_label": "Part G — Landscaping, Trees, and Open Space",
-        "dcp_name":      "Woollahra DCP 2015",
-        "local_filename": "part-g-landscaping.pdf",
-        "council_url":   "<FILL_IN>",
-        "sort_order":    10,
-        "doc_type":      "dcp",
+        "chapter_key":    "chapter-e5-waste-management",
+        "chapter_label":  "Chapter E5 — Waste Management",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-e5-waste-management.pdf",
+        "council_url":    f"{BASE_URL}/v/1/plans-policies-publications/development-control-plans/chapter_e5_waste_management.pdf",
+        "sort_order":     44,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "chapter-e6-sustainability",
+        "chapter_label":  "Chapter E6 — Sustainability",
+        "dcp_name":       "Woollahra DCP 2015",
+        "local_filename": "chapter-e6-sustainability.pdf",
+        "council_url":    f"{BASE_URL}/v/2/plans-policies-publications/development-control-plans/chapter_e6_sustainability.pdf",
+        "sort_order":     45,
+        "doc_type":       "dcp",
     },
 ]
 
@@ -250,10 +310,11 @@ def main() -> None:
         chapter_key = chapter["chapter_key"]
 
         print(f"\n[{COUNCIL}/{chapter_key}]")
-        print(f"  Local: {local_path}")
+        print(f"  Download: {chapter['council_url']}")
+        print(f"  Local:    {local_path}")
 
         if not local_path.exists():
-            print(f"  [SKIP] PDF not found — place at path above then re-run")
+            print(f"  [SKIP] PDF not found — download from URL above and place at local path")
             skipped += 1
             continue
 
@@ -293,7 +354,8 @@ def main() -> None:
 
     if skipped:
         print(f"\n[WARN] {skipped} chapter(s) skipped (PDFs missing).")
-        print(f"       Download from: {WOOLLAHRA_COUNCIL_PAGE}")
+        print(f"       See download URLs printed above for each skipped chapter.")
+        print(f"       Place PDFs in: {ROOT}")
     print("\nDone.")
 
 

@@ -13,6 +13,8 @@
 |-------|--------|----------|
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
+| DQ-26: Marrickville truncated pdf_page_image_url stems | ✅ Fixed 2026-03-04 | P1 (was) |
+| DQ-27: Marrickville LaTeX math artefacts in provision_text | ✅ Fixed 2026-03-04 | P1 (was) |
 | DQ-1: Precinct CDC=0 | ✅ Not a bug | N/A |
 | DQ-2: Topic misclassification | ✅ Fixed | P1 (was) |
 | DQ-3: Headers in provisions | ✅ Fixed | P2 (was) |
@@ -850,6 +852,50 @@ Three provision categories relevant to residential certifiers:
 3. Note: the 168-provision duplicate (`State_Environmental_Planning_Policy_(Transport_and_Infrastructure)_2021___NSW_Legislation` with parentheses) also exists — may need cleanup
 
 **Do not fix until:** Solar provision browser is being built.
+
+---
+
+### DQ-26: Marrickville Truncated pdf_page_image_url Stems (2026-03-04)
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
+
+**Problem:** Old Marrickville provisions (double-underscore document_id format from first extraction pass) had `pdf_page_image_url` pointing to truncated R2 image filenames (e.g., `Signs_and_Adv_page_5.png` instead of `Signs_and_Advertising_page_5.png`). New re-extraction provisions used full names matching actual R2 filenames. When old images were absent from R2, PDF link buttons showed broken images.
+
+**Scope:** 57 chapters, 391 provisions. Heritage chapter (`8.0_Heritage`) correctly excluded — it has 244 new provisions confirming it's a valid complete chapter name, not a truncation.
+
+**Root Cause:** First extraction pass used truncated PDF filenames (likely Windows path-length limit). Image files were uploaded to R2 with truncated names. Re-extraction used full filenames. Some old images were deleted/overwritten; others remain. For Landscaping chapter (first reported), old images were absent from R2.
+
+**Fix Applied:**
+```sql
+-- Pattern: replace truncated stem with full stem, keep _page_N.png suffix
+-- Example: Landscaping_an_page_N -> Landscaping_and_Open_Spaces_page_N
+-- 57 UPDATE statements run in a single transaction, 391 total rows changed
+```
+Full-name images confirmed to exist in R2 (verified by working new provisions). Page numbers preserved exactly.
+
+**Also fixed separately (2026-03-04):** The Landscaping chapter (14 provisions, first user-reported broken link) was fixed in the same session before this batch fix.
+
+---
+
+### DQ-27: Marrickville LaTeX Math Artefacts in provision_text (2026-03-04)
+**Status:** ✅ FIXED
+**Priority:** P1 (was)
+
+**Problem:** 36 Marrickville provisions contained raw LaTeX math mode tokens from pdfplumber extraction. Example: "Contour lines and levels for sites in excess of 6 0 0 { \mathsf { m } } ^ { 2 }$" instead of "600m²".
+
+**Patterns cleaned:**
+- `\mathsf`, `\mathfrak`, `\mathtt` math font commands
+- `{ \mathsf { m } } ^ { 2 }$` → `m²` (two variants: with and without outer `{ }`)
+- `\mathsf { m m }` → `mm`, `\mathsf { p m }` → `pm`
+- `\mathtt { x 0.6 }` → `x 0.6` (strip wrapper, keep content)
+- `\star _ { \mathsf { N B } }` → `` (NB note markers)
+- `{ , }` → `,` (LaTeX thousands separator)
+- Trailing `$` delimiters
+- Spaced digits: `6 0 0` → `600` (via lookbehind/lookahead patterns)
+
+**Fix applied:** Python script + companion `preProcessReplacements` added to Marrickville config in `frontend-nextjs/lib/dcp-format-configs.ts` (safety net for future re-extractions).
+
+**Script:** `scripts/fix_marrickville_latex.py` (gitignored, not committed to repo)
 
 ---
 

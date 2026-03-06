@@ -26,8 +26,9 @@ import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
-import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, type IntakeAnswers } from '@/lib/see/intake';
+import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
+import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
@@ -277,11 +278,21 @@ export function ProvisionsByTocStructure({
     }
   }, [isDaMode, intakeAnswers, sessionToken]);
 
-  // Compute excludable topics from intake answers
+  // Merge auto-answers from LEP constraints with saved intake answers.
+  // Auto-answers fill unknowns; saved planner answers always override.
+  const mergedIntakeAnswers = useMemo(() => {
+    const autoAnswers = propertyData?.constraints
+      ? autoPopulateFromConstraints(propertyData.constraints)
+      : {};
+    // Saved answers take priority — planner override is preserved
+    return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...(intakeAnswers ?? {}) };
+  }, [intakeAnswers, propertyData?.constraints]);
+
+  // Compute excludable topics from merged answers (auto-populated + saved planner answers).
+  // mergedIntakeAnswers always has a value; auto-answers (flood=No etc.) take effect immediately.
   const excludableTopics = useMemo(() => {
-    if (!intakeAnswers) return new Set<string>();
-    return getExcludableTopics(intakeAnswers);
-  }, [intakeAnswers]);
+    return getExcludableTopics(mergedIntakeAnswers);
+  }, [mergedIntakeAnswers]);
 
 
   // Get council config
@@ -1316,6 +1327,17 @@ export function ProvisionsByTocStructure({
       };
 
       const resolvedAddress = address || propertyData?.address || '';
+
+      // Build new pipeline sections from SEPP/LEP property data
+      const pathwayDetermination = buildPathwayDetermination(
+        propertyContext.zone,
+        propertyContext.heritage_status?.in_hca ?? false,
+        propertyContext.heritage_status?.heritage_item ?? false,
+        propertyData?.constraints
+      );
+      const seppAssessableControls = buildSeppControls(propertyData?.constraints, lepClauseData);
+      const lepAssessableStandards = buildLepStandards(propertyContext, lepClauseData);
+
       const seeData: SEEDocumentData = {
         property: propertyContext,
         development_description: devDescriptionLocal,
@@ -1326,6 +1348,9 @@ export function ProvisionsByTocStructure({
         ...(intakeAnswers ? { intake_answers: intakeAnswers } : {}),
         ...(clientRef.trim() ? { client_ref: clientRef.trim() } : {}),
         ...(preparedBy.trim() ? { prepared_by: preparedBy.trim() } : {}),
+        pathway_determination: pathwayDetermination,
+        ...(seppAssessableControls.length > 0 ? { sepp_assessable_controls: seppAssessableControls } : {}),
+        ...(lepAssessableStandards.length > 0 ? { lep_assessable_standards: lepAssessableStandards } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1351,10 +1376,11 @@ export function ProvisionsByTocStructure({
         onApply={handleIntakeApply}
         onSkip={handleIntakeSkip}
         provisions={allProvisions}
-        initialAnswers={intakeAnswers ?? undefined}
+        initialAnswers={mergedIntakeAnswers}
         heritage={heritage}
         hcaName={hcaName}
         precinctName={precinctName}
+        propertyConstraints={propertyData?.constraints}
       />
 
       {/* ② Set your scope — DA mode only */}
@@ -1644,21 +1670,25 @@ export function ProvisionsByTocStructure({
                     const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
                     const hasCritical = stats.critical > 0;
                     const isSelected = topicFilters.includes(topicKey);
+                    const isTriageExcluded = excludableTopics.has(topicKey);
                     return (
                       <button
                         key={topic}
-                        onClick={() => toggleTopic(topicKey)}
+                        onClick={() => !isTriageExcluded && toggleTopic(topicKey)}
+                        title={isTriageExcluded ? 'Excluded by triage — provisions not applicable to this development' : undefined}
                         className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                          isSelected
+                          isTriageExcluded
+                            ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 cursor-default line-through decoration-gray-400'
+                            : isSelected
                             ? 'bg-teal-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
                         {topic} ({stats.total})
-                        {hasCritical && (
+                        {!isTriageExcluded && hasCritical && (
                           <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
                         )}
-                        {isSelected && <X className="w-3 h-3 ml-0.5" />}
+                        {isSelected && !isTriageExcluded && <X className="w-3 h-3 ml-0.5" />}
                       </button>
                     );
                   })}
@@ -1815,7 +1845,7 @@ export function ProvisionsByTocStructure({
           /> */}
 
           {(() => {
-            const splitByTriage = isDaMode && intakeAnswers && excludableTopics.size > 0;
+            const splitByTriage = isDaMode && excludableTopics.size > 0;
             const displayProvisions = splitByTriage
               ? filteredProvisions.filter(p => {
                   const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');

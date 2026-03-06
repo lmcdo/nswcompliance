@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   INTAKE_QUESTIONS,
   DEFAULT_INTAKE_ANSWERS,
+  AUTO_ANSWER_SOURCES,
   getExcludableTopics,
   type IntakeAnswers,
 } from '@/lib/see/intake';
@@ -22,6 +23,9 @@ interface DAIntakeModalProps {
   heritage?: boolean;
   hcaName?: string;
   precinctName?: string;
+  /** Property constraints from NSW Planning Portal — used to pre-confirm auto-answerable fields */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  propertyConstraints?: Record<string, any>;
 }
 
 type AnswerValue = 'yes' | 'no' | 'unknown';
@@ -41,6 +45,7 @@ export function DAIntakeModal({
   heritage,
   hcaName,
   precinctName,
+  propertyConstraints,
 }: DAIntakeModalProps) {
   const [answers, setAnswers] = useState<IntakeAnswers>(
     initialAnswers ? { ...initialAnswers } : { ...DEFAULT_INTAKE_ANSWERS }
@@ -49,6 +54,8 @@ export function DAIntakeModal({
   const [confirmedAnswers, setConfirmedAnswers] = useState<IntakeAnswers | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Tracks which auto-answered fields the planner has manually overridden
+  const [overriddenFields, setOverriddenFields] = useState<Set<keyof IntakeAnswers>>(new Set());
 
   // Reset all internal state whenever the modal transitions from closed → open,
   // so stale confirmation/error state never bleeds into a fresh open.
@@ -64,6 +71,7 @@ export function DAIntakeModal({
       setConfirmedAnswers(null);
       setIsSubmitting(false);
       setSubmitError(null);
+      setOverriddenFields(new Set());
     }
     prevOpenRef.current = open;
   }, [open]);
@@ -191,7 +199,57 @@ export function DAIntakeModal({
             </DialogHeader>
 
             <div className="mt-4 space-y-4 overflow-y-auto flex-1 pr-1">
-              {INTAKE_QUESTIONS.map(q => (
+              {/* Auto-confirmed section — fields answered from property data */}
+              {(() => {
+                const autoFields = (Object.entries(AUTO_ANSWER_SOURCES) as [keyof IntakeAnswers, typeof AUTO_ANSWER_SOURCES[keyof IntakeAnswers]][])
+                  .filter(([field, src]) => {
+                    if (!src || overriddenFields.has(field)) return false;
+                    // Show only if the initialAnswers has this field set to 'no' (auto-populated)
+                    return initialAnswers?.[field] === 'no';
+                  });
+                if (autoFields.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-blue-100 bg-blue-50/40 px-4 py-3">
+                    <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
+                      Pre-confirmed from property data
+                    </p>
+                    <div className="space-y-2">
+                      {autoFields.map(([field, src]) => {
+                        const q = INTAKE_QUESTIONS.find(q => q.field === field);
+                        const label = q?.question ?? field.replace(/_/g, ' ');
+                        return (
+                          <div key={field} className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-gray-700 leading-snug">{label}</p>
+                              <p className="text-xs text-blue-600 mt-0.5">{src!.citation}</p>
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              <span className="text-xs px-2 py-0.5 rounded bg-gray-200 border border-gray-400 text-gray-700 font-medium">
+                                No
+                              </span>
+                              <button
+                                onClick={() => {
+                                  setOverriddenFields(prev => new Set([...prev, field]));
+                                }}
+                                className="text-xs text-blue-500 hover:text-blue-700 underline underline-offset-2"
+                              >
+                                Override
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Manual questions */}
+              {INTAKE_QUESTIONS.map(q => {
+                // Hide auto-answered fields unless overridden
+                const isAutoAnswered = (field: keyof IntakeAnswers) => AUTO_ANSWER_SOURCES[field] && initialAnswers?.[field] === 'no' && !overriddenFields.has(field);
+                if (isAutoAnswered(q.field)) return null;
+                return (
                 <div key={q.field} className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
                   <p className="text-sm font-medium text-gray-800">{q.question}</p>
                   <p className="text-xs text-gray-500 mt-0.5 mb-2">{q.detail}</p>
@@ -215,7 +273,8 @@ export function DAIntakeModal({
                     ))}
                   </div>
                 </div>
-              ))}
+              );
+              })}
             </div>
 
             <div className="flex items-center justify-between border-t border-gray-100 pt-4 flex-shrink-0">

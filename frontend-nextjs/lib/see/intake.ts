@@ -18,7 +18,66 @@ export interface IntakeAnswers {
   new_parking_or_driveway: 'yes' | 'no' | 'unknown';
   /** Does the proposal include any new or altered signage? */
   new_signage: 'yes' | 'no' | 'unknown';
+  // --- Auto-answerable from LEP/SEPP property data ---
+  /** Is the site flood prone? Auto-answered from LEP Part 5 mapping. */
+  flood_prone: 'yes' | 'no' | 'unknown';
+  /** Is the site bushfire prone? Auto-answered from LEP Part 5 mapping. */
+  bushfire_prone: 'yes' | 'no' | 'unknown';
+  /** Does the site have acid sulfate soils? Auto-answered from LEP Part 5 mapping. */
+  acid_sulfate_soils: 'yes' | 'no' | 'unknown';
+  /** Is the site in a coastal management area? Auto-answered from SEPP (Resilience and Hazards) 2021. */
+  coastal: 'yes' | 'no' | 'unknown';
+  /** Is the site in a biodiversity area? Auto-answered from LEP Part 5 mapping. */
+  biodiversity: 'yes' | 'no' | 'unknown';
+  // --- New manual question ---
+  /** Does the proposal include demolition of any structure? */
+  demolition: 'yes' | 'no' | 'unknown';
 }
+
+/**
+ * Describes the source of an auto-populated intake answer.
+ * Displayed in the intake modal and carried through to the SEE audit trail.
+ */
+export interface AutoAnswerSource {
+  /** The property data field path that drives this answer (for transparency). */
+  propertyField: string;
+  /** Legislative/data citation shown to the planner. */
+  citation: string;
+  /** One-sentence rationale for the SEE audit trail when answer is 'no'. */
+  rationale: string;
+}
+
+/**
+ * Maps auto-answerable intake fields to their property data source and citation.
+ * Only fields that can be definitively answered from objective property data are listed.
+ */
+export const AUTO_ANSWER_SOURCES: Partial<Record<keyof IntakeAnswers, AutoAnswerSource>> = {
+  flood_prone: {
+    propertyField: 'constraints.floodProne',
+    citation: 'LEP Part 5 — Flood Prone Land',
+    rationale: 'Site confirmed not flood prone per LEP mapping',
+  },
+  bushfire_prone: {
+    propertyField: 'constraints.bushfireProne',
+    citation: 'LEP Part 5 — Bushfire Prone Land',
+    rationale: 'Site confirmed not bushfire prone per LEP mapping',
+  },
+  acid_sulfate_soils: {
+    propertyField: 'constraints.acidSulfateSoils',
+    citation: 'LEP Part 5 — Acid Sulfate Soils',
+    rationale: 'Site confirmed no acid sulfate soils per LEP mapping',
+  },
+  coastal: {
+    propertyField: 'constraints.coastalEnvironment.inCoastalArea',
+    citation: 'SEPP (Resilience and Hazards) 2021 — Coastal Management',
+    rationale: 'Site confirmed not in coastal management area',
+  },
+  biodiversity: {
+    propertyField: 'constraints.terrestrialBiodiversity.inBiodiversityArea',
+    citation: 'LEP Part 5 — Terrestrial Biodiversity',
+    rationale: 'Site confirmed no terrestrial biodiversity overlay',
+  },
+};
 
 export interface IntakeQuestion {
   field: keyof IntakeAnswers;
@@ -57,6 +116,11 @@ export const INTAKE_QUESTIONS: IntakeQuestion[] = [
     question: 'Does the proposal include any new or altered signage?',
     detail: 'Business identification signs, advertising structures, or any form of signage attached to or displayed from the property.',
   },
+  {
+    field: 'demolition',
+    question: 'Does the proposal include demolition of any structure?',
+    detail: 'Full or partial demolition of a building, outbuilding, garage, carport, or other structure.',
+  },
 ];
 
 // Topic-to-trigger map.
@@ -73,6 +137,14 @@ const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   new_fencing: ['fencing', 'fence'],
   new_parking_or_driveway: ['parking', 'vehicle_access', 'carport'],
   new_signage: ['signage'],
+  // Auto-answered from LEP/SEPP property data
+  flood_prone: ['flooding'],
+  bushfire_prone: ['bushfire'],
+  acid_sulfate_soils: ['contamination', 'acid_sulfate'],
+  coastal: ['coastal'],
+  biodiversity: ['biodiversity'],
+  // Manual
+  demolition: ['demolition'],
 };
 
 // Reason strings shown in the auto-generated N/A note and SEE audit trail.
@@ -87,6 +159,13 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   vehicle_access: 'No new parking or driveway works confirmed',
   carport: 'No new parking or driveway works confirmed',
   signage: 'No signage in proposal confirmed',
+  flooding: 'Site confirmed not flood prone (LEP Part 5)',
+  bushfire: 'Site confirmed not bushfire prone (LEP Part 5)',
+  contamination: 'Site confirmed no acid sulfate soils (LEP Part 5)',
+  acid_sulfate: 'Site confirmed no acid sulfate soils (LEP Part 5)',
+  coastal: 'Site confirmed not in coastal management area (SEPP Resilience and Hazards 2021)',
+  biodiversity: 'Site confirmed no terrestrial biodiversity overlay (LEP Part 5)',
+  demolition: 'No demolition works in proposal confirmed',
 };
 
 /**
@@ -145,4 +224,31 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
   new_fencing: 'unknown',
   new_parking_or_driveway: 'unknown',
   new_signage: 'unknown',
+  flood_prone: 'unknown',
+  bushfire_prone: 'unknown',
+  acid_sulfate_soils: 'unknown',
+  coastal: 'unknown',
+  biodiversity: 'unknown',
+  demolition: 'unknown',
 };
+
+/**
+ * Auto-populates intake answers from property constraints fetched from NSW Planning Portal.
+ * Only sets 'no' when the constraint is definitively absent — never sets 'yes' or 'unknown'.
+ * Returns a partial — caller must merge over existing answers (existing answers always win).
+ *
+ * Usage:
+ *   const autoAnswers = autoPopulateFromConstraints(propertyData.constraints);
+ *   const merged = { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...(savedAnswers ?? {}) };
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function autoPopulateFromConstraints(constraints: Record<string, any>): Partial<IntakeAnswers> {
+  const result: Partial<IntakeAnswers> = {};
+  if (constraints.floodProne === false) result.flood_prone = 'no';
+  if (constraints.bushfireProne === false) result.bushfire_prone = 'no';
+  // acidSulfateSoils is a string class or undefined/null — falsy means absent
+  if (!constraints.acidSulfateSoils) result.acid_sulfate_soils = 'no';
+  if (constraints.coastalEnvironment?.inCoastalArea === false) result.coastal = 'no';
+  if (constraints.terrestrialBiodiversity?.inBiodiversityArea === false) result.biodiversity = 'no';
+  return result;
+}

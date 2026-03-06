@@ -3,6 +3,48 @@
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import type { IntakeAnswers } from '@/lib/see/intake';
 
+/** Approval pathway determination with legislative basis and required specialist reports. */
+export interface PathwayDetermination {
+  /** e.g. 'Development Application (DA)' or 'Complying Development (CDC)' */
+  pathway: string;
+  /** Human-readable reason e.g. 'Heritage conservation area — CDC and exempt development restricted' */
+  reason: string;
+  /** Legislative basis for the determination e.g. 'SEPP (Exempt & Complying Development Codes) 2008 cl.1.17' */
+  legislative_basis: string;
+  /** Specialist reports required for lodgement e.g. ['Heritage Impact Statement', 'BASIX Certificate'] */
+  required_reports: string[];
+}
+
+/** A single SEPP control row for assessment in the SEE. */
+export interface SeppAssessableControl {
+  /** Instrument name e.g. 'SEPP (Sustainable Buildings) 2022' */
+  instrument: string;
+  /** Control name e.g. 'BASIX — Water Efficiency' */
+  control: string;
+  /** Specific requirement text e.g. 'Water target: 40% reduction from baseline' */
+  requirement: string;
+  /** Clause reference e.g. 'BASIX Certificate — NSW Planning Portal' */
+  clause: string;
+  status: 'complies' | 'varies' | 'not_applicable' | 'pending';
+  notes?: string;
+}
+
+/** A single LEP standard row for assessment in the SEE. */
+export interface LepAssessableStandard {
+  /** Clause number e.g. '4.3' */
+  clause: string;
+  /** Control name e.g. 'Height of Buildings' */
+  control: string;
+  /** Requirement text e.g. 'Maximum 10m' */
+  requirement: string;
+  /** Proposal value if known e.g. 'Proposed: 6.2m' — filled by planner */
+  proposal?: string;
+  status: 'complies' | 'varies' | 'not_applicable' | 'pending';
+  notes?: string;
+  /** Source citation e.g. 'Inner West LEP 2022 Clause 4.3' */
+  source: string;
+}
+
 export interface SEEDocumentData {
   property: PropertyContext;
   development_description: string;
@@ -17,4 +59,10 @@ export interface SEEDocumentData {
   prepared_by?: string;
   /** Pre-built natural-language introduction paragraph */
   see_intro?: string;
+  /** Approval pathway determination with legislative basis and required reports */
+  pathway_determination?: PathwayDetermination;
+  /** SEPP controls applicable to this assessment (BASIX, TOD parking, etc.) */
+  sepp_assessable_controls?: SeppAssessableControl[];
+  /** LEP development standards applicable to this assessment (height, FSR, heritage, etc.) */
+  lep_assessable_standards?: LepAssessableStandard[];
 }

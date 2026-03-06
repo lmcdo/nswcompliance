@@ -82,7 +82,8 @@ function DataRow({ label, value }: { label: string; value: string }) {
 
 export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const { property, development_description, see_intro, annotated_provisions, all_provisions,
-          generated_date, intake_answers, client_ref, prepared_by } = data;
+          generated_date, intake_answers, client_ref, prepared_by,
+          pathway_determination, sepp_assessable_controls, lep_assessable_standards } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -479,11 +480,120 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
       </Page>
 
       {/* ================================================================
-          PAGE 3+ — DCP Assessment
+          PAGE 3 — Approval Pathway + SEPP Controls + LEP Standards
+          ================================================================ */}
+      <Page size="A4" style={styles.page}>
+
+        {/* ---- 3. Approval Pathway Determination ---- */}
+        <View style={{ marginBottom: 18 }}>
+          <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 10, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
+            3. Approval Pathway Determination
+          </Text>
+          {pathway_determination ? (
+            <View style={styles.dataTable}>
+              <DataRow label="Pathway:" value={pathway_determination.pathway} />
+              <DataRow label="Reason:" value={pathway_determination.reason} />
+              <DataRow label="Legislative basis:" value={pathway_determination.legislative_basis} />
+            </View>
+          ) : (
+            <View style={styles.dataTable}>
+              <DataRow label="Pathway:" value={pathway} />
+              <DataRow label="Reason:" value={reason} />
+            </View>
+          )}
+          {pathway_determination?.required_reports && pathway_determination.required_reports.length > 0 && (
+            <View style={{ marginTop: 8 }}>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#374151', marginBottom: 4 }}>
+                Required specialist reports for lodgement:
+              </Text>
+              {pathway_determination.required_reports.map((report, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 2 }}>
+                  <Text style={{ fontSize: 8, color: '#374151' }}>•</Text>
+                  <Text style={{ fontSize: 8, color: '#374151', flex: 1 }}>{report}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* ---- 4. SEPP Controls Assessment ---- */}
+        {sepp_assessable_controls && sepp_assessable_controls.length > 0 && (
+          <View style={{ marginBottom: 18 }}>
+            <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 8, paddingBottom: 4, borderBottom: '1pt solid #0f766e' }}>
+              4. State Environmental Planning Policy (SEPP) Controls
+            </Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+              Applicable state-level controls. Status to be confirmed by the consultant.
+            </Text>
+            <View style={{ border: '1pt solid #e5e7eb' }}>
+              {/* Header row */}
+              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Instrument</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Control</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 3 }}>Requirement</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 1 }}>Status</Text>
+              </View>
+              {sepp_assessable_controls.map((ctrl, i) => (
+                <View key={i} style={{ flexDirection: 'row', borderBottom: i < sepp_assessable_controls.length - 1 ? '1pt solid #f3f4f6' : undefined }}>
+                  <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 2 }}>{ctrl.instrument}</Text>
+                  <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 2 }}>{ctrl.control}</Text>
+                  <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 3 }}>{ctrl.requirement}</Text>
+                  <Text style={{ fontSize: 7, color: ctrl.status === 'pending' ? '#9ca3af' : '#374151', padding: 4, flex: 1, fontStyle: 'italic' }}>
+                    {ctrl.status === 'pending' ? 'Pending' : ctrl.status}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ---- 5. LEP Standards Assessment ---- */}
+        {lep_assessable_standards && lep_assessable_standards.length > 0 && (
+          <View style={{ marginBottom: 12 }}>
+            <Text style={{ fontSize: 12, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 8, paddingBottom: 4, borderBottom: '1pt solid #0f766e' }}>
+              5. Local Environmental Plan (LEP) Development Standards
+            </Text>
+            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+              LEP controls applicable to this assessment. Proposal column to be completed by the consultant.
+            </Text>
+            <View style={{ border: '1pt solid #e5e7eb' }}>
+              {/* Header row */}
+              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 1 }}>Clause</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Control</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Requirement</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Proposal</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 1 }}>Status</Text>
+              </View>
+              {lep_assessable_standards.map((std, i) => (
+                <View key={i} style={{ flexDirection: 'row', borderBottom: i < lep_assessable_standards.length - 1 ? '1pt solid #f3f4f6' : undefined }}>
+                  <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 1 }}>{std.clause}</Text>
+                  <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>{std.control}</Text>
+                  <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 2 }}>{std.requirement}</Text>
+                  <Text style={{ fontSize: 7, color: '#9ca3af', padding: 4, flex: 2, fontStyle: 'italic' }}>{std.proposal ?? '[to be completed]'}</Text>
+                  <Text style={{ fontSize: 7, color: std.status === 'pending' ? '#9ca3af' : '#374151', padding: 4, flex: 1, fontStyle: 'italic' }}>
+                    {std.status === 'pending' ? 'Pending' : std.status}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ---- Footer ---- */}
+        <View style={styles.footer}>
+          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerCenter}>{property.address}</Text>
+          <Text style={styles.footerRight}>Page 3</Text>
+        </View>
+      </Page>
+
+      {/* ================================================================
+          PAGE 4+ — DCP Assessment
           ================================================================ */}
       <Page size="A4" style={styles.page}>
         <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 12, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
-          3. Development Control Plan Assessment
+          6. Development Control Plan Assessment
         </Text>
 
         {/* ---- Assessment status summary ---- */}
@@ -500,7 +610,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <Text style={{ fontSize: 8, color: '#d97706', flex: 1, textAlign: 'right' }}>{variesProvisions.length}</Text>
             <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
               {variesProvisions.length > 0
-                ? 'Development may not fully comply — justification required. See section 3.1.'
+                ? 'Development may not fully comply — justification required. See section 6.1.'
                 : 'No provisions marked as Varies — either all assessed as compliant or not yet reviewed.'}
             </Text>
           </View>
@@ -510,7 +620,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <Text style={{ fontSize: 8, color: '#15803d', flex: 1, textAlign: 'right' }}>{compliesProvisions.length}</Text>
             <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
               {compliesProvisions.length > 0
-                ? 'Assessed as compliant by the applicant. See section 3.2.'
+                ? 'Assessed as compliant by the applicant. See section 6.2.'
                 : 'No provisions confirmed compliant — assessment may be incomplete.'}
             </Text>
           </View>
@@ -520,7 +630,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <Text style={{ fontSize: 8, color: '#6b7280', flex: 1, textAlign: 'right' }}>{naManualProvisions.length}</Text>
             <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
               {naManualProvisions.length > 0
-                ? 'Manually assessed as not applicable to this proposal. See section 3.3.'
+                ? 'Manually assessed as not applicable to this proposal. See section 6.3.'
                 : 'No provisions manually assessed as not applicable.'}
             </Text>
           </View>
@@ -530,7 +640,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <Text style={{ fontSize: 8, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{naIntakeProvisions.length}</Text>
             <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, marginLeft: 8 }}>
               {naIntakeProvisions.length > 0
-                ? 'Auto-excluded: applicability trigger confirmed absent in intake. See section 3.4 and cover page.'
+                ? 'Auto-excluded: applicability trigger confirmed absent in intake. See section 6.4 and cover page.'
                 : intake_answers
                   ? 'Structured intake was completed but no provisions were excluded by the answers provided.'
                   : 'Structured intake was not completed — no automatic exclusions were applied.'}
@@ -550,11 +660,11 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         </View>
 
-        {/* ---- 3.1 Provisions Requiring Attention (varies) ---- */}
+        {/* ---- 6.1 Provisions Requiring Attention (varies) ---- */}
         {variesGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#d97706', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d97706' }}>
-              {`3.1 Provisions Requiring Attention — Varies (${variesProvisions.length})`}
+              {`6.1 Provisions Requiring Attention — Varies (${variesProvisions.length})`}
             </Text>
             <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 8 }}>
               These provisions have been identified as varying from the DCP standard. Each requires a planning response addressing how the variation is justified or will be resolved.
@@ -565,16 +675,16 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.1 Provisions Requiring Attention — Varies (0)</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.1 Provisions Requiring Attention — Varies (0)</Text>
             <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been marked as Varies.</Text>
           </View>
         )}
 
-        {/* ---- 3.2 Complying Provisions ---- */}
+        {/* ---- 6.2 Complying Provisions ---- */}
         {compliesGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#15803d', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #15803d' }}>
-              {`3.2 Complying Provisions (${compliesProvisions.length})`}
+              {`6.2 Complying Provisions (${compliesProvisions.length})`}
             </Text>
             {compliesGroups.map((group, idx) => (
               <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
@@ -582,16 +692,16 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.2 Complying Provisions (0)</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.2 Complying Provisions (0)</Text>
             <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been confirmed as complying.</Text>
           </View>
         )}
 
-        {/* ---- 3.3 Not Applicable — Planner Assessment ---- */}
+        {/* ---- 6.3 Not Applicable — Planner Assessment ---- */}
         {naManualGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #9ca3af' }}>
-              {`3.3 Not Applicable — Planner Assessment (${naManualProvisions.length})`}
+              {`6.3 Not Applicable — Planner Assessment (${naManualProvisions.length})`}
             </Text>
             <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6 }}>
               These provisions have been assessed by the applicant as not applicable to the proposed development.
@@ -602,16 +712,16 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>3.3 Not Applicable — Planner Assessment (0)</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.3 Not Applicable — Planner Assessment (0)</Text>
             <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions were manually assessed as not applicable.</Text>
           </View>
         )}
 
-        {/* ---- 3.4 Not Applicable — Excluded by Intake Triage ---- */}
+        {/* ---- 6.4 Not Applicable — Excluded by Intake Triage ---- */}
         {naIntakeGroups.length > 0 ? (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
-              {`3.4 Not Applicable — Excluded by Intake Triage (${naIntakeProvisions.length})`}
+              {`6.4 Not Applicable — Excluded by Intake Triage (${naIntakeProvisions.length})`}
             </Text>
             <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
               These provisions were automatically excluded because their applicability trigger was confirmed as absent in the structured intake completed by the applicant. The confirmed inputs are recorded in the "PROPOSAL CHARACTERISTICS — CONFIRMED INPUTS" table on the cover page (page 1) of this document. A provision was only excluded when its trigger was factually impossible given the confirmed answers — answering "Unknown" retains the provision for manual assessment.
@@ -622,7 +732,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 2 }}>3.4 Not Applicable — Excluded by Intake Triage (0)</Text>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 2 }}>6.4 Not Applicable — Excluded by Intake Triage (0)</Text>
             <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
               {intake_answers
                 ? 'Structured intake was completed. No provisions were automatically excluded by the answers provided — all provisions were retained for manual assessment.'
@@ -631,11 +741,11 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         )}
 
-        {/* ---- 3.5 Provisions Requiring Further Assessment ---- */}
+        {/* ---- 6.5 Provisions Requiring Further Assessment ---- */}
         {unannotatedProvisions.length > 0 && (
           <View style={{ marginBottom: 16 }}>
             <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #fed7aa' }}>
-              {`3.5 Provisions Requiring Further Assessment (${unannotatedProvisions.length})`}
+              {`6.5 Provisions Requiring Further Assessment (${unannotatedProvisions.length})`}
             </Text>
             <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 6 }}>
               The following provisions have not yet been assessed. This document is incomplete until all provisions below have been addressed.
@@ -675,7 +785,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           ================================================================ */}
       <Page size="A4" style={styles.page}>
         <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 12, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
-          4. Conclusion
+          7. Conclusion
         </Text>
 
         <View style={{ backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', padding: 12, marginBottom: 16 }}>

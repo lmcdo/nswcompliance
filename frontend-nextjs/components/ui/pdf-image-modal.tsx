@@ -60,7 +60,8 @@ export function PdfImageModal({
   if (!isOpen || !imageUrl) return null;
 
   const displayTitle = title || (pageNumber ? `DCP Page ${pageNumber}` : 'DCP Source Page');
-  const resolvedUrl = getPdfImageUrl(imageUrl);
+  const isDirectPdf = imageUrl.includes('#page=');
+  const resolvedUrl = isDirectPdf ? null : getPdfImageUrl(imageUrl);
 
   return (
     <div
@@ -71,7 +72,7 @@ export function PdfImageModal({
       aria-labelledby="pdf-modal-title"
     >
       <div
-        className="bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-auto relative"
+        className={`bg-white rounded-t-xl md:rounded-lg shadow-xl w-full md:max-w-4xl relative ${isDirectPdf ? 'max-h-[95vh]' : 'max-h-[95vh] md:max-h-[90vh] overflow-auto'}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -89,9 +90,16 @@ export function PdfImageModal({
           </button>
         </div>
 
-        {/* PDF Image */}
+        {/* PDF content — iframe for direct PDFs, img for page screenshots */}
         <div className="p-2 md:p-4">
-          {resolvedUrl ? (
+          {isDirectPdf ? (
+            <iframe
+              src={imageUrl}
+              title={displayTitle}
+              className="w-full border-0"
+              style={{ height: '80vh' }}
+            />
+          ) : resolvedUrl ? (
             <img
               src={resolvedUrl}
               alt={displayTitle}

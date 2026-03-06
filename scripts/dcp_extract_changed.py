@@ -37,6 +37,15 @@ import pdfplumber
 import psycopg2
 from dotenv import load_dotenv
 
+# Enrichment pipeline — imported here so extraction + enrichment run as one command.
+# sys.path is extended so this script can be run from any working directory.
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from enrichment.pipeline import (
+    run_actionability_classification,
+    run_layer_tagging,
+    run_applicability_tagging,
+)
+
 load_dotenv(Path(__file__).parent.parent / ".env")
 
 R2_ACCOUNT_ID        = os.environ["R2_ACCOUNT_ID"]
@@ -103,6 +112,26 @@ WAVERLEY_PAGE_RANGES: list[tuple[str, str, int, int]] = [
 
 COUNCIL_PAGE_RANGES: dict[str, list[tuple[str, str, int, int]]] = {
     "waverley": WAVERLEY_PAGE_RANGES,
+}
+
+# ── Within-section sub-section splitting patterns ────────────────────────────
+# When a page-range section contains numbered sub-sections, these patterns
+# split each section into multiple finer-grained provisions.
+# Each pattern must have two capturing groups: (sub_number, sub_title).
+# Patterns are applied in sequence — each splits the output of the previous level.
+# Group 1 (sub_number) may be empty string for keyword-only headings (e.g. Objectives).
+# Add new councils here — no other code changes required.
+COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
+    # Waverley DCP 2022: two-level split.
+    # Level 1: numbered sub-sections like "1.1 DEMOLITION AND CONSTRUCTION"
+    # Level 2: Objectives/Controls keyword headings within each sub-section
+    "waverley": [
+        re.compile(r"(?m)^(\d+\.\d+)\s+([A-Z][A-Z0-9\s/&(),.-]+)$"),
+        re.compile(
+            r"(?m)^()(General Objectives|General Controls|Objectives|Controls"
+            r"|Design Guidance|Performance Criteria)\s*$"
+        ),
+    ],
 }
 
 
@@ -187,14 +216,21 @@ class DCPExtractor:
         return sections
 
     def extract_by_page_ranges(
-        self, ranges: list[tuple[str, str, int, int]]
+        self,
+        ranges: list[tuple[str, str, int, int]],
+        subsection_patterns: list[re.Pattern] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Extract sections using explicit page-range config.
-        Used as fallback when SECTION_RE can't detect headers (e.g. multi-line headers).
+        Used when SECTION_RE cannot detect chapter boundaries (e.g. multi-line headers).
 
         Args:
-            ranges: list of (section_key, title, page_start, page_end) — 1-indexed
+            ranges:               list of (section_key, title, page_start, page_end) — 1-indexed
+            subsection_patterns:  optional list of regexes (two groups: sub_num, sub_title).
+                                  Applied in sequence — each pattern splits the output of
+                                  the previous level, enabling multi-level granularity.
+                                  Group 1 (sub_num) may be empty for keyword-only headings.
+                                  Configured per-council in COUNCIL_SUBSECTION_PATTERNS.
         """
         sections: list[dict[str, Any]] = []
         with pdfplumber.open(self.pdf_path) as pdf:
@@ -213,15 +249,45 @@ class DCPExtractor:
                         html = self._table_to_html(tbl)
                         if html:
                             tables.append({"html": html, "page": page_num})
-                sections.append({
-                    "section_number": section_key,
-                    "section_title":  title,
-                    "content":        content,
-                    "tables":         tables,
-                    "page_start":     page_start,
-                    "page_end":       clipped_end,
-                    "pages":          pages_included,
-                })
+
+                if subsection_patterns:
+                    # First pattern splits the raw page-range content
+                    sub_secs = split_content_at_subsections(
+                        content, section_key, title, page_start, clipped_end,
+                        tables, subsection_patterns[0],
+                    )
+                    # Subsequent patterns split each result of the previous level.
+                    # Skip provisions already marked non-actionable (intro/objectives)
+                    # so they preserve their v2_is_actionable=False through the chain.
+                    for pattern in subsection_patterns[1:]:
+                        further_split: list[dict[str, Any]] = []
+                        for sec in sub_secs:
+                            if sec.get("v2_is_actionable") is False:
+                                further_split.append(sec)
+                                continue
+                            further = split_content_at_subsections(
+                                sec["content"],
+                                sec["section_number"],
+                                sec["section_title"],
+                                sec["page_start"],
+                                sec["page_end"],
+                                sec["tables"],
+                                pattern,
+                                parent_text_heading=sec.get("text_heading"),
+                            )
+                            further_split.extend(further)
+                        sub_secs = further_split
+                    sections.extend(sub_secs)
+                else:
+                    sections.append({
+                        "section_number": section_key,
+                        "section_title":  title,
+                        "content":        content,
+                        "tables":         tables,
+                        "page_start":     page_start,
+                        "page_end":       clipped_end,
+                        "pages":          pages_included,
+                    })
         print()
         return sections
 
@@ -268,7 +334,11 @@ class DCPExtractor:
 def build_provision_text(section: dict[str, Any]) -> str:
     content = DCPExtractor.clean_content(section["content"])
     if section["section_number"] != "preamble":
-        full_text = f"# {section['section_number']} {section['section_title']}\n\n{content}"
+        # text_heading overrides the default heading so sub-section provisions start
+        # with the parent code (e.g. "B1 Waste —") which the LayerTopicTagger needs
+        # to extract the correct section code via progressive prefix stripping.
+        heading = section.get("text_heading") or f"{section['section_number']} {section['section_title']}"
+        full_text = f"# {heading}\n\n{content}"
     else:
         full_text = content
     if section["tables"]:
@@ -282,6 +352,105 @@ def build_ref_number(document_id: str, section_number: str) -> str:
     if section_number == "preamble":
         return f"{document_id}__preamble"
     return f"{document_id}__{section_number.replace('.', '_')}"
+
+
+def split_content_at_subsections(
+    content: str,
+    parent_key: str,
+    parent_title: str,
+    page_start: int,
+    page_end: int,
+    tables: list,
+    pattern: re.Pattern,
+    parent_text_heading: str | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Split a page-range section into finer-grained sub-section provisions.
+
+    Each match of `pattern` (two groups: sub_number, sub_title) becomes its own
+    provision.  Text before the first match becomes the intro provision if non-empty.
+    All sub-provisions inherit page_start — intra-section page boundaries are not
+    tracked at extraction time.
+
+    Group 1 (sub_number) may be an empty string for keyword-only headings such as
+    "Objectives" or "Controls" — in that case the sub_title is used for the key slug.
+
+    parent_text_heading: when set (second-level splits), carries the heading built
+    by the first-level split so deep provisions chain correctly, e.g.:
+        "B1 Waste — 1.1 Demolition And Construction — Controls"
+
+    Returns a single-element list (the original section dict) when the pattern finds
+    no matches, so callers can safely call this unconditionally for every page range.
+    """
+    # Keyword headings that are aspirational/descriptive only — not actionable controls
+    NON_ACTIONABLE_KEYWORDS = {"Objectives", "General Objectives"}
+
+    matches = list(pattern.finditer(content))
+    if not matches:
+        # No split found — pass through parent's actionability (default True)
+        return [{
+            "section_number":   parent_key,
+            "section_title":    parent_title,
+            "content":          content,
+            "tables":           tables,
+            "page_start":       page_start,
+            "page_end":         page_end,
+            "pages":            [],
+            **({"text_heading": parent_text_heading} if parent_text_heading else {}),
+        }]
+
+    result: list[dict[str, Any]] = []
+
+    # Intro provision: context/description text before the first sub-heading — never actionable
+    intro_text = content[:matches[0].start()].strip()
+    if intro_text:
+        result.append({
+            "section_number":   parent_key,
+            "section_title":    parent_title,
+            "content":          intro_text,
+            "tables":           tables,   # All tables stay with the intro provision
+            "page_start":       page_start,
+            "page_end":         page_end,
+            "pages":            [],
+            "v2_is_actionable": False,
+            **({"text_heading": parent_text_heading} if parent_text_heading else {}),
+        })
+
+    # Base heading for building child headings (chains across split levels)
+    base_heading = parent_text_heading or f"{parent_key} {parent_title}"
+
+    for i, match in enumerate(matches):
+        sub_num   = match.group(1)          # e.g. "1.1" or "" for Objectives/Controls
+        sub_title = match.group(2).strip()  # e.g. "DEMOLITION AND CONSTRUCTION"
+        end  = matches[i + 1].start() if i + 1 < len(matches) else len(content)
+        body = content[match.end():end].strip()
+
+        # Unique key: numbered sub-sections use dots→underscores ("B1_1_1"),
+        # keyword headings use slugified title ("B1_1_1_objectives").
+        if sub_num:
+            sub_key = f"{parent_key}_{sub_num.replace('.', '_')}"
+            text_heading = f"{base_heading} \u2014 {sub_num} {sub_title.title()}"
+        else:
+            sub_key = f"{parent_key}_{sub_title.lower().replace(' ', '_')}"
+            text_heading = f"{base_heading} \u2014 {sub_title.title()}"
+
+        # Objectives (and any other non-actionable keywords) are descriptive goals,
+        # not controls — mark them non-actionable.
+        is_actionable = sub_title not in NON_ACTIONABLE_KEYWORDS
+
+        result.append({
+            "section_number":   sub_key,
+            "section_title":    f"{parent_title} \u2014 {sub_title.title()}",
+            "content":          body,
+            "tables":           [],
+            "page_start":       page_start,
+            "page_end":         page_end,
+            "pages":            [],
+            "text_heading":     text_heading,
+            "v2_is_actionable": is_actionable,
+        })
+
+    return result
 
 
 # ── Database helpers ────────────────────────────────────────────────────────
@@ -381,9 +550,10 @@ def extract_chapter(
         # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
         # Page-range mode is PRIMARY for these councils, not a fallback.
         page_ranges = COUNCIL_PAGE_RANGES.get(council)
+        subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
         if page_ranges:
             try:
-                sections = extractor.extract_by_page_ranges(page_ranges)
+                sections = extractor.extract_by_page_ranges(page_ranges, subsection_patterns)
             except Exception as exc:
                 print(f"    [ERROR] Page-range extraction failed: {exc}")
                 cur.close()
@@ -449,6 +619,13 @@ def extract_chapter(
                 provision_text = build_provision_text(section)
 
                 is_preamble = section["section_number"] == "preamble"
+                # v2_is_actionable:
+                #   False  — preamble (TOC/cover) or structural non-actionable set by
+                #            split_content_at_subsections (intro text, objectives headings)
+                #   NULL   — all other provisions: the enrichment pipeline's actionability
+                #            phase (ActionableClassifier) will determine this before any
+                #            other phase runs.
+                v2_actionable = False if is_preamble else section.get("v2_is_actionable", None)
 
                 cur.execute(
                     """
@@ -481,7 +658,7 @@ def extract_chapter(
                         section.get("pages", [section["page_start"]]),
                         chapter_key,
                         council,
-                        False if is_preamble else None,
+                        v2_actionable,
                     ),
                 )
                 inserted += 1
@@ -580,6 +757,24 @@ def main() -> None:
 
     if failed > 0:
         print(f"\n  {failed} chapter(s) failed — retained needs_extraction=TRUE for retry.")
+
+    # ── Enrichment pipeline ──────────────────────────────────────────────────
+    # Run automatically after any successful extraction so new provisions are
+    # fully enriched without needing a separate manual command.
+    # Phase order is mandatory: actionability must run before layer/applicability
+    # because those phases filter WHERE v2_is_actionable = TRUE.
+    print(f"\n{'='*60}")
+    print("ENRICHMENT PIPELINE")
+    print(f"{'='*60}")
+
+    print("\n[1/3] Actionability classification...")
+    run_actionability_classification(batch_size=500)
+
+    print("\n[2/3] Layer + topic tagging...")
+    run_layer_tagging(batch_size=500)
+
+    print("\n[3/3] Applicability tagging...")
+    run_applicability_tagging(batch_size=500)
 
     sys.exit(2)
 

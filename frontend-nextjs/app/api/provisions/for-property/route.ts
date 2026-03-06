@@ -30,6 +30,7 @@ import { getPool } from '@/lib/db';
 
 
 export const dynamic = 'force-dynamic';
+
 interface PropertyFilters {
   lga?: string;
   zone?: string;
@@ -396,6 +397,20 @@ export async function GET(request: NextRequest) {
         ? await getCompleteTocStructure(client, filters.former_council)
         : undefined;
 
+      // Look up public PDF URL for this council (stored in dcp_chapter_registry).
+      // Used by the frontend viewer to deep-link into the whole-DCP PDF via #page=N.
+      let councilPdfUrl: string | null = null;
+      if (filters.former_council) {
+        const pdfUrlResult = await client.query(
+          `SELECT r2_public_pdf_url
+           FROM dcp_chapter_registry
+           WHERE council = $1 AND r2_public_pdf_url IS NOT NULL
+           LIMIT 1`,
+          [filters.former_council.toLowerCase()]
+        );
+        councilPdfUrl = pdfUrlResult.rows[0]?.r2_public_pdf_url ?? null;
+      }
+
       // Calculate relevance summary if dev_type provided
       const relevanceSummary = filters.dev_type ? calculateRelevanceSummary(adjustedResults) : undefined;
 
@@ -432,7 +447,8 @@ export async function GET(request: NextRequest) {
             ? 'All provisions shown per EP&A Act s 4.15 (consider all relevant provisions). Dev type used for relevance ranking only.'
             : undefined,
           response_time_ms: responseTime,
-          api_version: 'v3_relevance_scoring'
+          api_version: 'v3_relevance_scoring',
+          council_pdf_url: councilPdfUrl,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
@@ -801,9 +817,8 @@ async function queryLayer(
   `;
   params.push(layer);
 
-  // Filter by former council (Ashfield/Marrickville/Leichhardt) via document_id pattern
+  // Filter by former council name embedded in document_id
   if (filters.former_council) {
-    // Capitalize first letter for matching (e.g., "marrickville" -> "Marrickville")
     const councilName = filters.former_council.charAt(0).toUpperCase() + filters.former_council.slice(1).toLowerCase();
     sql += ` AND document_id ILIKE $${paramIndex++}`;
     params.push(`%${councilName}%`);

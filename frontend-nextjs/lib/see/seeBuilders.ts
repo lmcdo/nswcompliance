@@ -1,0 +1,267 @@
+// SEE Builder Functions — deterministic, pure, no side effects.
+// Converts property data (LEP constraints, SEPP flags) into structured assessable rows
+// for SEE Sections 3 (Pathway), 4 (SEPP Controls), and 5 (LEP Standards).
+//
+// All citations reference the governing instrument and clause.
+// No AI interpretation — only structured data extraction.
+
+import type { PathwayDetermination, SeppAssessableControl, LepAssessableStandard } from './types';
+
+// ---------------------------------------------------------------------------
+// Section 3 — Approval Pathway Determination
+// ---------------------------------------------------------------------------
+
+/**
+ * Determines the approval pathway and required specialist reports from property data.
+ * Extends the determineDevelopmentPathway() logic in SEEDocument.tsx with legislative
+ * basis and required reports.
+ *
+ * @param zone - Zone code e.g. 'E1', 'R2 Low Density Residential'
+ * @param inHca - True if site is in a Heritage Conservation Area
+ * @param heritageItem - True if site is a listed heritage item
+ * @param constraints - Property constraints object from NSW Planning Portal
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildPathwayDetermination(
+  zone: string,
+  inHca: boolean,
+  heritageItem: boolean,
+  constraints?: Record<string, any>
+): PathwayDetermination {
+  const requiredReports: string[] = [];
+
+  if (heritageItem) {
+    requiredReports.push('Heritage Impact Statement (Clause 5.10 LEP)');
+    return {
+      pathway: 'Development Application (DA)',
+      reason: 'Heritage item — CDC and exempt development not permitted for listed heritage items',
+      legislative_basis: 'EP&A Act 1979 s 4.15; LEP Clause 5.10',
+      required_reports: requiredReports,
+    };
+  }
+
+  if (inHca) {
+    requiredReports.push('Heritage Impact Statement (Clause 5.10 LEP)');
+    requiredReports.push('Clause 5.10 Statement of Heritage Impact');
+    // Note: BASIX may also be required depending on works type — flagged generically
+    return {
+      pathway: 'Development Application (DA)',
+      reason: 'Heritage conservation area — CDC and exempt development restricted under SEPP (Exempt & Complying Development Codes) 2008 cl.1.17(1)(a)',
+      legislative_basis: 'SEPP (Exempt & Complying Development Codes) 2008 cl.1.17; EP&A Act 1979 s 4.15; LEP Clause 5.10',
+      required_reports: requiredReports,
+    };
+  }
+
+  // ANEF zone — acoustic report required regardless of pathway
+  if (constraints?.anefData?.inAnefZone) {
+    requiredReports.push('Acoustic Report (ANEF zone — SEPP Transport Infrastructure 2021)');
+  }
+
+  // Contaminated land — site contamination assessment
+  if (constraints?.contaminatedLand?.hasNotifiedSites) {
+    requiredReports.push('Site Contamination Assessment (SEPP Resilience and Hazards 2021 Ch.4)');
+  }
+
+  // Housing SEPP 2021 eligible zones (derived from SEPP schedule)
+  const HOUSING_SEPP_ZONES = ['R1', 'R2', 'R3', 'R4', 'B1', 'B2', 'B4'];
+  const zoneCode = zone.split(' ')[0];
+
+  if (HOUSING_SEPP_ZONES.includes(zoneCode)) {
+    return {
+      pathway: 'Complying Development (CDC) — check eligibility',
+      reason: `${zoneCode} zone — Housing SEPP 2021 CDC pathway available for eligible development types and lot configurations`,
+      legislative_basis: 'SEPP (Housing) 2021 Part 2; SEPP (Exempt & Complying Development Codes) 2008',
+      required_reports: requiredReports,
+    };
+  }
+
+  return {
+    pathway: 'Development Application (DA)',
+    reason: `${zoneCode} zone — not covered by Housing SEPP 2021 CDC pathway. Check SEPP (Exempt & Complying Development Codes) 2008 Schedule 2 for exempt development eligibility.`,
+    legislative_basis: 'EP&A Act 1979 s 4.15; SEPP (Exempt & Complying Development Codes) 2008',
+    required_reports: requiredReports,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Section 4 — SEPP Assessable Controls
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds the list of applicable SEPP controls from property constraint data.
+ * Returns only controls that are active for this property — omits inapplicable instruments.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildSeppControls(
+  constraints?: Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lepClauseData?: Record<string, any>
+): SeppAssessableControl[] {
+  const controls: SeppAssessableControl[] = [];
+
+  if (!constraints) return controls;
+
+  // BASIX — SEPP (Sustainable Buildings) 2022
+  if (constraints.basixWater || constraints.basixClimate) {
+    const waterTarget = constraints.basixWater ?? 'refer to BASIX tool';
+    const climateZone = constraints.basixClimate ?? 'refer to BASIX tool';
+    controls.push({
+      instrument: 'SEPP (Sustainable Buildings) 2022',
+      control: 'BASIX — Water Efficiency',
+      requirement: `Water target: ${waterTarget} reduction from baseline`,
+      clause: 'BASIX Certificate required — NSW Planning Portal BASIX tool',
+      status: 'pending',
+    });
+    controls.push({
+      instrument: 'SEPP (Sustainable Buildings) 2022',
+      control: 'BASIX — Energy & Thermal Comfort',
+      requirement: `Climate Zone ${climateZone} — energy and thermal targets apply. Refer to BASIX Certificate.`,
+      clause: 'BASIX Certificate required — NSW Planning Portal BASIX tool',
+      status: 'pending',
+    });
+  }
+
+  // TOD parking — SEPP (Housing) 2021
+  if (constraints.todPrecinct?.inTODArea) {
+    const stationName = constraints.todPrecinct.stationName ?? 'nearby station';
+    const stationDist = constraints.todPrecinct.stationDistance
+      ? `${constraints.todPrecinct.stationDistance}m`
+      : 'within 800m';
+    controls.push({
+      instrument: 'SEPP (Housing) 2021',
+      control: 'TOD Parking Reduction',
+      requirement: `Reduced parking rates apply — ${stationName} ${stationDist}. Refer to SEPP (Housing) 2021 Clause 24/42/68/74 for applicable rate by development type.`,
+      clause: `SEPP (Housing) 2021 — ${constraints.todPrecinct.seppReference ?? 'Transport Oriented Development'}`,
+      status: 'pending',
+    });
+  }
+
+  // ANEF — SEPP (Transport Infrastructure) 2021
+  if (constraints.anefData?.inAnefZone) {
+    const anefLevel = constraints.anefData.anefLevel ?? 'refer to ANEF contour map';
+    const airport = constraints.anefData.airport?.name ?? 'nearby airport';
+    controls.push({
+      instrument: 'SEPP (Transport Infrastructure) 2021',
+      control: 'Aircraft Noise Attenuation',
+      requirement: `ANEF ${anefLevel} — ${airport}. Building acceptability and acoustic treatment requirements apply.`,
+      clause: 'SEPP (Transport Infrastructure) 2021 — Aircraft Noise',
+      status: 'pending',
+    });
+  }
+
+  // Contamination — SEPP (Resilience and Hazards) 2021 Chapter 4
+  if (constraints.contaminatedLand?.hasNotifiedSites) {
+    const nearest = constraints.contaminatedLand.nearestSite;
+    const detail = nearest
+      ? `Nearest notified site: ${nearest.name ?? 'unknown'} (${nearest.distance ?? '?'}m)`
+      : 'Notified contaminated site within 500m';
+    controls.push({
+      instrument: 'SEPP (Resilience and Hazards) 2021',
+      control: 'Site Contamination — Chapter 4',
+      requirement: `${detail}. Site contamination assessment required before consent.`,
+      clause: 'SEPP (Resilience and Hazards) 2021 Chapter 4',
+      status: 'pending',
+    });
+  }
+
+  // Void unused param warning
+  void lepClauseData;
+
+  return controls;
+}
+
+// ---------------------------------------------------------------------------
+// Section 5 — LEP Assessable Standards
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds LEP development standard rows from property context and LEP clause data.
+ * Returns only standards that are applicable — omits null/undefined values.
+ */
+export function buildLepStandards(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  propertyContext: Record<string, any>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  lepClauseData?: Record<string, any>
+): LepAssessableStandard[] {
+  const standards: LepAssessableStandard[] = [];
+
+  const zone = propertyContext.zone ?? '';
+  const zoneCode = zone.split(' ')[0];
+  const lepName = propertyContext.planning_portal_layers?.height_map?.epiName
+    ?? propertyContext.planning_portal_layers?.fsr_map?.epiName
+    ?? 'Local Environmental Plan';
+
+  // Permitted use — always include, confirms proposed development type is allowed in zone
+  if (zoneCode) {
+    standards.push({
+      clause: '2.3',
+      control: 'Permitted Use',
+      requirement: `Zone ${zoneCode} — confirm proposed development type is a permitted use with or without consent`,
+      status: 'pending',
+      source: `${lepName} Clause 2.3 — Land Use Zones`,
+    });
+  }
+
+  // Height of buildings — Clause 4.3
+  const heightLimit = lepClauseData?.height_limit ?? propertyContext.lep_controls?.height;
+  if (heightLimit) {
+    const heightVal = typeof heightLimit === 'number' ? `${heightLimit}m` : `${heightLimit}m`;
+    standards.push({
+      clause: '4.3',
+      control: 'Height of Buildings',
+      requirement: `Maximum ${heightVal}`,
+      status: 'pending',
+      source: `${lepName} Clause 4.3`,
+    });
+  }
+
+  // Floor space ratio — Clause 4.4
+  const fsr = lepClauseData?.fsr ?? propertyContext.lep_controls?.fsr;
+  if (fsr) {
+    standards.push({
+      clause: '4.4',
+      control: 'Floor Space Ratio',
+      requirement: `Maximum ${fsr}:1`,
+      status: 'pending',
+      source: `${lepName} Clause 4.4`,
+    });
+  }
+
+  // Heritage — Clause 5.10
+  const inHca = propertyContext.heritage_status?.in_hca;
+  const heritageItem = propertyContext.heritage_status?.heritage_item;
+  if (heritageItem) {
+    standards.push({
+      clause: '5.10',
+      control: 'Heritage Conservation — Listed Item',
+      requirement: `Heritage item ${propertyContext.heritage_status?.item_number ?? ''} — heritage impact assessment and consent required. Heritage Impact Statement must accompany DA.`,
+      status: 'pending',
+      source: `${lepName} Clause 5.10`,
+    });
+  } else if (inHca) {
+    const hcaName = propertyContext.heritage_status?.hca_name ?? 'Heritage Conservation Area';
+    const hcaCode = propertyContext.heritage_status?.hca_code ?? '';
+    standards.push({
+      clause: '5.10',
+      control: 'Heritage Conservation Area',
+      requirement: `${hcaName}${hcaCode ? ` (${hcaCode})` : ''} — development must not adversely affect the heritage significance of the conservation area. Statement of Heritage Impact required.`,
+      status: 'pending',
+      source: `${lepName} Clause 5.10`,
+    });
+  }
+
+  // Additional local provisions — Clause 6.x (LEP Part 6)
+  const localProvisions: string[] = propertyContext.additional_local_provisions ?? [];
+  for (const provision of localProvisions) {
+    standards.push({
+      clause: '6.x',
+      control: 'Additional Local Provision',
+      requirement: provision,
+      status: 'pending',
+      source: `${lepName} Part 6`,
+    });
+  }
+
+  return standards;
+}
