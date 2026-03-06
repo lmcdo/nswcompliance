@@ -1,6 +1,6 @@
 import {
   normalizeTopicKey, getExcludableTopics, autoPopulateFromConstraints,
-  DEFAULT_INTAKE_ANSWERS, INTAKE_QUESTIONS, AUTO_ANSWER_SOURCES,
+  DEFAULT_INTAKE_ANSWERS, INTAKE_QUESTIONS, AUTO_ANSWER_SOURCES, TRIGGER_TO_TOPICS,
   type IntakeAnswers,
 } from '@/lib/see/intake';
 
@@ -44,7 +44,7 @@ describe('getExcludableTopics', () => {
     ['new_signage',             ['signage']],
     ['flood_prone',             ['flooding']],
     ['bushfire_prone',          ['bushfire']],
-    ['acid_sulfate_soils',      ['contamination', 'acid_sulfate']],
+    ['acid_sulfate_soils',      ['acid_sulfate']], // contamination removed: general contamination != ASS
     ['coastal',                 ['coastal']],
     ['biodiversity',            ['biodiversity']],
     ['demolition',              ['demolition']],
@@ -141,6 +141,35 @@ describe('AUTO_ANSWER_SOURCES parity', () => {
       expect(src!.citation.length).toBeGreaterThan(0);
       expect(src!.rationale.length).toBeGreaterThan(0);
       expect(src!.propertyField.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// W2-3: TRIGGER_TO_TOPICS exported and coverage valid
+describe('TRIGGER_TO_TOPICS coverage (W2-3)', () => {
+  test('every IntakeAnswers field has an entry in TRIGGER_TO_TOPICS', () => {
+    const triggerKeys = Object.keys(TRIGGER_TO_TOPICS);
+    const answerKeys = Object.keys(DEFAULT_INTAKE_ANSWERS);
+    expect(triggerKeys.sort()).toEqual(answerKeys.sort());
+  });
+
+  test('contamination topic is NOT in acid_sulfate_soils trigger (W2-2)', () => {
+    expect(TRIGGER_TO_TOPICS.acid_sulfate_soils).not.toContain('contamination');
+  });
+
+  test('acid_sulfate topic IS in acid_sulfate_soils trigger', () => {
+    expect(TRIGGER_TO_TOPICS.acid_sulfate_soils).toContain('acid_sulfate');
+  });
+
+  test('no topic appears in more than one trigger field', () => {
+    const seen = new Map<string, string>();
+    for (const [field, topics] of Object.entries(TRIGGER_TO_TOPICS)) {
+      for (const topic of topics) {
+        if (seen.has(topic)) {
+          throw new Error(`Topic "${topic}" appears in both "${seen.get(topic)}" and "${field}"`);
+        }
+        seen.set(topic, field);
+      }
     }
   });
 });

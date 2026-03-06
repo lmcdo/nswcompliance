@@ -130,7 +130,8 @@ export const INTAKE_QUESTIONS: IntakeQuestion[] = [
 // Normalization mirrors the frontend: v2_topic?.toLowerCase().replace(/ /g, '_')
 //
 // Only add topics whose applicability is FACTUALLY IMPOSSIBLE when the trigger is absent.
-const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
+// Exported for test coverage validation (see intake.test.ts parity checks).
+export const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   new_impervious_surfaces: ['stormwater', 'drainage'],
   trees_affected: ['trees'],
   pool_or_spa: ['pool'],
@@ -140,12 +141,47 @@ const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   // Auto-answered from LEP/SEPP property data
   flood_prone: ['flooding'],
   bushfire_prone: ['bushfire'],
-  acid_sulfate_soils: ['contamination', 'acid_sulfate'],
+  acid_sulfate_soils: ['acid_sulfate'], // 'contamination' removed: general site contamination != ASS (DB evidence: 0 provisions with acid_sulfate topic; contamination provisions need site investigation, not ASS mapping)
   coastal: ['coastal'],
   biodiversity: ['biodiversity'],
   // Manual
   demolition: ['demolition'],
 };
+
+// ---------------------------------------------------------------------------
+// Topics intentionally NOT mapped to intake triggers (W2-4)
+// ---------------------------------------------------------------------------
+// These topics exist in the DB but cannot be auto-excluded without dev-type
+// awareness, applicant input, or site-specific assessment. They always remain
+// in the active provision set until the planner manually addresses them.
+//
+// 'heritage'       — always applies if heritage overlay; managed by HCA/item flags, not intake
+// 'precinct'       — precinct-specific; managed by v2_precinct_id, not intake triggers
+// 'site_analysis'  — general site context; applies to every DA
+// 'height'         — numeric standard; applies to every built-form DA
+// 'setbacks'       — character/site-specific; no factual trigger possible
+// 'building_form'  — design-based; applies to every built-form DA
+// 'residential'    — zone-based; applies whenever development is residential
+// 'landscaping'    — design-based; applies to virtually every DA; dev-type dependent
+// 'roofing'        — design-based; applies to every built-form DA
+// 'access'         — general; applies to every DA
+// 'building_design'— design-based; applies to every built-form DA
+// 'waste'          — general; applies to every DA
+// 'open_space'     — site-specific; applies when open space present
+// 'bicycle_parking'— provision requirement (not site trigger); applies when parking provided
+// 'commercial'     — zone-based; applies when commercial use present
+// 'industrial'     — zone-based; applies when industrial use present
+// 'environmental'  — catch-all; no factual trigger possible
+// 'sustainability' — general; applies to every DA
+// 'privacy'        — site-specific; context-dependent
+// 'views'          — site-specific; no factual trigger possible
+// 'solar'          — design-based; applies to every DA
+// 'safety'         — general; applies to every DA
+// 'density'        — numeric/zone-based; applies to every DA
+// 'contamination'  — general site contamination; requires site investigation (NOT auto-excluded
+//                    by acid_sulfate_soils=No — different category, different legislative trigger)
+//
+// Source: W2-1 DB query, 2026-03-07, Inner West councils (ashfield/marrickville/leichhardt)
 
 // Reason strings shown in the auto-generated N/A note and SEE audit trail.
 const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
@@ -161,7 +197,6 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   signage: 'No signage in proposal confirmed',
   flooding: 'Site confirmed not flood prone (LEP Part 5)',
   bushfire: 'Site confirmed not bushfire prone (LEP Part 5)',
-  contamination: 'Site confirmed no acid sulfate soils (LEP Part 5)',
   acid_sulfate: 'Site confirmed no acid sulfate soils (LEP Part 5)',
   coastal: 'Site confirmed not in coastal management area (SEPP Resilience and Hazards 2021)',
   biodiversity: 'Site confirmed no terrestrial biodiversity overlay (LEP Part 5)',
