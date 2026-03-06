@@ -164,6 +164,40 @@ export function buildSeppControls(
     });
   }
 
+  // Mine Subsidence — SEPP (Resilience and Hazards) 2021 Chapter 3
+  if (constraints.mineSubsidence?.inDistrict) {
+    const districtName = constraints.mineSubsidence.districtName;
+    controls.push({
+      instrument: 'SEPP (Resilience and Hazards) 2021',
+      control: 'Mine Subsidence — Chapter 3',
+      requirement: `Site in mine subsidence district${districtName ? ` (${districtName})` : ''}. Mine Subsidence Board approval required prior to consent for most building works.`,
+      clause: 'SEPP (Resilience and Hazards) 2021 Chapter 3',
+      status: 'pending',
+    });
+  }
+
+  // Landslide Risk — LEP Part 5
+  if (constraints.landslideRisk?.hasRisk) {
+    controls.push({
+      instrument: 'LEP Part 5',
+      control: 'Landslide Risk',
+      requirement: 'Site in landslide risk area. Geotechnical assessment required. Development consent may be refused if risk cannot be mitigated.',
+      clause: 'LEP Clause — Landslide Risk Area',
+      status: 'pending',
+    });
+  }
+
+  // Drinking Water Catchment — SEPP (Resilience and Hazards) 2021 Chapter 2
+  if (constraints.drinkingWaterCatchment?.inCatchment) {
+    controls.push({
+      instrument: 'SEPP (Resilience and Hazards) 2021',
+      control: 'Drinking Water Catchment — Chapter 2',
+      requirement: 'Site in drinking water catchment area. Development must not adversely impact drinking water quality. Consultation with water authority may be required.',
+      clause: 'SEPP (Resilience and Hazards) 2021 Chapter 2',
+      status: 'pending',
+    });
+  }
+
   // Void unused param warning
   void lepClauseData;
 

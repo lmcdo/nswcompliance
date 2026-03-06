@@ -24,6 +24,7 @@ interface UseDASessionReturn {
   intakeAnswers: IntakeAnswers | null;
   saveIntakeAnswers: (answers: IntakeAnswers) => Promise<void>;
   bulkSaveResponses: (responses: BulkResponseItem[]) => Promise<void>;
+  error: Error | null;
 }
 
 export function useDASession(
@@ -36,6 +37,7 @@ export function useDASession(
   const [daResponses, setDaResponses] = useState<Map<number, DaResponse>>(new Map());
   const [developmentDescription, setDevelopmentDescription] = useState<string>('');
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
+  const [error, setError] = useState<Error | null>(null);
 
   const loadResponses = useCallback(async (token: string) => {
     try {
@@ -59,6 +61,7 @@ export function useDASession(
       setDaResponses(map);
     } catch (err) {
       console.error('[useDASession] Failed to load responses:', err);
+      setError(err instanceof Error ? err : new Error(String(err)));
     }
   }, []);
 
@@ -138,6 +141,7 @@ export function useDASession(
         }
       } catch (err) {
         console.error('[useDASession] Init error:', err);
+        setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
         setIsLoading(false);
       }
@@ -156,5 +160,6 @@ export function useDASession(
     intakeAnswers,
     saveIntakeAnswers,
     bulkSaveResponses,
+    error,
   };
 }

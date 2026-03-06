@@ -83,7 +83,12 @@ export function DAModeCard({
       if (excludedIds.has(id)) intakeExcludedResponseCount++;
     }
     const assessed = Math.max(0, daResponses.size - intakeExcludedResponseCount);
-    const remaining = Math.max(0, allProvisions.length - daResponses.size);
+    // Active scope = provisions not excluded by triage. Heritage (condition layer) always in scope.
+    const activeCount = allProvisions.filter(p => {
+      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      return !t || !excludableTopics.has(t);
+    }).length;
+    const remaining = Math.max(0, activeCount - assessed);
 
     // Scope summary — non-condition-layer provisions only
     const includedTopics: { topic: string; count: number }[] = [];
@@ -108,7 +113,7 @@ export function DAModeCard({
         assessed,
         intakeExcluded: intakeExcludedResponseCount,
         remaining,
-        total: allProvisions.length,
+        total: activeCount,
       },
       topicProgress: Object.entries(byTopic).sort((a, b) => b[1].total - a[1].total),
       scopeSummary: { included: includedTopics, excluded: excludedTopics },

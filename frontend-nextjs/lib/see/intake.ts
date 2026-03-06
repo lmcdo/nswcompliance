@@ -168,6 +168,18 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   demolition: 'No demolition works in proposal confirmed',
 };
 
+// Dev-mode parity assertion: every topic in TRIGGER_TO_TOPICS must have a TOPIC_EXCLUSION_REASONS entry.
+// Catches mismatches at module load time during development.
+if (process.env.NODE_ENV === 'development') {
+  for (const [field, topics] of Object.entries(TRIGGER_TO_TOPICS)) {
+    for (const topic of topics) {
+      if (!(topic in TOPIC_EXCLUSION_REASONS)) {
+        throw new Error(`[intake] TRIGGER_TO_TOPICS field "${field}" has topic "${topic}" with no entry in TOPIC_EXCLUSION_REASONS`);
+      }
+    }
+  }
+}
+
 /**
  * Normalize a v2_topic value to match the frontend comparison key.
  * Mirrors: v2_topic?.toLowerCase().replace(/ /g, '_')

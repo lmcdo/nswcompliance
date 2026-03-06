@@ -33,6 +33,10 @@ import { DCPInterestForm } from './DCPInterestForm';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
+// Canonical numeric measurement pattern for planning regulation provisions.
+// Used consistently across provision filtering, topic stats, and priority scoring.
+const NUMERIC_MEASUREMENT_RE = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimètres?|centimeters?|sqm|square mètres?|ha|hectares?)\b/i;
+
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
 const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -619,8 +623,7 @@ export function ProvisionsByTocStructure({
       filtered = filtered.filter(p => {
         const text = p.provision_text || '';
         // Contains numeric measurements
-        const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|sqm|ha)\b/i.test(text);
-        return hasNumeric;
+        return NUMERIC_MEASUREMENT_RE.test(text);
       });
     }
 
@@ -654,14 +657,14 @@ export function ProvisionsByTocStructure({
   const displayProvisions = useMemo(() => {
     if (!splitByTriage) return filteredProvisions;
     return filteredProvisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      const t = normalizeTopicKey(p.v2_topic);
       return !t || !excludableTopics.has(t);
     });
   }, [splitByTriage, filteredProvisions, excludableTopics]);
   const triageExcludedProvisions = useMemo(() => {
     if (!splitByTriage) return [];
     return filteredProvisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+      const t = normalizeTopicKey(p.v2_topic);
       return t && excludableTopics.has(t);
     });
   }, [splitByTriage, filteredProvisions, excludableTopics]);
@@ -672,10 +675,9 @@ export function ProvisionsByTocStructure({
       const text = p.provision_text || '';
       // Check if provision contains numeric measurements - comprehensive pattern for planning regulations
       // Matches: 6m, 9.5m, 450m², 50sqm, 60 square metres, 15%, 900mm, 2.5cm, etc.
-      const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimetres?|centimeters?|sqm|square metres?|ha|hectares?)\b/i.test(text);
       // Exclude if it's primarily an objective, principle, or qualitative statement
       const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
-      return hasNumeric && !isObjective;
+      return NUMERIC_MEASUREMENT_RE.test(text) && !isObjective;
     });
   }, [allProvisions]);
 
@@ -685,7 +687,7 @@ export function ProvisionsByTocStructure({
     const topicMap = new Map<string, string>();
     layerFilteredProvisions.forEach(p => {
       if (p.v2_topic) {
-        const normalized = p.v2_topic.toLowerCase().replace(/ /g, '_');
+        const normalized = p.v2_normalizeTopicKey(topic);
         // Prefer lowercase version if we have both "Signage" and "signage"
         if (!topicMap.has(normalized) || p.v2_topic === p.v2_topic.toLowerCase()) {
           topicMap.set(normalized, p.v2_topic);
@@ -712,10 +714,8 @@ export function ProvisionsByTocStructure({
       // Only mark as "critical/numeric" if provision actually contains measurements
       const text = p.provision_text || '';
       // Comprehensive pattern matching planning regulation measurements
-      const hasNumeric = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimetres?|centimeters?|sqm|square metres?|ha|hectares?)\b/i.test(text);
       const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
-
-      if (hasNumeric && !isObjective) stats[topic].critical++;
+      if (NUMERIC_MEASUREMENT_RE.test(text) && !isObjective) stats[topic].critical++;
     });
     return stats;
   }, [layerFilteredProvisions]);
@@ -815,18 +815,15 @@ export function ProvisionsByTocStructure({
         if (value === null || value === undefined) return undefined;
 
         // Log the raw value
-        console.log(`[PDF Number Sanitize] ${fieldName || 'unknown'}: raw value =`, value, `(type: ${typeof value})`);
 
         const num = typeof value === 'number' ? value : parseFloat(value);
 
         // Filter out: NaN, Infinity, very large numbers, AND NEGATIVE NUMBERS (invalid page numbers)
         if (isNaN(num) || !isFinite(num) || Math.abs(num) > 1e15 || num < 0) {
-          console.error(`[PDF Number Sanitize] REJECTED ${fieldName || 'unknown'}: ${value} (parsed: ${num})`);
           return undefined;
         }
 
         const result = String(Math.round(num * 100) / 100);
-        console.log(`[PDF Number Sanitize] ${fieldName || 'unknown'}: accepted = ${result}`);
         return result;
       };
 
@@ -859,20 +856,11 @@ export function ProvisionsByTocStructure({
 
       // Extract ALL planning portal layers with their numeric values (sanitize to strings)
       // Log to debug what layers we actually have
-      console.log('=== PLANNING LAYERS DEBUG ===');
-      console.log('propertyData exists?', !!propertyData);
-      console.log('propertyData.planningLayers exists?', !!propertyData?.planningLayers);
-      console.log('propertyData.planningLayers:', propertyData?.planningLayers);
-      console.log('propertyData.planningLayers length:', propertyData?.planningLayers?.length);
 
       // Log each layer's results to see actual field names
       if (propertyData?.planningLayers) {
         propertyData.planningLayers.forEach((layer: any) => {
-          console.log(`\nLayer: ${layer.layerName}`);
-          console.log(`  Results count: ${layer.results?.length}`);
           if (layer.results?.[0]) {
-            console.log(`  First result keys:`, Object.keys(layer.results[0]));
-            console.log(`  First result data:`, layer.results[0]);
           }
         });
       }
@@ -912,17 +900,14 @@ export function ProvisionsByTocStructure({
         terrestrial_biodiversity_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Biodiversity'))?.results),
       } : undefined;
 
-      console.log('[PDF Planning Layers] Mapped values:', planningPortalLayers);
 
       // Check for any scientific notation in the raw layer data
       if (propertyData?.planningLayers) {
         propertyData.planningLayers.forEach((layer: any, idx: number) => {
           if (layer.results?.[0]) {
-            console.log(`[PDF Layer ${idx}] ${layer.layerName}:`, JSON.stringify(layer.results[0]).substring(0, 200));
             // Check for scientific notation
             const jsonStr = JSON.stringify(layer.results[0]);
             if (/e[+-]\d+/i.test(jsonStr)) {
-              console.error(`[PDF Layer ${idx}] CONTAINS SCIENTIFIC NOTATION:`, layer.layerName);
             }
           }
         });
@@ -1037,7 +1022,6 @@ export function ProvisionsByTocStructure({
           };
         }
       } catch (err) {
-        console.error('Failed to fetch Pattern Book eligibility for PDF:', err);
         // Continue without Pattern Book data
       }
 
@@ -1074,7 +1058,6 @@ export function ProvisionsByTocStructure({
         return;
       }
 
-      console.log(`Exporting ${provisionsToExport.length} filtered provisions`);
 
       // Build active filters array for context
       const activeFilters: string[] = [];
@@ -1104,7 +1087,6 @@ export function ProvisionsByTocStructure({
       const actualProvisions = provisionsToExport.filter((p: any) => {
         const isTOC = isTableOfContents(p.provision_text || '');
         if (isTOC) {
-          console.log(`[PDF Filter] Excluding TOC entry: ID ${p.id}`);
         }
         return !isTOC;
       });
@@ -1112,22 +1094,17 @@ export function ProvisionsByTocStructure({
       // Convert provisions to PDF format (sanitize ALL numeric fields)
       const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any, idx: number) => {
         // Sanitize page numbers
-        console.log(`[PDF Provision ${idx}] ID: ${p.id}, processing...`);
         const pdfPage = sanitizeNumberToString(p.pdf_page, `provision_${p.id}_pdf_page`);
         const pdfPrintedPage = sanitizeNumberToString(p.pdf_printed_page, `provision_${p.id}_pdf_printed_page`);
 
         // Log if we're sanitizing the known problematic provisions
         if (p.id === 78593 || p.id === 86746) {
-          console.log(`Sanitizing provision ${p.id}:`);
-          console.log(`  Original: pdf_page=${p.pdf_page}, pdf_printed_page=${p.pdf_printed_page}`);
-          console.log(`  Sanitized: pdfPage=${pdfPage}, pdfPrintedPage=${pdfPrintedPage}`);
         }
 
         const finalPdfPage = pdfPage ? parseInt(pdfPage) : undefined;
         const finalPdfPrintedPage = pdfPrintedPage ? parseInt(pdfPrintedPage) : pdfPage ? parseInt(pdfPage) : 1;
 
         if (p.id === 78593 || p.id === 86746) {
-          console.log(`  Final: pdf_page=${finalPdfPage}, pdf_printed_page=${finalPdfPrintedPage}`);
         }
 
         const daResponse = isDaMode ? daResponses?.get(p.id) : undefined;
@@ -1152,24 +1129,19 @@ export function ProvisionsByTocStructure({
       });
 
       // Log to find any bad data
-      console.log('Provisions for PDF (first 3):', provisionsForPdf.slice(0, 3));
 
       // Check for scientific notation in provision text
       let scientificNotationFound = false;
       provisionsForPdf.forEach((p, idx) => {
         const text = p.provision_text || '';
         if (/e[+-]\d+/i.test(text)) {
-          console.error(`[PDF SCIENTIFIC NOTATION] Found in provision ${p.id} (index ${idx}): ${text.substring(0, 100)}`);
           scientificNotationFound = true;
         }
       });
       if (!scientificNotationFound) {
-        console.log('[PDF] No scientific notation found in provision text');
       }
 
       // Log property context for debugging
-      console.log('Property context for PDF:', JSON.stringify(propertyContext, null, 2));
-      console.log('Number of provisions:', provisionsForPdf.length);
 
       // Generate PDF
       const noFiltersActive = !layerFilter && topicFilters.length === 0 && !debouncedSearch;
@@ -1186,13 +1158,8 @@ export function ProvisionsByTocStructure({
         />
       );
 
-      console.log('[PDF Generation] Creating PDF with property context:', propertyContext);
-      console.log('[PDF Generation] Lot dimensions:', propertyContext.lot_dimensions);
-      console.log('[PDF Generation] Total provisions:', provisionsForPdf.length);
 
-      console.log('Generating PDF blob...');
       const blob = await pdf(doc).toBlob();
-      console.log('PDF blob generated successfully');
 
       // Create download link
       const url = URL.createObjectURL(blob);
@@ -1207,9 +1174,6 @@ export function ProvisionsByTocStructure({
       // Cleanup
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('PDF export failed:', error);
-      console.error('Error details:', error instanceof Error ? error.message : String(error));
-      console.error('Stack trace:', error instanceof Error ? error.stack : 'No stack trace');
       alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
     }
   };
@@ -1386,7 +1350,6 @@ export function ProvisionsByTocStructure({
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('SEE export failed:', error);
       alert(`Failed to generate SEE PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
     }
   };
@@ -1720,7 +1683,7 @@ export function ProvisionsByTocStructure({
                     </button>
                   )}
                   {availableTopics.map(topic => {
-                    const topicKey = topic.toLowerCase().replace(/ /g, '_');
+                    const topicKey = normalizeTopicKey(topic);
                     const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
                     const hasCritical = stats.critical > 0;
                     const isSelected = topicFilters.includes(topicKey);
