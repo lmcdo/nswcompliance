@@ -27,15 +27,13 @@ import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
+import { NUMERIC_MEASUREMENT_RE } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
-// Canonical numeric measurement pattern for planning regulation provisions.
-// Used consistently across provision filtering, topic stats, and priority scoring.
-const NUMERIC_MEASUREMENT_RE = /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimètres?|centimeters?|sqm|square mètres?|ha|hectares?)\b/i;
 
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)

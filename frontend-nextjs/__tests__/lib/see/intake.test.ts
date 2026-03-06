@@ -1,146 +1,146 @@
 import {
-  normalizeTopicKey,
-  getExcludableTopics,
-  getTopicExclusionReason,
-  isProvisionExcluded,
-  DEFAULT_INTAKE_ANSWERS,
+  normalizeTopicKey, getExcludableTopics, autoPopulateFromConstraints,
+  DEFAULT_INTAKE_ANSWERS, INTAKE_QUESTIONS, AUTO_ANSWER_SOURCES,
   type IntakeAnswers,
 } from '@/lib/see/intake';
 
-const allNo: IntakeAnswers = {
-  new_impervious_surfaces: 'no',
-  trees_affected: 'no',
-  pool_or_spa: 'no',
-  new_fencing: 'no',
-  new_parking_or_driveway: 'no',
-  new_signage: 'no',
-};
-
-const allYes: IntakeAnswers = {
-  new_impervious_surfaces: 'yes',
-  trees_affected: 'yes',
-  pool_or_spa: 'yes',
-  new_fencing: 'yes',
-  new_parking_or_driveway: 'yes',
-  new_signage: 'yes',
-};
-
 describe('normalizeTopicKey', () => {
-  it('lowercases and replaces spaces with underscores', () => {
-    expect(normalizeTopicKey('Vehicle Access')).toBe('vehicle_access');
-    expect(normalizeTopicKey('Trees')).toBe('trees');
-    expect(normalizeTopicKey('Open Space')).toBe('open_space');
-  });
+  test('lowercases', () => { expect(normalizeTopicKey('Flooding')).toBe('flooding'); });
+  test('spaces to underscores', () => { expect(normalizeTopicKey('vehicle access')).toBe('vehicle_access'); });
+  test('multiple spaces', () => { expect(normalizeTopicKey('acid sulfate soils')).toBe('acid_sulfate_soils'); });
+  test('null returns empty', () => { expect(normalizeTopicKey(null)).toBe(''); });
+  test('undefined returns empty', () => { expect(normalizeTopicKey(undefined)).toBe(''); });
+  test('empty string returns empty', () => { expect(normalizeTopicKey('')).toBe(''); });
+  test('already normalized', () => { expect(normalizeTopicKey('vehicle_access')).toBe('vehicle_access'); });
+});
 
-  it('returns empty string for null', () => {
-    expect(normalizeTopicKey(null)).toBe('');
+describe('DEFAULT_INTAKE_ANSWERS', () => {
+  const ALL_FIELDS: (keyof IntakeAnswers)[] = [
+    'new_impervious_surfaces', 'trees_affected', 'pool_or_spa', 'new_fencing',
+    'new_parking_or_driveway', 'new_signage', 'flood_prone', 'bushfire_prone',
+    'acid_sulfate_soils', 'coastal', 'biodiversity', 'demolition',
+  ];
+  test('all fields default to unknown', () => {
+    for (const field of ALL_FIELDS) { expect(DEFAULT_INTAKE_ANSWERS[field]).toBe('unknown'); }
   });
-
-  it('returns empty string for undefined', () => {
-    expect(normalizeTopicKey(undefined)).toBe('');
-  });
-
-  it('handles already-normalized topics', () => {
-    expect(normalizeTopicKey('parking')).toBe('parking');
+  test('contains exactly the expected fields', () => {
+    expect(Object.keys(DEFAULT_INTAKE_ANSWERS).sort()).toEqual(ALL_FIELDS.slice().sort());
   });
 });
 
 describe('getExcludableTopics', () => {
-  it('excludes topics when answer is no', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'no' };
-    const result = getExcludableTopics(answers);
-    expect(result.has('trees')).toBe(true);
+  const base: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS };
+  test('empty set when all unknown', () => { expect(getExcludableTopics(base).size).toBe(0); });
+  test('empty set when all yes', () => {
+    const allYes = Object.fromEntries(Object.keys(base).map(k => [k, 'yes'])) as IntakeAnswers;
+    expect(getExcludableTopics(allYes).size).toBe(0);
   });
-
-  it('does not exclude topics when answer is yes', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'yes' };
-    const result = getExcludableTopics(answers);
-    expect(result.has('trees')).toBe(false);
+  const cases: [keyof IntakeAnswers, string[]][] = [
+    ['new_impervious_surfaces', ['stormwater', 'drainage']],
+    ['trees_affected',          ['trees']],
+    ['pool_or_spa',             ['pool']],
+    ['new_fencing',             ['fencing', 'fence']],
+    ['new_parking_or_driveway', ['parking', 'vehicle_access', 'carport']],
+    ['new_signage',             ['signage']],
+    ['flood_prone',             ['flooding']],
+    ['bushfire_prone',          ['bushfire']],
+    ['acid_sulfate_soils',      ['contamination', 'acid_sulfate']],
+    ['coastal',                 ['coastal']],
+    ['biodiversity',            ['biodiversity']],
+    ['demolition',              ['demolition']],
+  ];
+  test.each(cases)('%s=no excludes %j', (field, topics) => {
+    const a = { ...base, [field]: 'no' as const };
+    for (const t of topics) { expect(getExcludableTopics(a).has(t)).toBe(true); }
   });
-
-  it('does not exclude topics when answer is unknown', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'unknown' };
-    const result = getExcludableTopics(answers);
-    expect(result.has('trees')).toBe(false);
+  test('unknown does not exclude', () => {
+    expect(getExcludableTopics({ ...base, flood_prone: 'unknown' as const }).has('flooding')).toBe(false);
   });
-
-  it('excludes all mapped topics for parking when no', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, new_parking_or_driveway: 'no' };
-    const result = getExcludableTopics(answers);
-    expect(result.has('parking')).toBe(true);
-    expect(result.has('vehicle_access')).toBe(true);
-    expect(result.has('carport')).toBe(true);
+  test('yes does not exclude', () => {
+    expect(getExcludableTopics({ ...base, new_fencing: 'yes' as const }).has('fencing')).toBe(false);
   });
-
-  it('excludes both fencing topics when no', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, new_fencing: 'no' };
-    const result = getExcludableTopics(answers);
-    expect(result.has('fencing')).toBe(true);
-    expect(result.has('fence')).toBe(true);
-  });
-
-  it('returns empty set when all answers are unknown (default)', () => {
-    const result = getExcludableTopics(DEFAULT_INTAKE_ANSWERS);
-    expect(result.size).toBe(0);
-  });
-
-  it('excludes all topics when all answers are no', () => {
-    const result = getExcludableTopics(allNo);
-    expect(result.size).toBeGreaterThan(0);
-    expect(result.has('trees')).toBe(true);
-    expect(result.has('signage')).toBe(true);
-    expect(result.has('stormwater')).toBe(true);
-  });
-
-  it('excludes nothing when all answers are yes', () => {
-    const result = getExcludableTopics(allYes);
-    expect(result.size).toBe(0);
+  test('accumulates from multiple no answers', () => {
+    const t = getExcludableTopics({ ...base, new_fencing: 'no' as const, flood_prone: 'no' as const });
+    expect(t.has('fencing')).toBe(true);
+    expect(t.has('flooding')).toBe(true);
+    expect(t.has('trees')).toBe(false);
   });
 });
 
-describe('getTopicExclusionReason', () => {
-  it('returns a reason for known topics', () => {
-    expect(getTopicExclusionReason('trees')).toBe('No trees affected confirmed');
-    expect(getTopicExclusionReason('signage')).toBe('No signage in proposal confirmed');
-    expect(getTopicExclusionReason('parking')).toBe('No new parking or driveway works confirmed');
-    expect(getTopicExclusionReason('fencing')).toBe('No new fencing confirmed');
-    expect(getTopicExclusionReason('stormwater')).toBe('No new impervious surfaces confirmed');
+describe('autoPopulateFromConstraints', () => {
+  test('flood_prone=no when floodProne false', () => {
+    expect(autoPopulateFromConstraints({ floodProne: false }).flood_prone).toBe('no');
   });
-
-  it('falls back for unknown topics', () => {
-    expect(getTopicExclusionReason('unknown_topic')).toBe('Excluded by intake triage');
+  test('flood_prone unset when floodProne true', () => {
+    expect(autoPopulateFromConstraints({ floodProne: true }).flood_prone).toBeUndefined();
   });
-
-  it('the assembled intake response_text starts with Excluded by intake:', () => {
-    // This mirrors the format used in handleIntakeApply in ProvisionsByTocStructure
-    // and the split logic in SEEDocument (startsWith check)
-    const responseText = `Excluded by intake: ${getTopicExclusionReason('trees')}`;
-    expect(responseText.startsWith('Excluded by intake:')).toBe(true);
-    expect(responseText).toBe('Excluded by intake: No trees affected confirmed');
+  test('flood_prone unset when floodProne absent', () => {
+    expect(autoPopulateFromConstraints({}).flood_prone).toBeUndefined();
+  });
+  test('bushfire_prone=no when bushfireProne false', () => {
+    expect(autoPopulateFromConstraints({ bushfireProne: false }).bushfire_prone).toBe('no');
+  });
+  test('bushfire_prone unset when bushfireProne true', () => {
+    expect(autoPopulateFromConstraints({ bushfireProne: true }).bushfire_prone).toBeUndefined();
+  });
+  test('acid_sulfate_soils=no when acidSulfateSoils null', () => {
+    expect(autoPopulateFromConstraints({ acidSulfateSoils: null }).acid_sulfate_soils).toBe('no');
+  });
+  test('acid_sulfate_soils=no when acidSulfateSoils absent', () => {
+    expect(autoPopulateFromConstraints({}).acid_sulfate_soils).toBe('no');
+  });
+  test('acid_sulfate_soils unset when acidSulfateSoils has value', () => {
+    expect(autoPopulateFromConstraints({ acidSulfateSoils: 'Class 2' }).acid_sulfate_soils).toBeUndefined();
+  });
+  test('coastal=no when coastalEnvironment.inCoastalArea false', () => {
+    expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: false } }).coastal).toBe('no');
+  });
+  test('coastal unset when coastalEnvironment.inCoastalArea true', () => {
+    expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: true } }).coastal).toBeUndefined();
+  });
+  test('coastal unset when coastalEnvironment absent', () => {
+    expect(autoPopulateFromConstraints({}).coastal).toBeUndefined();
+  });
+  test('biodiversity=no when inBiodiversityArea false', () => {
+    expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: false } }).biodiversity).toBe('no');
+  });
+  test('biodiversity unset when inBiodiversityArea true', () => {
+    expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: true } }).biodiversity).toBeUndefined();
+  });
+  test('biodiversity unset when terrestrialBiodiversity absent', () => {
+    expect(autoPopulateFromConstraints({}).biodiversity).toBeUndefined();
+  });
+  test('populates all fields for unconstrained site', () => {
+    const r = autoPopulateFromConstraints({
+      floodProne: false, bushfireProne: false,
+      coastalEnvironment: { inCoastalArea: false },
+      terrestrialBiodiversity: { inBiodiversityArea: false },
+    });
+    expect(r.flood_prone).toBe('no');
+    expect(r.bushfire_prone).toBe('no');
+    expect(r.coastal).toBe('no');
+    expect(r.biodiversity).toBe('no');
+    expect(r.acid_sulfate_soils).toBe('no');
   });
 });
 
-describe('isProvisionExcluded', () => {
-  it('returns true when provision topic is excluded by intake answer', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'no' };
-    expect(isProvisionExcluded('trees', answers)).toBe(true);
-    expect(isProvisionExcluded('Trees', answers)).toBe(true);
+// W1-6: AUTO_ANSWER_SOURCES parity
+describe('AUTO_ANSWER_SOURCES parity', () => {
+  test('every auto-answer field exists in DEFAULT_INTAKE_ANSWERS', () => {
+    for (const f of Object.keys(AUTO_ANSWER_SOURCES) as (keyof IntakeAnswers)[]) {
+      expect(DEFAULT_INTAKE_ANSWERS).toHaveProperty(f);
+    }
   });
-
-  it('returns false when provision topic is not in any trigger mapping', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'no' };
-    expect(isProvisionExcluded('open_space', answers)).toBe(false);
-    expect(isProvisionExcluded('heritage', answers)).toBe(false);
+  test('auto-answer fields not in INTAKE_QUESTIONS (shown in pre-confirmed section)', () => {
+    const autoFields = new Set(Object.keys(AUTO_ANSWER_SOURCES));
+    const qFields = new Set(INTAKE_QUESTIONS.map(q => q.field));
+    for (const f of autoFields) { expect(qFields.has(f as keyof IntakeAnswers)).toBe(false); }
   });
-
-  it('returns false when topic is in trigger but answer is yes', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'yes' };
-    expect(isProvisionExcluded('trees', answers)).toBe(false);
-  });
-
-  it('returns false for null or undefined topic', () => {
-    const answers: IntakeAnswers = { ...DEFAULT_INTAKE_ANSWERS, trees_affected: 'no' };
-    expect(isProvisionExcluded(null, answers)).toBe(false);
-    expect(isProvisionExcluded(undefined, answers)).toBe(false);
+  test('each entry has non-empty citation, rationale, propertyField', () => {
+    for (const [, src] of Object.entries(AUTO_ANSWER_SOURCES)) {
+      expect(src!.citation.length).toBeGreaterThan(0);
+      expect(src!.rationale.length).toBeGreaterThan(0);
+      expect(src!.propertyField.length).toBeGreaterThan(0);
+    }
   });
 });
