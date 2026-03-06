@@ -27,6 +27,7 @@ import { useDASession } from '@/hooks/useDASession';
 import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
+import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/see/propertyContext';
 import { NUMERIC_MEASUREMENT_RE } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
@@ -71,36 +72,6 @@ const DEFAULT_LAYER_LABELS: Record<string, string> = {
   precinct: 'Precinct',
 };
 
-/**
- * Fix common UTF-8 encoding artifacts (mojibake)
- */
-function sanitizeText(text: string | undefined | null): string {
-  if (!text) return '';
-  return text
-    .replace(/â€"/g, '—')
-    .replace(/â€˜/g, "'")
-    .replace(/â€™/g, "'")
-    .replace(/â€œ/g, '"')
-    .replace(/â€\u009D/g, '"')
-    .replace(/â˜…/g, '★')
-    .replace(/Â²/g, '²')
-    .replace(/Â°/g, '°')
-    .replace(/â€¢/g, '•')
-    .replace(/â€¦/g, '…')
-    .replace(/Ã©/g, 'é')
-    .replace(/Ã¨/g, 'è')
-    // Fix spacing artifacts in numbers
-    .replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m')  // "1 8 0 m m $" -> "180mm"
-    .replace(/\s+\$/g, '')  // Remove trailing "$" artifacts
-    .replace(/,\s*#\s*/g, ', ')  // ", #" -> ", "
-    .replace(/[\u2018\u2019\u201C\u201D]/g, (match) => {  // Smart quotes to regular quotes
-      return match === '\u2018' || match === '\u2019' ? "'" : '"';
-    })
-    .replace(/·/g, ' · ')  // Fix middle dot spacing
-    .replace(/\s{2,}/g, ' ')  // Multiple spaces to single
-    .replace(/^[â€"\s]+/, '')
-    .trim();
-}
 
 interface TocSection {
   section_id: string;
@@ -808,340 +779,84 @@ export function ProvisionsByTocStructure({
   // Export PDF handler
   const handleExportPdf = async () => {
     try {
-      // Helper to sanitize numbers for PDF rendering (convert to safe strings)
-      const sanitizeNumberToString = (value: any, fieldName?: string): string | undefined => {
-        if (value === null || value === undefined) return undefined;
-
-        // Log the raw value
-
-        const num = typeof value === 'number' ? value : parseFloat(value);
-
-        // Filter out: NaN, Infinity, very large numbers, AND NEGATIVE NUMBERS (invalid page numbers)
-        if (isNaN(num) || !isFinite(num) || Math.abs(num) > 1e15 || num < 0) {
-          return undefined;
-        }
-
-        const result = String(Math.round(num * 100) / 100);
-        return result;
+      const heritageCtx = {
+        in_hca: heritage || false,
+        hca_name: hcaName,
+        hca_code: hcaCode || hcaName,
+        heritage_item: heritageItem,
+        item_name: heritageItemName,
+        item_number: heritageItemNumber,
       };
+      const baseContext = buildPropertyContext(
+        propertyData, lepClauseData, address, zone, formerCouncil,
+        heritageCtx, devDescriptionLocal || undefined,
+      );
 
-      // Detect corner lot from nearby roads
-      const nearbyRoads = propertyData?.nearbyRoads || [];
-      const isCornerLot = nearbyRoads.length >= 2;
-      const cornerRoadNames = isCornerLot ? nearbyRoads.slice(0, 2).map((r: any) => r.road_name) : [];
-
-      // Extract lot dimensions from property data (sanitize all numbers to strings)
-      const areaStr = sanitizeNumberToString(propertyData?.lotDimensions?.area, 'lot_area');
-      const frontageStr = sanitizeNumberToString(propertyData?.lotDimensions?.frontage, 'lot_frontage');
-      const depthStr = sanitizeNumberToString(propertyData?.lotDimensions?.depth, 'lot_depth');
-
-      const lotDimensions = (areaStr || frontageStr || depthStr) ? {
-        area: areaStr ? parseFloat(areaStr) : undefined,
-        frontage: frontageStr ? parseFloat(frontageStr) : undefined,
-        depth: depthStr ? parseFloat(depthStr) : undefined,
-        is_corner: isCornerLot,
-        corner_roads: cornerRoadNames,
-      } : undefined;
-
-      // Extract LEP controls from lepClauseData
-      const lepControls = lepClauseData ? {
-        height: lepClauseData.height_limit || undefined,
-        fsr: lepClauseData.fsr || undefined,
-        acid_sulfate_soils: lepClauseData.acid_sulfate_soils || undefined,
-        permitted_uses: lepClauseData.permitted_uses || [],
-        prohibited_uses: lepClauseData.prohibited_uses || [],
-      } : undefined;
-
-      // Extract ALL planning portal layers with their numeric values (sanitize to strings)
-      // Log to debug what layers we actually have
-
-      // Log each layer's results to see actual field names
-      if (propertyData?.planningLayers) {
-        propertyData.planningLayers.forEach((layer: any) => {
-          if (layer.results?.[0]) {
-          }
-        });
-      }
-
-      // Extract actual constraint values from each planning portal layer
-      // Helper to get the primary value field (exclude metadata like Legislative Clause, EPI Name, etc.)
-      const getLayerValue = (results: any[] | undefined): string | undefined => {
-        if (!results?.[0]) return undefined;
-        const result = results[0];
-        const metadataKeys = ['Legislative Clause', 'legislationUrl', 'EPI Name', 'Amendment', 'Commenced Date',
-                             'Published Date', 'Currency Date', 'LGA Name', 'Units', 'title', 'OBJECTID',
-                             'Shape', 'Shape_Length', 'Shape_Area', 'GlobalID'];
-        const valuesToSkip = ['LEP', 'SEPP', '']; // Skip generic "LEP" labels
-
-        // Find first non-metadata key with a meaningful value
-        for (const key of Object.keys(result)) {
-          const value = result[key];
-          if (!metadataKeys.includes(key) && value != null && !valuesToSkip.includes(value)) {
-            return String(value);
-          }
-        }
-        return undefined;
-      };
-
-      const planningPortalLayers = propertyData?.planningLayers ? {
-        heritage_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Heritage'))?.results),
-        fsr_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Floor Space'))?.results),
-        height_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Height'))?.results),
-        acid_sulfate_soils_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Acid Sulfate'))?.results),
-        local_aboriginal_land_council: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Aboriginal'))?.results),
-        sepp_requirements: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Special Provisions'))?.results),
-        land_application_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Land Application'))?.results),
-        regional_plan_boundary: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Regional Plan'))?.results),
-        land_zoning_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Zoning'))?.results),
-        tree_canopy_2019: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2019'))?.results),
-        tree_canopy_2022: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2022'))?.results),
-        terrestrial_biodiversity_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Biodiversity'))?.results),
-      } : undefined;
-
-
-      // Check for any scientific notation in the raw layer data
-      if (propertyData?.planningLayers) {
-        propertyData.planningLayers.forEach((layer: any, idx: number) => {
-          if (layer.results?.[0]) {
-            // Check for scientific notation
-            const jsonStr = JSON.stringify(layer.results[0]);
-            if (/e[+-]\d+/i.test(jsonStr)) {
-            }
-          }
-        });
-      }
-
-      // Build environmental constraints from propertyData
-      const envC = propertyData?.constraints;
-      const anef = propertyData?.anefData;
-      const environmentalConstraints = envC ? {
-        flood_prone: !!envC.floodProne,
-        bushfire_prone: !!envC.bushfireProne,
-        acid_sulfate_soils: envC.acidSulfateSoils || undefined,
-        anef_zone: !!anef?.inAnefZone,
-        anef_level: anef?.anefLevel,
-        anef_code: anef?.anefCode,
-        mine_subsidence: !!envC.mineSubsidence?.inDistrict,
-        mine_subsidence_district: envC.mineSubsidence?.districtName,
-        landslide_risk: !!envC.landslideRisk?.hasRisk,
-        contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
-        contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
-        contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
-        drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
-        terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
-        coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),
-        coastal_zones: envC.coastalEnvironment?.zones,
-      } : undefined;
-
-      // Extract Additional Local Provisions from constraints
-      const additionalLocalProvisions: string[] | undefined =
-        envC?.localProvisions && envC.localProvisions.length > 0
-          ? envC.localProvisions
-              .filter((p: any) => !p.isNearby)
-              .map((p: any) => {
-                const clause = p.clauseNumber ? `Clause ${p.clauseNumber}: ` : '';
-                const desc = p.description ? ` — ${p.description}` : '';
-                return `${clause}${p.title}${desc}`;
-              })
-          : undefined;
-
-      // Fetch Pattern Book CDC eligibility
-      let patternBookData = undefined;
-      let pathwaySummary = undefined;
-
+      // Pattern Book CDC eligibility (PDF-only — not needed for SEE export)
+      let patternBookData: PropertyContext['pattern_book_cdc'] = undefined;
+      let pathwaySummary: PropertyContext['pathway_summary'] = undefined;
       try {
-        const patternBookResponse = await fetch('/api/pathway/pattern-book-eligibility', {
+        const pbRes = await fetch('/api/pathway/pattern-book-eligibility', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ propertyData })
+          body: JSON.stringify({ propertyData }),
         });
-
-        if (patternBookResponse.ok) {
-          const patternBookResult = await patternBookResponse.json();
-          const eligibility = patternBookResult.data?.eligibility || patternBookResult;
-
+        if (pbRes.ok) {
+          const pbResult = await pbRes.json();
+          const eligibility = pbResult.data?.eligibility || pbResult;
           patternBookData = {
             status: eligibility.status || 'INELIGIBLE',
             exclusion_count: 217,
             numeric_standards_count: 199,
             override_rules_count: 9,
             blockers: eligibility.exclusionCheck?.exclusions?.map((e: any) => e.constraint) || [],
-            pathway_timeframe: eligibility.status === 'ELIGIBLE' ? '10-day approval' : undefined
+            pathway_timeframe: eligibility.status === 'ELIGIBLE' ? '10-day approval' : undefined,
           };
-
-          // Build pathway summary based on eligibility
-          const pathways = [];
-
-          // Pattern Book CDC
-          pathways.push({
-            name: 'Pattern Book CDC',
-            status: eligibility.status === 'ELIGIBLE' ? 'Available' :
-                   eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available',
-            timeframe: '10 days',
-            notes: eligibility.status === 'ELIGIBLE' ? undefined :
-                   patternBookData.blockers.length > 0 ? patternBookData.blockers[0] : 'See exclusions'
-          });
-
-          // Exempt & Complying
-          const isResidentialZone = ['R1', 'R2', 'R3', 'R4', 'RU5'].includes(zone?.split(' ')[0] || '');
-          pathways.push({
-            name: 'Exempt & Complying Development',
-            status: isResidentialZone ? 'Available' : 'Not Available',
-            timeframe: '20 days',
-            notes: isResidentialZone ? 'For eligible work types (deck, fence, carport, pool)' : 'Zone not eligible'
-          });
-
-          // Housing SEPP Low-Mid Rise
-          const isHousingSEPPZone = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0] || '');
-          pathways.push({
-            name: 'Housing SEPP (Low-Mid Rise)',
-            status: isHousingSEPPZone && !heritage ? 'Available' : 'Not Available',
-            timeframe: '25 days',
-            notes: !isHousingSEPPZone ? 'Zone not eligible' : heritage ? 'Heritage area excluded' : undefined
-          });
-
-          // Standard DA
-          pathways.push({
-            name: 'Development Application (DA)',
-            status: 'Available',
-            timeframe: '50+ days',
-            notes: 'Always available — required when other pathways excluded'
-          });
-
-          // Determine recommended pathway
-          const recommendedPathway = eligibility.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
-                                    isResidentialZone ? 'Exempt & Complying Development' :
-                                    isHousingSEPPZone && !heritage ? 'Housing SEPP (Low-Mid Rise)' :
-                                    'Development Application (DA)';
-
+          const isResZone = ['R1', 'R2', 'R3', 'R4', 'RU5'].includes(zone?.split(' ')[0] || '');
+          const isHousingZone = ['R1', 'R2', 'R3', 'R4'].includes(zone?.split(' ')[0] || '');
+          const recommended =
+            eligibility.status === 'ELIGIBLE' ? 'Pattern Book CDC' :
+            isResZone ? 'Exempt & Complying Development' :
+            isHousingZone && !heritage ? 'Housing SEPP (Low-Mid Rise)' :
+            'Development Application (DA)';
           pathwaySummary = {
-            recommended_pathway: recommendedPathway,
-            pathways
+            recommended_pathway: recommended,
+            pathways: [
+              { name: 'Pattern Book CDC', status: eligibility.status === 'ELIGIBLE' ? 'Available' : eligibility.status === 'CONDITIONAL' ? 'Conditional' : 'Not Available', timeframe: '10 days', notes: eligibility.status === 'ELIGIBLE' ? undefined : patternBookData.blockers?.length ? patternBookData.blockers[0] : 'See exclusions' },
+              { name: 'Exempt & Complying Development', status: isResZone ? 'Available' : 'Not Available', timeframe: '20 days', notes: isResZone ? 'For eligible work types (deck, fence, carport, pool)' : 'Zone not eligible' },
+              { name: 'Housing SEPP (Low-Mid Rise)', status: isHousingZone && !heritage ? 'Available' : 'Not Available', timeframe: '25 days', notes: !isHousingZone ? 'Zone not eligible' : heritage ? 'Heritage area excluded' : undefined },
+              { name: 'Development Application (DA)', status: 'Available', timeframe: '50+ days', notes: 'Always available — required when other pathways excluded' },
+            ],
           };
         }
-      } catch (err) {
+      } catch {
         // Continue without Pattern Book data
       }
 
-      // Build property context with real data
       const propertyContext: PropertyContext = {
-        address: address || propertyData?.address || 'Property Address',
-        zone: zone || 'Unknown',
-        former_council: formerCouncil,
-        heritage_status: {
-          in_hca: heritage || false,
-          hca_name: hcaName,
-          hca_code: hcaCode || hcaName,
-          heritage_item: heritageItem,
-          item_name: heritageItemName,
-          item_number: heritageItemNumber,
-        },
-        lot_dimensions: lotDimensions,
-        lep_controls: lepControls,
-        planning_portal_layers: planningPortalLayers,
-        environmental_constraints: environmentalConstraints,
-        additional_local_provisions: additionalLocalProvisions,
-        hca_details: undefined, // TODO: Fetch from HCA data
+        ...baseContext,
         pattern_book_cdc: patternBookData,
         pathway_summary: pathwaySummary,
-        development_description: developmentDescription || undefined,
       };
 
-      // Always export filtered provisions (respects layer, topic, and search filters)
-      const provisionsToExport = filteredProvisions;
-
-      // Check if we have provisions to export
-      if (!provisionsToExport || provisionsToExport.length === 0) {
+      const provisionsForPdf = await preparePdfProvisions(filteredProvisions, daResponses ?? undefined);
+      if (provisionsForPdf.length === 0) {
         alert('No provisions to export. Please adjust your filters.');
         return;
       }
 
-
-      // Build active filters array for context
       const activeFilters: string[] = [];
       if (layerFilter) {
         const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
         const label = councilLabels ? councilLabels[layerFilter] : DEFAULT_LAYER_LABELS[layerFilter];
         activeFilters.push(label);
       }
-      if (topicFilters.length > 0) {
-        activeFilters.push(topicFilters.map(t => t.replace(/_/g, ' ')).join(' + '));
-      }
-      if (debouncedSearch) {
-        activeFilters.push(`Search: "${debouncedSearch}"`);
-      }
-      if (refinements.mandatoryOnly) {
-        activeFilters.push('Mandatory only');
-      }
-      if (refinements.withMeasurements) {
-        activeFilters.push('With measurements');
-      }
-      if (!layerFilter && topicFilters.length === 0 && !debouncedSearch && !refinements.mandatoryOnly && !refinements.withMeasurements) {
-        activeFilters.push('All provisions for this property');
-      }
+      if (topicFilters.length > 0) activeFilters.push(topicFilters.map(t => t.replace(/_/g, ' ')).join(' + '));
+      if (debouncedSearch) activeFilters.push(`Search: "${debouncedSearch}"`);
+      if (refinements.mandatoryOnly) activeFilters.push('Mandatory only');
+      if (refinements.withMeasurements) activeFilters.push('With measurements');
+      if (activeFilters.length === 0) activeFilters.push('All provisions for this property');
 
-      // Filter out Table of Contents entries before converting to PDF
-      const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
-      const actualProvisions = provisionsToExport.filter((p: any) => {
-        const isTOC = isTableOfContents(p.provision_text || '');
-        if (isTOC) {
-        }
-        return !isTOC;
-      });
-
-      // Convert provisions to PDF format (sanitize ALL numeric fields)
-      const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any, idx: number) => {
-        // Sanitize page numbers
-        const pdfPage = sanitizeNumberToString(p.pdf_page, `provision_${p.id}_pdf_page`);
-        const pdfPrintedPage = sanitizeNumberToString(p.pdf_printed_page, `provision_${p.id}_pdf_printed_page`);
-
-        // Log if we're sanitizing the known problematic provisions
-        if (p.id === 78593 || p.id === 86746) {
-        }
-
-        const finalPdfPage = pdfPage ? parseInt(pdfPage) : undefined;
-        const finalPdfPrintedPage = pdfPrintedPage ? parseInt(pdfPrintedPage) : pdfPage ? parseInt(pdfPage) : 1;
-
-        if (p.id === 78593 || p.id === 86746) {
-        }
-
-        const daResponse = isDaMode ? daResponses?.get(p.id) : undefined;
-        return {
-          id: p.id,
-          provision_text: sanitizeText(p.provision_text),
-          v2_marker: p.v2_marker || '',
-          v2_topic: p.v2_topic || '',
-          document_name: p.document_name || '',
-          v2_dcp_part: p.v2_dcp_part || '',
-          section_header: p.section_header,
-          pdf_page: finalPdfPage,
-          pdf_printed_page: finalPdfPrintedPage,
-          v2_is_actionable: p.v2_is_actionable,
-          zone_applicability: p.zone_applicability,
-          ref_number: p.ref_number,
-          ...(daResponse?.compliance_status && {
-            da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
-            ...(daResponse.response_text && { da_response: daResponse.response_text }),
-          }),
-        };
-      });
-
-      // Log to find any bad data
-
-      // Check for scientific notation in provision text
-      let scientificNotationFound = false;
-      provisionsForPdf.forEach((p, idx) => {
-        const text = p.provision_text || '';
-        if (/e[+-]\d+/i.test(text)) {
-          scientificNotationFound = true;
-        }
-      });
-      if (!scientificNotationFound) {
-      }
-
-      // Log property context for debugging
-
-      // Generate PDF
       const noFiltersActive = !layerFilter && topicFilters.length === 0 && !debouncedSearch;
       const hasResponses = isDaMode && daResponses && daResponses.size > 0;
       const doc = (
@@ -1156,10 +871,7 @@ export function ProvisionsByTocStructure({
         />
       );
 
-
       const blob = await pdf(doc).toBlob();
-
-      // Create download link
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1168,8 +880,6 @@ export function ProvisionsByTocStructure({
         ? `Draft-SEE-${formerCouncil}-${dateStr}.pdf`
         : `DCP-Provisions-${formerCouncil}-${dateStr}.pdf`;
       link.click();
-
-      // Cleanup
       URL.revokeObjectURL(url);
     } catch (error) {
       alert(`Failed to generate PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
@@ -1183,146 +893,34 @@ export function ProvisionsByTocStructure({
       // saved by DAResponseCapture (which doesn't update parent daResponses state) are current.
       await refreshResponses();
 
-      // Build provisionsForPdf (same pipeline as DCP export)
-      const { isTableOfContents } = await import('@/lib/pdf/formatProvisions');
+      const heritageCtx = {
+        in_hca: heritage || false,
+        hca_name: hcaName,
+        hca_code: hcaCode || hcaName,
+        heritage_item: heritageItem,
+        item_name: heritageItemName,
+        item_number: heritageItemNumber,
+      };
+      const propertyContext = buildPropertyContext(
+        propertyData, lepClauseData, address, zone, formerCouncil,
+        heritageCtx, devDescriptionLocal || undefined,
+      );
+
       // Use allProvisions — topic filter is a navigation tool, not a scope gate.
       // The SEE must cover the full provision set regardless of what filter is active.
-      const actualProvisions = allProvisions.filter((p: any) => !isTableOfContents(p.provision_text || ''));
-
-      const provisionsForPdf: ProvisionForPDF[] = actualProvisions.map((p: any) => {
-        const pdfPage = p.pdf_page ? parseInt(String(p.pdf_page)) : undefined;
-        const pdfPrintedPage = p.pdf_printed_page ? parseInt(String(p.pdf_printed_page)) : pdfPage ?? 1;
-        const daResponse = daResponses?.get(p.id);
-        return {
-          id: p.id,
-          provision_text: sanitizeText(p.provision_text),
-          v2_marker: p.v2_marker || '',
-          v2_topic: p.v2_topic || '',
-          document_name: p.document_name || '',
-          v2_dcp_part: p.v2_dcp_part || '',
-          section_header: p.section_header,
-          pdf_page: pdfPage,
-          pdf_printed_page: pdfPrintedPage,
-          v2_is_actionable: p.v2_is_actionable,
-          zone_applicability: p.zone_applicability,
-          ref_number: p.ref_number,
-          ...(daResponse?.compliance_status && {
-            da_status: daResponse.compliance_status as 'complies' | 'varies' | 'not_applicable' | undefined,
-            ...(daResponse.response_text && { da_response: daResponse.response_text }),
-          }),
-        };
-      });
-
+      const provisionsForPdf = await preparePdfProvisions(allProvisions, daResponses ?? undefined);
       const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
 
-      // Build property context — same field paths as handleExportPdf (propertyData uses camelCase)
-      const nearbyRoads = propertyData?.nearbyRoads || [];
-      const isCornerLot = nearbyRoads.length >= 2;
-      const lotDimensions = (propertyData?.lotDimensions?.area || propertyData?.lotDimensions?.frontage) ? {
-        area: propertyData?.lotDimensions?.area,
-        frontage: propertyData?.lotDimensions?.frontage,
-        depth: propertyData?.lotDimensions?.depth,
-        is_corner: isCornerLot,
-        corner_roads: isCornerLot ? nearbyRoads.slice(0, 2).map((r: any) => r.road_name) : [],
-      } : undefined;
-
-      const lepControls = lepClauseData ? {
-        height: lepClauseData.height_limit || undefined,
-        fsr: lepClauseData.fsr || undefined,
-        acid_sulfate_soils: lepClauseData.acid_sulfate_soils || undefined,
-        permitted_uses: lepClauseData.permitted_uses || [],
-        prohibited_uses: lepClauseData.prohibited_uses || [],
-      } : undefined;
-
-      const getLayerValue = (results: any[] | undefined): string | undefined => {
-        if (!results?.[0]) return undefined;
-        const result = results[0];
-        const metadataKeys = ['Legislative Clause', 'legislationUrl', 'EPI Name', 'Amendment', 'Commenced Date',
-                             'Published Date', 'Currency Date', 'LGA Name', 'Units', 'title', 'OBJECTID',
-                             'Shape', 'Shape_Length', 'Shape_Area', 'GlobalID'];
-        const valuesToSkip = ['LEP', 'SEPP', ''];
-        for (const key of Object.keys(result)) {
-          const value = result[key];
-          if (!metadataKeys.includes(key) && value != null && !valuesToSkip.includes(String(value))) return String(value);
-        }
-        return undefined;
-      };
-
-      const planningPortalLayers = propertyData?.planningLayers ? {
-        heritage_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Heritage'))?.results),
-        fsr_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Floor Space'))?.results),
-        height_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Height'))?.results),
-        acid_sulfate_soils_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Acid Sulfate'))?.results),
-        regional_plan_boundary: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Regional Plan'))?.results),
-        land_zoning_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Zoning'))?.results),
-        tree_canopy_2022: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('2022'))?.results),
-        terrestrial_biodiversity_map: getLayerValue(propertyData.planningLayers.find((l: any) => l.layerName?.includes('Biodiversity'))?.results),
-      } : undefined;
-
-      const envC = propertyData?.constraints;
-      const anef = propertyData?.anefData;
-      const environmentalConstraints = envC ? {
-        flood_prone: !!envC.floodProne,
-        bushfire_prone: !!envC.bushfireProne,
-        acid_sulfate_soils: envC.acidSulfateSoils || undefined,
-        anef_zone: !!anef?.inAnefZone,
-        anef_level: anef?.anefLevel,
-        anef_code: anef?.anefCode,
-        mine_subsidence: !!envC.mineSubsidence?.inDistrict,
-        mine_subsidence_district: envC.mineSubsidence?.districtName,
-        landslide_risk: !!envC.landslideRisk?.hasRisk,
-        contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
-        contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
-        contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
-        drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
-        terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
-        coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),
-        coastal_zones: envC.coastalEnvironment?.zones,
-      } : undefined;
-
-      const additionalLocalProvisions: string[] | undefined =
-        envC?.localProvisions && envC.localProvisions.length > 0
-          ? envC.localProvisions
-              .filter((p: any) => !p.isNearby)
-              .map((p: any) => {
-                const clause = p.clauseNumber ? `Clause ${p.clauseNumber}: ` : '';
-                const desc = p.description ? ` — ${p.description}` : '';
-                return `${clause}${p.title}${desc}`;
-              })
-          : undefined;
-
-      const propertyContext: PropertyContext = {
-        address: address || propertyData?.address || 'Property Address',
-        zone: zone || 'Unknown',
-        former_council: formerCouncil,
-        heritage_status: {
-          in_hca: heritage || false,
-          hca_name: hcaName,
-          hca_code: hcaCode || hcaName,
-          heritage_item: heritageItem,
-          item_name: heritageItemName,
-          item_number: heritageItemNumber,
-        },
-        lot_dimensions: lotDimensions,
-        lep_controls: lepControls,
-        planning_portal_layers: planningPortalLayers,
-        environmental_constraints: environmentalConstraints,
-        additional_local_provisions: additionalLocalProvisions,
-        development_description: devDescriptionLocal || undefined,
-      };
-
-      const resolvedAddress = address || propertyData?.address || '';
-
-      // Build new pipeline sections from SEPP/LEP property data
       const pathwayDetermination = buildPathwayDetermination(
         propertyContext.zone,
         propertyContext.heritage_status?.in_hca ?? false,
         propertyContext.heritage_status?.heritage_item ?? false,
-        propertyData?.constraints
+        propertyData?.constraints,
       );
       const seppAssessableControls = buildSeppControls(propertyData?.constraints, lepClauseData);
       const lepAssessableStandards = buildLepStandards(propertyContext, lepClauseData);
 
+      const resolvedAddress = address || propertyData?.address || '';
       const seeData: SEEDocumentData = {
         property: propertyContext,
         development_description: devDescriptionLocal,
