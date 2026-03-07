@@ -115,10 +115,11 @@ export function useDASession(
   useEffect(() => {
     if (!address) return;
 
+    const controller = new AbortController();
+
     const init = async () => {
       setIsLoading(true);
       try {
-        // Check localStorage for existing token
         const storageKey = `da_session_token_${address}`;
         const existing = localStorage.getItem(storageKey);
 
@@ -131,6 +132,7 @@ export function useDASession(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ address, former_council: formerCouncil, zone }),
+            signal: controller.signal,
           });
           if (res.ok) {
             const data = await res.json();
@@ -140,6 +142,7 @@ export function useDASession(
           }
         }
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') return;
         console.error('[useDASession] Init error:', err);
         setError(err instanceof Error ? err : new Error(String(err)));
       } finally {
@@ -148,6 +151,7 @@ export function useDASession(
     };
 
     init();
+    return () => controller.abort();
   }, [address, formerCouncil, zone, loadResponses]);
 
   return {

@@ -28,7 +28,7 @@ import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
 import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/see/propertyContext';
-import { NUMERIC_MEASUREMENT_RE } from '@/lib/see/provisionUtils';
+import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
@@ -368,51 +368,12 @@ export function ProvisionsByTocStructure({
     return Object.values(part.sections).flatMap(s => s.provisions);
   }, [selectedPart, selectedSection, tocStructure]);
 
-  // Deduplicate provisions by text content (safety net for any DB/API duplicates)
-  // Strip C1/O1/01 markers and normalize whitespace before comparison
-  // Also exclude TOC, definitions, and non-actionable provisions
-  // NOTE: Do NOT filter by negative page numbers - they're just PDF numbering artifacts
-  const selectedProvisions = useMemo(() => {
-    // First pass: Exclude non-provisions
-    const validProvisions = rawSelectedProvisions.filter(p => {
-      const text = p.provision_text || '';
-
-      // Exclude TOC entries (by type or pattern)
-      if (p.v2_provision_type === 'TOC') return false;
-
-      // Text-based TOC detection: multiple section numbers in sequence
-      const sectionNumberPattern = /\d+\.\d+(?:\.\d+)*\s+[A-Z][a-z]/g;
-      const sectionMatches = text.match(sectionNumberPattern);
-      if (sectionMatches && sectionMatches.length >= 3) return false;
-
-      // Exclude non-actionable provisions (intro text, section headers, cross-references)
-      if (p.v2_is_actionable === false) return false;
-
-      // Exclude definitions
-      const isDefinitions =
-        text.includes('KEY TERMS') ||
-        (text.includes('Definitions') && text.includes('means a')) ||
-        p.v2_topic?.toLowerCase() === 'definitions';
-      if (isDefinitions) return false;
-
-      return true;
-    });
-
-    // Second pass: Deduplicate
-    const seenTexts = new Set<string>();
-    return validProvisions.filter(p => {
-      // Normalize: strip markers, collapse whitespace
-      const normalized = (p.provision_text || '')
-        .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
-        .replace(/\s+/g, ' ')  // Collapse all whitespace to single spaces
-        .trim()
-        .substring(0, 100);
-      const key = `${normalized}|${p.pdf_page || 0}`;
-      if (seenTexts.has(key)) return false;
-      seenTexts.add(key);
-      return true;
-    });
-  }, [rawSelectedProvisions]);
+  // Filter and deduplicate provisions for the currently selected part/section.
+  // Shared logic lives in filterAndDedupeProvisions (provisionUtils.ts).
+  const selectedProvisions = useMemo(
+    () => filterAndDedupeProvisions(rawSelectedProvisions),
+    [rawSelectedProvisions],
+  );
 
   // TODO: Rework numeric checker feature - temporarily disabled
   // Compute numeric compliance results when check values or provisions change
@@ -433,58 +394,15 @@ export function ProvisionsByTocStructure({
   //   setComplianceResults(results);
   // }, [numericCheckValues, tocStructure]);
 
-  // Get ALL provisions across all parts (for "export all" option and task mode)
-  // Use tocStructure (by_toc) which has actual provision data, not completeTocStructure (navigation only)
-  // Excludes TOC entries, negative pages, and definitions at source (not counted anywhere)
+  // Get ALL provisions across all parts (for "export all" option and task mode).
+  // Uses tocStructure (by_toc) which has actual provision data.
+  // Shared filter+dedupe logic lives in filterAndDedupeProvisions (provisionUtils.ts).
   const allProvisions = useMemo(() => {
     if (!tocStructure || Object.keys(tocStructure).length === 0) return [];
-    const allParts = Object.values(tocStructure);
-    const provisions = allParts.flatMap((part: any) =>
+    const flat = (Object.values(tocStructure) as any[]).flatMap((part: any) =>
       Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
     );
-
-    // First pass: Exclude non-provisions (TOC, definitions, non-actionable)
-    // NOTE: Do NOT filter by negative page numbers - they're just PDF numbering artifacts.
-    // Heritage controls for HCAs often have negative printed page numbers but are real provisions.
-    const validProvisions = provisions.filter((p: any) => {
-      const text = p.provision_text || '';
-
-      // Exclude TOC entries (by type or pattern)
-      if (p.v2_provision_type === 'TOC') return false;
-
-      // Text-based TOC detection: multiple section numbers in sequence
-      // e.g., "8.4.1.1 Public domain elements 8.4.1.2 Subdivision 8.4.1.3 Setbacks..."
-      const sectionNumberPattern = /\d+\.\d+(?:\.\d+)*\s+[A-Z][a-z]/g;
-      const sectionMatches = text.match(sectionNumberPattern);
-      if (sectionMatches && sectionMatches.length >= 3) return false; // 3+ section numbers = TOC
-
-      // Exclude non-actionable provisions (intro text, section headers, cross-references)
-      if (p.v2_is_actionable === false) return false;
-
-      // Exclude definitions (informational reference, not actionable controls)
-      const isDefinitions =
-        text.includes('KEY TERMS') ||
-        (text.includes('Definitions') && text.includes('means a')) ||
-        p.v2_topic?.toLowerCase() === 'definitions';
-      if (isDefinitions) return false;
-
-      return true;
-    });
-
-    // Second pass: Deduplicate - strip markers and normalize whitespace
-    const seenTexts = new Set<string>();
-    return validProvisions.filter((p: any) => {
-      // Normalize: strip markers, collapse whitespace
-      const normalized = (p.provision_text || '')
-        .replace(/^(C|O)?\d+\s+/gm, '')  // Strip "C1 ", "O1 ", "01 " from line starts
-        .replace(/\s+/g, ' ')  // Collapse all whitespace to single spaces
-        .trim()
-        .substring(0, 100);
-      const key = `${normalized}|${p.pdf_page || 0}`;
-      if (seenTexts.has(key)) return false;
-      seenTexts.add(key);
-      return true;
-    });
+    return filterAndDedupeProvisions(flat);
   }, [tocStructure]);
 
   // Base provisions - mode-aware: task mode shows all, structure mode shows selected
