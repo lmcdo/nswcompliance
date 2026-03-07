@@ -365,9 +365,10 @@ export default function QuickGuidePage() {
           <div className="p-4 md:p-6">
             <div className="bg-white border border-teal-200 rounded-lg p-3 mb-4">
               <p className="text-xs md:text-sm text-teal-900">
-                <strong>For Standard DAs.</strong> Activate DA Mode in the DCP tab to record compliance notes
-                against each provision and export a pre-populated Statement of Environmental Effects draft.
-                The three-step workflow is shown in large numbered labels in the DCP tab.
+                <strong>For Standard DAs.</strong> Activate DA Mode in the DCP tab to record compliance
+                positions against each provision and export a pre-populated Statement of Environmental
+                Effects draft. The workflow is shown in numbered steps in the DCP tab. Your session
+                is saved server-side — switching to SEPP or LEP tabs and back preserves all progress.
               </p>
             </div>
 
@@ -377,9 +378,10 @@ export default function QuickGuidePage() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 text-sm">Enable DA Mode</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    The DA Mode button sits at the top left of the DCP tab with a large ① label.
-                    Toggle it on to unlock the development description form and annotation controls.
-                    The button turns teal when active.
+                    Toggle the DA Mode button at the top left of the DCP tab. The button turns teal when active.
+                    DA Mode suppresses objective provisions and heritage descriptive statements — only
+                    enforceable controls (C-badged) are shown, keeping the provision list focused on
+                    what a SEE compliance table actually assesses.
                   </div>
                 </div>
               </div>
@@ -389,21 +391,21 @@ export default function QuickGuidePage() {
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 text-sm">Set Development Type &amp; Run Triage</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    The ② panel has two fields: development type (dropdown) and works description (free text).
-                    These feed directly into the SEE cover page introduction.
+                    Select development type (dropdown) and enter a works description — these feed into
+                    the SEE cover page introduction sentence.
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Below the fields, click <strong>Run triage →</strong> to open the triage dialog.
-                    Answer 6 yes/no questions about your works (impervious surfaces, trees, pools, fencing,
-                    parking, signage). Provisions are excluded only when their trigger is factually impossible —
-                    "Don’t know" always keeps provisions in scope.
+                    Click <strong>Run triage →</strong> to open the triage dialog. Nine questions are
+                    pre-confirmed from property data (flood, bushfire, acid sulfate soils, coastal,
+                    biodiversity, mine subsidence, landslide, contaminated land, drinking water catchment).
+                    Answer the remaining 7 manually: new impervious surfaces, trees affected, pool or spa,
+                    new fencing, new parking or driveway, new signage, demolition.
+                    Provisions are excluded only when their trigger is factually absent —
+                    &ldquo;Don&rsquo;t know&rdquo; always keeps provisions in scope.
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    <strong>First-class passengers:</strong> Heritage Conservation Area and Precinct provisions
-                    are shown first in the scope summary and cannot be triaged out — they are always in scope
-                    for properties subject to them. After triage, the ② panel shows your confirmed scope:
-                    Heritage layer count, other included topics, and excluded topics (collapsible).
-                    A completion counter shows how many provisions are assessed, triaged out, and still to review.
+                    After triage, the scope summary shows Heritage and Precinct provisions (always in scope),
+                    included topics with counts, and excluded topics. A completion counter tracks progress.
                   </div>
                 </div>
               </div>
@@ -411,30 +413,53 @@ export default function QuickGuidePage() {
               <div className="flex gap-3">
                 <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">③</span>
                 <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-gray-900 text-sm">Review &amp; Annotate Provisions</div>
+                  <div className="font-semibold text-gray-900 text-sm">Narrow Scope by DCP Chapter (Document View)</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Use topic filter chips above the provisions list to focus on one area at a time.
-                    For each provision, select <strong>Complies</strong>, <strong>Varies</strong>, or <strong>N/A</strong>
-                    and add a compliance note. Saves automatically as you work.
-                    Triaged-out provisions are locked as "N/A · set by intake" with no manual action needed.
+                    Switch to <strong>Document</strong> view (toggle in the DCP tab header) to navigate
+                    provisions by DCP chapter and part — exactly as they appear in the DCP document.
+                    In DA Mode, hover any chapter in the left sidebar to reveal an
+                    <strong> × </strong> dismiss button. Click it to assert the entire chapter as not
+                    applicable, choose a preset reason or type your own, and confirm. The chapter collapses
+                    with a strikethrough and its provisions are removed from the live count and the SEE.
+                    Use Undo to restore. Dismissed chapters are stored in your session and survive page refreshes.
                   </div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Assessment is non-linear — work by topic across multiple sessions.
-                    The completion counter in the ② panel always reflects your current progress.
+                    <strong>When to use:</strong> A pool in a residential area has Retail, Subdivision,
+                    Commercial and Demolition chapters in scope from the DCP but none apply. Dismiss each
+                    in 30 seconds each — a 600-provision list collapses to ~50 live provisions.
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-3">
-                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">4</span>
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">④</span>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold text-gray-900 text-sm">Annotate Live Provisions</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    For each remaining provision, select <strong>Complies</strong>, <strong>Varies</strong>,
+                    or <strong>N/A</strong> and add a compliance note. Use the Topic view for keyword search
+                    and topic filter chips, or Document view to work chapter-by-chapter.
+                    Saves automatically. Assessment is non-linear — pick up across multiple sessions.
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <span className="flex-shrink-0 w-6 h-6 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">⑤</span>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-gray-900 text-sm">Export Statement of Environmental Effects</div>
                   <div className="text-xs text-gray-600 mt-1">
-                    Click <strong>Export SEE Draft</strong> to generate a PDF. If any provisions remain
-                    unannotated, the dialog names the count so you can decide whether to export now or
-                    continue reviewing. The exported PDF includes annotated provisions, compliance notes,
-                    and a cover page with the confirmed triage answers as an audit trail.
-                    You can re-export as many times as needed as the design evolves.
+                    Click <strong>Export SEE Draft</strong> to generate a 7-page PDF structured as a
+                    professional SEE document: site context, approval pathway, SEPP controls, LEP standards,
+                    and DCP assessment.
+                  </div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    The DCP section exports as two schedules:
+                    <strong> Schedule A</strong> — compliance table of live provisions (Complies / Varies / N/A);
+                    <strong> Schedule B</strong> — table of dismissed DCP chapters with the planner&rsquo;s
+                    stated basis for non-applicability. The cover statement references Schedule B by chapter
+                    count, providing a legally traceable audit trail for every excluded provision.
+                    Re-export any time as the design evolves.
                   </div>
                 </div>
               </div>
@@ -442,9 +467,10 @@ export default function QuickGuidePage() {
 
             <div className="mt-4 p-3 bg-teal-100 border border-teal-200 rounded-lg">
               <p className="text-xs text-teal-900">
-                <strong>Audit trail:</strong> The SEE cover page records each confirmed triage answer.
-                Every N/A exclusion traces directly to a factual input — legally defensible, no guesswork.
-                The export is a dated snapshot; the session remains fully editable after export.
+                <strong>Defensibility:</strong> Every N/A exclusion in Schedule A traces to a confirmed
+                intake answer. Every chapter exclusion in Schedule B carries the planner&rsquo;s stated reason
+                and references the actual DCP chapter name — verifiable by a certifier against the DCP document.
+                The triage answers are printed on the SEE cover page as an audit trail.
               </p>
             </div>
           </div>
@@ -467,7 +493,11 @@ export default function QuickGuidePage() {
             </div>
             <div className="flex gap-2">
               <span className="text-teal-600">•</span>
-              <span><strong>Topic Filters (DCP tab):</strong> Use to show only relevant provisions (Parking, Heritage, etc.)</span>
+              <span><strong>Topic / Document toggle (DCP tab):</strong> Topic view = keyword search by provision type; Document view = navigate by DCP chapter and part, matching the printed document structure</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="text-teal-600">•</span>
+              <span><strong>Chapter dismiss (DA Mode + Document view):</strong> Hover a chapter in the sidebar to reveal × — dismisses all provisions in that chapter with a stated reason, recorded in Schedule B of the SEE</span>
             </div>
             <div className="flex gap-2">
               <span className="text-teal-600">•</span>
