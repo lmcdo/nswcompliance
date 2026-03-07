@@ -614,33 +614,46 @@ export function StateLevelControls({
         {!collapsedSections.sepp && (
           <CardContent className="pt-0 space-y-4">
             {/* Show ALL detected SEPPs from Planning Portal */}
-            {propertyData?.constraints?.applicableSepps && propertyData.constraints.applicableSepps.length > 0 && (
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                <div className="text-sm font-semibold text-purple-900 mb-2">
-                  Applicable State Policies (from Planning Portal)
-                </div>
-                <div className="space-y-1">
-                  {propertyData.constraints.applicableSepps.map((sepp: string) => {
-                    const fullName = sepp === 'SEPP_SUSTAINABLE_BUILDINGS_2022' || sepp === 'SEPP_SUSTAINABLE_BUILDINGS' 
-                      ? 'State Environmental Planning Policy (Sustainable Buildings) 2022'
-                      : sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
-                      ? 'State Environmental Planning Policy (Housing) 2021'
-                      : sepp === 'SEPP_RESILIENCE_HAZARDS_2021'
-                      ? 'State Environmental Planning Policy (Resilience and Hazards) 2021'
-                      : sepp.replace(/_/g, ' ');
-                    
-                    return (
-                      <div key={sepp} className="text-xs text-purple-900">
-                        • {fullName}
+            {propertyData?.constraints?.applicableSepps && propertyData.constraints.applicableSepps.length > 0 && (() => {
+              const SEPP_NAMES: Record<string, string> = {
+                SEPP_SUSTAINABLE_BUILDINGS_2022: 'SEPP (Sustainable Buildings) 2022',
+                SEPP_SUSTAINABLE_BUILDINGS: 'SEPP (Sustainable Buildings) 2022',
+                SEPP_HOUSING_2021: 'SEPP (Housing) 2021',
+                SEPP_65: 'SEPP (Housing) 2021',
+                SEPP_RESILIENCE_HAZARDS_2021: 'SEPP (Resilience and Hazards) 2021',
+              };
+              const STRUCTURED_KEYS = new Set(Object.keys(SEPP_NAMES));
+              const structured = propertyData.constraints.applicableSepps.filter((s: string) => STRUCTURED_KEYS.has(s));
+              const unstructured = propertyData.constraints.applicableSepps.filter((s: string) => !STRUCTURED_KEYS.has(s));
+              return (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
+                  <div className="text-sm font-semibold text-purple-900 mb-2">
+                    Applicable State Policies (from Planning Portal)
+                  </div>
+                  {structured.length > 0 && (
+                    <div className="space-y-1 mb-2">
+                      {structured.map((sepp: string) => (
+                        <div key={sepp} className="text-xs text-purple-900">
+                          ✓ {SEPP_NAMES[sepp]} — structured requirements shown below
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {unstructured.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-purple-200">
+                      <div className="text-xs font-semibold text-amber-800 mb-1">
+                        Assess manually — no structured data available:
                       </div>
-                    );
-                  })}
+                      {unstructured.map((sepp: string) => (
+                        <div key={sepp} className="text-xs text-amber-700">
+                          ⚠ {sepp.replace(/_/g, ' ')}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="text-xs text-purple-700 mt-2">
-                  Structured requirements available for: State Environmental Planning Policy (Sustainable Buildings) 2022, State Environmental Planning Policy (Housing) 2021 including Apartment Design Guide, State Environmental Planning Policy (Resilience and Hazards) 2021 Chapter 4 Contamination, State Environmental Planning Policy (Housing) 2021 Section 26 Secondary Dwellings
-                </div>
-              </div>
-            )}
+              );
+            })()}
             
             {/* Planning Portal Source Layers - Purple shades for cohesion with left column Special Provisions */}
             {(sustainableInfo.waterTarget || sustainableInfo.climateZone || sustainableInfo.basixArea) && (

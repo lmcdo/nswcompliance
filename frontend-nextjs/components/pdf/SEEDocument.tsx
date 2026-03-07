@@ -471,6 +471,50 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         )}
 
+        {/* ---- 2.6 Site Suitability Assessment (X20 — s 4.15(1)(c)) ---- */}
+        <View style={{ ...styles.section, marginTop: 8 }}>
+          <Text style={styles.sectionTitle}>2.6 Site Suitability Assessment (EP&A Act s 4.15(1)(c))</Text>
+          <View style={styles.dataTable}>
+            {lot_dimensions?.area && (
+              <DataRow label="Lot Area:" value={`${Math.round(lot_dimensions.area).toLocaleString()} m²`} />
+            )}
+            {lot_dimensions?.frontage && (
+              <DataRow label="Lot Frontage:" value={`${lot_dimensions.frontage.toFixed(1)} m`} />
+            )}
+            {lot_dimensions?.depth && (
+              <DataRow label="Lot Depth:" value={`${lot_dimensions.depth.toFixed(1)} m`} />
+            )}
+            {lot_dimensions?.is_corner !== undefined && (
+              <DataRow
+                label="Corner Lot:"
+                value={lot_dimensions.is_corner
+                  ? `Yes${lot_dimensions.corner_roads?.length ? ` (${lot_dimensions.corner_roads.join(' / ')})` : ''}`
+                  : 'No'}
+              />
+            )}
+            {environmental_constraints && (
+              <>
+                <DataRow label="Flood Prone:" value={environmental_constraints.flood_prone ? 'Yes — refer Section 2.3' : 'No'} />
+                <DataRow label="Bushfire Prone:" value={environmental_constraints.bushfire_prone ? 'Yes — refer Section 2.3' : 'No'} />
+                {environmental_constraints.coastal_management && (
+                  <DataRow
+                    label="Coastal Management:"
+                    value={`Yes${environmental_constraints.coastal_zones?.length ? ` — ${environmental_constraints.coastal_zones.join(', ')}` : ''}`}
+                  />
+                )}
+              </>
+            )}
+          </View>
+          <View style={{ marginTop: 5, padding: 6, border: '1pt solid #e5e7eb', backgroundColor: '#f9fafb' }}>
+            <Text style={{ fontSize: 9, color: '#374151', fontFamily: 'Helvetica-Bold', marginBottom: 2 }}>
+              Site suitability conclusion:
+            </Text>
+            <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
+              [To be completed by the applicant — address the suitability of the site and proposed development having regard to the above characteristics and environmental constraints.]
+            </Text>
+          </View>
+        </View>
+
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
           <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
