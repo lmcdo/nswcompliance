@@ -1168,6 +1168,26 @@ export function StateLevelControls({
                 </div>
               )}
 
+              {/* X18: Accelerated TOD warning — LEP controls remain in force until rezoning gazetted */}
+              {acceleratedTodLayer?.results?.length > 0 && (
+                <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-semibold text-amber-900">
+                      Accelerated TOD Precinct — LEP controls remain in force
+                    </p>
+                    <p className="text-xs text-amber-800 mt-1">
+                      This site is within an <strong>Accelerated TOD rezoning area</strong>.
+                      The TOD bonus FSR and height standards do <strong>not yet apply</strong> — current LEP controls
+                      remain in force until the rezoning is gazetted.
+                      {propertyData?.constraints?.acceleratedTOD?.expectedRezoning
+                        ? ` Rezoning expected: ${propertyData.constraints.acceleratedTOD.expectedRezoning}.`
+                        : ''}
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Nearby Transport Detection */}
               <div className="bg-white border border-purple-100 rounded-lg p-3">
                 <h4 className="text-xs font-semibold text-purple-800 mb-2">

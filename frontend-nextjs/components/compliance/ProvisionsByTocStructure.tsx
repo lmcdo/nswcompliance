@@ -1020,6 +1020,26 @@ export function ProvisionsByTocStructure({
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
+              {/* X22: Lot dimensions — compact context bar */}
+              {(propertyData?.lotDimensions?.area || propertyData?.lotDimensions?.frontage) && (
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  {propertyData.lotDimensions.area && (
+                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
+                      {Math.round(propertyData.lotDimensions.area).toLocaleString()}m²
+                    </span>
+                  )}
+                  {propertyData.lotDimensions.frontage && (
+                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
+                      {propertyData.lotDimensions.frontage.toFixed(1)}m frontage
+                    </span>
+                  )}
+                  {propertyData.lotDimensions.lotType && (
+                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
+                      {propertyData.lotDimensions.lotType}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-gray-900">

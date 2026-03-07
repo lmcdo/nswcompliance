@@ -379,6 +379,69 @@ export function LepControls({
             </div>
           )}
 
+          {/* X11: Coastal zone names */}
+          {constraints?.coastalEnvironment?.inCoastalArea && (constraints.coastalEnvironment.zones?.length ?? 0) > 0 && (
+            <div className="mt-2 bg-cyan-50 border border-cyan-200 rounded p-2">
+              <div className="flex items-start gap-1.5">
+                <Waves className="h-3.5 w-3.5 text-cyan-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-xs font-semibold text-cyan-800 block mb-1">
+                    Coastal Management Areas (SEPP Resilience and Hazards 2021)
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {constraints.coastalEnvironment.zones!.map((zone: string) => (
+                      <span key={zone} className="text-xs bg-cyan-100 text-cyan-800 border border-cyan-200 rounded px-1.5 py-0.5">
+                        {zone}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* X12: Contaminated land detail */}
+          {constraints?.contaminatedLand?.hasNotifiedSites && constraints.contaminatedLand.nearestSite && (
+            <div className="mt-2 bg-red-50 border border-red-200 rounded p-2">
+              <div className="flex items-start gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="w-full">
+                  <span className="text-xs font-semibold text-red-800 block">
+                    Notified Contaminated Site — {constraints.contaminatedLand.nearestSite.distance}m
+                  </span>
+                  {constraints.contaminatedLand.nearestSite.managementClass && (
+                    <p className="text-xs text-red-700 mt-0.5">
+                      Management Class: {constraints.contaminatedLand.nearestSite.managementClass}
+                      {constraints.contaminatedLand.nearestSite.contaminationType
+                        ? ` · ${constraints.contaminatedLand.nearestSite.contaminationType}`
+                        : ''}
+                    </p>
+                  )}
+                  <p className="text-xs text-red-600 mt-0.5">Contamination assessment may be required — SEPP (Resilience and Hazards) 2021 Chapter 7.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* X13: Landslide risk class */}
+          {constraints?.landslideRisk?.hasRisk && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded p-2">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-xs font-semibold text-amber-800">
+                    Landslide Risk
+                    {(constraints.landslideRisk as any).layClass ? ` — ${(constraints.landslideRisk as any).layClass}` : ''}
+                  </span>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    Geotechnical assessment required.
+                    {(constraints.landslideRisk as any).epiName ? ` · ${(constraints.landslideRisk as any).epiName}` : ''}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-2 pt-2 border-t border-blue-100">
             <a
               href="https://www.planningportal.nsw.gov.au/property"
