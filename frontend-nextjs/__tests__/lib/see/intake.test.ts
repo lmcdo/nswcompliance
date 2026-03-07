@@ -18,7 +18,9 @@ describe('DEFAULT_INTAKE_ANSWERS', () => {
   const ALL_FIELDS: (keyof IntakeAnswers)[] = [
     'new_impervious_surfaces', 'trees_affected', 'pool_or_spa', 'new_fencing',
     'new_parking_or_driveway', 'new_signage', 'flood_prone', 'bushfire_prone',
-    'acid_sulfate_soils', 'coastal', 'biodiversity', 'acoustic_zone', 'demolition',
+    'acid_sulfate_soils', 'coastal', 'biodiversity', 'acoustic_zone',
+    'mine_subsidence', 'landslide_risk', 'contaminated_land', 'drinking_water_catchment',
+    'demolition',
   ];
   test('all fields default to unknown', () => {
     for (const field of ALL_FIELDS) { expect(DEFAULT_INTAKE_ANSWERS[field]).toBe('unknown'); }

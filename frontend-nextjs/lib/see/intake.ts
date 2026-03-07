@@ -31,6 +31,14 @@ export interface IntakeAnswers {
   biodiversity: 'yes' | 'no' | 'unknown';
   /** Is the site in an ANEF aircraft noise zone? Auto-answered from SEPP (Transport Infrastructure) 2021. */
   acoustic_zone: 'yes' | 'no' | 'unknown';
+  /** Is the site in a mine subsidence district? Auto-answered from SEPP (Resilience and Hazards) 2021 Ch.3. */
+  mine_subsidence: 'yes' | 'no' | 'unknown';
+  /** Is the site in a landslide risk area? Auto-answered from LEP Part 5. */
+  landslide_risk: 'yes' | 'no' | 'unknown';
+  /** Are there EPA-notified contaminated sites within 500m? Auto-answered from SEPP (Resilience and Hazards) 2021 Ch.4. */
+  contaminated_land: 'yes' | 'no' | 'unknown';
+  /** Is the site in a drinking water catchment area? Auto-answered from SEPP (Resilience and Hazards) 2021 Ch.2. */
+  drinking_water_catchment: 'yes' | 'no' | 'unknown';
   // --- New manual question ---
   /** Does the proposal include demolition of any structure? */
   demolition: 'yes' | 'no' | 'unknown';
@@ -83,6 +91,26 @@ export const AUTO_ANSWER_SOURCES: Partial<Record<keyof IntakeAnswers, AutoAnswer
     propertyField: 'constraints.anefData.inAnefZone',
     citation: 'SEPP (Transport Infrastructure) 2021 — Aircraft Noise',
     rationale: 'Site confirmed not in ANEF aircraft noise zone per portal mapping',
+  },
+  mine_subsidence: {
+    propertyField: 'constraints.mineSubsidence.inDistrict',
+    citation: 'SEPP (Resilience and Hazards) 2021 — Mine Subsidence Ch.3',
+    rationale: 'Site confirmed not in mine subsidence district per portal mapping',
+  },
+  landslide_risk: {
+    propertyField: 'constraints.landslideRisk.hasRisk',
+    citation: 'LEP Part 5 — Landslide Risk',
+    rationale: 'Site confirmed not in landslide risk area per LEP mapping',
+  },
+  contaminated_land: {
+    propertyField: 'constraints.contaminatedLand.hasNotifiedSites',
+    citation: 'SEPP (Resilience and Hazards) 2021 — Contaminated Land Ch.4',
+    rationale: 'No EPA-notified contaminated sites within 500m confirmed per portal mapping',
+  },
+  drinking_water_catchment: {
+    propertyField: 'constraints.drinkingWaterCatchment.inCatchment',
+    citation: 'SEPP (Resilience and Hazards) 2021 — Drinking Water Catchment Ch.2',
+    rationale: 'Site confirmed not in drinking water catchment area per portal mapping',
   },
 };
 
@@ -152,6 +180,10 @@ export const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   coastal: ['coastal'],
   biodiversity: ['biodiversity'],
   acoustic_zone: ['acoustic', 'noise', 'anef'],
+  mine_subsidence: ['mine_subsidence'],
+  landslide_risk: ['landslide'],
+  contaminated_land: [], // No DCP topic exclusion — general contamination requires site investigation regardless
+  drinking_water_catchment: ['drinking_water'],
   // Manual
   demolition: ['demolition'],
 };
@@ -211,6 +243,9 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   acoustic: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
   noise: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
   anef: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
+  mine_subsidence: 'Site confirmed not in mine subsidence district (SEPP Resilience and Hazards 2021 Ch.3)',
+  landslide: 'Site confirmed not in landslide risk area (LEP Part 5)',
+  drinking_water: 'Site confirmed not in drinking water catchment (SEPP Resilience and Hazards 2021 Ch.2)',
   demolition: 'No demolition works in proposal confirmed',
 };
 
@@ -288,6 +323,10 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
   coastal: 'unknown',
   biodiversity: 'unknown',
   acoustic_zone: 'unknown',
+  mine_subsidence: 'unknown',
+  landslide_risk: 'unknown',
+  contaminated_land: 'unknown',
+  drinking_water_catchment: 'unknown',
   demolition: 'unknown',
 };
 
@@ -314,5 +353,11 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   // anefData lives at propertyData.anefData (top level), not inside constraints.
   // Call sites must merge it in: autoPopulateFromConstraints({ ...constraints, anefData })
   if (constraints.anefData?.inAnefZone === false) result.acoustic_zone = 'no';
+  // Remaining LEP Part 5 / SEPP (Resilience and Hazards) 2021 constraints.
+  // Portal only sets these when the overlay IS found — absent means confirmed not present.
+  if (constraints.mineSubsidence?.inDistrict !== true) result.mine_subsidence = 'no';
+  if (constraints.landslideRisk?.hasRisk !== true) result.landslide_risk = 'no';
+  if (constraints.contaminatedLand?.hasNotifiedSites !== true) result.contaminated_land = 'no';
+  if (constraints.drinkingWaterCatchment?.inCatchment !== true) result.drinking_water_catchment = 'no';
   return result;
 }
