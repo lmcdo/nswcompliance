@@ -1135,7 +1135,7 @@ export function ProvisionsByTocStructure({
                 </button>
                 {hiddenObjectiveCount > 0 && (
                   <p className="text-xs text-gray-400 text-center">
-                    {hiddenObjectiveCount} objective{hiddenObjectiveCount !== 1 ? 's' : ''} hidden — switch to Browse mode to view
+                    {hiddenObjectiveCount} objective{hiddenObjectiveCount !== 1 ? 's' : ''} hidden — disable DA Mode to view
                   </p>
                 )}
               </div>
