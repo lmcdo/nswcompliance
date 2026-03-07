@@ -32,6 +32,8 @@ import { NUMERIC_MEASUREMENT_RE } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
+import { DcpFilterBar } from './DcpFilterBar';
+import { DcpProvisionList } from './DcpProvisionList';
 // TODO: Rework numeric checker feature - temporarily disabled
 // import { NumericChecker, type NumericCheckValues } from './NumericChecker';
 // import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
@@ -539,6 +541,9 @@ export function ProvisionsByTocStructure({
   );
   const totalHeritageCount = heritageProvisions.length;
 
+  // Precomputed layer labels for the current council (used by DcpFilterBar)
+  const layerLabels = COUNCIL_LAYER_LABELS[formerCouncil?.toLowerCase()] || DEFAULT_LAYER_LABELS;
+
   // Count provisions by layer (from base provisions - mode-aware)
   const layerCounts = useMemo(() => ({
     generic: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
@@ -638,17 +643,6 @@ export function ProvisionsByTocStructure({
     });
   }, [splitByTriage, filteredProvisions, excludableTopics]);
 
-  // Get NUMERIC provisions only (contains numbers for measurements, setbacks, etc.)
-  const numericProvisions = useMemo(() => {
-    return allProvisions.filter((p: any) => {
-      const text = p.provision_text || '';
-      // Check if provision contains numeric measurements - comprehensive pattern for planning regulations
-      // Matches: 6m, 9.5m, 450m², 50sqm, 60 square metres, 15%, 900mm, 2.5cm, etc.
-      // Exclude if it's primarily an objective, principle, or qualitative statement
-      const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
-      return NUMERIC_MEASUREMENT_RE.test(text) && !isObjective;
-    });
-  }, [allProvisions]);
 
   // Get unique topics for filter chips — scoped to selected layer
   // Deduplicate by normalized key (lowercase) to avoid "Signage" and "signage" appearing separately
@@ -656,7 +650,7 @@ export function ProvisionsByTocStructure({
     const topicMap = new Map<string, string>();
     layerFilteredProvisions.forEach(p => {
       if (p.v2_topic) {
-        const normalized = p.v2_normalizeTopicKey(topic);
+        const normalized = normalizeTopicKey(p.v2_topic);
         // Prefer lowercase version if we have both "Signage" and "signage"
         if (!topicMap.has(normalized) || p.v2_topic === p.v2_topic.toLowerCase()) {
           topicMap.set(normalized, p.v2_topic);
@@ -1101,302 +1095,42 @@ export function ProvisionsByTocStructure({
             </div>
           </div>
 
-          {/* Search box */}
-          <div className="mt-3 relative">
-            {/* Search scope toggle - only show when user has applied filters */}
-            {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
-              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
-                <span>Search in:</span>
-                <button
-                  onClick={() => setSearchScope('all')}
-                  className={`px-2 py-1 rounded-md transition-colors ${
-                    searchScope === 'all'
-                      ? 'bg-teal-100 text-teal-700 font-medium'
-                      : 'hover:bg-gray-100'
-                  }`}
-                >
-                  All provisions ({baseProvisions.length})
-                </button>
-                <button
-                  onClick={() => setSearchScope('filtered')}
-                  className={`px-2 py-1 rounded-md transition-colors ${
-                    searchScope === 'filtered'
-                      ? 'bg-teal-100 text-teal-700 font-medium'
-                      : 'hover:bg-gray-100'
-                  }`}
-                >
-                  Filtered results only ({layerFilteredProvisions.length})
-                </button>
-              </div>
-            )}
-
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setShowAutocomplete(true);
-                }}
-                onFocus={() => setShowAutocomplete(true)}
-                onBlur={() => {
-                  // Delay to allow click on suggestion
-                  setTimeout(() => setShowAutocomplete(false), 200);
-                }}
-                placeholder="Search provisions... (try: setback, FSR, heritage)"
-                className="w-full pl-10 pr-10 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    setShowAutocomplete(false);
-                  }}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 z-10"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-
-              {/* Autocomplete dropdown */}
-              {showAutocomplete && (
-                <SearchAutocomplete
-                  query={searchQuery}
-                  suggestions={getSearchSuggestions(searchQuery)}
-                  onSelect={(term) => {
-                    setSearchQuery(term);
-                    setShowAutocomplete(false);
-                  }}
-                  onClose={() => setShowAutocomplete(false)}
-                />
-              )}
-            </div>
-            {debouncedSearch && (
-              <div className="mt-1 text-xs text-gray-500">
-                {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''} match your search
-              </div>
-            )}
-          </div>
-
-          {/* Export PDF Modal */}
-          {showExportModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowExportModal(false)}>
-              <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">DCP Provisions Schedule</h3>
-                  <p className="text-xs text-gray-500 mb-4">Reference document — not a compliance assessment.</p>
-
-                  {/* What will be exported */}
-                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 mb-6">
-                    <div className="text-sm font-medium text-teal-900 mb-2">
-                      Exporting {filteredProvisions.length} provision{filteredProvisions.length !== 1 ? 's' : ''}
-                    </div>
-                    <div className="text-xs text-teal-700 space-y-1">
-                      {(() => {
-                        const items = [];
-                        const firstProv = filteredProvisions[0];
-
-                        // Get DCP name (short form like "Marrickville DCP 2011")
-                        const dcpName = formerCouncil === 'Ashfield' ? 'Ashfield DCP 2016'
-                          : formerCouncil === 'Leichhardt' ? 'Leichhardt DCP 2013'
-                          : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
-                          : 'DCP';
-
-                        // Only show part if in structure mode with a selected part
-                        if (provisionView === 'structure' && selectedPart && firstProv?.v2_dcp_part) {
-                          items.push(`${dcpName} • ${firstProv.v2_dcp_part}`);
-                        } else {
-                          // In task mode, just show DCP name without specific part
-                          items.push(dcpName);
-                        }
-
-                        // Layer (e.g., "Marrickville-wide", "All")
-                        if (layerFilter) {
-                          const councilLabels = formerCouncil?.toLowerCase() && COUNCIL_LAYER_LABELS[formerCouncil.toLowerCase()];
-                          const layerLabel = councilLabels ? councilLabels[layerFilter] : DEFAULT_LAYER_LABELS[layerFilter];
-                          items.push(`Layer: ${layerLabel}`);
-                        } else {
-                          items.push(`Layer: All`);
-                        }
-
-                        // Topic (multi-select)
-                        if (topicFilters.length > 0) {
-                          const topics = topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ');
-                          items.push(`Topics: ${topics}`);
-                        }
-
-                        // Search
-                        if (debouncedSearch) {
-                          items.push(`Search: "${debouncedSearch}"`);
-                        }
-
-                        if (items.length === 0) {
-                          return <div>• All provisions for this property</div>;
-                        }
-
-                        return items.map((item, idx) => <div key={idx}>• {item}</div>);
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Action buttons */}
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowExportModal(false)}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowExportModal(false);
-                        handleExportPdf();
-                      }}
-                      disabled={filteredProvisions.length === 0}
-                      className="flex-1 px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Generate PDF
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Topic filter chips */}
-          <div className="mt-3 space-y-2">
-            {availableTopics.length > 1 && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {topicFilters.length > 0 && (
-                    <button
-                      onClick={() => setTopicFilters([])}
-                      className="px-2 py-0.5 text-xs rounded-full transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1"
-                    >
-                      Clear <X className="w-3 h-3" />
-                    </button>
-                  )}
-                  {availableTopics.map(topic => {
-                    const topicKey = normalizeTopicKey(topic);
-                    const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
-                    const hasCritical = stats.critical > 0;
-                    const isSelected = topicFilters.includes(topicKey);
-                    const isTriageExcluded = excludableTopics.has(topicKey);
-                    return (
-                      <button
-                        key={topic}
-                        onClick={() => !isTriageExcluded && toggleTopic(topicKey)}
-                        title={isTriageExcluded ? 'Excluded by triage — provisions not applicable to this development' : undefined}
-                        className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                          isTriageExcluded
-                            ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 cursor-default line-through decoration-gray-400'
-                            : isSelected
-                            ? 'bg-teal-600 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                        }`}
-                      >
-                        {topic} ({stats.total})
-                        {!isTriageExcluded && hasCritical && (
-                          <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
-                        )}
-                        {isSelected && !isTriageExcluded && <X className="w-3 h-3 ml-0.5" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Refinement filters - only show when there are results to refine */}
-            {(layerFilter || topicFilters.length > 0 || debouncedSearch) && (
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs text-gray-500 font-medium">Refine:</span>
-
-                <button
-                  onClick={() => toggleRefinement('mandatoryOnly')}
-                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                    refinements.mandatoryOnly
-                      ? 'bg-red-100 text-red-800 border border-red-300'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {refinements.mandatoryOnly && <X className="w-3 h-3" />}
-                  Mandatory only
-                </button>
-
-                <button
-                  onClick={() => toggleRefinement('withMeasurements')}
-                  className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
-                    refinements.withMeasurements
-                      ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {refinements.withMeasurements ? (
-                    <X className="w-3 h-3" />
-                  ) : (
-                    <Ruler className="w-3 h-3" />
-                  )}
-                  With measurements
-                </button>
-              </div>
-            )}
-
-            {/* Status line — plain-language summary of active filters */}
-            {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
-              <div className="text-xs text-gray-500 pt-1 border-t border-gray-100 mt-0.5">
-                {(() => {
-                  const labels = COUNCIL_LAYER_LABELS[(formerCouncil || '').toLowerCase()] || DEFAULT_LAYER_LABELS;
-                  const count = filteredProvisions.length;
-                  let message = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
-
-                  const layerLabel = layerFilter ? labels[layerFilter] : null;
-                  const topicLabels = topicFilters.length > 0
-                    ? topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')
-                    : null;
-
-                  // Add layer/topic context
-                  if (layerLabel && topicLabels) {
-                    message += ` — ${topicLabels} within ${layerLabel}`;
-                  } else if (layerLabel) {
-                    message += ` from ${layerLabel}`;
-                  } else if (topicLabels) {
-                    message += ` about ${topicLabels}`;
-                  }
-
-                  // Add refinement context
-                  const refinementParts = [];
-                  if (refinements.mandatoryOnly) refinementParts.push('mandatory only');
-                  if (refinements.withMeasurements) refinementParts.push('with measurements');
-                  if (refinementParts.length > 0) {
-                    message += ` (${refinementParts.join(', ')})`;
-                  }
-
-                  return message;
-                })()}
-              </div>
-            )}
-          </div>
-
-          {/* Why am I seeing these provisions? - now includes layer filters */}
-          <LayerExplanation
+          <DcpFilterBar
+            searchQuery={searchQuery}
+            onSearchQueryChange={(v) => { setSearchQuery(v); setShowAutocomplete(true); }}
+            debouncedSearch={debouncedSearch}
+            showAutocomplete={showAutocomplete}
+            onShowAutocompleteChange={setShowAutocomplete}
+            searchScope={searchScope}
+            onSearchScopeChange={setSearchScope}
+            baseProvisions={baseProvisions}
+            layerFilteredProvisions={layerFilteredProvisions}
+            filteredProvisions={filteredProvisions}
+            availableTopics={availableTopics}
+            topicFilters={topicFilters}
+            onToggleTopic={toggleTopic}
+            onClearTopics={() => setTopicFilters([])}
+            topicPriorityStats={topicPriorityStats}
+            excludableTopics={excludableTopics}
+            refinements={refinements}
+            onToggleRefinement={toggleRefinement}
+            layerFilter={layerFilter}
+            onLayerFilterChange={setLayerFilter}
+            layerCounts={layerCounts}
+            layerLabels={layerLabels}
             zone={zone}
             heritage={heritage}
             hcaName={hcaName}
             precinctName={precinctName}
             formerCouncil={formerCouncil}
-            layerCounts={layerCounts}
-            layerFilter={layerFilter}
-            onLayerFilterChange={(layer) => {
-              setLayerFilter(layer);
-              setTopicFilters([]);  // Clear topic filters when changing layer
-            }}
-            // Heritage HCA details
             generalHeritageCount={generalHeritageCount}
             hcaSpecificCount={hcaSpecificCount}
             totalHeritageCount={totalHeritageCount}
+            showExportModal={showExportModal}
+            onShowExportModal={setShowExportModal}
+            onExportPdf={handleExportPdf}
+            selectedPart={selectedPart}
+            provisionView={provisionView}
           />
 
         </div>
@@ -1431,155 +1165,36 @@ export function ProvisionsByTocStructure({
         )}
 
         {/* Provisions list */}
-        <div className="p-4">
-          {/* Marker key - explains C/O reference codes (only show if markers exist) */}
-          {filteredProvisions.length > 0 && hasMarkers && (
-            <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">
-              <span className="italic">Some provisions include DCP reference codes:</span>
-              <span className="flex items-center gap-1">
-                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">C</span>
-                <span>= Control</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="px-1.5 py-0.5 bg-white border border-gray-300 rounded font-mono text-gray-700">O</span>
-                <span>= Objective</span>
-              </span>
-            </div>
-          )}
+        <DcpProvisionList
+          displayProvisions={displayProvisions}
+          triageExcludedProvisions={triageExcludedProvisions}
+          filteredProvisions={filteredProvisions}
+          hasMarkers={hasMarkers}
+          showTriageExcluded={showTriageExcluded}
+          onToggleTriageExcluded={() => setShowTriageExcluded(v => !v)}
+          councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
+          formerCouncil={formerCouncil}
+          zone={zone}
+          heritage={heritage}
+          hcaName={hcaName}
+          precinctId={precinctId}
+          isDaMode={isDaMode}
+          sessionToken={sessionToken}
+          daResponses={daResponses}
+          excludableTopics={excludableTopics}
+          onViewPdf={(url, page) => setPdfModal({ url, page })}
+          debouncedSearch={debouncedSearch}
+          provisionView={provisionView}
+          layerFilter={layerFilter}
+          onClearLayer={() => setLayerFilter(null)}
+          topicFilters={topicFilters}
+          onClearTopics={() => setTopicFilters([])}
+          searchScope={searchScope}
+          onSearchScopeChange={setSearchScope}
+          onSearchQueryChange={setSearchQuery}
+          baseProvisions={baseProvisions}
+        />
 
-          {/* TODO: Rework numeric checker feature - temporarily disabled */}
-          {/* Numeric Compliance Checker - always available when DCP provisions are loaded */}
-          {/* <NumericChecker
-            onValuesChange={(vals) => {
-              const hasAnyValue = Object.values(vals).some(v => v !== '');
-              setNumericCheckValues(hasAnyValue ? vals : undefined);
-            }}
-            results={complianceResults}
-          /> */}
-
-          {(() => {
-            if (displayProvisions.length === 0 && triageExcludedProvisions.length === 0) return null;
-
-            return (
-              <>
-                {displayProvisions.length > 0 && (
-                  <PageGroupedProvisions provisionTheme="green"
-                    provisions={displayProvisions}
-                    formerCouncil={formerCouncil}
-                    councilKey={formerCouncil?.toLowerCase()}
-                    councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
-                    showLayerBadges={true}
-                    maxProvisions={100}
-                    onViewPdf={(url, page) => setPdfModal({ url, page })}
-                    highlightQuery={debouncedSearch}
-                    zone={zone}
-                    heritage={heritage}
-                    hcaName={hcaName}
-                    precinctName={precinctId}
-                    isDaMode={isDaMode}
-                    sessionToken={sessionToken}
-                    daResponses={daResponses}
-                    excludableTopics={excludableTopics}
-                    // numericCheckValues={numericCheckValues} // TODO: Rework numeric checker feature
-                  />
-                )}
-                {triageExcludedProvisions.length > 0 && (
-                  <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
-                    <button
-                      onClick={() => setShowTriageExcluded(v => !v)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-sm text-gray-500"
-                    >
-                      <span>{triageExcludedProvisions.length} provision{triageExcludedProvisions.length !== 1 ? 's' : ''} removed by triage</span>
-                      <ChevronDown className={`w-4 h-4 transition-transform ${showTriageExcluded ? 'rotate-180' : ''}`} />
-                    </button>
-                    {showTriageExcluded && (
-                      <div className="border-t border-gray-200">
-                        <PageGroupedProvisions provisionTheme="green"
-                          provisions={triageExcludedProvisions}
-                          formerCouncil={formerCouncil}
-                          councilKey={formerCouncil?.toLowerCase()}
-                          councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
-                          showLayerBadges={true}
-                          maxProvisions={100}
-                          onViewPdf={(url, page) => setPdfModal({ url, page })}
-                          highlightQuery={debouncedSearch}
-                          zone={zone}
-                          heritage={heritage}
-                          hcaName={hcaName}
-                          precinctName={precinctId}
-                          isDaMode={isDaMode}
-                          sessionToken={sessionToken}
-                          daResponses={daResponses}
-                          excludableTopics={excludableTopics}
-                        />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            );
-          })()}
-          {filteredProvisions.length === 0 && (
-            <div className="text-center py-12 text-gray-500">
-              <Search className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-              {debouncedSearch ? (
-                <>
-                  <p className="font-medium mb-2">
-                    No provisions match "{debouncedSearch}"
-                  </p>
-
-                  {searchScope === 'filtered' && (
-                    <button
-                      onClick={() => setSearchScope('all')}
-                      className="text-teal-600 hover:underline mb-2 block mx-auto"
-                    >
-                      Try searching all {baseProvisions.length} provisions instead?
-                    </button>
-                  )}
-
-                  <div className="text-sm mt-4">
-                    <p className="mb-2">Try searching for:</p>
-                    <div className="flex gap-2 justify-center flex-wrap">
-                      {['setback', 'FSR', 'heritage', 'parking', 'height'].map(term => (
-                        <button
-                          key={term}
-                          onClick={() => setSearchQuery(term)}
-                          className="px-2 py-1 bg-gray-100 rounded hover:bg-gray-200 text-xs"
-                        >
-                          {term}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p>No provisions {provisionView === 'structure' ? 'in this section' : 'match your filters'}</p>
-                  {(topicFilters.length > 0 || layerFilter) && (
-                    <div className="mt-2 space-x-2">
-                      {topicFilters.length > 0 && (
-                        <button
-                          onClick={() => setTopicFilters([])}
-                          className="text-teal-600 text-sm hover:underline"
-                        >
-                          Clear topics
-                        </button>
-                      )}
-                      {layerFilter && (
-                        <button
-                          onClick={() => setLayerFilter(null)}
-                          className="text-teal-600 text-sm hover:underline"
-                        >
-                          Clear layer filter
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* PDF Modal */}
