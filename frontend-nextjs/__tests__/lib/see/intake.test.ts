@@ -18,7 +18,7 @@ describe('DEFAULT_INTAKE_ANSWERS', () => {
   const ALL_FIELDS: (keyof IntakeAnswers)[] = [
     'new_impervious_surfaces', 'trees_affected', 'pool_or_spa', 'new_fencing',
     'new_parking_or_driveway', 'new_signage', 'flood_prone', 'bushfire_prone',
-    'acid_sulfate_soils', 'coastal', 'biodiversity', 'demolition',
+    'acid_sulfate_soils', 'coastal', 'biodiversity', 'acoustic_zone', 'demolition',
   ];
   test('all fields default to unknown', () => {
     for (const field of ALL_FIELDS) { expect(DEFAULT_INTAKE_ANSWERS[field]).toBe('unknown'); }
@@ -47,6 +47,7 @@ describe('getExcludableTopics', () => {
     ['acid_sulfate_soils',      ['acid_sulfate']], // contamination removed: general contamination != ASS
     ['coastal',                 ['coastal']],
     ['biodiversity',            ['biodiversity']],
+    ['acoustic_zone',           ['acoustic', 'noise', 'anef']],
     ['demolition',              ['demolition']],
   ];
   test.each(cases)('%s=no excludes %j', (field, topics) => {
@@ -110,17 +111,28 @@ describe('autoPopulateFromConstraints', () => {
   test('biodiversity unset when terrestrialBiodiversity absent', () => {
     expect(autoPopulateFromConstraints({}).biodiversity).toBeUndefined();
   });
+  test('acoustic_zone=no when anefData.inAnefZone false', () => {
+    expect(autoPopulateFromConstraints({ anefData: { inAnefZone: false } }).acoustic_zone).toBe('no');
+  });
+  test('acoustic_zone unset when inAnefZone true', () => {
+    expect(autoPopulateFromConstraints({ anefData: { inAnefZone: true } }).acoustic_zone).toBeUndefined();
+  });
+  test('acoustic_zone unset when anefData absent', () => {
+    expect(autoPopulateFromConstraints({}).acoustic_zone).toBeUndefined();
+  });
   test('populates all fields for unconstrained site', () => {
     const r = autoPopulateFromConstraints({
       floodProne: false, bushfireProne: false,
       coastalEnvironment: { inCoastalArea: false },
       terrestrialBiodiversity: { inBiodiversityArea: false },
+      anefData: { inAnefZone: false },
     });
     expect(r.flood_prone).toBe('no');
     expect(r.bushfire_prone).toBe('no');
     expect(r.coastal).toBe('no');
     expect(r.biodiversity).toBe('no');
     expect(r.acid_sulfate_soils).toBe('no');
+    expect(r.acoustic_zone).toBe('no');
   });
 });
 

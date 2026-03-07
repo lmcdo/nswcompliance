@@ -187,6 +187,19 @@ export function buildSeppControls(
     });
   }
 
+  // Accelerated TOD — SEPP (Housing) 2021 Part 3B
+  if (constraints.acceleratedTOD?.inAcceleratedPrecinct) {
+    const precinctName = constraints.acceleratedTOD.precinctName ?? 'Accelerated TOD Precinct';
+    const rezoningDate = constraints.acceleratedTOD.expectedRezoning;
+    controls.push({
+      instrument: 'SEPP (Housing) 2021',
+      control: 'Accelerated TOD — Rezoning Precinct',
+      requirement: `Site in ${precinctName}${rezoningDate ? ` — expected rezoning: ${rezoningDate}` : ''}. Priority precinct for fast-tracked rezoning under SEPP (Housing) 2021 Part 3B. Modified height and FSR controls apply upon rezoning. Confirm current LEP controls govern until rezoning is gazetted.`,
+      clause: 'SEPP (Housing) 2021 Part 3B — Accelerated TOD',
+      status: 'pending',
+    });
+  }
+
   // Drinking Water Catchment — SEPP (Resilience and Hazards) 2021 Chapter 2
   if (constraints.drinkingWaterCatchment?.inCatchment) {
     controls.push({

@@ -29,6 +29,8 @@ export interface IntakeAnswers {
   coastal: 'yes' | 'no' | 'unknown';
   /** Is the site in a biodiversity area? Auto-answered from LEP Part 5 mapping. */
   biodiversity: 'yes' | 'no' | 'unknown';
+  /** Is the site in an ANEF aircraft noise zone? Auto-answered from SEPP (Transport Infrastructure) 2021. */
+  acoustic_zone: 'yes' | 'no' | 'unknown';
   // --- New manual question ---
   /** Does the proposal include demolition of any structure? */
   demolition: 'yes' | 'no' | 'unknown';
@@ -76,6 +78,11 @@ export const AUTO_ANSWER_SOURCES: Partial<Record<keyof IntakeAnswers, AutoAnswer
     propertyField: 'constraints.terrestrialBiodiversity.inBiodiversityArea',
     citation: 'LEP Part 5 — Terrestrial Biodiversity',
     rationale: 'Site confirmed no terrestrial biodiversity overlay',
+  },
+  acoustic_zone: {
+    propertyField: 'constraints.anefData.inAnefZone',
+    citation: 'SEPP (Transport Infrastructure) 2021 — Aircraft Noise',
+    rationale: 'Site confirmed not in ANEF aircraft noise zone per portal mapping',
   },
 };
 
@@ -144,6 +151,7 @@ export const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   acid_sulfate_soils: ['acid_sulfate'], // 'contamination' removed: general site contamination != ASS (DB evidence: 0 provisions with acid_sulfate topic; contamination provisions need site investigation, not ASS mapping)
   coastal: ['coastal'],
   biodiversity: ['biodiversity'],
+  acoustic_zone: ['acoustic', 'noise', 'anef'],
   // Manual
   demolition: ['demolition'],
 };
@@ -200,6 +208,9 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   acid_sulfate: 'Site confirmed no acid sulfate soils (LEP Part 5)',
   coastal: 'Site confirmed not in coastal management area (SEPP Resilience and Hazards 2021)',
   biodiversity: 'Site confirmed no terrestrial biodiversity overlay (LEP Part 5)',
+  acoustic: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
+  noise: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
+  anef: 'Site confirmed not in ANEF aircraft noise zone (SEPP Transport Infrastructure 2021)',
   demolition: 'No demolition works in proposal confirmed',
 };
 
@@ -276,6 +287,7 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
   acid_sulfate_soils: 'unknown',
   coastal: 'unknown',
   biodiversity: 'unknown',
+  acoustic_zone: 'unknown',
   demolition: 'unknown',
 };
 
@@ -297,5 +309,6 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   if (!constraints.acidSulfateSoils) result.acid_sulfate_soils = 'no';
   if (constraints.coastalEnvironment?.inCoastalArea === false) result.coastal = 'no';
   if (constraints.terrestrialBiodiversity?.inBiodiversityArea === false) result.biodiversity = 'no';
+  if (constraints.anefData?.inAnefZone === false) result.acoustic_zone = 'no';
   return result;
 }

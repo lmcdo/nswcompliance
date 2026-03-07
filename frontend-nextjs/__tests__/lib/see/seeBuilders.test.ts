@@ -85,6 +85,32 @@ describe('buildSeppControls', () => {
     expect(buildSeppControls({ drinkingWaterCatchment: { inCatchment: false } }).find(c => c.control === 'Drinking Water Catchment — Chapter 2')).toBeUndefined();
   });
 
+  // W6-1: Accelerated TOD
+  test('includes acceleratedTOD row when inAcceleratedPrecinct true', () => {
+    const controls = buildSeppControls({ acceleratedTOD: { inAcceleratedPrecinct: true, precinctName: 'Rhodes', expectedRezoning: '2025-Q2', priorityArea: true } });
+    const row = controls.find(c => c.control.startsWith('Accelerated TOD'));
+    expect(row).toBeDefined();
+    expect(row!.instrument).toBe('SEPP (Housing) 2021');
+    expect(row!.requirement).toContain('Rhodes');
+    expect(row!.requirement).toContain('2025-Q2');
+  });
+
+  test('acceleratedTOD row omits rezoning date when absent', () => {
+    const controls = buildSeppControls({ acceleratedTOD: { inAcceleratedPrecinct: true, precinctName: 'Sydenham', priorityArea: true } });
+    const row = controls.find(c => c.control.startsWith('Accelerated TOD'));
+    expect(row).toBeDefined();
+    expect(row!.requirement).toContain('Sydenham');
+    expect(row!.requirement).not.toContain('expected rezoning');
+  });
+
+  test('acceleratedTOD row omitted when inAcceleratedPrecinct false', () => {
+    expect(buildSeppControls({ acceleratedTOD: { inAcceleratedPrecinct: false, precinctName: '', priorityArea: false } }).find(c => c.control.startsWith('Accelerated TOD'))).toBeUndefined();
+  });
+
+  test('acceleratedTOD row omitted when acceleratedTOD absent', () => {
+    expect(buildSeppControls({}).find(c => c.control.startsWith('Accelerated TOD'))).toBeUndefined();
+  });
+
   test('all status fields are pending by default', () => {
     const controls = buildSeppControls({
       basixWater: 40, basixClimate: '6',
