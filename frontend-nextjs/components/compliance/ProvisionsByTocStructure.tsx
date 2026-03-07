@@ -176,7 +176,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -522,6 +522,17 @@ export function ProvisionsByTocStructure({
       filtered = filtered.filter(p => p.v2_heritage_type === heritageTypeFilter);
     }
 
+    // Topic assertion filter — remove provisions whose topic the planner has dismissed.
+    // Heritage (condition layer) is never filtered — it has no dismissible topic.
+    if (isDaMode && Object.keys(topicAssertions).length > 0) {
+      const assertedOut = new Set(Object.keys(topicAssertions));
+      filtered = filtered.filter(p => {
+        if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
+        const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+        return !t || !assertedOut.has(t);
+      });
+    }
+
     // Sort by relevance if searching, otherwise by priority
     if (debouncedSearch) {
       // Rank by search relevance
@@ -545,7 +556,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions]);
 
   // Triage split — lifted out of JSX so header count and provision list use the same values.
   const splitByTriage = isDaMode && excludableTopics.size > 0;
@@ -823,9 +834,9 @@ export function ProvisionsByTocStructure({
         heritageCtx, devDescriptionLocal || undefined,
       );
 
-      // Use allProvisions — topic filter is a navigation tool, not a scope gate.
-      // The SEE must cover the full provision set regardless of what filter is active.
-      const provisionsForPdf = await preparePdfProvisions(allProvisions, daResponses ?? undefined);
+      // Use filteredProvisions so topic assertions are already applied (asserted-out topics excluded).
+      // filteredProvisions in DA mode has topicAssertions filter applied upstream.
+      const provisionsForPdf = await preparePdfProvisions(filteredProvisions, daResponses ?? undefined);
       const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
 
       const pathwayDetermination = buildPathwayDetermination(
@@ -851,6 +862,9 @@ export function ProvisionsByTocStructure({
         pathway_determination: pathwayDetermination,
         ...(seppAssessableControls.length > 0 ? { sepp_assessable_controls: seppAssessableControls } : {}),
         ...(lepAssessableStandards.length > 0 ? { lep_assessable_standards: lepAssessableStandards } : {}),
+        ...(Object.keys(topicAssertions).length > 0 ? {
+          topic_assertions: Object.entries(topicAssertions).map(([topic, reason]) => ({ topic, reason })),
+        } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -919,7 +933,7 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-gray-800">Set your scope</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">Name the development type, describe the works, and answer factual questions to automatically exclude provisions that can't apply to your project. What survives triage is your assessment scope — the provisions your SEE must address.</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">Name the development type, describe the works, then run triage to auto-exclude provisions that can't apply. After triage, hover any in-scope topic and click × to dismiss whole categories — Roof, Retail, Parking, Demolition — that have nothing to do with your works. What survives becomes your Schedule A.</p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -943,6 +957,8 @@ export function ProvisionsByTocStructure({
               precinctName={precinctName}
               layerCounts={layerCounts}
               genericLabel={layerLabels.generic}
+              topicAssertions={topicAssertions}
+              onAssertTopicNA={saveTopicAssertion}
             />
           </div>
         </div>

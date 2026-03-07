@@ -47,6 +47,11 @@ export interface LepAssessableStandard {
   source: string;
 }
 
+export interface TopicAssertion {
+  topic: string;
+  reason: string;
+}
+
 export interface SEEDocumentData {
   property: PropertyContext;
   development_description: string;
@@ -67,4 +72,6 @@ export interface SEEDocumentData {
   sepp_assessable_controls?: SeppAssessableControl[];
   /** LEP development standards applicable to this assessment (height, FSR, heritage, etc.) */
   lep_assessable_standards?: LepAssessableStandard[];
+  /** Topic-level assertions — planner-dismissed topics with one-sentence reasons (Schedule B) */
+  topic_assertions?: TopicAssertion[];
 }

@@ -23,6 +23,8 @@ interface UseDASessionReturn {
   saveDescription: (text: string) => Promise<void>;
   intakeAnswers: IntakeAnswers | null;
   saveIntakeAnswers: (answers: IntakeAnswers) => Promise<void>;
+  topicAssertions: Record<string, string>;
+  saveTopicAssertion: (topic: string, reason: string | null) => Promise<void>;
   bulkSaveResponses: (responses: BulkResponseItem[]) => Promise<void>;
   error: Error | null;
 }
@@ -37,6 +39,7 @@ export function useDASession(
   const [daResponses, setDaResponses] = useState<Map<number, DaResponse>>(new Map());
   const [developmentDescription, setDevelopmentDescription] = useState<string>('');
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
+  const [topicAssertions, setTopicAssertions] = useState<Record<string, string>>({});
   const [error, setError] = useState<Error | null>(null);
 
   const loadResponses = useCallback(async (token: string) => {
@@ -48,10 +51,16 @@ export function useDASession(
       // Load dev_type into description state
       setDevelopmentDescription(data.session?.dev_type || '');
 
-      // Load proposed_values as intake answers if present
+      // Load proposed_values — supports v2 envelope or legacy flat IntakeAnswers
       const pv = data.session?.proposed_values;
       if (pv && typeof pv === 'object') {
-        setIntakeAnswers(pv as IntakeAnswers);
+        if ((pv as any)._v === 2) {
+          setIntakeAnswers((pv as any).intake ?? null);
+          setTopicAssertions((pv as any).topic_assertions ?? {});
+        } else {
+          setIntakeAnswers(pv as IntakeAnswers);   // legacy format
+          setTopicAssertions({});
+        }
       }
 
       const map = new Map<number, DaResponse>();
@@ -83,14 +92,29 @@ export function useDASession(
 
   const saveIntakeAnswers = useCallback(async (answers: IntakeAnswers) => {
     if (!sessionToken) return;
+    const envelope = { _v: 2, intake: answers, topic_assertions: topicAssertions };
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ proposed_values: answers }),
+      body: JSON.stringify({ proposed_values: envelope }),
     });
     if (!res.ok) throw new Error('Failed to save intake answers');
     setIntakeAnswers(answers);
-  }, [sessionToken]);
+  }, [sessionToken, topicAssertions]);
+
+  const saveTopicAssertion = useCallback(async (topic: string, reason: string | null) => {
+    if (!sessionToken) return;
+    const next = { ...topicAssertions };
+    if (reason === null) { delete next[topic]; } else { next[topic] = reason; }
+    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: next };
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposed_values: envelope }),
+    });
+    if (!res.ok) throw new Error('Failed to save topic assertion');
+    setTopicAssertions(next);
+  }, [sessionToken, topicAssertions, intakeAnswers]);
 
   const bulkSaveResponses = useCallback(async (responses: BulkResponseItem[]) => {
     if (!sessionToken || responses.length === 0) return;
@@ -163,6 +187,8 @@ export function useDASession(
     saveDescription,
     intakeAnswers,
     saveIntakeAnswers,
+    topicAssertions,
+    saveTopicAssertion,
     bulkSaveResponses,
     error,
   };

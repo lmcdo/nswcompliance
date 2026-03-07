@@ -2,6 +2,12 @@
 
 import { useState, useMemo } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
+
+const PRESET_REASONS = (topic: string) => [
+  `No ${topic.replace(/_/g, ' ')} works proposed`,
+  'Development type not applicable — residential use only',
+  'Site condition confirmed absent per LEP mapping',
+];
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import type { IntakeAnswers } from '@/lib/see/intake';
 import type { Provision } from './PageGroupedProvisions';
@@ -33,6 +39,9 @@ interface DAModeCardProps {
   /** Provision corpus breakdown by layer — for the corpus summary */
   layerCounts?: { generic: number; use_specific: number; condition: number; precinct: number };
   genericLabel?: string;
+  /** Topic-level assertions — planner-dismissed topics */
+  topicAssertions: Record<string, string>;
+  onAssertTopicNA: (topic: string, reason: string | null) => Promise<void>;
 }
 
 export function DAModeCard({
@@ -58,8 +67,12 @@ export function DAModeCard({
   intakeSetAt,
   layerCounts,
   genericLabel,
+  topicAssertions,
+  onAssertTopicNA,
 }: DAModeCardProps) {
   const [showExcluded, setShowExcluded] = useState(false);
+  const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
+  const [customReason, setCustomReason] = useState('');
 
   // Single pass over allProvisions to derive all stats
   const derivedStats = useMemo(() => {
@@ -122,7 +135,7 @@ export function DAModeCard({
       scopeSummary: { included: includedTopics, excluded: excludedTopics },
       heritagePros,
     };
-  }, [allProvisions, daResponses, excludableTopics]);
+  }, [allProvisions, daResponses, excludableTopics, topicAssertions]);
 
   const { completionStats, scopeSummary, heritagePros } = derivedStats;
 
@@ -230,7 +243,7 @@ export function DAModeCard({
               </button>
             </div>
             <p className="text-xs text-gray-400 mb-2">
-              Reconfigure answers factual questions to remove provisions that cannot apply to your works.
+              Reconfigure re-runs the factual questions. Or hover any topic and click × to manually dismiss an entire category.
             </p>
 
             <div className="space-y-1">
@@ -251,17 +264,57 @@ export function DAModeCard({
                   <span className="font-medium text-gray-700">{precinctName}</span>
                 </div>
               )}
-              {/* Other included topics */}
+              {/* Other included topics — dismissible */}
               {scopeSummary.included
-                .filter(({ topic }) => !topic.includes('heritage'))
-                .slice(0, 5)
+                .filter(({ topic }) => !topic.includes('heritage') && !topicAssertions[topic])
+                .slice(0, 8)
                 .map(({ topic, count }) => (
-                  <div key={topic} className="flex items-center gap-2 text-xs">
-                    <span className="text-teal-500 font-bold w-3">✓</span>
-                    <span className="text-gray-600 capitalize">{topic.replace(/_/g, ' ')}</span>
-                    <span className="text-gray-400 ml-auto">{count}</span>
+                  <div key={topic}>
+                    <div className="flex items-center gap-2 text-xs group">
+                      <span className="text-teal-500 font-bold w-3">✓</span>
+                      <span className="text-gray-600 capitalize flex-1">{topic.replace(/_/g, ' ')}</span>
+                      <span className="text-gray-400">{count}</span>
+                      <button
+                        onClick={() => setPendingDismiss(topic)}
+                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity ml-1 text-xs"
+                        title="Assert not applicable"
+                      >×</button>
+                    </div>
+                    {pendingDismiss === topic && (
+                      <div className="ml-5 mt-1 mb-1 bg-white border border-gray-200 rounded p-2 space-y-1">
+                        {PRESET_REASONS(topic).map(r => (
+                          <button key={r} onClick={() => { onAssertTopicNA(topic, r); setPendingDismiss(null); }}
+                            className="block w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600">
+                            {r}
+                          </button>
+                        ))}
+                        <div className="flex gap-1 pt-1">
+                          <input value={customReason} onChange={e => setCustomReason(e.target.value)}
+                            placeholder="Other reason…" className="flex-1 text-xs border rounded px-2 py-1" />
+                          <button onClick={() => { if (customReason.trim()) { onAssertTopicNA(topic, customReason.trim()); setPendingDismiss(null); setCustomReason(''); }}}
+                            className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">OK</button>
+                        </div>
+                        <button onClick={() => setPendingDismiss(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                      </div>
+                    )}
                   </div>
                 ))}
+              {/* Asserted-out topics — planner dismissed */}
+              {Object.entries(topicAssertions).map(([topic, reason]) => (
+                <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="w-3 font-bold">⊘</span>
+                  <span className="capitalize line-through flex-1">{topic.replace(/_/g, ' ')}</span>
+                  <span className="text-gray-300 truncate max-w-32" title={reason}>{reason}</span>
+                  <button onClick={() => onAssertTopicNA(topic, null)}
+                    className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0">undo</button>
+                </div>
+              ))}
+              {/* Nudge strip — visible until first assertion made */}
+              {Object.keys(topicAssertions).length === 0 && scopeSummary.included.filter(t => !t.topic.includes('heritage')).length > 2 && (
+                <div className="mt-2 px-2.5 py-2 bg-white border border-teal-200 rounded text-xs text-teal-700 leading-relaxed">
+                  <span className="font-semibold">Now narrow your scope:</span> hover any topic above and click the <span className="font-mono font-bold">×</span> that appears. Pick a one-line reason — “No roof works proposed” — and the entire category collapses from your provision list. Dismissed topics are documented in Schedule B of the SEE so nothing looks ignored.
+                </div>
+              )}
               {/* Excluded — collapsible toggle */}
               {scopeSummary.excluded.length > 0 && (
                 <div className="pt-0.5">
