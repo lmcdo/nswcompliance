@@ -307,8 +307,12 @@ export function autoPopulateFromConstraints(constraints: Record<string, any>): P
   if (constraints.bushfireProne === false) result.bushfire_prone = 'no';
   // acidSulfateSoils is a string class or undefined/null — falsy means absent
   if (!constraints.acidSulfateSoils) result.acid_sulfate_soils = 'no';
-  if (constraints.coastalEnvironment?.inCoastalArea === false) result.coastal = 'no';
-  if (constraints.terrestrialBiodiversity?.inBiodiversityArea === false) result.biodiversity = 'no';
+  // coastal/biodiversity: portal only sets these when the overlay IS found.
+  // Absent (undefined/null) = layer not detected = site confirmed NOT in that area.
+  if (constraints.coastalEnvironment?.inCoastalArea !== true) result.coastal = 'no';
+  if (constraints.terrestrialBiodiversity?.inBiodiversityArea !== true) result.biodiversity = 'no';
+  // anefData lives at propertyData.anefData (top level), not inside constraints.
+  // Call sites must merge it in: autoPopulateFromConstraints({ ...constraints, anefData })
   if (constraints.anefData?.inAnefZone === false) result.acoustic_zone = 'no';
   return result;
 }

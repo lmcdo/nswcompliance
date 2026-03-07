@@ -99,8 +99,8 @@ describe('autoPopulateFromConstraints', () => {
   test('coastal unset when coastalEnvironment.inCoastalArea true', () => {
     expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: true } }).coastal).toBeUndefined();
   });
-  test('coastal unset when coastalEnvironment absent', () => {
-    expect(autoPopulateFromConstraints({}).coastal).toBeUndefined();
+  test('coastal=no when coastalEnvironment absent (portal absence = not in coastal area)', () => {
+    expect(autoPopulateFromConstraints({}).coastal).toBe('no');
   });
   test('biodiversity=no when inBiodiversityArea false', () => {
     expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: false } }).biodiversity).toBe('no');
@@ -108,8 +108,8 @@ describe('autoPopulateFromConstraints', () => {
   test('biodiversity unset when inBiodiversityArea true', () => {
     expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: true } }).biodiversity).toBeUndefined();
   });
-  test('biodiversity unset when terrestrialBiodiversity absent', () => {
-    expect(autoPopulateFromConstraints({}).biodiversity).toBeUndefined();
+  test('biodiversity=no when terrestrialBiodiversity absent (portal absence = not in biodiversity area)', () => {
+    expect(autoPopulateFromConstraints({}).biodiversity).toBe('no');
   });
   test('acoustic_zone=no when anefData.inAnefZone false', () => {
     expect(autoPopulateFromConstraints({ anefData: { inAnefZone: false } }).acoustic_zone).toBe('no');

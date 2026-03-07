@@ -263,11 +263,15 @@ export function ProvisionsByTocStructure({
   // Auto-answers fill unknowns; saved planner answers always override.
   const mergedIntakeAnswers = useMemo(() => {
     const autoAnswers = propertyData?.constraints
-      ? autoPopulateFromConstraints(propertyData.constraints)
+      ? autoPopulateFromConstraints({
+          ...propertyData.constraints,
+          // anefData lives at propertyData.anefData (top level), not inside constraints
+          anefData: propertyData.anefData,
+        })
       : {};
     // Saved answers take priority — planner override is preserved
     return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...(intakeAnswers ?? {}) };
-  }, [intakeAnswers, propertyData?.constraints]);
+  }, [intakeAnswers, propertyData?.constraints, propertyData?.anefData]);
 
   // Compute excludable topics from merged answers (auto-populated + saved planner answers).
   // mergedIntakeAnswers always has a value; auto-answers (flood=No etc.) take effect immediately.
