@@ -162,7 +162,9 @@ export function ProvisionsByTocStructure({
   const [refinements, setRefinements] = useState({
     mandatoryOnly: false,
     withMeasurements: false,
+    objectivesOnly: false,
   });
+  const [heritageTypeFilter, setHeritageTypeFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
@@ -523,6 +525,16 @@ export function ProvisionsByTocStructure({
       });
     }
 
+    // X9: objectives-only filter
+    if (refinements.objectivesOnly) {
+      filtered = filtered.filter(p => p.v2_provision_type === 'objective');
+    }
+
+    // X10: heritage type filter (control / character / descriptive)
+    if (heritageTypeFilter) {
+      filtered = filtered.filter(p => p.v2_heritage_type === heritageTypeFilter);
+    }
+
     // Sort by relevance if searching, otherwise by priority
     if (debouncedSearch) {
       // Rank by search relevance
@@ -546,7 +558,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritage, zone, precinctId]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId]);
 
   // Triage split — lifted out of JSX so header count and provision list use the same values.
   const splitByTriage = isDaMode && excludableTopics.size > 0;
@@ -771,6 +783,8 @@ export function ProvisionsByTocStructure({
       if (debouncedSearch) activeFilters.push(`Search: "${debouncedSearch}"`);
       if (refinements.mandatoryOnly) activeFilters.push('Mandatory only');
       if (refinements.withMeasurements) activeFilters.push('With measurements');
+      if (refinements.objectivesOnly) activeFilters.push('Objectives only');
+      if (heritageTypeFilter) activeFilters.push(`Heritage type: ${heritageTypeFilter}`);
       if (activeFilters.length === 0) activeFilters.push('All provisions for this property');
 
       const noFiltersActive = !layerFilter && topicFilters.length === 0 && !debouncedSearch;
@@ -1036,6 +1050,8 @@ export function ProvisionsByTocStructure({
             excludableTopics={excludableTopics}
             refinements={refinements}
             onToggleRefinement={toggleRefinement}
+            heritageTypeFilter={heritageTypeFilter}
+            onHeritageTypeFilterChange={setHeritageTypeFilter}
             layerFilter={layerFilter}
             onLayerFilterChange={setLayerFilter}
             layerCounts={layerCounts}

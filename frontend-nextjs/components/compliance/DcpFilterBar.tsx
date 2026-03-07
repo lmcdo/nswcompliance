@@ -30,8 +30,8 @@ interface DcpFilterBarProps {
   topicPriorityStats: Record<string, { critical: number; total: number }>;
   excludableTopics: Set<string>;
   // Refinements
-  refinements: { mandatoryOnly: boolean; withMeasurements: boolean };
-  onToggleRefinement: (key: 'mandatoryOnly' | 'withMeasurements') => void;
+  refinements: { mandatoryOnly: boolean; withMeasurements: boolean; objectivesOnly: boolean };
+  onToggleRefinement: (key: 'mandatoryOnly' | 'withMeasurements' | 'objectivesOnly') => void;
   // Layer filter
   layerFilter: string | null;
   onLayerFilterChange: (layer: string | null) => void;
@@ -52,6 +52,8 @@ interface DcpFilterBarProps {
   onExportPdf: () => void;
   selectedPart?: string | null;
   provisionView: 'task' | 'structure';
+  heritageTypeFilter?: string | null;
+  onHeritageTypeFilterChange?: (v: string | null) => void;
 }
 
 export function DcpFilterBar({
@@ -63,13 +65,14 @@ export function DcpFilterBar({
   zone, heritage, hcaName, precinctName, formerCouncil,
   generalHeritageCount, hcaSpecificCount, totalHeritageCount,
   showExportModal, onShowExportModal, onExportPdf, selectedPart, provisionView,
+  heritageTypeFilter, onHeritageTypeFilterChange,
 }: DcpFilterBarProps) {
   return (
     <>
       {/* Search box */}
       <div className="mt-3 relative">
         {/* Search scope toggle — only when filters are active */}
-        {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
+        {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements || refinements.objectivesOnly || heritageTypeFilter) && (
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
             <span>Search in:</span>
             <button
@@ -235,6 +238,36 @@ export function DcpFilterBar({
               {refinements.withMeasurements ? <X className="w-3 h-3" /> : <Ruler className="w-3 h-3" />}
               With measurements
             </button>
+            <button
+              onClick={() => onToggleRefinement('objectivesOnly')}
+              className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                refinements.objectivesOnly ? 'bg-purple-100 text-purple-800 border border-purple-300' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {refinements.objectivesOnly && <X className="w-3 h-3" />}
+              Objectives only
+            </button>
+          </div>
+        )}
+
+        {/* Heritage type filter — X10: only shown when on a heritage property */}
+        {heritage && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-gray-500 font-medium">Heritage type:</span>
+            {(['control', 'character', 'descriptive'] as const).map(ht => (
+              <button
+                key={ht}
+                onClick={() => onHeritageTypeFilterChange?.(heritageTypeFilter === ht ? null : ht)}
+                className={`px-2 py-1 text-xs rounded-md transition-colors flex items-center gap-1 ${
+                  heritageTypeFilter === ht
+                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {heritageTypeFilter === ht && <X className="w-3 h-3" />}
+                {ht.charAt(0).toUpperCase() + ht.slice(1)}
+              </button>
+            ))}
           </div>
         )}
 
@@ -252,6 +285,8 @@ export function DcpFilterBar({
               const refinementParts: string[] = [];
               if (refinements.mandatoryOnly) refinementParts.push('mandatory only');
               if (refinements.withMeasurements) refinementParts.push('with measurements');
+              if (refinements.objectivesOnly) refinementParts.push('objectives only');
+              if (heritageTypeFilter) refinementParts.push(`${heritageTypeFilter} provisions`);
               if (refinementParts.length > 0) message += ` (${refinementParts.join(', ')})`;
               return message;
             })()}
