@@ -544,10 +544,15 @@ export function ProvisionsByTocStructure({
       });
     }
 
-    // DA mode: suppress objective provisions — these are policy intent statements,
-    // not enforceable controls and are not assessed individually in a SEE compliance table.
+    // DA mode: suppress objective provisions AND heritage descriptive provisions.
+    // Objectives (v2_provision_type = 'objective') and heritage descriptives
+    // (v2_heritage_type = 'descriptive') are policy intent statements, not enforceable
+    // controls — they are not assessed individually in a SEE compliance table.
     if (isDaMode) {
-      filtered = filtered.filter(p => p.v2_provision_type !== 'objective');
+      filtered = filtered.filter(p =>
+        p.v2_provision_type !== 'objective' &&
+        p.v2_heritage_type !== 'descriptive'
+      );
     }
 
     // Sort by relevance if searching, otherwise by priority
@@ -575,10 +580,12 @@ export function ProvisionsByTocStructure({
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
-  // Count of objective provisions hidden in DA mode (across the full corpus, unaffected by search/topic filters)
+  // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
     if (!isDaMode) return 0;
-    return baseProvisions.filter(p => p.v2_provision_type === 'objective').length;
+    return baseProvisions.filter(p =>
+      p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive'
+    ).length;
   }, [isDaMode, baseProvisions]);
 
   // Triage split — lifted out of JSX so header count and provision list use the same values.
