@@ -1021,17 +1021,30 @@ export function ProvisionsByTocStructure({
                   'Select a section'
                 )}
               </h3>
-              {provisionView === 'task' ? (
-                <p className="text-xs text-gray-400 mt-0.5">
-                  {isDaMode
-                    ? 'Filter by topic, review each provision, record your compliance status.'
-                    : 'Filter by topic to focus on one area, or search.'}
-                </p>
-              ) : (
-                <button onClick={enterTaskMode} className="text-xs text-teal-600 hover:underline mt-0.5">
-                  ← Back to topic view
-                </button>
-              )}
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {/* View mode toggle — only shown when TOC data exists for this council */}
+                {Object.keys(completeTocStructure).length > 1 && (
+                  <div className="inline-flex rounded border border-gray-200 text-xs overflow-hidden flex-shrink-0">
+                    <button
+                      onClick={enterTaskMode}
+                      className={`px-2.5 py-1 transition-colors ${provisionView === 'task' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      Topic
+                    </button>
+                    <button
+                      onClick={enterStructureMode}
+                      className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${provisionView === 'structure' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      Document
+                    </button>
+                  </div>
+                )}
+                {provisionView === 'task' && (
+                  <p className="text-xs text-gray-400">
+                    {isDaMode ? 'Filter by topic, review each provision.' : 'Filter by topic or search.'}
+                  </p>
+                )}
+              </div>
               {provisionView === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600 mt-0.5">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}

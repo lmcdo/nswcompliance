@@ -75,10 +75,13 @@ export function TocSidebar({
     <div className="h-full overflow-y-auto">
       <div className="p-3 border-b bg-gray-50">
         <h3 className="text-base font-bold text-gray-900">
-          {formerCouncil === 'Ashfield' && 'Ashfield DCP 2016'}
-          {formerCouncil === 'Leichhardt' && 'Leichhardt DCP 2013'}
-          {formerCouncil === 'Marrickville' && 'Marrickville DCP 2011'}
-          {!formerCouncil && 'DCP'}
+          {formerCouncil === 'Ashfield' ? 'Ashfield DCP 2016'
+            : formerCouncil === 'Leichhardt' ? 'Leichhardt DCP 2013'
+            : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
+            : formerCouncil === 'Waverley' ? 'Waverley DCP 2022'
+            : formerCouncil === 'Woollahra' ? 'Woollahra DCP 2022'
+            : formerCouncil ? `${formerCouncil} DCP`
+            : 'DCP'}
         </h3>
         <p className="text-xs text-gray-500 mt-0.5">
           DCP Structure
