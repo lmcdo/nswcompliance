@@ -1010,6 +1010,36 @@ export function StateLevelControls({
                   <p className="text-xs text-purple-700 mt-1">
                     Special parking provisions may apply under SEPP (Housing) 2021
                   </p>
+                  {(propertyData?.constraints?.todPrecinct?.maxFSRBonus ||
+                    propertyData?.constraints?.todPrecinct?.maxHeightBonus) && (
+                    <div className="mt-2 pt-2 border-t border-purple-300">
+                      <p className="text-xs font-semibold text-purple-900 mb-1">
+                        TOD Development Standard Bonuses
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {propertyData?.constraints?.todPrecinct?.maxFSRBonus && (
+                          <div className="bg-white rounded border border-purple-200 px-2 py-1.5">
+                            <p className="text-xs text-purple-600">Max FSR</p>
+                            <p className="text-sm font-bold text-purple-900">
+                              {propertyData.constraints.todPrecinct.maxFSRBonus}:1
+                            </p>
+                          </div>
+                        )}
+                        {propertyData?.constraints?.todPrecinct?.maxHeightBonus && (
+                          <div className="bg-white rounded border border-purple-200 px-2 py-1.5">
+                            <p className="text-xs text-purple-600">Max Height</p>
+                            <p className="text-sm font-bold text-purple-900">
+                              {propertyData.constraints.todPrecinct.maxHeightBonus}m
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-purple-500 mt-1.5">
+                        {propertyData?.constraints?.todPrecinct?.legislativeClause || 'SEPP (Housing) 2021'} —
+                        Verify against current LEP controls until rezoning is gazetted.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 

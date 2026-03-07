@@ -410,6 +410,7 @@ export default function AssessmentPage() {
                         planningLayers={selectedProperty.planningLayers || []}
                         constraints={selectedProperty.constraints}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                        lotArea={selectedProperty.lotDimensions?.area}
                       />
                     </ErrorBoundary>
                   </div>

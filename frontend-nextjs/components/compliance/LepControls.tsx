@@ -6,20 +6,23 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { calculateGFA, anefStatusConfig, floodBlockTypeAnnotation, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
   planningLayers: PlanningLayer[];
   constraints: PlanningConstraints;
   formerCouncil?: string;
+  lotArea?: number;
 }
 
 export function LepControls({
   propertyData,
   planningLayers,
   constraints,
-  formerCouncil
+  formerCouncil,
+  lotArea,
 }: LepControlsProps) {
   const lepName = constraints?.lga 
     ? `${constraints.lga} Local Environmental Plan 2022` 
@@ -105,8 +108,13 @@ export function LepControls({
                 <div className="text-2xl font-bold text-gray-900 mb-1">
                   {constraints.maxFsr}:1
                 </div>
+                {lotArea && (
+                  <div className="text-sm font-semibold text-blue-700 mb-1">
+                    = {calculateGFA(constraints.maxFsr, lotArea).toLocaleString()}m² GFA
+                  </div>
+                )}
                 <div className="text-xs text-gray-500">
-                  LEP Clause 4.4
+                  LEP Clause 4.4{lotArea ? ` · Lot area ${lotArea.toLocaleString()}m²` : ''}
                 </div>
               </div>
             )}
@@ -290,6 +298,86 @@ export function LepControls({
               </span>
             </div>
           </div>
+
+          {/* Flood detail */}
+          {constraints?.floodProne && (
+            <div className="mt-2 bg-amber-50 border border-amber-200 rounded p-2">
+              <div className="flex items-start gap-1.5">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-xs font-semibold text-amber-800">
+                    {constraints.floodInfo?.blockType || 'Flood Prone Land'}
+                    {constraints.floodInfo?.name ? ` — ${constraints.floodInfo.name}` : ''}
+                  </span>
+                  <p className="text-xs text-amber-700 mt-0.5">
+                    {floodBlockTypeAnnotation(constraints.floodInfo?.blockType || '')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bushfire detail */}
+          {constraints?.bushfireProne && constraints.bushfireCategory && (() => {
+            const info = bushfireCategoryAnnotation(constraints.bushfireCategory);
+            return (
+              <div className="mt-2 bg-orange-50 border border-orange-200 rounded p-2">
+                <div className="flex items-start gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5 text-orange-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-orange-800">
+                        {constraints.bushfireCategory}
+                      </span>
+                      {info.cdcBlocked && (
+                        <span className="text-xs bg-red-100 text-red-700 border border-red-200 rounded px-1 py-0.5 font-semibold">
+                          CDC not available
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-orange-700 mt-0.5">{info.annotation}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ANEF building acceptability table */}
+          {propertyData?.anefData?.inAnefZone && propertyData.anefData.buildingAcceptability?.length > 0 && (
+            <div className="mt-2 border border-sky-200 rounded overflow-hidden">
+              <div className="bg-sky-50 px-2 py-1.5 flex items-center gap-1.5">
+                <Plane className="h-3 w-3 text-sky-600" />
+                <span className="text-xs font-semibold text-sky-800">
+                  ANEF {propertyData.anefData.anefLevel} — Building Acceptability
+                </span>
+                {propertyData.anefData.airport?.name && (
+                  <span className="text-xs text-sky-600 ml-auto">{propertyData.anefData.airport.name}</span>
+                )}
+              </div>
+              <table className="w-full text-xs">
+                <tbody>
+                  {propertyData.anefData.buildingAcceptability.map((row: { buildingType: string; displayName: string; status: 'acceptable' | 'conditional' | 'unacceptable' }) => {
+                    const cfg = anefStatusConfig(row.status);
+                    const Icon = row.status === 'acceptable' ? CheckCircle2 : row.status === 'conditional' ? AlertCircle : XCircle;
+                    return (
+                      <tr key={row.buildingType} className="border-t border-sky-100">
+                        <td className="px-2 py-1 text-gray-700">{row.displayName}</td>
+                        <td className="px-2 py-1 text-right">
+                          <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${cfg.badgeClass}`}>
+                            <Icon className={`h-3 w-3 ${cfg.iconColor}`} />
+                            {cfg.label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div className="bg-sky-50 px-2 py-1 border-t border-sky-100">
+                <p className="text-xs text-sky-600">AS 2021-2015 · SEPP (Transport Infrastructure) 2021</p>
+              </div>
+            </div>
+          )}
 
           <div className="mt-2 pt-2 border-t border-blue-100">
             <a
