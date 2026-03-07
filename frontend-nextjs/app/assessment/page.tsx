@@ -50,7 +50,7 @@ export default function AssessmentPage() {
     setBuildingHeight,
     isDaMode,
     setIsDaMode,
-  } = useAssessmentUI();
+  } = useAssessmentUI(selectedAddress);
 
   // Navigation handler for Pattern Book -> DCP cross-references
   const handleNavigateToDcp = (topic: string, hcaSlug?: string) => {

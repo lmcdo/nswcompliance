@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 type ViewMode = 'sepp' | 'lep' | 'dcp';
-
-const DA_MODE_KEY = 'ce_isDaMode';
 
 interface UseAssessmentUIReturn {
   // View mode
@@ -27,24 +25,33 @@ interface UseAssessmentUIReturn {
 
 /**
  * Hook for managing assessment page UI state.
- * Handles view mode tabs, modal visibility, and building height input.
- * isDaMode persists to localStorage so it survives page refresh.
+ * isDaMode is per-address: stored as ce_isDaMode_${address} so enabling DA mode
+ * for one property does not bleed into a different property.
  */
-export function useAssessmentUI(): UseAssessmentUIReturn {
+export function useAssessmentUI(address?: string | null): UseAssessmentUIReturn {
   const [viewMode, setViewMode] = useState<ViewMode>('sepp');
   const [showZoneInfo, setShowZoneInfo] = useState(false);
   const [buildingHeight, setBuildingHeight] = useState<number | null>(null);
-  const [isDaMode, setIsDaModeState] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return false;
-    return localStorage.getItem(DA_MODE_KEY) === 'true';
-  });
+  const [isDaMode, setIsDaModeState] = useState<boolean>(false);
 
   const toggleZoneInfo = () => setShowZoneInfo((prev) => !prev);
 
+  // Load per-address DA mode state whenever address changes.
+  // Defaults to false for any address that hasn't explicitly had DA mode enabled.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!address) {
+      setIsDaModeState(false);
+      return;
+    }
+    const stored = localStorage.getItem(`ce_isDaMode_${address}`) === 'true';
+    setIsDaModeState(stored);
+  }, [address]);
+
   const setIsDaMode = (mode: boolean) => {
     setIsDaModeState(mode);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(DA_MODE_KEY, String(mode));
+    if (typeof window !== 'undefined' && address) {
+      localStorage.setItem(`ce_isDaMode_${address}`, String(mode));
     }
   };
 
