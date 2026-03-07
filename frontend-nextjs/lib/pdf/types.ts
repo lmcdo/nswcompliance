@@ -71,6 +71,9 @@ export interface PropertyContext {
     contaminated_land: boolean;
     contaminated_site_name?: string;
     contaminated_site_distance?: number;
+    contaminated_management_class?: string;
+    contaminated_type?: string;
+    landslide_risk_class?: string;
     drinking_water_catchment: boolean;
     terrestrial_biodiversity: boolean;
     coastal_management: boolean;

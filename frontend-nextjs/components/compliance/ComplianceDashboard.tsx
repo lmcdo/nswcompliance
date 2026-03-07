@@ -175,7 +175,7 @@ export function ComplianceDashboard({
           } : undefined,
           zone: propertyData.constraints.zone,
           developmentType: developmentType,
-          lga: propertyData.constraints.lga || propertyData.council || 'Inner West',
+          lga: propertyData.constraints.lga || propertyData.council || undefined,
           heritageStatus: propertyData.constraints?.heritage || null
         }
       ]
@@ -1243,7 +1243,7 @@ export function ComplianceDashboard({
               <LandUseZoningCard
                 zone={propertyData.constraints.zone}
                 zoneDescription={propertyData.constraints.zoneDescription}
-                lga={propertyData.constraints.lga || 'Inner West'}
+                lga={propertyData.constraints.lga || ''}
                 legislationUrl={zoneResult?.['legislationUrl']}
                 epiName={zoneResult?.['EPI Name']}
                 amendment={zoneResult?.['Amendment']}

@@ -488,11 +488,11 @@ async function handleDcpProvisionLookup(
 ): Promise<DataResponse> {
   try {
     const params = new URLSearchParams({
-      lga: context.lga || 'Inner West',
-      former_council: context.formerCouncil || 'Marrickville',
       zone: context.zone || 'R2',
       topic: topic, // Topics match v2_topic in regulatory_provisions
     });
+    if (context.lga) params.set('lga', context.lga);
+    if (context.formerCouncil) params.set('former_council', context.formerCouncil);
 
     // Add heritage params if property is heritage-listed
     if (context.constraints?.heritage) {

@@ -63,8 +63,8 @@ export async function POST(request: NextRequest) {
     // Normalize LGA to title case (Planning Portal returns "INNER WEST", DB has "Inner West")
     const lga = userLga || (constraints.lga
       ? constraints.lga.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')
-      : 'Inner West');
-    const formerCouncil = determineFormerCouncilArea(address, lga);
+      : null);
+    const formerCouncil = determineFormerCouncilArea(address, lga ?? '');
 
     // 2. Normalize dev type to LEP terminology
     const lepDevType = normalizeDevTypeToLEP(developmentType);

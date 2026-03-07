@@ -59,14 +59,7 @@ export function RegulatoryCurrencyNotice({
               </li>
               <li>
                 <strong>DCPs:</strong>{' '}
-                <a
-                  href="https://www.innerwest.nsw.gov.au/develop"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline hover:text-amber-900 font-medium"
-                >
-                  Inner West Council
-                </a>
+                your council&apos;s website
               </li>
             </ul>
             <p className="text-xs mt-3 italic">
@@ -97,14 +90,7 @@ export function RegulatoryCurrencyFooter() {
           NSW Legislation
         </a>
         {' | '}
-        <a
-          href="https://www.innerwest.nsw.gov.au/develop"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline hover:text-gray-900"
-        >
-          Inner West DCPs
-        </a>
+        your council&apos;s website for DCPs
       </p>
     </div>
   );

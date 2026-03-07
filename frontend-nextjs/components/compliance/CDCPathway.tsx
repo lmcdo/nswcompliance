@@ -295,7 +295,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
         timeline: '3–6 months',
         cost: '~$5,000–$15,000 (town planner + council fees)',
         nextStep: 'Engage a town planner to prepare a Development Application (DA)',
-        source: `${propertyData.constraints?.lga || 'Inner West'} LEP, Clause 4.4 — Floor Space Ratio`,
+        source: `${propertyData.constraints?.lga || 'LEP'}, Clause 4.4 — Floor Space Ratio`,
       });
       return;
     }
@@ -385,8 +385,8 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
           blockers: cdcBlockers,
           timeline: '3–6 months',
           cost: '~$5,000–$15,000 (town planner + council fees)',
-          nextStep: `Engage a town planner to prepare a DA lodged with ${propertyData?.constraints?.lga || 'Inner West'} Council`,
-          source: `${propertyData?.constraints?.lga || 'Inner West'} DCP, SEPP Housing Code`,
+          nextStep: `Engage a town planner to prepare a DA lodged with ${propertyData?.constraints?.lga || 'your'} Council`,
+          source: `${propertyData?.constraints?.lga || 'Council'} DCP, SEPP Housing Code`,
         });
       }
     } else if (!loadingProvisions) {

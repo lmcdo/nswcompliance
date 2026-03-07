@@ -84,6 +84,69 @@ export function bushfireCategoryAnnotation(category: string): BushfireCategoryAn
   };
 }
 
+// ── X2: ANEF building acceptability derivation ───────────────────────────────
+
+export interface AnefBuildingAcceptabilityRow {
+  buildingType: string;
+  displayName: string;
+  status: 'acceptable' | 'conditional' | 'unacceptable';
+}
+
+/**
+ * Derive ANEF building acceptability from ANEF level using AS 2021-2015 Table 2.1.
+ * Returns null if level is null (not in ANEF zone).
+ *
+ * Thresholds (AS 2021-2015):
+ *   Residential, Hotels:  <25 acceptable, 25-29 conditional, >=30 unacceptable
+ *   Schools:              <25 acceptable, >=25 unacceptable
+ *   Hospitals:            <20 acceptable, 20-24 conditional, >=25 unacceptable
+ *   Commercial:           <30 acceptable, >=30 conditional
+ */
+export function deriveAnefBuildingAcceptability(
+  anefLevel: number | null
+): AnefBuildingAcceptabilityRow[] | null {
+  if (anefLevel === null || anefLevel === undefined) return null;
+
+  const status = (
+    acceptable: boolean,
+    conditional: boolean
+  ): 'acceptable' | 'conditional' | 'unacceptable' =>
+    acceptable ? 'acceptable' : conditional ? 'conditional' : 'unacceptable';
+
+  return [
+    {
+      buildingType: 'residential',
+      displayName: 'Residential Dwellings',
+      status: status(anefLevel < 25, anefLevel < 30),
+    },
+    {
+      buildingType: 'aged_care',
+      displayName: 'Aged Care / Retirement',
+      status: status(anefLevel < 25, anefLevel < 30),
+    },
+    {
+      buildingType: 'school',
+      displayName: 'Schools',
+      status: status(anefLevel < 25, false),
+    },
+    {
+      buildingType: 'hospital',
+      displayName: 'Hospitals',
+      status: status(anefLevel < 20, anefLevel < 25),
+    },
+    {
+      buildingType: 'hotel',
+      displayName: 'Hotels / Motels',
+      status: status(anefLevel < 25, anefLevel < 30),
+    },
+    {
+      buildingType: 'commercial',
+      displayName: 'Commercial / Retail',
+      status: status(anefLevel < 30, true),
+    },
+  ];
+}
+
 // ── X4: LMR frontage check ────────────────────────────────────────────────────
 
 /** SEPP Housing 2021 minimum frontage for LMR development types. */

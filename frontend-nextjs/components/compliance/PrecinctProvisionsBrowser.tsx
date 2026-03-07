@@ -96,7 +96,7 @@ export function PrecinctProvisionsBrowser({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             precinctId,
-            lga: 'Inner West' // Normalize to match database
+            lga: matchData.precinct.lga
           })
         });
 

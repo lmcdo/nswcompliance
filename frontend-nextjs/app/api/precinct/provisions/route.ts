@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const { precinctId, zone, limit } = validation.data;
 
     // Extract additional fields for compatibility
-    const lga = body.lga || 'Inner West';
+    const lga = body.lga ?? null;
 
     // Require either precinctId or zone
     if (!precinctId && !zone) {

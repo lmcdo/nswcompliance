@@ -29,6 +29,18 @@ export function buildPathwayDetermination(
   constraints?: Record<string, any>
 ): PathwayDetermination {
   const requiredReports: string[] = [];
+  const caveats: string[] = [];
+
+  // Accelerated TOD — flag that current LEP controls may change upon rezoning
+  if (constraints?.acceleratedTOD?.inAcceleratedPrecinct) {
+    const precinctName = constraints.acceleratedTOD.precinctName ?? 'Accelerated TOD Precinct';
+    const rezoningDate = constraints.acceleratedTOD.expectedRezoning;
+    caveats.push(
+      `Site in ${precinctName}${rezoningDate ? ` (expected rezoning: ${rezoningDate})` : ''} — priority precinct under SEPP (Housing) 2021 Part 3B. Current LEP controls apply until rezoning is gazetted. Confirm controls have not changed before lodgement.`
+    );
+  }
+
+  const caveatsProp = caveats.length > 0 ? caveats : undefined;
 
   if (heritageItem) {
     requiredReports.push('Heritage Impact Statement (Clause 5.10 LEP)');
@@ -37,6 +49,7 @@ export function buildPathwayDetermination(
       reason: 'Heritage item — CDC and exempt development not permitted for listed heritage items',
       legislative_basis: 'EP&A Act 1979 s 4.15; LEP Clause 5.10',
       required_reports: requiredReports,
+      caveats: caveatsProp,
     };
   }
 
@@ -49,6 +62,7 @@ export function buildPathwayDetermination(
       reason: 'Heritage conservation area — CDC and exempt development restricted under SEPP (Exempt & Complying Development Codes) 2008 cl.1.17(1)(a)',
       legislative_basis: 'SEPP (Exempt & Complying Development Codes) 2008 cl.1.17; EP&A Act 1979 s 4.15; LEP Clause 5.10',
       required_reports: requiredReports,
+      caveats: caveatsProp,
     };
   }
 
@@ -72,6 +86,7 @@ export function buildPathwayDetermination(
       reason: `${zoneCode} zone — Housing SEPP 2021 CDC pathway available for eligible development types and lot configurations`,
       legislative_basis: 'SEPP (Housing) 2021 Part 2; SEPP (Exempt & Complying Development Codes) 2008',
       required_reports: requiredReports,
+      caveats: caveatsProp,
     };
   }
 
@@ -80,6 +95,7 @@ export function buildPathwayDetermination(
     reason: `${zoneCode} zone — not covered by Housing SEPP 2021 CDC pathway. Check SEPP (Exempt & Complying Development Codes) 2008 Schedule 2 for exempt development eligibility.`,
     legislative_basis: 'EP&A Act 1979 s 4.15; SEPP (Exempt & Complying Development Codes) 2008',
     required_reports: requiredReports,
+    caveats: caveatsProp,
   };
 }
 

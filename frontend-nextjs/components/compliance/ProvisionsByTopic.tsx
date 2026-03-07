@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
-import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW, type CouncilConfig } from '@/lib/council-config';
+import { COUNCIL_CONFIGS, TOPIC_LABELS, INNER_WEST_OVERVIEW } from '@/lib/council-config';
 // HeritageProvisions removed - using v2_dcp_part + v2_heritage_hca grouping instead
 import { FormattedProvisionText } from './FormattedProvisionText';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
@@ -357,9 +357,11 @@ export function ProvisionsByTopic({
   const [viewingPdfImage, setViewingPdfImage] = useState<{ url: string; page: number } | null>(null);
   const [showInnerWestOverview, setShowInnerWestOverview] = useState(false);
 
-  // Get council config (default to marrickville if unknown)
-  const councilConfig: CouncilConfig = council ? COUNCIL_CONFIGS[council] || COUNCIL_CONFIGS.marrickville : COUNCIL_CONFIGS.marrickville;
-  const topicOrder = professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner;
+  // Get council config — null for unknown/unconfigured councils (no fallback to a specific council)
+  const councilConfig = (council ? COUNCIL_CONFIGS[council] : null) ?? null;
+  const topicOrder = councilConfig
+    ? (professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner)
+    : [];
 
   // Build API URL for SWR caching
   // NOTE: selectedTopic is NOT included - we filter client-side for stable counts
@@ -936,7 +938,7 @@ export function ProvisionsByTopic({
           </div>
 
           {/* Dev Type selector or note */}
-          {councilConfig.devTypeFilterEffective ? (
+          {councilConfig?.devTypeFilterEffective ? (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
               <label className="block text-xs font-semibold text-blue-800 mb-1.5">
                 Development Type
@@ -958,14 +960,14 @@ export function ProvisionsByTopic({
                 ))}
               </select>
             </div>
-          ) : councilConfig.devTypeNote && (
+          ) : councilConfig?.devTypeNote && (
             <p className="text-xs text-slate-500 italic">
               {councilConfig.devTypeNote}
             </p>
           )}
 
           {/* Warning banner - only if needed */}
-          {data && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && (
+          {data && councilConfig && data.summary?.total_provisions > councilConfig.warningThreshold && !selectedTopic && (
             <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
               <Info className="h-4 w-4 text-amber-600 flex-shrink-0" />
               <p className="text-xs text-amber-800">

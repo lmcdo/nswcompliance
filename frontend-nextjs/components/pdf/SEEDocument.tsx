@@ -377,11 +377,16 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                   ? `Yes${environmental_constraints.mine_subsidence_district ? ` — ${environmental_constraints.mine_subsidence_district}` : ''}`
                   : 'No'}
               />
-              <DataRow label="Landslide Risk:" value={environmental_constraints.landslide_risk ? 'Yes' : 'No'} />
+              <DataRow
+                label="Landslide Risk:"
+                value={environmental_constraints.landslide_risk
+                  ? `Yes${environmental_constraints.landslide_risk_class ? ` — ${environmental_constraints.landslide_risk_class}` : ''}`
+                  : 'No'}
+              />
               <DataRow
                 label="Contaminated Land:"
                 value={environmental_constraints.contaminated_land
-                  ? `Yes — notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}`
+                  ? `Yes — notified site within 500m${environmental_constraints.contaminated_site_name ? `: ${environmental_constraints.contaminated_site_name}` : ''}${environmental_constraints.contaminated_management_class ? ` (${environmental_constraints.contaminated_management_class})` : ''}${environmental_constraints.contaminated_type ? ` — ${environmental_constraints.contaminated_type}` : ''}`
                   : 'No known sites within 500m'}
               />
               <DataRow label="Drinking Water Catchment:" value={environmental_constraints.drinking_water_catchment ? 'Yes' : 'No'} />
@@ -557,6 +562,19 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 <View key={i} style={{ flexDirection: 'row', gap: 6, marginBottom: 2 }}>
                   <Text style={{ fontSize: 8, color: '#374151' }}>•</Text>
                   <Text style={{ fontSize: 8, color: '#374151', flex: 1 }}>{report}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+          {pathway_determination?.caveats && pathway_determination.caveats.length > 0 && (
+            <View style={{ marginTop: 8, padding: 6, border: '1pt solid #fbbf24', backgroundColor: '#fffbeb' }}>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4 }}>
+                Planning Caveats:
+              </Text>
+              {pathway_determination.caveats.map((caveat, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 4, marginBottom: 2 }}>
+                  <Text style={{ fontSize: 8, color: '#b45309' }}>!</Text>
+                  <Text style={{ fontSize: 8, color: '#92400e', flex: 1 }}>{caveat}</Text>
                 </View>
               ))}
             </View>

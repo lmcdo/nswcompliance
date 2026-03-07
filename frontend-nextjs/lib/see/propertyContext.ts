@@ -151,6 +151,12 @@ export function buildPropertyContext(
         contaminated_land: !!envC.contaminatedLand?.hasNotifiedSites,
         contaminated_site_name: envC.contaminatedLand?.nearestSite?.name,
         contaminated_site_distance: envC.contaminatedLand?.nearestSite?.distance,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        contaminated_management_class: (envC.contaminatedLand?.nearestSite as any)?.managementClass || undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        contaminated_type: (envC.contaminatedLand?.nearestSite as any)?.contaminationType || undefined,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        landslide_risk_class: (envC.landslideRisk as any)?.layClass || undefined,
         drinking_water_catchment: !!envC.drinkingWaterCatchment?.inCatchment,
         terrestrial_biodiversity: !!envC.terrestrialBiodiversity?.inBiodiversityArea,
         coastal_management: !!(envC.coastalEnvironment?.inCoastalArea && envC.coastalEnvironment?.zones?.length),

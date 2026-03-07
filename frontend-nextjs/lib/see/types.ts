@@ -13,6 +13,8 @@ export interface PathwayDetermination {
   legislative_basis: string;
   /** Specialist reports required for lodgement e.g. ['Heritage Impact Statement', 'BASIX Certificate'] */
   required_reports: string[];
+  /** Planning caveats e.g. accelerated TOD rezoning notices */
+  caveats?: string[];
 }
 
 /** A single SEPP control row for assessment in the SEE. */
