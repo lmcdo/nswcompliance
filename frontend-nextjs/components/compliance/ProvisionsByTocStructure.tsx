@@ -254,10 +254,10 @@ export function ProvisionsByTocStructure({
   // setSessionToken fires before loadResponses completes, so intakeAnswers is
   // briefly null even when a saved session exists. Wait until loading is done.
   useEffect(() => {
-    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null && allProvisions.length > 0) {
+    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null) {
       setShowIntakeModal(true);
     }
-  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading, allProvisions.length]);
+  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading]);
 
   // Merge auto-answers from LEP constraints with saved intake answers.
   // Auto-answers fill unknowns; saved planner answers always override.
