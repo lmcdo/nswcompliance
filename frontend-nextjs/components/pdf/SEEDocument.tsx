@@ -81,7 +81,9 @@ function DataRow({ label, value }: { label: string; value: string }) {
 // ---------------------------------------------------------------------------
 
 export function SEEDocument({ data }: { data: SEEDocumentData }) {
-  const { property, development_description, see_intro, annotated_provisions, all_provisions,
+  // Normalise description: collapse newlines to spaces so react-pdf renders as flowing text.
+  const devDesc = data.development_description?.replace(/\n+/g, ' ').trim() ?? '';
+  const { property, see_intro, annotated_provisions, all_provisions,
           generated_date, intake_answers, client_ref, prepared_by,
           pathway_determination, sepp_assessable_controls, lep_assessable_standards,
           topic_assertions, chapter_assertions } = data;
@@ -203,9 +205,9 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 8 }}>
               {see_intro}
             </Text>
-          ) : development_description ? (
+          ) : devDesc ? (
             <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 8 }}>
-              {`This Statement of Environmental Effects has been prepared in support of a Development Application for ${development_description} at ${property.address}. The proposed development is subject to assessment under the Environmental Planning and Assessment Act 1979 (NSW).`}
+              {`This Statement of Environmental Effects has been prepared in support of a Development Application for ${devDesc} at ${property.address}. The proposed development is subject to assessment under the Environmental Planning and Assessment Act 1979 (NSW).`}
             </Text>
           ) : (
             <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic', marginBottom: 8 }}>
@@ -221,8 +223,8 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
         {/* ---- Proposed development box ---- */}
         <View style={{ backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', padding: 10, marginBottom: 8 }}>
           <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', marginBottom: 4 }}>PROPOSED DEVELOPMENT</Text>
-          {development_description ? (
-            <Text style={{ fontSize: 10, color: '#1f2937' }}>{development_description}</Text>
+          {devDesc ? (
+            <Text style={{ fontSize: 10, color: '#1f2937' }}>{devDesc}</Text>
           ) : (
             <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
               [To be completed — describe the proposed development]
@@ -944,7 +946,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             {(chapter_assertions?.length ?? 0) === 0 && (topic_assertions?.length ?? 0) > 0 && (
               <DataRow label="Schedule B — dismissed topics:" value={`${topic_assertions!.length} topic${topic_assertions!.length !== 1 ? 's' : ''} asserted not applicable`} />
             )}
-            <DataRow label="Development description:" value={development_description || '[Not provided]'} />
+            <DataRow label="Development description:" value={devDesc || '[Not provided]'} />
           </View>
         </View>
 
