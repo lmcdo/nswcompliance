@@ -25,6 +25,7 @@ interface DcpProvisionListProps {
   sessionToken: string | null;
   daResponses?: Map<number, DaResponse>;
   excludableTopics: Set<string>;
+  onResponseSaved?: (provisionId: number, response: DaResponse) => void;
   onViewPdf: (url: string, page: number) => void;
   debouncedSearch: string;
   // Empty state
@@ -44,7 +45,7 @@ export function DcpProvisionList({
   displayProvisions, triageExcludedProvisions, filteredProvisions,
   hasMarkers, showTriageExcluded, onToggleTriageExcluded,
   councilPdfUrl, formerCouncil, zone, heritage, hcaName, precinctId,
-  isDaMode, sessionToken, daResponses, excludableTopics, onViewPdf,
+  isDaMode, sessionToken, daResponses, excludableTopics, onResponseSaved, onViewPdf,
   debouncedSearch, provisionView, layerFilter, onClearLayer,
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
   onSearchQueryChange, baseProvisions,
@@ -105,6 +106,7 @@ export function DcpProvisionList({
               sessionToken={sessionToken}
               daResponses={daResponses}
               excludableTopics={excludableTopics}
+              onResponseSaved={onResponseSaved}
             />
           )}
           {triageExcludedProvisions.length > 0 && (
@@ -135,6 +137,7 @@ export function DcpProvisionList({
                     sessionToken={sessionToken}
                     daResponses={daResponses}
                     excludableTopics={excludableTopics}
+                    onResponseSaved={onResponseSaved}
                   />
                 </div>
               )}

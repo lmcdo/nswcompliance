@@ -19,6 +19,7 @@ interface UseDASessionReturn {
   isLoading: boolean;
   daResponses: Map<number, DaResponse>;
   refreshResponses: () => Promise<void>;
+  updateSingleResponse: (provisionId: number, response: DaResponse) => void;
   developmentDescription: string;
   saveDescription: (text: string) => Promise<void>;
   intakeAnswers: IntakeAnswers | null;
@@ -84,6 +85,14 @@ export function useDASession(
       await loadResponses(sessionToken);
     }
   }, [sessionToken, loadResponses]);
+
+  const updateSingleResponse = useCallback((provisionId: number, response: DaResponse) => {
+    setDaResponses(prev => {
+      const next = new Map(prev);
+      next.set(provisionId, response);
+      return next;
+    });
+  }, []);
 
   const saveDescription = useCallback(async (text: string) => {
     if (!sessionToken) return;
@@ -202,6 +211,7 @@ export function useDASession(
     isLoading,
     daResponses,
     refreshResponses,
+    updateSingleResponse,
     developmentDescription,
     saveDescription,
     intakeAnswers,

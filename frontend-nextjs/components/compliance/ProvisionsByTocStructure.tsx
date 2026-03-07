@@ -74,6 +74,11 @@ const DEFAULT_LAYER_LABELS: Record<string, string> = {
   precinct: 'Precinct',
 };
 
+// DA mode: sort generic/use_specific provisions before precinct, and condition (heritage) last.
+const DA_LAYER_SORT_ORDER: Record<string, number> = {
+  generic: 1, use_specific: 2, precinct: 3, condition: 4,
+};
+
 
 interface TocSection {
   section_id: string;
@@ -151,6 +156,10 @@ export function ProvisionsByTocStructure({
 }: ProvisionsByTocStructureProps) {
   // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
   const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
+
+  useEffect(() => {
+    if (isDaMode) setProvisionView('structure');
+  }, [isDaMode]);
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
@@ -176,7 +185,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -243,10 +252,10 @@ export function ProvisionsByTocStructure({
   // setSessionToken fires before loadResponses completes, so intakeAnswers is
   // briefly null even when a saved session exists. Wait until loading is done.
   useEffect(() => {
-    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null) {
+    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null && allProvisions.length > 0) {
       setShowIntakeModal(true);
     }
-  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading]);
+  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading, allProvisions.length]);
 
   // Merge auto-answers from LEP constraints with saved intake answers.
   // Auto-answers fill unknowns; saved planner answers always override.
@@ -570,15 +579,35 @@ export function ProvisionsByTocStructure({
       // Return just provisions
       return scored.map(s => s.provision);
     } else {
-      // Sort by priority (default)
+      // Sort by priority (default), with DA mode layer-based tiebreaker (heritage last)
       return filtered.sort((a, b) => {
         const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
+        if (isDaMode) {
+          const aLayer = DA_LAYER_SORT_ORDER[a.v2_dcp_layer || a.layer] ?? 2;
+          const bLayer = DA_LAYER_SORT_ORDER[b.v2_dcp_layer || b.layer] ?? 2;
+          if (aLayer !== bLayer) return aLayer - bLayer;
+        }
         const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
         const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
         return aPriority - bPriority;
       });
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
+
+  // Per-chapter assessment progress — used by TocSidebar to show "N/M" fractions in DA mode
+  const chapterProgress = useMemo(() => {
+    if (!isDaMode || daResponses.size === 0) return undefined;
+    const map: Record<string, { assessed: number; total: number }> = {};
+    for (const p of allProvisions) {
+      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
+        ? p.v2_dcp_part
+        : (p.source_chapter_key || 'unknown');
+      if (!map[chKey]) map[chKey] = { assessed: 0, total: 0 };
+      map[chKey].total++;
+      if (daResponses.has(p.id)) map[chKey].assessed++;
+    }
+    return map;
+  }, [isDaMode, allProvisions, daResponses]);
 
   // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
@@ -1029,6 +1058,7 @@ export function ProvisionsByTocStructure({
             isDaMode={isDaMode}
             chapterAssertions={chapterAssertions}
             onAssertChapter={saveChapterAssertion}
+            chapterProgress={chapterProgress}
           />
         </div>
       )}
@@ -1211,6 +1241,7 @@ export function ProvisionsByTocStructure({
           sessionToken={sessionToken}
           daResponses={daResponses}
           excludableTopics={excludableTopics}
+          onResponseSaved={updateSingleResponse}
           onViewPdf={(url, page) => setPdfModal({ url, page })}
           debouncedSearch={debouncedSearch}
           provisionView={provisionView}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { Search, X, Ruler, Download } from 'lucide-react';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { LayerExplanation } from './LayerExplanation';
@@ -56,6 +57,8 @@ interface DcpFilterBarProps {
   onHeritageTypeFilterChange?: (v: string | null) => void;
 }
 
+const MAX_VISIBLE_CHIPS = 8;
+
 export function DcpFilterBar({
   searchQuery, onSearchQueryChange, debouncedSearch, showAutocomplete, onShowAutocompleteChange,
   searchScope, onSearchScopeChange, baseProvisions, layerFilteredProvisions, filteredProvisions,
@@ -67,6 +70,8 @@ export function DcpFilterBar({
   showExportModal, onShowExportModal, onExportPdf, selectedPart, provisionView,
   heritageTypeFilter, onHeritageTypeFilterChange,
 }: DcpFilterBarProps) {
+  const [showAllChips, setShowAllChips] = useState(false);
+
   return (
     <>
       {/* Search box */}
@@ -186,32 +191,60 @@ export function DcpFilterBar({
                   Clear <X className="w-3 h-3" />
                 </button>
               )}
-              {availableTopics.map(topic => {
-                const topicKey = normalizeTopicKey(topic);
-                const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
-                const isSelected = topicFilters.includes(topicKey);
-                const isExcluded = excludableTopics.has(topicKey);
+              {(() => {
+                const selected = availableTopics.filter(t => topicFilters.includes(normalizeTopicKey(t)));
+                const unselected = availableTopics.filter(t => !topicFilters.includes(normalizeTopicKey(t)));
+                const visible = showAllChips
+                  ? availableTopics
+                  : [...selected, ...unselected].slice(0, MAX_VISIBLE_CHIPS);
+                const hiddenCount = availableTopics.length - visible.length;
                 return (
-                  <button
-                    key={topic}
-                    onClick={() => !isExcluded && onToggleTopic(topicKey)}
-                    title={isExcluded ? 'Excluded by triage — provisions not applicable to this development' : undefined}
-                    className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                      isExcluded
-                        ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 cursor-default line-through decoration-gray-400'
-                        : isSelected
-                        ? 'bg-teal-600 text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {topic} ({stats.total})
-                    {!isExcluded && stats.critical > 0 && (
-                      <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
+                  <>
+                    {visible.map(topic => {
+                      const topicKey = normalizeTopicKey(topic);
+                      const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
+                      const isSelected = topicFilters.includes(topicKey);
+                      const isExcluded = excludableTopics.has(topicKey);
+                      return (
+                        <button
+                          key={topic}
+                          onClick={() => !isExcluded && onToggleTopic(topicKey)}
+                          title={isExcluded ? 'Excluded by triage — provisions not applicable to this development' : undefined}
+                          className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                            isExcluded
+                              ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 cursor-default line-through decoration-gray-400'
+                              : isSelected
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {topic} ({stats.total})
+                          {!isExcluded && stats.critical > 0 && (
+                            <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
+                          )}
+                          {isSelected && !isExcluded && <X className="w-3 h-3 ml-0.5" />}
+                        </button>
+                      );
+                    })}
+                    {!showAllChips && hiddenCount > 0 && (
+                      <button
+                        onClick={() => setShowAllChips(true)}
+                        className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                      >
+                        +{hiddenCount} more
+                      </button>
                     )}
-                    {isSelected && !isExcluded && <X className="w-3 h-3 ml-0.5" />}
-                  </button>
+                    {showAllChips && availableTopics.length > MAX_VISIBLE_CHIPS && (
+                      <button
+                        onClick={() => setShowAllChips(false)}
+                        className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
+                      >
+                        Show less
+                      </button>
+                    )}
+                  </>
                 );
-              })}
+              })()}
             </div>
           </div>
         )}

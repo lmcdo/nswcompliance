@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
 
 const PRESET_REASONS = (topic: string) => [
   `No ${topic.replace(/_/g, ' ')} works proposed`,
@@ -70,7 +69,6 @@ export function DAModeCard({
   topicAssertions,
   onAssertTopicNA,
 }: DAModeCardProps) {
-  const [showExcluded, setShowExcluded] = useState(false);
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState('');
 
@@ -315,27 +313,21 @@ export function DAModeCard({
                   <span className="font-semibold">Now narrow your scope:</span> hover any topic above and click the <span className="font-mono font-bold">×</span> that appears. Pick a one-line reason — “No roof works proposed” — and the entire category collapses from your provision list. Dismissed topics are documented in Schedule B of the SEE so nothing looks ignored.
                 </div>
               )}
-              {/* Excluded — collapsible toggle */}
+              {/* Excluded — always visible */}
               {scopeSummary.excluded.length > 0 && (
                 <div className="pt-0.5">
-                  <button
-                    onClick={() => setShowExcluded(v => !v)}
-                    className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
-                  >
-                    {showExcluded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                  <p className="text-xs text-gray-400 mb-0.5 pl-1">
                     {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} removed by triage
-                  </button>
-                  {showExcluded && (
-                    <div className="mt-1 space-y-0.5 ml-1">
-                      {scopeSummary.excluded.map(({ topic, count }) => (
-                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                          <span className="w-3 text-gray-300 font-bold">✕</span>
-                          <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
-                          <span className="ml-auto">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  </p>
+                  <div className="space-y-0.5 ml-1">
+                    {scopeSummary.excluded.map(({ topic, count }) => (
+                      <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                        <span className="w-3 text-gray-300 font-bold">✕</span>
+                        <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
+                        <span className="ml-auto">{count}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -382,13 +374,13 @@ export function DAModeCard({
             {/* Assessment progress */}
             {completionStats.total > 0 && (
               <div className="flex items-center gap-2 text-xs">
-                <span className="text-teal-600 font-medium">{completionStats.assessed} assessed</span>
+                <span className="text-teal-600 font-medium">{completionStats.assessed} done</span>
                 <span className="text-gray-300">·</span>
-                <span className="text-amber-700">{completionStats.remaining} to assess</span>
+                <span className="text-amber-700">{completionStats.remaining} remaining</span>
                 {completionStats.intakeExcluded > 0 && (
                   <>
                     <span className="text-gray-300">·</span>
-                    <span className="text-gray-400">{completionStats.intakeExcluded} excluded</span>
+                    <span className="text-gray-400">{completionStats.intakeExcluded} intake N/A</span>
                   </>
                 )}
               </div>

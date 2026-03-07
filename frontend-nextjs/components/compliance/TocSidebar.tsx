@@ -43,6 +43,7 @@ interface TocSidebarProps {
   isDaMode?: boolean;
   chapterAssertions?: Record<string, string>;
   onAssertChapter?: (chapterKey: string, reason: string | null) => Promise<void>;
+  chapterProgress?: Record<string, { assessed: number; total: number }>;
 }
 
 export function TocSidebar({
@@ -56,6 +57,7 @@ export function TocSidebar({
   isDaMode,
   chapterAssertions,
   onAssertChapter,
+  chapterProgress,
 }: TocSidebarProps) {
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
@@ -132,6 +134,7 @@ export function TocSidebar({
                 assertedReason={assertedReason}
                 onDismiss={() => setPendingDismiss(partId)}
                 onUndo={() => onAssertChapter?.(partId, null)}
+                chapterProgress={chapterProgress}
               />
               {/* Inline reason picker — shown directly under this part when pending */}
               {pendingDismiss === partId && (
@@ -189,6 +192,7 @@ interface PartNodeProps {
   assertedReason?: string;
   onDismiss?: () => void;
   onUndo?: () => void;
+  chapterProgress?: Record<string, { assessed: number; total: number }>;
 }
 
 function PartNode({
@@ -207,6 +211,7 @@ function PartNode({
   assertedReason,
   onDismiss,
   onUndo,
+  chapterProgress,
 }: PartNodeProps) {
   const sections = part?.sections || {};
   const sectionCount = Object.keys(sections).length;
@@ -288,7 +293,7 @@ function PartNode({
         ) : isDaMode && (hasAnyProvisions ?? hasProvisions) ? (
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss?.(); }}
-            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity flex-shrink-0 text-base leading-none px-1"
+            className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 text-base leading-none px-1"
             title="Assert not applicable — exclude from SEE Schedule A"
           >
             ×
@@ -305,6 +310,17 @@ function PartNode({
             0
           </span>
         ))}
+
+        {/* Per-chapter progress fraction (DA mode) */}
+        {isDaMode && chapterProgress?.[part.part_id] && !isAsserted && (() => {
+          const prog = chapterProgress[part.part_id]!;
+          if (prog.total === 0) return null;
+          return (
+            <span className="text-xs text-teal-600 ml-1 flex-shrink-0" title={`${prog.assessed}/${prog.total} assessed`}>
+              {prog.assessed}/{prog.total}
+            </span>
+          );
+        })()}
       </div>
       {/* Asserted reason shown below part row */}
       {isAsserted && assertedReason && (

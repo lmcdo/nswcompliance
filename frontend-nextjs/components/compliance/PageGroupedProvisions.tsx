@@ -25,6 +25,7 @@ import { stripSectionHeader } from '@/lib/provision-text-formatter';
 import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
 import type { CrossReference } from '@/hooks/useCrossReferences';
 import { DAResponseCapture } from './DAResponseCapture';
+import type { DaResponse } from './DAResponseCapture';
 import type { NumericCheckValues } from './NumericChecker';
 
 // ─── Numeric Compliance Check Utilities ──────────────────────────────────────
@@ -288,6 +289,7 @@ interface PageGroupedProvisionsProps {
   daResponses?: Map<number, { response_text: string | null; compliance_status: string | null }>;
   /** Normalized v2_topic values that were auto-excluded by structured intake */
   excludableTopics?: Set<string>;
+  onResponseSaved?: (provisionId: number, response: DaResponse) => void;
   // Numeric compliance check
   numericCheckValues?: NumericCheckValues;
 }
@@ -495,6 +497,7 @@ export function PageGroupedProvisions({
   sessionToken,
   daResponses,
   excludableTopics,
+  onResponseSaved,
   numericCheckValues,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
@@ -813,6 +816,24 @@ export function PageGroupedProvisions({
                           </Badge>
                         )}
 
+                        {/* DA Mode status badge — shows saved compliance status inline */}
+                        {isDaMode && (() => {
+                          const resp = daResponses?.get(provision.id);
+                          if (!resp?.compliance_status) return null;
+                          const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
+                            complies:       { label: 'Complies', cls: 'bg-green-100 text-green-700 border-green-200' },
+                            varies:         { label: 'Varies',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+                            not_applicable: { label: 'N/A',      cls: 'bg-gray-100  text-gray-500  border-gray-200'  },
+                          };
+                          const badge = STATUS_BADGE[resp.compliance_status];
+                          if (!badge) return null;
+                          return (
+                            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${badge.cls}`}>
+                              {badge.label}
+                            </span>
+                          );
+                        })()}
+
                         {/* DCP Part (optional) */}
                         {showDcpPart && provision.v2_dcp_part && (
                           <span className="text-xs text-gray-400 shrink-0">
@@ -910,6 +931,7 @@ export function PageGroupedProvisions({
                           sessionToken={sessionToken ?? null}
                           existingResponse={daResponses?.get(provision.id) as any}
                           isLocked={excludableTopics ? excludableTopics.has((provision.v2_topic || '').toLowerCase().replace(/ /g, '_')) : false}
+                          onSaved={(response) => onResponseSaved?.(provision.id, response)}
                         />
                       )}
                     </div>
