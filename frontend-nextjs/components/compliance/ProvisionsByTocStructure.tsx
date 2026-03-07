@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
-import { TocSidebar } from './TocSidebar';
+import { TocSidebar, formatPartDisplay } from './TocSidebar';
 import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
 import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
@@ -176,7 +176,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -533,6 +533,17 @@ export function ProvisionsByTocStructure({
       });
     }
 
+    // Chapter assertion filter — remove provisions whose DCP chapter the planner has dismissed.
+    // Heritage (condition layer) is never filtered.
+    if (isDaMode && Object.keys(chapterAssertions).length > 0) {
+      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      filtered = filtered.filter(p => {
+        if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
+        const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') ? p.v2_dcp_part : p.source_chapter_key;
+        return !chKey || !assertedChapters.has(chKey);
+      });
+    }
+
     // DA mode: suppress objective provisions — these are policy intent statements,
     // not enforceable controls and are not assessed individually in a SEE compliance table.
     if (isDaMode) {
@@ -562,7 +573,7 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
   // Count of objective provisions hidden in DA mode (across the full corpus, unaffected by search/topic filters)
   const hiddenObjectiveCount = useMemo(() => {
@@ -877,6 +888,12 @@ export function ProvisionsByTocStructure({
         ...(Object.keys(topicAssertions).length > 0 ? {
           topic_assertions: Object.entries(topicAssertions).map(([topic, reason]) => ({ topic, reason })),
         } : {}),
+        ...(Object.keys(chapterAssertions).length > 0 ? {
+          chapter_assertions: Object.entries(chapterAssertions).map(([chapterKey, reason]) => {
+            const { label, desc } = formatPartDisplay(chapterKey);
+            return { chapter_key: chapterKey, chapter_label: label, chapter_desc: desc || '', reason };
+          }),
+        } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1002,6 +1019,9 @@ export function ProvisionsByTocStructure({
             onSelectPart={handleSelectPart}
             onSelectSection={handleSelectSection}
             formerCouncil={formerCouncil}
+            isDaMode={isDaMode}
+            chapterAssertions={chapterAssertions}
+            onAssertChapter={saveChapterAssertion}
           />
         </div>
       )}

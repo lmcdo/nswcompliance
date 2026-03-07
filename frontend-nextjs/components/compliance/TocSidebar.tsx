@@ -11,6 +11,12 @@ import { useState } from 'react';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const CHAPTER_PRESET_REASONS = (desc: string) => [
+  `${desc || 'These'} provisions not applicable — works not proposed`,
+  'Development type does not trigger these controls',
+  'Site characteristic absent — confirmed per LEP mapping',
+];
+
 interface TocSection {
   section_id: string;
   section_title: string;
@@ -33,6 +39,10 @@ interface TocSidebarProps {
   onSelectPart: (partId: string) => void;
   onSelectSection: (partId: string, sectionId: string) => void;
   formerCouncil?: string;
+  /** DA mode — enables chapter dismiss buttons */
+  isDaMode?: boolean;
+  chapterAssertions?: Record<string, string>;
+  onAssertChapter?: (chapterKey: string, reason: string | null) => Promise<void>;
 }
 
 export function TocSidebar({
@@ -42,9 +52,14 @@ export function TocSidebar({
   selectedSection,
   onSelectPart,
   onSelectSection,
-  formerCouncil
+  formerCouncil,
+  isDaMode,
+  chapterAssertions,
+  onAssertChapter,
 }: TocSidebarProps) {
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
+  const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
+  const [customReason, setCustomReason] = useState('');
 
   const togglePart = (partId: string) => {
     const newExpanded = new Set(expandedParts);
@@ -92,20 +107,61 @@ export function TocSidebar({
         {sortedParts.map(([partId, part]) => {
           const filteredPart = filteredTocStructure[partId];
           const hasProvisions = !!filteredPart && filteredPart.provision_count > 0;
+          const isAsserted = isDaMode === true && !!chapterAssertions?.[partId];
+          const assertedReason = chapterAssertions?.[partId];
+          const { desc: partDesc } = formatPartDisplay(partId);
 
           return (
-            <PartNode
-              key={partId}
-              part={part}
-              filteredPart={filteredPart}
-              hasProvisions={hasProvisions}
-              isExpanded={expandedParts.has(partId)}
-              isSelected={selectedPart === partId}
-              selectedSection={selectedPart === partId ? selectedSection : null}
-              onToggle={() => togglePart(partId)}
-              onSelectPart={() => onSelectPart(partId)}
-              onSelectSection={(sectionId) => onSelectSection(partId, sectionId)}
-            />
+            <div key={partId}>
+              <PartNode
+                part={part}
+                filteredPart={filteredPart}
+                hasProvisions={hasProvisions}
+                isExpanded={expandedParts.has(partId)}
+                isSelected={selectedPart === partId}
+                selectedSection={selectedPart === partId ? selectedSection : null}
+                onToggle={() => togglePart(partId)}
+                onSelectPart={() => { if (!isAsserted) onSelectPart(partId); }}
+                onSelectSection={(sectionId) => { if (!isAsserted) onSelectSection(partId, sectionId); }}
+                isDaMode={isDaMode}
+                isAsserted={isAsserted}
+                assertedReason={assertedReason}
+                onDismiss={() => setPendingDismiss(partId)}
+                onUndo={() => onAssertChapter?.(partId, null)}
+              />
+              {/* Inline reason picker — shown directly under this part when pending */}
+              {pendingDismiss === partId && (
+                <div className="ml-5 mt-1 mb-2 bg-white border border-gray-200 rounded p-2 space-y-1 shadow-sm">
+                  {CHAPTER_PRESET_REASONS(partDesc || '').map(r => (
+                    <button key={r}
+                      onClick={() => { onAssertChapter?.(partId, r); setPendingDismiss(null); }}
+                      className="block w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600">
+                      {r}
+                    </button>
+                  ))}
+                  <div className="flex gap-1 pt-1">
+                    <input
+                      value={customReason}
+                      onChange={e => setCustomReason(e.target.value)}
+                      placeholder="Other reason..."
+                      className="flex-1 text-xs border rounded px-2 py-1"
+                    />
+                    <button
+                      onClick={() => {
+                        if (customReason.trim()) {
+                          onAssertChapter?.(partId, customReason.trim());
+                          setPendingDismiss(null);
+                          setCustomReason('');
+                        }
+                      }}
+                      className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
+                      OK
+                    </button>
+                  </div>
+                  <button onClick={() => setPendingDismiss(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+                </div>
+              )}
+            </div>
           );
         })}
       </nav>
@@ -123,6 +179,11 @@ interface PartNodeProps {
   onToggle: () => void;
   onSelectPart: () => void;
   onSelectSection: (sectionId: string) => void;
+  isDaMode?: boolean;
+  isAsserted?: boolean;
+  assertedReason?: string;
+  onDismiss?: () => void;
+  onUndo?: () => void;
 }
 
 function PartNode({
@@ -134,7 +195,12 @@ function PartNode({
   selectedSection,
   onToggle,
   onSelectPart,
-  onSelectSection
+  onSelectSection,
+  isDaMode,
+  isAsserted,
+  assertedReason,
+  onDismiss,
+  onUndo,
 }: PartNodeProps) {
   const sections = part?.sections || {};
   const sectionCount = Object.keys(sections).length;
@@ -145,14 +211,13 @@ function PartNode({
       {/* Part header */}
       <div
         className={cn(
-          "flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer transition-colors",
-          hasProvisions ? "hover:bg-teal-50" : "hover:bg-gray-100 opacity-50",
-          isSelected && !selectedSection && "bg-teal-100 text-teal-900"
+          "flex items-center gap-1 px-2 py-1.5 rounded-md cursor-pointer transition-colors group",
+          isAsserted ? "opacity-50" : hasProvisions ? "hover:bg-teal-50" : "hover:bg-gray-100 opacity-40",
+          isSelected && !selectedSection && !isAsserted && "bg-teal-100 text-teal-900"
         )}
         onClick={() => {
-          if (hasMultipleSections) {
-            onToggle();
-          }
+          if (isAsserted) return;
+          if (hasMultipleSections) onToggle();
           onSelectPart();
         }}
       >
@@ -205,8 +270,27 @@ function PartNode({
           })()}
         </div>
 
-        {/* Count badge - show filtered count if available, otherwise show 0 */}
-        {hasProvisions ? (
+        {/* Asserted-out indicator OR dismiss button (DA mode) */}
+        {isAsserted ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onUndo?.(); }}
+            className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0 px-1"
+            title="Restore chapter to assessment scope"
+          >
+            undo
+          </button>
+        ) : isDaMode && hasProvisions ? (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDismiss?.(); }}
+            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity flex-shrink-0 text-base leading-none px-1"
+            title="Assert not applicable — exclude from SEE Schedule A"
+          >
+            ×
+          </button>
+        ) : null}
+
+        {/* Count badge */}
+        {!isAsserted && (hasProvisions ? (
           <span className="text-xs text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded font-medium">
             {filteredPart?.provision_count || 0}
           </span>
@@ -214,8 +298,14 @@ function PartNode({
           <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
             0
           </span>
-        )}
+        ))}
       </div>
+      {/* Asserted reason shown below part row */}
+      {isAsserted && assertedReason && (
+        <p className="ml-9 text-xs text-gray-400 italic truncate pb-0.5" title={assertedReason}>
+          {assertedReason}
+        </p>
+      )}
 
       {/* Sections (if expanded) */}
       {isExpanded && hasMultipleSections && (
@@ -452,7 +542,7 @@ const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
  * Format part ID for display (shorter version for sidebar)
  * Returns { label, desc } for two-line display
  */
-function formatPartDisplay(partId: string): { label: string; desc?: string } {
+export function formatPartDisplay(partId: string): { label: string; desc?: string } {
   if (!partId) return { label: 'Other' };
 
   // Handle "unknown" gracefully

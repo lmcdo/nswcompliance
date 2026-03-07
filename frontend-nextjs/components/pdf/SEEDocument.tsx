@@ -84,7 +84,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const { property, development_description, see_intro, annotated_provisions, all_provisions,
           generated_date, intake_answers, client_ref, prepared_by,
           pathway_determination, sepp_assessable_controls, lep_assessable_standards,
-          topic_assertions } = data;
+          topic_assertions, chapter_assertions } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -663,9 +663,12 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
         </Text>
 
         {/* ---- Cover statement (Schedule B reference) ---- */}
-        {(topic_assertions?.length ?? 0) > 0 && (
+        {((chapter_assertions?.length ?? 0) > 0 || (topic_assertions?.length ?? 0) > 0) && (
           <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 10 }}>
-            {`All provisions of the applicable Development Control Plan have been considered. The ${topic_assertions!.length} topic categories listed in Schedule B relate to works and uses not proposed and are not applicable to this development. Provisions assessed for compliance are set out in Schedule A below.`}
+            {(chapter_assertions?.length ?? 0) > 0
+              ? `All provisions of the applicable Development Control Plan have been considered. The ${chapter_assertions!.length} DCP chapter${chapter_assertions!.length !== 1 ? 's' : ''} listed in Schedule B relate to works and uses not proposed and are not applicable to this development. Provisions assessed for compliance are set out in Schedule A below.`
+              : `All provisions of the applicable Development Control Plan have been considered. The ${topic_assertions!.length} topic categor${topic_assertions!.length !== 1 ? 'ies' : 'y'} listed in Schedule B relate to works and uses not proposed and are not applicable to this development. Provisions assessed for compliance are set out in Schedule A below.`
+            }
           </Text>
         )}
 
@@ -845,28 +848,54 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </View>
         )}
 
-        {/* ---- Schedule B — Non-Applicable DCP Topics ---- */}
-        {(topic_assertions?.length ?? 0) > 0 && (
+        {/* ---- Schedule B — Non-Applicable DCP Chapters/Topics ---- */}
+        {((chapter_assertions?.length ?? 0) > 0 || (topic_assertions?.length ?? 0) > 0) && (
           <View style={{ marginTop: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#374151', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
-              {`Schedule B — Non-Applicable DCP Topics (${topic_assertions!.length})`}
-            </Text>
-            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
-              The following topic categories were assessed as not applicable to the proposed development. Provisions within these categories are excluded from Schedule A.
-            </Text>
-            {/* Header row */}
-            <View style={{ flexDirection: 'row', borderBottom: '1pt solid #d1d5db', paddingBottom: 4, marginBottom: 4 }}>
-              <Text style={{ flex: 1, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Topic</Text>
-              <Text style={{ flex: 3, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Basis for Non-Applicability</Text>
-            </View>
-            {topic_assertions!.map((ta, i) => (
-              <View key={i} style={{ flexDirection: 'row', paddingVertical: 3, borderBottom: '0.5pt solid #f3f4f6' }}>
-                <Text style={{ flex: 1, fontSize: 8, color: '#374151', textTransform: 'capitalize' }}>
-                  {ta.topic.replace(/_/g, ' ')}
+            {(chapter_assertions?.length ?? 0) > 0 ? (
+              <>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#374151', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
+                  {`Schedule B — Non-Applicable DCP Chapters (${chapter_assertions!.length})`}
                 </Text>
-                <Text style={{ flex: 3, fontSize: 8, color: '#6b7280' }}>{ta.reason}</Text>
-              </View>
-            ))}
+                <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+                  The following DCP chapters were assessed as not applicable to the proposed development. Provisions within these chapters are excluded from Schedule A.
+                </Text>
+                {/* Header row */}
+                <View style={{ flexDirection: 'row', borderBottom: '1pt solid #d1d5db', paddingBottom: 4, marginBottom: 4 }}>
+                  <Text style={{ flex: 1, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>DCP Chapter</Text>
+                  <Text style={{ flex: 2, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Chapter Name</Text>
+                  <Text style={{ flex: 3, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Basis for Non-Applicability</Text>
+                </View>
+                {chapter_assertions!.map((ca, i) => (
+                  <View key={i} style={{ flexDirection: 'row', paddingVertical: 3, borderBottom: '0.5pt solid #f3f4f6' }}>
+                    <Text style={{ flex: 1, fontSize: 8, color: '#374151', fontFamily: 'Helvetica-Bold' }}>{ca.chapter_label}</Text>
+                    <Text style={{ flex: 2, fontSize: 8, color: '#374151' }}>{ca.chapter_desc || '—'}</Text>
+                    <Text style={{ flex: 3, fontSize: 8, color: '#6b7280' }}>{ca.reason}</Text>
+                  </View>
+                ))}
+              </>
+            ) : (
+              <>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#374151', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
+                  {`Schedule B — Non-Applicable DCP Topics (${topic_assertions!.length})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6, fontStyle: 'italic' }}>
+                  The following topic categories were assessed as not applicable to the proposed development. Provisions within these categories are excluded from Schedule A.
+                </Text>
+                {/* Header row */}
+                <View style={{ flexDirection: 'row', borderBottom: '1pt solid #d1d5db', paddingBottom: 4, marginBottom: 4 }}>
+                  <Text style={{ flex: 1, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Topic</Text>
+                  <Text style={{ flex: 3, fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151' }}>Basis for Non-Applicability</Text>
+                </View>
+                {topic_assertions!.map((ta, i) => (
+                  <View key={i} style={{ flexDirection: 'row', paddingVertical: 3, borderBottom: '0.5pt solid #f3f4f6' }}>
+                    <Text style={{ flex: 1, fontSize: 8, color: '#374151', textTransform: 'capitalize' }}>
+                      {ta.topic.replace(/_/g, ' ')}
+                    </Text>
+                    <Text style={{ flex: 3, fontSize: 8, color: '#6b7280' }}>{ta.reason}</Text>
+                  </View>
+                ))}
+              </>
+            )}
           </View>
         )}
 
@@ -909,7 +938,10 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             <DataRow label="  — Not applicable (intake triage):" value={`${naIntakeProvisions.length}`} />
             <DataRow label="Not yet assessed:" value={unannotatedCount > 0 ? `${unannotatedCount} — INCOMPLETE` : '0 — fully assessed'} />
             <DataRow label="Structured intake:" value={intake_answers ? 'Completed' : 'Not completed — no automatic exclusions applied'} />
-            {(topic_assertions?.length ?? 0) > 0 && (
+            {(chapter_assertions?.length ?? 0) > 0 && (
+              <DataRow label="Schedule B — dismissed chapters:" value={`${chapter_assertions!.length} DCP chapter${chapter_assertions!.length !== 1 ? 's' : ''} asserted not applicable`} />
+            )}
+            {(chapter_assertions?.length ?? 0) === 0 && (topic_assertions?.length ?? 0) > 0 && (
               <DataRow label="Schedule B — dismissed topics:" value={`${topic_assertions!.length} topic${topic_assertions!.length !== 1 ? 's' : ''} asserted not applicable`} />
             )}
             <DataRow label="Development description:" value={development_description || '[Not provided]'} />

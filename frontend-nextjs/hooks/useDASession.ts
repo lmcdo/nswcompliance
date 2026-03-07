@@ -25,6 +25,8 @@ interface UseDASessionReturn {
   saveIntakeAnswers: (answers: IntakeAnswers) => Promise<void>;
   topicAssertions: Record<string, string>;
   saveTopicAssertion: (topic: string, reason: string | null) => Promise<void>;
+  chapterAssertions: Record<string, string>;
+  saveChapterAssertion: (chapterKey: string, reason: string | null) => Promise<void>;
   bulkSaveResponses: (responses: BulkResponseItem[]) => Promise<void>;
   error: Error | null;
 }
@@ -40,6 +42,7 @@ export function useDASession(
   const [developmentDescription, setDevelopmentDescription] = useState<string>('');
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
   const [topicAssertions, setTopicAssertions] = useState<Record<string, string>>({});
+  const [chapterAssertions, setChapterAssertions] = useState<Record<string, string>>({});
   const [error, setError] = useState<Error | null>(null);
 
   const loadResponses = useCallback(async (token: string) => {
@@ -57,9 +60,11 @@ export function useDASession(
         if ((pv as any)._v === 2) {
           setIntakeAnswers((pv as any).intake ?? null);
           setTopicAssertions((pv as any).topic_assertions ?? {});
+          setChapterAssertions((pv as any).chapter_assertions ?? {});
         } else {
           setIntakeAnswers(pv as IntakeAnswers);   // legacy format
           setTopicAssertions({});
+          setChapterAssertions({});
         }
       }
 
@@ -92,7 +97,7 @@ export function useDASession(
 
   const saveIntakeAnswers = useCallback(async (answers: IntakeAnswers) => {
     if (!sessionToken) return;
-    const envelope = { _v: 2, intake: answers, topic_assertions: topicAssertions };
+    const envelope = { _v: 2, intake: answers, topic_assertions: topicAssertions, chapter_assertions: chapterAssertions };
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -100,13 +105,13 @@ export function useDASession(
     });
     if (!res.ok) throw new Error('Failed to save intake answers');
     setIntakeAnswers(answers);
-  }, [sessionToken, topicAssertions]);
+  }, [sessionToken, topicAssertions, chapterAssertions]);
 
   const saveTopicAssertion = useCallback(async (topic: string, reason: string | null) => {
     if (!sessionToken) return;
     const next = { ...topicAssertions };
     if (reason === null) { delete next[topic]; } else { next[topic] = reason; }
-    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: next };
+    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: next, chapter_assertions: chapterAssertions };
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -114,7 +119,21 @@ export function useDASession(
     });
     if (!res.ok) throw new Error('Failed to save topic assertion');
     setTopicAssertions(next);
-  }, [sessionToken, topicAssertions, intakeAnswers]);
+  }, [sessionToken, topicAssertions, chapterAssertions, intakeAnswers]);
+
+  const saveChapterAssertion = useCallback(async (chapterKey: string, reason: string | null) => {
+    if (!sessionToken) return;
+    const next = { ...chapterAssertions };
+    if (reason === null) { delete next[chapterKey]; } else { next[chapterKey] = reason; }
+    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: topicAssertions, chapter_assertions: next };
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposed_values: envelope }),
+    });
+    if (!res.ok) throw new Error('Failed to save chapter assertion');
+    setChapterAssertions(next);
+  }, [sessionToken, chapterAssertions, topicAssertions, intakeAnswers]);
 
   const bulkSaveResponses = useCallback(async (responses: BulkResponseItem[]) => {
     if (!sessionToken || responses.length === 0) return;
@@ -189,6 +208,8 @@ export function useDASession(
     saveIntakeAnswers,
     topicAssertions,
     saveTopicAssertion,
+    chapterAssertions,
+    saveChapterAssertion,
     bulkSaveResponses,
     error,
   };

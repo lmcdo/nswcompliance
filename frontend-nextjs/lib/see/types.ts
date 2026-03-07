@@ -52,6 +52,18 @@ export interface TopicAssertion {
   reason: string;
 }
 
+/** Chapter-level assertion — planner dismissed an entire DCP chapter by its actual document reference. */
+export interface ChapterAssertion {
+  /** The partId used as grouping key e.g. 'chapter-b3-general-development' or 'B7' */
+  chapter_key: string;
+  /** Short label shown in SEE table e.g. 'Chapter B3' or 'B7' */
+  chapter_label: string;
+  /** Chapter description e.g. 'General Development Controls' or 'Transport' */
+  chapter_desc: string;
+  /** One-sentence reason for non-applicability */
+  reason: string;
+}
+
 export interface SEEDocumentData {
   property: PropertyContext;
   development_description: string;
@@ -72,6 +84,8 @@ export interface SEEDocumentData {
   sepp_assessable_controls?: SeppAssessableControl[];
   /** LEP development standards applicable to this assessment (height, FSR, heritage, etc.) */
   lep_assessable_standards?: LepAssessableStandard[];
-  /** Topic-level assertions — planner-dismissed topics with one-sentence reasons (Schedule B) */
+  /** Topic-level assertions — planner-dismissed topics with one-sentence reasons (Schedule B, fallback) */
   topic_assertions?: TopicAssertion[];
+  /** Chapter-level assertions — planner-dismissed DCP chapters by actual document reference (Schedule B, preferred) */
+  chapter_assertions?: ChapterAssertion[];
 }
