@@ -10,7 +10,6 @@ const INITIAL_DISPLAY_COUNT = 5;
 interface LandUseZoningCardProps {
   zone: string;
   zoneDescription?: string;
-  lga: string;
   legislationUrl?: string;
   epiName?: string;
   amendment?: string;
@@ -20,7 +19,6 @@ interface LandUseZoningCardProps {
 export function LandUseZoningCard({
   zone,
   zoneDescription,
-  lga,
   legislationUrl,
   epiName,
   amendment,

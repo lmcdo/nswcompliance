@@ -358,7 +358,7 @@ export function ProvisionsByTopic({
   const [showInnerWestOverview, setShowInnerWestOverview] = useState(false);
 
   // Get council config — null for unknown/unconfigured councils (no fallback to a specific council)
-  const councilConfig = (council ? COUNCIL_CONFIGS[council] : null) ?? null;
+  const councilConfig = council ? (COUNCIL_CONFIGS[council] ?? null) : null;
   const topicOrder = councilConfig
     ? (professionalMode === 'certifier' ? councilConfig.topicOrder.certifier : councilConfig.topicOrder.planner)
     : [];
