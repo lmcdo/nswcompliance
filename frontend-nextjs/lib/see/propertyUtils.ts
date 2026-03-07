@@ -83,3 +83,72 @@ export function bushfireCategoryAnnotation(category: string): BushfireCategoryAn
     cdcBlocked: false,
   };
 }
+
+// ── X4: LMR frontage check ────────────────────────────────────────────────────
+
+/** SEPP Housing 2021 minimum frontage for LMR development types. */
+export const LMR_FRONTAGE_MINIMUMS = {
+  dual_occupancy: { minM: 12, label: 'Dual Occupancy' },
+  manor_house: { minM: 12, label: 'Manor House' },
+  multi_dwelling: { minM: 15, label: 'Multi Dwelling Housing' },
+} as const;
+
+export interface LmrFrontageStatus {
+  /** Development types excluded by this frontage */
+  excluded: Array<{ devType: string; label: string; minimumM: number }>;
+  /** Development types that meet the frontage requirement */
+  eligible: Array<{ devType: string; label: string; minimumM: number }>;
+}
+
+/**
+ * Check which LMR development types are excluded by the lot frontage.
+ * Returns lists of excluded and eligible types.
+ */
+export function lmrFrontageStatus(frontageM: number): LmrFrontageStatus {
+  const excluded: LmrFrontageStatus['excluded'] = [];
+  const eligible: LmrFrontageStatus['eligible'] = [];
+  for (const [devType, { minM, label }] of Object.entries(LMR_FRONTAGE_MINIMUMS)) {
+    if (frontageM < minM) {
+      excluded.push({ devType, label, minimumM: minM });
+    } else {
+      eligible.push({ devType, label, minimumM: minM });
+    }
+  }
+  return { excluded, eligible };
+}
+
+// ── X7: Road classification alert ────────────────────────────────────────────
+
+export interface RoadImpactInfo {
+  /** True when road hierarchy warrants a planning alert */
+  isHighImpact: boolean;
+  /** Plain-English annotation for planner */
+  annotation: string;
+}
+
+/**
+ * Return impact info for a road functional_hierarchy string.
+ * High impact = Motorway, Primary Road, Arterial Road.
+ */
+export function roadHierarchyAnnotation(hierarchy: string): RoadImpactInfo {
+  const h = hierarchy.toLowerCase();
+  if (h.includes('motorway')) {
+    return {
+      isHighImpact: true,
+      annotation: 'Motorway frontage — TfNSW consultation required; restricted driveway access; traffic noise assessment required.',
+    };
+  }
+  if (h.includes('primary')) {
+    return {
+      isHighImpact: true,
+      annotation: 'Primary Road frontage — TfNSW consultation likely required; traffic noise assessment required.',
+    };
+  }
+  if (h.includes('arterial')) {
+    return {
+      isHighImpact: true,
+      annotation: 'Arterial Road frontage — traffic noise assessment likely required; access restrictions may apply.',
+    };
+  }
+  return { isHighImpact: false, annotation: '' };
+}

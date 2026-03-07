@@ -9,7 +9,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield } from 'lucide-react';
+import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield, AlertTriangle, Info } from 'lucide-react';
+import { lmrFrontageStatus, roadHierarchyAnnotation } from '@/lib/see/propertyUtils';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { StructuredSeppRequirements } from './StructuredSeppRequirements';
@@ -814,7 +815,63 @@ export function StateLevelControls({
         </Card>
       )}
 
-      {/* Housing SEPP LMR Section - Always shown */}
+
+      {/* X7: Road Classification Alert */}
+      {(() => {
+        const roads: any[] = propertyData?.roadClassifications || [];
+        if (!roads.length) return null;
+        const highImpact = roads
+          .map((r: any) => ({ ...r, impact: roadHierarchyAnnotation(r.functional_hierarchy || '') }))
+          .filter((r: any) => r.impact.isHighImpact)
+          .sort((a: any, b: any) => a.distance_meters - b.distance_meters);
+        if (!highImpact.length) return null;
+        const primary = highImpact[0];
+        return (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-amber-900">
+                  {primary.road_name} — {primary.functional_hierarchy}
+                  <span className="text-xs font-normal text-amber-700 ml-1">({Math.round(primary.distance_meters)}m)</span>
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">{primary.impact.annotation}</p>
+                {highImpact.length > 1 && (
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    Also: {highImpact.slice(1).map((r: any) => r.road_name).join(', ')}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* X8: Housing Infrastructure Area */}
+      {propertyData?.constraints?.hiaArea?.inHIA && (
+        <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <Info className="h-4 w-4 text-purple-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-purple-900">
+                Housing Infrastructure Area — {propertyData.constraints.hiaArea.hiaName}
+              </p>
+              {propertyData.constraints.hiaArea.specialControls && (
+                <p className="text-xs text-purple-700 mt-0.5">
+                  {propertyData.constraints.hiaArea.specialControls}
+                </p>
+              )}
+              {propertyData.constraints.hiaArea.legislativeClause && (
+                <p className="text-xs text-purple-500 mt-0.5">
+                  {propertyData.constraints.hiaArea.legislativeClause}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+            {/* Housing SEPP LMR Section - Always shown */}
       {showHousingSEPPSection ? (
         <Card className="border-purple-200 bg-purple-50/30">
           <CardHeader
@@ -838,7 +895,75 @@ export function StateLevelControls({
             </p>
           </CardHeader>
           {!collapsedSections.lmr && (
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-3">
+              {/* X4: Frontage check against LMR minimums */}
+              {lotWidth && (() => {
+                const status = lmrFrontageStatus(lotWidth);
+                if (!status.excluded.length) return null;
+                return (
+                  <div className="bg-amber-50 border border-amber-200 rounded p-2">
+                    <div className="flex items-start gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-xs font-semibold text-amber-800">
+                          Frontage {lotWidth.toFixed(1)}m
+                        </span>
+                        <span className="text-xs text-amber-700">
+                          {' '}— below {status.excluded[0].minimumM}m minimum:
+                          {' '}{status.excluded.map(e => e.label).join(', ')} not available
+                        </span>
+                        <span className="text-xs text-amber-600 block mt-0.5">
+                          SEPP (Housing) 2021
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* X3: Battleaxe lot SEPP compliance */}
+              {propertyData?.lotDimensions?.lotType === 'battleaxe' &&
+               propertyData.lotDimensions.battleaxe && (
+                <div className={`border rounded p-2 ${
+                  propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                }`}>
+                  <div className="flex items-start gap-1.5">
+                    <AlertTriangle className={`h-3.5 w-3.5 flex-shrink-0 mt-0.5 ${
+                      propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                        ? 'text-green-600' : 'text-red-600'
+                    }`} />
+                    <div>
+                      <span className={`text-xs font-semibold ${
+                        propertyData.lotDimensions.battleaxe.meetsMinimumRequirements
+                          ? 'text-green-800' : 'text-red-800'
+                      }`}>
+                        Battleaxe lot — access way {propertyData.lotDimensions.battleaxe.accessWayWidth.toFixed(1)}m wide
+                      </span>
+                      {propertyData.lotDimensions.battleaxe.meetsMinimumRequirements ? (
+                        <span className="text-xs text-green-700 ml-1">
+                          (meets 3m SEPP Housing 2021 minimum)
+                        </span>
+                      ) : (
+                        <div>
+                          <span className="text-xs text-red-700 ml-1">
+                            (below 3m SEPP Housing 2021 minimum)
+                          </span>
+                          {propertyData.lotDimensions.battleaxe.complianceIssues?.length > 0 && (
+                            <ul className="mt-0.5 ml-1">
+                              {propertyData.lotDimensions.battleaxe.complianceIssues.map((issue: string, i: number) => (
+                                <li key={i} className="text-xs text-red-700">• {issue}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <HousingSEPPEligibilityCard
                 zoneCode={zone}
                 lotSize={lotSize}
