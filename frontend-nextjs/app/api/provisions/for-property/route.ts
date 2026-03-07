@@ -1072,9 +1072,12 @@ function groupByTocStructure(
   }
   const allProvisions = [...textDeduped.values()];
 
-  // Group by v2_dcp_part first
+  // Group by v2_dcp_part first; fall back to source_chapter_key for councils
+  // where v2_dcp_part is 'unknown' or null (Ashfield, Leichhardt, Marrickville, Woollahra)
   for (const provision of allProvisions) {
-    const partId = provision.v2_dcp_part || 'Other';
+    const partId = (provision.v2_dcp_part && provision.v2_dcp_part !== 'unknown')
+      ? provision.v2_dcp_part
+      : (provision.source_chapter_key || 'Other');
     const partName = formatPartName(partId);
 
     if (!byToc[partId]) {

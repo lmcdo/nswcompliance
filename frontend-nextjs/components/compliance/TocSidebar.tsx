@@ -327,7 +327,33 @@ function getPartOrder(partId: string): number {
     'unknown': 100,
   };
 
-  return orderMap[partId] ?? 50;
+  if (orderMap[partId] !== undefined) return orderMap[partId];
+
+  // Waverley-style codes: letter + number (B1, B15, C1, E7, F4, ...)
+  const waverleyMatch = partId.match(/^([A-Z])(\d+)$/);
+  if (waverleyMatch) {
+    const letter = waverleyMatch[1].charCodeAt(0) - 'A'.charCodeAt(0); // B=1, C=2, D=3, E=4, F=5
+    return 30 + letter * 20 + parseInt(waverleyMatch[2]);
+  }
+
+  // Slug-style chapter keys: chapter-b3-general-development, chapter-e1-heritage, ...
+  const chapterSlug = partId.match(/^chapter-([a-z])(\d*)/);
+  if (chapterSlug) {
+    const letter = chapterSlug[1].charCodeAt(0) - 'a'.charCodeAt(0);
+    return 200 + letter * 20 + (parseInt(chapterSlug[2]) || 0);
+  }
+
+  // Slug-style part keys: part-b-connections, part-c-s2-urban-character, part4-s1-low-density
+  const partSlugLetter = partId.match(/^part-([a-z])/);
+  if (partSlugLetter) {
+    const letter = partSlugLetter[1].charCodeAt(0) - 'a'.charCodeAt(0);
+    const sec = partId.match(/-s(\d+)/)?.[1];
+    return 100 + letter * 20 + (parseInt(sec || '0') || 0);
+  }
+  const partSlugNum = partId.match(/^part(\d+)/);
+  if (partSlugNum) return parseInt(partSlugNum[1]);
+
+  return 50;
 }
 
 /**
@@ -363,6 +389,63 @@ const PART_DESCRIPTIONS: Record<string, Record<string, string>> = {
   'Chapter F Part 1': { label: 'Ch F.1', desc: 'Dual Occ & Multi' },
   'Chapter F Part 5': { label: 'Ch F.5', desc: 'Residential Flat' },
   'Chapter F Part 7': { label: 'Ch F.7', desc: 'Other Uses' },
+  // Waverley DCP 2022 (v2_dcp_part codes B1–B17, C1–C2, D1–D2, E1–E7, F1–F5)
+  'B1': { label: 'B1', desc: 'Waste' },
+  'B2': { label: 'B2', desc: 'Ecologically Sustainable Dev' },
+  'B3': { label: 'B3', desc: 'Landscaping & Biodiversity' },
+  'B4': { label: 'B4', desc: 'Coastal Risk Management' },
+  'B5': { label: 'B5', desc: 'Water Management' },
+  'B6': { label: 'B6', desc: 'Accessibility & Adaptability' },
+  'B7': { label: 'B7', desc: 'Transport' },
+  'B8': { label: 'B8', desc: 'Heritage' },
+  'B9': { label: 'B9', desc: 'Safety' },
+  'B10': { label: 'B10', desc: 'Public Art' },
+  'B11': { label: 'B11', desc: 'Design Excellence' },
+  'B12': { label: 'B12', desc: 'Subdivision' },
+  'B13': { label: 'B13', desc: 'Excavation' },
+  'B14': { label: 'B14', desc: 'Advertising & Signage' },
+  'B15': { label: 'B15', desc: 'Public Domain' },
+  'B16': { label: 'B16', desc: 'Inter-War Buildings' },
+  'B17': { label: 'B17', desc: 'Social Impact Assessment' },
+  'C1': { label: 'C1', desc: 'Low Density Residential' },
+  'C2': { label: 'C2', desc: 'Other Residential Development' },
+  'D1': { label: 'D1', desc: 'Commercial & Retail' },
+  'D2': { label: 'D2', desc: 'Outdoor Dining' },
+  'E1': { label: 'E1', desc: 'Bondi Junction' },
+  'E2': { label: 'E2', desc: 'Bondi Beachfront Area' },
+  'E3': { label: 'E3', desc: 'Local Village Centres' },
+  'E4': { label: 'E4', desc: 'Special Character Areas' },
+  'E5': { label: 'E5', desc: '113 Macpherson St Bronte' },
+  'E6': { label: 'E6', desc: '194–214 Oxford Street' },
+  'E7': { label: 'E7', desc: 'Edina Estate' },
+  'F1': { label: 'F1', desc: 'Shared Residential Accommodation' },
+  'F2': { label: 'F2', desc: 'Tourist & Visitor Accommodation' },
+  'F3': { label: 'F3', desc: 'Child Care Centres' },
+  'F4': { label: 'F4', desc: 'Places of Public Worship' },
+  'F5': { label: 'F5', desc: 'Horticulture' },
+  // Woollahra DCP 2022 (source_chapter_key slugs used as partId)
+  'chapter-a1-introduction': { label: 'Chapter A1', desc: 'Introduction' },
+  'chapter-a3-definitions': { label: 'Chapter A3', desc: 'Definitions' },
+  'chapter-b1-residential-precincts': { label: 'Chapter B1', desc: 'Residential Precincts' },
+  'chapter-b2-neighbourhood-hcas': { label: 'Chapter B2', desc: 'Neighbourhood HCAs' },
+  'chapter-b3-general-development': { label: 'Chapter B3', desc: 'General Development Controls' },
+  'chapter-b4-housing-accessible-areas': { label: 'Chapter B4', desc: 'Housing — Accessible Areas' },
+  'chapter-c1-paddington-hca': { label: 'Chapter C1', desc: 'Paddington HCA' },
+  'chapter-c2-woollahra-hca': { label: 'Chapter C2', desc: 'Woollahra HCA' },
+  'chapter-c3-watsons-bay-hca': { label: 'Chapter C3', desc: "Watson's Bay HCA" },
+  'chapter-d4-edgecliff-centre': { label: 'Chapter D4', desc: 'Edgecliff Centre' },
+  'chapter-e1-parking-access': { label: 'Chapter E1', desc: 'Parking & Access' },
+  'chapter-e2-stormwater-flood': { label: 'Chapter E2', desc: 'Stormwater & Flooding' },
+  'chapter-e3-tree-management': { label: 'Chapter E3', desc: 'Tree Management' },
+  'chapter-e5-waste-management': { label: 'Chapter E5', desc: 'Waste Management' },
+  'chapter-e6-sustainability': { label: 'Chapter E6', desc: 'Sustainability' },
+  // Ashfield (source_chapter_key slugs)
+  'chapter-e1-heritage': { label: 'Chapter E1', desc: 'Heritage' },
+  'chapter-c-sustainability': { label: 'Chapter C', desc: 'Sustainability' },
+  'chapter-d-precinct-guidelines': { label: 'Chapter D', desc: 'Precinct Guidelines' },
+  'chapter-f-dev-category': { label: 'Chapter F', desc: 'Development Categories' },
+  'chapter-g-definitions': { label: 'Chapter G', desc: 'Definitions' },
+  'preliminary': { label: 'Preliminary', desc: '' },
 };
 
 /**
@@ -391,8 +474,54 @@ function formatPartDisplay(partId: string): { label: string; desc?: string } {
     'Chapter F Part 5': 'Ch F.5',
     'Chapter F Part 7': 'Ch F.7',
   };
+  if (shortMap[partId]) return { label: shortMap[partId] };
 
-  return { label: shortMap[partId] || partId };
+  // Auto-format slug-style keys (source_chapter_key used as partId)
+  // chapter-{code}-{desc}: e.g. chapter-b3-general-development, chapter-c-sustainability
+  const chapterSlug = partId.match(/^chapter-([a-z]\d*(?:\.\d+)?)-(.+)$/);
+  if (chapterSlug) {
+    const code = chapterSlug[1].toUpperCase();
+    const desc = chapterSlug[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Chapter ${code}`, desc };
+  }
+  // part-{letter}-s{n}-{desc}: part-c-s2-urban-character → Part C.2 — Urban Character
+  const partSectionSlug = partId.match(/^part-([a-z])-s(\d+)-(.+)$/);
+  if (partSectionSlug) {
+    const desc = partSectionSlug[3].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${partSectionSlug[1].toUpperCase()}.${partSectionSlug[2]}`, desc };
+  }
+  // part-{letter}-{desc}: part-b-connections, part-d-energy
+  const partLetterSlug = partId.match(/^part-([a-z])-(.+)$/);
+  if (partLetterSlug) {
+    const desc = partLetterSlug[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${partLetterSlug[1].toUpperCase()}`, desc };
+  }
+  // part{n}-p{m}-{desc}: part9-p06-petersham-south → Part 9 — Petersham South
+  const partNumPrecinct = partId.match(/^part(\d+)-p\d+-(.+)$/);
+  if (partNumPrecinct) {
+    const desc = partNumPrecinct[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${partNumPrecinct[1]}`, desc };
+  }
+  // part{n}-s{m}-{desc}: part4-s1-low-density → Part 4.1
+  const partNumSection = partId.match(/^part(\d+)-s(\d+)-(.+)$/);
+  if (partNumSection) {
+    const desc = partNumSection[3].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${partNumSection[1]}.${partNumSection[2]}`, desc };
+  }
+  // part{n}-{desc}: part1-statutory-info, part3-subdivision
+  const partNumSlug = partId.match(/^part(\d+)-(.+)$/);
+  if (partNumSlug) {
+    const desc = partNumSlug[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${partNumSlug[1]}`, desc };
+  }
+  // appendix-{code}-{desc}
+  const appendixSlug = partId.match(/^appendix-([a-z\d]+)-(.+)$/);
+  if (appendixSlug) {
+    const desc = appendixSlug[2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Appendix ${appendixSlug[1].toUpperCase()}`, desc };
+  }
+
+  return { label: partId };
 }
 
 /**
