@@ -129,6 +129,7 @@ export function buildPropertyContext(
         land_zoning_map: getLayerValue(layers.find((l) => l.layerName?.includes('Zoning'))?.results),
         tree_canopy_2019: getLayerValue(layers.find((l) => l.layerName?.includes('2019'))?.results),
         tree_canopy_2022: getLayerValue(layers.find((l) => l.layerName?.includes('2022'))?.results),
+        tree_canopy_coverage_class: propertyData?.constraints?.treeCanopy?.coverageClass || undefined,
         terrestrial_biodiversity_map: getLayerValue(layers.find((l) => l.layerName?.includes('Biodiversity'))?.results),
       }
     : undefined;

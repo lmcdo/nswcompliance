@@ -1038,6 +1038,13 @@ export function ProvisionsByTocStructure({
                       {propertyData.lotDimensions.lotType}
                     </span>
                   )}
+                  {/* X14: high canopy coverage note */}
+                  {propertyData?.constraints?.treeCanopy?.coverageClass &&
+                    /high/i.test(propertyData.constraints.treeCanopy.coverageClass) && (
+                    <span className="text-xs bg-green-100 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
+                      🌳 {propertyData.constraints.treeCanopy.coverageClass} canopy — confirm tree impacts
+                    </span>
+                  )}
                 </div>
               )}
             </div>

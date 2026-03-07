@@ -465,7 +465,10 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 <DataRow label="Terrestrial Biodiversity Map:" value={String(planning_portal_layers.terrestrial_biodiversity_map)} />
               )}
               {planning_portal_layers.tree_canopy_2022 !== undefined && (
-                <DataRow label="Tree Canopy Cover 2022:" value={`${planning_portal_layers.tree_canopy_2022}%`} />
+                <DataRow
+                  label="Tree Canopy Cover 2022:"
+                  value={`${planning_portal_layers.tree_canopy_2022}%${planning_portal_layers.tree_canopy_coverage_class ? ` (${planning_portal_layers.tree_canopy_coverage_class})` : ''}`}
+                />
               )}
             </View>
           </View>

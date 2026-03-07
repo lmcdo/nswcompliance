@@ -53,6 +53,7 @@ export interface PropertyContext {
     land_zoning_map?: number | string;
     tree_canopy_2019?: number | string;
     tree_canopy_2022?: number | string;
+    tree_canopy_coverage_class?: string;
     terrestrial_biodiversity_map?: number | string;
   };
 
