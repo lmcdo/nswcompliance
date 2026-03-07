@@ -107,6 +107,9 @@ export function TocSidebar({
         {sortedParts.map(([partId, part]) => {
           const filteredPart = filteredTocStructure[partId];
           const hasProvisions = !!filteredPart && filteredPart.provision_count > 0;
+          // For dismiss button: use complete structure count so chapters with filtered-out
+          // provisions (e.g. precinct layer hidden) can still be asserted not applicable.
+          const hasAnyProvisions = part.provision_count > 0;
           const isAsserted = isDaMode === true && !!chapterAssertions?.[partId];
           const assertedReason = chapterAssertions?.[partId];
           const { desc: partDesc } = formatPartDisplay(partId);
@@ -117,6 +120,7 @@ export function TocSidebar({
                 part={part}
                 filteredPart={filteredPart}
                 hasProvisions={hasProvisions}
+                hasAnyProvisions={hasAnyProvisions}
                 isExpanded={expandedParts.has(partId)}
                 isSelected={selectedPart === partId}
                 selectedSection={selectedPart === partId ? selectedSection : null}
@@ -173,6 +177,7 @@ interface PartNodeProps {
   part: TocPart;
   filteredPart?: TocPart;
   hasProvisions: boolean;
+  hasAnyProvisions?: boolean;
   isExpanded: boolean;
   isSelected: boolean;
   selectedSection: string | null;
@@ -190,6 +195,7 @@ function PartNode({
   part,
   filteredPart,
   hasProvisions,
+  hasAnyProvisions,
   isExpanded,
   isSelected,
   selectedSection,
@@ -279,7 +285,7 @@ function PartNode({
           >
             undo
           </button>
-        ) : isDaMode && hasProvisions ? (
+        ) : isDaMode && (hasAnyProvisions ?? hasProvisions) ? (
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss?.(); }}
             className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity flex-shrink-0 text-base leading-none px-1"

@@ -47,6 +47,15 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     // instead of "600 m²". DB already patched; these rules catch any re-extractions.
     // Rules applied sequentially; order is significant.
     preProcessReplacements: [
+      // 0. Collapse PDF visual line-wrap: single \n not part of a blank-line separator.
+      //    Marrickville DCP was extracted line-by-line so every visual line ends with \n.
+      //    Join lines where the previous ends with a word char/comma and next starts lowercase.
+      //    This preserves list items (which start uppercase or with a marker like "(a)").
+      { from: /([a-z,;])\n([a-z])/g, to: '$1 $2' },
+      // 0b. Second pass — catch any remaining after first join (e.g. 3-line wrapped sentences)
+      { from: /([a-z,;])\n([a-z])/g, to: '$1 $2' },
+      // 0c. Remove TOC dotted leaders (e.g. "Objectives .....184")
+      { from: /\.{5,}[^\n]*/g, to: '' },
       // 1. LaTeX inline-math opening delimiter: $( → (,  $< / $> → < / >
       { from: /\$\(/g, to: '(' },
       { from: /\$\s*([<>])/g, to: '$1' },
