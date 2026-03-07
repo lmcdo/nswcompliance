@@ -416,9 +416,8 @@ export default function AssessmentPage() {
                   </div>
                 )}
 
-                {/* DCP Tab Content - Structure View Only */}
-                {viewMode === 'dcp' && (
-                  <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp">
+                {/* DCP Tab Content - always mounted to preserve DA mode state across tab switches */}
+                <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
 
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
@@ -442,7 +441,6 @@ export default function AssessmentPage() {
                       onToggleDaMode={setIsDaMode}
                     />
                   </div>
-                )}
               </>
             )}
           </div>
