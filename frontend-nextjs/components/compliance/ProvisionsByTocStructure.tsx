@@ -533,6 +533,12 @@ export function ProvisionsByTocStructure({
       });
     }
 
+    // DA mode: suppress objective provisions — these are policy intent statements,
+    // not enforceable controls and are not assessed individually in a SEE compliance table.
+    if (isDaMode) {
+      filtered = filtered.filter(p => p.v2_provision_type !== 'objective');
+    }
+
     // Sort by relevance if searching, otherwise by priority
     if (debouncedSearch) {
       // Rank by search relevance
@@ -557,6 +563,12 @@ export function ProvisionsByTocStructure({
       });
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions]);
+
+  // Count of objective provisions hidden in DA mode (across the full corpus, unaffected by search/topic filters)
+  const hiddenObjectiveCount = useMemo(() => {
+    if (!isDaMode) return 0;
+    return baseProvisions.filter(p => p.v2_provision_type === 'objective').length;
+  }, [isDaMode, baseProvisions]);
 
   // Triage split — lifted out of JSX so header count and provision list use the same values.
   const splitByTriage = isDaMode && excludableTopics.size > 0;
@@ -1109,17 +1121,24 @@ export function ProvisionsByTocStructure({
         {filteredProvisions.length > 0 && (
           <div className="px-4 py-3 border-b bg-gray-50">
             {isDaMode ? (
-              <button
-                onClick={handleExportSee}
-                title="Export working draft — requires professional review before DA lodgement"
-                className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-              >
-                <FileText className="h-4 w-4 flex-shrink-0" />
-                <div className="text-left">
-                  <div className="text-sm font-medium">Export SEE Draft</div>
-                  <div className="text-xs font-normal opacity-80">Working draft — requires professional review</div>
-                </div>
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={handleExportSee}
+                  title="Export working draft — requires professional review before DA lodgement"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  <FileText className="h-4 w-4 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="text-sm font-medium">Export SEE Draft</div>
+                    <div className="text-xs font-normal opacity-80">Working draft — requires professional review</div>
+                  </div>
+                </button>
+                {hiddenObjectiveCount > 0 && (
+                  <p className="text-xs text-gray-400 text-center">
+                    {hiddenObjectiveCount} objective{hiddenObjectiveCount !== 1 ? 's' : ''} hidden — switch to Browse mode to view
+                  </p>
+                )}
+              </div>
             ) : (
               <button
                 onClick={() => setShowExportModal(true)}
