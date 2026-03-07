@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Ruler, Download } from 'lucide-react';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { LayerExplanation } from './LayerExplanation';
@@ -71,6 +71,10 @@ export function DcpFilterBar({
   heritageTypeFilter, onHeritageTypeFilterChange,
 }: DcpFilterBarProps) {
   const [showAllChips, setShowAllChips] = useState(false);
+
+  // Collapse back to max-visible whenever the topic list itself changes
+  // (e.g. user switches layer filter, changing which topics are available)
+  useEffect(() => { setShowAllChips(false); }, [availableTopics.length]);
 
   return (
     <>

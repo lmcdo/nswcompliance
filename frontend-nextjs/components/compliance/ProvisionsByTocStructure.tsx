@@ -157,6 +157,8 @@ export function ProvisionsByTocStructure({
   // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
   const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
 
+  // On DA mode activation: switch to Document view (requires TOC for chapter dismissal).
+  // On exit: intentionally preserve the current view — don't reset user's navigation context.
   useEffect(() => {
     if (isDaMode) setProvisionView('structure');
   }, [isDaMode]);

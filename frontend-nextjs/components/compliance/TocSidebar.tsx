@@ -312,9 +312,9 @@ function PartNode({
         ))}
 
         {/* Per-chapter progress fraction (DA mode) */}
-        {isDaMode && chapterProgress?.[part.part_id] && !isAsserted && (() => {
-          const prog = chapterProgress[part.part_id]!;
-          if (prog.total === 0) return null;
+        {isDaMode && !isAsserted && (() => {
+          const prog = chapterProgress?.[part.part_id];
+          if (!prog || prog.total === 0) return null;
           return (
             <span className="text-xs text-teal-600 ml-1 flex-shrink-0" title={`${prog.assessed}/${prog.total} assessed`}>
               {prog.assessed}/{prog.total}

@@ -25,7 +25,7 @@ import { stripSectionHeader } from '@/lib/provision-text-formatter';
 import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
 import type { CrossReference } from '@/hooks/useCrossReferences';
 import { DAResponseCapture } from './DAResponseCapture';
-import type { DaResponse } from './DAResponseCapture';
+import type { DaResponse } from '@/hooks/useDASession';
 import type { NumericCheckValues } from './NumericChecker';
 
 // ─── Numeric Compliance Check Utilities ──────────────────────────────────────
@@ -293,6 +293,14 @@ interface PageGroupedProvisionsProps {
   // Numeric compliance check
   numericCheckValues?: NumericCheckValues;
 }
+
+// Compliance status badge config for DA mode header — keyed on DaResponse['compliance_status']
+// Using Exclude<..., null> so TypeScript enforces exhaustiveness if the union grows.
+const DA_STATUS_BADGE: Record<Exclude<DaResponse['compliance_status'], null>, { label: string; cls: string }> = {
+  complies:       { label: 'Complies', cls: 'bg-green-100 text-green-700 border-green-200' },
+  varies:         { label: 'Varies',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  not_applicable: { label: 'N/A',      cls: 'bg-gray-100  text-gray-500  border-gray-200'  },
+};
 
 // Default theme (teal, used by most paths)
 const DEFAULT_THEME: ThemeConfig = {
@@ -818,15 +826,9 @@ export function PageGroupedProvisions({
 
                         {/* DA Mode status badge — shows saved compliance status inline */}
                         {isDaMode && (() => {
-                          const resp = daResponses?.get(provision.id);
-                          if (!resp?.compliance_status) return null;
-                          const STATUS_BADGE: Record<string, { label: string; cls: string }> = {
-                            complies:       { label: 'Complies', cls: 'bg-green-100 text-green-700 border-green-200' },
-                            varies:         { label: 'Varies',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
-                            not_applicable: { label: 'N/A',      cls: 'bg-gray-100  text-gray-500  border-gray-200'  },
-                          };
-                          const badge = STATUS_BADGE[resp.compliance_status];
-                          if (!badge) return null;
+                          const status = daResponses?.get(provision.id)?.compliance_status;
+                          if (!status) return null;
+                          const badge = DA_STATUS_BADGE[status];
                           return (
                             <span className={`text-xs px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${badge.cls}`}>
                               {badge.label}
