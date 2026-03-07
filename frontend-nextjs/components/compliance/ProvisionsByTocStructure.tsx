@@ -185,17 +185,13 @@ export function ProvisionsByTocStructure({
   // Intake modal state
   const [showIntakeModal, setShowIntakeModal] = useState(false);
 
-  // Restore per-address UI state from localStorage when the address changes
+  // Clear scope form fields whenever the address changes — form always starts fresh.
+  // Intake answers and DA responses persist server-side via useDASession.
   useEffect(() => {
-    if (!address) return;
-    const savedDevType = localStorage.getItem(`ce_devType_${address}`) || '';
-    const savedDevWorksText = localStorage.getItem(`ce_devWorksText_${address}`) || '';
-    const savedClientRef = localStorage.getItem(`ce_clientRef_${address}`) || '';
-    const savedPreparedBy = localStorage.getItem(`ce_preparedBy_${address}`) || '';
-    setDevType(savedDevType);
-    setDevWorksText(savedDevWorksText);
-    setClientRef(savedClientRef);
-    setPreparedBy(savedPreparedBy);
+    setDevType('');
+    setDevWorksText('');
+    setClientRef('');
+    setPreparedBy('');
   }, [address]);
 
   // Structured development description state
@@ -215,7 +211,6 @@ export function ProvisionsByTocStructure({
 
   const handleDevTypeChange = (newType: string) => {
     setDevType(newType);
-    if (address) localStorage.setItem(`ce_devType_${address}`, newType);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
     descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(newType, devWorksText)); }, 800);
   };
@@ -223,20 +218,12 @@ export function ProvisionsByTocStructure({
   const handleDevWorksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setDevWorksText(text);
-    if (address) localStorage.setItem(`ce_devWorksText_${address}`, text);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
     descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(devType, text)); }, 800);
   };
 
-  const handleClientRefChange = (val: string) => {
-    setClientRef(val);
-    if (address) localStorage.setItem(`ce_clientRef_${address}`, val);
-  };
-
-  const handlePreparedByChange = (val: string) => {
-    setPreparedBy(val);
-    if (address) localStorage.setItem(`ce_preparedBy_${address}`, val);
-  };
+  const handleClientRefChange = (val: string) => setClientRef(val);
+  const handlePreparedByChange = (val: string) => setPreparedBy(val);
 
   // Keep a ref so the effect below can call the latest refreshResponses without
   // re-registering the effect whenever the callback identity changes
@@ -954,6 +941,8 @@ export function ProvisionsByTocStructure({
               heritage={heritage}
               hcaName={hcaName}
               precinctName={precinctName}
+              layerCounts={layerCounts}
+              genericLabel={layerLabels.generic}
             />
           </div>
         </div>

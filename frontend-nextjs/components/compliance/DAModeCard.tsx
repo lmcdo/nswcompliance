@@ -30,6 +30,9 @@ interface DAModeCardProps {
   hcaName?: string;
   precinctName?: string;
   intakeSetAt?: string | null;
+  /** Provision corpus breakdown by layer — for the corpus summary */
+  layerCounts?: { generic: number; use_specific: number; condition: number; precinct: number };
+  genericLabel?: string;
 }
 
 export function DAModeCard({
@@ -53,8 +56,9 @@ export function DAModeCard({
   hcaName,
   precinctName,
   intakeSetAt,
+  layerCounts,
+  genericLabel,
 }: DAModeCardProps) {
-  const [showTopicBreakdown, setShowTopicBreakdown] = useState(false);
   const [showExcluded, setShowExcluded] = useState(false);
 
   // Single pass over allProvisions to derive all stats
@@ -115,13 +119,12 @@ export function DAModeCard({
         remaining,
         total: activeCount,
       },
-      topicProgress: Object.entries(byTopic).sort((a, b) => b[1].total - a[1].total),
       scopeSummary: { included: includedTopics, excluded: excludedTopics },
       heritagePros,
     };
   }, [allProvisions, daResponses, excludableTopics]);
 
-  const { completionStats, topicProgress, scopeSummary, heritagePros } = derivedStats;
+  const { completionStats, scopeSummary, heritagePros } = derivedStats;
 
   return (
     <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
@@ -299,59 +302,42 @@ export function DAModeCard({
           </div>
         )}
 
-        {/* Completion dashboard */}
-        {completionStats.total > 0 && (
-          <div className="pt-2 border-t border-teal-100">
-            <span className="text-xs font-medium text-teal-800">Assessment progress</span>
-            <div className="flex items-center gap-3 text-xs mt-1">
-              <span className="text-amber-700 font-semibold">
-                {completionStats.remaining} provisions to assess
-              </span>
-              <span className="text-gray-300">·</span>
-              <span className="text-teal-600">{completionStats.assessed} assessed</span>
-              {completionStats.intakeExcluded > 0 && (
-                <>
-                  <span className="text-gray-300">·</span>
-                  <span className="text-gray-400">{completionStats.intakeExcluded} excluded by triage</span>
-                </>
-              )}
+        {/* Corpus + progress */}
+        {layerCounts && (
+          <div className="pt-2 border-t border-teal-100 space-y-1.5">
+            {/* Corpus breakdown by source */}
+            <div>
+              <div className="flex items-baseline gap-1.5 text-xs mb-0.5">
+                <span className="font-semibold text-gray-700">All</span>
+                <span className="text-gray-400">({layerCounts.generic + layerCounts.use_specific + layerCounts.condition + layerCounts.precinct})</span>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500 pl-2">
+                {layerCounts.generic > 0 && (
+                  <span>{genericLabel || 'LGA-wide'} ({layerCounts.generic})</span>
+                )}
+                {layerCounts.use_specific > 0 && (
+                  <span>Zone-Specific ({layerCounts.use_specific})</span>
+                )}
+                {layerCounts.condition > 0 && (
+                  <span>Heritage ({layerCounts.condition})</span>
+                )}
+                {layerCounts.precinct > 0 && (
+                  <span>{precinctName || 'Precinct'} ({layerCounts.precinct})</span>
+                )}
+              </div>
             </div>
-
-            <button
-              onClick={() => setShowTopicBreakdown(v => !v)}
-              className="mt-1.5 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800"
-            >
-              {showTopicBreakdown ? (
-                <><ChevronUp className="w-3 h-3" /> Hide breakdown by topic</>
-              ) : (
-                <><ChevronDown className="w-3 h-3" /> Show breakdown by topic</>
-              )}
-            </button>
-
-            {showTopicBreakdown && (
-              <div className="mt-2 space-y-1">
-                {topicProgress.map(([topic, stats]) => {
-                  const pct = stats.total > 0 ? (stats.assessed / stats.total) * 100 : 0;
-                  const displayTopic = topic.replace(/_/g, ' ');
-                  return (
-                    <div key={topic} className="flex items-center gap-2 text-xs">
-                      <span className="w-28 text-gray-600 truncate capitalize flex-shrink-0">{displayTopic}</span>
-                      <div className="flex-1 bg-gray-200 rounded-full h-1.5 min-w-0">
-                        <div
-                          className={`h-1.5 rounded-full transition-all ${stats.excluded ? 'bg-gray-400' : 'bg-teal-500'}`}
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className="text-gray-500 flex-shrink-0 w-12 text-right">
-                        {stats.excluded ? (
-                          <span className="text-gray-400 italic">out</span>
-                        ) : (
-                          `${stats.assessed}/${stats.total}`
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
+            {/* Assessment progress */}
+            {completionStats.total > 0 && (
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-teal-600 font-medium">{completionStats.assessed} assessed</span>
+                <span className="text-gray-300">·</span>
+                <span className="text-amber-700">{completionStats.remaining} to assess</span>
+                {completionStats.intakeExcluded > 0 && (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <span className="text-gray-400">{completionStats.intakeExcluded} excluded</span>
+                  </>
+                )}
               </div>
             )}
           </div>
