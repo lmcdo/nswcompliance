@@ -737,12 +737,17 @@ export function PageGroupedProvisions({
                   const layer = provision.v2_dcp_layer || provision.layer;
                   const isEven = globalIndex++ % 2 === 0;
                   const bgClass = isEven ? theme.zebraStripeBg : theme.zebraStripeAltBg;
+                  // Grey out provisions whose topic is excluded by SEPP/LEP/intake data.
+                  // In DA mode this never triggers — excluded provisions are split out upstream.
+                  const isExcludedByTriage = !isDaMode && !!excludableTopics?.has(
+                    (provision.v2_topic || '').toLowerCase().replace(/ /g, '_')
+                  );
 
                   return (
                     <div
                       key={provision.id}
                       data-provision-id={provision.id}
-                      className={`px-4 py-3 ${bgClass} border-l-4`}
+                      className={`px-4 py-3 ${bgClass} border-l-4 ${isExcludedByTriage ? 'opacity-35' : ''}`}
                       style={{ borderLeftColor: layer === 'precinct' ? '#8b5cf6' : layer === 'condition' ? '#f59e0b' : layer === 'use_specific' ? '#3b82f6' : '#14b8a6' }}
                     >
                       {/* Provision Header Row */}

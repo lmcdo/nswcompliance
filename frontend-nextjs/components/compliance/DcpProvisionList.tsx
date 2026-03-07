@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown, Search } from 'lucide-react';
+import { normalizeTopicKey } from '@/lib/see/intake';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
 import type { DaResponse } from '@/hooks/useDASession';
 
@@ -48,8 +49,27 @@ export function DcpProvisionList({
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
   onSearchQueryChange, baseProvisions,
 }: DcpProvisionListProps) {
+  // In non-DA mode, excluded provisions are greyed out inline rather than split out.
+  // Show a count so the planner knows how many are not applicable to this site.
+  const nonApplicableCount = !isDaMode && excludableTopics.size > 0
+    ? displayProvisions.filter(p => {
+        const t = normalizeTopicKey(p.v2_topic);
+        return t && excludableTopics.has(t);
+      }).length
+    : 0;
+
   return (
     <div className="p-4">
+      {/* Non-DA mode: note how many provisions are greyed out as not applicable */}
+      {nonApplicableCount > 0 && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          <span className="inline-block w-3 h-3 rounded-sm bg-gray-300 opacity-60 shrink-0" />
+          <span>
+            {nonApplicableCount} provision{nonApplicableCount !== 1 ? 's' : ''} greyed out — not applicable to this site based on SEPP/LEP data
+          </span>
+        </div>
+      )}
+
       {/* Marker key */}
       {filteredProvisions.length > 0 && hasMarkers && (
         <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">
