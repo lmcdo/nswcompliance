@@ -3,6 +3,7 @@ import {
   anefStatusConfig,
   floodBlockTypeAnnotation,
   bushfireCategoryAnnotation,
+  deriveAnefBuildingAcceptability,
   lmrFrontageStatus,
   roadHierarchyAnnotation,
   LMR_FRONTAGE_MINIMUMS,
@@ -217,5 +218,71 @@ describe('roadHierarchyAnnotation', () => {
     // That's acceptable — sub-arterial roads still have access implications
     const result = roadHierarchyAnnotation('Sub-Arterial Road');
     expect(typeof result.isHighImpact).toBe('boolean');
+  });
+});
+
+// ── deriveAnefBuildingAcceptability ──────────────────────────────────────────
+
+describe('deriveAnefBuildingAcceptability', () => {
+  test('null anefLevel returns null', () => {
+    expect(deriveAnefBuildingAcceptability(null)).toBeNull();
+  });
+
+  test('ANEF 19 — residential acceptable, hospital acceptable', () => {
+    const rows = deriveAnefBuildingAcceptability(19)!;
+    const residential = rows.find(r => r.buildingType === 'residential')!;
+    const hospital = rows.find(r => r.buildingType === 'hospital')!;
+    expect(residential.status).toBe('acceptable');
+    expect(hospital.status).toBe('acceptable');
+  });
+
+  test('ANEF 25 — residential conditional, school unacceptable, hospital unacceptable', () => {
+    const rows = deriveAnefBuildingAcceptability(25)!;
+    expect(rows.find(r => r.buildingType === 'residential')!.status).toBe('conditional');
+    expect(rows.find(r => r.buildingType === 'school')!.status).toBe('unacceptable');
+    expect(rows.find(r => r.buildingType === 'hospital')!.status).toBe('unacceptable');
+  });
+
+  test('ANEF 20 — hospital conditional (20 is boundary of 20-24 range)', () => {
+    const rows = deriveAnefBuildingAcceptability(20)!;
+    // anefLevel < 20 → acceptable; 20 is NOT < 20 so NOT acceptable
+    // anefLevel < 25 → conditional; 20 IS < 25 so conditional
+    expect(rows.find(r => r.buildingType === 'hospital')!.status).toBe('conditional');
+  });
+
+  test('ANEF 30 — residential unacceptable, commercial conditional', () => {
+    const rows = deriveAnefBuildingAcceptability(30)!;
+    expect(rows.find(r => r.buildingType === 'residential')!.status).toBe('unacceptable');
+    expect(rows.find(r => r.buildingType === 'commercial')!.status).toBe('conditional');
+  });
+
+  test('ANEF 15 — all types acceptable except commercial (always conditional or better)', () => {
+    const rows = deriveAnefBuildingAcceptability(15)!;
+    for (const row of rows) {
+      expect(row.status).not.toBe('unacceptable');
+    }
+  });
+
+  test('returns 6 building type rows', () => {
+    const rows = deriveAnefBuildingAcceptability(20)!;
+    expect(rows).toHaveLength(6);
+  });
+
+  test('each row has buildingType, displayName, and status fields', () => {
+    const rows = deriveAnefBuildingAcceptability(27)!;
+    for (const row of rows) {
+      expect(row.buildingType.length).toBeGreaterThan(0);
+      expect(row.displayName.length).toBeGreaterThan(0);
+      expect(['acceptable', 'conditional', 'unacceptable']).toContain(row.status);
+    }
+  });
+
+  test('aged_care follows same thresholds as residential', () => {
+    for (const level of [20, 25, 30]) {
+      const rows = deriveAnefBuildingAcceptability(level)!;
+      const res = rows.find(r => r.buildingType === 'residential')!;
+      const ac = rows.find(r => r.buildingType === 'aged_care')!;
+      expect(ac.status).toBe(res.status);
+    }
   });
 });

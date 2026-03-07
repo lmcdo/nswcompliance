@@ -18,6 +18,7 @@ import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './
 import { detectLGAFromName, tryGetLGAConfig } from './lga-configs';
 import { getSiteSpecificClauses, getSiteSpecificProvisionDetails } from './site-specific-part6-mapping';
 import { calculateLotDimensions, type LotDimensions } from './geometry/lot-dimensions';
+import { deriveAnefBuildingAcceptability } from './see/propertyUtils';
 import { detectCornerLot, type CornerLotResult } from './geometry/corner-lot-detection';
 
 // Re-export TOD/HIA interfaces for use in components
@@ -120,6 +121,12 @@ export class PropertyDataService {
  }
 
  const { propertyData, constraints, layers, roadClassifications, anefData, lotGeometry } = nswData;
+
+ // Derive ANEF building acceptability from level (AS 2021-2015 Table 2.1).
+ // NSW Portal only returns anefLevel — per-type acceptability must be derived.
+ const enrichedAnefData = anefData
+  ? { ...anefData, buildingAcceptability: deriveAnefBuildingAcceptability(anefData.anefLevel ?? null) }
+  : null;
 
  // Calculate lot dimensions (sync) and detect corner lot (async) in parallel
  let lotDimensions: LotDimensions | null = null;
@@ -319,7 +326,7 @@ export class PropertyDataService {
  seppRouting,
  planningLayers: layers, // Pass through ALL layer data
  roadClassifications, // Road functional hierarchy for setback calculations
- anefData, // Aircraft noise exposure forecast data
+ anefData: enrichedAnefData, // Aircraft noise exposure forecast data (with derived building acceptability)
  lotDetails: lotGeometry ? {
  cadId: lotGeometry.cadId,
  lotDescription: lotGeometry.lotDescription,
