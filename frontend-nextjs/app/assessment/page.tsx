@@ -21,10 +21,8 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
-import { AIAssistantWidget } from '@/components/ai-assistant';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
-import { PropertyContext } from '@/lib/ai/classifier';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
 export default function AssessmentPage() {
@@ -517,29 +515,6 @@ export default function AssessmentPage() {
         </div>
       )}
 
-      {/* AI Assistant Widget - toggle via NEXT_PUBLIC_ENABLE_AI_ASSISTANT env var */}
-      {process.env.NEXT_PUBLIC_ENABLE_AI_ASSISTANT !== 'false' && (
-        <AIAssistantWidget
-          propertyContext={selectedProperty ? {
-            address: selectedProperty.address,
-            zone: selectedProperty.constraints?.zone,
-            lga: selectedProperty.constraints?.lga,
-            formerCouncil: selectedProperty.constraints?.formerCouncil,
-            lotSize: selectedProperty.lotDimensions?.area,
-            lotWidth: selectedProperty.lotDimensions?.frontage,
-            precinctId: selectedProperty.constraints?.precinctId,
-            maxHeight: selectedProperty.constraints?.maxHeight,
-            maxFsr: selectedProperty.constraints?.maxFsr,
-            constraints: {
-              heritage: selectedProperty.heritage?.isHeritage,
-              heritageName: selectedProperty.heritage?.heritageItemName,
-              // Pass HCA code for HCA-specific provisions (e.g., "C98", "HCA 26")
-              hca: selectedProperty.heritage?.heritageItemNumber,
-            },
-          } as PropertyContext : undefined}
-          isPropertyLoading={loading}
-        />
-      )}
 
       {/* Feedback Widget */}
       <FeedbackWidget
