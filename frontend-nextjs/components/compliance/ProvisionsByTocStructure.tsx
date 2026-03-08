@@ -330,11 +330,8 @@ export function ProvisionsByTocStructure({
   if (heritage !== undefined) params.set('heritage', String(heritage));
   if (hcaName) params.set('hca', hcaName);
   if (precinctId) params.set('precinct_id', precinctId);
-  // Pass dev_types (compound) so getCompleteTocStructure can compute per-chapter match counts
-  if (isDaMode && devType) {
-    const tags = getScopeDevTypeTags(devType, ancillaryWorksLocal);
-    params.set('dev_types', tags.join(','));
-  }
+  // dev_types intentionally excluded from URL — provisions are property-specific, not dev-type-specific.
+  // Relevance and chapter match counts are computed client-side from v2_applicable_dev_types.
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely
   const apiUrl = formerCouncil ? `/api/provisions/for-property?${params.toString()}` : null;
@@ -395,9 +392,48 @@ export function ProvisionsByTocStructure({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Extract data with safe defaults (for use in hooks below) - memoized to prevent infinite loops
-  const tocStructure = useMemo(() => data?.data?.by_toc || {}, [data?.data?.by_toc]);
-  const completeTocStructure = useMemo(() => data?.data?.complete_toc || {}, [data?.data?.complete_toc]);
+  // Expanded dev type tags — computed client-side, no network round-trip needed
+  const expandedDevTypes = useMemo(
+    () => (isDaMode && devType) ? getScopeDevTypeTags(devType, ancillaryWorksLocal) : [],
+    [isDaMode, devType, ancillaryWorksLocal]
+  );
+
+  // Overlay relevance_level/relevance_reason on provisions from v2_applicable_dev_types.
+  // Keeps the SWR cache key stable (property-only) — dev type changes never trigger a refetch.
+  const tocStructure = useMemo(() => {
+    const base = data?.data?.by_toc || {};
+    if (expandedDevTypes.length === 0) return base;
+    const result: Record<string, any> = {};
+    for (const [partId, part] of Object.entries(base as Record<string, any>)) {
+      result[partId] = {
+        ...part,
+        sections: Object.fromEntries(
+          Object.entries(part.sections || {}).map(([secId, sec]: [string, any]) => [
+            secId,
+            {
+              ...sec,
+              provisions: (sec.provisions || []).map((p: any) => {
+                const appTypes = p.v2_applicable_dev_types as string[] | null;
+                const isPrimary = appTypes && expandedDevTypes.some((t: string) => appTypes.includes(t));
+                const isGeneral = !appTypes || appTypes.includes('ALL');
+                return {
+                  ...p,
+                  relevance_level: isPrimary ? 'primary' : isGeneral ? 'general' : 'secondary',
+                  relevance_reason: isPrimary
+                    ? 'Specifically written for selected development type'
+                    : isGeneral
+                    ? 'Applies to all development types'
+                    : 'May apply if objectives relevant (EP&A Act s 4.15)',
+                };
+              }),
+            },
+          ])
+        ),
+      };
+    }
+    return result;
+  }, [data?.data?.by_toc, expandedDevTypes]);
+
   const totalProvisions = data?.data?.summary?.total_provisions || 0;
 
   // Get provisions for selected part/section - memoized to avoid unnecessary recalculations
@@ -411,7 +447,7 @@ export function ProvisionsByTocStructure({
     }
 
     // Return all provisions for the part
-    return Object.values(part.sections).flatMap(s => s.provisions);
+    return (Object.values(part.sections) as any[]).flatMap(s => s.provisions);
   }, [selectedPart, selectedSection, tocStructure]);
 
   // Filter and deduplicate provisions for the currently selected part/section.
@@ -450,6 +486,26 @@ export function ProvisionsByTocStructure({
     );
     return filterAndDedupeProvisions(flat);
   }, [tocStructure]);
+
+  // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
+  // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
+  const completeTocStructure = useMemo(() => {
+    const base = data?.data?.complete_toc || {};
+    if (expandedDevTypes.length === 0 || allProvisions.length === 0) return base;
+    const matchCounts: Record<string, number> = {};
+    for (const p of allProvisions) {
+      const part = (p as any).v2_dcp_part;
+      if (!part) continue;
+      if ((p as any).relevance_level !== 'secondary') {
+        matchCounts[part] = (matchCounts[part] || 0) + 1;
+      }
+    }
+    const result: Record<string, any> = {};
+    for (const [partId, partData] of Object.entries(base as Record<string, any>)) {
+      result[partId] = { ...partData, dev_type_match_count: matchCounts[partId] ?? 0 };
+    }
+    return result;
+  }, [data?.data?.complete_toc, allProvisions, expandedDevTypes]);
 
   // Base provisions - mode-aware: task mode shows all, structure mode shows selected
   const handleIntakeApply = useCallback(async (answers: IntakeAnswers) => {
