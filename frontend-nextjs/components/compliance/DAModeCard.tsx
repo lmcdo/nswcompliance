@@ -78,6 +78,7 @@ export function DAModeCard({
 }: DAModeCardProps) {
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState('');
+  const [showWaterfall, setShowWaterfall] = useState(false);
 
   // Derive scope summary and heritage count (progress now comes from globalProgress prop)
   const derivedStats = useMemo(() => {
@@ -353,44 +354,65 @@ export function DAModeCard({
 
       </div>
 
-      {/* Progress bar + reduction waterfall footer */}
+      {/* Progress bar + hero remaining count */}
       {globalProgress && globalProgress.scopeTotal > 0 && (
         <div className="px-4 py-3 border-t border-teal-200 bg-white/50 space-y-2">
-          {/* Progress bar + fraction */}
+          {/* Hero: progress bar + remaining count */}
           <div className="flex items-center gap-3">
-            <div className="flex-1 h-1.5 bg-gray-200 rounded-full">
+            <div className="flex-1 h-2 bg-gray-200 rounded-full">
               <div
-                className={`h-1.5 rounded-full transition-all ${
+                className={`h-2 rounded-full transition-all ${
                   globalProgress.remaining === 0 ? 'bg-green-500' : 'bg-teal-500'
                 }`}
                 style={{ width: `${Math.round((globalProgress.assessed / globalProgress.scopeTotal) * 100)}%` }}
               />
             </div>
-            <span className="text-sm font-medium text-gray-700"
-              title={`${globalProgress.assessed} provisions assessed out of ${globalProgress.scopeTotal} in your active scope`}>
-              {globalProgress.assessed} / {globalProgress.scopeTotal}
+            <span className="text-lg font-bold text-gray-800 tabular-nums min-w-[3ch] text-right">
+              {globalProgress.remaining}
             </span>
           </div>
-
-          {/* Reduction waterfall — shows how we got from total to scope */}
-          <div className="text-xs text-gray-400 space-y-0.5">
-            <div>{globalProgress.total} provisions in DCP for this property</div>
-            {globalProgress.triaged > 0 && (
-              <div className="pl-2">− {globalProgress.triaged} removed by triage</div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-gray-500">
+              {globalProgress.assessed} of {globalProgress.scopeTotal} provisions assessed
+            </span>
+            {globalProgress.remaining === 0 && (
+              <span className="text-xs font-medium text-green-600">All assessed</span>
             )}
-            {globalProgress.chapterDismissed > 0 && (
-              <div className="pl-2">− {globalProgress.chapterDismissed} in dismissed chapters</div>
-            )}
-            {globalProgress.topicDismissed > 0 && (
-              <div className="pl-2">− {globalProgress.topicDismissed} in dismissed topics</div>
-            )}
-            {globalProgress.suppressed > 0 && (
-              <div className="pl-2">− {globalProgress.suppressed} objectives/descriptive</div>
-            )}
-            <div className="font-medium text-gray-600 pt-0.5 border-t border-gray-200">
-              {globalProgress.scopeTotal} to assess · {globalProgress.assessed} done · {globalProgress.remaining} remaining
-            </div>
           </div>
+
+          {/* Collapsible waterfall */}
+          {(globalProgress.triaged > 0 || globalProgress.chapterDismissed > 0 ||
+            globalProgress.topicDismissed > 0 || globalProgress.suppressed > 0) && (
+            <>
+              <button
+                onClick={() => setShowWaterfall(v => !v)}
+                className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
+              >
+                <span className="text-[10px]">{showWaterfall ? '▾' : '▸'}</span>
+                How your scope was reduced
+              </button>
+              {showWaterfall && (
+                <div className="text-xs text-gray-400 space-y-0.5 pl-2">
+                  <div>{globalProgress.total} provisions in DCP for this property</div>
+                  {globalProgress.triaged > 0 && (
+                    <div className="pl-2">− {globalProgress.triaged} removed by triage</div>
+                  )}
+                  {globalProgress.chapterDismissed > 0 && (
+                    <div className="pl-2">− {globalProgress.chapterDismissed} in dismissed chapters</div>
+                  )}
+                  {globalProgress.topicDismissed > 0 && (
+                    <div className="pl-2">− {globalProgress.topicDismissed} in dismissed topics</div>
+                  )}
+                  {globalProgress.suppressed > 0 && (
+                    <div className="pl-2">− {globalProgress.suppressed} objectives/descriptive</div>
+                  )}
+                  <div className="font-medium text-gray-600 pt-0.5 border-t border-gray-200">
+                    = {globalProgress.scopeTotal} in your assessment scope
+                  </div>
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>

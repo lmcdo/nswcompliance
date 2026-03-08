@@ -760,6 +760,20 @@ export function ProvisionsByTocStructure({
     setLayerFilter(null); // Reset layer filter when changing parts
   };
 
+  // Auto-navigate to next active chapter after dismiss
+  const handleAssertChapter = async (chapterKey: string, reason: string | null) => {
+    await saveChapterAssertion(chapterKey, reason);
+    // On dismiss (not undo), navigate to next active chapter
+    if (reason !== null && selectedPart === chapterKey) {
+      const parts = Object.keys(completeTocStructure);
+      const updatedAssertions = { ...chapterAssertions, [chapterKey]: reason };
+      const nextPart = parts.find(p => p !== chapterKey && !updatedAssertions[p] && completeTocStructure[p]?.provision_count > 0);
+      if (nextPart) {
+        handleSelectPart(nextPart);
+      }
+    }
+  };
+
   const handleSelectSection = (partId: string, sectionId: string) => {
     setSelectedPart(partId);
     setSelectedSection(sectionId);
@@ -1094,7 +1108,7 @@ export function ProvisionsByTocStructure({
             formerCouncil={formerCouncil}
             isDaMode={isDaMode}
             chapterAssertions={chapterAssertions}
-            onAssertChapter={saveChapterAssertion}
+            onAssertChapter={handleAssertChapter}
             chapterProgress={chapterProgress}
           />
         </div>
