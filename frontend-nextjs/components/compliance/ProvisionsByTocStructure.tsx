@@ -596,20 +596,54 @@ export function ProvisionsByTocStructure({
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
-  // Per-chapter assessment progress — used by TocSidebar to show "N/M" fractions in DA mode
+  // Scope helper — true when a provision is in the active DA assessment scope
+  const isInDaScope = useCallback((p: any) => {
+    const topic = normalizeTopicKey(p.v2_topic);
+    if (topic && excludableTopics.has(topic)) return false;       // intake triage
+    if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
+    if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
+    if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
+    const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
+      ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
+    if (chapterAssertions[chKey]) return false;                    // planner dismissed chapter
+    return true;
+  }, [excludableTopics, topicAssertions, chapterAssertions]);
+
+  // Per-chapter assessment progress — scope-aware, used by TocSidebar progress bars
   const chapterProgress = useMemo(() => {
-    if (!isDaMode || daResponses.size === 0) return undefined;
+    if (!isDaMode) return undefined;
     const map: Record<string, { assessed: number; total: number }> = {};
     for (const p of allProvisions) {
+      if (!isInDaScope(p)) continue;
       const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part
-        : (p.source_chapter_key || 'unknown');
+        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
       if (!map[chKey]) map[chKey] = { assessed: 0, total: 0 };
       map[chKey].total++;
       if (daResponses.has(p.id)) map[chKey].assessed++;
     }
     return map;
-  }, [isDaMode, allProvisions, daResponses]);
+  }, [isDaMode, allProvisions, daResponses, isInDaScope]);
+
+  // Global progress with reduction waterfall — single source of truth for all DA progress UI
+  const globalProgress = useMemo(() => {
+    if (!isDaMode) return null;
+    const total = allProvisions.length;
+    let triaged = 0, chapterDismissed = 0, topicDismissed = 0, suppressed = 0;
+    let scopeTotal = 0, assessed = 0;
+    for (const p of allProvisions) {
+      const topic = normalizeTopicKey(p.v2_topic);
+      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
+        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
+      // Count each exclusion reason (priority order — first match wins)
+      if (topic && excludableTopics.has(topic)) { triaged++; continue; }
+      if (chapterAssertions[chKey]) { chapterDismissed++; continue; }
+      if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
+      if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
+      scopeTotal++;
+      if (daResponses.has(p.id)) assessed++;
+    }
+    return { total, triaged, chapterDismissed, topicDismissed, suppressed, scopeTotal, assessed, remaining: scopeTotal - assessed };
+  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions]);
 
   // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
@@ -1026,6 +1060,7 @@ export function ProvisionsByTocStructure({
               genericLabel={layerLabels.generic}
               topicAssertions={topicAssertions}
               onAssertTopicNA={saveTopicAssertion}
+              globalProgress={globalProgress}
             />
           </div>
         </div>
@@ -1138,12 +1173,30 @@ export function ProvisionsByTocStructure({
               )}
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">
-                {displayProvisions.length}
-              </div>
-              <div className="text-xs text-gray-500 mt-0.5">
-                <>of {allProvisions.length} for property</>
-              </div>
+              {isDaMode && globalProgress ? (
+                <>
+                  {/* Waterfall: one line showing how we got from total to scope */}
+                  <div className="text-xs text-gray-400 mb-1">
+                    {globalProgress.total} total
+                    {globalProgress.total !== globalProgress.scopeTotal && (
+                      <> → {globalProgress.scopeTotal} in scope</>
+                    )}
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">
+                    {globalProgress.assessed}
+                    <span className="text-base font-normal text-gray-400"> / {globalProgress.scopeTotal}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-0.5">provisions assessed</div>
+                  {displayProvisions.length < globalProgress.scopeTotal && (
+                    <div className="text-xs text-gray-400 mt-0.5">viewing {displayProvisions.length} (filtered)</div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="text-2xl font-bold text-gray-900">{displayProvisions.length}</div>
+                  <div className="text-xs text-gray-500 mt-0.5">of {allProvisions.length} for property</div>
+                </>
+              )}
             </div>
           </div>
 

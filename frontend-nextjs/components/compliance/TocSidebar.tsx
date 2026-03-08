@@ -300,8 +300,8 @@ function PartNode({
           </button>
         ) : null}
 
-        {/* Count badge */}
-        {!isAsserted && (hasProvisions ? (
+        {/* Count badge — non-DA mode only */}
+        {!isDaMode && !isAsserted && (hasProvisions ? (
           <span className="text-xs text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded font-medium">
             {filteredPart?.provision_count || 0}
           </span>
@@ -310,18 +310,32 @@ function PartNode({
             0
           </span>
         ))}
-
-        {/* Per-chapter progress fraction (DA mode) */}
-        {isDaMode && !isAsserted && (() => {
-          const prog = chapterProgress?.[part.part_id];
-          if (!prog || prog.total === 0) return null;
-          return (
-            <span className="text-xs text-teal-600 ml-1 flex-shrink-0" title={`${prog.assessed}/${prog.total} assessed`}>
-              {prog.assessed}/{prog.total}
-            </span>
-          );
-        })()}
       </div>
+      {/* DA mode: progress bar below chapter name */}
+      {isDaMode && !isAsserted && (() => {
+        const prog = chapterProgress?.[part.part_id];
+        const total = prog?.total ?? 0;
+        const assessed = prog?.assessed ?? 0;
+        if (total === 0) return null;
+        const pct = Math.round((assessed / total) * 100);
+        const done = assessed === total;
+        return (
+          <div className="ml-9 mt-0.5 mb-0.5 flex items-center gap-2">
+            <div className="flex-1 h-1 bg-gray-200 rounded-full max-w-[80px]">
+              <div
+                className={`h-1 rounded-full transition-all ${done ? 'bg-green-500' : 'bg-teal-500'}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span
+              className={`text-xs flex-shrink-0 ${done ? 'text-green-600 font-medium' : 'text-gray-500'}`}
+              title={`${assessed} of ${total} provisions assessed in this chapter`}
+            >
+              {assessed} of {total}
+            </span>
+          </div>
+        );
+      })()}
       {/* Asserted reason shown below part row */}
       {isAsserted && assertedReason && (
         <p className="ml-9 text-xs text-gray-400 italic truncate pb-0.5" title={assertedReason}>
@@ -344,6 +358,7 @@ function PartNode({
                 hasProvisions={sectionHasProvisions}
                 isSelected={selectedSection === sectionId}
                 onClick={() => onSelectSection(sectionId)}
+                isDaMode={isDaMode}
               />
             );
           })}
@@ -359,9 +374,10 @@ interface SectionNodeProps {
   hasProvisions: boolean;
   isSelected: boolean;
   onClick: () => void;
+  isDaMode?: boolean;
 }
 
-function SectionNode({ section, filteredSection, hasProvisions, isSelected, onClick }: SectionNodeProps) {
+function SectionNode({ section, filteredSection, hasProvisions, isSelected, onClick, isDaMode }: SectionNodeProps) {
   const display = formatSectionDisplay(section.section_id, section.section_title);
 
   return (
@@ -385,7 +401,7 @@ function SectionNode({ section, filteredSection, hasProvisions, isSelected, onCl
       </span>
       {hasProvisions ? (
         <span className="text-xs text-gray-700 flex-shrink-0 font-medium">
-          {filteredSection?.provision_count || 0}
+          {isDaMode ? section.provision_count : (filteredSection?.provision_count || 0)}
         </span>
       ) : (
         <span className="text-xs text-gray-400 flex-shrink-0">

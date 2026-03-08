@@ -41,6 +41,12 @@ interface DAModeCardProps {
   /** Topic-level assertions — planner-dismissed topics */
   topicAssertions: Record<string, string>;
   onAssertTopicNA: (topic: string, reason: string | null) => Promise<void>;
+  /** Global progress — single source of truth from ProvisionsByTocStructure */
+  globalProgress?: {
+    total: number; triaged: number; chapterDismissed: number;
+    topicDismissed: number; suppressed: number;
+    scopeTotal: number; assessed: number; remaining: number;
+  } | null;
 }
 
 export function DAModeCard({
@@ -68,42 +74,19 @@ export function DAModeCard({
   genericLabel,
   topicAssertions,
   onAssertTopicNA,
+  globalProgress,
 }: DAModeCardProps) {
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState('');
 
-  // Single pass over allProvisions to derive all stats
+  // Derive scope summary and heritage count (progress now comes from globalProgress prop)
   const derivedStats = useMemo(() => {
-    const byTopic: Record<string, { total: number; assessed: number; excluded: boolean }> = {};
-    const excludedIds = new Set<number>();
     let heritagePros = 0;
 
     for (const p of allProvisions) {
       const layer = p.v2_dcp_layer || p.layer;
       if (layer === 'condition') heritagePros++;
-
-      const topic = (p.v2_topic || 'general').toLowerCase().replace(/ /g, '_');
-      if (!byTopic[topic]) byTopic[topic] = { total: 0, assessed: 0, excluded: false };
-      byTopic[topic].total++;
-      if (daResponses.has(p.id)) byTopic[topic].assessed++;
-      if (excludableTopics.has(topic)) {
-        byTopic[topic].excluded = true;
-        excludedIds.add(p.id);
-      }
     }
-
-    // Assessed = responses whose provision is NOT intake-excluded
-    let intakeExcludedResponseCount = 0;
-    for (const id of daResponses.keys()) {
-      if (excludedIds.has(id)) intakeExcludedResponseCount++;
-    }
-    const assessed = Math.max(0, daResponses.size - intakeExcludedResponseCount);
-    // Active scope = provisions not excluded by triage. Heritage (condition layer) always in scope.
-    const activeCount = allProvisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return !t || !excludableTopics.has(t);
-    }).length;
-    const remaining = Math.max(0, activeCount - assessed);
 
     // Scope summary — non-condition-layer provisions only
     const includedTopics: { topic: string; count: number }[] = [];
@@ -124,18 +107,12 @@ export function DAModeCard({
     }
 
     return {
-      completionStats: {
-        assessed,
-        intakeExcluded: intakeExcludedResponseCount,
-        remaining,
-        total: activeCount,
-      },
       scopeSummary: { included: includedTopics, excluded: excludedTopics },
       heritagePros,
     };
-  }, [allProvisions, daResponses, excludableTopics, topicAssertions]);
+  }, [allProvisions, excludableTopics, topicAssertions]);
 
-  const { completionStats, scopeSummary, heritagePros } = derivedStats;
+  const { scopeSummary, heritagePros } = derivedStats;
 
   return (
     <div className="mb-4 bg-teal-50 border border-teal-200 rounded-lg overflow-hidden">
@@ -371,24 +348,51 @@ export function DAModeCard({
                 )}
               </div>
             </div>
-            {/* Assessment progress */}
-            {completionStats.total > 0 && (
-              <div className="flex items-center gap-2 text-xs">
-                <span className="text-teal-600 font-medium">{completionStats.assessed} done</span>
-                <span className="text-gray-300">·</span>
-                <span className="text-amber-700">{completionStats.remaining} remaining</span>
-                {completionStats.intakeExcluded > 0 && (
-                  <>
-                    <span className="text-gray-300">·</span>
-                    <span className="text-gray-400">{completionStats.intakeExcluded} intake N/A</span>
-                  </>
-                )}
-              </div>
-            )}
           </div>
         )}
 
       </div>
+
+      {/* Progress bar + reduction waterfall footer */}
+      {globalProgress && globalProgress.scopeTotal > 0 && (
+        <div className="px-4 py-3 border-t border-teal-200 bg-white/50 space-y-2">
+          {/* Progress bar + fraction */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-1.5 bg-gray-200 rounded-full">
+              <div
+                className={`h-1.5 rounded-full transition-all ${
+                  globalProgress.remaining === 0 ? 'bg-green-500' : 'bg-teal-500'
+                }`}
+                style={{ width: `${Math.round((globalProgress.assessed / globalProgress.scopeTotal) * 100)}%` }}
+              />
+            </div>
+            <span className="text-sm font-medium text-gray-700"
+              title={`${globalProgress.assessed} provisions assessed out of ${globalProgress.scopeTotal} in your active scope`}>
+              {globalProgress.assessed} / {globalProgress.scopeTotal}
+            </span>
+          </div>
+
+          {/* Reduction waterfall — shows how we got from total to scope */}
+          <div className="text-xs text-gray-400 space-y-0.5">
+            <div>{globalProgress.total} provisions in DCP for this property</div>
+            {globalProgress.triaged > 0 && (
+              <div className="pl-2">− {globalProgress.triaged} removed by triage</div>
+            )}
+            {globalProgress.chapterDismissed > 0 && (
+              <div className="pl-2">− {globalProgress.chapterDismissed} in dismissed chapters</div>
+            )}
+            {globalProgress.topicDismissed > 0 && (
+              <div className="pl-2">− {globalProgress.topicDismissed} in dismissed topics</div>
+            )}
+            {globalProgress.suppressed > 0 && (
+              <div className="pl-2">− {globalProgress.suppressed} objectives/descriptive</div>
+            )}
+            <div className="font-medium text-gray-600 pt-0.5 border-t border-gray-200">
+              {globalProgress.scopeTotal} to assess · {globalProgress.assessed} done · {globalProgress.remaining} remaining
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
