@@ -8,6 +8,7 @@ const PRESET_REASONS = (topic: string) => [
   'Site condition confirmed absent per LEP mapping',
 ];
 import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
+import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
 import type { IntakeAnswers } from '@/lib/see/intake';
 import type { Provision } from './PageGroupedProvisions';
 
@@ -19,6 +20,8 @@ interface DAModeCardProps {
   daResponses: Map<number, { response_text: string | null; compliance_status: string | null }>;
   allProvisions: Provision[];
   excludableTopics: Set<string>;
+  ancillaryWorks: string[];
+  onAncillaryWorksChange: (works: string[]) => void;
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onRunIntake: () => void;
@@ -57,6 +60,8 @@ export function DAModeCard({
   daResponses,
   allProvisions,
   excludableTopics,
+  ancillaryWorks,
+  onAncillaryWorksChange,
   onDevTypeChange,
   onDevWorksChange,
   onRunIntake,
@@ -183,6 +188,36 @@ export function DAModeCard({
             ))}
           </select>
         </div>
+
+        {/* Ancillary works checkboxes — shown after primary type selected */}
+        {devType && (
+          <div>
+            <label className="block text-xs font-medium text-teal-800 mb-1.5">
+              Ancillary works <span className="text-gray-400 font-normal">(select all that apply)</span>
+            </label>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+              {ANCILLARY_WORKS.map(work => {
+                const checked = ancillaryWorks.includes(work.value);
+                return (
+                  <label key={work.value} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900">
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        const next = checked
+                          ? ancillaryWorks.filter(v => v !== work.value)
+                          : [...ancillaryWorks, work.value];
+                        onAncillaryWorksChange(next);
+                      }}
+                      className="w-3.5 h-3.5 rounded border-teal-300 text-teal-600 focus:ring-teal-500 focus:ring-1"
+                    />
+                    {work.label}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Works description */}
         <div>
@@ -315,12 +350,14 @@ export function DAModeCard({
           </div>
         ) : (
           <div className="flex items-center justify-between pt-1 border-t border-teal-100">
-            <span className="text-xs text-gray-500">Run triage to remove inapplicable provisions</span>
+            <span className="text-xs text-gray-500">
+              {ancillaryWorks.length > 0 ? 'Scope auto-derived from selections — review to override' : 'Run triage to remove inapplicable provisions'}
+            </span>
             <button
               onClick={onRunIntake}
               className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
             >
-              Run triage →
+              {ancillaryWorks.length > 0 ? 'Review scope →' : 'Run triage →'}
             </button>
           </div>
         )}

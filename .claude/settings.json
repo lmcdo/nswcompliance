@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/pre-edit-guard.py"
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-edit-guard.py\""
           }
         ]
       }
@@ -17,11 +17,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/post-edit-quality.py"
+            "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/post-edit-quality.py\""
           },
           {
             "type": "command",
-            "command": "cd frontend-nextjs && npx tsc --noEmit 2>&1 | head -30"
+            "command": "cd \"$CLAUDE_PROJECT_DIR/frontend-nextjs\" && npx tsc --noEmit 2>&1 | head -30"
           }
         ]
       }

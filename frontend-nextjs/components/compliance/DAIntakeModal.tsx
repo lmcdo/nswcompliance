@@ -10,12 +10,18 @@ import {
   getExcludableTopics,
   type IntakeAnswers,
 } from '@/lib/see/intake';
+import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
+
+/** Fields that are auto-derived from scope (ancillary works checkboxes) */
+const SCOPE_DERIVED_FIELDS = new Set<keyof IntakeAnswers>([
+  ...ANCILLARY_WORKS.filter(w => w.intakeField).map(w => w.intakeField!) as (keyof IntakeAnswers)[],
+  'new_impervious_surfaces', // always auto-derived from primary type + ancillary
+]);
 
 interface DAIntakeModalProps {
   open: boolean;
   onApply: (answers: IntakeAnswers) => Promise<void>;
   onSkip: () => void;
-  totalProvisions?: number;
   provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null }>;
   /** Pre-populate answers when reconfiguring (from a prior applied session) */
   initialAnswers?: IntakeAnswers;
@@ -23,9 +29,8 @@ interface DAIntakeModalProps {
   heritage?: boolean;
   hcaName?: string;
   precinctName?: string;
-  /** Property constraints from NSW Planning Portal — used to pre-confirm auto-answerable fields */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  propertyConstraints?: Record<string, any>;
+  /** Whether ancillary works checkboxes are active (enables review mode) */
+  hasAncillaryScope?: boolean;
 }
 
 type AnswerValue = 'yes' | 'no' | 'unknown';
@@ -45,7 +50,7 @@ export function DAIntakeModal({
   heritage,
   hcaName,
   precinctName,
-  propertyConstraints,
+  hasAncillaryScope = false,
 }: DAIntakeModalProps) {
   const [answers, setAnswers] = useState<IntakeAnswers>(
     initialAnswers ? { ...initialAnswers } : { ...DEFAULT_INTAKE_ANSWERS }
@@ -130,6 +135,14 @@ export function DAIntakeModal({
     }
   };
 
+  /** Check if a field is auto-answered from property data */
+  const isPropertyAutoAnswered = (field: keyof IntakeAnswers) =>
+    AUTO_ANSWER_SOURCES[field] && initialAnswers?.[field] === 'no' && !overriddenFields.has(field);
+
+  /** Check if a field is auto-derived from scope (ancillary checkboxes) */
+  const isScopeDerived = (field: keyof IntakeAnswers) =>
+    hasAncillaryScope && SCOPE_DERIVED_FIELDS.has(field) && !overriddenFields.has(field);
+
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onSkip(); }}>
       <DialogContent className="max-w-lg flex flex-col max-h-[90vh]">
@@ -188,17 +201,60 @@ export function DAIntakeModal({
             </button>
           </div>
         ) : (
-          /* Intake questions */
+          /* Intake questions — with scope-derived review mode */
           <>
             <DialogHeader>
-              <DialogTitle className="font-serif text-xl">Triage your provisions</DialogTitle>
+              <DialogTitle className="font-serif text-xl">
+                {hasAncillaryScope ? 'Review scope' : 'Triage your provisions'}
+              </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
-                Answer these factual questions to remove provisions that cannot apply to your development.
-                If unsure, choose "Don't know" — provisions are only excluded when their trigger is factually impossible.
+                {hasAncillaryScope
+                  ? 'Your ancillary works selections have auto-derived these answers. Override any field if needed, then apply.'
+                  : 'Answer these factual questions to remove provisions that cannot apply to your development. If unsure, choose "Don\'t know" — provisions are only excluded when their trigger is factually impossible.'
+                }
               </p>
             </DialogHeader>
 
             <div className="mt-4 space-y-4 overflow-y-auto flex-1 pr-1">
+              {/* Scope-derived section — fields answered from ancillary checkboxes */}
+              {hasAncillaryScope && (() => {
+                const scopeFields = INTAKE_QUESTIONS.filter(q =>
+                  SCOPE_DERIVED_FIELDS.has(q.field) && !overriddenFields.has(q.field)
+                );
+                if (scopeFields.length === 0) return null;
+                return (
+                  <div className="rounded-lg border border-teal-100 bg-teal-50/40 px-4 py-3">
+                    <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-2">
+                      Derived from ancillary works
+                    </p>
+                    <div className="space-y-2">
+                      {scopeFields.map(q => (
+                        <div key={q.field} className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-gray-700 leading-snug">{q.question}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
+                              answers[q.field] === 'yes'
+                                ? 'bg-teal-100 border-teal-400 text-teal-800'
+                                : 'bg-gray-200 border-gray-400 text-gray-700'
+                            }`}>
+                              {answers[q.field] === 'yes' ? 'Yes' : answers[q.field] === 'no' ? 'No' : 'Unknown'}
+                            </span>
+                            <button
+                              onClick={() => setOverriddenFields(prev => new Set([...prev, q.field]))}
+                              className="text-xs text-teal-500 hover:text-teal-700 underline underline-offset-2"
+                            >
+                              Override
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Auto-confirmed section — fields answered from property data */}
               {(() => {
                 const autoFields = (Object.entries(AUTO_ANSWER_SOURCES) as [keyof IntakeAnswers, typeof AUTO_ANSWER_SOURCES[keyof IntakeAnswers]][])
@@ -244,11 +300,10 @@ export function DAIntakeModal({
                 );
               })()}
 
-              {/* Manual questions */}
+              {/* Manual questions — hide scope-derived and auto-answered unless overridden */}
               {INTAKE_QUESTIONS.map(q => {
-                // Hide auto-answered fields unless overridden
-                const isAutoAnswered = (field: keyof IntakeAnswers) => AUTO_ANSWER_SOURCES[field] && initialAnswers?.[field] === 'no' && !overriddenFields.has(field);
-                if (isAutoAnswered(q.field)) return null;
+                if (isPropertyAutoAnswered(q.field)) return null;
+                if (isScopeDerived(q.field)) return null;
                 return (
                 <div key={q.field} className="rounded-lg border border-gray-100 bg-gray-50/50 px-4 py-3">
                   <p className="text-sm font-medium text-gray-800">{q.question}</p>
@@ -293,7 +348,7 @@ export function DAIntakeModal({
                   onClick={onSkip}
                   className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-2"
                 >
-                  Skip for now
+                  {hasAncillaryScope ? 'Close' : 'Skip for now'}
                 </button>
                 <button
                   onClick={handleApply}

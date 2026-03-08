@@ -29,7 +29,8 @@ import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
 import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/see/propertyContext';
 import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/provisionUtils';
-import { assembleDescription, buildSeeIntro } from '@/lib/see/devTypes';
+import { assembleDescription, buildSeeIntro, DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
+import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryWorks';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpFilterBar } from './DcpFilterBar';
@@ -187,7 +188,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -201,6 +202,7 @@ export function ProvisionsByTocStructure({
   useEffect(() => {
     setDevType('');
     setDevWorksText('');
+    setAncillaryWorksLocal([]);
     setClientRef('');
     setPreparedBy('');
   }, [address]);
@@ -208,10 +210,18 @@ export function ProvisionsByTocStructure({
   // Structured development description state
   const [devType, setDevType] = useState<string>('');
   const [devWorksText, setDevWorksText] = useState<string>('');
+  const [ancillaryWorksLocal, setAncillaryWorksLocal] = useState<string[]>([]);
   const [clientRef, setClientRef] = useState<string>('');
   const [preparedBy, setPreparedBy] = useState<string>('');
-  const devDescriptionLocal = useMemo(() => assembleDescription(devType, devWorksText), [devType, devWorksText]);
+  const devDescriptionLocal = useMemo(() => assembleDescription(devType, ancillaryWorksLocal, devWorksText), [devType, ancillaryWorksLocal, devWorksText]);
   const descriptionDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Refs for latest values — avoids stale closures in debounced callbacks
+  const devTypeRef = useRef(devType);
+  devTypeRef.current = devType;
+  const devWorksTextRef = useRef(devWorksText);
+  devWorksTextRef.current = devWorksText;
+  const intakeAnswersRef = useRef(intakeAnswers);
+  intakeAnswersRef.current = intakeAnswers;
 
   // Clear any pending debounce on unmount to avoid state updates after teardown
   useEffect(() => {
@@ -223,14 +233,31 @@ export function ProvisionsByTocStructure({
   const handleDevTypeChange = (newType: string) => {
     setDevType(newType);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
-    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(newType, devWorksText)); }, 800);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(newType, ancillaryWorksLocal, devWorksText)); }, 800);
+  };
+
+  const handleAncillaryWorksChange = (works: string[]) => {
+    setAncillaryWorksLocal(works);
+    if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
+    descriptionDebounceTimer.current = setTimeout(() => {
+      // Use refs to avoid stale closures in debounced callback
+      const currentDevType = devTypeRef.current;
+      const currentWorksText = devWorksTextRef.current;
+      const currentIntake = intakeAnswersRef.current;
+      const autoAnswers = propertyData?.constraints
+        ? autoPopulateFromConstraints({ ...propertyData.constraints, anefData: propertyData.anefData })
+        : {};
+      const derived = deriveIntakeFromScope(currentDevType, works);
+      const merged = { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...derived, ...(currentIntake ?? {}) } as IntakeAnswers;
+      saveScope(currentDevType, works, currentWorksText, merged);
+    }, 800);
   };
 
   const handleDevWorksChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const text = e.target.value;
     setDevWorksText(text);
     if (descriptionDebounceTimer.current) clearTimeout(descriptionDebounceTimer.current);
-    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(devType, text)); }, 800);
+    descriptionDebounceTimer.current = setTimeout(() => { saveDescription(assembleDescription(devType, ancillaryWorksLocal, text)); }, 800);
   };
 
   const handleClientRefChange = (val: string) => setClientRef(val);
@@ -246,21 +273,37 @@ export function ProvisionsByTocStructure({
     if (isDaMode && address) refreshResponsesRef.current();
   }, [isDaMode, address]);
 
-  // Auto-open triage modal when DA mode is active and no answers have been saved yet.
-  // Only fires when deps change — dismissing the modal does not re-trigger it in the
-  // same session. On page reload, sessionToken changes and triggers again, reminding
-  // the user to complete triage. DAIntakeModal resets its own state via useLayoutEffect.
-  // Gate modal auto-open on sessionIsLoading to avoid race condition:
-  // setSessionToken fires before loadResponses completes, so intakeAnswers is
-  // briefly null even when a saved session exists. Wait until loading is done.
+  // Restore ancillary works from session when loaded
   useEffect(() => {
-    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null) {
+    if (savedAncillaryWorks.length > 0 && ancillaryWorksLocal.length === 0) {
+      setAncillaryWorksLocal(savedAncillaryWorks);
+    }
+  }, [savedAncillaryWorks]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-derive intake from scope (dev type + ancillary checkboxes).
+  // When ancillary works are selected, intake is auto-derived — no modal needed.
+  // Scope-derived answers layer between auto-answers and saved planner overrides.
+  const scopeDerivedIntake = useMemo(() => {
+    if (!devType && ancillaryWorksLocal.length === 0) return {};
+    return deriveIntakeFromScope(devType, ancillaryWorksLocal);
+  }, [devType, ancillaryWorksLocal]);
+
+  // Auto-save scope when ancillary or devType changes (debounced via description timer)
+  const scopeSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => { if (scopeSaveTimer.current) clearTimeout(scopeSaveTimer.current); };
+  }, []);
+
+  // Auto-open triage modal when DA mode is active, no saved intake, AND no ancillary
+  // selected (ancillary auto-derives intake, so modal is unnecessary).
+  useEffect(() => {
+    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null && ancillaryWorksLocal.length === 0) {
       setShowIntakeModal(true);
     }
-  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading]);
+  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading, ancillaryWorksLocal.length]);
 
-  // Merge auto-answers from LEP constraints with saved intake answers.
-  // Auto-answers fill unknowns; saved planner answers always override.
+  // Merge auto-answers from LEP constraints + scope-derived + saved planner answers.
+  // Priority: defaults < auto-from-constraints < scope-derived < saved planner overrides
   const mergedIntakeAnswers = useMemo(() => {
     const autoAnswers = propertyData?.constraints
       ? autoPopulateFromConstraints({
@@ -269,9 +312,8 @@ export function ProvisionsByTocStructure({
           anefData: propertyData.anefData,
         })
       : {};
-    // Saved answers take priority — planner override is preserved
-    return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...(intakeAnswers ?? {}) };
-  }, [intakeAnswers, propertyData?.constraints, propertyData?.anefData]);
+    return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...scopeDerivedIntake, ...(intakeAnswers ?? {}) };
+  }, [intakeAnswers, propertyData?.constraints, propertyData?.anefData, scopeDerivedIntake]);
 
   // Compute excludable topics from merged answers (auto-populated + saved planner answers).
   // mergedIntakeAnswers always has a value; auto-answers (flood=No etc.) take effect immediately.
@@ -293,6 +335,11 @@ export function ProvisionsByTocStructure({
   if (heritage !== undefined) params.set('heritage', String(heritage));
   if (hcaName) params.set('hca', hcaName);
   if (precinctId) params.set('precinct_id', precinctId);
+  // Pass dev_types (compound) so getCompleteTocStructure can compute per-chapter match counts
+  if (isDaMode && devType) {
+    const tags = getScopeDevTypeTags(devType, ancillaryWorksLocal);
+    params.set('dev_types', tags.join(','));
+  }
 
   // If no formerCouncil, council DCP is not processed — skip fetch entirely
   const apiUrl = formerCouncil ? `/api/provisions/for-property?${params.toString()}` : null;
@@ -961,7 +1008,7 @@ export function ProvisionsByTocStructure({
       const seeData: SEEDocumentData = {
         property: propertyContext,
         development_description: devDescriptionLocal,
-        see_intro: devType ? buildSeeIntro(devType, devWorksText, resolvedAddress) : undefined,
+        see_intro: devType ? buildSeeIntro(devType, ancillaryWorksLocal, devWorksText, resolvedAddress) : undefined,
         annotated_provisions: annotatedProvisions,
         all_provisions: provisionsForPdf,
         generated_date: new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }),
@@ -1008,7 +1055,7 @@ export function ProvisionsByTocStructure({
         heritage={heritage}
         hcaName={hcaName}
         precinctName={precinctName}
-        propertyConstraints={propertyData?.constraints}
+        hasAncillaryScope={ancillaryWorksLocal.length > 0}
       />
 
       {/* ① Enable DA Mode — rendered here so it only appears after provisions load */}
@@ -1048,13 +1095,14 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
             <p className="text-sm font-semibold text-gray-800">Set your scope</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">Name the development type, describe the works, then run triage to auto-exclude provisions that can't apply. After triage, hover any in-scope topic and click × to dismiss whole categories — Roof, Retail, Parking, Demolition — that have nothing to do with your works. What survives becomes your Schedule A.</p>
+            <p className="text-xs text-gray-500 mt-0.5 mb-2">Select the primary development type, tick any ancillary works, and describe the proposal. Triage auto-derives from your selections — hover any in-scope topic and click × to dismiss whole categories. What survives becomes your Schedule A.</p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
               devDescriptionLocal={devDescriptionLocal}
               intakeAnswers={intakeAnswers}
-
+              ancillaryWorks={ancillaryWorksLocal}
+              onAncillaryWorksChange={handleAncillaryWorksChange}
               daResponses={daResponses}
               allProvisions={allProvisions}
               excludableTopics={excludableTopics}
@@ -1110,6 +1158,8 @@ export function ProvisionsByTocStructure({
             chapterAssertions={chapterAssertions}
             onAssertChapter={handleAssertChapter}
             chapterProgress={chapterProgress}
+            devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
+            devTypeLabel={isDaMode && devType ? DEV_TYPE_OPTIONS.find(o => o.value === devType)?.label : undefined}
           />
         </div>
       )}

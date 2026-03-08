@@ -144,6 +144,17 @@ const DEV_TYPE_HIERARCHY: Record<string, string[]> = {
   boarding_house: ['boarding_house'],
   child_care_centre: ['child_care_centre'],
 
+  // Ancillary works — compound selections from DA scope input
+  pool: ['pool', 'swimming_pool'],
+  fence: ['fence', 'fencing'],
+  carport: ['carport', 'garage', 'parking'],
+  deck: ['deck', 'terrace'],
+  pergola: ['pergola', 'shade_structure'],
+  retaining_wall: ['retaining_wall'],
+  signage: ['signage'],
+  demolition: ['demolition'],
+  outbuilding: ['outbuilding', 'shed'],
+
   // Simplified category groupings (for Leichhardt dropdown)
   residential: [
     'dwelling_house', 'dual_occupancy', 'secondary_dwelling',
@@ -172,6 +183,21 @@ function expandDevTypeHierarchy(devType: string): string[] {
 
   // Fallback: match exact type only (no ALL)
   return [devType];
+}
+
+/**
+ * Expand multiple dev_types (compound works) to their full hierarchy union.
+ * Accepts comma-separated string or array. Returns deduplicated union.
+ */
+function expandDevTypeHierarchyMulti(devTypes: string): string[] {
+  const types = devTypes.split(',').map(t => t.trim()).filter(Boolean);
+  const all = new Set<string>();
+  for (const t of types) {
+    for (const expanded of expandDevTypeHierarchy(t)) {
+      all.add(expanded);
+    }
+  }
+  return Array.from(all);
 }
 
 /**
@@ -287,7 +313,7 @@ export async function GET(request: NextRequest) {
       flood: searchParams.get('flood') === 'true',
       bushfire: searchParams.get('bushfire') === 'true',
       precinct_id: searchParams.get('precinct_id') ? normalizePrecinctId(searchParams.get('precinct_id')!) : undefined,
-      dev_type: searchParams.get('dev_type') || undefined,
+      dev_type: searchParams.get('dev_types') || searchParams.get('dev_type') || undefined,
       topic: searchParams.get('topic') || undefined,
       assessment_type: (searchParams.get('assessment_type') as 'CDC' | 'DA') || undefined,
       former_council: searchParams.get('former_council') || undefined,
@@ -393,8 +419,9 @@ export async function GET(request: NextRequest) {
         : undefined;
 
       // Get complete DCP TOC structure (unfiltered) for sidebar navigation
+      // When dev_type provided, includes dev_type_match_count per chapter
       const completeToc = filters.groupBy === 'toc' && filters.former_council
-        ? await getCompleteTocStructure(client, filters.former_council)
+        ? await getCompleteTocStructure(client, filters.former_council, filters.dev_type)
         : undefined;
 
       // Look up public PDF URL for this council (stored in dcp_chapter_registry).
@@ -417,7 +444,7 @@ export async function GET(request: NextRequest) {
       // Include dev_type hierarchy info if filtering by dev_type
       const devTypeInfo = filters.dev_type ? {
         selected: filters.dev_type,
-        expanded_hierarchy: expandDevTypeHierarchy(filters.dev_type),
+        expanded_hierarchy: expandDevTypeHierarchyMulti(filters.dev_type),
       } : undefined;
 
       // Cache for 5 minutes on edge, 1 minute stale-while-revalidate
@@ -515,7 +542,7 @@ async function queryHeritageByHca(
   // Build relevance scoring for dev_type
   let relevanceSelect = '';
   if (filters.dev_type) {
-    const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
+    const expandedTypes = expandDevTypeHierarchyMulti(filters.dev_type);
     const devTypeParamIndex = paramIndex++;
     relevanceSelect = `,
       CASE
@@ -524,7 +551,7 @@ async function queryHeritageByHca(
         ELSE 'secondary'
       END as relevance_level,
       CASE
-        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for ${filters.dev_type}'
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for selected development type'
         WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'Applies to all development types'
         ELSE 'May apply if objectives relevant (EP&A Act s 4.15)'
       END as relevance_reason
@@ -713,7 +740,7 @@ async function queryLayer(
   // Build relevance scoring for dev_type (used for ranking, NOT filtering)
   let relevanceSelect = '';
   if (filters.dev_type) {
-    const expandedTypes = expandDevTypeHierarchy(filters.dev_type);
+    const expandedTypes = expandDevTypeHierarchyMulti(filters.dev_type);
     const devTypeParamIndex = paramIndex++;
     relevanceSelect = `,
       CASE
@@ -722,7 +749,7 @@ async function queryLayer(
         ELSE 'secondary'
       END as relevance_level,
       CASE
-        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for ${filters.dev_type}'
+        WHEN v2_applicable_dev_types && $${devTypeParamIndex}::text[] THEN 'Specifically written for selected development type'
         WHEN v2_applicable_dev_types IS NULL OR 'ALL' = ANY(v2_applicable_dev_types) THEN 'Applies to all development types'
         ELSE 'May apply if objectives relevant (EP&A Act s 4.15)'
       END as relevance_reason
@@ -991,6 +1018,7 @@ interface TocPart {
   part_id: string;
   part_name: string;
   provision_count: number;
+  dev_type_match_count?: number;  // Only present when dev_type provided
   sections: Record<string, TocSection>;
 }
 
@@ -998,11 +1026,33 @@ interface TocPart {
  * Get complete DCP TOC structure for a council (unfiltered by property)
  * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
  */
-async function getCompleteTocStructure(client: any, formerCouncil: string): Promise<Record<string, TocPart>> {
+async function getCompleteTocStructure(client: any, formerCouncil: string, devType?: string): Promise<Record<string, TocPart>> {
   const councilName = formerCouncil.charAt(0).toUpperCase() + formerCouncil.slice(1).toLowerCase();
 
-  // Query all distinct parts and their provision counts (excluding TOC provisions)
-  const result = await client.query(`
+  // When devType is provided, also compute how many provisions in each chapter match
+  const expandedTypes = devType ? expandDevTypeHierarchyMulti(devType) : null;
+
+  const query = expandedTypes
+    ? `
+    SELECT
+      v2_dcp_part,
+      COUNT(*) as provision_count,
+      COUNT(*) FILTER (WHERE
+        v2_applicable_dev_types && $2::text[]
+        OR v2_applicable_dev_types IS NULL
+        OR 'ALL' = ANY(v2_applicable_dev_types)
+      ) as dev_type_match_count
+    FROM regulatory_provisions
+    WHERE document_id ILIKE $1
+      AND v2_dcp_part IS NOT NULL
+      AND (v2_provision_type IS NULL OR v2_provision_type != 'TOC')
+      AND provision_text NOT LIKE '%i%Contents%'
+      AND provision_text NOT LIKE 'Contents%'
+      AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')
+    GROUP BY v2_dcp_part
+    ORDER BY v2_dcp_part
+  `
+    : `
     SELECT
       v2_dcp_part,
       COUNT(*) as provision_count
@@ -1015,7 +1065,13 @@ async function getCompleteTocStructure(client: any, formerCouncil: string): Prom
       AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')
     GROUP BY v2_dcp_part
     ORDER BY v2_dcp_part
-  `, [`%${councilName}%`]);
+  `;
+
+  const params = expandedTypes
+    ? [`%${councilName}%`, expandedTypes]
+    : [`%${councilName}%`];
+
+  const result = await client.query(query, params);
 
   const completeToc: Record<string, TocPart> = {};
 
@@ -1027,6 +1083,7 @@ async function getCompleteTocStructure(client: any, formerCouncil: string): Prom
       part_id: partId,
       part_name: partName,
       provision_count: parseInt(row.provision_count),
+      ...(expandedTypes ? { dev_type_match_count: parseInt(row.dev_type_match_count) } : {}),
       sections: {
         'General': {
           section_id: 'General',

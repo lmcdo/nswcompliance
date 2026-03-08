@@ -28,6 +28,7 @@ interface TocPart {
   part_id: string;
   part_name: string;
   provision_count: number;
+  dev_type_match_count?: number;
   sections: Record<string, TocSection>;
 }
 
@@ -44,6 +45,10 @@ interface TocSidebarProps {
   chapterAssertions?: Record<string, string>;
   onAssertChapter?: (chapterKey: string, reason: string | null) => Promise<void>;
   chapterProgress?: Record<string, { assessed: number; total: number }>;
+  /** Selected dev type slug — enables suggestion mode when set */
+  devType?: string;
+  /** Human-readable dev type label for dismiss reasons */
+  devTypeLabel?: string;
 }
 
 export function TocSidebar({
@@ -58,6 +63,8 @@ export function TocSidebar({
   chapterAssertions,
   onAssertChapter,
   chapterProgress,
+  devType,
+  devTypeLabel,
 }: TocSidebarProps) {
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
@@ -79,6 +86,24 @@ export function TocSidebar({
     const orderB = getPartOrder(b[0]);
     return order - orderB;
   });
+
+  // Dev-type suggestion: chapters where dev_type_match_count === 0 and not already dismissed
+  const suggestedDismissals = isDaMode && devType
+    ? sortedParts
+        .filter(([partId, part]) => {
+          if (chapterAssertions?.[partId]) return false; // already dismissed
+          if (part.dev_type_match_count === undefined) return false; // no dev type stats
+          return part.dev_type_match_count === 0 && part.provision_count > 0;
+        })
+        .map(([partId]) => partId)
+    : [];
+
+  const handleBatchDismiss = async () => {
+    const reason = `Development type (${devTypeLabel || devType}) does not apply to this chapter`;
+    for (const partId of suggestedDismissals) {
+      await onAssertChapter?.(partId, reason);
+    }
+  };
 
   if (sortedParts.length === 0) {
     return (
@@ -104,6 +129,29 @@ export function TocSidebar({
           DCP Structure
         </p>
       </div>
+
+      {/* Batch dismiss banner — quantifies provision reduction */}
+      {suggestedDismissals.length > 0 && (() => {
+        const skippableProvisions = suggestedDismissals.reduce(
+          (sum, partId) => sum + (tocStructure[partId]?.provision_count || 0), 0
+        );
+        return (
+          <div className="mx-2 mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-xs text-amber-800 leading-relaxed">
+              <span className="font-semibold">{skippableProvisions} provisions</span> across{' '}
+              {suggestedDismissals.length} chapter{suggestedDismissals.length !== 1 ? 's' : ''}{' '}
+              {"don't apply to "}
+              {devTypeLabel ? devTypeLabel.toLowerCase() : 'your development type'}
+            </p>
+            <button
+              onClick={handleBatchDismiss}
+              className="mt-1.5 text-xs font-medium px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors"
+            >
+              Dismiss {suggestedDismissals.length === 1 ? 'this chapter' : `all ${suggestedDismissals.length} chapters`}
+            </button>
+          </div>
+        );
+      })()}
 
       <nav className="p-2">
         {sortedParts.map(([partId, part]) => {
@@ -135,6 +183,7 @@ export function TocSidebar({
                 onDismiss={() => setPendingDismiss(partId)}
                 onUndo={() => onAssertChapter?.(partId, null)}
                 chapterProgress={chapterProgress}
+                isSuggestedForDismissal={suggestedDismissals.includes(partId)}
               />
               {/* Inline reason picker — shown directly under this part when pending */}
               {pendingDismiss === partId && (
@@ -193,6 +242,7 @@ interface PartNodeProps {
   onDismiss?: () => void;
   onUndo?: () => void;
   chapterProgress?: Record<string, { assessed: number; total: number }>;
+  isSuggestedForDismissal?: boolean;
 }
 
 function PartNode({
@@ -212,6 +262,7 @@ function PartNode({
   onDismiss,
   onUndo,
   chapterProgress,
+  isSuggestedForDismissal,
 }: PartNodeProps) {
   const sections = part?.sections || {};
   const sectionCount = Object.keys(sections).length;
@@ -311,11 +362,24 @@ function PartNode({
           </span>
         ))}
       </div>
-      {/* DA mode: progress bar below chapter name */}
+      {/* DA mode: progress bar OR match ratio below chapter name */}
       {isDaMode && !isAsserted && (() => {
         const prog = chapterProgress?.[part.part_id];
         const total = prog?.total ?? 0;
         const assessed = prog?.assessed ?? 0;
+
+        // For suggested-for-dismissal chapters that have not been started,
+        // show match ratio instead of progress bar
+        if (isSuggestedForDismissal && assessed === 0 && part.dev_type_match_count !== undefined) {
+          return (
+            <div className="ml-9 mt-0.5 mb-0.5">
+              <span className="text-[10px] text-amber-600" title={`None of the ${part.provision_count} provisions in this chapter apply to your development type`}>
+                0 of {part.provision_count} apply to your type
+              </span>
+            </div>
+          );
+        }
+
         if (total === 0) return null;
         const pct = Math.round((assessed / total) * 100);
         const done = assessed === total;

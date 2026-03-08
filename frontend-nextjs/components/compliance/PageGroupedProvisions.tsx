@@ -236,6 +236,7 @@ export interface Provision {
   // Dev type relevance scoring
   relevance_level?: 'primary' | 'general' | 'secondary';
   relevance_reason?: string;
+  v2_applicable_dev_types?: string[];
 }
 
 interface PageGroup {
@@ -753,12 +754,15 @@ export function PageGroupedProvisions({
                   const isExcludedByTriage = !isDaMode && !!excludableTopics?.has(
                     (provision.v2_topic || '').toLowerCase().replace(/ /g, '_')
                   );
+                  // Subtle dimming for secondary-relevance provisions in DA mode
+                  const isSecondaryDevType = isDaMode && provision.relevance_level === 'secondary';
 
                   return (
                     <div
                       key={provision.id}
                       data-provision-id={provision.id}
-                      className={`px-4 py-3 ${bgClass} border-l-4 ${isExcludedByTriage ? 'opacity-35' : ''}`}
+                      className={`px-4 py-3 ${bgClass} border-l-4 ${isExcludedByTriage ? 'opacity-35' : isSecondaryDevType ? 'opacity-60' : ''}`}
+                      title={isSecondaryDevType ? (provision.relevance_reason || 'May not apply to your development type') : undefined}
                       style={{ borderLeftColor: layer === 'precinct' ? '#8b5cf6' : layer === 'condition' ? '#f59e0b' : layer === 'use_specific' ? '#3b82f6' : '#14b8a6' }}
                     >
                       {/* Provision Header Row */}
@@ -818,7 +822,7 @@ export function PageGroupedProvisions({
                             Primary Match
                           </Badge>
                         )}
-                        {provision.relevance_level === 'secondary' && (
+                        {provision.relevance_level === 'secondary' && !isDaMode && (
                           <Badge variant="outline" className="text-sm shrink-0 bg-gray-50 text-gray-600 border-gray-300">
                             May Apply
                           </Badge>

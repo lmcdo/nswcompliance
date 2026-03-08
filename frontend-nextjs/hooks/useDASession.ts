@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { IntakeAnswers } from '@/lib/see/intake';
+import { assembleDescription } from '@/lib/see/devTypes';
 
 export interface DaResponse {
   response_text: string | null;
@@ -24,12 +25,32 @@ interface UseDASessionReturn {
   saveDescription: (text: string) => Promise<void>;
   intakeAnswers: IntakeAnswers | null;
   saveIntakeAnswers: (answers: IntakeAnswers) => Promise<void>;
+  ancillaryWorks: string[];
+  saveScope: (primaryType: string, ancillary: string[], worksText: string, intake: IntakeAnswers) => Promise<void>;
   topicAssertions: Record<string, string>;
   saveTopicAssertion: (topic: string, reason: string | null) => Promise<void>;
   chapterAssertions: Record<string, string>;
   saveChapterAssertion: (chapterKey: string, reason: string | null) => Promise<void>;
   bulkSaveResponses: (responses: BulkResponseItem[]) => Promise<void>;
   error: Error | null;
+}
+
+/** Build a v3 envelope — pure function, no hook needed */
+function buildEnvelope(
+  intake: IntakeAnswers | null,
+  ancillary: string[],
+  topics: Record<string, string>,
+  chapters: Record<string, string>,
+  primaryDevType?: string,
+) {
+  return {
+    _v: 3,
+    ...(primaryDevType !== undefined ? { primary_dev_type: primaryDevType } : {}),
+    ancillary_works: ancillary,
+    intake: intake,
+    topic_assertions: topics,
+    chapter_assertions: chapters,
+  };
 }
 
 export function useDASession(
@@ -42,9 +63,20 @@ export function useDASession(
   const [daResponses, setDaResponses] = useState<Map<number, DaResponse>>(new Map());
   const [developmentDescription, setDevelopmentDescription] = useState<string>('');
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
+  const [ancillaryWorks, setAncillaryWorks] = useState<string[]>([]);
   const [topicAssertions, setTopicAssertions] = useState<Record<string, string>>({});
   const [chapterAssertions, setChapterAssertions] = useState<Record<string, string>>({});
   const [error, setError] = useState<Error | null>(null);
+
+  // Refs for latest state — avoids stale closures in save callbacks
+  const intakeRef = useRef(intakeAnswers);
+  intakeRef.current = intakeAnswers;
+  const ancillaryRef = useRef(ancillaryWorks);
+  ancillaryRef.current = ancillaryWorks;
+  const topicAssertionsRef = useRef(topicAssertions);
+  topicAssertionsRef.current = topicAssertions;
+  const chapterAssertionsRef = useRef(chapterAssertions);
+  chapterAssertionsRef.current = chapterAssertions;
 
   const loadResponses = useCallback(async (token: string) => {
     try {
@@ -55,15 +87,22 @@ export function useDASession(
       // Load dev_type into description state
       setDevelopmentDescription(data.session?.dev_type || '');
 
-      // Load proposed_values — supports v2 envelope or legacy flat IntakeAnswers
+      // Load proposed_values — supports v3/v2 envelope or legacy flat IntakeAnswers
       const pv = data.session?.proposed_values;
       if (pv && typeof pv === 'object') {
-        if ((pv as any)._v === 2) {
+        if ((pv as any)._v === 3) {
           setIntakeAnswers((pv as any).intake ?? null);
+          setAncillaryWorks((pv as any).ancillary_works ?? []);
+          setTopicAssertions((pv as any).topic_assertions ?? {});
+          setChapterAssertions((pv as any).chapter_assertions ?? {});
+        } else if ((pv as any)._v === 2) {
+          setIntakeAnswers((pv as any).intake ?? null);
+          setAncillaryWorks([]);  // v2 has no ancillary data
           setTopicAssertions((pv as any).topic_assertions ?? {});
           setChapterAssertions((pv as any).chapter_assertions ?? {});
         } else {
           setIntakeAnswers(pv as IntakeAnswers);   // legacy format
+          setAncillaryWorks([]);
           setTopicAssertions({});
           setChapterAssertions({});
         }
@@ -106,7 +145,7 @@ export function useDASession(
 
   const saveIntakeAnswers = useCallback(async (answers: IntakeAnswers) => {
     if (!sessionToken) return;
-    const envelope = { _v: 2, intake: answers, topic_assertions: topicAssertions, chapter_assertions: chapterAssertions };
+    const envelope = buildEnvelope(answers, ancillaryRef.current, topicAssertionsRef.current, chapterAssertionsRef.current);
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -114,13 +153,38 @@ export function useDASession(
     });
     if (!res.ok) throw new Error('Failed to save intake answers');
     setIntakeAnswers(answers);
-  }, [sessionToken, topicAssertions, chapterAssertions]);
+  }, [sessionToken]);
+
+  /** Save full scope: primary type + ancillary + works text + derived intake */
+  const saveScope = useCallback(async (
+    primaryType: string,
+    ancillary: string[],
+    worksText: string,
+    intake: IntakeAnswers,
+  ) => {
+    if (!sessionToken) return;
+    const envelope = buildEnvelope(intake, ancillary, topicAssertionsRef.current, chapterAssertionsRef.current, primaryType);
+    const description = assembleDescription(primaryType, ancillary, worksText);
+
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        dev_type: description || null,
+        proposed_values: envelope,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to save scope');
+    setIntakeAnswers(intake);
+    setAncillaryWorks(ancillary);
+  }, [sessionToken]);
 
   const saveTopicAssertion = useCallback(async (topic: string, reason: string | null) => {
     if (!sessionToken) return;
-    const next = { ...topicAssertions };
+    const current = topicAssertionsRef.current;
+    const next = { ...current };
     if (reason === null) { delete next[topic]; } else { next[topic] = reason; }
-    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: next, chapter_assertions: chapterAssertions };
+    const envelope = buildEnvelope(intakeRef.current, ancillaryRef.current, next, chapterAssertionsRef.current);
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -128,13 +192,14 @@ export function useDASession(
     });
     if (!res.ok) throw new Error('Failed to save topic assertion');
     setTopicAssertions(next);
-  }, [sessionToken, topicAssertions, chapterAssertions, intakeAnswers]);
+  }, [sessionToken]);
 
   const saveChapterAssertion = useCallback(async (chapterKey: string, reason: string | null) => {
     if (!sessionToken) return;
-    const next = { ...chapterAssertions };
+    const current = chapterAssertionsRef.current;
+    const next = { ...current };
     if (reason === null) { delete next[chapterKey]; } else { next[chapterKey] = reason; }
-    const envelope = { _v: 2, intake: intakeAnswers, topic_assertions: topicAssertions, chapter_assertions: next };
+    const envelope = buildEnvelope(intakeRef.current, ancillaryRef.current, topicAssertionsRef.current, next);
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -142,7 +207,7 @@ export function useDASession(
     });
     if (!res.ok) throw new Error('Failed to save chapter assertion');
     setChapterAssertions(next);
-  }, [sessionToken, chapterAssertions, topicAssertions, intakeAnswers]);
+  }, [sessionToken]);
 
   const bulkSaveResponses = useCallback(async (responses: BulkResponseItem[]) => {
     if (!sessionToken || responses.length === 0) return;
@@ -216,6 +281,8 @@ export function useDASession(
     saveDescription,
     intakeAnswers,
     saveIntakeAnswers,
+    ancillaryWorks,
+    saveScope,
     topicAssertions,
     saveTopicAssertion,
     chapterAssertions,
