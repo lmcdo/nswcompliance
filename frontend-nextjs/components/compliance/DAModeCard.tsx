@@ -193,7 +193,7 @@ export function DAModeCard({
         {devType && (
           <div>
             <label className="block text-xs font-medium text-teal-800 mb-1.5">
-              Ancillary works <span className="text-gray-400 font-normal">(select all that apply)</span>
+              Ancillary development <span className="text-gray-400 font-normal">(select all that apply)</span>
             </label>
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {ANCILLARY_WORKS.map(work => {
@@ -245,7 +245,7 @@ export function DAModeCard({
         {intakeAnswers ? (
           <div className="pt-2 border-t border-teal-100">
             <div className="flex items-center justify-between mb-0.5">
-              <span className="text-xs font-medium text-teal-800">Your applicable scope</span>
+              <span className="text-xs font-medium text-teal-800">Topics to assess</span>
               <button
                 onClick={onRunIntake}
                 className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800"
@@ -254,7 +254,7 @@ export function DAModeCard({
               </button>
             </div>
             <p className="text-xs text-gray-400 mb-2">
-              Reconfigure re-runs the factual questions. Or hover any topic and click × to manually dismiss an entire category.
+              Click Reconfigure to change your development type or ancillary development. To exclude a topic category, hover it and click ×.
             </p>
 
             <div className="space-y-1">
@@ -288,7 +288,7 @@ export function DAModeCard({
                       <button
                         onClick={() => setPendingDismiss(topic)}
                         className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity ml-1 text-xs"
-                        title="Assert not applicable"
+                        title="Dismiss — does not apply to this project"
                       >×</button>
                     </div>
                     {pendingDismiss === topic && (
@@ -323,14 +323,14 @@ export function DAModeCard({
               {/* Nudge strip — visible until first assertion made */}
               {Object.keys(topicAssertions).length === 0 && scopeSummary.included.filter(t => !t.topic.includes('heritage')).length > 2 && (
                 <div className="mt-2 px-2.5 py-2 bg-white border border-teal-200 rounded text-xs text-teal-700 leading-relaxed">
-                  <span className="font-semibold">Now narrow your scope:</span> hover any topic above and click the <span className="font-mono font-bold">×</span> that appears. Pick a one-line reason — “No roof works proposed” — and the entire category collapses from your provision list. Dismissed topics are documented in Schedule B of the SEE so nothing looks ignored.
+                  <span className="font-semibold">Topics that don{"'"}t apply?</span>{' '}Hover and click{' '}<span className="font-mono font-bold">{'\u00d7'}</span>{' \u2014 '}state the basis (e.g. &ldquo;No pool works proposed&rdquo;) and the entire category is professionally excluded. Your stated reason is recorded in the SEE, which is the correct way to handle non-applicable topics.
                 </div>
               )}
               {/* Excluded — always visible */}
               {scopeSummary.excluded.length > 0 && (
                 <div className="pt-0.5">
                   <p className="text-xs text-gray-400 mb-0.5 pl-1">
-                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} removed by triage
+                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} not applicable to your works
                   </p>
                   <div className="space-y-0.5 ml-1">
                     {scopeSummary.excluded.map(({ topic, count }) => (
@@ -351,13 +351,13 @@ export function DAModeCard({
         ) : (
           <div className="flex items-center justify-between pt-1 border-t border-teal-100">
             <span className="text-xs text-gray-500">
-              {ancillaryWorks.length > 0 ? 'Scope auto-derived from selections — review to override' : 'Run triage to remove inapplicable provisions'}
+              {ancillaryWorks.length > 0 ? 'Scope set from your selections — review to override' : 'Filter out provisions that don\'t apply'}
             </span>
             <button
               onClick={onRunIntake}
               className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
             >
-              {ancillaryWorks.length > 0 ? 'Review scope →' : 'Run triage →'}
+              {ancillaryWorks.length > 0 ? 'Review scope →' : 'Set scope →'}
             </button>
           </div>
         )}
@@ -410,7 +410,7 @@ export function DAModeCard({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-500">
-              {globalProgress.assessed} of {globalProgress.scopeTotal} provisions assessed
+              {globalProgress.remaining} of {globalProgress.scopeTotal} remaining
             </span>
             {globalProgress.remaining === 0 && (
               <span className="text-xs font-medium text-green-600">All assessed</span>
@@ -432,7 +432,7 @@ export function DAModeCard({
                 <div className="text-xs text-gray-400 space-y-0.5 pl-2">
                   <div>{globalProgress.total} provisions in DCP for this property</div>
                   {globalProgress.triaged > 0 && (
-                    <div className="pl-2">− {globalProgress.triaged} removed by triage</div>
+                    <div className="pl-2">− {globalProgress.triaged} not applicable to your works</div>
                   )}
                   {globalProgress.chapterDismissed > 0 && (
                     <div className="pl-2">− {globalProgress.chapterDismissed} in dismissed chapters</div>

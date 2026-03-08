@@ -345,7 +345,7 @@ function PartNode({
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss?.(); }}
             className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 text-base leading-none px-1"
-            title="Assert not applicable — exclude from SEE Schedule A"
+            title="Dismiss — does not apply to this project"
           >
             ×
           </button>

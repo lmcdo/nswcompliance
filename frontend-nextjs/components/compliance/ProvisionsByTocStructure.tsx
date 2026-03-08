@@ -294,13 +294,8 @@ export function ProvisionsByTocStructure({
     return () => { if (scopeSaveTimer.current) clearTimeout(scopeSaveTimer.current); };
   }, []);
 
-  // Auto-open triage modal when DA mode is active, no saved intake, AND no ancillary
-  // selected (ancillary auto-derives intake, so modal is unnecessary).
-  useEffect(() => {
-    if (isDaMode && sessionToken && !sessionIsLoading && intakeAnswers === null && ancillaryWorksLocal.length === 0) {
-      setShowIntakeModal(true);
-    }
-  }, [isDaMode, intakeAnswers, sessionToken, sessionIsLoading, ancillaryWorksLocal.length]);
+  // Intake modal is no longer auto-opened — compound works auto-derives intake from
+  // ancillary checkboxes. Planner opens it manually via "Review scope" / "Reconfigure".
 
   // Merge auto-answers from LEP constraints + scope-derived + saved planner answers.
   // Priority: defaults < auto-from-constraints < scope-derived < saved planner overrides
@@ -1064,8 +1059,8 @@ export function ProvisionsByTocStructure({
           <div className="flex items-start gap-3 mb-5">
             <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
             <div>
-              <p className="text-sm font-semibold text-gray-800">DA Mode</p>
-              <p className="text-xs text-gray-500 mt-0.5 mb-2">Active — record compliance positions against each provision and export a working SEE draft. Complete steps 2 and 3 below.</p>
+              <p className="text-base font-semibold text-gray-800">DA Mode active</p>
+              <p className="text-xs font-medium text-gray-600 mt-0.5 mb-2">Set your scope, assess each provision, then export your SEE draft.</p>
               <button
                 onClick={() => onToggleDaMode(false)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
@@ -1094,8 +1089,8 @@ export function ProvisionsByTocStructure({
         <div className="flex items-start gap-3 mb-5">
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-800">Set your scope</p>
-            <p className="text-xs text-gray-500 mt-0.5 mb-2">Select the primary development type, tick any ancillary works, and describe the proposal. Triage auto-derives from your selections — hover any in-scope topic and click × to dismiss whole categories. What survives becomes your Schedule A.</p>
+            <p className="text-base font-semibold text-gray-800">Define your works</p>
+            <p className="text-xs font-medium text-gray-600 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -1133,9 +1128,17 @@ export function ProvisionsByTocStructure({
         <div className="flex items-start gap-3 mb-3">
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">3</span>
           <div>
-            <p className="text-sm font-semibold text-gray-800">Review applicable provisions</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              Work through each applicable provision below. Record Complies, Varies, or N/A — triage has already removed controls that cannot apply. Export your SEE draft when done.
+            <p className="text-base font-semibold text-gray-800">Assess applicable provisions</p>
+            <p className="text-xs font-medium text-gray-600 mt-0.5">
+              Use the DCP chapter list on the left to dismiss entire chapters that don{"'"}t apply. Use the topic filter chips to focus on one category at a time. For each remaining provision, record:{' '}
+              <span className="inline-flex items-center gap-0.5">
+                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
+                {', '}
+                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-amber-100 text-amber-800 border-amber-300">Varies</span>
+                {', or '}
+                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-gray-100 text-gray-600 border-gray-300">N/A</span>
+              </span>
+              .
             </p>
           </div>
         </div>

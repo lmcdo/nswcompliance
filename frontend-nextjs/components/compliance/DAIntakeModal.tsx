@@ -205,12 +205,12 @@ export function DAIntakeModal({
           <>
             <DialogHeader>
               <DialogTitle className="font-serif text-xl">
-                {hasAncillaryScope ? 'Review scope' : 'Triage your provisions'}
+                {hasAncillaryScope ? 'Review scope' : 'Set your scope'}
               </DialogTitle>
               <p className="text-sm text-gray-500 mt-1">
                 {hasAncillaryScope
-                  ? 'Your ancillary works selections have auto-derived these answers. Override any field if needed, then apply.'
-                  : 'Answer these factual questions to remove provisions that cannot apply to your development. If unsure, choose "Don\'t know" — provisions are only excluded when their trigger is factually impossible.'
+                  ? 'These answers were set from your works selections. Override any if needed, then apply.'
+                  : 'Answer these questions to remove provisions that don\'t apply. If unsure, choose "Don\'t know" — provisions are only removed when clearly inapplicable.'
                 }
               </p>
             </DialogHeader>
@@ -225,7 +225,7 @@ export function DAIntakeModal({
                 return (
                   <div className="rounded-lg border border-teal-100 bg-teal-50/40 px-4 py-3">
                     <p className="text-xs font-semibold text-teal-700 uppercase tracking-wide mb-2">
-                      Derived from ancillary works
+                      Derived from ancillary development
                     </p>
                     <div className="space-y-2">
                       {scopeFields.map(q => (
