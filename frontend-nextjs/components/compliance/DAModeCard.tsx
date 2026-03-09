@@ -85,6 +85,13 @@ export function DAModeCard({
   const [customReason, setCustomReason] = useState('');
   const [showWaterfall, setShowWaterfall] = useState(false);
 
+  console.log('[DAModeCard] Props received:', {
+    allProvisionsCount: allProvisions.length,
+    layerCounts,
+    excludableTopicsSize: excludableTopics.size,
+    globalProgress,
+  });
+
   // Derive scope summary and heritage count (progress now comes from globalProgress prop)
   const derivedStats = useMemo(() => {
     let heritagePros = 0;

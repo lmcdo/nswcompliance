@@ -481,7 +481,29 @@ export function ProvisionsByTocStructure({
     const flat = (Object.values(tocStructure) as any[]).flatMap((part: any) =>
       Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
     );
-    return filterAndDedupeProvisions(flat);
+    const deduped = filterAndDedupeProvisions(flat);
+
+    console.log('[AllProvisions] Constructed:', {
+      flatCount: flat.length,
+      dedupedCount: deduped.length,
+      byLayer: {
+        generic: deduped.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+        use_specific: deduped.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+        condition: deduped.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+        precinct: deduped.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+      },
+      byType: {
+        control: deduped.filter(p => p.v2_provision_type === 'control').length,
+        objective: deduped.filter(p => p.v2_provision_type === 'objective').length,
+        other: deduped.filter(p => !p.v2_provision_type || (p.v2_provision_type !== 'control' && p.v2_provision_type !== 'objective')).length,
+      },
+      byHeritageType: {
+        descriptive: deduped.filter(p => p.v2_heritage_type === 'descriptive').length,
+        other: deduped.filter(p => !p.v2_heritage_type || p.v2_heritage_type !== 'descriptive').length,
+      },
+    });
+
+    return deduped;
   }, [tocStructure]);
 
   // Per-part filtered provision counts — matches what the right panel actually shows.
@@ -492,6 +514,11 @@ export function ProvisionsByTocStructure({
     // In DA mode: exclude both intake-filtered topics AND objectives/descriptives
     // This makes DCP structure total match the waterfall (363, not 395)
     let provisionsToCount = allProvisions;
+
+    console.log('[FilteredPartCounts] Starting:', {
+      allProvisionsCount: allProvisions.length,
+      isDaMode,
+    });
 
     if (isDaMode) {
       provisionsToCount = allProvisions.filter(p => {
@@ -505,6 +532,12 @@ export function ProvisionsByTocStructure({
         if (p.v2_heritage_type === 'descriptive') return false;
         return true;
       });
+
+      console.log('[FilteredPartCounts] After DA filters:', {
+        beforeCount: allProvisions.length,
+        afterCount: provisionsToCount.length,
+        filtered: allProvisions.length - provisionsToCount.length,
+      });
     }
 
     for (const p of provisionsToCount) {
@@ -513,6 +546,10 @@ export function ProvisionsByTocStructure({
         : (p.source_chapter_key || 'Other');
       counts[partId] = (counts[partId] || 0) + 1;
     }
+
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    console.log('[FilteredPartCounts] Final result:', { counts, total });
+
     return counts;
   }, [allProvisions, isDaMode, excludableTopics]);
 
@@ -540,13 +577,27 @@ export function ProvisionsByTocStructure({
   // Modal-based questions have been removed in favor of the cleaner checkbox UI
 
     const baseProvisions = useMemo(() => {
+    let base;
     if (provisionView === 'task') {
       // Task mode: ALL provisions across all parts
-      return allProvisions;
+      base = allProvisions;
     } else {
       // Structure mode: Current behavior (TOC-filtered)
-      return selectedProvisions;
+      base = selectedProvisions;
     }
+
+    console.log('[BaseProvisions] Set:', {
+      provisionView,
+      count: base.length,
+      byLayer: {
+        generic: base.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+        use_specific: base.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+        condition: base.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+        precinct: base.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+      },
+    });
+
+    return base;
   }, [provisionView, allProvisions, selectedProvisions]);
 
   // Heritage counts: Always use allProvisions (full unfiltered set) so the badge
@@ -578,11 +629,26 @@ export function ProvisionsByTocStructure({
   const layerCounts = useMemo(() => {
     let base = baseProvisions;
 
+    console.log('[LayerCounts] Starting calculation:', {
+      baseProvisionsCount: baseProvisions.length,
+      isDaMode,
+      excludableTopicsSize: excludableTopics.size,
+      chapterAssertionsCount: Object.keys(chapterAssertions).length,
+      topicAssertionsCount: Object.keys(topicAssertions).length,
+    });
+
     // In DA mode: apply ALL filters to match DCP structure total
     if (isDaMode) {
       const assertedChapters = new Set(Object.keys(chapterAssertions));
       const assertedTopics = new Set(Object.keys(topicAssertions));
 
+      console.log('[LayerCounts] DA Mode - applying filters:', {
+        assertedChapters: Array.from(assertedChapters),
+        assertedTopics: Array.from(assertedTopics),
+        excludableTopic: Array.from(excludableTopics),
+      });
+
+      const beforeCount = base.length;
       base = baseProvisions.filter(p => {
         // Exclude intake-triaged topics
         if (excludableTopics.size > 0) {
@@ -607,14 +673,25 @@ export function ProvisionsByTocStructure({
 
         return true;
       });
+
+      console.log('[LayerCounts] After DA filters:', {
+        beforeCount,
+        afterCount: base.length,
+        filtered: beforeCount - base.length,
+      });
     }
 
-    return {
+    const counts = {
       generic: base.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
       use_specific: base.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
       condition: base.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
       precinct: base.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
     };
+
+    const total = counts.generic + counts.use_specific + counts.condition + counts.precinct;
+    console.log('[LayerCounts] Final breakdown:', counts, { total });
+
+    return counts;
   }, [baseProvisions, isDaMode, chapterAssertions, topicAssertions, excludableTopics]);
 
   // Layer-filtered base: applies active layer filter only

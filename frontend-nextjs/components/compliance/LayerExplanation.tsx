@@ -61,6 +61,16 @@ export function LayerExplanation({
 }: LayerExplanationProps) {
   const [showBreakdown, setShowBreakdown] = useState(isDaMode); // Expanded by default in DA mode
 
+  console.log('[LayerExplanation] Received props:', {
+    formerCouncil,
+    layerCounts,
+    layerFilter,
+    isDaMode,
+    zone,
+    heritage,
+    precinctName,
+  });
+
   const labels = (formerCouncil && LAYER_LABELS[formerCouncil.toLowerCase()]) || DEFAULT_LABELS;
   const genericLabel = labels.generic;
   const precinctLabel = labels.precinct;
