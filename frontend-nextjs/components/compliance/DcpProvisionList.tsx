@@ -95,7 +95,7 @@ export function DcpProvisionList({
               councilKey={formerCouncil?.toLowerCase()}
               councilPdfUrl={councilPdfUrl}
               showLayerBadges={true}
-              maxProvisions={100}
+              maxProvisions={isDaMode ? undefined : 10}
               onViewPdf={onViewPdf}
               highlightQuery={debouncedSearch}
               zone={zone}
@@ -126,7 +126,7 @@ export function DcpProvisionList({
                     councilKey={formerCouncil?.toLowerCase()}
                     councilPdfUrl={councilPdfUrl}
                     showLayerBadges={true}
-                    maxProvisions={100}
+                    maxProvisions={isDaMode ? undefined : 10}
                     onViewPdf={onViewPdf}
                     highlightQuery={debouncedSearch}
                     zone={zone}

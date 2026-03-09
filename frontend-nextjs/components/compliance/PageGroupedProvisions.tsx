@@ -572,10 +572,11 @@ export function PageGroupedProvisions({
     });
   };
 
-  // Apply max provisions limit if specified
-  // useMemo to ensure stable reference when limit changes
+  const [showAll, setShowAll] = useState(false);
+
+  // Apply max provisions limit if specified — reset showAll when provisions change
   const { displayProvisions, limitedCount } = useMemo(() => {
-    if (maxProvisions && provisions.length > maxProvisions) {
+    if (maxProvisions && !showAll && provisions.length > maxProvisions) {
       return {
         displayProvisions: provisions.slice(0, maxProvisions),
         limitedCount: provisions.length
@@ -585,7 +586,7 @@ export function PageGroupedProvisions({
       displayProvisions: provisions,
       limitedCount: 0
     };
-  }, [provisions, maxProvisions]);
+  }, [provisions, maxProvisions, showAll]);
 
   // Re-group after limiting
   const displayGroups = useMemo(
@@ -949,11 +950,14 @@ export function PageGroupedProvisions({
         );
       })}
 
-      {/* Limited count message */}
+      {/* Show more button */}
       {limitedCount > 0 && (
-        <p className="text-xs text-gray-500 text-center py-2">
-          Showing {maxProvisions} of {limitedCount} provisions
-        </p>
+        <button
+          onClick={() => setShowAll(true)}
+          className="w-full py-2.5 text-sm text-teal-600 hover:text-teal-800 font-medium border-t border-gray-100 hover:bg-teal-50 transition-colors"
+        >
+          Show {limitedCount - (maxProvisions ?? 0)} more provisions
+        </button>
       )}
     </div>
   );

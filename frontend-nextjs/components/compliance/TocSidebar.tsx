@@ -312,7 +312,8 @@ function PartNode({
         {/* Part name with description */}
         <div className="flex-1 min-w-0">
           {(() => {
-            const { label, desc } = formatPartDisplay(part.part_id);
+            const { label } = formatPartDisplay(part.part_id);
+            const subtitle = part.part_name && part.part_name !== part.part_id ? part.part_name : null;
             return (
               <div>
                 <span className={cn(
@@ -322,9 +323,9 @@ function PartNode({
                 )}>
                   {label}
                 </span>
-                {desc && (
+                {subtitle && (
                   <span className={cn("text-xs block", hasProvisions ? "text-gray-500" : "text-gray-400")}>
-                    {desc}
+                    {subtitle}
                   </span>
                 )}
               </div>
