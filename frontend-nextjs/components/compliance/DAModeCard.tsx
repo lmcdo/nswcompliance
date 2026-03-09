@@ -326,7 +326,7 @@ export function DAModeCard({
               {scopeSummary.excluded.length > 0 && (
                 <div className="pt-0.5">
                   <p className="text-xs text-gray-400 mb-0.5 pl-1">
-                    {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} not applicable to your works
+                    These {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} have no provisions for your development type
                   </p>
                   <div className="space-y-0.5 ml-1">
                     {scopeSummary.excluded.map(({ topic, count }) => (
@@ -455,7 +455,7 @@ export function DAModeCard({
                   <div className="text-xs text-amber-700 space-y-1 pt-1 border-t border-amber-200 pl-2">
                     {globalProgress.triaged > 0 && (
                       <div>
-                        <div className="font-medium">− {globalProgress.triaged} not applicable to your works</div>
+                        <div className="font-medium">− {globalProgress.triaged} have no provisions for your dev type</div>
                         {/* Show which topics were excluded */}
                         {(() => {
                           const excludedTopicCounts: Record<string, number> = {};

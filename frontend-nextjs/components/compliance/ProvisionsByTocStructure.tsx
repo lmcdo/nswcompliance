@@ -1233,7 +1233,7 @@ export function ProvisionsByTocStructure({
             <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
             <div>
               <p className="text-base font-semibold text-gray-800">DA Mode active</p>
-              <p className="text-xs font-medium text-gray-600 mt-0.5 mb-2">Set your scope, assess each provision, then export your SEE draft.</p>
+              <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
               <button
                 onClick={() => onToggleDaMode(false)}
                 className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
@@ -1263,7 +1263,7 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
             <p className="text-base font-semibold text-gray-800">Define your works</p>
-            <p className="text-xs font-medium text-gray-600 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
+            <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -1301,7 +1301,7 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">3</span>
           <div>
             <p className="text-base font-semibold text-gray-800">Assess applicable provisions</p>
-            <p className="text-xs font-medium text-gray-600 mt-0.5">
+            <p className="text-sm text-gray-700 mt-0.5">
               Use the DCP chapter list on the left to dismiss entire chapters that don{"'"}t apply. Use the topic filter chips to focus on one category at a time. For each remaining provision, record:{' '}
               <span className="inline-flex items-center gap-0.5">
                 <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
