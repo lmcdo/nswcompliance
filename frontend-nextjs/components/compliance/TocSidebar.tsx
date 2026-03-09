@@ -158,12 +158,14 @@ export function TocSidebar({
                 <span className="font-semibold">{devTypeLabel || 'your development type'}</span>
               </div>
             </p>
-            <button
-              onClick={handleBatchDismiss}
-              className="mt-2 text-xs font-medium px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors"
-            >
-              Dismiss {suggestedDismissals.length === 1 ? 'this chapter' : `all ${suggestedDismissals.length} chapters`}
-            </button>
+            {skippableProvisions > 0 && (
+              <button
+                onClick={handleBatchDismiss}
+                className="mt-2 text-xs font-medium px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors"
+              >
+                Dismiss {suggestedDismissals.length === 1 ? 'this chapter' : `all ${suggestedDismissals.length} chapters`}
+              </button>
+            )}
           </div>
         );
       })()}

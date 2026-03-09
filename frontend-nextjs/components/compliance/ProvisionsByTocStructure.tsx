@@ -220,6 +220,7 @@ export function ProvisionsByTocStructure({
   const intakeAnswersRef = useRef(intakeAnswers);
   intakeAnswersRef.current = intakeAnswers;
 
+
   // Clear any pending debounce on unmount to avoid state updates after teardown
   useEffect(() => {
     return () => {
@@ -291,11 +292,13 @@ export function ProvisionsByTocStructure({
     return () => { if (scopeSaveTimer.current) clearTimeout(scopeSaveTimer.current); };
   }, []);
 
-  // Intake modal is no longer auto-opened — compound works auto-derives intake from
-  // ancillary checkboxes. Planner opens it manually via "Review scope" / "Reconfigure".
+  // Intake is auto-derived from dev type + ancillary checkboxes.
+  // No manual modal interaction needed — scope automatically updates.
 
   // Merge auto-answers from LEP constraints + scope-derived + saved planner answers.
-  // Priority: defaults < auto-from-constraints < scope-derived < saved planner overrides
+  // Priority: defaults < auto-from-constraints < saved planner overrides < scope-derived
+  // Scope-derived answers take precedence because they're auto-determined by current dev type + ancillary works.
+  // When dev type/ancillary changes, scope-derived must override any previously-saved answers.
   const mergedIntakeAnswers = useMemo(() => {
     const autoAnswers = propertyData?.constraints
       ? autoPopulateFromConstraints({
@@ -304,7 +307,7 @@ export function ProvisionsByTocStructure({
           anefData: propertyData.anefData,
         })
       : {};
-    return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...scopeDerivedIntake, ...(intakeAnswers ?? {}) };
+    return { ...DEFAULT_INTAKE_ANSWERS, ...autoAnswers, ...(intakeAnswers ?? {}), ...scopeDerivedIntake };
   }, [intakeAnswers, propertyData?.constraints, propertyData?.anefData, scopeDerivedIntake]);
 
   // Compute excludable topics from merged answers (auto-populated + saved planner answers).

@@ -85,12 +85,10 @@ export function DAModeCard({
   const [customReason, setCustomReason] = useState('');
   const [showWaterfall, setShowWaterfall] = useState(false);
 
-  console.log('[DAModeCard] Props received:', {
-    allProvisionsCount: allProvisions.length,
-    layerCounts,
-    excludableTopicsSize: excludableTopics.size,
-    globalProgress,
-  });
+  // Get dev type label from options
+  const devTypeLabel = useMemo(() => {
+    return DEV_TYPE_OPTIONS.find(opt => opt.value === devType)?.label || devType;
+  }, [devType]);
 
   // Derive scope summary and heritage count (progress now comes from globalProgress prop)
   const derivedStats = useMemo(() => {
@@ -251,18 +249,9 @@ export function DAModeCard({
         {/* Scope summary — shown after intake, replaces simple "intake completed" line */}
         {intakeAnswers ? (
           <div className="pt-2 border-t border-teal-100">
-            <div className="flex items-center justify-between mb-0.5">
+            <div className="mb-2">
               <span className="text-xs font-medium text-teal-800">Topics to assess</span>
-              <button
-                onClick={onRunIntake}
-                className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800"
-              >
-                Reconfigure
-              </button>
             </div>
-            <p className="text-xs text-gray-400 mb-2">
-              Click Reconfigure to change your development type or ancillary development. To exclude a topic category, hover it and click ×.
-            </p>
 
             <div className="space-y-1">
               {/* Heritage — always first if property has HCA */}
