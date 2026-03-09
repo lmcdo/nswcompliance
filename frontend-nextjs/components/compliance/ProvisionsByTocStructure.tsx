@@ -1284,31 +1284,13 @@ export function ProvisionsByTocStructure({
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
-              {/* X22: Lot dimensions — compact context bar */}
-              {(propertyData?.lotDimensions?.area || propertyData?.lotDimensions?.frontage) && (
-                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                  {propertyData.lotDimensions.area && (
-                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
-                      {Math.round(propertyData.lotDimensions.area).toLocaleString()}m²
-                    </span>
-                  )}
-                  {propertyData.lotDimensions.frontage && (
-                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5">
-                      {propertyData.lotDimensions.frontage.toFixed(1)}m frontage
-                    </span>
-                  )}
-                  {propertyData.lotDimensions.lotType && (
-                    <span className="text-xs bg-gray-100 text-gray-600 rounded px-1.5 py-0.5 capitalize">
-                      {propertyData.lotDimensions.lotType}
-                    </span>
-                  )}
-                  {/* X14: high canopy coverage note */}
-                  {propertyData?.constraints?.treeCanopy?.coverageClass &&
-                    /high/i.test(propertyData.constraints.treeCanopy.coverageClass) && (
-                    <span className="text-xs bg-green-100 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
-                      🌳 {propertyData.constraints.treeCanopy.coverageClass} canopy — confirm tree impacts
-                    </span>
-                  )}
+              {/* X14: high canopy coverage note — only relevant context for DCP provisions */}
+              {propertyData?.constraints?.treeCanopy?.coverageClass &&
+                /high/i.test(propertyData.constraints.treeCanopy.coverageClass) && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs bg-green-100 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
+                    🌳 {propertyData.constraints.treeCanopy.coverageClass} canopy — confirm tree impacts
+                  </span>
                 </div>
               )}
             </div>
