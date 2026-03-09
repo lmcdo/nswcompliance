@@ -572,19 +572,29 @@ export function ProvisionsByTocStructure({
   // Precomputed layer labels for the current council (used by DcpFilterBar)
   const layerLabels = COUNCIL_LAYER_LABELS[formerCouncil?.toLowerCase()] || DEFAULT_LAYER_LABELS;
 
-  // Count provisions by layer (respecting DA mode dismissals)
-  // In DA mode: filter out dismissed chapters/topics but NOT intake triage
-  // (intake triage is shown separately in the scope waterfall)
+  // Count provisions by layer (must match DCP structure total = 363)
+  // In DA mode: apply intake triage + chapter/topic dismissals + objectives/descriptives hiding
+  // so layerCounts sum matches the waterfall scopeTotal
   const layerCounts = useMemo(() => {
     let base = baseProvisions;
 
-    // In DA mode, apply chapter and topic assertions to get correct layer counts
-    if (isDaMode && (Object.keys(chapterAssertions).length > 0 || Object.keys(topicAssertions).length > 0)) {
+    // In DA mode: apply ALL filters to match DCP structure total
+    if (isDaMode) {
       const assertedChapters = new Set(Object.keys(chapterAssertions));
       const assertedTopics = new Set(Object.keys(topicAssertions));
 
       base = baseProvisions.filter(p => {
-        // Heritage (condition layer) is never filtered
+        // Exclude intake-triaged topics
+        if (excludableTopics.size > 0) {
+          const t = normalizeTopicKey(p.v2_topic);
+          if (t && excludableTopics.has(t)) return false;
+        }
+
+        // Exclude objectives and heritage descriptives (hidden in DA mode)
+        if (p.v2_provision_type === 'objective') return false;
+        if (p.v2_heritage_type === 'descriptive') return false;
+
+        // Heritage (condition layer) is never filtered by chapter/topic assertions
         if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
 
         // Check chapter dismissal
@@ -605,7 +615,7 @@ export function ProvisionsByTocStructure({
       condition: base.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
       precinct: base.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
     };
-  }, [baseProvisions, isDaMode, chapterAssertions, topicAssertions]);
+  }, [baseProvisions, isDaMode, chapterAssertions, topicAssertions, excludableTopics]);
 
   // Layer-filtered base: applies active layer filter only
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
