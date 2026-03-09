@@ -624,13 +624,15 @@ export function ProvisionsByTocStructure({
   const layerLabels = COUNCIL_LAYER_LABELS[formerCouncil?.toLowerCase()] || DEFAULT_LAYER_LABELS;
 
   // Count provisions by layer (must match DCP structure total = 363)
+  // CRITICAL: Use allProvisions (not baseProvisions) so layer breakdown shows ALL provisions in scope,
+  // not just the ones in the current view. This ensures consistency with filteredPartCounts.
   // In DA mode: apply intake triage + chapter/topic dismissals + objectives/descriptives hiding
   // so layerCounts sum matches the waterfall scopeTotal
   const layerCounts = useMemo(() => {
-    let base = baseProvisions;
+    let base = allProvisions;
 
     console.log('[LayerCounts] Starting calculation:', {
-      baseProvisionsCount: baseProvisions.length,
+      allProvisionsCount: allProvisions.length,
       isDaMode,
       excludableTopicsSize: excludableTopics.size,
       chapterAssertionsCount: Object.keys(chapterAssertions).length,
@@ -649,7 +651,7 @@ export function ProvisionsByTocStructure({
       });
 
       const beforeCount = base.length;
-      base = baseProvisions.filter(p => {
+      base = allProvisions.filter(p => {
         // Exclude intake-triaged topics
         if (excludableTopics.size > 0) {
           const t = normalizeTopicKey(p.v2_topic);
@@ -692,7 +694,7 @@ export function ProvisionsByTocStructure({
     console.log('[LayerCounts] Final breakdown:', counts, { total });
 
     return counts;
-  }, [baseProvisions, isDaMode, chapterAssertions, topicAssertions, excludableTopics]);
+  }, [allProvisions, isDaMode, chapterAssertions, topicAssertions, excludableTopics]);
 
   // Layer-filtered base: applies active layer filter only
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
