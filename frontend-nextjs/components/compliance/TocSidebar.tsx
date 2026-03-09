@@ -35,6 +35,8 @@ interface TocPart {
 interface TocSidebarProps {
   tocStructure: Record<string, TocPart>;
   filteredTocStructure: Record<string, TocPart>;
+  /** Per-part provision counts after filterAndDedupeProvisions — matches right panel display count */
+  filteredPartCounts?: Record<string, number>;
   selectedPart: string | null;
   selectedSection: string | null;
   onSelectPart: (partId: string) => void;
@@ -54,6 +56,7 @@ interface TocSidebarProps {
 export function TocSidebar({
   tocStructure,
   filteredTocStructure,
+  filteredPartCounts,
   selectedPart,
   selectedSection,
   onSelectPart,
@@ -133,7 +136,7 @@ export function TocSidebar({
       {/* Batch dismiss banner — quantifies provision reduction */}
       {suggestedDismissals.length > 0 && (() => {
         const skippableProvisions = suggestedDismissals.reduce(
-          (sum, partId) => sum + (tocStructure[partId]?.provision_count || 0), 0
+          (sum, partId) => sum + (filteredPartCounts?.[partId] ?? tocStructure[partId]?.provision_count ?? 0), 0
         );
         return (
           <div className="mx-2 mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
@@ -156,7 +159,7 @@ export function TocSidebar({
       <nav className="p-2">
         {sortedParts.map(([partId, part]) => {
           const filteredPart = filteredTocStructure[partId];
-          const hasProvisions = !!filteredPart && filteredPart.provision_count > 0;
+          const hasProvisions = !!(filteredPartCounts?.[partId] ?? filteredPart?.provision_count);
           // For dismiss button: use complete structure count so chapters with filtered-out
           // provisions (e.g. precinct layer hidden) can still be asserted not applicable.
           const hasAnyProvisions = part.provision_count > 0;
@@ -169,6 +172,7 @@ export function TocSidebar({
               <PartNode
                 part={part}
                 filteredPart={filteredPart}
+                filteredPartCounts={filteredPartCounts}
                 hasProvisions={hasProvisions}
                 hasAnyProvisions={hasAnyProvisions}
                 isExpanded={expandedParts.has(partId)}
@@ -228,6 +232,7 @@ export function TocSidebar({
 interface PartNodeProps {
   part: TocPart;
   filteredPart?: TocPart;
+  filteredPartCounts?: Record<string, number>;
   hasProvisions: boolean;
   hasAnyProvisions?: boolean;
   isExpanded: boolean;
@@ -248,6 +253,7 @@ interface PartNodeProps {
 function PartNode({
   part,
   filteredPart,
+  filteredPartCounts,
   hasProvisions,
   hasAnyProvisions,
   isExpanded,
@@ -264,6 +270,7 @@ function PartNode({
   chapterProgress,
   isSuggestedForDismissal,
 }: PartNodeProps) {
+  const filteredCount = filteredPartCounts?.[part.part_id] ?? filteredPart?.provision_count ?? 0;
   const sections = part?.sections || {};
   const sectionCount = Object.keys(sections).length;
   const hasMultipleSections = sectionCount > 1;
@@ -355,7 +362,7 @@ function PartNode({
         {/* Count badge — non-DA mode only */}
         {!isDaMode && !isAsserted && (hasProvisions ? (
           <span className="text-xs text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded font-medium">
-            {filteredPart?.provision_count || 0}
+            {filteredCount}
           </span>
         ) : (
           <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">
@@ -374,8 +381,8 @@ function PartNode({
         if (isSuggestedForDismissal && assessed === 0 && part.dev_type_match_count !== undefined) {
           return (
             <div className="ml-9 mt-0.5 mb-0.5">
-              <span className="text-[10px] text-amber-600" title={`None of the ${part.provision_count} provisions in this chapter apply to your development type`}>
-                0 of {part.provision_count} apply to your type
+              <span className="text-[10px] text-amber-600" title={`None of the ${filteredCount} provisions in this chapter apply to your development type`}>
+                0 of {filteredCount} apply to your type
               </span>
             </div>
           );

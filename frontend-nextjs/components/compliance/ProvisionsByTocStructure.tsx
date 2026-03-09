@@ -487,6 +487,20 @@ export function ProvisionsByTocStructure({
     return filterAndDedupeProvisions(flat);
   }, [tocStructure]);
 
+  // Per-part filtered provision counts — matches what the right panel actually shows.
+  // by_toc.provision_count is the raw API count (includes TOC entries, non-actionable, definitions).
+  // allProvisions has filterAndDedupeProvisions applied, so these counts match the right panel.
+  const filteredPartCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const p of allProvisions) {
+      const partId = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
+        ? p.v2_dcp_part
+        : (p.source_chapter_key || 'Other');
+      counts[partId] = (counts[partId] || 0) + 1;
+    }
+    return counts;
+  }, [allProvisions]);
+
   // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
   // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
   const completeTocStructure = useMemo(() => {
@@ -1208,6 +1222,7 @@ export function ProvisionsByTocStructure({
           <TocSidebar
             tocStructure={completeTocStructure}
             filteredTocStructure={tocStructure}
+            filteredPartCounts={filteredPartCounts}
             selectedPart={selectedPart}
             selectedSection={selectedSection}
             onSelectPart={handleSelectPart}
