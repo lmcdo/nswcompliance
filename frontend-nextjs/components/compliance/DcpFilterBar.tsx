@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { Search, X, Ruler, Download } from 'lucide-react';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
-import { LayerExplanation } from './LayerExplanation';
 import { getSearchSuggestions } from '@/lib/search-utils';
 import { normalizeTopicKey } from '@/lib/see/intake';
 
@@ -333,21 +332,6 @@ export function DcpFilterBar({
         )}
       </div>
 
-      {/* Layer filter + explanation */}
-      <LayerExplanation
-        zone={zone}
-        heritage={heritage}
-        hcaName={hcaName}
-        precinctName={precinctName}
-        formerCouncil={formerCouncil}
-        layerCounts={layerCounts}
-        layerFilter={layerFilter}
-        onLayerFilterChange={(layer) => { onLayerFilterChange(layer); onClearTopics(); }}
-        generalHeritageCount={generalHeritageCount}
-        hcaSpecificCount={hcaSpecificCount}
-        totalHeritageCount={totalHeritageCount}
-        isDaMode={isDaMode}
-      />
     </>
   );
 }
