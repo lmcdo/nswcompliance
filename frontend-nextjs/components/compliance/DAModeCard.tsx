@@ -445,7 +445,24 @@ export function DAModeCard({
                     {globalProgress.triaged > 0 && (
                       <div>
                         <div className="font-medium">− {globalProgress.triaged} not applicable to your works</div>
-                        <div className="text-amber-600 text-[11px] italic">Triage excludes topics you confirmed don't apply (e.g. &ldquo;pool_or_spa: no&rdquo;)</div>
+                        {/* Show which topics were excluded */}
+                        {(() => {
+                          const excludedTopicCounts: Record<string, number> = {};
+                          allProvisions.forEach(p => {
+                            if (excludableTopics.has((p.v2_topic || '').toLowerCase().replace(/ /g, '_'))) {
+                              const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+                              excludedTopicCounts[t] = (excludedTopicCounts[t] || 0) + 1;
+                            }
+                          });
+                          const excluded = Object.entries(excludedTopicCounts)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([t, c]) => `${t} (${c})`)
+                            .join(', ');
+                          return excluded ? (
+                            <div className="text-amber-600 text-[11px] ml-1">Excluded: {excluded}</div>
+                          ) : null;
+                        })()}
+                        <div className="text-amber-600 text-[11px] italic">Topics you confirmed don't apply to your development</div>
                       </div>
                     )}
                     {globalProgress.chapterDismissed > 0 && (

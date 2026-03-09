@@ -128,9 +128,19 @@ export function TocSidebar({
             : formerCouncil ? `${formerCouncil} DCP`
             : 'DCP'}
         </h3>
-        <p className="text-xs text-gray-500 mt-0.5">
-          DCP Structure
-        </p>
+        <div className="mt-0.5 space-y-0.5">
+          <p className="text-xs text-gray-500">
+            DCP Structure
+          </p>
+          {(() => {
+            const total = Object.values(filteredPartCounts || {}).reduce((sum, count) => sum + count, 0);
+            return total > 0 ? (
+              <p className="text-xs font-medium text-gray-700">
+                {total} total provisions in scope
+              </p>
+            ) : null;
+          })()}
+        </div>
       </div>
 
       {/* Batch dismiss banner — quantifies provision reduction */}
@@ -138,11 +148,17 @@ export function TocSidebar({
         const skippableProvisions = suggestedDismissals.reduce(
           (sum, partId) => sum + (filteredPartCounts?.[partId] ?? tocStructure[partId]?.provision_count ?? 0), 0
         );
+        // Get chapter names for display
+        const chapterNames = suggestedDismissals
+          .map(partId => {
+            const part = tocStructure[partId];
+            return part ? formatPartDisplay(partId).desc : partId;
+          })
+          .join(', ');
         return (
           <div className="mx-2 mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
             <p className="text-xs text-amber-800 leading-relaxed">
-              <span className="font-semibold">{skippableProvisions} provisions</span> across{' '}
-              {suggestedDismissals.length} chapter{suggestedDismissals.length !== 1 ? 's' : ''}{' '}
+              <span className="font-semibold">{skippableProvisions} provisions</span> in {chapterNames}{' '}
               {"don't apply to "}
               {devTypeLabel ? devTypeLabel.toLowerCase() : 'your development type'}
             </p>
