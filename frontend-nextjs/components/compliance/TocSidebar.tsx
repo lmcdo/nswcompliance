@@ -148,23 +148,27 @@ export function TocSidebar({
         const skippableProvisions = suggestedDismissals.reduce(
           (sum, partId) => sum + (filteredPartCounts?.[partId] ?? tocStructure[partId]?.provision_count ?? 0), 0
         );
-        // Get chapter names for display
-        const chapterNames = suggestedDismissals
+        // Get chapter names + labels for display
+        const chapterLabels = suggestedDismissals
           .map(partId => {
-            const part = tocStructure[partId];
-            return part ? formatPartDisplay(partId).desc : partId;
+            const display = formatPartDisplay(partId);
+            return `${display.label}${display.desc ? ` ${display.desc}` : ''}`;
           })
           .join(', ');
         return (
           <div className="mx-2 mt-2 p-2.5 bg-amber-50 border border-amber-200 rounded-md">
-            <p className="text-xs text-amber-800 leading-relaxed">
-              <span className="font-semibold">{skippableProvisions} provisions</span> in {chapterNames}{' '}
-              {"don't apply to "}
-              {devTypeLabel ? devTypeLabel.toLowerCase() : 'your development type'}
+            <p className="text-xs text-amber-800 leading-relaxed space-y-1">
+              <div>
+                <span className="font-semibold">{chapterLabels}</span>
+              </div>
+              <div>
+                {skippableProvisions} provisions — 0 applicable to{' '}
+                <span className="font-semibold">{devTypeLabel || 'your development type'}</span>
+              </div>
             </p>
             <button
               onClick={handleBatchDismiss}
-              className="mt-1.5 text-xs font-medium px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors"
+              className="mt-2 text-xs font-medium px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 rounded transition-colors"
             >
               Dismiss {suggestedDismissals.length === 1 ? 'this chapter' : `all ${suggestedDismissals.length} chapters`}
             </button>
