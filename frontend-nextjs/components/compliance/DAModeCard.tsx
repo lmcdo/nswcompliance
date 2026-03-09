@@ -351,20 +351,13 @@ export function DAModeCard({
                 </div>
               )}
 
-              {/* Total provisions to assess */}
-              {(() => {
-                const heritageCount = heritage ? heritagePros : 0;
-                const includedCount = scopeSummary.included
-                  .filter(({ topic }) => !topicAssertions[topic])
-                  .reduce((sum, { count }) => sum + count, 0);
-                const total = heritageCount + includedCount;
-                return total > 0 ? (
-                  <div className="pt-2 mt-2 border-t border-teal-100 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-teal-800">Total in scope:</span>
-                    <span className="text-xs font-bold text-teal-900">{total}</span>
-                  </div>
-                ) : null;
-              })()}
+              {/* Total provisions to assess — use actual scopeTotal, not topic counts */}
+              {globalProgress && globalProgress.scopeTotal > 0 && (
+                <div className="pt-2 mt-2 border-t border-teal-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-teal-800">Total provisions to assess:</span>
+                  <span className="text-xs font-bold text-teal-900">{globalProgress.scopeTotal}</span>
+                </div>
+              )}
             </div>
             {intakeSetAt && (
               <p className="text-xs text-gray-400 mt-2">Scope set {intakeSetAt}</p>
