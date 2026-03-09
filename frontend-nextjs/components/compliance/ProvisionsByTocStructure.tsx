@@ -24,7 +24,6 @@ import { SEEDocumentData } from '@/lib/see/types';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
-import { DAIntakeModal } from './DAIntakeModal';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
 import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/see/propertyContext';
@@ -194,9 +193,6 @@ export function ProvisionsByTocStructure({
     formerCouncil,
     zone
   );
-
-  // Intake modal state
-  const [showIntakeModal, setShowIntakeModal] = useState(false);
 
   // Clear scope form fields whenever the address changes — form always starts fresh.
   // Intake answers and DA responses persist server-side via useDASession.
@@ -522,29 +518,8 @@ export function ProvisionsByTocStructure({
     return result;
   }, [data?.data?.complete_toc, allProvisions, expandedDevTypes]);
 
-  // Base provisions - mode-aware: task mode shows all, structure mode shows selected
-  const handleIntakeApply = useCallback(async (answers: IntakeAnswers) => {
-    await saveIntakeAnswers(answers);        // throws on failure
-    const excludable = getExcludableTopics(answers);
-    const toExclude = allProvisions
-      .filter(prov => {
-        const t = normalizeTopicKey(prov.v2_topic);
-        return t && excludable.has(t);
-      })
-      .map(prov => ({
-        provision_id: prov.id,
-        compliance_status: 'not_applicable',
-        response_text: `Excluded by intake: ${getTopicExclusionReason(normalizeTopicKey(prov.v2_topic))}`,
-      }));
-    if (toExclude.length > 0) {
-      await bulkSaveResponses(toExclude);   // throws on failure, updates daResponses Map locally
-    }
-    setShowIntakeModal(false);              // only reached on success
-  }, [allProvisions, saveIntakeAnswers, bulkSaveResponses]);
-
-  const handleIntakeSkip = useCallback(() => {
-    setShowIntakeModal(false);
-  }, []);
+  // Intake filtering is now handled by handleAncillaryWorksChange via ancillary work checkboxes
+  // Modal-based questions have been removed in favor of the cleaner checkbox UI
 
     const baseProvisions = useMemo(() => {
     if (provisionView === 'task') {
@@ -579,13 +554,40 @@ export function ProvisionsByTocStructure({
   // Precomputed layer labels for the current council (used by DcpFilterBar)
   const layerLabels = COUNCIL_LAYER_LABELS[formerCouncil?.toLowerCase()] || DEFAULT_LAYER_LABELS;
 
-  // Count provisions by layer (from base provisions - mode-aware)
-  const layerCounts = useMemo(() => ({
-    generic: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
-    use_specific: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
-    condition: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
-    precinct: baseProvisions.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
-  }), [baseProvisions]);
+  // Count provisions by layer (respecting DA mode dismissals)
+  // In DA mode: filter out dismissed chapters/topics but NOT intake triage
+  // (intake triage is shown separately in the scope waterfall)
+  const layerCounts = useMemo(() => {
+    let base = baseProvisions;
+
+    // In DA mode, apply chapter and topic assertions to get correct layer counts
+    if (isDaMode && (Object.keys(chapterAssertions).length > 0 || Object.keys(topicAssertions).length > 0)) {
+      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      const assertedTopics = new Set(Object.keys(topicAssertions));
+
+      base = baseProvisions.filter(p => {
+        // Heritage (condition layer) is never filtered
+        if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
+
+        // Check chapter dismissal
+        const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') ? p.v2_dcp_part : p.source_chapter_key;
+        if (chKey && assertedChapters.has(chKey)) return false;
+
+        // Check topic dismissal
+        const topic = normalizeTopicKey(p.v2_topic);
+        if (topic && assertedTopics.has(topic)) return false;
+
+        return true;
+      });
+    }
+
+    return {
+      generic: base.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
+      use_specific: base.filter(p => (p.v2_dcp_layer || p.layer) === 'use_specific').length,
+      condition: base.filter(p => (p.v2_dcp_layer || p.layer) === 'condition').length,
+      precinct: base.filter(p => (p.v2_dcp_layer || p.layer) === 'precinct').length,
+    };
+  }, [baseProvisions, isDaMode, chapterAssertions, topicAssertions]);
 
   // Layer-filtered base: applies active layer filter only
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
@@ -1112,18 +1114,7 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-0">
-      {/* Structured intake modal */}
-      <DAIntakeModal
-        open={showIntakeModal}
-        onApply={handleIntakeApply}
-        onSkip={handleIntakeSkip}
-        provisions={allProvisions}
-        initialAnswers={mergedIntakeAnswers}
-        heritage={heritage}
-        hcaName={hcaName}
-        precinctName={precinctName}
-        hasAncillaryScope={ancillaryWorksLocal.length > 0}
-      />
+      {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 
       {/* ① Enable DA Mode — rendered here so it only appears after provisions load */}
       {onToggleDaMode && (
@@ -1175,7 +1166,6 @@ export function ProvisionsByTocStructure({
               excludableTopics={excludableTopics}
               onDevTypeChange={handleDevTypeChange}
               onDevWorksChange={handleDevWorksChange}
-              onRunIntake={() => setShowIntakeModal(true)}
               clientRef={clientRef}
               preparedBy={preparedBy}
               onClientRefChange={handleClientRefChange}
