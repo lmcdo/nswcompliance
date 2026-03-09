@@ -950,14 +950,23 @@ export function PageGroupedProvisions({
         );
       })}
 
-      {/* Show more button */}
-      {limitedCount > 0 && (
-        <button
-          onClick={() => setShowAll(true)}
-          className="w-full py-2.5 text-sm text-teal-600 hover:text-teal-800 font-medium border-t border-gray-100 hover:bg-teal-50 transition-colors"
-        >
-          Show {limitedCount - (maxProvisions ?? 0)} more provisions
-        </button>
+      {/* Show more / hide button */}
+      {maxProvisions && provisions.length > maxProvisions && (
+        showAll ? (
+          <button
+            onClick={() => setShowAll(false)}
+            className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 font-medium border-t border-gray-100 hover:bg-gray-50 transition-colors"
+          >
+            Hide {provisions.length - maxProvisions} provisions
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowAll(true)}
+            className="w-full py-2.5 text-sm text-teal-600 hover:text-teal-800 font-medium border-t border-gray-100 hover:bg-teal-50 transition-colors"
+          >
+            Show {provisions.length - maxProvisions} more provisions
+          </button>
+        )
       )}
     </div>
   );

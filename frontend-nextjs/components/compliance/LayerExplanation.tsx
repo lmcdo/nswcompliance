@@ -1,17 +1,18 @@
 /**
- * Layer Explanation Component
+ * Layer Explanation Component — Scope Hierarchy
  *
- * Explains which layers apply and why. Colours and labels must stay in sync
- * with the "Show from" filter buttons in ProvisionsByTocStructure.
+ * Shows how the 606 property-specific provisions break down by their source (layer).
+ * Each layer represents a different applicability rule.
  *
  * Colour map (shared with filter buttons):
- *   generic      → teal   #14b8a6  (bg-teal-500)
- *   use_specific → blue   #3b82f6  (bg-blue-500)
- *   condition    → amber  #f59e0b  (bg-amber-500)
- *   precinct     → purple #8b5cf6  (bg-purple-500)
+ *   generic      → teal   #14b8a6  (bg-teal-500)    — Apply to all properties
+ *   use_specific → blue   #3b82f6  (bg-blue-500)    — Apply because of zone
+ *   condition    → amber  #f59e0b  (bg-amber-500)   — Apply because of heritage/constraints
+ *   precinct     → purple #8b5cf6  (bg-purple-500)  — Apply because of precinct character
  */
 
-import { Info } from 'lucide-react';
+import { Info, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
 
 // Must mirror COUNCIL_LAYER_LABELS / DEFAULT_LAYER_LABELS in ProvisionsByTocStructure
 const LAYER_LABELS: Record<string, Record<string, string>> = {
@@ -40,6 +41,8 @@ interface LayerExplanationProps {
   generalHeritageCount?: number;
   hcaSpecificCount?: number;
   totalHeritageCount?: number;
+  // DA mode context
+  isDaMode?: boolean;
 }
 
 export function LayerExplanation({
@@ -53,8 +56,11 @@ export function LayerExplanation({
   onLayerFilterChange,
   generalHeritageCount,
   hcaSpecificCount,
-  totalHeritageCount
+  totalHeritageCount,
+  isDaMode,
 }: LayerExplanationProps) {
+  const [showBreakdown, setShowBreakdown] = useState(isDaMode); // Expanded by default in DA mode
+
   const labels = (formerCouncil && LAYER_LABELS[formerCouncil.toLowerCase()]) || DEFAULT_LABELS;
   const genericLabel = labels.generic;
   const precinctLabel = labels.precinct;
@@ -99,43 +105,92 @@ export function LayerExplanation({
   ];
 
   return (
-    <div className="border border-gray-200 rounded-lg p-2.5 mt-2">
-      <div className="flex items-center gap-2 flex-wrap">
-            {/* All layers button */}
-            <button
-              onClick={() => onLayerFilterChange?.(null)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
-                !layerFilter
-                  ? 'bg-gray-800 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All ({totalCount})
-            </button>
+    <div className="border border-gray-200 rounded-lg p-3 mt-2 bg-white">
+      {/* Header: explain the scope cascade */}
+      <div className="mb-3 pb-3 border-b border-gray-200">
+        <div className="flex items-start gap-2 mb-2">
+          <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div className="text-xs text-gray-600 leading-relaxed">
+            <strong className="text-gray-700">{totalCount} provisions apply to this property</strong>
+            <span className="text-gray-500"> based on: {zone && `${zone} zone`}{zone && heritage && ', '}{heritage && (hcaName ? hcaName : 'heritage listed')}{(zone || heritage) && precinctName && ', '}{precinctName}.</span>
+          </div>
+        </div>
 
-            {/* Individual layer buttons */}
-            {layers.map(layer => (
-              <button
-                key={layer.key}
-                onClick={() => onLayerFilterChange?.(layerFilter === layer.key ? null : layer.key)}
-                disabled={layer.count === 0}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
-                  layerFilter === layer.key
-                    ? 'text-white'
-                    : layer.count > 0
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-                }`}
-                style={layerFilter === layer.key ? { backgroundColor: layer.color } : {}}
-                title={layer.description}
-              >
-                <span
-                  className="inline-block w-2 h-2 rounded-full flex-shrink-0"
-                  style={{ backgroundColor: layer.color }}
-                ></span>
-                <span>{layer.label} ({layer.count})</span>
-              </button>
-            ))}
+        {/* Expandable breakdown */}
+        <button
+          onClick={() => setShowBreakdown(v => !v)}
+          className="flex items-center gap-1.5 text-xs text-gray-600 hover:text-gray-800 font-medium"
+        >
+          <ChevronDown className={`w-3 h-3 transition-transform ${showBreakdown ? 'rotate-180' : ''}`} />
+          {showBreakdown ? 'Hide' : 'Show'} breakdown by source
+        </button>
+      </div>
+
+      {/* Breakdown: show layer composition */}
+      {showBreakdown && (
+        <div className="mb-3 pb-3 border-b border-gray-200 space-y-2">
+          <div className="text-xs font-semibold text-gray-700 mb-2">These {totalCount} provisions come from:</div>
+          {layers.map(layer => (
+            <div key={layer.key} className="flex items-center gap-2.5 text-xs">
+              <div
+                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                style={{ backgroundColor: layer.color }}
+              />
+              <div className="flex-1">
+                <span className="text-gray-700">
+                  <strong>{layer.count}</strong> {layer.label.toLowerCase()}
+                </span>
+                <span className="text-gray-500 text-[11px]"> — {layer.description}</span>
+              </div>
+            </div>
+          ))}
+          <div className="flex items-center justify-between text-xs mt-2.5 pt-2 border-t border-gray-100">
+            <span className="text-gray-600">Total:</span>
+            <span className="font-semibold text-gray-800">{totalCount} provisions</span>
+          </div>
+        </div>
+      )}
+
+      {/* Filter buttons */}
+      <div>
+        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by source:</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* All layers button */}
+          <button
+            onClick={() => onLayerFilterChange?.(null)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+              !layerFilter
+                ? 'bg-gray-800 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All ({totalCount})
+          </button>
+
+          {/* Individual layer buttons */}
+          {layers.map(layer => (
+            <button
+              key={layer.key}
+              onClick={() => onLayerFilterChange?.(layerFilter === layer.key ? null : layer.key)}
+              disabled={layer.count === 0}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                layerFilter === layer.key
+                  ? 'text-white'
+                  : layer.count > 0
+                    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+              }`}
+              style={layerFilter === layer.key ? { backgroundColor: layer.color } : {}}
+              title={layer.description}
+            >
+              <span
+                className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+                style={{ backgroundColor: layer.color }}
+              ></span>
+              <span>{layer.label} ({layer.count})</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Heritage HCA details - show when heritage layer is selected */}

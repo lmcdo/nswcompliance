@@ -181,6 +181,7 @@ export function ProvisionsByTocStructure({
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
   const [showTriageExcluded, setShowTriageExcluded] = useState(false);
+  const [showSuppressedInDA, setShowSuppressedInDA] = useState(false); // Toggle to show suppressed (objective/descriptive) provisions in DA mode
 
   // TODO: Rework numeric checker feature - temporarily disabled
   // Numeric checker values
@@ -671,7 +672,8 @@ export function ProvisionsByTocStructure({
     // Objectives (v2_provision_type = 'objective') and heritage descriptives
     // (v2_heritage_type = 'descriptive') are policy intent statements, not enforceable
     // controls — they are not assessed individually in a SEE compliance table.
-    if (isDaMode) {
+    // Can be toggled back on for audit/transparency via showSuppressedInDA.
+    if (isDaMode && !showSuppressedInDA) {
       filtered = filtered.filter(p =>
         p.v2_provision_type !== 'objective' &&
         p.v2_heritage_type !== 'descriptive'
@@ -1376,6 +1378,7 @@ export function ProvisionsByTocStructure({
             onExportPdf={handleExportPdf}
             selectedPart={selectedPart}
             provisionView={provisionView}
+            isDaMode={isDaMode}
           />
 
         </div>
@@ -1446,6 +1449,8 @@ export function ProvisionsByTocStructure({
           onSearchScopeChange={setSearchScope}
           onSearchQueryChange={setSearchQuery}
           baseProvisions={baseProvisions}
+          showSuppressedInDA={showSuppressedInDA}
+          onToggleSuppressedInDA={() => setShowSuppressedInDA(v => !v)}
         />
 
       </div>

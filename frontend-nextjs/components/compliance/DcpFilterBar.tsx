@@ -55,6 +55,8 @@ interface DcpFilterBarProps {
   provisionView: 'task' | 'structure';
   heritageTypeFilter?: string | null;
   onHeritageTypeFilterChange?: (v: string | null) => void;
+  // DA mode context
+  isDaMode?: boolean;
 }
 
 const MAX_VISIBLE_CHIPS = 8;
@@ -68,7 +70,7 @@ export function DcpFilterBar({
   zone, heritage, hcaName, precinctName, formerCouncil,
   generalHeritageCount, hcaSpecificCount, totalHeritageCount,
   showExportModal, onShowExportModal, onExportPdf, selectedPart, provisionView,
-  heritageTypeFilter, onHeritageTypeFilterChange,
+  heritageTypeFilter, onHeritageTypeFilterChange, isDaMode,
 }: DcpFilterBarProps) {
   const [showAllChips, setShowAllChips] = useState(false);
 
@@ -344,6 +346,7 @@ export function DcpFilterBar({
         generalHeritageCount={generalHeritageCount}
         hcaSpecificCount={hcaSpecificCount}
         totalHeritageCount={totalHeritageCount}
+        isDaMode={isDaMode}
       />
     </>
   );

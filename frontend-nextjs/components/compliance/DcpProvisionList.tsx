@@ -39,6 +39,9 @@ interface DcpProvisionListProps {
   onSearchQueryChange: (v: string) => void;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   baseProvisions: any[];
+  // DA mode suppressed provisions toggle (audit/transparency)
+  showSuppressedInDA?: boolean;
+  onToggleSuppressedInDA?: () => void;
 }
 
 export function DcpProvisionList({
@@ -48,7 +51,7 @@ export function DcpProvisionList({
   isDaMode, sessionToken, daResponses, excludableTopics, onResponseSaved, onViewPdf,
   debouncedSearch, provisionView, layerFilter, onClearLayer,
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
-  onSearchQueryChange, baseProvisions,
+  onSearchQueryChange, baseProvisions, showSuppressedInDA, onToggleSuppressedInDA,
 }: DcpProvisionListProps) {
   // In non-DA mode, excluded provisions are greyed out inline rather than split out.
   // Show a count so the planner knows how many are not applicable to this site.
@@ -58,6 +61,13 @@ export function DcpProvisionList({
         return t && excludableTopics.has(t);
       }).length
     : 0;
+
+  // DA mode: count suppressed provisions (objectives + heritage descriptives) for audit trail
+  const suppressedProvisions = isDaMode && baseProvisions
+    ? baseProvisions.filter(p =>
+        p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive'
+      )
+    : [];
 
   return (
     <div className="p-4">
@@ -127,6 +137,46 @@ export function DcpProvisionList({
                     councilPdfUrl={councilPdfUrl}
                     showLayerBadges={true}
                     maxProvisions={isDaMode ? undefined : 10}
+                    onViewPdf={onViewPdf}
+                    highlightQuery={debouncedSearch}
+                    zone={zone}
+                    heritage={heritage}
+                    hcaName={hcaName}
+                    precinctName={precinctId}
+                    isDaMode={isDaMode}
+                    sessionToken={sessionToken}
+                    daResponses={daResponses}
+                    excludableTopics={excludableTopics}
+                    onResponseSaved={onResponseSaved}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DA mode: suppressed provisions (objectives + heritage descriptives) — audit trail */}
+          {isDaMode && suppressedProvisions.length > 0 && (
+            <div className="mt-4 border border-amber-200 rounded-lg overflow-hidden bg-amber-50">
+              <button
+                onClick={onToggleSuppressedInDA}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-100 hover:bg-amber-200 transition-colors text-sm text-amber-700 font-medium"
+              >
+                <span>{suppressedProvisions.length} objectives &amp; heritage guidance — not assessed</span>
+                <ChevronDown className={`w-4 h-4 transition-transform ${showSuppressedInDA ? 'rotate-180' : ''}`} />
+              </button>
+              {showSuppressedInDA && (
+                <div className="border-t border-amber-200 bg-white/50 p-3">
+                  <p className="text-xs text-amber-700 mb-3 italic">
+                    These provisions are policy guidance (objectives) or character descriptions, not enforceable controls.
+                    They don't require individual Complies/Varies/N/A assessment. Shown for audit transparency.
+                  </p>
+                  <PageGroupedProvisions provisionTheme="gray"
+                    provisions={suppressedProvisions}
+                    formerCouncil={formerCouncil}
+                    councilKey={formerCouncil?.toLowerCase()}
+                    councilPdfUrl={councilPdfUrl}
+                    showLayerBadges={true}
+                    maxProvisions={undefined}
                     onViewPdf={onViewPdf}
                     highlightQuery={debouncedSearch}
                     zone={zone}

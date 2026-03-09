@@ -417,37 +417,67 @@ export function DAModeCard({
             )}
           </div>
 
-          {/* Collapsible waterfall */}
+          {/* Scope reduction waterfall — ALWAYS visible for audit trail */}
           {(globalProgress.triaged > 0 || globalProgress.chapterDismissed > 0 ||
             globalProgress.topicDismissed > 0 || globalProgress.suppressed > 0) && (
             <>
-              <button
-                onClick={() => setShowWaterfall(v => !v)}
-                className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1"
-              >
-                <span className="text-[10px]">{showWaterfall ? '▾' : '▸'}</span>
-                How your scope was reduced
-              </button>
-              {showWaterfall && (
-                <div className="text-xs text-gray-400 space-y-0.5 pl-2">
-                  <div>{globalProgress.total} provisions in DCP for this property</div>
-                  {globalProgress.triaged > 0 && (
-                    <div className="pl-2">− {globalProgress.triaged} not applicable to your works</div>
-                  )}
-                  {globalProgress.chapterDismissed > 0 && (
-                    <div className="pl-2">− {globalProgress.chapterDismissed} in dismissed chapters</div>
-                  )}
-                  {globalProgress.topicDismissed > 0 && (
-                    <div className="pl-2">− {globalProgress.topicDismissed} in dismissed topics</div>
-                  )}
-                  {globalProgress.suppressed > 0 && (
-                    <div className="pl-2">− {globalProgress.suppressed} objectives/descriptive</div>
-                  )}
-                  <div className="font-medium text-gray-600 pt-0.5 border-t border-gray-200">
-                    = {globalProgress.scopeTotal} in your assessment scope
-                  </div>
+              <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 space-y-2">
+                {/* Header */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-amber-900">How your scope was reduced</span>
+                  <button
+                    onClick={() => setShowWaterfall(v => !v)}
+                    className="text-xs text-amber-600 hover:text-amber-800 ml-auto flex items-center gap-1"
+                  >
+                    <span className="text-[10px]">{showWaterfall ? '▾' : '▸'}</span>
+                    {showWaterfall ? 'Hide' : 'Show'} details
+                  </button>
                 </div>
-              )}
+
+                {/* Summary line — always visible */}
+                <div className="text-xs text-amber-700 font-medium">
+                  {globalProgress.total} total → {globalProgress.scopeTotal} in assessment scope
+                </div>
+
+                {/* Waterfall breakdown — expandable */}
+                {showWaterfall && (
+                  <div className="text-xs text-amber-700 space-y-1 pt-1 border-t border-amber-200 pl-2">
+                    {globalProgress.triaged > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.triaged} not applicable to your works</div>
+                        <div className="text-amber-600 text-[11px] italic">Triage excludes topics you confirmed don't apply (e.g. &ldquo;pool_or_spa: no&rdquo;)</div>
+                      </div>
+                    )}
+                    {globalProgress.chapterDismissed > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.chapterDismissed} in chapters you dismissed</div>
+                        <div className="text-amber-600 text-[11px] italic">You dismissed entire DCP chapters from scope</div>
+                      </div>
+                    )}
+                    {globalProgress.topicDismissed > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.topicDismissed} in topics you dismissed</div>
+                        <div className="text-amber-600 text-[11px] italic">You stated these topics don't apply (e.g. &ldquo;No new signage&rdquo;)</div>
+                      </div>
+                    )}
+                    {globalProgress.suppressed > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.suppressed} objectives &amp; heritage descriptive provisions</div>
+                        <div className="text-amber-600 text-[11px] italic">
+                          Policy statements (objectives = intent; heritage descriptives = character guidance).
+                          Not individually assessed — they don&apos;t require binary Complies/Varies/N/A responses.{' '}
+                          <button
+                            onClick={() => setShowWaterfall(v => !v)}
+                            className="text-amber-700 hover:underline font-medium"
+                          >
+                            (Can toggle to view them)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
