@@ -132,14 +132,6 @@ export function TocSidebar({
           <p className="text-xs text-gray-500">
             DCP Structure
           </p>
-          {(() => {
-            const total = Object.values(filteredPartCounts || {}).reduce((sum, count) => sum + count, 0);
-            return total > 0 ? (
-              <p className="text-xs font-medium text-gray-700">
-                {total} total provisions in scope
-              </p>
-            ) : null;
-          })()}
         </div>
       </div>
 
@@ -174,6 +166,18 @@ export function TocSidebar({
             </button>
           </div>
         );
+      })()}
+
+      {/* Total provisions applicable — positioned before TOC for clarity */}
+      {(() => {
+        const total = Object.values(filteredPartCounts || {}).reduce((sum, count) => sum + count, 0);
+        return total > 0 ? (
+          <div className="mx-2 mt-3 mb-2 p-2 bg-teal-50 border border-teal-200 rounded">
+            <p className="text-xs font-semibold text-teal-900">
+              {total} provisions applicable to your work
+            </p>
+          </div>
+        ) : null;
       })()}
 
       <nav className="p-2">
