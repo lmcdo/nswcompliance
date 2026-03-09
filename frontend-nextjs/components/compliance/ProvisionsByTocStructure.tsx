@@ -1412,9 +1412,8 @@ export function ProvisionsByTocStructure({
                   {displayProvisions.length < globalProgress.scopeTotal && (
                     <div className="text-xs text-gray-400 mt-0.5">
                       viewing {displayProvisions.length}
-                      {topicFilters.length > 0 && ` (topic filter: ${topicFilters.join(', ')})`}
-                      {layerFilter && !topicFilters.length && ` (layer filter: ${layerFilter})`}
-                      {!topicFilters.length && !layerFilter && ' (filtered)'}
+                      {topicFilters.length > 0 && ` (topic: ${topicFilters.join(', ')})`}
+                      {layerFilter && !topicFilters.length && ` (layer: ${layerFilter})`}
                     </div>
                   )}
                 </>

@@ -429,7 +429,7 @@ function PartNode({
               className={`text-xs flex-shrink-0 ${done ? 'text-green-600 font-medium' : 'text-gray-500'}`}
               title={`${assessed} of ${total} provisions assessed in this chapter`}
             >
-              {assessed} of {total}
+              {assessed} of {total} assessed
             </span>
           </div>
         );

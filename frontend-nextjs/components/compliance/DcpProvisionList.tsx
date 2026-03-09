@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { normalizeTopicKey } from '@/lib/see/intake';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
@@ -53,6 +54,7 @@ export function DcpProvisionList({
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
   onSearchQueryChange, baseProvisions, showSuppressedInDA, onToggleSuppressedInDA,
 }: DcpProvisionListProps) {
+  const [showAllProvisions, setShowAllProvisions] = useState(false);
   // In non-DA mode, excluded provisions are greyed out inline rather than split out.
   // Show a count so the planner knows how many are not applicable to this site.
   const nonApplicableCount = !isDaMode && excludableTopics.size > 0
@@ -99,25 +101,72 @@ export function DcpProvisionList({
       {(displayProvisions.length > 0 || triageExcludedProvisions.length > 0) && (
         <>
           {displayProvisions.length > 0 && (
-            <PageGroupedProvisions provisionTheme="green"
-              provisions={displayProvisions}
-              formerCouncil={formerCouncil}
-              councilKey={formerCouncil?.toLowerCase()}
-              councilPdfUrl={councilPdfUrl}
-              showLayerBadges={true}
-              maxProvisions={isDaMode ? undefined : 10}
-              onViewPdf={onViewPdf}
-              highlightQuery={debouncedSearch}
-              zone={zone}
-              heritage={heritage}
-              hcaName={hcaName}
-              precinctName={precinctId}
-              isDaMode={isDaMode}
-              sessionToken={sessionToken}
-              daResponses={daResponses}
-              excludableTopics={excludableTopics}
-              onResponseSaved={onResponseSaved}
-            />
+            <>
+              <PageGroupedProvisions provisionTheme="green"
+                provisions={displayProvisions}
+                formerCouncil={formerCouncil}
+                councilKey={formerCouncil?.toLowerCase()}
+                councilPdfUrl={councilPdfUrl}
+                showLayerBadges={true}
+                maxProvisions={showAllProvisions ? undefined : 20}
+                onViewPdf={onViewPdf}
+                highlightQuery={debouncedSearch}
+                zone={zone}
+                heritage={heritage}
+                hcaName={hcaName}
+                precinctName={precinctId}
+                isDaMode={isDaMode}
+                sessionToken={sessionToken}
+                daResponses={daResponses}
+                excludableTopics={excludableTopics}
+                onResponseSaved={onResponseSaved}
+                hideShowMoreButton={true}
+              />
+              {/* Side-by-side action buttons — Option A layout */}
+              {(displayProvisions.length > 20 || suppressedProvisions.length > 0) && (
+                <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3">
+                  {/* Left: Load more actionable provisions */}
+                  {displayProvisions.length > 20 && !showAllProvisions && (
+                    <button
+                      onClick={() => setShowAllProvisions(true)}
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-teal-200 hover:bg-teal-50 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-teal-600">
+                        Load {displayProvisions.length - 20} more
+                      </span>
+                      <span className="text-xs text-teal-600/70">provisions</span>
+                    </button>
+                  )}
+                  {showAllProvisions && displayProvisions.length > 20 && (
+                    <button
+                      onClick={() => setShowAllProvisions(false)}
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-gray-600">
+                        Hide {displayProvisions.length - 20}
+                      </span>
+                      <span className="text-xs text-gray-500">provisions</span>
+                    </button>
+                  )}
+                  {displayProvisions.length <= 20 && (
+                    <div />
+                  )}
+
+                  {/* Right: View guidance items (objectives + descriptives) */}
+                  {suppressedProvisions.length > 0 && (
+                    <button
+                      onClick={onToggleSuppressedInDA}
+                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-amber-200 hover:bg-amber-50 transition-colors"
+                    >
+                      <span className="text-sm font-medium text-amber-700">
+                        View {suppressedProvisions.length}
+                      </span>
+                      <span className="text-xs text-amber-700/70">guidance items</span>
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
           {triageExcludedProvisions.length > 0 && (
             <div className="mt-4 border border-gray-200 rounded-lg overflow-hidden">
@@ -136,7 +185,7 @@ export function DcpProvisionList({
                     councilKey={formerCouncil?.toLowerCase()}
                     councilPdfUrl={councilPdfUrl}
                     showLayerBadges={true}
-                    maxProvisions={isDaMode ? undefined : 10}
+                    maxProvisions={20}
                     onViewPdf={onViewPdf}
                     highlightQuery={debouncedSearch}
                     zone={zone}
@@ -148,6 +197,7 @@ export function DcpProvisionList({
                     daResponses={daResponses}
                     excludableTopics={excludableTopics}
                     onResponseSaved={onResponseSaved}
+                    hideShowMoreButton={true}
                   />
                 </div>
               )}

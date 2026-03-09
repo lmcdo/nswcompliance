@@ -293,6 +293,9 @@ interface PageGroupedProvisionsProps {
   onResponseSaved?: (provisionId: number, response: DaResponse) => void;
   // Numeric compliance check
   numericCheckValues?: NumericCheckValues;
+  // Pagination control
+  hideShowMoreButton?: boolean;   // Hide the "Show more" button (for custom button layout)
+  remainingCount?: number;        // Number of additional provisions available to load
 }
 
 // Compliance status badge config for DA mode header — keyed on DaResponse['compliance_status']
@@ -508,6 +511,8 @@ export function PageGroupedProvisions({
   excludableTopics,
   onResponseSaved,
   numericCheckValues,
+  hideShowMoreButton,
+  remainingCount,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -951,7 +956,7 @@ export function PageGroupedProvisions({
       })}
 
       {/* Show more / hide button */}
-      {maxProvisions && provisions.length > maxProvisions && (
+      {!hideShowMoreButton && maxProvisions && provisions.length > maxProvisions && (
         showAll ? (
           <button
             onClick={() => setShowAll(false)}
