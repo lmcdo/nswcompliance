@@ -352,10 +352,17 @@ export function DAModeCard({
               )}
 
               {/* Total provisions to assess — use actual scopeTotal, not topic counts */}
-              {globalProgress && globalProgress.scopeTotal > 0 && (
-                <div className="pt-2 mt-2 border-t border-teal-100 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-teal-800">Total provisions to assess:</span>
-                  <span className="text-xs font-bold text-teal-900">{globalProgress.scopeTotal}</span>
+              {globalProgress && (
+                <div className="pt-2 mt-2 border-t border-teal-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-teal-800">Total provisions to assess:</span>
+                    <span className="text-xs font-bold text-teal-900">{globalProgress.scopeTotal}</span>
+                  </div>
+                  {globalProgress.triaged > 0 && (
+                    <div className="text-xs text-gray-500">
+                      (+ {globalProgress.triaged} in {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} with 0 provisions for your dev type)
+                    </div>
+                  )}
                 </div>
               )}
             </div>
