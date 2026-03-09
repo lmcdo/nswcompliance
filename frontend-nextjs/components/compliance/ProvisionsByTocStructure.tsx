@@ -489,13 +489,23 @@ export function ProvisionsByTocStructure({
   // Must account for intake triage so numbers match the assessment scope.
   const filteredPartCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    // In DA mode, exclude provisions filtered out by intake (ancillary works selections)
-    const provisionsToCount = isDaMode && excludableTopics.size > 0
-      ? allProvisions.filter(p => {
+    // In DA mode: exclude both intake-filtered topics AND objectives/descriptives
+    // This makes DCP structure total match the waterfall (363, not 395)
+    let provisionsToCount = allProvisions;
+
+    if (isDaMode) {
+      provisionsToCount = allProvisions.filter(p => {
+        // Exclude intake-triaged topics
+        if (excludableTopics.size > 0) {
           const t = normalizeTopicKey(p.v2_topic);
-          return !t || !excludableTopics.has(t);
-        })
-      : allProvisions;
+          if (t && excludableTopics.has(t)) return false;
+        }
+        // Exclude objectives and heritage descriptives (hidden in DA mode)
+        if (p.v2_provision_type === 'objective') return false;
+        if (p.v2_heritage_type === 'descriptive') return false;
+        return true;
+      });
+    }
 
     for (const p of provisionsToCount) {
       const partId = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
@@ -1308,7 +1318,12 @@ export function ProvisionsByTocStructure({
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">provisions assessed</div>
                   {displayProvisions.length < globalProgress.scopeTotal && (
-                    <div className="text-xs text-gray-400 mt-0.5">viewing {displayProvisions.length} (filtered)</div>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      viewing {displayProvisions.length}
+                      {topicFilters.length > 0 && ` (topic filter: ${topicFilters.join(', ')})`}
+                      {layerFilter && !topicFilters.length && ` (layer filter: ${layerFilter})`}
+                      {!topicFilters.length && !layerFilter && ' (filtered)'}
+                    </div>
                   )}
                 </>
               ) : (

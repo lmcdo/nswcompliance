@@ -153,7 +153,12 @@ export function LayerExplanation({
 
       {/* Filter buttons */}
       <div>
-        <div className="text-xs font-semibold text-gray-700 mb-2">Filter by source:</div>
+        <div className="text-xs font-semibold text-gray-700 mb-2">
+          Filter by source (how provisions apply):
+        </div>
+        <div className="text-xs text-gray-600 mb-2">
+          These {totalCount} provisions come from different sources based on your property's zone, heritage status, and precinct.
+        </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* All layers button */}
           <button
