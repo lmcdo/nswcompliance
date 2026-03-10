@@ -329,13 +329,21 @@ export function DAModeCard({
                     These {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} have no provisions for your development type
                   </p>
                   <div className="space-y-0.5 ml-1">
-                    {scopeSummary.excluded.map(({ topic, count }) => (
-                      <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                        <span className="w-3 text-gray-300 font-bold">✕</span>
-                        <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
-                        <span className="ml-auto">{count}</span>
-                      </div>
-                    ))}
+                    {scopeSummary.excluded.map(({ topic, count }) => {
+                      const selectedWork = ANCILLARY_WORKS.find(w =>
+                        ancillaryWorks.includes(w.value) && (w.devTypeTag === topic || w.value === topic)
+                      );
+                      return (
+                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+                          <span className="w-3 text-gray-300 font-bold">✕</span>
+                          <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
+                          {selectedWork && (
+                            <span className="text-gray-300 italic">selected — none for this dev type</span>
+                          )}
+                          <span className="ml-auto">{count}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
