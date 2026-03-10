@@ -88,4 +88,6 @@ export interface SEEDocumentData {
   topic_assertions?: TopicAssertion[];
   /** Chapter-level assertions — planner-dismissed DCP chapters by actual document reference (Schedule B, preferred) */
   chapter_assertions?: ChapterAssertion[];
+  /** Selected ancillary works — used to flag works selected but with no provisions for the dev type */
+  ancillary_works?: string[];
 }

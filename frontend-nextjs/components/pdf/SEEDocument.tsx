@@ -10,6 +10,7 @@ import { styles } from './styles';
 import { groupProvisionsByTopic } from '@/lib/pdf/formatProvisions';
 import { parseHtmlLink, containsHtml } from '@/lib/pdf/htmlUtils';
 import { buildSeeIntro } from '@/lib/see/devTypes';
+import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -86,7 +87,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const { property, see_intro, annotated_provisions, all_provisions,
           generated_date, intake_answers, client_ref, prepared_by,
           pathway_determination, sepp_assessable_controls, lep_assessable_standards,
-          topic_assertions, chapter_assertions } = data;
+          topic_assertions, chapter_assertions, ancillary_works } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -118,6 +119,17 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const compliesGroups = groupProvisionsByTopic(compliesProvisions);
   const naManualGroups = groupProvisionsByTopic(naManualProvisions);
   const naIntakeGroups = groupProvisionsByTopic(naIntakeProvisions);
+
+  // Ancillary works selected but with zero provisions for the dev type
+  const allTopicsInProvisions = new Set(all_provisions.map(p => (p.v2_topic || '').toLowerCase().replace(/ /g, '_')));
+  const ancillaryWorksWithNoProvisions = ancillary_works
+    ? ANCILLARY_WORKS.filter(w =>
+        ancillary_works.includes(w.value) &&
+        w.devTypeTag &&
+        !allTopicsInProvisions.has(w.devTypeTag) &&
+        !allTopicsInProvisions.has(w.value)
+      )
+    : [];
 
   const annotatedCount = annotated_provisions.length;
   const totalCount = all_provisions.length;
@@ -807,6 +819,22 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             {naIntakeGroups.map((group, idx) => (
               <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
             ))}
+            {ancillaryWorksWithNoProvisions.length > 0 && (
+              <View style={{ marginTop: 8, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
+                  Ancillary Works — No DCP Provisions for Development Type
+                </Text>
+                <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 4, fontStyle: 'italic' }}>
+                  The following ancillary works were selected as part of the proposal scope. No DCP provisions exist for these work types under the nominated development type — no assessment is required for these categories.
+                </Text>
+                {ancillaryWorksWithNoProvisions.map(w => (
+                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 2 }}>{w.label}</Text>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, fontStyle: 'italic' }}>No provisions for this development type</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
@@ -816,6 +844,22 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 ? 'Structured intake was completed. No provisions were automatically excluded by the answers provided — all provisions were retained for manual assessment.'
                 : 'Structured intake was not completed for this assessment. No automatic exclusions were applied.'}
             </Text>
+            {ancillaryWorksWithNoProvisions.length > 0 && (
+              <View style={{ marginTop: 8, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #d1d5db' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
+                  Ancillary Works — No DCP Provisions for Development Type
+                </Text>
+                <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 4, fontStyle: 'italic' }}>
+                  The following ancillary works were selected as part of the proposal scope. No DCP provisions exist for these work types under the nominated development type — no assessment is required for these categories.
+                </Text>
+                {ancillaryWorksWithNoProvisions.map(w => (
+                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2 }}>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 2 }}>{w.label}</Text>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, fontStyle: 'italic' }}>No provisions for this development type</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 

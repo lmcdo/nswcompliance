@@ -1206,6 +1206,7 @@ export function ProvisionsByTocStructure({
             return { chapter_key: chapterKey, chapter_label: label, chapter_desc: desc || '', reason };
           }),
         } : {}),
+        ...(ancillaryWorksLocal.length > 0 ? { ancillary_works: ancillaryWorksLocal } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
