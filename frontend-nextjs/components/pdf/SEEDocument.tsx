@@ -819,22 +819,6 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             {naIntakeGroups.map((group, idx) => (
               <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
             ))}
-            {ancillaryWorksWithNoProvisions.length > 0 && (
-              <View style={{ marginTop: 8, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
-                  Ancillary Works — No DCP Provisions for Development Type
-                </Text>
-                <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 4, fontStyle: 'italic' }}>
-                  The following ancillary works were selected as part of the proposal scope. No DCP provisions exist for these work types under the nominated development type — no assessment is required for these categories.
-                </Text>
-                {ancillaryWorksWithNoProvisions.map(w => (
-                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 2 }}>{w.label}</Text>
-                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, fontStyle: 'italic' }}>No provisions for this development type</Text>
-                  </View>
-                ))}
-              </View>
-            )}
           </View>
         ) : (
           <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
@@ -844,22 +828,28 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 ? 'Structured intake was completed. No provisions were automatically excluded by the answers provided — all provisions were retained for manual assessment.'
                 : 'Structured intake was not completed for this assessment. No automatic exclusions were applied.'}
             </Text>
-            {ancillaryWorksWithNoProvisions.length > 0 && (
-              <View style={{ marginTop: 8, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #d1d5db' }}>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
-                  Ancillary Works — No DCP Provisions for Development Type
-                </Text>
-                <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 4, fontStyle: 'italic' }}>
-                  The following ancillary works were selected as part of the proposal scope. No DCP provisions exist for these work types under the nominated development type — no assessment is required for these categories.
-                </Text>
-                {ancillaryWorksWithNoProvisions.map(w => (
-                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2 }}>
-                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 2 }}>{w.label}</Text>
-                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, fontStyle: 'italic' }}>No provisions for this development type</Text>
-                  </View>
-                ))}
+          </View>
+        )}
+
+        {/* ---- Ancillary scope note — works selected but no DCP provisions for dev type ---- */}
+        {ancillaryWorksWithNoProvisions.length > 0 && (
+          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
+              Ancillary Works — No DCP Provisions for Development Type
+            </Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
+              The following ancillary works are included in the proposal scope. The applicable DCP does not contain provisions specifically addressing these work types for the nominated development type. No DCP assessment is required for these categories — they are noted here for completeness of the scope record.
+            </Text>
+            <View style={{ flexDirection: 'row', borderBottom: '0.5pt solid #d1d5db', paddingBottom: 3, marginBottom: 3 }}>
+              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 2 }}>Ancillary Work</Text>
+              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 3 }}>Basis</Text>
+            </View>
+            {ancillaryWorksWithNoProvisions.map(w => (
+              <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2, borderBottom: '0.5pt solid #f3f4f6' }}>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 2 }}>{w.label}</Text>
+                <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3 }}>DCP contains no provisions for this work type under the nominated development type</Text>
               </View>
-            )}
+            ))}
           </View>
         )}
 
