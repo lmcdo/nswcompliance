@@ -150,8 +150,12 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     skipLinePatterns: [
       /^\d{1,3}$/,           // bare page numbers (e.g. "12")
       /^p\s+\d[\d-]+$/,      // page refs (e.g. "p 12-3", "p 3-13")
-      /^[A-Z]{5,}$/,         // reversed OCR sidebar tokens (5+ uppercase chars, e.g. GNISITREVDA)
+      /^[A-Z][A-Z\s]{4,}$/,  // all-caps sidebar labels — both one-word (ADVERTISING) and
+                             //   multi-word (SIGNAGE AND, SIGNAGE AND ADVERTISING)
       /^&$/,                 // standalone ampersand (from "DESIGN & ADVERTISING" sidebar label)
+      /^#+\s/,               // markdown heading lines (e.g. "# 12.1 SIGNAGE DESIGN") —
+                             //   these are pdfplumber section markers that duplicate the bold
+                             //   heading appearing a few lines later in the same provision
     ],
     preProcessReplacements: [
       // Strip entire **Table N** (Page X) + <table>...</table> blocks
@@ -161,6 +165,12 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
       { from: /<table>[\s\S]*?<\/table>/g, to: '' },
       // Collapsed doubled page refs like "pp 44--1166" → strip (artefact of doubled chars)
       { from: /\bpp\s+\d[\d-]+\b/g, to: '' },
+      // Collapse visual line-wrap: join lines where previous ends mid-sentence
+      // (lowercase/comma/semicolon) and next starts lowercase.
+      // KRG text is extracted line-by-line at PDF column width, causing sentences to
+      // wrap at ~80 char boundaries. Two passes catch chains of wrapped lines.
+      { from: /([a-z,;])\n([a-z])/g, to: '$1 $2' },
+      { from: /([a-z,;])\n([a-z])/g, to: '$1 $2' },
     ],
   },
 
