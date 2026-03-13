@@ -159,20 +159,22 @@ export const styles = StyleSheet.create({
   },
 
   // Table cells (column widths)
-  // Total usable width ~510pt. No subtopic column — topic is in section heading.
+  // Total usable width ~510pt. 3-column layout: # | Provision + Source | Response
   colNumber: {
     width: 22,
     paddingRight: 4,
   },
   colProvision: {
-    width: 348,
+    width: 358,
     paddingRight: 4,
   },
   colSource: {
-    width: 36,
+    // Source now rendered inline below provision text — this column is hidden but kept for compat
+    width: 0,
+    overflow: 'hidden' as const,
   },
   colResponse: {
-    width: 104,
+    width: 130,
     paddingLeft: 4,
   },
   responseBox: {

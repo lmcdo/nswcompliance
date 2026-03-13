@@ -113,6 +113,7 @@ export interface ProvisionForPDF {
   provision_text: string;
   v2_marker: string;
   v2_topic: string;
+  v2_structural_category?: string;
   document_name: string;
   v2_dcp_part: string;
   section_header?: string;

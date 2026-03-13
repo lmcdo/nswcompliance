@@ -42,6 +42,11 @@ export interface IntakeAnswers {
   // --- New manual question ---
   /** Does the proposal include demolition of any structure? */
   demolition: 'yes' | 'no' | 'unknown';
+  // --- Numeric proposal values (for LEP compliance check) ---
+  /** Proposed maximum building height in metres. Used to auto-populate LEP Clause 4.3 Proposal column. */
+  proposed_height?: string;
+  /** Proposed gross floor area in m². Used with lot area to auto-populate LEP Clause 4.4 Proposal column. */
+  proposed_gfa?: string;
 }
 
 /**
@@ -158,14 +163,42 @@ export const INTAKE_QUESTIONS: IntakeQuestion[] = [
   },
 ];
 
-// Topic-to-trigger map.
-// Keys are the intake fields. Values are arrays of v2_topic strings (lowercased).
-// A provision is excluded when its normalized topic appears here AND the intake answer is 'no'.
+// ---------------------------------------------------------------------------
+// Structural category exclusion map (DD-1, 2026-03-13)
+// ---------------------------------------------------------------------------
+// Provisions are excluded based on v2_structural_category (derived from the
+// DCP's own hierarchy — chapter_key + section_header), NOT v2_topic (inferred
+// from keywords). This is zero-inference and compliance-safe: a provision in
+// "Privacy" that mentions parking is NOT a parking provision structurally.
 //
-// Normalization mirrors the frontend: v2_topic?.toLowerCase().replace(/ /g, '_')
+// v2_structural_category values come from enrichment/config/structural_categories.py.
+// They are already lowercase, no normalization needed.
 //
-// Only add topics whose applicability is FACTUALLY IMPOSSIBLE when the trigger is absent.
-// Exported for test coverage validation (see intake.test.ts parity checks).
+// Provisions with null v2_structural_category are NEVER excluded (fail-open).
+export const TRIGGER_TO_STRUCTURAL_CATEGORIES: Record<keyof IntakeAnswers, string[]> = {
+  new_impervious_surfaces: ['stormwater', 'drainage'],
+  trees_affected: ['trees'],
+  pool_or_spa: ['pool'],
+  new_fencing: ['fencing'],
+  new_parking_or_driveway: ['parking'],
+  new_signage: ['signage'],
+  flood_prone: ['flooding'],
+  bushfire_prone: ['bushfire'],
+  acid_sulfate_soils: [],
+  coastal: ['coastal'],
+  biodiversity: ['biodiversity'],
+  acoustic_zone: ['acoustic'],
+  mine_subsidence: ['mine_subsidence'],
+  landslide_risk: ['landslide'],
+  contaminated_land: ['contamination'],
+  drinking_water_catchment: ['drinking_water'],
+  demolition: ['demolition'],
+  proposed_height: [],
+  proposed_gfa: [],
+};
+
+// Legacy topic-to-trigger map — SOFT UI ONLY (DCP browser filtering, display).
+// DO NOT use for exclusion decisions. Use TRIGGER_TO_STRUCTURAL_CATEGORIES above.
 export const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   new_impervious_surfaces: ['stormwater', 'drainage'],
   trees_affected: ['trees'],
@@ -186,6 +219,9 @@ export const TRIGGER_TO_TOPICS: Record<keyof IntakeAnswers, string[]> = {
   drinking_water_catchment: ['drinking_water'],
   // Manual
   demolition: ['demolition'],
+  // Numeric proposal values — no topic exclusion, used for LEP compliance check only
+  proposed_height: [],
+  proposed_gfa: [],
 };
 
 // ---------------------------------------------------------------------------
@@ -271,18 +307,21 @@ export function normalizeTopicKey(topic: string | null | undefined): string {
 }
 
 /**
- * Returns the set of normalized v2_topic values that can be auto-excluded
+ * Returns the set of structural categories that can be auto-excluded
  * based on the confirmed intake answers.
  *
- * A topic is only added when the associated intake answer is explicitly 'no'.
- * 'unknown' and 'yes' leave the topic in the active set.
+ * Uses TRIGGER_TO_STRUCTURAL_CATEGORIES (DCP hierarchy, zero-inference)
+ * instead of TRIGGER_TO_TOPICS (keyword-inferred, unsafe for exclusion).
+ *
+ * A category is only added when the associated intake answer is explicitly 'no'.
+ * 'unknown' and 'yes' leave the category in the active set.
  */
 export function getExcludableTopics(answers: IntakeAnswers): Set<string> {
   const excluded = new Set<string>();
-  for (const [field, topics] of Object.entries(TRIGGER_TO_TOPICS)) {
+  for (const [field, categories] of Object.entries(TRIGGER_TO_STRUCTURAL_CATEGORIES)) {
     if (answers[field as keyof IntakeAnswers] === 'no') {
-      for (const topic of topics) {
-        excluded.add(topic);
+      for (const cat of categories) {
+        excluded.add(cat);
       }
     }
   }
@@ -298,15 +337,17 @@ export function getTopicExclusionReason(normalizedTopic: string): string {
 }
 
 /**
- * Returns true if the provision's v2_topic should be auto-excluded given these answers.
+ * Returns true if the provision should be auto-excluded given these answers.
+ *
+ * Uses v2_structural_category (DCP hierarchy) for exclusion decisions.
+ * Provisions with null structural category are never excluded (fail-open).
  */
 export function isProvisionExcluded(
-  v2Topic: string | null | undefined,
+  structuralCategory: string | null | undefined,
   answers: IntakeAnswers
 ): boolean {
-  const normalized = normalizeTopicKey(v2Topic);
-  if (!normalized) return false;
-  return getExcludableTopics(answers).has(normalized);
+  if (!structuralCategory) return false;
+  return getExcludableTopics(answers).has(structuralCategory);
 }
 
 /** Default intake answers — all unknown (inclusion bias, safest default). */
@@ -328,6 +369,8 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
   contaminated_land: 'unknown',
   drinking_water_catchment: 'unknown',
   demolition: 'unknown',
+  proposed_height: undefined,
+  proposed_gfa: undefined,
 };
 
 /**

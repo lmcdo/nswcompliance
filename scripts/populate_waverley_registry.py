@@ -47,7 +47,7 @@ VERSION_LABEL      = "v1.0-baseline"
 
 # ── Fill in the live Waverley DCP URL before running ─────────────────────────
 # Check: https://www.waverley.nsw.gov.au/planning/development-control-plans
-WAVERLEY_COUNCIL_URL = "<FILL_IN_LIVE_URL>"
+WAVERLEY_COUNCIL_URL = "https://www.waverley.nsw.gov.au/media/documents/building_and_development/dcp/WDCP_2022_updated.pdf"
 WAVERLEY_COUNCIL_PAGE = "https://www.waverley.nsw.gov.au/planning/development-control-plans"
 
 WAVERLEY_CHAPTERS = [

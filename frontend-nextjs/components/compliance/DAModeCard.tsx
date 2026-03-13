@@ -24,7 +24,7 @@ interface DAModeCardProps {
   onAncillaryWorksChange: (works: string[]) => void;
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
-  onRunIntake: () => void;
+  onRunIntake?: () => void;
   /** Project identity — appear on SEE cover */
   clientRef: string;
   preparedBy: string;
@@ -44,6 +44,8 @@ interface DAModeCardProps {
   /** Topic-level assertions — planner-dismissed topics */
   topicAssertions: Record<string, string>;
   onAssertTopicNA: (topic: string, reason: string | null) => Promise<void>;
+  /** Proposed numeric values — used for LEP compliance auto-check in SEE */
+  onProposedValuesChange?: (field: 'proposed_height' | 'proposed_gfa', value: string) => void;
   /** Global progress — single source of truth from ProvisionsByTocStructure */
   globalProgress?: {
     total: number; triaged: number; chapterDismissed: number;
@@ -79,6 +81,7 @@ export function DAModeCard({
   genericLabel,
   topicAssertions,
   onAssertTopicNA,
+  onProposedValuesChange,
   globalProgress,
 }: DAModeCardProps) {
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
@@ -99,26 +102,22 @@ export function DAModeCard({
       if (layer === 'condition') heritagePros++;
     }
 
-    // Scope summary — non-condition-layer provisions only
-    const includedTopics: { topic: string; count: number }[] = [];
-    const excludedTopics: { topic: string; count: number }[] = [];
-    const scopeByTopic: Record<string, number> = {};
+    // Scope summary — excluded structural categories only (for waterfall display)
+    const excludedCategories: { topic: string; count: number }[] = [];
+    const excludedByCategory: Record<string, number> = {};
     for (const p of allProvisions) {
       if ((p.v2_dcp_layer || p.layer) === 'condition') continue;
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      if (!t) continue;
-      scopeByTopic[t] = (scopeByTopic[t] || 0) + 1;
-    }
-    for (const [topic, count] of Object.entries(scopeByTopic).sort((a, b) => b[1] - a[1])) {
-      if (excludableTopics.has(topic)) {
-        excludedTopics.push({ topic, count });
-      } else {
-        includedTopics.push({ topic, count });
+      const cat = p.v2_structural_category;
+      if (cat && excludableTopics.has(cat)) {
+        excludedByCategory[cat] = (excludedByCategory[cat] || 0) + 1;
       }
+    }
+    for (const [cat, count] of Object.entries(excludedByCategory).sort((a, b) => b[1] - a[1])) {
+      excludedCategories.push({ topic: cat, count });
     }
 
     return {
-      scopeSummary: { included: includedTopics, excluded: excludedTopics },
+      scopeSummary: { included: [] as { topic: string; count: number }[], excluded: excludedCategories },
       heritagePros,
     };
   }, [allProvisions, excludableTopics, topicAssertions]);
@@ -130,9 +129,9 @@ export function DAModeCard({
 
       <div className="px-4 pb-4 pt-3 space-y-3">
 
-        {/* LEP controls summary — height and FSR inline */}
+        {/* LEP controls summary — height and FSR inline with proposal inputs */}
         {(lepHeight || lepFsr) && (
-          <div className="flex gap-4 text-xs bg-white border border-teal-100 rounded px-3 py-2">
+          <div className="flex gap-4 text-xs bg-white border border-teal-100 rounded px-3 py-2 items-end">
             {lepHeight && (
               <div>
                 <span className="text-gray-400">Height limit</span>
@@ -144,6 +143,30 @@ export function DAModeCard({
                 <span className="text-gray-400">FSR</span>
                 <span className="ml-1.5 font-semibold text-gray-700">{lepFsr}</span>
               </div>
+            )}
+            {onProposedValuesChange && (
+              <>
+                <div className="ml-auto flex items-center gap-1">
+                  <span className="text-gray-400">Proposed height</span>
+                  <input
+                    type="text"
+                    value={intakeAnswers?.proposed_height ?? ''}
+                    onChange={e => onProposedValuesChange('proposed_height', e.target.value)}
+                    placeholder="m"
+                    className="w-14 text-xs border border-teal-200 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 placeholder:text-gray-400 text-right"
+                  />
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-gray-400">Proposed GFA</span>
+                  <input
+                    type="text"
+                    value={intakeAnswers?.proposed_gfa ?? ''}
+                    onChange={e => onProposedValuesChange('proposed_gfa', e.target.value)}
+                    placeholder="m²"
+                    className="w-16 text-xs border border-teal-200 rounded px-1.5 py-0.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700 placeholder:text-gray-400 text-right"
+                  />
+                </div>
+              </>
             )}
           </div>
         )}
@@ -271,42 +294,7 @@ export function DAModeCard({
                   <span className="font-medium text-gray-700">{precinctName}</span>
                 </div>
               )}
-              {/* Other included topics — dismissible */}
-              {scopeSummary.included
-                .filter(({ topic }) => !topic.includes('heritage') && !topicAssertions[topic])
-                .slice(0, 8)
-                .map(({ topic, count }) => (
-                  <div key={topic}>
-                    <div className="flex items-center gap-2 text-xs group">
-                      <span className="text-teal-500 font-bold w-3">✓</span>
-                      <span className="text-gray-600 capitalize flex-1">{topic.replace(/_/g, ' ')}</span>
-                      <span className="text-gray-400">{count}</span>
-                      <button
-                        onClick={() => setPendingDismiss(topic)}
-                        className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-opacity ml-1 text-xs"
-                        title="Dismiss — does not apply to this project"
-                      >×</button>
-                    </div>
-                    {pendingDismiss === topic && (
-                      <div className="ml-5 mt-1 mb-1 bg-white border border-gray-200 rounded p-2 space-y-1">
-                        {PRESET_REASONS(topic).map(r => (
-                          <button key={r} onClick={() => { onAssertTopicNA(topic, r); setPendingDismiss(null); }}
-                            className="block w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600">
-                            {r}
-                          </button>
-                        ))}
-                        <div className="flex gap-1 pt-1">
-                          <input value={customReason} onChange={e => setCustomReason(e.target.value)}
-                            placeholder="Other reason…" className="flex-1 text-xs border rounded px-2 py-1" />
-                          <button onClick={() => { if (customReason.trim()) { onAssertTopicNA(topic, customReason.trim()); setPendingDismiss(null); setCustomReason(''); }}}
-                            className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">OK</button>
-                        </div>
-                        <button onClick={() => setPendingDismiss(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              {/* Asserted-out topics — planner dismissed */}
+              {/* Previously-dismissed topics — shown for undo only */}
               {Object.entries(topicAssertions).map(([topic, reason]) => (
                 <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
                   <span className="w-3 font-bold">⊘</span>
@@ -316,12 +304,6 @@ export function DAModeCard({
                     className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0">undo</button>
                 </div>
               ))}
-              {/* Nudge strip — visible until first assertion made */}
-              {Object.keys(topicAssertions).length === 0 && scopeSummary.included.filter(t => !t.topic.includes('heritage')).length > 2 && (
-                <div className="mt-2 px-2.5 py-2 bg-white border border-teal-200 rounded text-xs text-teal-700 leading-relaxed">
-                  <span className="font-semibold">Topics that don{"'"}t apply?</span>{' '}Hover and click{' '}<span className="font-mono font-bold">{'\u00d7'}</span>{' \u2014 '}state the basis (e.g. &ldquo;No pool works proposed&rdquo;) and the entire category is professionally excluded. Your stated reason is recorded in the SEE, which is the correct way to handle non-applicable topics.
-                </div>
-              )}
               {/* Excluded — always visible */}
               {scopeSummary.excluded.length > 0 && (
                 <div className="pt-0.5">
@@ -468,9 +450,9 @@ export function DAModeCard({
                         {(() => {
                           const excludedTopicCounts: Record<string, number> = {};
                           allProvisions.forEach(p => {
-                            if (excludableTopics.has((p.v2_topic || '').toLowerCase().replace(/ /g, '_'))) {
-                              const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-                              excludedTopicCounts[t] = (excludedTopicCounts[t] || 0) + 1;
+                            const cat = p.v2_structural_category;
+                            if (cat && excludableTopics.has(cat)) {
+                              excludedTopicCounts[cat] = (excludedTopicCounts[cat] || 0) + 1;
                             }
                           });
                           const excluded = Object.entries(excludedTopicCounts)

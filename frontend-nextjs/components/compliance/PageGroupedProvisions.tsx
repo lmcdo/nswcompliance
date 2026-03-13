@@ -217,6 +217,7 @@ export interface Provision {
   v2_dcp_layer: string;
   v2_dcp_part?: string;
   v2_topic?: string;
+  v2_structural_category?: string;
   v2_provision_type?: string;
   v2_precinct_id?: string;
   v2_marker?: string;
@@ -722,7 +723,7 @@ export function PageGroupedProvisions({
                   )}
                   {/* Page number — only for screenshot-based provisions with a reliable printed page */}
                   {group.displayPageNumber ? (
-                    <span className="text-gray-500"> · Page {group.displayPageNumber}</span>
+                    <span className="text-gray-500"> · PDF page {group.displayPageNumber}</span>
                   ) : !group.pageUrl?.includes('#page=') && (
                     <span className="text-gray-400"> · No page reference</span>
                   )}
@@ -740,7 +741,7 @@ export function PageGroupedProvisions({
                     onViewPdf(group.pageUrl!, group.displayPageNumber || 0);
                   }}
                   className="p-1.5 rounded hover:bg-teal-100 transition-colors flex-shrink-0"
-                  title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}Page ${group.displayPageNumber || 1}`}
+                  title={`${group.dcpPart && group.dcpPart !== 'unknown' ? group.dcpPart + ' - ' : ''}PDF page ${group.displayPageNumber || 1}`}
                 >
                   <FileText className="w-4 h-4 text-teal-600 hover:text-teal-800" />
                 </button>
@@ -755,10 +756,10 @@ export function PageGroupedProvisions({
                   const layer = provision.v2_dcp_layer || provision.layer;
                   const isEven = globalIndex++ % 2 === 0;
                   const bgClass = isEven ? theme.zebraStripeBg : theme.zebraStripeAltBg;
-                  // Grey out provisions whose topic is excluded by SEPP/LEP/intake data.
+                  // Grey out provisions whose structural category is excluded by intake data (DD-1).
                   // In DA mode this never triggers — excluded provisions are split out upstream.
                   const isExcludedByTriage = !isDaMode && !!excludableTopics?.has(
-                    (provision.v2_topic || '').toLowerCase().replace(/ /g, '_')
+                    provision.v2_structural_category || ''
                   );
                   // Subtle dimming for secondary-relevance provisions in DA mode
                   const isSecondaryDevType = isDaMode && provision.relevance_level === 'secondary';
@@ -795,13 +796,6 @@ export function PageGroupedProvisions({
                             <p>{getLayerTooltip(layer)}</p>
                           </TooltipContent>
                         </Tooltip>
-
-                        {/* Topic Badge - separate pill (skip if duplicates layer label) */}
-                        {provision.v2_topic && getLayerLabel(layer).toLowerCase() !== provision.v2_topic.toLowerCase() && (
-                          <Badge variant="outline" className="text-sm shrink-0 bg-white border-gray-300 text-gray-700">
-                            {formatTopic(provision.v2_topic)}
-                          </Badge>
-                        )}
 
                         {/* HCA Badge - show if HCA-specific */}
                         {provision.v2_heritage_hca && (
@@ -942,7 +936,7 @@ export function PageGroupedProvisions({
                           provisionId={provision.id}
                           sessionToken={sessionToken ?? null}
                           existingResponse={daResponses?.get(provision.id) as any}
-                          isLocked={excludableTopics ? excludableTopics.has((provision.v2_topic || '').toLowerCase().replace(/ /g, '_')) : false}
+                          isLocked={excludableTopics ? excludableTopics.has(provision.v2_structural_category || '') : false}
                           onSaved={(response) => onResponseSaved?.(provision.id, response)}
                         />
                       )}

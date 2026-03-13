@@ -90,4 +90,6 @@ export interface SEEDocumentData {
   chapter_assertions?: ChapterAssertion[];
   /** Selected ancillary works — used to flag works selected but with no provisions for the dev type */
   ancillary_works?: string[];
+  /** R2 public PDF URL for deep-linking provisions to DCP source pages */
+  council_pdf_url?: string;
 }

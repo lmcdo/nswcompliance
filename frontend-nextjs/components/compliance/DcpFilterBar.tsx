@@ -82,7 +82,7 @@ export function DcpFilterBar({
       {/* Search box */}
       <div className="mt-3 relative">
         {/* Search scope toggle — only when filters are active */}
-        {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements || refinements.objectivesOnly || heritageTypeFilter) && (
+        {(layerFilter || refinements.mandatoryOnly || refinements.withMeasurements || refinements.objectivesOnly || heritageTypeFilter) && (
           <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
             <span>Search in:</span>
             <button
@@ -164,7 +164,6 @@ export function DcpFilterBar({
                     }
                     if (layerFilter) items.push(`Layer: ${layerLabels[layerFilter] || layerFilter}`);
                     else items.push('Layer: All');
-                    if (topicFilters.length > 0) items.push(`Topics: ${topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')}`);
                     if (debouncedSearch) items.push(`Search: "${debouncedSearch}"`);
                     return items.map((item, idx) => <div key={idx}>• {item}</div>);
                   })()}
@@ -186,76 +185,10 @@ export function DcpFilterBar({
         </div>
       )}
 
-      {/* Topic filter chips */}
+      {/* Refinement & filter controls */}
       <div className="mt-3 space-y-2">
-        {availableTopics.length > 1 && (
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              {topicFilters.length > 0 && (
-                <button onClick={onClearTopics} className="px-2 py-0.5 text-xs rounded-full transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200 flex items-center gap-1">
-                  Clear <X className="w-3 h-3" />
-                </button>
-              )}
-              {(() => {
-                const selected = availableTopics.filter(t => topicFilters.includes(normalizeTopicKey(t)));
-                const unselected = availableTopics.filter(t => !topicFilters.includes(normalizeTopicKey(t)));
-                const visible = showAllChips
-                  ? availableTopics
-                  : [...selected, ...unselected].slice(0, MAX_VISIBLE_CHIPS);
-                const hiddenCount = availableTopics.length - visible.length;
-                return (
-                  <>
-                    {visible.map(topic => {
-                      const topicKey = normalizeTopicKey(topic);
-                      const stats = topicPriorityStats[topicKey] || { critical: 0, total: 0 };
-                      const isSelected = topicFilters.includes(topicKey);
-                      const isExcluded = excludableTopics.has(topicKey);
-                      return (
-                        <button
-                          key={topic}
-                          onClick={() => !isExcluded && onToggleTopic(topicKey)}
-                          title={isExcluded ? 'Excluded by triage — provisions not applicable to this development' : undefined}
-                          className={`px-2 py-0.5 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                            isExcluded
-                              ? 'bg-gray-50 text-gray-400 border border-dashed border-gray-300 cursor-default line-through decoration-gray-400'
-                              : isSelected
-                              ? 'bg-teal-600 text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {topic} ({stats.total})
-                          {!isExcluded && stats.critical > 0 && (
-                            <Ruler className={`w-3 h-3 ${isSelected ? 'text-white/80' : 'text-gray-500'}`} />
-                          )}
-                          {isSelected && !isExcluded && <X className="w-3 h-3 ml-0.5" />}
-                        </button>
-                      );
-                    })}
-                    {!showAllChips && hiddenCount > 0 && (
-                      <button
-                        onClick={() => setShowAllChips(true)}
-                        className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                      >
-                        +{hiddenCount} more
-                      </button>
-                    )}
-                    {showAllChips && availableTopics.length > MAX_VISIBLE_CHIPS && (
-                      <button
-                        onClick={() => setShowAllChips(false)}
-                        className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors"
-                      >
-                        Show less
-                      </button>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
         {/* Refinement filters */}
-        {(layerFilter || topicFilters.length > 0 || debouncedSearch) && (
+        {(layerFilter || debouncedSearch) && (
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs text-gray-500 font-medium">Refine:</span>
             <button
@@ -310,16 +243,13 @@ export function DcpFilterBar({
         )}
 
         {/* Status line */}
-        {(layerFilter || topicFilters.length > 0 || refinements.mandatoryOnly || refinements.withMeasurements) && (
+        {(layerFilter || refinements.mandatoryOnly || refinements.withMeasurements) && (
           <div className="text-xs text-gray-500 pt-1 border-t border-gray-100 mt-0.5">
             {(() => {
               const count = filteredProvisions.length;
               let message = `Showing ${count} provision${count !== 1 ? 's' : ''}`;
               const layerLabel = layerFilter ? layerLabels[layerFilter] : null;
-              const topicLabels = topicFilters.length > 0 ? topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ') : null;
-              if (layerLabel && topicLabels) message += ` — ${topicLabels} within ${layerLabel}`;
-              else if (layerLabel) message += ` from ${layerLabel}`;
-              else if (topicLabels) message += ` about ${topicLabels}`;
+              if (layerLabel) message += ` from ${layerLabel}`;
               const refinementParts: string[] = [];
               if (refinements.mandatoryOnly) refinementParts.push('mandatory only');
               if (refinements.withMeasurements) refinementParts.push('with measurements');

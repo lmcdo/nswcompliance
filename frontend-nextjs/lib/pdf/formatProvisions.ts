@@ -151,7 +151,7 @@ export function formatCitation(provision: ProvisionForPDF): string {
   const part = provision.v2_dcp_part || '';
   const page = provision.pdf_printed_page || provision.pdf_page || '?';
 
-  return `${part}, p.${page}`;
+  return `${part}, PDF p.${page}`;
 }
 
 /**

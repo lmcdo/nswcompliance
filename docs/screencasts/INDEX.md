@@ -59,5 +59,15 @@
 | townplanner-UPDATED.md | Dual occupancy in heritage area with SEPP | UPDATED |
 | townplanner-da-prep.md | Dual occupancy in heritage area (base draft) | Draft |
 
+## Product Demo (Current — Mar 2026)
+| File | Length | Format | Status |
+|------|--------|--------|--------|
+| product-demo-90s-textonly.md | 90s | Text overlays only, no narration | Draft |
+| product-demo-90s-spoken.md | 90s | Talking head + narration | Draft |
+| product-demo-1min.md | 60s | Earlier draft — superseded | Superseded |
+| product-demo-2min.md | 2:00 | Earlier draft — superseded | Superseded |
+
+Both current scripts: 35 Albert Street Ashfield (R2, Heritage). SEPP→LEP→DCP as progressive answer thread. DA mode, scope intake, Clause 6.20 as key moment, SEE PDF export.
+
 ## Other
 - **API_CHECKLIST.md** — Mandatory API endpoint testing checklist across all screencasts

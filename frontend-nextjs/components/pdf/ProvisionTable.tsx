@@ -9,10 +9,29 @@ interface ProvisionTableProps {
   group: ProvisionGroup;
   sectionNumber: number;
   isFirst?: boolean;
+  /** R2 public PDF URL for deep-linking — appends #page=N */
+  councilPdfUrl?: string;
 }
 
-export function ProvisionTable({ group, sectionNumber, isFirst = false }: ProvisionTableProps) {
+export function ProvisionTable({ group, sectionNumber, isFirst = false, councilPdfUrl }: ProvisionTableProps) {
   let provisionNumber = 1;
+
+  /** Render inline citation — as a link if council PDF URL available, plain text otherwise */
+  const renderCitation = (provision: ProvisionGroup['provisions'][0]) => {
+    const citation = formatCitation(provision);
+    if (!citation) return null;
+    const pdfPage = provision.pdf_page || provision.pdf_printed_page;
+    if (councilPdfUrl && pdfPage) {
+      return (
+        <Link src={`${councilPdfUrl}#page=${pdfPage}`} style={{ fontSize: 7, color: '#0c4a6e', marginTop: 3, textDecoration: 'underline' }}>
+          {citation}
+        </Link>
+      );
+    }
+    return (
+      <Text style={{ fontSize: 7, color: '#0c4a6e', marginTop: 3 }}>{citation}</Text>
+    );
+  };
 
   return (
     <View style={{ marginTop: isFirst ? 0 : 16 }}>
@@ -31,7 +50,6 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
       <View style={styles.tableHeader}>
         <Text style={[styles.tableHeaderCell, styles.colNumber]}>#</Text>
         <Text style={[styles.tableHeaderCell, styles.colProvision]}>Provision Summary</Text>
-        <Text style={[styles.tableHeaderCell, styles.colSource]}>Source</Text>
         <Text style={[styles.tableHeaderCell, styles.colResponse]}>Compliance / Response</Text>
       </View>
 
@@ -119,10 +137,8 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                         )}
                       </View>
                     ))}
+                    {renderCitation(provision)}
                   </View>
-                  <Text style={[styles.cellSource, styles.colSource]}>
-                    {formatCitation(provision) || ' '}
-                  </Text>
                   <View style={styles.colResponse}>
                     {provision.da_response ? (
                       <View style={[styles.responseBox, {
@@ -139,6 +155,13 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                       </View>
                     ) : (
                       <View style={styles.responseBox} />
+                    )}
+                    {provision.da_status === 'varies' && (
+                      <View style={{ marginTop: 2, padding: '2 4' }}>
+                        <Text style={{ fontSize: 6, color: '#92400e', fontStyle: 'italic', lineHeight: 1.3 }}>
+                          Cl 4.6: State % variation, whether objectives of the standard are achieved, and consistency with zone objectives.
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -223,10 +246,12 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                   </View>
                   );
                 })}
+                {formatCitation(provision) && (
+                  <Text style={{ fontSize: 7, color: '#0c4a6e', marginTop: 3 }}>
+                    {formatCitation(provision)}
+                  </Text>
+                )}
               </View>
-              <Text style={[styles.cellSource, styles.colSource]}>
-                {formatCitation(provision) || ' '}
-              </Text>
               <View style={styles.colResponse}>
                 {provision.da_response ? (
                   <View style={[styles.responseBox, {
@@ -243,6 +268,13 @@ export function ProvisionTable({ group, sectionNumber, isFirst = false }: Provis
                   </View>
                 ) : (
                   <View style={styles.responseBox} />
+                )}
+                {provision.da_status === 'varies' && (
+                  <View style={{ marginTop: 2, padding: '2 4' }}>
+                    <Text style={{ fontSize: 6, color: '#92400e', fontStyle: 'italic', lineHeight: 1.3 }}>
+                      Cl 4.6: State % variation, whether objectives of the standard are achieved, and consistency with zone objectives.
+                    </Text>
+                  </View>
                 )}
               </View>
             </View>

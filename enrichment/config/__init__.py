@@ -29,7 +29,9 @@ COUNCIL_CONFIGS: dict[str, dict] = {
     "waverley":      WAVERLEY_CONFIG,
     "woollahra":     WOOLLAHRA_CONFIG,
     "city_of_sydney": CITY_OF_SYDNEY_CONFIG,
+    "sydney_dcp":     CITY_OF_SYDNEY_CONFIG,   # alias: document_id is "Sydney_DCP_2012__..."
     "ku_ring_gai":   KU_RING_GAI_CONFIG,
+    "ku-ring-gai":   KU_RING_GAI_CONFIG,   # alias: document_id is "Ku-ring-gai_DCP_2024__..."
 }
 
 __all__ = [

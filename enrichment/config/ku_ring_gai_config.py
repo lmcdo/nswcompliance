@@ -1,41 +1,55 @@
 """
-Ku-ring-gai Development Control Plans Configuration
+Ku-ring-gai Development Control Plan 2024 Configuration
 
-Structure: Multiple numbered topic-DCPs (structurally distinct from single-DCP LGAs).
-Topic is encoded in the DCP name / chapter key, not in section headers.
+Structure: Single consolidated DCP (adopted March 2024) with three sections:
+  Section A — Residential & General (Parts 1–13)
+  Section B — Character Areas & Environmental (Parts 15–20)
+  Section C — Design & Technical Standards (Parts 21–25)
 
-Known DCPs:
-- Principal DCP: General controls applying across the LGA
-- DCP 28: Signs and Advertising
-- DCP 31: Access and Mobility
-- DCP 38: Residential Design
-- DCP 40: Demolition and Site Waste Management
-- DCP 43: Car Parking
-- DCP 46: Exempt and Complying Development
-- DCP 47: Water Management
-- DCP 48: Medium Density Housing
+Per-Part PDFs uploaded as separate chapters. Parts 10, 11, and 14A-14O
+(Child Care, Sex Industry, 15 precinct PDFs) excluded from initial onboarding.
 
-Heritage location: assumed to be in the Principal DCP (confirm from profiling).
-Each DCP is a separate chapter in dcp_chapter_registry.
+chapter_topics keys are substrings matched against document_id.lower().
+document_id pattern: "ku_ring_gai_dcp_2024__{chapter_key_underscored}"
+Hyphens in chapter_key are normalised to underscores in document_id.
 
-Source: https://www.krg.nsw.gov.au/Planning-and-development/Planning-policies-and-guidelines/Ku-ring-gai-Development-Control-Plan
+Note: "part_4_1" must appear before any "part_4" key in the dict to prevent
+the shorter key matching Part 4.1 documents first.
+
+Source: https://www.krg.nsw.gov.au/Development/Planning-controls/Development-Control-Plan
 """
 
 KU_RING_GAI_CONFIG = {
     "council": "ku_ring_gai",
-    "dcp_name": "Ku-ring-gai DCP",
-    # Topic is encoded in the DCP name → use chapter_topics pattern.
-    # Keys are chapter_key slugs (with underscores, as built by resolve_document_id).
-    # Matched against document_id from the provision's source chapter.
+    "dcp_name": "Ku-ring-gai DCP 2024",
     "chapter_topics": {
-        "principal_dcp":           {"layer": "generic",      "topic": None},
-        "dcp_28_signs":            {"layer": "generic",      "topic": "signage"},
-        "dcp_31_access":           {"layer": "generic",      "topic": "access"},
-        "dcp_38_residential":      {"layer": "use_specific", "topic": "residential"},
-        "dcp_40_demolition_waste": {"layer": "generic",      "topic": "waste"},
-        "dcp_43_car_parking":      {"layer": "generic",      "topic": "parking"},
-        "dcp_46_exempt_complying": {"layer": "generic",      "topic": "exempt_complying"},
-        "dcp_47_water":            {"layer": "generic",      "topic": "water"},
-        "dcp_48_medium_density":   {"layer": "use_specific", "topic": "medium_density"},
+        # ── Part 1 ──────────────────────────────────────────────────────────
+        "part_1_introduction":          {"layer": "generic",      "topic": None},
+        # ── Section A: Residential & General ────────────────────────────────
+        "part_2_site_analysis":         {"layer": "generic",      "topic": None},
+        "part_3_subdivision":           {"layer": "generic",      "topic": None},
+        # Part 4.1 MUST appear before part_4 (substring collision prevention)
+        "part_4_1_secondary_dwellings": {"layer": "use_specific", "topic": "residential"},
+        "part_4_dwelling_houses":       {"layer": "use_specific", "topic": "residential"},
+        "part_5_dual_occupancy":        {"layer": "use_specific", "topic": "residential"},
+        "part_6_multi_dwelling":        {"layer": "use_specific", "topic": "residential"},
+        "part_7_residential_flat":      {"layer": "use_specific", "topic": "residential"},
+        "part_8_mixed_use":             {"layer": "use_specific", "topic": None},
+        "part_9_non_residential":       {"layer": "use_specific", "topic": None},
+        "part_12_signage":              {"layer": "generic",      "topic": "signage"},
+        "part_13_trees":                {"layer": "generic",      "topic": "trees"},
+        # ── Section B: Character Areas & Environmental ───────────────────────
+        "part_15_contamination":        {"layer": "generic",      "topic": "contamination"},
+        "part_16_bushfire":             {"layer": "generic",      "topic": "bushfire"},
+        "part_17_riparian":             {"layer": "generic",      "topic": "stormwater"},
+        "part_18_biodiversity":         {"layer": "generic",      "topic": "biodiversity"},
+        "part_19_heritage":             {"layer": "generic",      "topic": None},
+        "part_20_rail_roads":           {"layer": "generic",      "topic": "acoustic"},
+        # ── Section C: Design & Technical Standards ───────────────────────────
+        "part_21_site_design":          {"layer": "generic",      "topic": None},
+        "part_22_parking":              {"layer": "generic",      "topic": "parking"},
+        "part_23_building_design":      {"layer": "generic",      "topic": None},
+        "part_24_water":                {"layer": "generic",      "topic": "stormwater"},
+        "part_25_waste":                {"layer": "generic",      "topic": None},
     },
 }

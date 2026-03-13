@@ -114,6 +114,71 @@ COUNCIL_PAGE_RANGES: dict[str, list[tuple[str, str, int, int]]] = {
     "waverley": WAVERLEY_PAGE_RANGES,
 }
 
+# ── Per-chapter page ranges (for councils with per-chapter PDFs) ─────────────
+# Key: (council, chapter_key) → page ranges within that chapter's PDF.
+# Checked BEFORE COUNCIL_PAGE_RANGES — allows per-chapter config for councils
+# that have separate PDFs per chapter (unlike Waverley which is one PDF).
+COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] = {
+    # Ashfield DCP 2016: per-chapter PDFs, "Part X" structure.
+    # Pages 1-3 of each chapter are cover/TOC — skip them.
+    # Chapters G (Definitions), H (Amendments), preliminary are non-provision.
+    ("ashfield", "chapter-a-miscellaneous"): [
+        ("A-Part1",  "Site and Context Analysis",       4,   7),
+        ("A-Part2",  "Good Design",                     8,  12),
+        ("A-Part3",  "Flood Hazard",                   13,  23),
+        ("A-Part4",  "Solar Access and Overshadowing",  24,  26),
+        ("A-Part5",  "Landscaping",                    27,  30),
+        ("A-Part6",  "Safety by Design",               31,  33),
+        ("A-Part7",  "Access and Mobility",            34,  52),
+        ("A-Part8",  "Parking",                        53,  89),
+        ("A-Part9",  "Subdivision",                    90,  93),
+        ("A-Part10", "Signs and Advertising",          94, 110),
+        ("A-Part11", "Fencing",                       111, 113),
+        ("A-Part12", "Telecommunications Facilities", 114, 116),
+        ("A-Part13", "Development Near Rail Corridors", 117, 120),
+        ("A-Part14", "Contaminated Land",             121, 123),
+        ("A-Part15", "Stormwater Management",         124, 126),
+    ],
+    ("ashfield", "chapter-b-public-domain"): [
+        ("B-Part1",  "Public Domain",                   4,  11),
+    ],
+    ("ashfield", "chapter-c-sustainability"): [
+        ("C-Part1",  "Building Sustainability",         3,   9),
+        ("C-Part2",  "Water Sensitive Urban Design",   10,  12),
+        ("C-Part3",  "Waste and Recycling",            13,  76),
+        ("C-Part4",  "Tree Management",                77,  85),
+        ("C-Part5",  "GreenWay",                       86,  90),
+    ],
+    ("ashfield", "chapter-d-precinct-guidelines"): [
+        ("D-Part1",  "Ashfield Town Centre",            3,  42),
+        ("D-Part2",  "Ashfield East",                  43,  59),
+        ("D-Part3",  "Croydon South",                  60,  85),
+        ("D-Part4",  "Haberfield",                     86, 111),
+        ("D-Part5",  "Hurlstone Park",                112, 157),
+        ("D-Part6",  "Summer Hill",                   158, 170),
+        ("D-Part7",  "Ashfield South",                171, 181),
+        ("D-Part8",  "Canterbury Road",               182, 204),
+    ],
+    ("ashfield", "chapter-e1-heritage"): [
+        # E1 has 392 pages and high SECTION_RE hit rate (175%) — let regex handle it.
+        # Include full range so page-range mode is used (skips cover pages 1-2).
+        ("E1-Heritage", "Heritage Items and Conservation Areas", 3, 392),
+    ],
+    ("ashfield", "chapter-e2-haberfield"): [
+        ("E2-Haberfield", "Haberfield Neighbourhood",  2,  22),
+    ],
+    ("ashfield", "chapter-f-dev-category"): [
+        ("F-Part1",  "Dwelling Houses and Dual Occupancies",  3,  28),
+        ("F-Part2",  "Multi-Dwelling Housing",               29,  36),
+        ("F-Part3",  "Residential Flat Buildings",           37,  49),
+        ("F-Part4",  "Boarding Houses",                      50,  55),
+        ("F-Part5",  "Commercial and Industrial",            56,  65),
+        ("F-Part6",  "Childcare Centres",                    66,  72),
+        ("F-Part7",  "Sex Industry",                         73,  78),
+        ("F-Part8",  "Car Showrooms",                        79,  85),
+    ],
+}
+
 # ── Within-section sub-section splitting patterns ────────────────────────────
 # When a page-range section contains numbered sub-sections, these patterns
 # split each section into multiple finer-grained provisions.
@@ -132,7 +197,63 @@ COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
             r"|Design Guidance|Performance Criteria)\s*$"
         ),
     ],
+    # Ashfield DCP 2016: two-level split.
+    # Level 1: keyword headings (Performance Criteria, Design Solutions, etc.)
+    # Level 2: PC/DS/O/C numbered markers within each keyword section.
+    #   Heritage chapters use O1..O3 + C1..C54 (each on own line).
+    #   Parking/Precinct chapters use two-column table format where PC starts
+    #   the line and DS appears mid-line — splitting at line-start markers keeps
+    #   each PC+DS pair together as one compliance unit.
+    "ashfield": [
+        re.compile(
+            r"(?m)^()(Performance Criteria|Design Solutions?|Application"
+            r"|Objectives?|Purpose|General Requirements)\s*$"
+        ),
+        re.compile(
+            r"(?m)^((?:PC|DS|O|C)\d+(?:\.\d+)?)[.\s]+(.+?)$"
+        ),
+    ],
 }
+
+
+# ── Text cleanup patterns (per-council) ──────────────────────────────────────
+# Lines matching any of these regexes are removed from extracted text.
+# Used to filter out reversed PDF sidebar text, watermarks, etc.
+COUNCIL_TEXT_CLEANUP: dict[str, list[re.Pattern]] = {
+    "ashfield": [
+        # Reversed sidebar text from rotated text boxes in Ashfield PDFs.
+        # Each PDF has the chapter name reversed in a vertical sidebar.
+        re.compile(r'suoenallecsiM'),      # Miscellaneous
+        re.compile(r'ytilibaniatsuS'),      # Sustainability
+        re.compile(r'senilediuG'),          # Guidelines
+        re.compile(r'tcnicerP'),            # Precinct
+        re.compile(r'niamoD'),              # Domain (Public Domain)
+        re.compile(r'cilbuP'),              # Public
+        re.compile(r'egatireH'),            # Heritage
+        re.compile(r'dleifrebah'),          # Haberfield (case insensitive)
+        re.compile(r'yrogetaC'),            # Category
+        re.compile(r'tnempoleveD'),         # Development
+        re.compile(r'retpahC'),             # Chapter
+        re.compile(r'dleifhsA'),            # Ashfield
+        re.compile(r'tseW'),               # West (in "Inner West")
+        # Short reversed lines: "traP" = Part, etc.
+        re.compile(r'^[a-z]{3,20}\s*$', re.MULTILINE),  # Pure lowercase-only lines (reversed words)
+    ],
+}
+
+
+def _clean_page_text(text: str, council: str | None) -> str:
+    """Remove council-specific garbage lines from extracted page text."""
+    if not council or council not in COUNCIL_TEXT_CLEANUP:
+        return text
+    patterns = COUNCIL_TEXT_CLEANUP[council]
+    lines = text.split('\n')
+    cleaned = []
+    for line in lines:
+        if any(pat.search(line) for pat in patterns):
+            continue
+        cleaned.append(line)
+    return '\n'.join(cleaned)
 
 
 # ── PDF Extraction ──────────────────────────────────────────────────────────
@@ -145,9 +266,10 @@ class DCPExtractor:
     # section codes (e.g. Waverley's "B1 WASTE", "C1 Low Density") are matched.
     SECTION_RE = re.compile(r'^([A-Z]?\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE)
 
-    def __init__(self, pdf_path: Path, document_id: str):
+    def __init__(self, pdf_path: Path, document_id: str, council: str | None = None):
         self.pdf_path = pdf_path
         self.document_id = document_id
+        self.council = council
         self.page_count: int = 0
 
     def extract(self) -> list[dict[str, Any]]:
@@ -165,6 +287,7 @@ class DCPExtractor:
                 print(f"    page {page_num}/{total}", end="\r")
 
                 text = page.extract_text() or ""
+                text = _clean_page_text(text, self.council)
                 page_tables = page.extract_tables() or []
 
                 match = self.SECTION_RE.search(text)
@@ -243,6 +366,7 @@ class DCPExtractor:
                 for page_num in range(page_start, clipped_end + 1):
                     page = pdf.pages[page_num - 1]
                     text = page.extract_text() or ""
+                    text = _clean_page_text(text, self.council)
                     content += f"\n\n{text}"
                     pages_included.append(page_num)
                     for tbl in page.extract_tables() or []:
@@ -257,14 +381,13 @@ class DCPExtractor:
                         tables, subsection_patterns[0],
                     )
                     # Subsequent patterns split each result of the previous level.
-                    # Skip provisions already marked non-actionable (intro/objectives)
-                    # so they preserve their v2_is_actionable=False through the chain.
+                    # Non-actionable sections (intro/objectives) are still passed
+                    # to deeper levels — they may contain sub-markers (e.g. Heritage
+                    # O/C markers inside an "Objectives" section) that need splitting.
+                    # Each sub-provision gets its own actionability assessment.
                     for pattern in subsection_patterns[1:]:
                         further_split: list[dict[str, Any]] = []
                         for sec in sub_secs:
-                            if sec.get("v2_is_actionable") is False:
-                                further_split.append(sec)
-                                continue
                             further = split_content_at_subsections(
                                 sec["content"],
                                 sec["section_number"],
@@ -543,13 +666,15 @@ def extract_chapter(
         document_id = resolve_document_id(cur, council, chapter_key, dcp_name)
         print(f"    document_id: {document_id}")
 
-        extractor = DCPExtractor(pdf_path, document_id)
+        extractor = DCPExtractor(pdf_path, document_id, council=council)
 
-        # If a page-range config exists for this council, use it directly.
+        # If a page-range config exists for this council/chapter, use it directly.
         # This handles DCPs where SECTION_RE matches TOC entries instead of real
         # section headings (e.g. Waverley: 297 TOC hits vs ~24 real sections).
-        # Page-range mode is PRIMARY for these councils, not a fallback.
-        page_ranges = COUNCIL_PAGE_RANGES.get(council)
+        # Per-chapter ranges checked first (for councils with separate chapter PDFs).
+        page_ranges = COUNCIL_CHAPTER_RANGES.get((council, chapter_key))
+        if page_ranges is None:
+            page_ranges = COUNCIL_PAGE_RANGES.get(council)
         subsection_patterns = COUNCIL_SUBSECTION_PATTERNS.get(council)
         if page_ranges:
             try:
@@ -757,6 +882,25 @@ def main() -> None:
 
     if failed > 0:
         print(f"\n  {failed} chapter(s) failed — retained needs_extraction=TRUE for retry.")
+
+    # ── Quality gate ─────────────────────────────────────────────────────────
+    # Check data quality before wasting resources on enrichment.
+    # Gate thresholds: granularity ≥50%, text_quality ≥95%, duplicates ≥95%, pages ≥90%
+    print(f"\n{'='*60}")
+    print("QUALITY GATE")
+    print(f"{'='*60}")
+
+    from scripts.dcp_quality_report import check_gate
+    gate_council = args.council or None
+    passed, failures = check_gate(council_filter=gate_council)
+    if not passed:
+        print("\n  Quality gate FAILED — skipping enrichment.")
+        for f in failures:
+            print(f"    • {f}")
+        print("\n  Fix data quality issues, then re-run extraction or run enrichment manually.")
+        sys.exit(1)
+    else:
+        print("\n  Quality gate PASSED — proceeding to enrichment.")
 
     # ── Enrichment pipeline ──────────────────────────────────────────────────
     # Run automatically after any successful extraction so new provisions are

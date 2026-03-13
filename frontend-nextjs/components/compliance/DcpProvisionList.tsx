@@ -59,8 +59,8 @@ export function DcpProvisionList({
   // Show a count so the planner knows how many are not applicable to this site.
   const nonApplicableCount = !isDaMode && excludableTopics.size > 0
     ? displayProvisions.filter(p => {
-        const t = normalizeTopicKey(p.v2_topic);
-        return t && excludableTopics.has(t);
+        const cat = p.v2_structural_category;
+        return cat && excludableTopics.has(cat);
       }).length
     : 0;
 

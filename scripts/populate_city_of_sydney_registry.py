@@ -5,13 +5,14 @@ City of Sydney DCP 2012 — R2 Upload + Registry Initialisation
 Uploads City of Sydney DCP 2012 section PDFs to Cloudflare R2 and creates
 dcp_chapter_registry rows so the extraction pipeline picks them up.
 
-City of Sydney publishes per-section PDFs (6 sections):
+City of Sydney publishes per-section PDFs (7 documents):
 - Section 1: Introduction (~10 pages)
 - Section 2: Locality Statements — 75 HCAs (~12.88 MB, largest section)
 - Section 3: General Provisions
 - Section 4: Development Types
 - Section 5: Specific Areas / Precincts
-- Section 6: Schedules / Appendices
+- Section 6: Specific Sites
+- Schedules and Appendices
 
 Scale note: Section 2 is the main HCA coverage. Run survey_dcp.py on it
 before registering to verify SECTION_RE hit rate (expected: page_ranges fallback).
@@ -66,7 +67,7 @@ CITY_OF_SYDNEY_CHAPTERS = [
         "chapter_label":  "Section 1 — Introduction and General Provisions",
         "dcp_name":       "Sydney DCP 2012",
         "local_filename": "section-1-introduction.pdf",
-        "council_url":    "<FILL_IN>",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/section1-dcp2012_280223.pdf",
         "sort_order":     1,
         "doc_type":       "dcp",
     },
@@ -75,7 +76,7 @@ CITY_OF_SYDNEY_CHAPTERS = [
         "chapter_label":  "Section 2 — Locality Statements (Heritage Conservation Areas)",
         "dcp_name":       "Sydney DCP 2012",
         "local_filename": "section-2-locality-statements.pdf",
-        "council_url":    "<FILL_IN>",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/2023/section2-dcp2012_061023.pdf",
         "sort_order":     2,
         "doc_type":       "dcp",
     },
@@ -84,7 +85,7 @@ CITY_OF_SYDNEY_CHAPTERS = [
         "chapter_label":  "Section 3 — General Provisions",
         "dcp_name":       "Sydney DCP 2012",
         "local_filename": "section-3-general-provisions.pdf",
-        "council_url":    "<FILL_IN>",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/2026/section3-dcp2012_230126.pdf",
         "sort_order":     3,
         "doc_type":       "dcp",
     },
@@ -93,7 +94,7 @@ CITY_OF_SYDNEY_CHAPTERS = [
         "chapter_label":  "Section 4 — Development Types",
         "dcp_name":       "Sydney DCP 2012",
         "local_filename": "section-4-development-types.pdf",
-        "council_url":    "<FILL_IN>",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/section4_dcp2012_091222.pdf",
         "sort_order":     4,
         "doc_type":       "dcp",
     },
@@ -102,17 +103,26 @@ CITY_OF_SYDNEY_CHAPTERS = [
         "chapter_label":  "Section 5 — Specific Areas / Precincts",
         "dcp_name":       "Sydney DCP 2012",
         "local_filename": "section-5-specific-areas.pdf",
-        "council_url":    "<FILL_IN>",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/section5-dcp2012_041124.pdf",
         "sort_order":     5,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "section-6-schedules",
-        "chapter_label":  "Section 6 — Schedules and Appendices",
+        "chapter_key":    "section-6-specific-sites",
+        "chapter_label":  "Section 6 — Specific Sites",
         "dcp_name":       "Sydney DCP 2012",
-        "local_filename": "section-6-schedules.pdf",
-        "council_url":    "<FILL_IN>",
+        "local_filename": "section-6-specific-sites.pdf",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/2025/section6_dcp2012_121225.pdf",
         "sort_order":     6,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "schedules",
+        "chapter_label":  "Schedules and Appendices",
+        "dcp_name":       "Sydney DCP 2012",
+        "local_filename": "schedules.pdf",
+        "council_url":    "https://www.cityofsydney.nsw.gov.au/-/media/corporate/files/publications/development-control-plans/2022-12/schedules-dcp2012_021222.pdf",
+        "sort_order":     7,
         "doc_type":       "dcp",
     },
 ]

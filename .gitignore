@@ -180,6 +180,7 @@ enrichment/
 !enrichment/config/woollahra_config.py
 !enrichment/config/city_of_sydney_config.py
 !enrichment/config/ku_ring_gai_config.py
+!enrichment/config/structural_categories.py
 !enrichment/extractors/
 !enrichment/extractors/__init__.py
 !enrichment/extractors/layer_topic_tagger.py
@@ -416,3 +417,6 @@ lancedb_data/
 archive/
 parramatta/
 frontend-nextjs/check-lep-data.js
+ku-ring-gai/
+city-of-sydney/
+downloads/

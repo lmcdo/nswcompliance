@@ -245,7 +245,8 @@ export function buildLepStandards(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   propertyContext: Record<string, any>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  lepClauseData?: Record<string, any>
+  lepClauseData?: Record<string, any>,
+  proposedValues?: { height?: string; gfa?: string; lotArea?: number }
 ): LepAssessableStandard[] {
   const standards: LepAssessableStandard[] = [];
 
@@ -270,11 +271,16 @@ export function buildLepStandards(
   const heightLimit = lepClauseData?.height_limit ?? propertyContext.lep_controls?.height;
   if (heightLimit) {
     const heightVal = typeof heightLimit === 'number' ? `${heightLimit}m` : `${heightLimit}m`;
+    const proposedH = proposedValues?.height ? parseFloat(proposedValues.height) : undefined;
+    const limitNum = parseFloat(String(heightLimit));
+    const heightStatus: 'complies' | 'varies' | 'pending' =
+      proposedH && !isNaN(limitNum) ? (proposedH <= limitNum ? 'complies' : 'varies') : 'pending';
     standards.push({
       clause: '4.3',
       control: 'Height of Buildings',
       requirement: `Maximum ${heightVal}`,
-      status: 'pending',
+      proposal: proposedH ? `${proposedH}m` : undefined,
+      status: heightStatus,
       source: `${lepName} Clause 4.3`,
     });
   }
@@ -282,11 +288,22 @@ export function buildLepStandards(
   // Floor space ratio — Clause 4.4
   const fsr = lepClauseData?.fsr ?? propertyContext.lep_controls?.fsr;
   if (fsr) {
+    const proposedGfa = proposedValues?.gfa ? parseFloat(proposedValues.gfa) : undefined;
+    const lotArea = proposedValues?.lotArea ?? propertyContext.lot_dimensions?.area;
+    const fsrNum = parseFloat(String(fsr));
+    let fsrProposal: string | undefined;
+    let fsrStatus: 'complies' | 'varies' | 'pending' = 'pending';
+    if (proposedGfa && lotArea && !isNaN(fsrNum)) {
+      const proposedFsr = proposedGfa / lotArea;
+      fsrProposal = `${proposedGfa} m² GFA (${proposedFsr.toFixed(2)}:1)`;
+      fsrStatus = proposedFsr <= fsrNum ? 'complies' : 'varies';
+    }
     standards.push({
       clause: '4.4',
       control: 'Floor Space Ratio',
       requirement: `Maximum ${fsr}:1`,
-      status: 'pending',
+      proposal: fsrProposal,
+      status: fsrStatus,
       source: `${lepName} Clause 4.4`,
     });
   }

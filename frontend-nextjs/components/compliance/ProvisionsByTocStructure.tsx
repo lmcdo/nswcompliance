@@ -260,6 +260,11 @@ export function ProvisionsByTocStructure({
 
   const handleClientRefChange = (val: string) => setClientRef(val);
   const handlePreparedByChange = (val: string) => setPreparedBy(val);
+  const handleProposedValuesChange = (field: 'proposed_height' | 'proposed_gfa', value: string) => {
+    if (intakeAnswers) {
+      saveIntakeAnswers({ ...intakeAnswers, [field]: value });
+    }
+  };
 
   // Keep a ref so the effect below can call the latest refreshResponses without
   // re-registering the effect whenever the callback identity changes
@@ -525,10 +530,10 @@ export function ProvisionsByTocStructure({
 
     if (isDaMode) {
       provisionsToCount = allProvisions.filter(p => {
-        // Exclude intake-triaged topics
+        // Exclude intake-triaged provisions by structural category (DD-1)
         if (excludableTopics.size > 0) {
-          const t = normalizeTopicKey(p.v2_topic);
-          if (t && excludableTopics.has(t)) return false;
+          const cat = p.v2_structural_category;
+          if (cat && excludableTopics.has(cat)) return false;
         }
         // Exclude objectives and heritage descriptives (hidden in DA mode)
         if (p.v2_provision_type === 'objective') return false;
@@ -655,10 +660,10 @@ export function ProvisionsByTocStructure({
 
       const beforeCount = base.length;
       base = allProvisions.filter(p => {
-        // Exclude intake-triaged topics
+        // Exclude intake-triaged provisions by structural category (DD-1)
         if (excludableTopics.size > 0) {
-          const t = normalizeTopicKey(p.v2_topic);
-          if (t && excludableTopics.has(t)) return false;
+          const cat = p.v2_structural_category;
+          if (cat && excludableTopics.has(cat)) return false;
         }
 
         // Exclude objectives and heritage descriptives (hidden in DA mode)
@@ -724,13 +729,8 @@ export function ProvisionsByTocStructure({
       filtered = searchBase.filter(p => matchesSearchWithSynonyms(p, debouncedSearch));
     }
 
-    // Multi-topic filter with OR logic (applied after search)
-    if (topicFilters.length > 0) {
-      filtered = filtered.filter(p => {
-        const provisionTopic = p.v2_topic?.toLowerCase().replace(/ /g, '_');
-        return topicFilters.some(topic => topic === provisionTopic);
-      });
-    }
+    // Topic filter removed — v2_topic labels are unreliable (30% false positive rate).
+    // Structural navigation (DCP ToC) replaces topic-based filtering.
 
     // Apply refinement filters
     if (refinements.mandatoryOnly) {
@@ -820,12 +820,13 @@ export function ProvisionsByTocStructure({
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, topicFilters, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
+    const cat = p.v2_structural_category;
+    if (cat && excludableTopics.has(cat)) return false;            // intake triage (DD-1: structural)
     const topic = normalizeTopicKey(p.v2_topic);
-    if (topic && excludableTopics.has(topic)) return false;       // intake triage
     if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
     if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
     if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
@@ -857,11 +858,12 @@ export function ProvisionsByTocStructure({
     let triaged = 0, chapterDismissed = 0, topicDismissed = 0, suppressed = 0;
     let scopeTotal = 0, assessed = 0;
     for (const p of allProvisions) {
+      const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
       const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
         ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
       // Count each exclusion reason (priority order — first match wins)
-      if (topic && excludableTopics.has(topic)) { triaged++; continue; }
+      if (cat && excludableTopics.has(cat)) { triaged++; continue; }
       if (chapterAssertions[chKey]) { chapterDismissed++; continue; }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
       if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
@@ -884,34 +886,21 @@ export function ProvisionsByTocStructure({
   const displayProvisions = useMemo(() => {
     if (!splitByTriage) return filteredProvisions;
     return filteredProvisions.filter(p => {
-      const t = normalizeTopicKey(p.v2_topic);
-      return !t || !excludableTopics.has(t);
+      const cat = p.v2_structural_category;
+      return !cat || !excludableTopics.has(cat);
     });
   }, [splitByTriage, filteredProvisions, excludableTopics]);
   const triageExcludedProvisions = useMemo(() => {
     if (!splitByTriage) return [];
     return filteredProvisions.filter(p => {
-      const t = normalizeTopicKey(p.v2_topic);
-      return t && excludableTopics.has(t);
+      const cat = p.v2_structural_category;
+      return cat && excludableTopics.has(cat);
     });
   }, [splitByTriage, filteredProvisions, excludableTopics]);
 
 
-  // Get unique topics for filter chips — scoped to selected layer
-  // Deduplicate by normalized key (lowercase) to avoid "Signage" and "signage" appearing separately
-  const availableTopics = useMemo(() => {
-    const topicMap = new Map<string, string>();
-    layerFilteredProvisions.forEach(p => {
-      if (p.v2_topic) {
-        const normalized = normalizeTopicKey(p.v2_topic);
-        // Prefer lowercase version if we have both "Signage" and "signage"
-        if (!topicMap.has(normalized) || p.v2_topic === p.v2_topic.toLowerCase()) {
-          topicMap.set(normalized, p.v2_topic);
-        }
-      }
-    });
-    return Array.from(topicMap.values()).sort();
-  }, [layerFilteredProvisions]);
+  // Topic chips removed — v2_topic labels unreliable. Structure view replaces topic navigation.
+  const availableTopics: string[] = [];
 
   // Check if any provisions have C/O markers (use baseProvisions - mode-aware)
   const hasMarkers = useMemo(() =>
@@ -919,22 +908,8 @@ export function ProvisionsByTocStructure({
     [baseProvisions]
   );
 
-  // Calculate priority stats per topic — scoped to selected layer
-  const topicPriorityStats = useMemo(() => {
-    const stats: Record<string, { critical: number; total: number }> = {};
-    layerFilteredProvisions.forEach(p => {
-      const topic = p.v2_topic?.toLowerCase().replace(/ /g, '_') || 'other';
-      if (!stats[topic]) stats[topic] = { critical: 0, total: 0 };
-      stats[topic].total++;
-
-      // Only mark as "critical/numeric" if provision actually contains measurements
-      const text = p.provision_text || '';
-      // Comprehensive pattern matching planning regulation measurements
-      const isObjective = /^O\d+|objective|principle|aim|purpose|encourages|promotes|protecting|minimising|preventing|ensuring|must be consistent|contribution|significance|character|attributes|elements that/i.test(text);
-      if (NUMERIC_MEASUREMENT_RE.test(text) && !isObjective) stats[topic].critical++;
-    });
-    return stats;
-  }, [layerFilteredProvisions]);
+  // Topic priority stats removed — topic chips no longer displayed
+  const topicPriorityStats: Record<string, { critical: number; total: number }> = {};
 
   // NOW handle loading/error states AFTER all hooks are called
 
@@ -1181,7 +1156,11 @@ export function ProvisionsByTocStructure({
         propertyData?.constraints,
       );
       const seppAssessableControls = buildSeppControls(propertyData?.constraints, lepClauseData);
-      const lepAssessableStandards = buildLepStandards(propertyContext, lepClauseData);
+      const lepAssessableStandards = buildLepStandards(propertyContext, lepClauseData, {
+        height: intakeAnswers?.proposed_height,
+        gfa: intakeAnswers?.proposed_gfa,
+        lotArea: propertyData?.lotDimensions?.area ?? propertyContext.lot_dimensions?.area,
+      });
 
       const resolvedAddress = address || propertyData?.address || '';
       const seeData: SEEDocumentData = {
@@ -1207,6 +1186,7 @@ export function ProvisionsByTocStructure({
           }),
         } : {}),
         ...(ancillaryWorksLocal.length > 0 ? { ancillary_works: ancillaryWorksLocal } : {}),
+        ...(data?.meta?.council_pdf_url ? { council_pdf_url: data.meta.council_pdf_url } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1290,6 +1270,7 @@ export function ProvisionsByTocStructure({
               genericLabel={layerLabels.generic}
               topicAssertions={topicAssertions}
               onAssertTopicNA={saveTopicAssertion}
+              onProposedValuesChange={handleProposedValuesChange}
               globalProgress={globalProgress}
             />
           </div>

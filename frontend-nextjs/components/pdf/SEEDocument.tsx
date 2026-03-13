@@ -87,7 +87,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const { property, see_intro, annotated_provisions, all_provisions,
           generated_date, intake_answers, client_ref, prepared_by,
           pathway_determination, sepp_assessable_controls, lep_assessable_standards,
-          topic_assertions, chapter_assertions, ancillary_works } = data;
+          topic_assertions, chapter_assertions, ancillary_works, council_pdf_url } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -121,19 +121,71 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const naIntakeGroups = groupProvisionsByTopic(naIntakeProvisions);
 
   // Ancillary works selected but with zero provisions for the dev type
-  const allTopicsInProvisions = new Set(all_provisions.map(p => (p.v2_topic || '').toLowerCase().replace(/ /g, '_')));
+  const allCategoriesInProvisions = new Set(all_provisions.map(p => p.v2_structural_category).filter(Boolean));
   const ancillaryWorksWithNoProvisions = ancillary_works
     ? ANCILLARY_WORKS.filter(w =>
         ancillary_works.includes(w.value) &&
         w.devTypeTag &&
-        !allTopicsInProvisions.has(w.devTypeTag) &&
-        !allTopicsInProvisions.has(w.value)
+        !allCategoriesInProvisions.has(w.devTypeTag) &&
+        !allCategoriesInProvisions.has(w.value)
       )
     : [];
 
   const annotatedCount = annotated_provisions.length;
   const totalCount = all_provisions.length;
   const unannotatedCount = totalCount - annotatedCount;
+
+  // Compliance percentages (of total applicable provisions)
+  const pct = (n: number) => totalCount > 0 ? Math.round((n / totalCount) * 100) : 0;
+  const compliesPct = pct(compliesProvisions.length);
+  const variesPct = pct(variesProvisions.length);
+  const naPct = pct(naManualProvisions.length + naIntakeProvisions.length);
+  const assessedPct = pct(annotatedCount);
+
+  // Document reference: SEE-YYYYMMDD-XXXX (hash from address for uniqueness)
+  const refDate = new Date().toISOString().split('T')[0].replace(/-/g, '');
+  const addrHash = (property.address || 'unknown').split('').reduce((a, c) => ((a << 5) - a + c.charCodeAt(0)) | 0, 0);
+  const docRef = `SEE-${refDate}-${Math.abs(addrHash).toString(36).toUpperCase().slice(0, 4).padStart(4, '0')}`;
+
+  // Auto-generated site suitability paragraph
+  const siteSuitabilitySentences: string[] = [];
+  if (lot_dimensions?.area) {
+    const dimParts = [`a total area of ${Math.round(lot_dimensions.area).toLocaleString()} m²`];
+    if (lot_dimensions.frontage) dimParts.push(`a ${lot_dimensions.frontage.toFixed(1)} m frontage`);
+    if (lot_dimensions.depth) dimParts.push(`a depth of ${lot_dimensions.depth.toFixed(1)} m`);
+    siteSuitabilitySentences.push(`The site at ${property.address} has ${dimParts.join(', ')}.`);
+    if (lot_dimensions.is_corner && lot_dimensions.corner_roads?.length) {
+      siteSuitabilitySentences.push(`It is a corner lot at the intersection of ${lot_dimensions.corner_roads.join(' and ')}.`);
+    }
+  } else {
+    siteSuitabilitySentences.push(`The site is located at ${property.address}.`);
+  }
+  if (environmental_constraints) {
+    const activeConstraints: string[] = [];
+    if (environmental_constraints.flood_prone) activeConstraints.push('flood prone land');
+    if (environmental_constraints.bushfire_prone) activeConstraints.push('bushfire prone land');
+    if (environmental_constraints.coastal_management) activeConstraints.push('coastal management area');
+    if (environmental_constraints.contaminated_land) activeConstraints.push('proximity to notified contaminated site');
+    if (environmental_constraints.anef_zone) activeConstraints.push('aircraft noise (ANEF) zone');
+    if (environmental_constraints.mine_subsidence) activeConstraints.push('mine subsidence district');
+    if (environmental_constraints.landslide_risk) activeConstraints.push('landslide risk area');
+    if (environmental_constraints.drinking_water_catchment) activeConstraints.push('drinking water catchment');
+    if (environmental_constraints.terrestrial_biodiversity) activeConstraints.push('terrestrial biodiversity area');
+    if (activeConstraints.length > 0) {
+      siteSuitabilitySentences.push(`The site is affected by ${activeConstraints.join(', ')}.`);
+    } else {
+      siteSuitabilitySentences.push('The site is not affected by any mapped environmental constraints.');
+    }
+  }
+  if (heritage_status.heritage_item) {
+    siteSuitabilitySentences.push(`The site contains a heritage item${heritage_status.item_number ? ` (${heritage_status.item_number})` : ''} listed under the LEP.`);
+  } else if (heritage_status.in_hca) {
+    siteSuitabilitySentences.push(`The site is located within the ${heritage_status.hca_name || 'a'} Heritage Conservation Area.`);
+  }
+  const siteSuitabilityText = siteSuitabilitySentences.join(' ');
+
+  // Footer content helper
+  const footerRef = [docRef, client_ref, prepared_by].filter(Boolean).join(' | ');
 
   return (
     <Document>
@@ -153,6 +205,9 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             </Text>
             <Text style={{ fontSize: 9, color: '#6b7280' }}>
               Prepared: {generated_date}
+            </Text>
+            <Text style={{ fontSize: 8, color: '#9ca3af', marginTop: 2 }}>
+              Ref: {docRef}
             </Text>
           </View>
           <View style={{ backgroundColor: '#fef3c7', padding: 8, borderLeft: '3pt solid #f59e0b', maxWidth: 180 }}>
@@ -277,7 +332,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 1</Text>
         </View>
@@ -529,18 +584,18 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             )}
           </View>
           <View style={{ marginTop: 5, padding: 6, border: '1pt solid #e5e7eb', backgroundColor: '#f9fafb' }}>
-            <Text style={{ fontSize: 9, color: '#374151', fontFamily: 'Helvetica-Bold', marginBottom: 2 }}>
-              Site suitability conclusion:
+            <Text style={{ fontSize: 9, color: '#374151', lineHeight: 1.5, marginBottom: 4 }}>
+              {siteSuitabilityText}
             </Text>
             <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
-              [To be completed by the applicant — address the suitability of the site and proposed development having regard to the above characteristics and environmental constraints.]
+              [Consultant to confirm the above summary is accurate and add any site-specific observations relevant to the suitability of the site for the proposed development.]
             </Text>
           </View>
         </View>
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 2</Text>
         </View>
@@ -650,9 +705,11 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                   <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 1 }}>{std.clause}</Text>
                   <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>{std.control}</Text>
                   <Text style={{ fontSize: 7, color: '#374151', padding: 4, flex: 2 }}>{std.requirement}</Text>
-                  <Text style={{ fontSize: 7, color: '#9ca3af', padding: 4, flex: 2, fontStyle: 'italic' }}>{std.proposal ?? '[to be completed]'}</Text>
-                  <Text style={{ fontSize: 7, color: std.status === 'pending' ? '#9ca3af' : '#374151', padding: 4, flex: 1, fontStyle: 'italic' }}>
-                    {std.status === 'pending' ? 'Pending' : std.status}
+                  <Text style={{ fontSize: 7, color: std.proposal ? '#374151' : '#9ca3af', padding: 4, flex: 2, fontStyle: std.proposal ? 'normal' : 'italic' }}>{std.proposal ?? '[to be completed]'}</Text>
+                  <Text style={{ fontSize: 7, padding: 4, flex: 1, fontFamily: std.status !== 'pending' ? 'Helvetica-Bold' : undefined,
+                    color: std.status === 'complies' ? '#15803d' : std.status === 'varies' ? '#d97706' : '#9ca3af',
+                  }}>
+                    {std.status === 'pending' ? 'Pending' : std.status === 'complies' ? 'Complies' : std.status === 'varies' ? 'Varies' : std.status}
                   </Text>
                 </View>
               ))}
@@ -662,7 +719,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Page 3</Text>
         </View>
@@ -688,6 +745,19 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Assessment status summary ---- */}
         <View style={{ border: '1pt solid #e5e7eb', marginBottom: 14 }}>
+          {/* Compliance rate banner */}
+          {totalCount > 0 && (
+            <View style={{ backgroundColor: assessedPct === 100 ? '#f0fdf4' : '#fffbeb', padding: '6 8', borderBottom: '1pt solid #e5e7eb', flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: assessedPct === 100 ? '#166534' : '#92400e' }}>
+                {totalCount} applicable provisions | {assessedPct}% assessed
+              </Text>
+              {annotatedCount > 0 && (
+                <Text style={{ fontSize: 8, color: '#374151' }}>
+                  Complies {compliesPct}% | Varies {variesPct}% | N/A {naPct}%
+                </Text>
+              )}
+            </View>
+          )}
           {/* Header row */}
           <View style={{ backgroundColor: '#f3f4f6', flexDirection: 'row', borderBottom: '1pt solid #e5e7eb', padding: '4 8' }}>
             <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Status</Text>
@@ -760,7 +830,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               These provisions have been identified as varying from the DCP standard. Each requires a planning response addressing how the variation is justified or will be resolved.
             </Text>
             {variesGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
             ))}
           </View>
         ) : (
@@ -777,7 +847,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               {`6.2 Complying Provisions (${compliesProvisions.length})`}
             </Text>
             {compliesGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
             ))}
           </View>
         ) : (
@@ -797,7 +867,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               These provisions have been assessed by the applicant as not applicable to the proposed development.
             </Text>
             {naManualGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
             ))}
           </View>
         ) : (
@@ -817,7 +887,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
               These provisions were automatically excluded because their applicability trigger was confirmed as absent in the structured intake completed by the applicant. The confirmed inputs are recorded in the "PROPOSAL CHARACTERISTICS — CONFIRMED INPUTS" table on the cover page (page 1) of this document. A provision was only excluded when its trigger was factually impossible given the confirmed answers — answering "Unknown" retains the provision for manual assessment.
             </Text>
             {naIntakeGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} />
+              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
             ))}
           </View>
         ) : (
@@ -864,17 +934,17 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
             </Text>
             <View style={{ border: '1pt solid #e5e7eb' }}>
               <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 8' }}>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Topic</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Section</Text>
                 <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3 }}>Provision (first line)</Text>
                 <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Source</Text>
               </View>
               {unannotatedProvisions.map((p, idx) => {
                 const firstLine = (p.provision_text || '').split('\n')[0].substring(0, 120);
-                const topic = p.v2_topic ? capitalizeFirst(p.v2_topic.toLowerCase().replace(/_/g, ' ')) : '—';
-                const source = p.pdf_printed_page ? `p.${p.pdf_printed_page}` : '';
+                const section = p.v2_dcp_part || '—';
+                const source = p.pdf_printed_page ? `PDF p.${p.pdf_printed_page}` : '';
                 return (
                   <View key={p.id} style={{ flexDirection: 'row', borderBottom: idx < unannotatedProvisions.length - 1 ? '1pt solid #f3f4f6' : undefined, padding: '2 8', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                    <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{topic}</Text>
+                    <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{section}</Text>
                     <Text style={{ fontSize: 7, color: '#6b7280', flex: 3 }}>{firstLine}{firstLine.length >= 120 ? '…' : ''}</Text>
                     <Text style={{ fontSize: 7, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{source}</Text>
                   </View>
@@ -937,26 +1007,44 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
-          <Text style={styles.footerRight}>Page 3</Text>
+          <Text style={styles.footerRight}>DCP Assessment</Text>
         </View>
       </Page>
 
       {/* ================================================================
-          FINAL PAGE — Report Information + Conclusion placeholder
+          FINAL PAGE — Conclusion + Report Information
           ================================================================ */}
       <Page size="A4" style={styles.page}>
         <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 12, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
           7. Conclusion
         </Text>
 
+        {/* Auto-generated conclusion from assessment data */}
+        <View style={{ marginBottom: 10 }}>
+          <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+            {`This Statement of Environmental Effects has assessed the proposed development at ${property.address} against the applicable planning controls under the Environmental Planning and Assessment Act 1979 (NSW).`}
+          </Text>
+          {totalCount > 0 && annotatedCount > 0 && (
+            <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+              {`Of the ${totalCount} applicable DCP provisions, ${compliesProvisions.length} (${compliesPct}%) have been assessed as complying with the relevant controls${variesProvisions.length > 0 ? `, ${variesProvisions.length} (${variesPct}%) require further consideration as the development varies from the applicable standard` : ''}${naManualProvisions.length + naIntakeProvisions.length > 0 ? `, and ${naManualProvisions.length + naIntakeProvisions.length} (${naPct}%) are not applicable to the proposed works` : ''}.`}
+            </Text>
+          )}
+          {variesProvisions.length > 0 && (
+            <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+              {`The ${variesProvisions.length} provision${variesProvisions.length !== 1 ? 's' : ''} identified as varying from the DCP standard${variesProvisions.length !== 1 ? ' are' : ' is'} detailed in Section 6.1 of this report. Each variation should be assessed on its planning merit having regard to the objectives of the applicable control.`}
+            </Text>
+          )}
+          {unannotatedCount > 0 && (
+            <Text style={{ fontSize: 9, color: '#92400e', lineHeight: 1.5, marginBottom: 6 }}>
+              {`Note: ${unannotatedCount} provision${unannotatedCount !== 1 ? 's have' : ' has'} not yet been assessed. This document is incomplete and must not be lodged until all provisions in Section 6.5 have been addressed.`}
+            </Text>
+          )}
+        </View>
         <View style={{ backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', padding: 12, marginBottom: 16 }}>
           <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic' }}>
-            [Conclusion — to be completed by planning consultant]
-          </Text>
-          <Text style={{ fontSize: 9, color: '#6b7280', fontStyle: 'italic', marginTop: 6 }}>
-            [Summarise compliance outcome, any variations sought, planning merit justification, and recommendation for consent.]
+            [Consultant to review the above summary and add: (1) planning merit justification for any variations, (2) consistency with zone objectives, and (3) recommendation for consent.]
           </Text>
         </View>
 
@@ -996,7 +1084,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
 
         {/* ---- Footer ---- */}
         <View style={styles.footer}>
-          <Text style={styles.footerLeft}>Draft Statement of Environmental Effects</Text>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
           <Text style={styles.footerCenter}>{property.address}</Text>
           <Text style={styles.footerRight}>Generated {generated_date}</Text>
         </View>

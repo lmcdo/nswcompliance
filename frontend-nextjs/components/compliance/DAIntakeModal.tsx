@@ -22,7 +22,7 @@ interface DAIntakeModalProps {
   open: boolean;
   onApply: (answers: IntakeAnswers) => Promise<void>;
   onSkip: () => void;
-  provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null }>;
+  provisions?: Array<{ v2_topic?: string | null; v2_dcp_layer?: string | null; layer?: string | null; v2_structural_category?: string | null }>;
   /** Pre-populate answers when reconfiguring (from a prior applied session) */
   initialAnswers?: IntakeAnswers;
   /** Property-level flags for first-class passenger display */
@@ -94,26 +94,27 @@ export function DAIntakeModal({
   const excludedCount = useMemo(() => {
     if (excludableTopics.size === 0) return 0;
     return provisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return t && excludableTopics.has(t);
+      const cat = p.v2_structural_category;
+      return cat && excludableTopics.has(cat);
     }).length;
   }, [excludableTopics, provisions]);
 
-  // Topic counts for confirmation screen — included topics with counts
-  const includedTopicCounts = useMemo(() => {
+  // Excluded structural categories for confirmation screen display
+  const excludedCategoryCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const p of provisions) {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      if (!t || excludableTopics.has(t)) continue;
-      counts[t] = (counts[t] || 0) + 1;
+      const cat = p.v2_structural_category;
+      if (cat && excludableTopics.has(cat)) {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
     }
-    return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
   }, [excludableTopics, provisions]);
 
   const applicableCount = useMemo(() => {
     return provisions.filter(p => {
-      const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
-      return !t || !excludableTopics.has(t);
+      const cat = p.v2_structural_category;
+      return !cat || !excludableTopics.has(cat);
     }).length;
   }, [excludableTopics, provisions]);
 
@@ -178,11 +179,11 @@ export function DAIntakeModal({
                   <span className="font-medium text-gray-700">{precinctName}</span>
                 </div>
               )}
-              {includedTopicCounts.filter(([t]) => !t.includes('heritage')).map(([topic, count]) => (
-                <div key={topic} className="flex items-center gap-2 text-sm">
-                  <span className="text-teal-500 font-bold text-xs">✓</span>
-                  <span className="text-gray-600 capitalize">{topic.replace(/_/g, ' ')}</span>
-                  <span className="text-gray-400 text-xs ml-auto">{count}</span>
+              {excludedCategoryCounts.map(([cat, count]) => (
+                <div key={cat} className="flex items-center gap-2 text-sm">
+                  <span className="text-gray-400 font-bold text-xs">✕</span>
+                  <span className="text-gray-400 capitalize line-through">{cat.replace(/_/g, ' ')}</span>
+                  <span className="text-gray-400 text-xs ml-auto">{count} removed</span>
                 </div>
               ))}
             </div>

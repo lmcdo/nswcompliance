@@ -31,6 +31,7 @@ CITY_OF_SYDNEY_CONFIG = {
         "section_3": {"layer": "generic",      "topic": None},   # General Provisions
         "section_4": {"layer": "use_specific", "topic": None},   # Development Types
         "section_5": {"layer": "precinct",     "topic": None},   # Specific Areas / Precincts
-        "section_6": {"layer": "generic",      "topic": None},   # Schedules / Appendices
+        "section_6": {"layer": "precinct",     "topic": None},   # Specific Sites
+        "schedules": {"layer": "generic",      "topic": None},   # Schedules / Appendices
     },
 }

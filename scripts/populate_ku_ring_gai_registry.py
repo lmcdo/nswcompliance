@@ -2,36 +2,19 @@
 """
 Ku-ring-gai DCP — R2 Upload + Registry Initialisation
 ======================================================
-Uploads Ku-ring-gai DCP PDFs to Cloudflare R2 and creates dcp_chapter_registry
-rows so the extraction pipeline picks them up.
+Uploads Ku-ring-gai DCP (adopted March 2024) per-Part PDFs to Cloudflare R2
+and creates dcp_chapter_registry rows so the extraction pipeline picks them up.
 
-Ku-ring-gai has multiple numbered topic-DCPs (structurally distinct from
-single-DCP LGAs). Each DCP is a separate chapter. Topic is encoded in the
-DCP name/number, not in section headers within PDFs.
+Structure: 3 sections (A/B/C) with ~24 Parts. Excludes cover pages, reference
+maps, appendices, and the 15 site-specific precinct PDFs (Part 14A-14O) which
+can be added later.
 
-Known DCPs (confirm from council website before running):
-- Principal DCP: General controls
-- DCP 28: Signs and Advertising
-- DCP 31: Access and Mobility
-- DCP 38: Residential Design
-- DCP 40: Demolition and Site Waste Management
-- DCP 43: Car Parking
-- DCP 46: Exempt and Complying Development
-- DCP 47: Water Management
-- DCP 48: Medium Density Housing
+Source: https://www.krg.nsw.gov.au/Development/Planning-controls/Development-Control-Plan
 
 Usage:
     python3 scripts/populate_ku_ring_gai_registry.py            # upload + register
     python3 scripts/populate_ku_ring_gai_registry.py --dry-run  # show plan only
     python3 scripts/populate_ku_ring_gai_registry.py --skip-upload  # DB only
-
-TODO before first run:
-    1. Download DCP PDFs from Ku-ring-gai council website:
-       https://www.krg.nsw.gov.au/Planning-and-development/Planning-policies-and-guidelines/Ku-ring-gai-Development-Control-Plan
-    2. Place PDFs in ku-ring-gai/ directory at project root
-    3. Run survey_dcp.py on principal DCP and one topic DCP
-    4. Confirm heritage location (likely in Principal DCP)
-    5. Fill in council_url per DCP once confirmed
 """
 
 import argparse
@@ -61,90 +44,222 @@ SOURCE_PDF_PREFIX = "source-pdfs"
 VERSION_LABEL     = "v1.0-baseline"
 COUNCIL           = "ku_ring_gai"
 
-KU_RING_GAI_COUNCIL_PAGE = "https://www.krg.nsw.gov.au/Planning-and-development/Planning-policies-and-guidelines/Ku-ring-gai-Development-Control-Plan"
+KU_RING_GAI_COUNCIL_PAGE = "https://www.krg.nsw.gov.au/Development/Planning-controls/Development-Control-Plan"
 
 ROOT = Path(__file__).parent.parent / "ku-ring-gai"
 
+_BASE = "https://www.krg.nsw.gov.au/files/assets/public"
+
 KU_RING_GAI_CHAPTERS = [
+    # ── Part 1: Introduction ──────────────────────────────────────────────
     {
-        "chapter_key":    "principal-dcp",
-        "chapter_label":  "Ku-ring-gai DCP — Principal DCP (General Controls)",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "principal-dcp.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "part-1-introduction",
+        "chapter_label":  "Part 1 — Introduction, Preliminary and Dictionary",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "part-1-introduction.pdf",
+        "council_url":    f"{_BASE}/v/4/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/part-1-introduction-preliminary-dictionary.pdf",
         "sort_order":     1,
         "doc_type":       "dcp",
     },
+    # ── Section A: Residential & General ─────────────────────────────────
     {
-        "chapter_key":    "dcp-28-signs",
-        "chapter_label":  "DCP 28 — Signs and Advertising",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-28-signs.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-2-site-analysis",
+        "chapter_label":  "Section A Part 2 — Site Analysis",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-2-site-analysis.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-2-site-analysis.pdf",
         "sort_order":     2,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-31-access",
-        "chapter_label":  "DCP 31 — Access and Mobility",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-31-access.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-3-subdivision",
+        "chapter_label":  "Section A Part 3 — Land Consolidation and Subdivision",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-3-subdivision.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-3-land-consolidation-and-subdivision.pdf",
         "sort_order":     3,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-38-residential",
-        "chapter_label":  "DCP 38 — Residential Design",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-38-residential.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-4-dwelling-houses",
+        "chapter_label":  "Section A Part 4 — Dwelling Houses",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-4-dwelling-houses.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-4-dwelling-houses.pdf",
         "sort_order":     4,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-40-demolition-waste",
-        "chapter_label":  "DCP 40 — Demolition and Site Waste Management",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-40-demolition-waste.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-4-1-secondary-dwellings",
+        "chapter_label":  "Section A Part 4.1 — Secondary Dwellings",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-4-1-secondary-dwellings.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-4.1-secondary-dwellings.pdf",
         "sort_order":     5,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-43-car-parking",
-        "chapter_label":  "DCP 43 — Car Parking",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-43-car-parking.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-5-dual-occupancy",
+        "chapter_label":  "Section A Part 5 — Dual Occupancy",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-5-dual-occupancy.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-5-dual-occupancy.pdf",
         "sort_order":     6,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-46-exempt-complying",
-        "chapter_label":  "DCP 46 — Exempt and Complying Development",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-46-exempt-complying.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-6-multi-dwelling",
+        "chapter_label":  "Section A Part 6 — Multi-Dwelling Housing",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-6-multi-dwelling.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-6-multi-dwelling-housing.pdf",
         "sort_order":     7,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-47-water",
-        "chapter_label":  "DCP 47 — Water Management",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-47-water.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-7-residential-flat-buildings",
+        "chapter_label":  "Section A Part 7 — Residential Flat Buildings",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-7-residential-flat-buildings.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-7-residential-flat-buildings.pdf",
         "sort_order":     8,
         "doc_type":       "dcp",
     },
     {
-        "chapter_key":    "dcp-48-medium-density",
-        "chapter_label":  "DCP 48 — Medium Density Housing",
-        "dcp_name":       "Ku-ring-gai DCP",
-        "local_filename": "dcp-48-medium-density.pdf",
-        "council_url":    "<FILL_IN>",
+        "chapter_key":    "section-a-part-8-mixed-use",
+        "chapter_label":  "Section A Part 8 — Mixed Use Development",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-8-mixed-use.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-8-mixed-use-development.pdf",
         "sort_order":     9,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-a-part-9-non-residential",
+        "chapter_label":  "Section A Part 9 — Non-Residential and Office Buildings",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-9-non-residential.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-9-non-residential-and-office-buildings.pdf",
+        "sort_order":     10,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-a-part-12-signage",
+        "chapter_label":  "Section A Part 12 — Signage and Advertising",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-12-signage.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-12-signage-and-advertising.pdf",
+        "sort_order":     11,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-a-part-13-trees",
+        "chapter_label":  "Section A Part 13 — Tree and Vegetation Preservation",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-a-part-13-trees.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-a-part-13-tree-and-vegetation-preservation.pdf",
+        "sort_order":     12,
+        "doc_type":       "dcp",
+    },
+    # ── Section B: Character Areas & Environmental ────────────────────────
+    {
+        "chapter_key":    "section-b-part-15-contamination",
+        "chapter_label":  "Section B Part 15 — Land Contamination",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-15-contamination.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-15-land-contamination.pdf",
+        "sort_order":     13,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-b-part-16-bushfire",
+        "chapter_label":  "Section B Part 16 — Bushfire Risk",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-16-bushfire.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-16-bushfire-risk.pdf",
+        "sort_order":     14,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-b-part-17-riparian",
+        "chapter_label":  "Section B Part 17 — Riparian Lands",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-17-riparian.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-17-reparian-lands.pdf",
+        "sort_order":     15,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-b-part-18-biodiversity",
+        "chapter_label":  "Section B Part 18 — Biodiversity",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-18-biodiversity.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-18-biodiversity.pdf",
+        "sort_order":     16,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-b-part-19-heritage",
+        "chapter_label":  "Section B Part 19 — Heritage Items and Conservation Areas",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-19-heritage.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-19-heritage-items-and-heritage-conservation-areas.pdf",
+        "sort_order":     17,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-b-part-20-rail-roads",
+        "chapter_label":  "Section B Part 20 — Development near Rail Corridors and Busy Roads",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-b-part-20-rail-roads.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-b-part-20-development-near-rail-corridors-and-busy-roads.pdf",
+        "sort_order":     18,
+        "doc_type":       "dcp",
+    },
+    # ── Section C: Design & Technical Standards ───────────────────────────
+    {
+        "chapter_key":    "section-c-part-21-site-design",
+        "chapter_label":  "Section C Part 21 — General Site Design",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-c-part-21-site-design.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-c-part-21-general-site-design.pdf",
+        "sort_order":     19,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-c-part-22-parking",
+        "chapter_label":  "Section C Part 22 — General Access and Parking",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-c-part-22-parking.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-c-part-22-general-access-and-parking.pdf",
+        "sort_order":     20,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-c-part-23-building-design",
+        "chapter_label":  "Section C Part 23 — General Building Design and Sustainability",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-c-part-23-building-design.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-c-part-23-general-building-design-and-sustainability.pdf",
+        "sort_order":     21,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-c-part-24-water",
+        "chapter_label":  "Section C Part 24 — Water Management",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-c-part-24-water.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-c-part-24-water-management.pdf",
+        "sort_order":     22,
+        "doc_type":       "dcp",
+    },
+    {
+        "chapter_key":    "section-c-part-25-waste",
+        "chapter_label":  "Section C Part 25 — Waste Management",
+        "dcp_name":       "Ku-ring-gai DCP 2024",
+        "local_filename": "section-c-part-25-waste.pdf",
+        "council_url":    f"{_BASE}/v/1/hptrim/information-management-publications-public-website-ku-ring-gai-council-website-ku-ring-gai-development-control-plan/kdcp-section-c-part-25-waste-management.pdf",
+        "sort_order":     23,
         "doc_type":       "dcp",
     },
 ]
