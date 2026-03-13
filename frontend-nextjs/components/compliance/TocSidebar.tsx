@@ -747,6 +747,19 @@ export function formatPartDisplay(partId: string): { label: string; desc?: strin
     return { label: `Appendix ${appendixSlug[1].toUpperCase()}`, desc };
   }
 
+  // KRG-style underscore slugs: part_4_1_secondary_dwellings, part_12_signage, part_2_site_analysis
+  // Decimal check must come first: part_4_1_foo → Part 4.1, part_4_foo → Part 4
+  const krgPartDecimal = partId.match(/^part_(\d+)_(\d+)_(.+)$/);
+  if (krgPartDecimal) {
+    const desc = krgPartDecimal[3].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${krgPartDecimal[1]}.${krgPartDecimal[2]}`, desc };
+  }
+  const krgPart = partId.match(/^part_(\d+)_(.+)$/);
+  if (krgPart) {
+    const desc = krgPart[2].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return { label: `Part ${krgPart[1]}`, desc };
+  }
+
   return { label: partId };
 }
 

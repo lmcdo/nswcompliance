@@ -138,14 +138,20 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     // KRG DCP 2024: per-Part PDFs. Each provision may contain:
     // 1. "Ku-ring-gai Development Control Plan" document title line (stripped at DB level,
     //    but rule kept here as defence-in-depth for re-extractions)
-    // 2. "p X-Y" page reference lines (e.g. "p 3-13") — keep first occurrence (page ref),
-    //    strip any further duplicates
-    // 3. HTML table blocks: extracted tables are stored as markdown+HTML like:
-    //    "**Table 1** (Page 12)\n<table>...</table>"
-    //    Tables are mostly empty scaffolding or duplicate the prose — strip them entirely.
-    //    Planners use the PDF link for table data.
+    // 2. "p X-Y" page reference lines (e.g. "p 3-13") — page artifacts from pdfplumber
+    // 3. Bare page numbers (e.g. "12") — from PDF header extraction
+    // 4. Reversed OCR sidebar labels (e.g. GNISITREVDA=ADVERTISING, EGANGIS=SIGNAGE) —
+    //    rotated section labels printed in page margin, extracted as isolated uppercase lines
+    // 5. HTML table blocks: "**Table 1** (Page 12)\n<table>...</table>" — strip entirely,
+    //    mostly empty scaffolding. Planners use the PDF link for table data.
     skipLinePrefixes: [
       'Ku-ring-gai Development Control Plan',
+    ],
+    skipLinePatterns: [
+      /^\d{1,3}$/,           // bare page numbers (e.g. "12")
+      /^p\s+\d[\d-]+$/,      // page refs (e.g. "p 12-3", "p 3-13")
+      /^[A-Z]{5,}$/,         // reversed OCR sidebar tokens (5+ uppercase chars, e.g. GNISITREVDA)
+      /^&$/,                 // standalone ampersand (from "DESIGN & ADVERTISING" sidebar label)
     ],
     preProcessReplacements: [
       // Strip entire **Table N** (Page X) + <table>...</table> blocks

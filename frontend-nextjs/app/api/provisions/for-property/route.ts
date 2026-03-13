@@ -1232,5 +1232,19 @@ function formatPartName(partId: string): string {
     'Chapter F': 'Chapter F: Development Category',
   };
 
-  return patterns[partId] || partId;
+  if (patterns[partId]) return patterns[partId];
+
+  // KRG underscore slugs: part_4_1_secondary_dwellings → Part 4.1: Secondary Dwellings
+  const krgDecimal = partId.match(/^part_(\d+)_(\d+)_(.+)$/);
+  if (krgDecimal) {
+    const desc = krgDecimal[3].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return `Part ${krgDecimal[1]}.${krgDecimal[2]}: ${desc}`;
+  }
+  const krg = partId.match(/^part_(\d+)_(.+)$/);
+  if (krg) {
+    const desc = krg[2].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return `Part ${krg[1]}: ${desc}`;
+  }
+
+  return partId;
 }
