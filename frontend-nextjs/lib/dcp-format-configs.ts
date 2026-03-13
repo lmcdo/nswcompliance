@@ -134,6 +134,37 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     ],
   },
 
+  ku_ring_gai: {
+    // KRG DCP 2024: per-Part PDFs. Each provision may contain:
+    // 1. "Ku-ring-gai Development Control Plan" document title line (stripped at DB level,
+    //    but rule kept here as defence-in-depth for re-extractions)
+    // 2. "p X-Y" page reference lines (e.g. "p 3-13") — keep first occurrence (page ref),
+    //    strip any further duplicates
+    // 3. HTML table blocks: extracted tables are stored as markdown+HTML like:
+    //    "**Table 1** (Page 12)\n<table>...</table>"
+    //    Tables are mostly empty scaffolding or duplicate the prose — strip them entirely.
+    //    Planners use the PDF link for table data.
+    skipLinePrefixes: [
+      'Ku-ring-gai Development Control Plan',
+    ],
+    preProcessReplacements: [
+      // Strip entire **Table N** (Page X) + <table>...</table> blocks
+      // These are pdfplumber HTML table extractions, often empty or duplicative
+      { from: /\*\*Table \d+\*\*[^\n]*\n<table>[\s\S]*?<\/table>/g, to: '' },
+      // Strip any remaining bare <table>...</table> blocks
+      { from: /<table>[\s\S]*?<\/table>/g, to: '' },
+      // Collapsed doubled page refs like "pp 44--1166" → strip (artefact of doubled chars)
+      { from: /\bpp\s+\d[\d-]+\b/g, to: '' },
+    ],
+  },
+
+  city_of_sydney: {
+    // Sydney DCP 2012: per-section PDFs. Generally clean extraction.
+    skipLinePrefixes: [
+      'Sydney Development Control Plan 2012',
+    ],
+  },
+
   // Future councils added here during onboarding.
   // Run: python scripts/verify_dcp_formatting.py --council <name> --limit 50
   // Also manually inspect 10 raw provisions from DB (see LGA_EXTRACTION_RUNBOOK.md Step 6b).

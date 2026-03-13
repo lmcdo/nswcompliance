@@ -31,6 +31,6 @@
     "population": 124000,
     "area_km2": 84.6,
     "website_url": "https://www.krg.nsw.gov.au",
-    "notes": "Single council — not amalgamated. Multiple numbered topic-DCPs (Principal + DCPs 28, 31, 38, 40, 43, 46, 47, 48). Topic encoded in DCP name, not section headers — uses chapter_topics config pattern. Suburbs: Gordon, Turramurra, Pymble, Wahroonga, St Ives, Killara, Lindfield, Roseville, Warrawee, North Turramurra."
+    "notes": "Single council — not amalgamated. Ku-ring-gai DCP 2024 (consolidated, 25 parts in Sections A–C). Uses chapter_topics config pattern keyed on part number substrings. 485 provisions extracted from 22 active chapters (Part 1 Introduction deactivated — doubled-char OCR). Suburbs: Gordon, Turramurra, Pymble, Wahroonga, St Ives, Killara, Lindfield, Roseville, Warrawee, North Turramurra."
   }
 }
