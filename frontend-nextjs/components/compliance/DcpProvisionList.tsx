@@ -16,7 +16,7 @@ interface DcpProvisionListProps {
   hasMarkers: boolean;
   showTriageExcluded: boolean;
   onToggleTriageExcluded: () => void;
-  councilPdfUrl?: string;
+  chapterPdfUrls?: Record<string, string>;
   formerCouncil: string;
   zone?: string;
   heritage?: boolean;
@@ -48,7 +48,7 @@ interface DcpProvisionListProps {
 export function DcpProvisionList({
   displayProvisions, triageExcludedProvisions, filteredProvisions,
   hasMarkers, showTriageExcluded, onToggleTriageExcluded,
-  councilPdfUrl, formerCouncil, zone, heritage, hcaName, precinctId,
+  chapterPdfUrls, formerCouncil, zone, heritage, hcaName, precinctId,
   isDaMode, sessionToken, daResponses, excludableTopics, onResponseSaved, onViewPdf,
   debouncedSearch, provisionView, layerFilter, onClearLayer,
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
@@ -106,7 +106,7 @@ export function DcpProvisionList({
                 provisions={displayProvisions}
                 formerCouncil={formerCouncil}
                 councilKey={formerCouncil?.toLowerCase()}
-                councilPdfUrl={councilPdfUrl}
+                chapterPdfUrls={chapterPdfUrls}
                 showLayerBadges={true}
                 maxProvisions={showAllProvisions ? undefined : 20}
                 onViewPdf={onViewPdf}
@@ -183,7 +183,7 @@ export function DcpProvisionList({
                     provisions={triageExcludedProvisions}
                     formerCouncil={formerCouncil}
                     councilKey={formerCouncil?.toLowerCase()}
-                    councilPdfUrl={councilPdfUrl}
+                    chapterPdfUrls={chapterPdfUrls}
                     showLayerBadges={true}
                     maxProvisions={20}
                     onViewPdf={onViewPdf}
@@ -224,7 +224,7 @@ export function DcpProvisionList({
                     provisions={suppressedProvisions}
                     formerCouncil={formerCouncil}
                     councilKey={formerCouncil?.toLowerCase()}
-                    councilPdfUrl={councilPdfUrl}
+                    chapterPdfUrls={chapterPdfUrls}
                     showLayerBadges={true}
                     maxProvisions={undefined}
                     onViewPdf={onViewPdf}

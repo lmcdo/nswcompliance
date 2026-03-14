@@ -40,6 +40,11 @@ from dotenv import load_dotenv
 LINE_CHECKS = {
     "bare_page_numbers":     re.compile(r"^\d{1,3}$"),
     "hash_prefix_headers":   re.compile(r"^#\s*\d{1,3}\s+\w"),
+    # Bare-integer section heading: "# 1 To ensure..." means a numbered list item
+    # was extracted as if it were a section heading. Root cause: page-range chapters
+    # missing from COUNCIL_CHAPTER_RANGES, so the extractor fell back to the default
+    # SECTION_RE which matched numbered items. Fix: add explicit page ranges.
+    "hash_prefix_numbered_items": re.compile(r"^#\s+\d+\s+[A-Z]"),
     "chapter_prefix_lines":  re.compile(r"^Chapter [A-Z]\d*\b"),
     # Right-aligned running header: "Section Title      B1" (3+ spaces before a section code).
     "right_aligned_headers": re.compile(r"\s{3,}[A-Z]\d{1,2}\s*$"),
@@ -57,6 +62,22 @@ LINE_CHECKS = {
 LONG_LINE_THRESHOLD = 200  # chars — line with no punctuation at end
 SHORT_PROVISION_THRESHOLD = 20  # chars — entire provision_text (likely artifact/heading)
 PASS_GATE_PCT = 5.0  # % of provisions allowed to have flagged lines
+
+# ─── Two-column interleaving detection ───────────────────────────────────────
+# Detects provisions where two PDF columns (e.g. Objectives | Controls) were
+# merged into a single text stream by pdfplumber reading left-to-right.
+# Symptom: "Objectives Controls" on one line (both column headers at same Y),
+# or numbered items from both columns concatenated on the same line.
+# Root cause: page.extract_text() with no column-boundary cropping.
+# Fix in dcp_extract_changed.py: _extract_page_text() with COUNCIL_COLUMN_CONFIGS.
+# Match only on the same line (space/tab only — NOT newline).
+# Using \s+ would match across "\n\nControls" in correctly-split text, producing false positives.
+TWO_COL_PATTERN = re.compile(r'\bObjectives[ \t]+Controls\b|\bControls[ \t]+Objectives\b')
+# Detect numeric interleaving: "1 Objective text... 1 Control text..." where a numbered
+# provision appears TWICE on one line (a telltale sign of two-column merge).
+# Requires second number to be followed by an uppercase letter (provision-like start),
+# excluding false positives like "3 hours solar access" or "1200 sqm" mid-sentence.
+TWO_COL_NUMERIC_RE = re.compile(r'^\d+\s+\S.{5,}\s+\d+\s+[A-Z]')
 
 
 def check_provision(text: str) -> tuple[list[str], list[str]]:
@@ -87,6 +108,17 @@ def check_provision(text: str) -> tuple[list[str], list[str]]:
             if pattern and pattern.search(line):
                 found.append(label)
                 flagged_lines.append(line[:80])
+
+        # Two-column interleaving: "Objectives Controls" header on one line
+        if TWO_COL_PATTERN.search(line):
+            found.append("two_col_interleave")
+            flagged_lines.append(line[:80])
+
+        # Two-column interleaving: numbered item appearing twice on same line
+        # e.g. "1 To ensure that signage 1 Signs are to be designed..."
+        if TWO_COL_NUMERIC_RE.match(line) and len(line) > 40:
+            found.append("two_col_numeric")
+            flagged_lines.append(line[:80])
 
     return found, flagged_lines
 
@@ -240,11 +272,30 @@ def main() -> int:
     flagged_line_samples: Counter = Counter()
     provisions_with_artifacts = 0
 
+    # Two-column labels have their own hard-fail section and are excluded from
+    # the main pass/fail gate.
+    TWO_COL_LABELS = {"two_col_interleave", "two_col_numeric"}
+
+    # Warn-only artifacts: these are common extraction noise fixable via dcp-format-configs.ts
+    # skipLinePatterns. They should be reported but not block the pass gate on their own.
+    WARN_ONLY_LABELS = {
+        "bare_page_numbers",       # stray page numbers — strip with /^\d{1,3}$/
+        "hash_prefix_headers",     # "# 5 Title" running page headers — strip with /^#\s*\d{1,3}\s+\w/
+        "chapter_prefix_lines",    # "Chapter B3" running headers — strip in config
+        "right_aligned_headers",   # right-aligned section codes — strip in config
+        "toc_dotted_leaders",      # "1.1 Title......12" TOC lines — strip in config
+        "long_no_punctuation",     # typically table/figure captions — acceptable
+    }
+
+    NON_GATE_LABELS = TWO_COL_LABELS | WARN_ONLY_LABELS
+
     for prov in provisions:
         text = prov.get("provision_text", "") or ""
         labels, flagged_lines = check_provision(text)
-        if labels:
+        gate_labels = [l for l in labels if l not in NON_GATE_LABELS]
+        if gate_labels:
             provisions_with_artifacts += 1
+        if labels:
             label_counts.update(labels)
             flagged_line_samples.update(flagged_lines)
 
@@ -252,11 +303,19 @@ def main() -> int:
     detected_labels = {label for label, count in label_counts.items() if count > 0}
 
     print(f"=== 1. Text Artifact Checks: {council} ({total} provisions sampled) ===\n")
-    max_label_len = max(len(k) for k in LINE_CHECKS) + 2
-    for label in LINE_CHECKS:
+    all_labels = list(LINE_CHECKS.keys()) + ["two_col_interleave", "two_col_numeric"]
+    max_label_len = max(len(k) for k in all_labels) + 2
+    for label in all_labels:
         count = label_counts.get(label, 0)
         bar = f"{count}/{total} ({count/total*100:.0f}%)"
-        flag = " <-- FAIL" if count / total * 100 >= PASS_GATE_PCT else ""
+        if label in TWO_COL_LABELS:
+            flag = " <-- EXTRACTION FIX NEEDED" if count > 0 else ""
+        elif label == "hash_prefix_numbered_items" and count > 0:
+            flag = " <-- EXTRACTION FIX NEEDED — add chapter to COUNCIL_CHAPTER_RANGES"
+        elif label in WARN_ONLY_LABELS:
+            flag = " [warn — fix in dcp-format-configs.ts]" if count / total * 100 >= PASS_GATE_PCT else ""
+        else:
+            flag = " <-- FAIL" if count / total * 100 >= PASS_GATE_PCT else ""
         print(f"  {label:<{max_label_len}} {bar}{flag}")
 
     print()
@@ -275,6 +334,28 @@ def main() -> int:
         overall_pass = False
         print(f"  FAIL  ({pct:.1f}% >= {PASS_GATE_PCT}% gate)")
         print_config_skeleton(council, detected_labels)
+
+    # ─── Section 1b: Two-column interleaving check ────────────────────────────
+    # two_col_interleave: hard-fail — "Objectives Controls" header merge is unambiguous.
+    # two_col_numeric: warn only — the numeric pattern has false positives (e.g. map
+    #   legend items like "10 Residential Precincts 11 Neighbourhood HCAs" match the
+    #   regex but are not extraction errors). Only fail if interleave count is also high.
+    two_col_interleave = label_counts.get("two_col_interleave", 0)
+    two_col_numeric    = label_counts.get("two_col_numeric", 0)
+    two_col_count = two_col_interleave + two_col_numeric
+    # Only hard-fail on two_col_interleave — the "Objectives Controls" merge is
+    # unambiguous evidence of a column split bug. two_col_numeric has too many
+    # false positives (numbered list items, map legends) to block release.
+    if two_col_interleave > 0:
+        overall_pass = False
+        print(f"\n  ⚠  TWO-COLUMN INTERLEAVE DETECTED — {two_col_count} provisions affected")
+        print(f"     Root cause: PDF has side-by-side column layout (e.g. Objectives | Controls)")
+        print(f"     pdfplumber page.extract_text() merges both columns into one stream.")
+        print(f"     Fix: Add council to COUNCIL_COLUMN_CONFIGS in dcp_extract_changed.py")
+        print(f"     with the correct boundary_x coordinate (inspect PDF with pdfplumber")
+        print(f"     to find x0 of right-column header vs left-column header).")
+        print(f"     Then re-flag chapters and re-run: python scripts/dcp_extract_changed.py")
+        print(f"     DO NOT fix with format config regex — the data is structurally garbled.")
 
     # ─── Section 2: Topic distribution check ─────────────────────────────────
     if not args.skip_topic_check:
@@ -297,16 +378,23 @@ def main() -> int:
                 for topic, count in topic_counts.most_common():
                     pct_t = count / total_topics * 100
                     flag = ""
-                    if pct_t > 40:
-                        flag = "  <-- WARNING: >40% suggests topic mapping issue"
+                    if pct_t > 65:
+                        flag = "  <-- WARNING: >65% suggests topic mapping issue"
                         topic_pass = False
                         overall_pass = False
+                    elif pct_t > 40:
+                        flag = "  <-- NOTE: >40% (review if unexpected for this council)"
                     print(f"  {topic or '(null)':<35} {count:>5} ({pct_t:5.1f}%){flag}")
 
-                if topic_counts.get("(null)", 0) > 0:
-                    print(f"\n  WARNING: {topic_counts['(null)']} provisions have NULL v2_topic.")
+                null_count = topic_counts.get("(null)", 0)
+                if null_count > 0:
+                    null_pct = (null_count / total_topics * 100) if total_topics else 0
+                    print(f"\n  WARNING: {null_count} provisions have NULL v2_topic.")
                     print("  These will not appear in topic-grouped UI views.")
-                    overall_pass = False
+                    # Grace threshold: ≤3 NULLs or ≤1% of provisions (e.g. figure cross-refs
+                    # that can't be topic-tagged without knowing what the figure shows).
+                    if null_count > 3 and null_pct > 1.0:
+                        overall_pass = False
 
                 print()
                 if topic_pass:

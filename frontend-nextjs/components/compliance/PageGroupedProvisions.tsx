@@ -238,6 +238,7 @@ export interface Provision {
   relevance_level?: 'primary' | 'general' | 'secondary';
   relevance_reason?: string;
   v2_applicable_dev_types?: string[];
+  source_chapter_key?: string;
 }
 
 interface PageGroup {
@@ -273,7 +274,7 @@ interface PageGroupedProvisionsProps {
   maxProvisions?: number;       // Limit display count (e.g., 20)
   formerCouncil?: string;       // For council-specific layer labels
   councilKey?: string;          // formerCouncil.toLowerCase() — for provision text artifact cleanup
-  councilPdfUrl?: string;       // R2 public PDF URL for councils without per-page screenshots
+  chapterPdfUrls?: Record<string, string>;  // R2 public PDF URLs keyed by chapter_key
   highlightQuery?: string;      // Search query to highlight in provision text
   // Layer tooltip context
   zone?: string;                // Property zone (for use_specific tooltip)
@@ -363,7 +364,7 @@ const COUNCIL_LAYER_LABELS: Record<string, Record<string, string>> = {
 /**
  * Group provisions by PDF page and calculate display page numbers with offsets
  */
-function groupProvisionsByPage(provisions: Provision[], councilPdfUrl?: string): PageGroup[] {
+function groupProvisionsByPage(provisions: Provision[], chapterPdfUrls?: Record<string, string>): PageGroup[] {
   const pageMap = new Map<string, PageGroup>();
   const ungrouped: Provision[] = [];
 
@@ -398,14 +399,15 @@ function groupProvisionsByPage(provisions: Provision[], councilPdfUrl?: string):
         }
       }
       pageMap.get(key)!.provisions.push(prov);
-    } else if (councilPdfUrl && prov.pdf_page) {
-      // No page image but we have a direct PDF URL — group by raw pdf_page
-      const key = `direct-${prov.pdf_page}`;
+    } else if (prov.pdf_page && chapterPdfUrls && prov.source_chapter_key && chapterPdfUrls[prov.source_chapter_key]) {
+      // No page image but we have a chapter-specific PDF URL — group by chapter+page
+      const chapterUrl = chapterPdfUrls[prov.source_chapter_key];
+      const key = `direct-${prov.source_chapter_key}-${prov.pdf_page}`;
       if (!pageMap.has(key)) {
         pageMap.set(key, {
           pageNumber: prov.pdf_page,
           displayPageNumber: null,  // Direct-PDF: no reliable printed page number, omit label
-          pageUrl: `${councilPdfUrl}#page=${prov.pdf_page}`,
+          pageUrl: `${chapterUrl}#page=${prov.pdf_page}`,
           provisions: [],
           dcpPart: prov.v2_dcp_part || null,
           tocSectionNumber: prov.toc_section_number || null,
@@ -496,7 +498,7 @@ export function PageGroupedProvisions({
   maxProvisions,
   formerCouncil,
   councilKey,
-  councilPdfUrl: councilPdfUrlProp,
+  chapterPdfUrls,
   highlightQuery,
   crossReferencesMap,
   showCrossReferences = false,
@@ -537,8 +539,7 @@ export function PageGroupedProvisions({
   }
 
   // Group provisions by page
-  const councilPdfUrl = councilPdfUrlProp || undefined;
-  const pageGroups = useMemo(() => groupProvisionsByPage(provisions, councilPdfUrl), [provisions, councilPdfUrl]);
+  const pageGroups = useMemo(() => groupProvisionsByPage(provisions, chapterPdfUrls), [provisions, chapterPdfUrls]);
 
   // Track expanded page groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
@@ -596,8 +597,8 @@ export function PageGroupedProvisions({
 
   // Re-group after limiting
   const displayGroups = useMemo(
-    () => groupProvisionsByPage(displayProvisions, councilPdfUrl),
-    [displayProvisions, councilPdfUrl]
+    () => groupProvisionsByPage(displayProvisions, chapterPdfUrls),
+    [displayProvisions, chapterPdfUrls]
   );
 
   const getLayerColor = (layer: string | null | undefined): string => {

@@ -424,18 +424,20 @@ export async function GET(request: NextRequest) {
         ? await getCompleteTocStructure(client, filters.former_council, filters.dev_type)
         : undefined;
 
-      // Look up public PDF URL for this council (stored in dcp_chapter_registry).
-      // Used by the frontend viewer to deep-link into the whole-DCP PDF via #page=N.
-      let councilPdfUrl: string | null = null;
+      // Look up public PDF URLs for this council's chapters (stored in dcp_chapter_registry).
+      // Returns a map of chapter_key → r2_public_pdf_url so the frontend can deep-link
+      // each provision to its own chapter PDF via #page=N.
+      const chapterPdfUrls: Record<string, string> = {};
       if (filters.former_council) {
         const pdfUrlResult = await client.query(
-          `SELECT r2_public_pdf_url
+          `SELECT chapter_key, r2_public_pdf_url
            FROM dcp_chapter_registry
-           WHERE council = $1 AND r2_public_pdf_url IS NOT NULL
-           LIMIT 1`,
+           WHERE council = $1 AND r2_public_pdf_url IS NOT NULL`,
           [filters.former_council.toLowerCase()]
         );
-        councilPdfUrl = pdfUrlResult.rows[0]?.r2_public_pdf_url ?? null;
+        for (const row of pdfUrlResult.rows) {
+          chapterPdfUrls[row.chapter_key] = row.r2_public_pdf_url;
+        }
       }
 
       // Calculate relevance summary if dev_type provided
@@ -475,7 +477,7 @@ export async function GET(request: NextRequest) {
             : undefined,
           response_time_ms: responseTime,
           api_version: 'v3_relevance_scoring',
-          council_pdf_url: councilPdfUrl,
+          chapter_pdf_urls: chapterPdfUrls,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
@@ -586,6 +588,7 @@ async function queryHeritageByHca(
       rp.v2_heritage_element,
       rp.v2_heritage_hca,
       rp.v2_applicable_dev_types,
+      rp.source_chapter_key,
       hca.h_name AS hca_display_name
       ${relevanceSelect}
     FROM regulatory_provisions rp
@@ -824,7 +827,8 @@ async function queryLayer(
       regulatory_provisions.v2_heritage_type,
       regulatory_provisions.v2_heritage_element,
       regulatory_provisions.v2_heritage_hca,
-      regulatory_provisions.v2_applicable_dev_types
+      regulatory_provisions.v2_applicable_dev_types,
+      regulatory_provisions.source_chapter_key
       ${relevanceSelect}
       ${versionSelect}
     ${fromClause}

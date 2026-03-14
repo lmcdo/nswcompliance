@@ -352,7 +352,7 @@ export function ProvisionsByTocStructure({
       };
     };
     meta?: {
-      council_pdf_url?: string | null;
+      chapter_pdf_urls?: Record<string, string> | null;
     };
   }>(apiUrl, fetcher, {
     dedupingInterval: 2000,   // Reduced from 60s to 2s - allow fresh data
@@ -1186,7 +1186,6 @@ export function ProvisionsByTocStructure({
           }),
         } : {}),
         ...(ancillaryWorksLocal.length > 0 ? { ancillary_works: ancillaryWorksLocal } : {}),
-        ...(data?.meta?.council_pdf_url ? { council_pdf_url: data.meta.council_pdf_url } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1495,7 +1494,7 @@ export function ProvisionsByTocStructure({
           hasMarkers={hasMarkers}
           showTriageExcluded={showTriageExcluded}
           onToggleTriageExcluded={() => setShowTriageExcluded(v => !v)}
-          councilPdfUrl={data?.meta?.council_pdf_url ?? undefined}
+          chapterPdfUrls={data?.meta?.chapter_pdf_urls ?? undefined}
           formerCouncil={formerCouncil}
           zone={zone}
           heritage={heritage}

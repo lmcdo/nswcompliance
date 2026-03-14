@@ -303,55 +303,56 @@ class LayerTopicTagger:
     def _tag_ashfield(self, document_id: str, provision_text: str) -> Tuple[str, str, Optional[str]]:
         """Tag Ashfield provision."""
         doc = document_id or ''
+        doc_lower = doc.lower()
 
-        # Chapter E1 - Heritage (condition) - "Chapter E1" or just contains E1 and Heritage
-        if 'Chapter E1' in doc or 'Chapter_E1' in doc or ('E1' in doc and 'Heritage' in doc):
+        # Chapter E1 - Heritage (condition)
+        if 'chapter e1' in doc_lower or 'chapter_e1' in doc_lower or ('e1' in doc_lower and 'heritage' in doc_lower):
             return ('condition', 'Chapter E1', 'heritage')
 
         # Chapter E2 - Haberfield Neighbourhood (precinct)
-        if 'Chapter E2' in doc or 'Chapter_E2' in doc or 'E2' in doc or 'Haberfield' in doc:
-            topic = self._extract_topic_from_text(provision_text)
+        if 'chapter e2' in doc_lower or 'chapter_e2' in doc_lower or 'haberfield' in doc_lower:
+            topic = self._extract_topic_from_text(provision_text) or 'general'
             return ('precinct', 'Chapter E2', topic)
 
         # Chapter D - Precincts (location-filtered)
-        if 'Chapter D' in doc or 'Chapter_D' in doc or 'Precinct' in doc:
-            topic = self._extract_topic_from_text(provision_text)
+        if 'chapter d' in doc_lower or 'chapter_d' in doc_lower or 'precinct' in doc_lower:
+            topic = self._extract_topic_from_text(provision_text) or 'general'
             return ('precinct', 'Chapter D', topic)
 
         # Chapter F - Development Category (use_specific for Parts 1-7, generic for 8-10)
-        if 'Chapter F' in doc or 'Chapter_F' in doc or 'Development Category' in doc:
-            # Try to extract Part number from document_id or provision_text
+        if 'chapter f' in doc_lower or 'chapter_f' in doc_lower or 'development category' in doc_lower:
             import re
             combined = doc + ' ' + (provision_text[:500] if provision_text else '')
             part_match = re.search(r'Part[_\s]?(\d+)', combined, re.IGNORECASE)
 
             if part_match:
                 part_num = int(part_match.group(1))
-                topic = self._extract_topic_from_text(provision_text)
-
-                # Parts 1-7 are zone-specific development types
+                topic = self._extract_topic_from_text(provision_text) or 'general'
                 if part_num <= 7:
                     return ('use_specific', f'Chapter F Part {part_num}', topic)
                 else:
-                    # Parts 8-10 are general (child care, drive-in, sex industry)
                     return ('generic', f'Chapter F Part {part_num}', topic)
 
-            # No part number found - default to generic
-            topic = self._extract_topic_from_text(provision_text)
+            topic = self._extract_topic_from_text(provision_text) or 'general'
             return ('generic', 'Chapter F', topic)
 
+        # Chapter B - Public Domain (generic)
+        if 'chapter b' in doc_lower or 'chapter_b' in doc_lower or 'public_domain' in doc_lower:
+            topic = self._extract_topic_from_text(provision_text) or 'general'
+            return ('generic', 'Chapter B', topic)
+
         # Chapter A - Miscellaneous (generic)
-        if 'Chapter A' in doc or 'Chapter_A' in doc:
-            topic = self._extract_topic_from_text(provision_text)
+        if 'chapter a' in doc_lower or 'chapter_a' in doc_lower:
+            topic = self._extract_topic_from_text(provision_text) or 'general'
             return ('generic', 'Chapter A', topic)
 
         # Chapter C - Sustainability (generic)
-        if 'Chapter C' in doc or 'Chapter_C' in doc or 'Sustainability' in doc:
-            topic = self._extract_topic_from_text(provision_text)
+        if 'chapter c' in doc_lower or 'chapter_c' in doc_lower or 'sustainability' in doc_lower:
+            topic = self._extract_topic_from_text(provision_text) or 'general'
             return ('generic', 'Chapter C', topic)
 
         # Default
-        topic = self._extract_topic_from_text(provision_text)
+        topic = self._extract_topic_from_text(provision_text) or 'general'
         return ('generic', 'unknown', topic)
 
     def _extract_section_code(self, provision_text: str) -> Optional[str]:
@@ -395,7 +396,7 @@ class LayerTopicTagger:
                     return (layer, chapter_key, topic)
             # No chapter key matched — fall through to keyword fallback
             topic = self._extract_topic_from_text(provision_text)
-            return ('generic', 'unknown', topic)
+            return ('generic', 'unknown', topic or 'general')
 
         # ── parts path (topic encoded in section heading prefix) ─────────────────
         parts = config.get("parts", {})
@@ -430,11 +431,11 @@ class LayerTopicTagger:
                     topic = part_b_topics.get(section_code)
                 if not topic:
                     topic = self._extract_topic_from_text(provision_text)
-                return (layer, section_code, topic)
+                return (layer, section_code, topic or 'general')
 
         # No section code or no match — keyword-only fallback
         topic = self._extract_topic_from_text(provision_text)
-        return ('generic', 'unknown', topic)
+        return ('generic', 'unknown', topic or 'general')
 
     def _tag_unknown(self, document_id: str, provision_text: str) -> Tuple[str, str, Optional[str]]:
         """Tag unknown council provision."""
