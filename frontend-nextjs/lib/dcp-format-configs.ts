@@ -38,6 +38,8 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     skipLinePatterns: [
       /^\d{1,3}$/,              // bare page numbers (1–3 digits, whole line)
       /^#\s*\d{1,3}\s+\w/,     // "# 5 Title..." page header in markdown heading form
+      /^\d+\.\d+(\.\d+)*$/,    // bare section codes e.g. "2.11", "4.1.3" (running header split)
+      /^PART \d+:/,             // chapter title running header e.g. "PART 4: RESIDENTIAL DEVELOPMENT"
     ],
     skipLinePrefixes: [
       'Marrickville Development Control Plan',
@@ -47,6 +49,10 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     // instead of "600 m²". DB already patched; these rules catch any re-extractions.
     // Rules applied sequentially; order is significant.
     preProcessReplacements: [
+      // -1. Strip Word cross-reference artifacts: "Error! Reference source not found."
+      //     Caused by broken hyperlinks in the Word source file used to produce the PDF.
+      //     These appear verbatim in the extracted text (sometimes doubled on one line).
+      { from: /Error!\s+Reference source not found\.?\s*/g, to: '' },
       // 0. Collapse PDF visual line-wrap: single \n not part of a blank-line separator.
       //    Marrickville DCP was extracted line-by-line so every visual line ends with \n.
       //    Join lines where the previous ends with a word char/comma and next starts lowercase.
@@ -103,9 +109,39 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     ],
   },
 
+  woollahra: {
+    // Woollahra DCP 2015: per-chapter PDFs. Every page has running headers:
+    //   "B3 | General Development Controls"    (chapter breadcrumb, left)
+    //   "Part B | General Residential"          (part breadcrumb, right)
+    //   "Woollahra Development Control Plan 2015" (document title footer)
+    //   "B3 pg.14"                              (page reference)
+    // Breadcrumb section refs like "B3.2 Building envelope ▶ 3.2.3 Side setbacks"
+    // also appear as standalone lines at the top of each section table.
+    skipLinePrefixes: [
+      'Woollahra Development Control Plan',
+      'Chapter B',
+      'Chapter C',
+      'Chapter D',
+      'Chapter E',
+      'Chapter A',
+    ],
+    skipLinePatterns: [
+      /^\d{1,3}$/,               // bare page numbers
+      /^[A-Z]\d{1,2}\s+pg\.\d/, // page refs: "B3 pg.14", "E1 pg.5"
+      /^[A-Z]\d{1,2}\s*\|/,     // chapter breadcrumbs: "B3 | General Development Controls"
+      /^Part\s+[A-Z]\s*\|/,     // part breadcrumbs: "Part B | General Residential"
+      /^[A-Z]\d+\.\d[\d.]*\s+[A-Za-z].+[▶►].+/, // section breadcrumb: "B3.2 Building envelope ▶ 3.2.3 ..."
+    ],
+  },
+
   leichhardt: {
-    // Clean text — no extraction artifacts detected.
-    // Entry present to document that the council was verified.
+    // Leichhardt DCP: bare page numbers appear in 57% of provisions,
+    // TOC dotted leaders in 13%. Both are warn-only (don't block pass gate)
+    // but need stripping so they don't appear in the frontend.
+    skipLinePatterns: [
+      /^\d{1,3}$/,   // bare page numbers (e.g. "153", "154")
+      /\.{5,}/,      // TOC dotted leaders (e.g. "Objectives .....42")
+    ],
   },
 
   waverley: {
@@ -150,17 +186,17 @@ const DCP_FORMAT_CONFIGS: Record<string, DcpFormatConfig> = {
     skipLinePatterns: [
       /^\d{1,3}$/,           // bare page numbers (e.g. "12")
       /^p\s+\d[\d-]+$/,      // page refs (e.g. "p 12-3", "p 3-13")
-      /^[A-Z][A-Z\s]{4,}$/,  // all-caps sidebar labels — both one-word (ADVERTISING) and
-                             //   multi-word (SIGNAGE AND, SIGNAGE AND ADVERTISING)
+      /^[A-Z][A-Z\s]*$/,     // all-caps sidebar labels — any length, e.g. ADVERTISING, RAEN, YSUB, DNA
       /^&$/,                 // standalone ampersand (from "DESIGN & ADVERTISING" sidebar label)
+      /^--$/,                // empty figure cell separators from diagram tables
       /^#+\s/,               // markdown heading lines (e.g. "# 12.1 SIGNAGE DESIGN") —
                              //   these are pdfplumber section markers that duplicate the bold
                              //   heading appearing a few lines later in the same provision
     ],
     preProcessReplacements: [
-      // Strip entire **Table N** (Page X) + <table>...</table> blocks
-      // These are pdfplumber HTML table extractions, often empty or duplicative
+      // Strip **Table N** (Page X) lines — with or without following <table> block
       { from: /\*\*Table \d+\*\*[^\n]*\n<table>[\s\S]*?<\/table>/g, to: '' },
+      { from: /\*\*Table \d+\*\*[^\n]*/g, to: '' },
       // Strip any remaining bare <table>...</table> blocks
       { from: /<table>[\s\S]*?<\/table>/g, to: '' },
       // Collapsed doubled page refs like "pp 44--1166" → strip (artefact of doubled chars)
