@@ -13,6 +13,8 @@ Usage:
     python3 scripts/dcp_extract_changed.py               # extract all flagged chapters
     python3 scripts/dcp_extract_changed.py --council marrickville
     python3 scripts/dcp_extract_changed.py --dry-run     # extract but no DB writes
+    python3 scripts/dcp_extract_changed.py --review      # extract to review file, no DB writes
+    python3 scripts/dcp_extract_changed.py --council ku_ring_gai --review
 
 Exit codes:
     0 = nothing to extract (no needs_extraction=TRUE rows)
@@ -177,6 +179,215 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("F-Part7",  "Sex Industry",                         73,  78),
         ("F-Part8",  "Car Showrooms",                        79,  85),
     ],
+    # ── Ku-ring-gai DCP 2024: per-chapter PDFs ───────────────────────────────
+    # These chapters use alphanumeric section codes (4A.2, 5C.1, 19D.5 etc.)
+    # which are NOT matched by SECTION_RE. Page ranges defined from PDF inspection.
+    # Cover/TOC is page 1. Intro pages (1-2 or 1-4) skipped via "intro" section.
+    ("ku_ring_gai", "section-a-part-3-subdivision"): [
+        ("intro",  "Introduction",                          1,  3),
+        ("3a_1",   "Lot Shape, Orientation and Design",     4,  4),
+        ("3a_2",   "Minimum Lot Depth for Bush Fire Prone Land", 5,  8),
+        ("3a_3",   "Building Footprint",                    9,  9),
+        ("3a_4",   "Trees and Vegetation",                 10, 10),
+        ("3a_5",   "Access",                               11, 13),
+        ("3a_6",   "Infrastructure",                       14, 16),
+        ("3b",     "Land Consolidation",                   17, 21),
+        ("3c",     "Strata and Community Title Subdivision", 22, 22),
+        ("3r",     "References",                           23, 24),
+    ],
+    ("ku_ring_gai", "section-a-part-4-dwelling-houses"): [
+        ("intro",  "Introduction",                          1,  2),
+        ("4a",     "Site Design",                           3,  3),
+        ("4a_1",   "Local Character and Streetscape",       4, 10),
+        ("4a_2",   "Building Setbacks",                    11, 11),
+        ("4a_3",   "Built-Upon Area",                      12, 13),
+        ("4a_4",   "Landscaping",                          14, 15),
+        ("4b_1",   "Vehicle Access",                       16, 16),
+        ("4b_2",   "Car Parking Provision",                17, 17),
+        ("4b_3",   "Carports and Garages",                 18, 21),
+        ("4c_1",   "Building Envelopes",                   22, 23),
+        ("4c_2",   "Building Facades",                     24, 25),
+        ("4c_3",   "First Floor Design and Roof Forms",    26, 27),
+        ("4c_4",   "Private Open Space",                   28, 28),
+        ("4c_5",   "Solar Access",                         29, 29),
+        ("4c_6",   "Natural Ventilation",                  30, 30),
+        ("4c_7",   "Ancillary Facilities",                 31, 36),
+        ("4c_9",   "Waste Management",                     37, 37),
+        ("4c_10",  "Materials and Finishes",               38, 38),
+    ],
+    ("ku_ring_gai", "section-a-part-4-1-secondary-dwellings"): [
+        ("intro",    "Introduction",                        1,  3),
+        ("4_1a_1",   "General",                             4,  4),
+        ("4_1a_2",   "Site Layout",                         5,  6),
+        ("4_1a_3",   "Building Setbacks and Separation",    7,  9),
+        ("4_1b_1",   "Access",                             11, 13),
+        ("4_1b_2",   "Car Parking Provision",              14, 15),
+        ("4_1c_1",   "Solar Access",                       16, 16),
+        ("4_1c_2",   "Private Open Space",                 17, 17),
+        ("4_1c_3",   "Building Envelopes",                 18, 18),
+        ("4_1c_4",   "Building and Room Sizes",            19, 19),
+        ("4_1c_5",   "Building Appearance",                20, 20),
+        ("4_1c_6",   "Building Services",                  21, 21),
+        ("4_1c_7",   "Visual and Acoustic Privacy",        22, 24),
+    ],
+    ("ku_ring_gai", "section-a-part-5-dual-occupancy"): [
+        ("intro",  "Introduction",                          1,  3),
+        ("5a_1",   "Local Character and Streetscape",       4,  6),
+        ("5a_2",   "Site Layout",                           7,  7),
+        ("5a_3",   "Building Setbacks",                     8, 17),
+        ("5a_4",   "Built-Upon Area",                      18, 19),
+        ("5a_5",   "Landscaping",                          20, 23),
+        ("5b_1",   "Vehicle Access",                       24, 26),
+        ("5b_2",   "Car Parking Provision",                27, 27),
+        ("5b_3",   "Carports and Garages",                 28, 31),
+        ("5c_1",   "Building Envelopes",                   32, 33),
+        ("5c_2",   "Building Facades",                     34, 36),
+        ("5c_3",   "Dwelling Design and Layout",           37, 38),
+        ("5c_4",   "Private Open Space",                   39, 39),
+        ("5c_5",   "Solar Access",                         40, 40),
+        ("5c_6",   "Natural Ventilation",                  41, 41),
+        ("5c_7",   "Ancillary Facilities",                 42, 45),
+        ("5c_8",   "Fencing",                              46, 47),
+        ("5c_9",   "Waste Management",                     48, 48),
+        ("5c_10",  "Materials and Finishes",               49, 50),
+    ],
+    ("ku_ring_gai", "section-a-part-7-residential-flat-buildings"): [
+        ("intro",  "Introduction",                          1,  4),
+        ("7a",     "Site Design",                           5,  5),
+        ("7a_1",   "Local Character and Streetscape",       6,  7),
+        ("7a_2",   "Site Layout",                           8,  9),
+        ("7a_3",   "Building Setbacks",                    10, 13),
+        ("7a_4",   "Building Separation",                  14, 14),
+        ("7a_5",   "Site Coverage",                        15, 15),
+        ("7a_6",   "Deep Soil Landscaping",                16, 19),
+        ("7b_1",   "Car Parking Provision",                20, 21),
+        ("7b_2",   "Bicycle Parking Provision",            22, 23),
+        ("7c_1",   "SEPP Housing 2021 and Apartment Design Guide", 24, 24),
+        ("7c_2",   "Communal Open Space",                  25, 26),
+        ("7c_3",   "Ground Floor Apartments",              27, 28),
+        ("7c_4",   "Apartment Mix and Accessibility",      29, 29),
+        ("7c_5",   "Building Entries",                     30, 31),
+        ("7c_6",   "Building Form and Facades",            32, 35),
+        ("7c_7",   "Building Storeys",                     36, 36),
+        ("7c_8",   "Top Storey Design and Roof Forms",     37, 37),
+        ("7c_9",   "Laundry and Air Clothes Drying Facilities", 38, 38),
+        ("7c_10",  "Fencing",                              39, 39),
+        ("7c_11",  "Acoustic Privacy",                     40, 40),
+        ("7c_12",  "Services",                             41, 41),
+    ],
+    ("ku_ring_gai", "section-a-part-8-mixed-use"): [
+        ("intro",  "Introduction",                          1,  4),
+        ("8a",     "Site Design",                           5,  5),
+        ("8a_1",   "Local Character and Streetscape",       6,  7),
+        ("8a_2",   "Site Layout",                           8,  9),
+        ("8a_3",   "Building Setbacks",                    10, 10),
+        ("8a_4",   "Building Separation",                  11, 12),
+        ("8a_5",   "Wind Impact",                          13, 13),
+        ("8a_6",   "Site Coverage",                        14, 14),
+        ("8a_7",   "Deep Soil Landscaping",                15, 17),
+        ("8b_1",   "Vehicle and Service Access and Loading Facilities", 18, 20),
+        ("8b_2",   "Car Parking Provision",                21, 23),
+        ("8b_3",   "Bicycle Parking and Support Facilities", 24, 25),
+        ("8c_1",   "Solar Access and Daylight",            26, 27),
+        ("8c_2",   "Natural Ventilation",                  28, 28),
+        ("8c_3",   "Room Sizes",                           29, 30),
+        ("8c_4",   "Apartment Mix and Accessibility",      31, 32),
+        ("8c_5",   "Building Entries",                     33, 34),
+        ("8c_6",   "Internal Common Circulation Areas",    35, 35),
+        ("8c_7",   "Roof Forms and Podiums",               36, 36),
+        ("8c_8",   "Communal Open Space",                  37, 38),
+        ("8c_9",   "Building Facades and Articulation",    39, 43),
+        ("8c_10",  "Ground Floor Commercial Uses",         44, 45),
+        ("8c_11",  "Awnings",                              46, 46),
+        ("8c_12",  "Colonnades",                           47, 47),
+        ("8c_13",  "Internal Ceiling Heights",             48, 48),
+        ("8c_14",  "Visual Privacy",                       49, 49),
+        ("8c_15",  "Acoustic Privacy",                     50, 52),
+        ("8c_16",  "Late Night Trading",                   53, 53),
+        ("8c_17",  "External Air Clothes Drying Facilities", 54, 54),
+        ("8c_18",  "Services",                             55, 55),
+    ],
+    ("ku_ring_gai", "section-a-part-9-non-residential"): [
+        ("intro",  "Introduction",                          1,  2),
+        ("9a",     "Site Design",                           3,  3),
+        ("9a_1",   "Building Setbacks",                     4,  4),
+        ("9a_2",   "Building Separation",                   5,  5),
+        ("9a_3",   "Deep Soil Landscaping",                 6,  7),
+        ("9b_1",   "Service Access and Loading Facilities",  8,  9),
+        ("9b_2",   "Car Parking Provision",                10, 13),
+        ("9b_3",   "Bicycle Parking Provision",            14, 15),
+        ("9c_1",   "Solar Access",                         16, 16),
+        ("9c_2",   "Natural Ventilation",                  17, 17),
+        ("9c_3",   "Floor Depth",                          18, 18),
+        ("9c_4",   "Building Entries",                     19, 20),
+        ("9c_5",   "Internal Common Circulation",          21, 21),
+        ("9c_6",   "Roof Forms, Terraces and Podiums",     22, 22),
+        ("9c_7",   "Communal Open Space",                  23, 24),
+        ("9c_8",   "Building Forms and Facades",           25, 25),
+        ("9c_9",   "Corner and Landmark Building Articulation", 26, 26),
+        ("9c_10",  "Ground Floor Frontage",                27, 28),
+        ("9c_11",  "Awnings and Colonnades",               29, 29),
+        ("9c_12",  "Internal Ceiling Heights",             30, 30),
+        ("9c_13",  "Visual Privacy",                       31, 31),
+        ("9c_14",  "Acoustic Privacy",                     32, 32),
+        ("9c_15",  "Fencing",                              33, 33),
+        ("9c_16",  "Services",                             34, 35),
+    ],
+    ("ku_ring_gai", "section-b-part-19-heritage"): [
+        ("intro",   "Introduction",                         1,  4),
+        ("19a",     "Subdivision and Site Consolidation",   5,  6),
+        ("19a_2",   "Subdivision and Site Consolidation of a Heritage Item", 7, 8),
+        ("19b",     "Demolition",                           9, 10),
+        ("19b_2",   "Demolition Related to a Heritage Item", 11, 12),
+        ("19c",     "Development within HCAs — Alterations, Additions and New Buildings", 13, 14),
+        ("19c_1",   "Local Character and Streetscape",     15, 18),
+        ("19c_2",   "Setbacks and Building Separation",    19, 19),
+        ("19c_3",   "Gardens and Landscaping",             20, 20),
+        ("19c_4",   "Access and Parking",                  21, 27),
+        ("19c_6",   "Roof Forms and Structures Attached to Roofs", 28, 29),
+        ("19c_7",   "Outbuildings and Garden Structures",  30, 30),
+        ("19c_8",   "Fencing",                             31, 32),
+        ("19c_9",   "Secondary Dwellings within HCAs",     33, 34),
+        ("19d",     "Heritage Items",                      35, 36),
+        ("19d_1",   "Adaptive Reuse",                      37, 37),
+        ("19d_2",   "Setbacks and Building Separation",    38, 38),
+        ("19d_3",   "Gardens and Landscaping",             39, 39),
+        ("19d_4",   "Access and Parking",                  40, 41),
+        ("19d_5",   "Building Design",                     42, 45),
+        ("19d_6",   "Outbuildings and Garden Structures",  46, 46),
+        ("19d_7",   "Roof Forms and Structures",           47, 47),
+        ("19d_8",   "Fencing",                             48, 48),
+        ("19e",     "Secondary Dwellings within HCAs and Heritage Items", 49, 50),
+        ("19f",     "Development in the Vicinity of Heritage Items", 51, 59),
+    ],
+    ("ku_ring_gai", "section-c-part-24-water"): [
+        ("intro",   "Introduction",                         1,  2),
+        ("24a",     "Site Design for Water Management",     3,  3),
+        ("24a_1",   "Development Type for Water Management", 4,  4),
+        ("24a_2",   "Location of Development for Water Management", 5, 6),
+        ("24a_3",   "Locating the Development on Site",     7, 11),
+        ("24b_2",   "Stormwater Disposal from Location A and B Properties", 12, 17),
+        ("24b_5",   "Stormwater Disposal from Location C and D Properties", 18, 29),
+        ("24c_1",   "On-Site Stormwater Management — General", 30, 30),
+        ("24c_2",   "Effective Stormwater Management Systems", 31, 32),
+        ("24c_3",   "General Controls for On-Site Stormwater Management", 33, 35),
+        ("24c_4",   "Mandatory Rainwater Tank",             36, 37),
+        ("24c_5",   "Controls for On-Site Detention",       38, 39),
+        ("24c_6",   "Stormwater Quality Control",           40, 42),
+        ("24d_1",   "Existing Drainage Systems — General",  43, 43),
+        ("24d_2",   "Flood Studies and Design Flood Standard", 44, 45),
+        ("24d_3",   "Development Over or Adjacent to Natural Waterbody", 46, 47),
+        ("24d_4",   "Development Over or Adjacent to Underground Pipeline", 48, 49),
+        ("24d_5",   "Tennis Courts and Other Sporting Surfaces", 50, 50),
+        ("24d_6",   "Fences",                              51, 51),
+        ("24d_7",   "Swimming Pools and Spas",             52, 53),
+        ("24e_1",   "Road and Trunk Drainage Design Procedures", 54, 59),
+        ("24f_1",   "On-Site Wastewater Management",        60, 62),
+        ("24r_1",   "Design of On-Site Detention Systems",  63, 67),
+        ("24r_2",   "Design of Property and Interallotment Drainage Systems", 68, 74),
+        ("24r_3",   "Flood Study Requirements",             75, 78),
+        ("24r_4",   "Terms of Positive Covenants and Restrictions on Use", 79, 92),
+    ],
 }
 
 # ── Within-section sub-section splitting patterns ────────────────────────────
@@ -220,6 +431,14 @@ COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
 # Lines matching any of these regexes are removed from extracted text.
 # Used to filter out reversed PDF sidebar text, watermarks, etc.
 COUNCIL_TEXT_CLEANUP: dict[str, list[re.Pattern]] = {
+    "marrickville": [
+        # Running page header: "Marrickville Development Control Plan 2011"
+        # pdfplumber extracts the document title that runs across the top of every PDF page.
+        re.compile(r'^Marrickville Development Control Plan'),  # document title line
+        # Word cross-reference artifacts: "Error! Reference source not found."
+        # Caused by broken hyperlinks in the Word source file used to produce the PDF.
+        re.compile(r'Error!\s+Reference source not found'),
+    ],
     "ashfield": [
         # Reversed sidebar text from rotated text boxes in Ashfield PDFs.
         # Each PDF has the chapter name reversed in a vertical sidebar.
@@ -256,6 +475,181 @@ def _clean_page_text(text: str, council: str | None) -> str:
     return '\n'.join(cleaned)
 
 
+# ── Per-council column layout configs ────────────────────────────────────────
+# KRG DCP 2024 has a two-column Objectives | Controls layout on many pages.
+# Column boundary confirmed from PDF inspection (2026-03-14):
+#   Page width: 595 (A4)
+#   'Objectives' header at x0=56.7, 'Controls' header at x0=209.8 (same y)
+#   Column boundary: x=195 (midpoint between ~180 and ~209)
+COUNCIL_COLUMN_CONFIGS: dict[str, dict] = {
+    "ku_ring_gai": {
+        # Left column (Objectives): x=0–195
+        # Right column (Controls):  x=195–595
+        "boundary_x": 195,
+        # These keyword pairs trigger column-aware extraction when found
+        # at the same Y-coordinate (within 5 px) on a page
+        "left_header": "Objectives",
+        "right_header": "Controls",
+    },
+    "woollahra": {
+        # Woollahra DCP 2015: per-chapter PDFs. Sections use a two-column table:
+        # left column = Objectives (O1, O2...), right column = Controls (C1, C2...).
+        # Column boundary confirmed from PDF inspection (2026-03-14):
+        #   Page width: 595 (A4)
+        #   'Objectives' header at x0≈75, 'Controls' header at x0≈290–301 (same y)
+        #   Boundary: x=285 (just before Controls column starts)
+        "boundary_x": 285,
+        "left_header": "Objectives",
+        "right_header": "Controls",
+        # Woollahra's two-column layout ONLY appears on pages that explicitly have
+        # the Objectives/Controls header row. Pages without that header are single-column
+        # (intro text, figure pages etc.). Do NOT apply the continuation-page split.
+        "no_continuation": True,
+    },
+}
+
+# Per-council SECTION_RE overrides.
+# KRG section headings always have dotted notation (e.g., "12.1 Signage Design").
+# Bare integers like "1 To ensure..." are objective/control item lines, not section
+# headings — the default SECTION_RE matches them as sections after column splitting.
+COUNCIL_SECTION_RE_OVERRIDES: dict[str, re.Pattern] = {
+    "ku_ring_gai": re.compile(
+        r'^([A-Z]?\d+\.\d+(?:\.\d+)*)\s+([A-Z][^\n]+)$', re.MULTILINE
+    ),
+    # Marrickville DCP 2011: every PDF page starts with a running header that includes
+    # the page number followed by the section title fragment, e.g.:
+    #   "1\nDevelopment\nApplication\nGuidelines"
+    # The default SECTION_RE matches "1 Development" (when text is joined) as a section
+    # heading, creating false sections with bare integer numbers.
+    # Marrickville's real section headings are either:
+    #   - Dotted decimal: "2.1 Urban Design", "8.2.3.9 Some title"
+    #   - Letter-prefixed: "C8 Some control", "O9 Some objective"
+    # Override to require at least one dot OR a letter prefix, preventing page-number
+    # artifacts from being extracted as sections.
+    "marrickville": re.compile(
+        r'^([A-Z]\d+(?:\.\d+)*|\d+(?:\.\d+)+)\s+([A-Z][^\n]+)$', re.MULTILINE
+    ),
+    # Woollahra DCP 2015: section codes are letter + digit + dot + digit(s), e.g.
+    # "B3.1 Introduction", "B3.2.3 Side setbacks", "E1.4 Parking rates".
+    # Single-letter-digit codes like O1, O2, C1, C2 are objective/control item labels
+    # within the two-column table — NOT section headings.
+    # Breadcrumb text "3.2.3 Side setbacks" (digit-only dotted codes from the breadcrumb
+    # header) must also be excluded from section detection.
+    # Override: require letter + digit + at least one dotted segment (e.g. B3.1, B3.2.3).
+    "woollahra": re.compile(
+        r'^([A-Z]\d+\.\d[\d.]*)\s+([A-Z][^\n]+)$', re.MULTILINE
+    ),
+}
+
+
+# Matches a line that starts with a section code (e.g. "2.1", "2.2 Public Domain",
+# "B3", "O9").  Used in the heading-continuation look-ahead to stop appending
+# lines once a new section code is detected following the matched heading.
+_STANDALONE_SECTION_CODE_RE = re.compile(
+    r'^([A-Z]?\d+(?:\.\d+)+)\b'   # e.g. "2.1", "2.2 Public Domain", "4.1.3"
+    r'|^([A-Z]\d+(?:\.\d+)*)\b'   # e.g. "B3", "O9", "C1.2"
+)
+
+
+# Councils whose PDFs contain rotated figure/diagram labels (sidebar labels,
+# figure callouts, diagram text) that pdfplumber extracts as reversed or
+# garbled characters. Filtering to upright-only chars removes them.
+UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai"}
+
+
+def _upright_only(page: Any) -> Any:
+    """Return a pdfplumber page filtered to only upright characters.
+
+    Rotated characters (sideways sidebar labels, reversed figure callouts)
+    have upright=False in pdfplumber's character dict. Filtering them out
+    prevents garbled text like 'htaptoof teerts' (reversed 'footpath streets')
+    from appearing in extracted provision content.
+    """
+    return page.filter(
+        lambda obj: obj.get("upright", True) if obj.get("object_type") == "char" else True
+    )
+
+
+def _extract_page_text(page: Any, council: str | None) -> str:
+    """
+    Extract text from a PDF page, handling two-column layouts for councils
+    that use side-by-side Objectives | Controls structure.
+
+    For councils with a column config: detects the two-column header pair
+    at the same Y-coordinate and crops the page into left/right halves.
+    Extracts each column top-to-bottom, then concatenates left + right so
+    the full Objectives text precedes the full Controls text.
+
+    Falls back to plain extract_text() for pages without two-column layout
+    and for all other councils.
+
+    For councils in UPRIGHT_ONLY_COUNCILS: filters to upright characters
+    before extraction to remove rotated sidebar labels and figure callouts.
+    """
+    if council in UPRIGHT_ONLY_COUNCILS:
+        page = _upright_only(page)
+
+    if not council or council not in COUNCIL_COLUMN_CONFIGS:
+        return page.extract_text() or ""
+
+    cfg = COUNCIL_COLUMN_CONFIGS[council]
+    left_hdr = cfg["left_header"]
+    right_hdr = cfg["right_header"]
+
+    # Check if this page has the two-column layout by looking for the
+    # header pair (e.g. "Objectives" and "Controls") at the same Y level.
+    words = page.extract_words()
+    left_words  = [w for w in words if w["text"] == left_hdr]
+    right_words = [w for w in words if w["text"] == right_hdr]
+
+    # Find matching header pairs at the same Y level (within 5 px).
+    # Track both the top and bottom of each matched pair so we can crop
+    # the column content to START below the header labels (not at their top).
+    matching_pairs: list[tuple[float, float]] = []  # (top, bottom) of header pair
+    for lw in left_words:
+        for rw in right_words:
+            if abs(lw["top"] - rw["top"]) < 5:
+                pair_top = min(lw["top"], rw["top"])
+                pair_bottom = max(lw["bottom"], rw["bottom"])
+                matching_pairs.append((pair_top, pair_bottom))
+
+    if not matching_pairs:
+        # Check if this is a continuation two-column page (content spans two
+        # columns but the "Objectives"/"Controls" headers don't repeat).
+        # Skip this check for councils where two-column layout is ONLY on pages
+        # that explicitly carry the Objectives/Controls header row.
+        if cfg.get("no_continuation"):
+            return page.extract_text() or ""
+        bx = cfg["boundary_x"]
+        right_col_words = [w for w in words if w["x0"] >= bx]
+        if len(right_col_words) >= 3:
+            left_text  = page.crop((0, 0, bx,         page.height)).extract_text() or ""
+            right_text = page.crop((bx, 0, page.width, page.height)).extract_text() or ""
+            parts = [t.strip() for t in [left_text, right_text] if t.strip()]
+            return "\n\n".join(parts)
+        return page.extract_text() or ""
+
+    # Split Y: full-width content above the column headers, two-column below.
+    # Use pair_top for the header_text upper crop (excludes headers themselves).
+    # Use pair_bottom to start column crops so header labels are dropped entirely.
+    split_y = min(p[0] for p in matching_pairs)        # top of topmost header pair
+    col_start_y = min(p[1] for p in matching_pairs)    # bottom of topmost header pair
+    bx = cfg["boundary_x"]
+
+    # Full-width section heading area (strictly above the column headers).
+    # Subtract 0.5px so pdfplumber's inclusive boundary doesn't pull in
+    # the "Objectives"/"Controls" words that sit exactly at split_y.
+    header_text = page.crop((0, 0, page.width, split_y - 0.5)).extract_text() or ""
+
+    # Two-column content area (below the Objectives/Controls header labels)
+    left_text  = page.crop((0,   col_start_y, bx,         page.height)).extract_text() or ""
+    right_text = page.crop((bx,  col_start_y, page.width, page.height)).extract_text() or ""
+
+    # Format: heading first, then left (Objectives), then right (Controls)
+    parts = [t.strip() for t in [header_text, left_text, right_text] if t.strip()]
+    return "\n\n".join(parts)
+
+
 # ── PDF Extraction ──────────────────────────────────────────────────────────
 
 class DCPExtractor:
@@ -286,18 +680,92 @@ class DCPExtractor:
             for page_num, page in enumerate(pdf.pages, start=1):
                 print(f"    page {page_num}/{total}", end="\r")
 
-                text = page.extract_text() or ""
+                text = _extract_page_text(page, self.council)
                 text = _clean_page_text(text, self.council)
                 page_tables = page.extract_tables() or []
 
-                match = self.SECTION_RE.search(text)
+                section_re = COUNCIL_SECTION_RE_OVERRIDES.get(self.council, self.SECTION_RE)
+                # TOC page guard: if the page contains 5+ section-code matches it is
+                # almost certainly a chapter table-of-contents page (list of sub-sections
+                # with titles). Extracting sections from a TOC page produces false sections
+                # whose content is just the TOC list. Skip all section detection on these
+                # pages; their text is absorbed into the current (parent) section.
+                _toc_hits = len(section_re.findall(text))
+                if _toc_hits >= 5:
+                    match = None
+                else:
+                    match = section_re.search(text)
+                if match:
+                    new_code = match.group(1)
+                    if current and (
+                        current["section_number"] == new_code
+                        or current["section_number"].startswith(new_code + ".")
+                    ):
+                        # Running page header: either the same section code, or a parent
+                        # prefix (e.g. Marrickville prints "2.1 Urban Design" at the top
+                        # of every page in 2.1 and its sub-sections 2.1.1.3, 2.1.2.2
+                        # etc.). Don't start a new section for the parent code while
+                        # already inside a child of that section.
+                        match = None
                 if match:
                     if current:
                         current["page_end"] = page_num - 1
                         sections.append(current)
+                    title = match.group(2).strip()
+                    # ── Heading continuation fix ──────────────────────────────
+                    # Some PDFs (e.g. Marrickville) wrap long section titles
+                    # across lines: the regex captures only the first line
+                    # (e.g. "Urban" instead of "Urban Design").  Look at up to
+                    # 2 lines immediately after the match end and append any
+                    # that look like title continuations (not blank, not a new
+                    # section code, not a bare page number).
+                    _after = text[match.end():]
+                    # Split on newlines; the first element is often empty because
+                    # the match ends just before a '\n' — skip leading empty entries
+                    # so we look at the actual lines that follow the heading.
+                    _extra_lines = _after.split('\n')
+                    _continuations = 0
+                    _saw_first_nonempty = False
+                    for _extra in _extra_lines[:10]:
+                        _stripped = _extra.strip()
+                        if not _stripped:
+                            if _saw_first_nonempty:
+                                # True blank line after content — stop
+                                break
+                            # Leading empty from trailing newline of match — skip
+                            continue
+                        _saw_first_nonempty = True
+                        if _STANDALONE_SECTION_CODE_RE.match(_stripped):
+                            # Looks like a new section code — stop
+                            break
+                        if re.match(r'^\d+$', _stripped):
+                            # Bare page number — stop
+                            break
+                        if len(_stripped) > 50:
+                            # Long line — real content, not a title continuation
+                            break
+                        if re.match(r'^[a-z]', _stripped):
+                            # Starts with lowercase — could be a conjunction in a title
+                            # (e.g. "and", "or", "of") or sentence content.
+                            # Allow short conjunctions (≤5 chars) as title continuations;
+                            # stop on any longer lowercase word (sentence content).
+                            if len(_stripped) > 5:
+                                break
+                            # Short lowercase word — treat as title conjunction, continue
+                        if re.match(r'^(Appendix|Part|Chapter|Section|Note|See|Where)\b', _stripped):
+                            # Structural keyword — end of heading, start of appendix/note
+                            break
+                        if '\u2013' in _stripped or '\u2014' in _stripped or ' - ' in _stripped:
+                            # En-dash or em-dash signals a descriptive sub-clause, not a title word
+                            break
+                        if _continuations >= 4:
+                            # Cap at 4 extra lines (handles multi-word wrapped titles)
+                            break
+                        title = title + ' ' + _stripped
+                        _continuations += 1
                     current = {
                         "section_number": match.group(1),
-                        "section_title": match.group(2).strip(),
+                        "section_title": title,
                         "content": "",
                         "tables": [],
                         "page_start": page_num,
@@ -365,7 +833,7 @@ class DCPExtractor:
                 clipped_end = min(page_end, self.page_count)
                 for page_num in range(page_start, clipped_end + 1):
                     page = pdf.pages[page_num - 1]
-                    text = page.extract_text() or ""
+                    text = _extract_page_text(page, self.council)
                     text = _clean_page_text(text, self.council)
                     content += f"\n\n{text}"
                     pages_included.append(page_num)
@@ -454,13 +922,52 @@ class DCPExtractor:
         return content.strip()
 
 
+_TOC_DOTTED_LEADER_RE = re.compile(r'\.{5,}')
+
+
+def _strip_toc_lines(content: str) -> str:
+    """
+    Remove TOC dotted-leader lines from provision content.
+
+    When a DCP chapter starts with an in-chapter Table of Contents page
+    (e.g. "2.3 Site and Context Analysis ......... 1"), pdfplumber extracts
+    those lines as provision content.  This function removes every line that
+    contains 5 or more consecutive dots (the dotted leader pattern), leaving
+    only the substantive provision text.
+
+    Triggered only when more than 3 such lines are present in the content block
+    (a single dotted line could be a legitimate ellipsis or divider).
+    """
+    lines = content.split('\n')
+    dotted = [l for l in lines if _TOC_DOTTED_LEADER_RE.search(l)]
+    if len(dotted) <= 3:
+        return content
+    cleaned = [l for l in lines if not _TOC_DOTTED_LEADER_RE.search(l)]
+    return '\n'.join(cleaned)
+
+
+_TOC_TITLE_CLEANUP_RE = re.compile(r'\s*\.{5,}.*$')
+
+
+def _clean_toc_title(title: str) -> str:
+    """Strip dotted leaders and trailing page numbers from a section title.
+
+    Titles that were matched from a TOC line (e.g. "Urban Design ......... 1")
+    need the dotted leader and trailing page number removed so the heading in
+    the provision text is clean (e.g. "Urban Design").
+    """
+    return _TOC_TITLE_CLEANUP_RE.sub('', title).strip()
+
+
 def build_provision_text(section: dict[str, Any]) -> str:
     content = DCPExtractor.clean_content(section["content"])
+    content = _strip_toc_lines(content)
     if section["section_number"] != "preamble":
         # text_heading overrides the default heading so sub-section provisions start
         # with the parent code (e.g. "B1 Waste —") which the LayerTopicTagger needs
         # to extract the correct section code via progressive prefix stripping.
-        heading = section.get("text_heading") or f"{section['section_number']} {section['section_title']}"
+        raw_title = section.get("text_heading") or f"{section['section_number']} {section['section_title']}"
+        heading = _clean_toc_title(raw_title)
         full_text = f"# {heading}\n\n{content}"
     else:
         full_text = content
@@ -632,10 +1139,14 @@ def extract_chapter(
     s3,
     conn,
     dry_run: bool,
-) -> bool:
+    review: bool = False,
+) -> tuple[bool, dict | None]:
     """
     Download PDF, extract provisions, commit atomically.
-    Returns True on success, False on failure.
+    Returns (success, review_data).
+
+    review_data is populated when review=True and contains per-chapter
+    extracted text samples + artifact check results for human inspection.
     Old provisions stay live on failure (rollback keeps them).
     """
     council     = chapter["council"]
@@ -657,7 +1168,7 @@ def extract_chapter(
             s3.download_file(R2_BUCKET_NAME, r2_path, str(pdf_path))
         except Exception as exc:
             print(f"    [ERROR] R2 download failed: {exc}")
-            return False
+            return False, None
 
         print(f"    Downloaded {pdf_path.stat().st_size:,} bytes")
 
@@ -682,7 +1193,7 @@ def extract_chapter(
             except Exception as exc:
                 print(f"    [ERROR] Page-range extraction failed: {exc}")
                 cur.close()
-                return False
+                return False, None
             table_count = sum(len(s["tables"]) for s in sections)
             print(f"    Page-range extraction: {len(sections)} sections, {table_count} tables")
         else:
@@ -691,31 +1202,85 @@ def extract_chapter(
             except Exception as exc:
                 print(f"    [ERROR] PDF extraction failed: {exc}")
                 cur.close()
-                return False
+                return False, None
             table_count = sum(len(s["tables"]) for s in sections)
             print(f"    Extracted: {len(sections)} sections, {table_count} tables")
 
             if not sections:
                 print(f"    [WARN] No sections extracted — skipping chapter")
                 cur.close()
-                return False
+                return False, None
 
             # Sanity gate: require at least 1 section per 30 pages of PDF.
             min_sections = max(2, extractor.page_count // 30)
             if len(sections) < min_sections:
-                verdict = "WARN" if dry_run else "ABORT"
+                verdict = "WARN" if (dry_run or review) else "ABORT"
                 print(
                     f"    [{verdict}] {len(sections)} sections from "
                     f"{extractor.page_count}-page PDF (min {min_sections})"
                 )
-                if not dry_run:
+                if not dry_run and not review:
                     cur.close()
-                    return False
+                    return False, None
 
-        if dry_run:
-            print(f"    [dry-run] Would soft-delete old provisions and insert {len(sections)} new ones")
+        if dry_run or review:
+            if dry_run:
+                print(f"    [dry-run] Would soft-delete old provisions and insert {len(sections)} new ones")
             cur.close()
-            return True
+
+            if not review:
+                return True, None
+
+            # ── Build review data ─────────────────────────────────────────
+            # Import artifact checker from verify script
+            from scripts.verify_dcp_formatting import check_provision
+
+            provision_texts = [build_provision_text(s) for s in sections]
+            non_preamble = [
+                (s, t) for s, t in zip(sections, provision_texts)
+                if s["section_number"] != "preamble"
+            ]
+
+            # Pick 3 sample sections: first, middle, last
+            samples = []
+            if non_preamble:
+                idxs = sorted({0, len(non_preamble) // 2, len(non_preamble) - 1})
+                for i in idxs:
+                    sec, txt = non_preamble[i]
+                    samples.append({
+                        "section_number": sec["section_number"],
+                        "title": sec.get("title", ""),
+                        "pages": f"{sec.get('page_start', '?')}–{sec.get('page_end', '?')}",
+                        "text": txt,
+                    })
+
+            # Artifact check across all provision texts
+            from collections import Counter as _Counter
+            artifact_counts: _Counter = _Counter()
+            flagged_samples: _Counter = _Counter()
+            for txt in provision_texts:
+                labels, lines = check_provision(txt)
+                artifact_counts.update(labels)
+                flagged_samples.update(lines)
+
+            return True, {
+                "council": council,
+                "chapter_key": chapter_key,
+                "section_count": len(sections),
+                "table_count": table_count,
+                "sections": [
+                    {
+                        "key": s["section_number"],
+                        "title": s.get("title", ""),
+                        "pages": f"{s.get('page_start', '?')}–{s.get('page_end', '?')}",
+                    }
+                    for s in sections
+                ],
+                "samples": samples,
+                "artifact_counts": dict(artifact_counts),
+                "artifact_samples": dict(flagged_samples.most_common(5)),
+                "total_provisions": len(provision_texts),
+            }
 
         # 3. Atomic DB transaction
         now = datetime.now(timezone.utc)
@@ -809,10 +1374,150 @@ def extract_chapter(
             conn.rollback()
             print(f"    [ERROR] DB transaction failed — rolled back: {exc}")
             cur.close()
-            return False
+            return False, None
 
         cur.close()
-        return True
+        return True, None
+
+
+# ── Review file writer ───────────────────────────────────────────────────────
+
+def write_review_file(council: str, chapters: list[dict]) -> Path:
+    """
+    Write a human-readable review file for manual inspection before committing.
+
+    Format per chapter:
+      - Section list with page ranges
+      - 3 sample provision texts (first / middle / last non-preamble section)
+      - Artifact check counts
+
+    Returns the path of the written file.
+    """
+    reviews_dir = Path(__file__).parent.parent / "reviews"
+    reviews_dir.mkdir(exist_ok=True)
+    ts = datetime.now().strftime("%Y%m%d_%H%M")
+    out_path = reviews_dir / f"{council}_{ts}.txt"
+
+    DIVIDER = "=" * 72
+    SEP     = "-" * 72
+    ARTIFACT_LABELS = [
+        "hash_prefix_numbered_items",
+        "hash_prefix_headers",
+        "two_col_interleave",
+        "two_col_numeric",
+        "latex_tokens",
+        "word_cross_references",
+        "bare_page_numbers",
+        "toc_dotted_leaders",
+        "short_provision",
+    ]
+    # Which artifact labels signal extraction-level bugs (not fixable by format config)
+    EXTRACTION_BUG_LABELS = {
+        "hash_prefix_numbered_items",
+        "hash_prefix_headers",
+        "two_col_interleave",
+        "latex_tokens",
+        "word_cross_references",
+    }
+
+    lines: list[str] = []
+    lines.append(DIVIDER)
+    lines.append(f"EXTRACTION REVIEW — {council.upper()}")
+    lines.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    lines.append(f"Chapters reviewed: {len(chapters)}")
+    lines.append(DIVIDER)
+    lines.append("")
+    lines.append("When you are satisfied, commit with:")
+    lines.append(f"  python scripts/dcp_extract_changed.py --council {council}")
+    lines.append("")
+
+    for ch in chapters:
+        chapter_key = ch["chapter_key"]
+        lines.append(DIVIDER)
+        lines.append(f"CHAPTER: {chapter_key}")
+        lines.append(f"  {ch['section_count']} sections  |  {ch['table_count']} tables  |  {ch['total_provisions']} provisions")
+        lines.append("")
+
+        # Section list
+        lines.append("  SECTIONS:")
+        for sec in ch["sections"]:
+            title = sec["title"] or "(untitled)"
+            lines.append(f"    [{sec['key']:20s}]  pp {sec['pages']:12s}  {title}")
+        lines.append("")
+
+        # Artifact check
+        art = ch["artifact_counts"]
+        total = ch["total_provisions"]
+        has_bugs = any(art.get(l, 0) > 0 for l in EXTRACTION_BUG_LABELS)
+        lines.append("  ARTIFACT CHECK:")
+        for label in ARTIFACT_LABELS:
+            count = art.get(label, 0)
+            if count == 0:
+                continue
+            pct = count / total * 100 if total else 0
+            flag = " ← EXTRACTION BUG" if label in EXTRACTION_BUG_LABELS else " (format config)"
+            lines.append(f"    {label:<35s} {count:>4}/{total}  ({pct:.0f}%){flag}")
+        if not any(art.get(l, 0) > 0 for l in ARTIFACT_LABELS):
+            lines.append("    (none detected)")
+        if has_bugs:
+            lines.append("")
+            lines.append("  ⚠  EXTRACTION BUGS DETECTED — do not commit without fixing.")
+            lines.append("     See docs/DCP_EXTRACTION_KNOWN_PATTERNS.md for fix guidance.")
+        lines.append("")
+
+        # Sample provisions
+        lines.append("  SAMPLE PROVISIONS:")
+        for i, sample in enumerate(ch["samples"]):
+            label = ["first", "middle", "last"][i] if i < 3 else f"sample {i+1}"
+            lines.append(f"  {SEP}")
+            lines.append(f"  [{label}]  {sample['section_number']}  —  {sample['title']}  (pp {sample['pages']})")
+            lines.append(f"  {SEP}")
+            # Wrap text at 80 chars, indent 4 spaces, cap at ~60 lines
+            text = sample["text"]
+            raw_lines = text.split("\n")
+            shown = 0
+            for raw in raw_lines:
+                if shown >= 60:
+                    lines.append("    ... [truncated — open PDF for full text]")
+                    break
+                lines.append(f"    {raw}")
+                shown += 1
+            lines.append("")
+
+    # Overall summary
+    lines.append(DIVIDER)
+    lines.append("OVERALL SUMMARY")
+    lines.append(DIVIDER)
+    total_sections = sum(c["section_count"] for c in chapters)
+    total_provisions = sum(c["total_provisions"] for c in chapters)
+    lines.append(f"  Chapters  : {len(chapters)}")
+    lines.append(f"  Sections  : {total_sections}")
+    lines.append(f"  Provisions: {total_provisions}")
+    lines.append("")
+
+    # Aggregate artifact counts
+    from collections import Counter as _Counter
+    agg: _Counter = _Counter()
+    for c in chapters:
+        agg.update(c["artifact_counts"])
+    bug_chapters = [c["chapter_key"] for c in chapters
+                    if any(c["artifact_counts"].get(l, 0) > 0 for l in EXTRACTION_BUG_LABELS)]
+    if bug_chapters:
+        lines.append("  CHAPTERS WITH EXTRACTION BUGS:")
+        for chk in bug_chapters:
+            lines.append(f"    • {chk}")
+        lines.append("")
+        lines.append("  DO NOT commit — fix extraction issues first.")
+    else:
+        lines.append("  No extraction bugs detected across all chapters.")
+        lines.append("")
+        lines.append("  Ready to commit:")
+        lines.append(f"    python scripts/dcp_extract_changed.py --council {council}")
+
+    lines.append("")
+
+    out_path.write_text("\n".join(lines), encoding="utf-8")
+    return out_path
 
 
 # ── Main ────────────────────────────────────────────────────────────────────
@@ -821,6 +1526,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="DCP chapter extraction pipeline")
     parser.add_argument("--council", help="Filter to specific council")
     parser.add_argument("--dry-run", action="store_true", help="Extract but no DB writes")
+    parser.add_argument(
+        "--review",
+        action="store_true",
+        help=(
+            "Extract to memory only — write a human-readable review file with section "
+            "lists, sample provision texts, and artifact checks. No DB writes. "
+            "Inspect the file, then re-run without --review to commit."
+        ),
+    )
     args = parser.parse_args()
 
     s3 = boto3.client(
@@ -835,7 +1549,9 @@ def main() -> None:
 
     print("=" * 60)
     print(f"DCP Extraction Pipeline — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
-    if args.dry_run:
+    if args.review:
+        print("REVIEW MODE — no DB writes, generates review file for inspection")
+    elif args.dry_run:
         print("DRY RUN")
     print("=" * 60)
 
@@ -859,13 +1575,32 @@ def main() -> None:
 
     succeeded = 0
     failed    = 0
+    review_chapters: list[dict] = []
 
     for chapter in chapters:
-        ok = extract_chapter(chapter, s3, conn, args.dry_run)
+        ok, review_data = extract_chapter(
+            chapter, s3, conn,
+            dry_run=args.dry_run,
+            review=args.review,
+        )
         if ok:
             succeeded += 1
+            if review_data is not None:
+                review_chapters.append(review_data)
         else:
             failed += 1
+
+    if args.review and review_chapters:
+        review_path = write_review_file(args.council or "all", review_chapters)
+        print(f"\n{'='*60}")
+        print(f"REVIEW FILE WRITTEN")
+        print(f"{'='*60}")
+        print(f"\n  {review_path}")
+        print(f"\n  Open this file and inspect section lists + sample provision texts.")
+        print(f"  When satisfied, commit with:")
+        print(f"    python scripts/dcp_extract_changed.py --council {args.council or '<council>'}")
+        conn.close()
+        sys.exit(0)
 
     conn.close()
 
