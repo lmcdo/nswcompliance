@@ -139,9 +139,13 @@
 **Workflow for every piece of work:**
 1. Create branch: `git checkout -b fix/description` (or feat/ or chore/)
 2. Do the work, commit normally
-3. Push branch and open PR: `gh pr create --title "..." --body "..."`
-4. Share Vercel preview URL with user for QA before merge
-5. User says "merge" → `gh pr merge --squash` (or user merges in GitHub)
+3. **Run tests and save trail:** `bash scripts/pre-pr-tests.sh`
+4. Commit the trail file: `git add test-trail/ && git commit -m "chore: test trail for PR"`
+5. Push branch and open PR: `gh pr create --title "..." --body "..."`
+6. Share Vercel preview URL with user for QA before merge
+7. User says "merge" → `gh pr merge --squash` (or user merges in GitHub)
+
+**Test trail is mandatory.** Every merged PR must have a `test-trail/` entry. This is the local record of what passed/failed at merge time. Do not skip it.
 
 **Why:** Vercel auto-generates a preview deployment for every PR. This is the QA gate before production. Main = production. Branches = preview.
 
