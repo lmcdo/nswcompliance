@@ -127,7 +127,30 @@
 - `docs/user-stories/` - User story documents
 - `docs/DCP_MONITORING.md` - DCP chapter PDF versioning & monitoring system (R2, dcp_chapter_registry, GitHub Actions)
 
-## Deployment
-```bash
-git push  # Vercel auto-deploys from main
+## Deployment & Branching (NON-NEGOTIABLE)
+
+**NEVER push directly to main.** Always work on a branch and open a PR.
+
+**Branch naming:**
+- `fix/short-description` — bug fixes
+- `feat/short-description` — new features
+- `chore/short-description` — data, scripts, non-UI changes
+
+**Workflow for every piece of work:**
+1. Create branch: `git checkout -b fix/description` (or feat/ or chore/)
+2. Do the work, commit normally
+3. Push branch and open PR: `gh pr create --title "..." --body "..."`
+4. Share Vercel preview URL with user for QA before merge
+5. User says "merge" → `gh pr merge --squash` (or user merges in GitHub)
+
+**Why:** Vercel auto-generates a preview deployment for every PR. This is the QA gate before production. Main = production. Branches = preview.
+
+**PR body format:**
 ```
+## What
+One-line summary of the change.
+
+## Why
+The problem it solves or the feature it adds.
+```
+No "Test plan" section. No "Generated with Claude Code" attribution.
