@@ -288,6 +288,7 @@ nul
 # Misc working files
 *.txt
 !requirements.txt
+!test-trail/*.txt
 corrupted_*.txt
 filter_*.txt
 dcp_*.txt
