@@ -362,6 +362,7 @@ scripts/
 !scripts/r2_pdf_uploader.py
 # Cross-reference resolution pre-task artifacts (permanent QA artifacts)
 !scripts/xref_pretask_setup.py
+!scripts/xref_detection_audit.py
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
