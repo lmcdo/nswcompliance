@@ -117,6 +117,13 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                       </button>
                     )}
                   </div>
+                  {/* For provisions without a clause number (e.g. SEPP overlays),
+                      show class as the primary constraint description */}
+                  {!provision.clauseNumber && provision.class && (
+                    <p className="text-sm font-medium text-amber-800 mt-1">
+                      {provision.class}
+                    </p>
+                  )}
                   {provision.description && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {provision.description}
@@ -222,7 +229,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
                       className="flex items-center gap-1 text-amber-700 hover:text-amber-900"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      <span className="text-xs">View LEP</span>
+                      <span className="text-xs">View legislation</span>
                     </a>
                   </Button>
                 )}
@@ -231,13 +238,19 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           );
   };
 
+  const hasSepp = exactProvisions.some(p =>
+    p.epiName?.toLowerCase().includes('sepp') ||
+    p.epiName?.toLowerCase().includes('state environmental planning policy')
+  );
+  const cardTitle = isKeySite ? 'Key Site (LEP Part 6)' : hasSepp ? 'Planning Overlays' : 'Local Provisions (LEP Part 6)';
+
   return (
     <Card className="border-amber-200 bg-amber-50/30">
       <CardHeader>
         <CardTitle className="text-base flex items-center justify-between">
-          <span>{isKeySite ? 'Key Site (LEP Part 6)' : 'Local Provisions (LEP Part 6)'}</span>
+          <span>{cardTitle}</span>
           <Badge className="bg-amber-100 text-amber-800">
-            {exactProvisions.length} {exactProvisions.length === 1 ? 'provision' : 'provisions'}
+            {exactProvisions.length} {exactProvisions.length === 1 ? 'overlay' : 'overlays'}
           </Badge>
         </CardTitle>
         {isKeySite ? (
@@ -246,7 +259,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
           </p>
         ) : (
           <p className="text-sm text-muted-foreground mt-2">
-            Additional local provisions from the Local Environmental Plan
+            Additional planning overlays that apply to this property — may include LEP local provisions, SEPP overlays, or other instruments.
           </p>
         )}
       </CardHeader>
@@ -282,7 +295,7 @@ export function LocalProvisionsCard({ localProvisions }: LocalProvisionsCardProp
 
         <div className="mt-4 p-3 bg-amber-50 rounded-md border border-amber-200">
           <p className="text-xs text-amber-800">
-            <strong>Note:</strong> Local Provisions are Part 6 additional local provisions that may impose specific requirements. This includes Schedule 7 overlays (Special Entertainment Precincts, Heritage Conservation Areas) and site-specific provisions that apply to particular addresses.
+            <strong>Note:</strong> Planning overlays may include LEP Part 6 local provisions, SEPP spatial overlays, or other instruments. Each overlay imposes specific requirements — verify against the current legislation before issuing approvals.
           </p>
         </div>
       </CardContent>
