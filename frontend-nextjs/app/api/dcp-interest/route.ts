@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { query } from '@/lib/db';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +17,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'invalid email address' }, { status: 400 });
     }
 
+    const normalised = email.trim().toLowerCase();
+
     await query(
       `INSERT INTO dcp_interest (email, council_name, address)
        VALUES ($1, $2, $3)
        ON CONFLICT (email, council_name) DO NOTHING`,
-      [email.trim().toLowerCase(), council_name.trim(), address?.trim() || null]
+      [normalised, council_name.trim(), address?.trim() || null]
     );
+
+    // Notify info@plotdetect.com.au — fire and forget, don't fail the request
+    resend.emails.send({
+      from: 'PlotDetect <onboarding@resend.dev>',
+      to: 'info@plotdetect.com.au',
+      subject: `DCP interest: ${council_name}`,
+      text: `New DCP interest registration\n\nEmail: ${normalised}\nCouncil: ${council_name}\nAddress: ${address || '(not provided)'}`,
+    }).catch(err => console.error('[dcp-interest] resend error:', err));
 
     return NextResponse.json({ ok: true });
   } catch (err) {
