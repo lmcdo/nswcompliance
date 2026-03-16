@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-03-16T15:30:35.615730",
+  "backup_table": "regulatory_provisions_backup_20260316_pre_xref",
+  "total_provisions": 34911,
+  "extraction_status": {
+    "null": 23435,
+    "complete": 9285,
+    "review_needed": 2191
+  },
+  "provisions_with_extracted_rules": 11476,
+  "provisions_with_cross_refs": 1135,
+  "cross_refs_by_relationship": {
+    "see_also": 1621,
+    "defers_to": 225,
+    "supplements": 28
+  },
+  "cross_refs_by_council": [
+    {
+      "council": null,
+      "provisions": 771,
+      "total_refs": 1228
+    },
+    {
+      "council": "woollahra",
+      "provisions": 133,
+      "total_refs": 233
+    },
+    {
+      "council": "marrickville",
+      "provisions": 127,
+      "total_refs": 247
+    },
+    {
+      "council": "leichhardt",
+      "provisions": 51,
+      "total_refs": 63
+    },
+    {
+      "council": "ashfield",
+      "provisions": 46,
+      "total_refs": 95
+    },
+    {
+      "council": "waverley",
+      "provisions": 7,
+      "total_refs": 8
+    }
+  ],
+  "cross_refs_already_resolved": 0
+}

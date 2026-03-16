@@ -360,6 +360,9 @@ frontend-nextjs/public/pdfjs/
 # Scripts directory (working scripts) - EXCEPT Phase 3+ SEPP utilities
 scripts/
 !scripts/r2_pdf_uploader.py
+# Cross-reference resolution pre-task artifacts (permanent QA artifacts)
+!scripts/xref_pretask_setup.py
+!scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
 !scripts/run_migration_007.py
