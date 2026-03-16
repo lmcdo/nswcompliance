@@ -115,6 +115,7 @@
 - Check here FIRST when user references a plan file
 
 ## Reference Docs (read when relevant, not every session)
+- `docs/CONFIGURATION.md` - All env vars, feature flags, Vercel branch config, LGA onboarding checklist, R2 paths (READ before deployment, LGA onboarding, or feature flag work)
 - `DB_SCHEMA.md` - Database structure quick reference (READ BEFORE DB WORK)
 - `db-clean-tasks/README.md` - DB cleanup history (2026-02: dropped 16 tables)
 - `.claude/prp/INDEX.md` - Architecture overview
