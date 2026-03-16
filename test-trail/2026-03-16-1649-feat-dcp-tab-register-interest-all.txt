@@ -4125,3 +4125,2284 @@ FAIL __tests__/lib/integration/migration-orchestrator.test.ts (8.097 s)
 
       at Object.toBeNull (__tests__/lib/integration/migration-orchestrator.test.ts:263:30)
 
+
+<--- Last few GCs --->
+
+[96112:00000216E1F50080]   532369 ms: Mark-Compact 3212.2 (4169.6) -> 3189.8 (4141.2) MB, 1770.32 / 0.00 ms  (average mu = 0.049, current mu = 0.005) allocation failure; scavenge might not succeed
+[96112:00000216E1F50080]   534149 ms: Mark-Compact 3240.0 (4174.8) -> 3201.2 (4146.7) MB, 1729.16 / 0.00 ms  (average mu = 0.039, current mu = 0.029) allocation failure; scavenge might not succeed
+
+
+<--- JS stacktrace --->
+
+FATAL ERROR: Reached heap limit Allocation failed - JavaScript heap out of memory
+----- Native stack trace -----
+
+FAIL __tests__/components/development/DevelopmentSelector.test.tsx
+  ● Test suite failed to run
+
+    A jest worker process (pid=96112) was terminated by another process: signal=SIGTERM, exitCode=null. Operating system logs may contain more information on why this occurred.
+
+      at ChildProcessWorker._onExit (node_modules/jest-worker/build/workers/ChildProcessWorker.js:370:23)
+
+Summary of all failing tests
+FAIL __tests__/lib/feature-flags.test.ts
+  ● Feature Flags › getFeatureFlags › returns default flags when no configuration exists
+
+    TypeError: (0 , _featureflags.getFeatureFlags) is not a function
+
+    [0m [90m 12 |[39m  describe([32m'getFeatureFlags'[39m[33m,[39m () [33m=>[39m {
+     [90m 13 |[39m  test([32m'returns default flags when no configuration exists'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 14 |[39m  [36mconst[39m flags [33m=[39m getFeatureFlags()[33m;[39m
+     [90m    |[39m                               [31m[1m^[22m[39m
+     [90m 15 |[39m
+     [90m 16 |[39m  expect(flags)[33m.[39mtoEqual({
+     [90m 17 |[39m  newDevelopmentSelector[33m:[39m [36mfalse[39m[33m,[39m[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:14:31)
+
+  ● Feature Flags › getFeatureFlags › reads flags from environment variables
+
+    TypeError: (0 , _featureflags.getFeatureFlags) is not a function
+
+    [0m [90m 27 |[39m  process[33m.[39menv[33m.[39m[33mFEATURE_ENHANCED_COMPLIANCE_STATUS[39m [33m=[39m [32m'true'[39m[33m;[39m
+     [90m 28 |[39m
+    [31m[1m>[22m[39m[90m 29 |[39m  [36mconst[39m flags [33m=[39m getFeatureFlags()[33m;[39m
+     [90m    |[39m                               [31m[1m^[22m[39m
+     [90m 30 |[39m
+     [90m 31 |[39m  expect(flags[33m.[39mnewDevelopmentSelector)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 32 |[39m  expect(flags[33m.[39menhancedComplianceStatus)[33m.[39mtoBe([36mtrue[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:29:31)
+
+  ● Feature Flags › getFeatureFlags › reads flags from localStorage
+
+    TypeError: (0 , _featureflags.getFeatureFlags) is not a function
+
+    [0m [90m 39 |[39m  }))[33m;[39m
+     [90m 40 |[39m
+    [31m[1m>[22m[39m[90m 41 |[39m  [36mconst[39m flags [33m=[39m getFeatureFlags()[33m;[39m
+     [90m    |[39m                               [31m[1m^[22m[39m
+     [90m 42 |[39m
+     [90m 43 |[39m  expect(flags[33m.[39mnewDevelopmentSelector)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 44 |[39m  expect(flags[33m.[39menhancedComplianceStatus)[33m.[39mtoBe([36mfalse[39m)[33m;[39m[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:41:31)
+
+  ● Feature Flags › getFeatureFlags › environment variables override localStorage
+
+    TypeError: (0 , _featureflags.getFeatureFlags) is not a function
+
+    [0m [90m 51 |[39m  process[33m.[39menv[33m.[39m[33mFEATURE_NEW_DEVELOPMENT_SELECTOR[39m [33m=[39m [32m'true'[39m[33m;[39m
+     [90m 52 |[39m
+    [31m[1m>[22m[39m[90m 53 |[39m  [36mconst[39m flags [33m=[39m getFeatureFlags()[33m;[39m
+     [90m    |[39m                               [31m[1m^[22m[39m
+     [90m 54 |[39m
+     [90m 55 |[39m  expect(flags[33m.[39mnewDevelopmentSelector)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m 56 |[39m  })[33m;[39m[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:53:31)
+
+  ● Feature Flags › isFeatureEnabled › returns correct boolean for existing flags
+
+    TypeError: (0 , _featureflags.isFeatureEnabled) is not a function
+
+    [0m [90m 61 |[39m  process[33m.[39menv[33m.[39m[33mFEATURE_NEW_DEVELOPMENT_SELECTOR[39m [33m=[39m [32m'true'[39m[33m;[39m
+     [90m 62 |[39m
+    [31m[1m>[22m[39m[90m 63 |[39m  expect(isFeatureEnabled([32m'newDevelopmentSelector'[39m))[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m    |[39m                         [31m[1m^[22m[39m
+     [90m 64 |[39m  expect(isFeatureEnabled([32m'enhancedComplianceStatus'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+     [90m 65 |[39m  })[33m;[39m
+     [90m 66 |[39m[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:63:25)
+
+  ● Feature Flags › isFeatureEnabled › returns false for non-existent flags
+
+    TypeError: (0 , _featureflags.isFeatureEnabled) is not a function
+
+    [0m [90m 66 |[39m
+     [90m 67 |[39m  test([32m'returns false for non-existent flags'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 68 |[39m  expect(isFeatureEnabled([32m'nonExistentFlag'[39m [36mas[39m any))[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+     [90m    |[39m                         [31m[1m^[22m[39m
+     [90m 69 |[39m  })[33m;[39m
+     [90m 70 |[39m
+     [90m 71 |[39m  test([32m'handles invalid localStorage data gracefully'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.<anonymous> (__tests__/lib/feature-flags.test.ts:68:25)
+
+  ● Feature Flags › isFeatureEnabled › handles invalid localStorage data gracefully
+
+    expect(received).not.toThrow()
+
+    Error name:    "TypeError"
+    Error message: "(0 , _featureflags.isFeatureEnabled) is not a function"
+
+        [0m [90m 72 |[39m  localStorage[33m.[39msetItem([32m'nsw-compliance-feature-flags'[39m[33m,[39m [32m'invalid json'[39m)[33m;[39m
+         [90m 73 |[39m
+        [31m[1m>[22m[39m[90m 74 |[39m  expect(() [33m=>[39m isFeatureEnabled([32m'newDevelopmentSelector'[39m))[33m.[39mnot[33m.[39mtoThrow()[33m;[39m
+         [90m    |[39m                               [31m[1m^[22m[39m
+         [90m 75 |[39m  expect(isFeatureEnabled([32m'newDevelopmentSelector'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+         [90m 76 |[39m  })[33m;[39m
+         [90m 77 |[39m  })[33m;[39m[0m
+
+      at __tests__/lib/feature-flags.test.ts:74:31
+      at Object.<anonymous> (node_modules/expect/build/toThrowMatchers.js:74:11)
+      at Object.throwingMatcher [as toThrow] (node_modules/expect/build/index.js:320:21)
+      at Object.toThrow (__tests__/lib/feature-flags.test.ts:74:63)
+      at Object.toThrow (__tests__/lib/feature-flags.test.ts:74:63)
+
+FAIL __tests__/lib/compliance-websocket.test.ts
+  ● ComplianceWebSocketManager › handles WebSocket messages
+
+    expect(jest.fn()).toHaveBeenCalledWith(...expected)
+
+    - Expected
+    + Received
+
+      Object {
+        "checkId": "test-check",
+        "status": "compliant",
+    -   "timestamp": 2026-03-16T05:50:03.546Z,
+    +   "timestamp": "2026-03-16T05:50:03.546Z",
+        "type": "status_change",
+      },
+
+    Number of calls: 1
+
+    [0m [90m 61 |[39m  ws[33m.[39monmessage[33m?[39m[33m.[39m({ data[33m:[39m [33mJSON[39m[33m.[39mstringify(mockUpdate) })[33m;[39m
+     [90m 62 |[39m
+    [31m[1m>[22m[39m[90m 63 |[39m  expect(onUpdate)[33m.[39mtoHaveBeenCalledWith(mockUpdate)[33m;[39m
+     [90m    |[39m                   [31m[1m^[22m[39m
+     [90m 64 |[39m  })[33m;[39m
+     [90m 65 |[39m
+     [90m 66 |[39m  test([32m'disconnects WebSocket'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toHaveBeenCalledWith (__tests__/lib/compliance-websocket.test.ts:63:19)
+
+FAIL __tests__/lib/see/intake.test.ts
+  ● DEFAULT_INTAKE_ANSWERS › contains exactly the expected fields
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 0
+    + Received  + 2
+
+    @@ -13,7 +13,9 @@
+        "new_fencing",
+        "new_impervious_surfaces",
+        "new_parking_or_driveway",
+        "new_signage",
+        "pool_or_spa",
+    +   "proposed_gfa",
+    +   "proposed_height",
+        "trees_affected",
+      ]
+
+    [0m [90m 27 |[39m   })[33m;[39m
+     [90m 28 |[39m   test([32m'contains exactly the expected fields'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 29 |[39m     expect([33mObject[39m[33m.[39mkeys([33mDEFAULT_INTAKE_ANSWERS[39m)[33m.[39msort())[33m.[39mtoEqual([33mALL_FIELDS[39m[33m.[39mslice()[33m.[39msort())[33m;[39m
+     [90m    |[39m                                                        [31m[1m^[22m[39m
+     [90m 30 |[39m   })[33m;[39m
+     [90m 31 |[39m })[33m;[39m
+     [90m 32 |[39m[0m
+
+      at Object.toEqual (__tests__/lib/see/intake.test.ts:29:56)
+
+  ● getExcludableTopics › new_fencing=no excludes ["fencing","fence"]
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 55 |[39m   test[33m.[39meach(cases)([32m'%s=no excludes %j'[39m[33m,[39m (field[33m,[39m topics) [33m=>[39m {
+     [90m 56 |[39m     [36mconst[39m a [33m=[39m { [33m...[39mbase[33m,[39m [field][33m:[39m [32m'no'[39m [36mas[39m [36mconst[39m }[33m;[39m
+    [31m[1m>[22m[39m[90m 57 |[39m     [36mfor[39m ([36mconst[39m t [36mof[39m topics) { expect(getExcludableTopics(a)[33m.[39mhas(t))[33m.[39mtoBe([36mtrue[39m)[33m;[39m }
+     [90m    |[39m                                                                     [31m[1m^[22m[39m
+     [90m 58 |[39m   })[33m;[39m
+     [90m 59 |[39m   test([32m'unknown does not exclude'[39m[33m,[39m () [33m=>[39m {
+     [90m 60 |[39m     expect(getExcludableTopics({ [33m...[39mbase[33m,[39m flood_prone[33m:[39m [32m'unknown'[39m [36mas[39m [36mconst[39m })[33m.[39mhas([32m'flooding'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m[0m
+
+      at toBe (__tests__/lib/see/intake.test.ts:57:69)
+
+  ● getExcludableTopics › new_parking_or_driveway=no excludes ["parking","vehicle_access","carport"]
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 55 |[39m   test[33m.[39meach(cases)([32m'%s=no excludes %j'[39m[33m,[39m (field[33m,[39m topics) [33m=>[39m {
+     [90m 56 |[39m     [36mconst[39m a [33m=[39m { [33m...[39mbase[33m,[39m [field][33m:[39m [32m'no'[39m [36mas[39m [36mconst[39m }[33m;[39m
+    [31m[1m>[22m[39m[90m 57 |[39m     [36mfor[39m ([36mconst[39m t [36mof[39m topics) { expect(getExcludableTopics(a)[33m.[39mhas(t))[33m.[39mtoBe([36mtrue[39m)[33m;[39m }
+     [90m    |[39m                                                                     [31m[1m^[22m[39m
+     [90m 58 |[39m   })[33m;[39m
+     [90m 59 |[39m   test([32m'unknown does not exclude'[39m[33m,[39m () [33m=>[39m {
+     [90m 60 |[39m     expect(getExcludableTopics({ [33m...[39mbase[33m,[39m flood_prone[33m:[39m [32m'unknown'[39m [36mas[39m [36mconst[39m })[33m.[39mhas([32m'flooding'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m[0m
+
+      at toBe (__tests__/lib/see/intake.test.ts:57:69)
+
+  ● getExcludableTopics › acid_sulfate_soils=no excludes ["acid_sulfate"]
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 55 |[39m   test[33m.[39meach(cases)([32m'%s=no excludes %j'[39m[33m,[39m (field[33m,[39m topics) [33m=>[39m {
+     [90m 56 |[39m     [36mconst[39m a [33m=[39m { [33m...[39mbase[33m,[39m [field][33m:[39m [32m'no'[39m [36mas[39m [36mconst[39m }[33m;[39m
+    [31m[1m>[22m[39m[90m 57 |[39m     [36mfor[39m ([36mconst[39m t [36mof[39m topics) { expect(getExcludableTopics(a)[33m.[39mhas(t))[33m.[39mtoBe([36mtrue[39m)[33m;[39m }
+     [90m    |[39m                                                                     [31m[1m^[22m[39m
+     [90m 58 |[39m   })[33m;[39m
+     [90m 59 |[39m   test([32m'unknown does not exclude'[39m[33m,[39m () [33m=>[39m {
+     [90m 60 |[39m     expect(getExcludableTopics({ [33m...[39mbase[33m,[39m flood_prone[33m:[39m [32m'unknown'[39m [36mas[39m [36mconst[39m })[33m.[39mhas([32m'flooding'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m[0m
+
+      at toBe (__tests__/lib/see/intake.test.ts:57:69)
+
+  ● getExcludableTopics › acoustic_zone=no excludes ["acoustic","noise","anef"]
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 55 |[39m   test[33m.[39meach(cases)([32m'%s=no excludes %j'[39m[33m,[39m (field[33m,[39m topics) [33m=>[39m {
+     [90m 56 |[39m     [36mconst[39m a [33m=[39m { [33m...[39mbase[33m,[39m [field][33m:[39m [32m'no'[39m [36mas[39m [36mconst[39m }[33m;[39m
+    [31m[1m>[22m[39m[90m 57 |[39m     [36mfor[39m ([36mconst[39m t [36mof[39m topics) { expect(getExcludableTopics(a)[33m.[39mhas(t))[33m.[39mtoBe([36mtrue[39m)[33m;[39m }
+     [90m    |[39m                                                                     [31m[1m^[22m[39m
+     [90m 58 |[39m   })[33m;[39m
+     [90m 59 |[39m   test([32m'unknown does not exclude'[39m[33m,[39m () [33m=>[39m {
+     [90m 60 |[39m     expect(getExcludableTopics({ [33m...[39mbase[33m,[39m flood_prone[33m:[39m [32m'unknown'[39m [36mas[39m [36mconst[39m })[33m.[39mhas([32m'flooding'[39m))[33m.[39mtoBe([36mfalse[39m)[33m;[39m[0m
+
+      at toBe (__tests__/lib/see/intake.test.ts:57:69)
+
+FAIL tests/performance/migration-performance.test.ts
+  ● Migration Performance Tests › Component Load Performance › feature flag provider loads within budget
+
+    Cannot find module '@/components/providers/FeatureFlagProvider' from 'tests/performance/migration-performance.test.ts'
+
+    [0m [90m 16 |[39m  [36mconst[39m startTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 17 |[39m
+    [31m[1m>[22m[39m[90m 18 |[39m  [36mconst[39m { [33mFeatureFlagProvider[39m } [33m=[39m require([32m'@/components/providers/FeatureFlagProvider'[39m)[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 19 |[39m
+     [90m 20 |[39m  [36mconst[39m endTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 21 |[39m  [36mconst[39m loadTime [33m=[39m endTime [33m-[39m startTime[33m;[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.require (tests/performance/migration-performance.test.ts:18:34)
+
+  ● Migration Performance Tests › Component Load Performance › development selector loads within budget
+
+    Cannot find module '@/components/development/DevelopmentSelector' from 'tests/performance/migration-performance.test.ts'
+
+    [0m [90m 27 |[39m  [36mconst[39m startTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 28 |[39m
+    [31m[1m>[22m[39m[90m 29 |[39m  [36mconst[39m { [33mDevelopmentSelector[39m } [33m=[39m require([32m'@/components/development/DevelopmentSelector'[39m)[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 30 |[39m
+     [90m 31 |[39m  [36mconst[39m endTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 32 |[39m  [36mconst[39m loadTime [33m=[39m endTime [33m-[39m startTime[33m;[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.require (tests/performance/migration-performance.test.ts:29:34)
+
+  ● Migration Performance Tests › Component Load Performance › compliance checklist loads within budget
+
+    Cannot find module '@/components/compliance/EnhancedComplianceChecklist' from 'tests/performance/migration-performance.test.ts'
+
+    [0m [90m 38 |[39m  [36mconst[39m startTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 39 |[39m
+    [31m[1m>[22m[39m[90m 40 |[39m  [36mconst[39m { [33mEnhancedComplianceChecklist[39m } [33m=[39m require([32m'@/components/compliance/EnhancedComplianceChecklist'[39m)[33m;[39m
+     [90m    |[39m                                          [31m[1m^[22m[39m
+     [90m 41 |[39m
+     [90m 42 |[39m  [36mconst[39m endTime [33m=[39m performance[33m.[39mnow()[33m;[39m
+     [90m 43 |[39m  [36mconst[39m loadTime [33m=[39m endTime [33m-[39m startTime[33m;[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.require (tests/performance/migration-performance.test.ts:40:42)
+
+FAIL __tests__/lib/see/devTypes.test.ts
+  ● assembleDescription › expected use › assembles type + works into a readable string
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Pergola / shade structure — open-sided timber, 4.2m x 3.6m, within the front setback"
+    Received: "pergola — open-sided timber, 4.2m x 3.6m, within the front setback"
+
+    [0m [90m  5 |[39m     it([32m'assembles type + works into a readable string'[39m[33m,[39m () [33m=>[39m {
+     [90m  6 |[39m       [36mconst[39m result [33m=[39m assembleDescription([32m'pergola'[39m[33m,[39m [32m'open-sided timber, 4.2m x 3.6m, within the front setback'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m  7 |[39m       expect(result)[33m.[39mtoBe([32m'Pergola / shade structure — open-sided timber, 4.2m x 3.6m, within the front setback'[39m)[33m;[39m
+     [90m    |[39m                      [31m[1m^[22m[39m
+     [90m  8 |[39m     })[33m;[39m
+     [90m  9 |[39m
+     [90m 10 |[39m     it([32m'uses the label from DEV_TYPE_OPTIONS not the key'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (__tests__/lib/see/devTypes.test.ts:7:22)
+
+  ● assembleDescription › expected use › trims works text whitespace
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Deck / terrace — timber deck, 3m x 4m"
+    Received: "deck — timber deck, 3m x 4m"
+
+    [0m [90m 15 |[39m     it([32m'trims works text whitespace'[39m[33m,[39m () [33m=>[39m {
+     [90m 16 |[39m       [36mconst[39m result [33m=[39m assembleDescription([32m'deck'[39m[33m,[39m [32m'  timber deck, 3m x 4m  '[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 17 |[39m       expect(result)[33m.[39mtoBe([32m'Deck / terrace — timber deck, 3m x 4m'[39m)[33m;[39m
+     [90m    |[39m                      [31m[1m^[22m[39m
+     [90m 18 |[39m     })[33m;[39m
+     [90m 19 |[39m   })[33m;[39m
+     [90m 20 |[39m[0m
+
+      at Object.toBe (__tests__/lib/see/devTypes.test.ts:17:22)
+
+  ● assembleDescription › edge cases › returns just the type label when works is empty
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: "Swimming pool or spa"
+    Received: "pool"
+
+    [0m [90m 21 |[39m   describe([32m'edge cases'[39m[33m,[39m () [33m=>[39m {
+     [90m 22 |[39m     it([32m'returns just the type label when works is empty'[39m[33m,[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 23 |[39m       expect(assembleDescription([32m'pool'[39m[33m,[39m [32m''[39m))[33m.[39mtoBe([32m'Swimming pool or spa'[39m)[33m;[39m
+     [90m    |[39m                                               [31m[1m^[22m[39m
+     [90m 24 |[39m     })[33m;[39m
+     [90m 25 |[39m
+     [90m 26 |[39m     it([32m'returns just works text when type is empty'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.toBe (__tests__/lib/see/devTypes.test.ts:23:47)
+
+FAIL lib/geometry/__tests__/test-real-properties.ts
+  ● Test suite failed to run
+
+    Your test suite must contain at least one test.
+
+      at onResult (node_modules/@jest/core/build/TestScheduler.js:133:18)
+      at node_modules/@jest/core/build/TestScheduler.js:254:19
+      at node_modules/emittery/index.js:363:13
+          at Array.map (<anonymous>)
+      at Emittery.emit (node_modules/emittery/index.js:361:23)
+
+FAIL __tests__/components/FeatureFlagProvider.test.tsx
+  ● Test suite failed to run
+
+    Cannot find module '@/lib/feature-flag-service' from '__tests__/components/FeatureFlagProvider.test.tsx'
+
+    [0m [90m 4 |[39m
+     [90m 5 |[39m [90m// Mock the feature flag service[39m
+    [31m[1m>[22m[39m[90m 6 |[39m jest[33m.[39mmock([32m'@/lib/feature-flag-service'[39m[33m,[39m () [33m=>[39m ({
+     [90m   |[39m      [31m[1m^[22m[39m
+     [90m 7 |[39m  featureFlagService[33m:[39m {
+     [90m 8 |[39m  getFlags[33m:[39m jest[33m.[39mfn()[33m,[39m
+     [90m 9 |[39m  getFlag[33m:[39m jest[33m.[39mfn()[33m,[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.mock (__tests__/components/FeatureFlagProvider.test.tsx:6:6)
+
+FAIL tests/e2e/authoritative-migration.spec.ts
+  ● Test suite failed to run
+
+    Cannot find module '@playwright/test' from 'tests/e2e/authoritative-migration.spec.ts'
+
+    [0m [90m 3 |[39m test[33m.[39mdescribe([32m'Authoritative Route Migration'[39m[33m,[39m () [33m=>[39m {
+     [90m 4 |[39m  test[33m.[39mbeforeEach([36masync[39m ({ page }) [33m=>[39m {
+    [31m[1m>[22m[39m[90m 5 |[39m  [36mawait[39m page[33m.[39mgoto([32m'http://localhost:3007'[39m)
+     [90m   |[39m               [31m[1m^[22m[39m
+     [90m 6 |[39m  })
+     [90m 7 |[39m
+     [90m 8 |[39m  test([32m'should load main page with all components'[39m[33m,[39m [36masync[39m ({ page }) [33m=>[39m {[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.<anonymous> (tests/e2e/authoritative-migration.spec.ts:5:15)
+
+FAIL tests/integration/authoritative-migration.test.tsx
+  ● Authoritative Migration Integration Tests › Feature Flag Integration › feature flags provider loads and provides context
+
+    Cannot find module '@/components/providers/FeatureFlagProvider' from 'tests/integration/authoritative-migration.test.tsx'
+
+    [0m [90m 32 |[39m  test([32m'feature flags provider loads and provides context'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 33 |[39m  [36mconst[39m [33mTestComponent[39m [33m=[39m () [33m=>[39m {
+    [31m[1m>[22m[39m[90m 34 |[39m  [36mconst[39m { useFeatureFlags } [33m=[39m require([32m'@/components/providers/FeatureFlagProvider'[39m)[33m;[39m
+     [90m    |[39m                              [31m[1m^[22m[39m
+     [90m 35 |[39m  [36mconst[39m { flags[33m,[39m loading } [33m=[39m useFeatureFlags()[33m;[39m
+     [90m 36 |[39m  [36mreturn[39m (
+     [90m 37 |[39m  [33m<[39m[33mdiv[39m[33m>[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at require (tests/integration/authoritative-migration.test.tsx:34:30)
+      at renderWithHooks (node_modules/react-dom/cjs/react-dom.development.js:15486:18)
+      at mountIndeterminateComponent (node_modules/react-dom/cjs/react-dom.development.js:20103:13)
+      at beginWork (node_modules/react-dom/cjs/react-dom.development.js:21626:16)
+      at beginWork$1 (node_modules/react-dom/cjs/react-dom.development.js:27465:14)
+      at performUnitOfWork (node_modules/react-dom/cjs/react-dom.development.js:26599:12)
+      at workLoopSync (node_modules/react-dom/cjs/react-dom.development.js:26505:5)
+      at renderRootSync (node_modules/react-dom/cjs/react-dom.development.js:26473:7)
+      at recoverFromConcurrentError (node_modules/react-dom/cjs/react-dom.development.js:25889:20)
+      at performConcurrentWorkOnRoot (node_modules/react-dom/cjs/react-dom.development.js:25789:22)
+      at flushActQueue (node_modules/react/cjs/react.development.js:2667:24)
+      at act (node_modules/react/cjs/react.development.js:2582:11)
+      at actWithWarning (node_modules/react-dom/cjs/react-dom-test-utils.development.js:1740:10)
+      at node_modules/@testing-library/react/dist/act-compat.js:63:25
+      at renderRoot (node_modules/@testing-library/react/dist/pure.js:159:26)
+      at render (node_modules/@testing-library/react/dist/pure.js:246:10)
+      at Object.<anonymous> (tests/integration/authoritative-migration.test.tsx:44:8)
+
+  ● Authoritative Migration Integration Tests › Development Selector Migration › development selector integrates with feature flags
+
+    Cannot find module '@/components/development/DevelopmentSelector' from 'tests/integration/authoritative-migration.test.tsx'
+
+    [0m [90m 62 |[39m  })[33m;[39m
+     [90m 63 |[39m
+    [31m[1m>[22m[39m[90m 64 |[39m  [36mconst[39m { [33mDevelopmentSelector[39m } [33m=[39m require([32m'@/components/development/DevelopmentSelector'[39m)[33m;[39m
+     [90m    |[39m                                  [31m[1m^[22m[39m
+     [90m 65 |[39m
+     [90m 66 |[39m  render(
+     [90m 67 |[39m  [33m<[39m[33mTestWrapper[39m[33m>[39m[0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.require (tests/integration/authoritative-migration.test.tsx:64:34)
+
+  ● Authoritative Migration Integration Tests › Performance Tests › migration components load within performance budget
+
+    Cannot find module '@/components/development/DevelopmentSelector' from 'tests/integration/authoritative-migration.test.tsx'
+
+    [0m [90m 190 |[39m
+     [90m 191 |[39m  [90m// Simulate loading all migration components[39m
+    [31m[1m>[22m[39m[90m 192 |[39m  [36mconst[39m { [33mDevelopmentSelector[39m } [33m=[39m require([32m'@/components/development/DevelopmentSelector'[39m)[33m;[39m
+     [90m     |[39m                                  [31m[1m^[22m[39m
+     [90m 193 |[39m  [36mconst[39m { [33mEnhancedComplianceChecklist[39m } [33m=[39m require([32m'@/components/compliance/EnhancedComplianceChecklist'[39m)[33m;[39m
+     [90m 194 |[39m
+     [90m 195 |[39m  render([0m
+
+      at Resolver._throwModNotFoundError (node_modules/jest-resolve/build/resolver.js:427:11)
+      at Object.require (tests/integration/authoritative-migration.test.tsx:192:34)
+
+FAIL __tests__/components/compliance/ComplianceStatus.test.tsx
+  ● EnhancedComplianceStatus › displays progress metrics
+
+    Found multiple elements with the text: Progress
+
+    Here are the matching elements:
+
+    Ignored nodes: comments, script, style
+    [36m<p[39m
+      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+    [36m>[39m
+      [0mProgress[0m
+    [36m</p>[39m
+
+    Ignored nodes: comments, script, style
+    [36m<span>[39m
+      [0mProgress[0m
+    [36m</span>[39m
+
+    (If this is intentional, then use the `*AllBy*` variant of the query (like `queryAllByText`, `getAllByText`, or `findAllByText`)).
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"compliance-status "[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-6 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900"[39m
+              [36m>[39m
+                [0mCompliance Status[0m
+              [36m</h2>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-2"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center text-sm text-gray-500"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 mr-1"[39m
+                  [36m/>[39m
+                  [0mAuto-refresh[0m
+                [36m</div>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 "[39m
+                  [36m>[39m
+                    [0m↻[0m
+                  [36m</span>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-1 md:grid-cols-4 gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mOverall Status[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-amber-600"[39m
+                    [36m>[39m
+                      [0mconditional[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mProgress[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+                    [36m>[39m
+                      [0m100%[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+                    [36m>[39m
+                      [0m2/2 checks[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mCritical Issues[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mWarnings[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-sm text-gray-600 mb-2"[39m
+              [36m>[39m
+                [36m<span>[39m
+                  [0mProgress[0m
+                [36m</span>[39m
+                [36m<span>[39m
+                  [0m100[0m
+                  [0m%[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"w-full bg-gray-200 rounded-full h-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"h-full rounded-full transition-all duration-300 bg-emerald-500"[39m
+                  [33mstyle[39m=[32m"width: 100%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-4 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap items-center justify-between gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-4"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center"[39m
+                [36m>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"mr-2"[39m
+                    [33mtype[39m=[32m"checkbox"[39m
+                  [36m/>[39m
+                  [0mShow only issues[0m
+                [36m</label>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"category"[39m
+                  [36m>[39m
+                    [0mGroup by Category[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mGroup by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"status"[39m
+                  [36m>[39m
+                    [0mGroup by Status[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mGroup by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mSort by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"lastChecked"[39m
+                  [36m>[39m
+                    [0mSort by Last Checked[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mSort by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"text-sm text-gray-500"[39m
+              [36m>[39m
+                [0mLast updated: [0m
+                [0m16/03/2026, 4:50:04 pm[0m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-3"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"transform transition-transform "[39m
+                  [36m>[39m
+                    [0m▶[0m
+                  [36m</span>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"font-medium text-gray-900"[39m
+                  [36m>[39m
+                    [0m4[0m
+                  [36m</h3>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-sm text-gray-500"[39m
+                  [36m>[39m
+                    [0m([0m
+                    [0m2[0m
+                    [0m checks)[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"px-2 py-1 text-xs rounded-full border bg-green-100 text-green-800 border-green-200"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"px-2 py-1 text-xs rounded-full border bg-red-100 text-red-800 border-red-200"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 82 |[39m  )[33m;[39m
+     [90m 83 |[39m
+    [31m[1m>[22m[39m[90m 84 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 85 |[39m  expect(screen[33m.[39mgetByText([32m'Overall Status'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 86 |[39m  expect(screen[33m.[39mgetByText([32m'Progress'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 87 |[39m  expect(screen[33m.[39mgetByText([32m'100%'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceStatus.test.tsx:84:15)
+
+  ● EnhancedComplianceStatus › shows compliance checks when expanded
+
+    Unable to find an element with the text: Building height must not exceed 24m. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"compliance-status "[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-6 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900"[39m
+              [36m>[39m
+                [0mCompliance Status[0m
+              [36m</h2>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-2"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center text-sm text-gray-500"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 mr-1"[39m
+                  [36m/>[39m
+                  [0mAuto-refresh[0m
+                [36m</div>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 "[39m
+                  [36m>[39m
+                    [0m↻[0m
+                  [36m</span>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-1 md:grid-cols-4 gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mOverall Status[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-amber-600"[39m
+                    [36m>[39m
+                      [0mconditional[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mProgress[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+                    [36m>[39m
+                      [0m100%[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+                    [36m>[39m
+                      [0m2/2 checks[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mCritical Issues[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mWarnings[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-sm text-gray-600 mb-2"[39m
+              [36m>[39m
+                [36m<span>[39m
+                  [0mProgress[0m
+                [36m</span>[39m
+                [36m<span>[39m
+                  [0m100[0m
+                  [0m%[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"w-full bg-gray-200 rounded-full h-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"h-full rounded-full transition-all duration-300 bg-emerald-500"[39m
+                  [33mstyle[39m=[32m"width: 100%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-4 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap items-center justify-between gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-4"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center"[39m
+                [36m>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"mr-2"[39m
+                    [33mtype[39m=[32m"checkbox"[39m
+                  [36m/>[39m
+                  [0mShow only issues[0m
+                [36m</label>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"category"[39m
+                  [36m>[39m
+                    [0mGroup by Category[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mGroup by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"status"[39m
+                  [36m>[39m
+                    [0mGroup by Status[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mGroup by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mSort by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"lastChecked"[39m
+                  [36m>[39m
+                    [0mSort by Last Checked[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mSort by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"text-sm text-gray-500"[39m
+              [36m>[39m
+                [0mLast updated: [0m
+                [0m16/03/2026, 4:50:04 pm[0m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-3"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"transform transition-transform "[39m
+                  [36m>[39m
+                    [0m▶[0m
+                  [36m</span>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"font-medium text-gray-900"[39m
+                  [36m>[39m
+                    [0m4[0m
+                  [36m</h3>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-sm text-gray-500"[39m
+                  [36m>[39m
+                    [0m([0m
+                    [0m2[0m
+                    [0m checks)[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"px-2 py-1 text-xs rounded-full border bg-green-100 text-green-800 border-green-200"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"px-2 py-1 text-xs rounded-full border bg-red-100 text-red-800 border-red-200"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m  96 |[39m  )[33m;[39m
+     [90m  97 |[39m
+    [31m[1m>[22m[39m[90m  98 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m  99 |[39m  expect(screen[33m.[39mgetByText([32m'Building height must not exceed 24m'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 100 |[39m  })[33m;[39m
+     [90m 101 |[39m  })[33m;[39m[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceStatus.test.tsx:98:15)
+
+  ● EnhancedComplianceStatus › filters issues when toggle is enabled
+
+    Unable to find an element with the text: Floor space ratio must not exceed 1.2:1. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"compliance-status "[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-6 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex items-center justify-between mb-4"[39m
+            [36m>[39m
+              [36m<h2[39m
+                [33mclass[39m=[32m"text-lg font-semibold text-gray-900"[39m
+              [36m>[39m
+                [0mCompliance Status[0m
+              [36m</h2>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-2"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center text-sm text-gray-500"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 mr-1"[39m
+                  [36m/>[39m
+                  [0mAuto-refresh[0m
+                [36m</div>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"w-4 h-4 "[39m
+                  [36m>[39m
+                    [0m↻[0m
+                  [36m</span>[39m
+                [36m</button>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid grid-cols-1 md:grid-cols-4 gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mOverall Status[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-amber-600"[39m
+                    [36m>[39m
+                      [0mconditional[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mProgress[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-gray-900"[39m
+                    [36m>[39m
+                      [0m100%[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-xs text-gray-500 mt-1"[39m
+                    [36m>[39m
+                      [0m2/2 checks[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mCritical Issues[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"bg-gray-50 rounded-lg p-4"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center justify-between"[39m
+                [36m>[39m
+                  [36m<div>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-sm font-medium text-gray-500"[39m
+                    [36m>[39m
+                      [0mWarnings[0m
+                    [36m</p>[39m
+                    [36m<p[39m
+                      [33mclass[39m=[32m"text-2xl font-bold text-emerald-600"[39m
+                    [36m>[39m
+                      [0m0[0m
+                    [36m</p>[39m
+                  [36m</div>[39m
+                [36m</div>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"mt-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex justify-between text-sm text-gray-600 mb-2"[39m
+              [36m>[39m
+                [36m<span>[39m
+                  [0mProgress[0m
+                [36m</span>[39m
+                [36m<span>[39m
+                  [0m100[0m
+                  [0m%[0m
+                [36m</span>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"w-full bg-gray-200 rounded-full h-3"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"h-full rounded-full transition-all duration-300 bg-emerald-500"[39m
+                  [33mstyle[39m=[32m"width: 100%;"[39m
+                [36m/>[39m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg p-4 mb-6"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex flex-wrap items-center justify-between gap-4"[39m
+            [36m>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"flex items-center space-x-4"[39m
+              [36m>[39m
+                [36m<label[39m
+                  [33mclass[39m=[32m"flex items-center"[39m
+                [36m>[39m
+                  [36m<input[39m
+                    [33mclass[39m=[32m"mr-2"[39m
+                    [33mtype[39m=[32m"checkbox"[39m
+                  [36m/>[39m
+                  [0mShow only issues[0m
+                [36m</label>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"category"[39m
+                  [36m>[39m
+                    [0mGroup by Category[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mGroup by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"status"[39m
+                  [36m>[39m
+                    [0mGroup by Status[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mGroup by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+                [36m<select[39m
+                  [33mclass[39m=[32m"px-3 py-1 border rounded-md text-sm"[39m
+                [36m>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"severity"[39m
+                  [36m>[39m
+                    [0mSort by Severity[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"lastChecked"[39m
+                  [36m>[39m
+                    [0mSort by Last Checked[0m
+                  [36m</option>[39m
+                  [36m<option[39m
+                    [33mvalue[39m=[32m"provision"[39m
+                  [36m>[39m
+                    [0mSort by Provision[0m
+                  [36m</option>[39m
+                [36m</select>[39m
+              [36m</div>[39m
+              [36m<div[39m
+                [33mclass[39m=[32m"text-sm text-gray-500"[39m
+              [36m>[39m
+                [0mLast updated: [0m
+                [0m16/03/2026, 4:50:04 pm[0m
+              [36m</div>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"bg-white border border-gray-200 rounded-lg"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50"[39m
+              [36m>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-3"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"transform transition-transform "[39m
+                  [36m>[39m
+                    [0m▶[0m
+                  [36m</span>[39m
+                  [36m<h3[39m
+                    [33mclass[39m=[32m"font-medium text-gray-900"[39m
+                  [36m>[39m
+                    [0m4[0m
+                  [36m</h3>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-sm text-gray-500"[39m
+                  [36m>[39m
+                    [0m([0m
+                    [0m1[0m
+                    [0m checks)[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+                [36m<div[39m
+                  [33mclass[39m=[32m"flex items-center space-x-2"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"px-2 py-1 text-xs rounded-full border bg-red-100 text-red-800 border-red-200"[39m
+                  [36m>[39m
+                    [0m1[0m
+                  [36m</span>[39m
+                [36m</div>[39m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 115 |[39m
+     [90m 116 |[39m  [90m// Should only show non-compliant items[39m
+    [31m[1m>[22m[39m[90m 117 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 118 |[39m  expect(screen[33m.[39mgetByText([32m'Floor space ratio must not exceed 1.2:1'[39m))[33m.[39mtoBeInTheDocument()[33m;[39m
+     [90m 119 |[39m  })[33m;[39m
+     [90m 120 |[39m  })[33m;[39m[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceStatus.test.tsx:117:15)
+
+FAIL __tests__/components/compliance/ComplianceChecklist.test.tsx
+  ● ComplianceChecklist › renders loading state when propertyData is not provided
+
+    TestingLibraryElementError: Unable to find an element with the text: /compliance checklist will appear here/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 24 |[39m  renderWithProviders([33m<[39m[33mComplianceChecklist[39m [33m/[39m[33m>[39m)
+     [90m 25 |[39m
+    [31m[1m>[22m[39m[90m 26 |[39m  expect(screen[33m.[39mgetByText([35m/compliance checklist will appear here/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m    |[39m                [31m[1m^[22m[39m
+     [90m 27 |[39m  })
+     [90m 28 |[39m
+     [90m 29 |[39m  it([32m'displays static checklist items when feature flag is disabled'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (__tests__/components/compliance/ComplianceChecklist.test.tsx:26:16)
+
+  ● ComplianceChecklist › displays static checklist items when feature flag is disabled
+
+    TestingLibraryElementError: Unable to find an element with the text: /permissibility/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 35 |[39m  )
+     [90m 36 |[39m
+    [31m[1m>[22m[39m[90m 37 |[39m  expect(screen[33m.[39mgetByText([35m/permissibility/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m    |[39m                [31m[1m^[22m[39m
+     [90m 38 |[39m  expect(screen[33m.[39mgetByText([35m/floor space ratio/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 39 |[39m  })
+     [90m 40 |[39m[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (__tests__/components/compliance/ComplianceChecklist.test.tsx:37:16)
+
+  ● ComplianceChecklist › fetches dynamic data when feature flag is enabled
+
+    Unable to find an element with the text: /height limit/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 73 |[39m  )
+     [90m 74 |[39m
+    [31m[1m>[22m[39m[90m 75 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 76 |[39m  expect(screen[33m.[39mgetByText([35m/height limit/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 77 |[39m  })
+     [90m 78 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceChecklist.test.tsx:75:15)
+
+  ● ComplianceChecklist › expands and collapses checklist items
+
+    TestingLibraryElementError: Unable to find an element with the text: /permissibility/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 86 |[39m  )
+     [90m 87 |[39m
+    [31m[1m>[22m[39m[90m 88 |[39m  [36mconst[39m firstItem [33m=[39m screen[33m.[39mgetByText([35m/permissibility/i[39m)[33m.[39mclosest([32m'div[role="button"]'[39m) [33m||[39m
+     [90m    |[39m                           [31m[1m^[22m[39m
+     [90m 89 |[39m  screen[33m.[39mgetByText([35m/permissibility/i[39m)[33m.[39mclosest([32m'.cursor-pointer'[39m)
+     [90m 90 |[39m
+     [90m 91 |[39m  [36mif[39m (firstItem) {[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (__tests__/components/compliance/ComplianceChecklist.test.tsx:88:27)
+
+  ● ComplianceChecklist › displays tier information for dynamic items
+
+    Unable to find an element with the text: /98% confidence/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 127 |[39m  )
+     [90m 128 |[39m
+    [31m[1m>[22m[39m[90m 129 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 130 |[39m  expect(screen[33m.[39mgetByText([35m/98% confidence/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 131 |[39m  })
+     [90m 132 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceChecklist.test.tsx:129:15)
+
+  ● ComplianceChecklist › handles API errors gracefully
+
+    Unable to find an element with the text: /error loading dynamic data/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 144 |[39m  )
+     [90m 145 |[39m
+    [31m[1m>[22m[39m[90m 146 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 147 |[39m  expect(screen[33m.[39mgetByText([35m/error loading dynamic data/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 148 |[39m  })
+     [90m 149 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (__tests__/components/compliance/ComplianceChecklist.test.tsx:146:15)
+
+FAIL tests/components/compliance-checklist.test.tsx
+  ● ComplianceChecklist › renders loading state when propertyData is not provided
+
+    TestingLibraryElementError: Unable to find an element with the text: /compliance checklist will appear here/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 24 |[39m  renderWithProviders([33m<[39m[33mComplianceChecklist[39m [33m/[39m[33m>[39m)
+     [90m 25 |[39m
+    [31m[1m>[22m[39m[90m 26 |[39m  expect(screen[33m.[39mgetByText([35m/compliance checklist will appear here/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m    |[39m                [31m[1m^[22m[39m
+     [90m 27 |[39m  })
+     [90m 28 |[39m
+     [90m 29 |[39m  it([32m'displays static checklist items when feature flag is disabled'[39m[33m,[39m () [33m=>[39m {[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (tests/components/compliance-checklist.test.tsx:26:16)
+
+  ● ComplianceChecklist › displays static checklist items when feature flag is disabled
+
+    TestingLibraryElementError: Unable to find an element with the text: /permissibility/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 35 |[39m  )
+     [90m 36 |[39m
+    [31m[1m>[22m[39m[90m 37 |[39m  expect(screen[33m.[39mgetByText([35m/permissibility/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m    |[39m                [31m[1m^[22m[39m
+     [90m 38 |[39m  expect(screen[33m.[39mgetByText([35m/floor space ratio/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 39 |[39m  })
+     [90m 40 |[39m[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (tests/components/compliance-checklist.test.tsx:37:16)
+
+  ● ComplianceChecklist › fetches dynamic data when feature flag is enabled
+
+    Unable to find an element with the text: /height limit/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 73 |[39m  )
+     [90m 74 |[39m
+    [31m[1m>[22m[39m[90m 75 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m    |[39m               [31m[1m^[22m[39m
+     [90m 76 |[39m  expect(screen[33m.[39mgetByText([35m/height limit/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 77 |[39m  })
+     [90m 78 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (tests/components/compliance-checklist.test.tsx:75:15)
+
+  ● ComplianceChecklist › expands and collapses checklist items
+
+    TestingLibraryElementError: Unable to find an element with the text: /permissibility/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 86 |[39m  )
+     [90m 87 |[39m
+    [31m[1m>[22m[39m[90m 88 |[39m  [36mconst[39m firstItem [33m=[39m screen[33m.[39mgetByText([35m/permissibility/i[39m)[33m.[39mclosest([32m'div[role="button"]'[39m) [33m||[39m
+     [90m    |[39m                           [31m[1m^[22m[39m
+     [90m 89 |[39m  screen[33m.[39mgetByText([35m/permissibility/i[39m)[33m.[39mclosest([32m'.cursor-pointer'[39m)
+     [90m 90 |[39m
+     [90m 91 |[39m  [36mif[39m (firstItem) {[0m
+
+      at Object.getElementError (node_modules/@testing-library/dom/dist/config.js:37:19)
+      at node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+      at node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+      at node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+      at Object.getByText (tests/components/compliance-checklist.test.tsx:88:27)
+
+  ● ComplianceChecklist › displays tier information for dynamic items
+
+    Unable to find an element with the text: /98% confidence/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 127 |[39m  )
+     [90m 128 |[39m
+    [31m[1m>[22m[39m[90m 129 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 130 |[39m  expect(screen[33m.[39mgetByText([35m/98% confidence/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 131 |[39m  })
+     [90m 132 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (tests/components/compliance-checklist.test.tsx:129:15)
+
+  ● ComplianceChecklist › handles API errors gracefully
+
+    Unable to find an element with the text: /error loading dynamic data/i. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+    Ignored nodes: comments, script, style
+    [36m<body>[39m
+      [36m<div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"bg-card text-card-foreground flex flex-col gap-6 rounded-xl border py-6 shadow-sm"[39m
+          [33mdata-slot[39m=[32m"card"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"p-6 text-center text-gray-500"[39m
+          [36m>[39m
+            [36m<svg[39m
+              [33mclass[39m=[32m"lucide lucide-file-text h-8 w-8 mx-auto mb-2 text-gray-400"[39m
+              [33mfill[39m=[32m"none"[39m
+              [33mheight[39m=[32m"24"[39m
+              [33mstroke[39m=[32m"currentColor"[39m
+              [33mstroke-linecap[39m=[32m"round"[39m
+              [33mstroke-linejoin[39m=[32m"round"[39m
+              [33mstroke-width[39m=[32m"2"[39m
+              [33mviewBox[39m=[32m"0 0 24 24"[39m
+              [33mwidth[39m=[32m"24"[39m
+              [33mxmlns[39m=[32m"http://www.w3.org/2000/svg"[39m
+            [36m>[39m
+              [36m<path[39m
+                [33md[39m=[32m"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"[39m
+              [36m/>[39m
+              [36m<polyline[39m
+                [33mpoints[39m=[32m"14 2 14 8 20 8"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"13"[39m
+                [33my2[39m=[32m"13"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"16"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"17"[39m
+                [33my2[39m=[32m"17"[39m
+              [36m/>[39m
+              [36m<line[39m
+                [33mx1[39m=[32m"10"[39m
+                [33mx2[39m=[32m"8"[39m
+                [33my1[39m=[32m"9"[39m
+                [33my2[39m=[32m"9"[39m
+              [36m/>[39m
+            [36m</svg>[39m
+            [36m<p>[39m
+              [0mSelect a property address and development type to see compliance requirements[0m
+            [36m</p>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</body>[39m
+
+    [0m [90m 144 |[39m  )
+     [90m 145 |[39m
+    [31m[1m>[22m[39m[90m 146 |[39m  [36mawait[39m waitFor(() [33m=>[39m {
+     [90m     |[39m               [31m[1m^[22m[39m
+     [90m 147 |[39m  expect(screen[33m.[39mgetByText([35m/error loading dynamic data/i[39m))[33m.[39mtoBeInTheDocument()
+     [90m 148 |[39m  })
+     [90m 149 |[39m  })[0m
+
+      at waitForWrapper (node_modules/@testing-library/dom/dist/wait-for.js:166:27)
+      at Object.<anonymous> (tests/components/compliance-checklist.test.tsx:146:15)
+
+FAIL __tests__/lib/integration/migration-orchestrator.test.ts (8.097 s)
+  ● MigrationOrchestrator › Migration Lifecycle › starts migration successfully
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    [0m [90m 41 |[39m  [36mconst[39m result [33m=[39m [36mawait[39m orchestrator[33m.[39mstartMigration()[33m;[39m
+     [90m 42 |[39m
+    [31m[1m>[22m[39m[90m 43 |[39m  expect(result)[33m.[39mtoBe([36mtrue[39m)[33m;[39m
+     [90m    |[39m                 [31m[1m^[22m[39m
+     [90m 44 |[39m  })[33m;[39m
+     [90m 45 |[39m
+     [90m 46 |[39m  test([32m'handles migration failure with rollback'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.toBe (__tests__/lib/integration/migration-orchestrator.test.ts:43:17)
+
+  ● MigrationOrchestrator › Event System › emits events during migration lifecycle
+
+    expect(received).toHaveLength(expected)
+
+    Expected length: 2
+    Received length: 0
+    Received array:  []
+
+    [0m [90m 140 |[39m  [36mawait[39m testOrchestrator[33m.[39mstartMigration()[33m;[39m
+     [90m 141 |[39m
+    [31m[1m>[22m[39m[90m 142 |[39m  expect(events)[33m.[39mtoHaveLength([35m2[39m)[33m;[39m [90m// start and complete[39m
+     [90m     |[39m                 [31m[1m^[22m[39m
+     [90m 143 |[39m  expect(events[[35m0[39m][33m.[39mtype)[33m.[39mtoBe([32m'start'[39m)[33m;[39m
+     [90m 144 |[39m  expect(events[[35m1[39m][33m.[39mtype)[33m.[39mtoBe([32m'complete'[39m)[33m;[39m
+     [90m 145 |[39m  })[33m;[39m[0m
+
+      at Object.toHaveLength (__tests__/lib/integration/migration-orchestrator.test.ts:142:17)
+
+  ● MigrationOrchestrator › Progress Tracking › calculates total progress correctly
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 0
+    Received: 20
+
+    [0m [90m 183 |[39m
+     [90m 184 |[39m  [90m// Initially 0%[39m
+    [31m[1m>[22m[39m[90m 185 |[39m  expect(status[33m.[39mtotalProgress)[33m.[39mtoBe([35m0[39m)[33m;[39m
+     [90m     |[39m                               [31m[1m^[22m[39m
+     [90m 186 |[39m
+     [90m 187 |[39m  [90m// Mark some phases as completed[39m
+     [90m 188 |[39m  status[33m.[39mphases[[35m0[39m][33m.[39mstatus [33m=[39m [32m'completed'[39m[33m;[39m[0m
+
+      at Object.toBe (__tests__/lib/integration/migration-orchestrator.test.ts:185:31)
+
+  ● MigrationOrchestrator › Stop Migration › can stop migration in progress
+
+    expect(received).toBeNull()
+
+    Received: "ui1"
+
+    [0m [90m 261 |[39m  [36mconst[39m status [33m=[39m testOrchestrator[33m.[39mgetStatus()[33m;[39m
+     [90m 262 |[39m
+    [31m[1m>[22m[39m[90m 263 |[39m  expect(status[33m.[39mcurrentPhase)[33m.[39mtoBeNull()[33m;[39m
+     [90m     |[39m                              [31m[1m^[22m[39m
+     [90m 264 |[39m  expect(status[33m.[39misRunning)[33m.[39mtoBe([36mfalse[39m)[33m;[39m
+     [90m 265 |[39m  })[33m;[39m
+     [90m 266 |[39m  })[33m;[39m[0m
+
+      at Object.toBeNull (__tests__/lib/integration/migration-orchestrator.test.ts:263:30)
+
+FAIL __tests__/components/development/DevelopmentSelector.test.tsx
+  ● Test suite failed to run
+
+    A jest worker process (pid=96112) was terminated by another process: signal=SIGTERM, exitCode=null. Operating system logs may contain more information on why this occurred.
+
+      at ChildProcessWorker._onExit (node_modules/jest-worker/build/workers/ChildProcessWorker.js:370:23)
+
+
+Test Suites: 14 failed, 11 passed, 25 total
+Tests:       41 failed, 286 passed, 327 total
+Snapshots:   0 total
+Time:        534.698 s
+Ran all test suites.
+
+--- TypeScript: type check ---
+scripts/extract-sepp-structured.ts(352,14): error TS18046: 'error' is of type 'unknown'.
+scripts/extract-sepp-structured.ts(358,33): error TS7006: Parameter 'provisionId' implicitly has an 'any' type.
+scripts/extract-sepp-structured.ts(358,46): error TS7006: Parameter 'requirements' implicitly has an 'any' type.
+scripts/extract-sepp-structured.ts(358,60): error TS7006: Parameter 'pdfPage' implicitly has an 'any' type.
+scripts/extract-sepp-structured.ts(358,69): error TS7006: Parameter 'provisionText' implicitly has an 'any' type.
+
+=== END ===
