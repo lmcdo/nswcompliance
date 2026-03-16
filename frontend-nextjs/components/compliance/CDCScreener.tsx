@@ -102,8 +102,8 @@ function evaluateCriteria(
     } else {
       criteria.push({
         label: 'Minimum lot area',
-        result: 'unknown',
-        detail: `Lot is ${Math.round(lotArea)} m² — minimum not found in loaded provisions. Verify Cl 3.1 in SEPP E&C PDF.`,
+        result: 'warn',
+        detail: `Lot is ${Math.round(lotArea)} m² — minimum not found in loaded provisions. Verify Cl 3.1 in SEPP E&C PDF before issuing CDC.`,
         provisionRef: 'SEPP E&C Cl 3.1',
       });
     }
@@ -138,8 +138,8 @@ function evaluateCriteria(
     } else {
       criteria.push({
         label: 'Maximum floor area addition',
-        result: 'unknown',
-        detail: `${floorAddition} m² proposed — limit not found in loaded provisions. Verify in SEPP E&C PDF.`,
+        result: 'warn',
+        detail: `${floorAddition} m² proposed — limit not found in loaded provisions. Verify Cl 3.19 in SEPP E&C PDF before issuing CDC.`,
         provisionRef: 'SEPP E&C Part 3',
       });
     }
@@ -168,8 +168,8 @@ function evaluateCriteria(
     } else {
       criteria.push({
         label: 'Maximum height',
-        result: 'unknown',
-        detail: `${height} m proposed — limit not found in loaded provisions. Verify in SEPP E&C PDF.`,
+        result: 'warn',
+        detail: `${height} m proposed — limit not found in loaded provisions. Verify Cl 3.18 in SEPP E&C PDF before issuing CDC.`,
         provisionRef: 'SEPP E&C Part 3',
       });
     }
