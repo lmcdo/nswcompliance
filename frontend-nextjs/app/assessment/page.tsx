@@ -14,7 +14,7 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
-import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
+import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -414,29 +414,11 @@ export default function AssessmentPage() {
                   </div>
                 )}
 
-                {/* DCP Tab Content - always mounted to preserve DA mode state across tab switches */}
+                {/* DCP Tab Content — Register Interest (all councils) */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-
-                    <ProvisionsByTocStructure
-                      key={`toc-${selectedProperty.address}`}
-                      lga={selectedProperty.constraints?.lga}
-                      formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                      zone={selectedProperty.constraints?.zone}
-                      heritage={selectedProperty.heritage?.isHeritage || false}
-                      hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
-                        ? selectedProperty.heritage?.heritageItemName
-                        : undefined}
-                      precinctId={selectedProperty.constraints?.precinctId}
-                      precinctName={selectedProperty.constraints?.precinctName}
+                    <DCPInterestForm
+                      councilName={selectedProperty.constraints?.lga || 'Your council'}
                       address={selectedProperty.address}
-                      hcaCode={selectedProperty.heritage?.heritageItemNumber}
-                      heritageItem={selectedProperty.heritage?.heritageType?.toLowerCase().includes('item')}
-                      heritageItemName={selectedProperty.heritage?.heritageItemName}
-                      heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
-                      propertyData={selectedProperty}
-                      lepClauseData={lepClauseData}
-                      isDaMode={isDaMode}
-                      onToggleDaMode={setIsDaMode}
                     />
                   </div>
               </>
