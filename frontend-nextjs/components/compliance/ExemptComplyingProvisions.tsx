@@ -17,6 +17,7 @@ import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { sanitizeHTML } from '@/lib/sanitize';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { CDCScreener } from './CDCScreener';
 
@@ -213,9 +214,10 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
 
                     {/* Provision text + PDF button */}
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm text-gray-800 leading-relaxed flex-1">
-                        {p.provision_text}
-                      </p>
+                      <div
+                        className="text-sm text-gray-800 leading-relaxed flex-1 [&_table]:w-full [&_table]:border-collapse [&_table]:my-1 [&_td]:border [&_td]:border-gray-200 [&_td]:px-2 [&_td]:py-1 [&_td]:text-xs"
+                        dangerouslySetInnerHTML={{ __html: sanitizeHTML(p.provision_text) }}
+                      />
                       <div className="flex items-center gap-1.5 flex-shrink-0">
                         {page && (
                           <>
