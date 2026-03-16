@@ -16,6 +16,7 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronRight, ChevronUp, ExternalLink, FileText, FileImage, Clock, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { getPdfImageUrl } from '@/lib/pdf-image-url';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { CDCScreener } from './CDCScreener';
 
@@ -221,7 +222,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
                             <button
                               onClick={() => setViewingPdfPage({
                                 pageNumber: page,
-                                url: `/pdf-pages/sepp-exempt-complying/page_${page}.png`,
+                                url: getPdfImageUrl(`/pdf-pages/sepp-exempt-complying/page_${page}.png`) || '',
                                 label: `SEPP E&C Part ${p.v2_part} - Page ${page}`
                               })}
                               className="p-1 rounded hover:bg-purple-100 transition-colors"
