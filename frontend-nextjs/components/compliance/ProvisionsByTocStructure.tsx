@@ -154,14 +154,7 @@ export function ProvisionsByTocStructure({
   isDaMode = false,
   onToggleDaMode,
 }: ProvisionsByTocStructureProps) {
-  // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
-  const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
-
-  // On DA mode activation: switch to Document view (requires TOC for chapter dismissal).
-  // On exit: intentionally preserve the current view — don't reset user's navigation context.
-  useEffect(() => {
-    if (isDaMode) setProvisionView('structure');
-  }, [isDaMode]);
+  const [provisionView] = useState<'task' | 'structure'>('structure');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
@@ -444,14 +437,10 @@ export function ProvisionsByTocStructure({
   // Get provisions for selected part/section - memoized to avoid unnecessary recalculations
   const rawSelectedProvisions = useMemo(() => {
     if (!selectedPart || !tocStructure[selectedPart]) return [];
-
     const part = tocStructure[selectedPart];
-
     if (selectedSection && part.sections[selectedSection]) {
       return part.sections[selectedSection].provisions;
     }
-
-    // Return all provisions for the part
     return (Object.values(part.sections) as any[]).flatMap(s => s.provisions);
   }, [selectedPart, selectedSection, tocStructure]);
 
@@ -548,8 +537,11 @@ export function ProvisionsByTocStructure({
       });
     }
 
+    const CHAPTER_KEY_RE = /^(part\d+-|part-[a-z]-|appendix-|da-guidelines)/;
     for (const p of provisionsToCount) {
-      const partId = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
+      const isChapterKeyBased = p.source_chapter_key && CHAPTER_KEY_RE.test(p.source_chapter_key);
+      const hasRealPart = !isChapterKeyBased && p.v2_dcp_part && p.v2_dcp_part !== 'unknown';
+      const partId = hasRealPart
         ? p.v2_dcp_part
         : (p.source_chapter_key || 'Other');
       counts[partId] = (counts[partId] || 0) + 1;
@@ -996,21 +988,6 @@ export function ProvisionsByTocStructure({
     setRefinements(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Mode switch handlers
-  const enterTaskMode = () => {
-    setProvisionView('task');
-    setSelectedPart(null);
-    setSelectedSection(null);
-  };
-
-  const enterStructureMode = () => {
-    setProvisionView('structure');
-    // Auto-select first part if none selected
-    if (!selectedPart && Object.keys(completeTocStructure).length > 0) {
-      const firstPart = Object.keys(completeTocStructure)[0];
-      setSelectedPart(firstPart);
-    }
-  };
 
   // Export PDF handler
   const handleExportPdf = async () => {
@@ -1336,30 +1313,6 @@ export function ProvisionsByTocStructure({
                   'Select a section'
                 )}
               </h3>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {/* View mode toggle — only shown when TOC data exists for this council */}
-                {Object.keys(completeTocStructure).length > 1 && (
-                  <div className="inline-flex rounded border border-gray-200 text-xs overflow-hidden flex-shrink-0">
-                    <button
-                      onClick={enterTaskMode}
-                      className={`px-2.5 py-1 transition-colors ${provisionView === 'task' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      Topic
-                    </button>
-                    <button
-                      onClick={enterStructureMode}
-                      className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${provisionView === 'structure' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      Document
-                    </button>
-                  </div>
-                )}
-                {provisionView === 'task' && (
-                  <p className="text-xs text-gray-400">
-                    {isDaMode ? 'Filter by topic, review each provision.' : 'Filter by topic or search.'}
-                  </p>
-                )}
-              </div>
               {provisionView === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600 mt-0.5">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}

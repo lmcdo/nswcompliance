@@ -1029,6 +1029,57 @@ interface TocPart {
 }
 
 /**
+ * Parse a source_chapter_key into its parent TOC part ID.
+ * Used when v2_dcp_part is null/unknown (Marrickville, Leichhardt).
+ *
+ * Marrickville: part{N}-s{M}-{desc} | part{N}-p{M}-{desc} | part{N}-{desc}
+ * Leichhardt:   part-{L}-s{N}-{desc} | part-{L}-{desc} | appendix-{code}-{desc}
+ */
+function extractTocParent(chapterKey: string): string {
+  if (!chapterKey) return 'Other';
+  // Marrickville: part{N}-s{M}-* or part{N}-p{M}-* or part{N}-intro
+  const mvilleSubsection = chapterKey.match(/^part(\d+)-([sp]\d+|intro)/);
+  if (mvilleSubsection) return `Part ${mvilleSubsection[1]}`;
+  // Marrickville: part{N}-{desc} (e.g. part8-heritage, part3-subdivision)
+  const mvilleSimple = chapterKey.match(/^part(\d+)-/);
+  if (mvilleSimple) return `Part ${mvilleSimple[1]}`;
+  // Leichhardt: part-{L}-*
+  const leichPart = chapterKey.match(/^part-([a-z])-/);
+  if (leichPart) return `Part ${leichPart[1].toUpperCase()}`;
+  // Appendix
+  const appendix = chapterKey.match(/^appendix-([a-z\d]+)/);
+  if (appendix) return `Appendix ${appendix[1].toUpperCase()}`;
+  // da-guidelines → Part 1
+  if (chapterKey === 'da-guidelines') return 'Part 1';
+  return chapterKey;
+}
+
+/**
+ * Derive a human-readable section title from a source_chapter_key.
+ * e.g. part2-s10-parking → "Parking", part9-p06-petersham-south → "Petersham South"
+ */
+function sectionTitleFromChapterKey(chapterKey: string): string {
+  if (!chapterKey) return 'General';
+  let desc: string | undefined;
+  let m: RegExpMatchArray | null;
+  // part{N}-s{M}-{desc} or part{N}-p{M}-{desc}
+  if ((m = chapterKey.match(/^part\d+-[sp]\d+-(.+)$/))) desc = m[1];
+  // part{N}-intro
+  else if (chapterKey.endsWith('-intro')) desc = 'introduction';
+  // part{N}-{desc} (not a subsection)
+  else if ((m = chapterKey.match(/^part\d+-(.+)$/))) desc = m[1];
+  // part-{L}-s{N}-{desc}
+  else if ((m = chapterKey.match(/^part-[a-z]-s\d+-(.+)$/))) desc = m[1];
+  // part-{L}-{desc}
+  else if ((m = chapterKey.match(/^part-[a-z]-(.+)$/))) desc = m[1];
+  // appendix-{code}-{desc}
+  else if ((m = chapterKey.match(/^appendix-[a-z\d]+-(.+)$/))) desc = m[1];
+  else if (chapterKey === 'da-guidelines') desc = 'DA Guidelines';
+  else desc = chapterKey;
+  return desc.split('-').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+}
+
+/**
  * Get complete DCP TOC structure for a council (unfiltered by property)
  * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
  */
@@ -1038,10 +1089,12 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
   // When devType is provided, also compute how many provisions in each chapter match
   const expandedTypes = devType ? expandDevTypeHierarchyMulti(devType) : null;
 
+  // Include source_chapter_key for councils where v2_dcp_part is 'unknown'/'null' (Marrickville, Leichhardt)
   const query = expandedTypes
     ? `
     SELECT
       v2_dcp_part,
+      source_chapter_key,
       COUNT(*) as provision_count,
       COUNT(*) FILTER (WHERE
         v2_applicable_dev_types && $2::text[]
@@ -1050,27 +1103,32 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
       ) as dev_type_match_count
     FROM regulatory_provisions
     WHERE document_id ILIKE $1
-      AND v2_dcp_part IS NOT NULL
+      AND v2_is_actionable = true
+      AND is_current = TRUE
+      AND (v2_dcp_part IS NOT NULL OR source_chapter_key IS NOT NULL)
       AND (v2_provision_type IS NULL OR v2_provision_type != 'TOC')
       AND provision_text NOT LIKE '%i%Contents%'
       AND provision_text NOT LIKE 'Contents%'
       AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')
-    GROUP BY v2_dcp_part
-    ORDER BY v2_dcp_part
+    GROUP BY v2_dcp_part, source_chapter_key
+    ORDER BY v2_dcp_part, source_chapter_key
   `
     : `
     SELECT
       v2_dcp_part,
+      source_chapter_key,
       COUNT(*) as provision_count
     FROM regulatory_provisions
     WHERE document_id ILIKE $1
-      AND v2_dcp_part IS NOT NULL
+      AND v2_is_actionable = true
+      AND is_current = TRUE
+      AND (v2_dcp_part IS NOT NULL OR source_chapter_key IS NOT NULL)
       AND (v2_provision_type IS NULL OR v2_provision_type != 'TOC')
       AND provision_text NOT LIKE '%i%Contents%'
       AND provision_text NOT LIKE 'Contents%'
       AND NOT (provision_text LIKE '%.....%' AND provision_text ~ '\\d+\\.\\d+\\.\\d+.*\\.+.*\\d+')
-    GROUP BY v2_dcp_part
-    ORDER BY v2_dcp_part
+    GROUP BY v2_dcp_part, source_chapter_key
+    ORDER BY v2_dcp_part, source_chapter_key
   `;
 
   const params = expandedTypes
@@ -1081,24 +1139,43 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
 
   const completeToc: Record<string, TocPart> = {};
 
+  const CHAPTER_KEY_RE = /^(part\d+-|part-[a-z]-|appendix-|da-guidelines)/;
   for (const row of result.rows) {
-    const partId = row.v2_dcp_part;
+    const isChapterKeyBased = row.source_chapter_key && CHAPTER_KEY_RE.test(row.source_chapter_key);
+    const hasRealPart = !isChapterKeyBased && row.v2_dcp_part && row.v2_dcp_part !== 'unknown';
+    const partId = hasRealPart
+      ? row.v2_dcp_part
+      : extractTocParent(row.source_chapter_key || '');
     const partName = formatPartName(partId);
+    const count = parseInt(row.provision_count);
+    const devCount = expandedTypes ? parseInt(row.dev_type_match_count) : undefined;
 
-    completeToc[partId] = {
-      part_id: partId,
-      part_name: partName,
-      provision_count: parseInt(row.provision_count),
-      ...(expandedTypes ? { dev_type_match_count: parseInt(row.dev_type_match_count) } : {}),
-      sections: {
-        'General': {
-          section_id: 'General',
-          section_title: 'General',
-          provision_count: parseInt(row.provision_count),
-          provisions: []  // Empty - we don't need actual provisions for navigation
-        }
+    if (!completeToc[partId]) {
+      completeToc[partId] = {
+        part_id: partId,
+        part_name: partName,
+        provision_count: 0,
+        ...(expandedTypes ? { dev_type_match_count: 0 } : {}),
+        sections: {}
+      };
+    }
+    completeToc[partId].provision_count += count;
+    if (expandedTypes && devCount !== undefined) {
+      completeToc[partId].dev_type_match_count = (completeToc[partId].dev_type_match_count || 0) + devCount;
+    }
+    // Add section entry for chapter-key-based councils
+    if (!hasRealPart && row.source_chapter_key) {
+      const sectionId = row.source_chapter_key;
+      if (!completeToc[partId].sections[sectionId]) {
+        completeToc[partId].sections[sectionId] = {
+          section_id: sectionId,
+          section_title: sectionTitleFromChapterKey(sectionId),
+          provision_count: 0,
+          provisions: []
+        };
       }
-    };
+      completeToc[partId].sections[sectionId].provision_count += count;
+    }
   }
 
   return completeToc;
@@ -1135,12 +1212,37 @@ function groupByTocStructure(
   }
   const allProvisions = [...textDeduped.values()];
 
-  // Group by v2_dcp_part first; fall back to source_chapter_key for councils
-  // where v2_dcp_part is 'unknown' or null (Ashfield, Leichhardt, Marrickville, Woollahra)
+  // Group by v2_dcp_part when populated; for councils where v2_dcp_part is 'unknown'/null
+  // (Marrickville, Leichhardt), parse source_chapter_key into parent part + section.
+  // ALSO: if source_chapter_key matches a chapter-key pattern (part\d+-, part-[a-z]-, etc.),
+  // always use chapter-key grouping regardless of v2_dcp_part — some Marrickville provisions
+  // have real v2_dcp_part values in the DB but source_chapter_key is authoritative for these councils.
+  const CHAPTER_KEY_RE = /^(part\d+-|part-[a-z]-|appendix-|da-guidelines)/;
   for (const provision of allProvisions) {
-    const partId = (provision.v2_dcp_part && provision.v2_dcp_part !== 'unknown')
-      ? provision.v2_dcp_part
-      : (provision.source_chapter_key || 'Other');
+    const isChapterKeyBased = provision.source_chapter_key && CHAPTER_KEY_RE.test(provision.source_chapter_key);
+    const hasRealPart = !isChapterKeyBased && provision.v2_dcp_part && provision.v2_dcp_part !== 'unknown';
+    let partId: string;
+    let sectionId: string;
+    let sectionTitle: string;
+
+    if (hasRealPart) {
+      partId = provision.v2_dcp_part;
+      sectionId = provision.toc_section_number || 'unsectioned';
+      sectionTitle = provision.toc_section_title || 'General';
+      // Special handling for Leichhardt Part C Section 1 - use C markers as sub-groups
+      const isLeichhardtPartC = formerCouncil?.toLowerCase() === 'leichhardt' &&
+        partId?.includes('Part C') && partId?.includes('Section 1');
+      if (isLeichhardtPartC && provision.v2_marker) {
+        sectionId = provision.v2_marker;
+        sectionTitle = `Control ${provision.v2_marker}`;
+      }
+    } else {
+      const chapterKey = provision.source_chapter_key || 'Other';
+      partId = extractTocParent(chapterKey);
+      sectionId = chapterKey;
+      sectionTitle = sectionTitleFromChapterKey(chapterKey);
+    }
+
     const partName = formatPartName(partId);
 
     if (!byToc[partId]) {
@@ -1150,20 +1252,6 @@ function groupByTocStructure(
         provision_count: 0,
         sections: {}
       };
-    }
-
-    // Determine section ID from TOC or marker
-    let sectionId = provision.toc_section_number || 'unsectioned';
-    let sectionTitle = provision.toc_section_title || 'General';
-
-    // Special handling for Leichhardt Part C Section 1 - use C markers as sub-groups
-    const isLeichhardtPartC = formerCouncil?.toLowerCase() === 'leichhardt' &&
-      partId?.includes('Part C') && partId?.includes('Section 1');
-
-    if (isLeichhardtPartC && provision.v2_marker) {
-      // Use C marker as section for Leichhardt Part C Section 1
-      sectionId = provision.v2_marker;
-      sectionTitle = `Control ${provision.v2_marker}`;
     }
 
     if (!byToc[partId].sections[sectionId]) {

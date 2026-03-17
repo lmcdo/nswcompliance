@@ -451,6 +451,7 @@ export default function AssessmentPage() {
                       propertyData={selectedProperty}
                       lepClauseData={lepClauseData}
                       isDaMode={isDaMode}
+                      onToggleDaMode={setIsDaMode}
                     />
                   ) : (
                     <DCPInterestForm
