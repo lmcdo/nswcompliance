@@ -2,6 +2,7 @@
 
 ## ⛔ CRITICAL - READ FIRST ⛔
 - **NEVER use PM2 to manage claude-mem or any process on Windows.** PM2 on Windows spawns visible cmd.exe windows for every managed process. This was tried 7+ times and failed every time. claude-mem runs via the Claude Code startup hook — if broken, start manually: `cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:restart`. DO NOT "fix" this with PM2, scheduled tasks, or Windows startup scripts.
+- **If cmd.exe windows start spawning again:** Check for `pm2-windows-startup` registry entry — `wmic startup list full | grep pm2`. Remove with: `powershell -Command "Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'PM2'"`. This entry silently re-adds itself when pm2-windows-startup package is touched.
 - **NEVER use `taskkill //IM node.exe`** - kills Claude Chat server
 - **Kill Next.js dev server by PORT only**: `netstat -ano | findstr :3003` then `taskkill /F /PID <PID>`
 - **NEVER run queries without WHERE clauses** on main tables
