@@ -9,8 +9,9 @@ Living reference for all env vars, feature flags, and code configs. Update this 
 | Branch type | `NEXT_PUBLIC_DCP_ENABLED` | `NEXT_PUBLIC_ENABLED_LGAS` |
 |---|---|---|
 | `main` (production, no DCP) | not set | not set |
-| PR preview (DCP testing) | `true` | `inner_west,waverley,ku_ring_gai` |
-| Future: full DCP release | `true` | `inner_west,waverley,ku_ring_gai,...` |
+| PR preview (DCP testing) | `true` | `marrickville,leichhardt,ashfield` |
+| Add Waverley | `true` | `marrickville,leichhardt,ashfield,waverley` |
+| Add KRG | `true` | `marrickville,leichhardt,ashfield,waverley,ku_ring_gai` |
 
 Set these in Vercel → Project Settings → Environment Variables → scoped to the branch.
 
@@ -21,7 +22,7 @@ Set these in Vercel → Project Settings → Environment Variables → scoped to
 | Var | Default | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_DCP_ENABLED` | `true` (local), unset (prod) | Shows DCP tab with `ProvisionsByTocStructure`. When unset/false → Register Interest form. Also gates DA Mode section and DCP steps in Quick Guide. |
-| `NEXT_PUBLIC_ENABLED_LGAS` | unset = all | *(Planned)* Comma-separated `formerCouncil` slugs. When set, DCP tab only shows provisions for listed councils; others get Register Interest. When unset, all councils with data show provisions. |
+| `NEXT_PUBLIC_ENABLED_LGAS` | unset = all | Comma-separated `formerCouncil` slugs. When set, DCP tab only shows provisions for listed councils; others get Register Interest. When unset, all councils show provisions. Known slugs: `marrickville` `leichhardt` `ashfield` `waverley` `ku_ring_gai` |
 | `NEXT_PUBLIC_ENABLE_PRECINCT_CONTROLS` | — | Controls precinct-level sub-tab in DCP tab |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | required | Google Maps autocomplete |
 | `NEXT_PUBLIC_POSTHOG_KEY` | optional | Analytics |
@@ -114,9 +115,7 @@ All PDF images served via `getPdfImageUrl()` in `lib/pdf-image-url.ts` — do no
 
 ---
 
-## Planned / Not Yet Implemented
+## Notes
 
-| Config | Purpose | Status |
-|---|---|---|
-| `NEXT_PUBLIC_ENABLED_LGAS` | Per-LGA DCP gating without separate branches | Planned — implement when Waverley/KRG onboarded |
-| `NEXT_PUBLIC_XREF_ENABLED` | Cross-reference resolution UI | Only if behind a flag — likely just DB feature, no flag needed |
+- Cross-references: no flag needed — DB enrichment feature, UI renders what's resolved
+- New LGA onboarded: add its slug to `NEXT_PUBLIC_ENABLED_LGAS` in Vercel for the preview branch, then run the LGA onboarding checklist above

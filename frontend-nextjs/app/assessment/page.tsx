@@ -18,6 +18,18 @@ import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
 
 const DCP_ENABLED = process.env.NEXT_PUBLIC_DCP_ENABLED === 'true';
+// When set, only show DCP for listed councils (comma-separated formerCouncil slugs).
+// When unset, all councils show DCP (if DCP_ENABLED is true).
+// Example: NEXT_PUBLIC_ENABLED_LGAS=marrickville,leichhardt,ashfield,waverley,ku_ring_gai
+const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
+  ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
+  : null;
+
+function isDcpEnabledForCouncil(formerCouncil: string | undefined): boolean {
+  if (!DCP_ENABLED) return false;
+  if (!ENABLED_LGAS) return true; // no restriction — show all
+  return ENABLED_LGAS.includes((formerCouncil || '').toLowerCase());
+}
 import { StateLevelControls } from '@/components/compliance/StateLevelControls';
 import { LepControls } from '@/components/compliance/LepControls';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -417,9 +429,9 @@ export default function AssessmentPage() {
                   </div>
                 )}
 
-                {/* DCP Tab Content — provisions when enabled, register interest otherwise */}
+                {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-                  {DCP_ENABLED ? (
+                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil) ? (
                     <ProvisionsByTocStructure
                       key={`toc-${selectedProperty.address}`}
                       lga={selectedProperty.constraints?.lga}
