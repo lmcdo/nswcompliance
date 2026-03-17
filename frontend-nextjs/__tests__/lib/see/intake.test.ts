@@ -20,10 +20,17 @@ describe('DEFAULT_INTAKE_ANSWERS', () => {
     'new_parking_or_driveway', 'new_signage', 'flood_prone', 'bushfire_prone',
     'acid_sulfate_soils', 'coastal', 'biodiversity', 'acoustic_zone',
     'mine_subsidence', 'landslide_risk', 'contaminated_land', 'drinking_water_catchment',
-    'demolition',
+    'demolition', 'proposed_height', 'proposed_gfa',
   ];
-  test('all fields default to unknown', () => {
-    for (const field of ALL_FIELDS) { expect(DEFAULT_INTAKE_ANSWERS[field]).toBe('unknown'); }
+  const OPTIONAL_FIELDS: (keyof IntakeAnswers)[] = ['proposed_height', 'proposed_gfa'];
+  test('all fields default to unknown or undefined', () => {
+    for (const field of ALL_FIELDS) {
+      if (OPTIONAL_FIELDS.includes(field)) {
+        expect(DEFAULT_INTAKE_ANSWERS[field]).toBeUndefined();
+      } else {
+        expect(DEFAULT_INTAKE_ANSWERS[field]).toBe('unknown');
+      }
+    }
   });
   test('contains exactly the expected fields', () => {
     expect(Object.keys(DEFAULT_INTAKE_ANSWERS).sort()).toEqual(ALL_FIELDS.slice().sort());
@@ -37,19 +44,20 @@ describe('getExcludableTopics', () => {
     const allYes = Object.fromEntries(Object.keys(base).map(k => [k, 'yes'])) as IntakeAnswers;
     expect(getExcludableTopics(allYes).size).toBe(0);
   });
+  // Cases use TRIGGER_TO_STRUCTURAL_CATEGORIES values (DCP hierarchy, not keyword inference).
+  // These are the structural categories that appear in v2_structural_category on provisions.
   const cases: [keyof IntakeAnswers, string[]][] = [
     ['new_impervious_surfaces', ['stormwater', 'drainage']],
     ['trees_affected',          ['trees']],
     ['pool_or_spa',             ['pool']],
-    ['new_fencing',             ['fencing', 'fence']],
-    ['new_parking_or_driveway', ['parking', 'vehicle_access', 'carport']],
+    ['new_fencing',             ['fencing']],
+    ['new_parking_or_driveway', ['parking']],
     ['new_signage',             ['signage']],
     ['flood_prone',             ['flooding']],
     ['bushfire_prone',          ['bushfire']],
-    ['acid_sulfate_soils',      ['acid_sulfate']], // contamination removed: general contamination != ASS
     ['coastal',                 ['coastal']],
     ['biodiversity',            ['biodiversity']],
-    ['acoustic_zone',           ['acoustic', 'noise', 'anef']],
+    ['acoustic_zone',           ['acoustic']],
     ['demolition',              ['demolition']],
   ];
   test.each(cases)('%s=no excludes %j', (field, topics) => {
