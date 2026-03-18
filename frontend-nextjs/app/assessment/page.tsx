@@ -36,10 +36,25 @@ const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
   ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
   : null;
 
-function isDcpEnabledForCouncil(formerCouncil: string | undefined): boolean {
+function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string): boolean {
   if (!DCP_ENABLED) return false;
   if (!ENABLED_LGAS) return true; // no restriction — show all
-  return ENABLED_LGAS.includes((formerCouncil || '').toLowerCase());
+  // Direct former council match (primary path)
+  if (ENABLED_LGAS.includes((formerCouncil || '').toLowerCase())) return true;
+  // Fallback: if formerCouncil detection failed, check normalized LGA name.
+  // e.g. lga="Inner West" → "inner_west" which may be in enabled list,
+  // or lga="Inner West" and enabled list has "marrickville" — treat any
+  // enabled council as sufficient to unlock the whole LGA's DCP.
+  if (lga) {
+    const lgaNorm = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    if (ENABLED_LGAS.includes(lgaNorm)) return true;
+    // Known amalgamated LGA → former council mappings for fallback
+    const AMALGAMATED: Record<string, string[]> = {
+      'inner_west': ['marrickville', 'leichhardt', 'ashfield'],
+    };
+    if (AMALGAMATED[lgaNorm]?.some(c => ENABLED_LGAS.includes(c))) return true;
+  }
+  return false;
 }
 
 export default function AssessmentPage() {
@@ -433,7 +448,7 @@ export default function AssessmentPage() {
 
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil) ? (
+                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil, selectedProperty.constraints?.lga) ? (
                     <ErrorBoundary fallbackTitle="Error loading DCP provisions">
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
