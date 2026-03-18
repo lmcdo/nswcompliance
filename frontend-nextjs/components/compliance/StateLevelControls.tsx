@@ -230,7 +230,7 @@ export function StateLevelControls({
     // Filter out residential-only SEPPs if zone doesn't permit residential
     if (!permitsResidential) {
       const beforeFilter = dbSeppIds.length;
-      dbSeppIds = dbSeppIds.filter(seppId => seppId !== 'housing_2021');
+      dbSeppIds = dbSeppIds.filter((seppId: any) => seppId !== 'housing_2021');
       if (beforeFilter > dbSeppIds.length) {
         console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - excluding Housing SEPP (ADG, Secondary Dwellings)`);
       }
@@ -371,7 +371,8 @@ export function StateLevelControls({
         });
         if (pbResponse.ok) {
           const data = await pbResponse.json();
-          setPatternBookStatus(data.status);
+          const eligibility = data.data?.eligibility || data;
+          setPatternBookStatus(eligibility.status);
         }
       } catch (err) {
         console.error('[PathwaySummary] Failed to fetch Pattern Book status:', err);
@@ -384,7 +385,7 @@ export function StateLevelControls({
           if (ecResponse.ok) {
             const data = await ecResponse.json();
             const counts = data.counts || {};
-            const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0);
+            const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0) as number;
             setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
           }
         } catch (err) {
