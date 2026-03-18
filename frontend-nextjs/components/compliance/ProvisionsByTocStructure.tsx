@@ -541,9 +541,23 @@ export function ProvisionsByTocStructure({
     for (const p of provisionsToCount) {
       const isChapterKeyBased = p.source_chapter_key && CHAPTER_KEY_RE.test(p.source_chapter_key);
       const hasRealPart = !isChapterKeyBased && p.v2_dcp_part && p.v2_dcp_part !== 'unknown';
-      const partId = hasRealPart
-        ? p.v2_dcp_part
-        : (p.source_chapter_key || 'Other');
+      let partId: string;
+      if (hasRealPart) {
+        partId = p.v2_dcp_part;
+      } else if (p.source_chapter_key) {
+        // Derive parent part ID from chapter key to match by_toc grouping
+        const ck: string = p.source_chapter_key;
+        const mSimple = ck.match(/^part(\d+)-/);
+        const mLetter = ck.match(/^part-([a-z])-/);
+        const mAppendix = ck.match(/^appendix-([a-z\d]+)/);
+        if (mSimple) partId = `Part ${mSimple[1]}`;
+        else if (mLetter) partId = `Part ${mLetter[1].toUpperCase()}`;
+        else if (mAppendix) partId = `Appendix ${mAppendix[1].toUpperCase()}`;
+        else if (ck === 'da-guidelines') partId = 'Part 1';
+        else partId = ck;
+      } else {
+        partId = 'Other';
+      }
       counts[partId] = (counts[partId] || 0) + 1;
     }
 

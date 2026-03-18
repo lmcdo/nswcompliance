@@ -424,6 +424,31 @@ export async function GET(request: NextRequest) {
         ? await getCompleteTocStructure(client, filters.former_council, filters.dev_type)
         : undefined;
 
+      // Reconcile complete_toc sections with by_toc sections.
+      // complete_toc is council-wide (unfiltered) and may have sections keyed differently from by_toc.
+      // Example: Marrickville Part 2 — complete_toc has chapter-key sections ('part2-s01-urban-design')
+      // from provisions with no v2_dcp_layer, while by_toc has toc_section_number sections ('2.1')
+      // from the layered provisions. These never match, causing sidebar to show dead section links.
+      // Fix: when a part's complete_toc sections have zero overlap with by_toc sections, clear them.
+      if (byToc && completeToc) {
+        for (const [partId, completePart] of Object.entries(completeToc as Record<string, any>)) {
+          const completeSectionKeys = Object.keys(completePart.sections || {});
+          if (completeSectionKeys.length === 0) continue;
+
+          const byTocPart = (byToc as Record<string, any>)[partId];
+          if (!byTocPart || byTocPart.provision_count === 0) continue;
+
+          const byTocSectionKeys = Object.keys(byTocPart.sections || {});
+          if (byTocSectionKeys.length === 0) continue;
+
+          const byTocKeySet = new Set(byTocSectionKeys);
+          const hasOverlap = completeSectionKeys.some((k: string) => byTocKeySet.has(k));
+          if (!hasOverlap) {
+            completePart.sections = {};
+          }
+        }
+      }
+
       // Look up public PDF URLs for this council's chapters (stored in dcp_chapter_registry).
       // Returns a map of chapter_key → r2_public_pdf_url so the frontend can deep-link
       // each provision to its own chapter PDF via #page=N.
