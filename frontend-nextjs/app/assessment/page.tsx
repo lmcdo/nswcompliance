@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * PRIMARY ASSESSMENT PAGE - /assessment
  *
@@ -421,7 +423,7 @@ export default function AssessmentPage() {
                       <LepControls
                         propertyData={selectedProperty}
                         planningLayers={selectedProperty.planningLayers || []}
-                        constraints={selectedProperty.constraints}
+                        constraints={selectedProperty.constraints as any}
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
                         lotArea={selectedProperty.lotDimensions?.area}
                       />
