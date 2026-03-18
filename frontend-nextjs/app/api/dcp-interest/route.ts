@@ -3,7 +3,6 @@ import { Resend } from 'resend';
 import { query } from '@/lib/db';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +26,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Notify info@plotdetect.com.au — fire and forget, don't fail the request
+    const resend = new Resend(process.env.RESEND_API_KEY);
     resend.emails.send({
       from: 'PlotDetect <onboarding@resend.dev>',
       to: 'info@plotdetect.com.au',
