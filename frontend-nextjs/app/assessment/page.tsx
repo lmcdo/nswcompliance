@@ -46,7 +46,13 @@ function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string)
   // or lga="Inner West" and enabled list has "marrickville" — treat any
   // enabled council as sufficient to unlock the whole LGA's DCP.
   if (lga) {
-    const lgaNorm = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    // Strip trailing " council" / " city council" etc. before normalising
+    const lgaNorm = lga.toLowerCase()
+      .replace(/\s+council$/i, '')
+      .replace(/\s+city$/i, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .replace(/[^a-z0-9_]/g, '');
     if (ENABLED_LGAS.includes(lgaNorm)) return true;
     // Known amalgamated LGA → former council mappings for fallback
     const AMALGAMATED: Record<string, string[]> = {
