@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
  experimental: {
- serverComponentsExternalPackages: ['better-sqlite3']
+ serverComponentsExternalPackages: ['better-sqlite3', 'isomorphic-dompurify']
  },
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
  async rewrites() {
