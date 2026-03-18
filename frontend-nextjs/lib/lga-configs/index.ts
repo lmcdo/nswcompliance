@@ -240,6 +240,37 @@ export function requiresFormerCouncilDetection(lgaId: string): boolean {
 }
 
 /**
+ * Get LGA config from a document ID string
+ * Scans all registered LGAs to find a match based on document ID patterns
+ */
+export function getConfigFromDocumentId(documentId: string): LGAConfig | null {
+  const lower = documentId.toLowerCase();
+  for (const [lgaId, config] of Object.entries(LGA_REGISTRY)) {
+    const lgaLower = (config.name || lgaId).toLowerCase().replace(/\s+/g, '_');
+    if (lower.includes(lgaLower) || lower.includes(lgaLower.replace(/_/g, ''))) {
+      return config;
+    }
+    // Check former councils / aliases
+    const formerCouncils = config.former_councils;
+    if (formerCouncils) {
+      for (const council of formerCouncils) {
+        if (lower.includes(council.toLowerCase())) {
+          return config;
+        }
+      }
+    }
+  }
+  // Fallback: match by alias
+  for (const [alias, lgaId] of Object.entries(LGA_ALIASES)) {
+    if (lower.includes(alias.replace(/\s+/g, '_')) || lower.includes(alias)) {
+      const config = LGA_REGISTRY[lgaId];
+      if (config) return config;
+    }
+  }
+  return null;
+}
+
+/**
  * Export registry for debugging/testing
  */
 export { LGA_REGISTRY, LGA_ALIASES };
