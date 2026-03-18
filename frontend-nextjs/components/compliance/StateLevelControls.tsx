@@ -24,7 +24,7 @@ import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
-import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone } from '@/lib/regulatory-constants';
+import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable } from '@/lib/regulatory-constants';
 import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 
@@ -35,11 +35,11 @@ interface StateLevelControlsProps {
   onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
 }
 
+// ADG applies to residential flat buildings only (SEPP Housing 2021 Part 4).
+// multi_dwelling_housing (townhouses) and boarding_house use separate standards.
 const APARTMENT_DEV_TYPES = [
-  'multi_dwelling_housing',
   'residential_flat_building',
   'shop_top_housing',
-  'boarding_house',
   'mixed_use'
 ];
 
@@ -124,38 +124,20 @@ export function StateLevelControls({
   // Use LGA-specific SEPP mapping if provided, otherwise use NSW default
   const SEPP_MAPPING = lgaConfig?.sepp?.sepp_id_mapping || DEFAULT_SEPP_MAPPING;
 
-  // Load ADG requirements when SEPP Housing 2021 detected AND zone permits residential
+  // Load ADG requirements for residential flat building development types.
+  // ADG applies statewide to RFBs under SEPP Housing 2021 — no SEPP detection needed.
   const loadADGRequirements = useCallback(async () => {
     if (!developmentType) return;
 
-    const applicableSepps = propertyData?.constraints?.applicableSepps || [];
-    console.log('[StateLevelControls] Applicable SEPPs from portal:', applicableSepps);
-
-    // Check zone permits residential
-    const zone = propertyData?.constraints?.zone;
-    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-    const residentialZones = NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL;
-    const permitsResidential = residentialZones.includes(zoneCode);
-
-    if (!permitsResidential) {
-      console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - skipping ADG`);
-      setAdgRequirements([]);
-      return;
-    }
-
-    // Check if Housing SEPP applies
-    const hasHousingSEPP = applicableSepps.some((sepp: string) => 
-      sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
-    );
-
-    if (!hasHousingSEPP) {
+    // ADG only applies to residential flat building development types
+    if (!APARTMENT_DEV_TYPES.includes(developmentType)) {
       setAdgRequirements([]);
       return;
     }
 
     setLoadingAdg(true);
     try {
-      console.log('[StateLevelControls] Fetching ADG requirements (Housing SEPP detected)');
+      console.log('[StateLevelControls] Fetching ADG requirements (RFB development type)');
       const response = await fetch(`/api/adg/requirements`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -423,10 +405,10 @@ export function StateLevelControls({
   const stationDistance = propertyData?.constraints?.todPrecinct?.stationDistance
     || nearbyTransport.find(s => s.type === 'heavy_rail')?.distance;
 
-  // Check if property is in LMR area (residential zone)
   // Zone may include colon (e.g., "R2: Low Density") - strip non-alphanumeric chars
   const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  const isLMRArea = (NSW_PLANNING_CONSTANTS.HOUSING_SEPP.ELIGIBLE_ZONES as readonly string[]).includes(zoneCode);
+  // LMR applicability: Stage 2 (R1–R4 within designated regions) OR Stage 1 (R2 statewide, excl. 4 LGAs)
+  const isLMRArea = zone && lga ? isLMRApplicable(zone, lga) : false;
 
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
@@ -437,8 +419,8 @@ export function StateLevelControls({
     sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
   );
   
-  // Show ADG section if Housing SEPP applies OR if it's apartment development OR if we fetched ADG requirements
-  const showADGSection = hasHousingSEPP || isApartmentDevelopment || adgRequirements.length > 0;
+  // ADG applies statewide to residential flat buildings — gate on dev type, not SEPP detection
+  const showADGSection = isApartmentDevelopment || adgRequirements.length > 0;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
