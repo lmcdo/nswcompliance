@@ -828,6 +828,39 @@ export function ProvisionsByTocStructure({
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
+  // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
+  // Intentionally ignores layerFilter, search, and refinements so the exported document
+  // always covers all in-scope DCP provisions regardless of what the user has filtered in the UI.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provisionsForSeeExport = useMemo((): any[] => {
+    if (!isDaMode) return baseProvisions;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let p: any[] = baseProvisions;
+    if (Object.keys(topicAssertions).length > 0) {
+      const assertedOut = new Set(Object.keys(topicAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const t = (prov.v2_topic || '').toLowerCase().replace(/ /g, '_');
+        return !t || !assertedOut.has(t);
+      });
+    }
+    if (Object.keys(chapterAssertions).length > 0) {
+      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const chKey = (prov.v2_dcp_part && prov.v2_dcp_part !== 'unknown') ? prov.v2_dcp_part : prov.source_chapter_key;
+        return !chKey || !assertedChapters.has(chKey);
+      });
+    }
+    if (!showSuppressedInDA) {
+      p = p.filter((prov: any) =>
+        prov.v2_provision_type !== 'objective' &&
+        prov.v2_heritage_type !== 'descriptive'
+      );
+    }
+    return p;
+  }, [baseProvisions, isDaMode, topicAssertions, chapterAssertions, showSuppressedInDA]);
+
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
     const cat = p.v2_structural_category;
@@ -1135,9 +1168,9 @@ export function ProvisionsByTocStructure({
         heritageCtx, devDescriptionLocal || undefined,
       );
 
-      // Use filteredProvisions so topic assertions are already applied (asserted-out topics excluded).
-      // filteredProvisions in DA mode has topicAssertions filter applied upstream.
-      const provisionsForPdf = await preparePdfProvisions(filteredProvisions, daResponses ?? undefined);
+      // Use provisionsForSeeExport (baseProvisions + DA-mode scope filters only) so the SEE document
+      // always covers all in-scope provisions, regardless of active layerFilter/search/refinements in the UI.
+      const provisionsForPdf = await preparePdfProvisions(provisionsForSeeExport, daResponses ?? undefined);
       const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
 
       const pathwayDetermination = buildPathwayDetermination(
