@@ -1374,6 +1374,21 @@ export function ProvisionsByTocStructure({
             </div>
           </div>
 
+          <LayerExplanation
+            zone={zone}
+            heritage={heritage}
+            hcaName={hcaName}
+            precinctName={precinctName}
+            formerCouncil={formerCouncil}
+            layerCounts={layerCounts}
+            layerFilter={layerFilter}
+            onLayerFilterChange={setLayerFilter}
+            generalHeritageCount={generalHeritageCount}
+            hcaSpecificCount={hcaSpecificCount}
+            totalHeritageCount={totalHeritageCount}
+            isDaMode={isDaMode}
+          />
+
           <DcpFilterBar
             searchQuery={searchQuery}
             onSearchQueryChange={(v) => { setSearchQuery(v); setShowAutocomplete(true); }}
