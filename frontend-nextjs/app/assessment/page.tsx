@@ -28,40 +28,41 @@ import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
+// NEXT_PUBLIC_ENABLED_LGAS: comma-separated former council slugs that have DCP live.
+// Presence of this var (with entries) is the sole gate — no separate DCP_ENABLED needed.
+// Add LGAs incrementally as their DCP is processed.
+// When unset or empty → DCP off for all. Set NEXT_PUBLIC_DCP_ENABLED=true with no
+// ENABLED_LGAS to open DCP for every LGA at once (full release).
 const DCP_ENABLED = process.env.NEXT_PUBLIC_DCP_ENABLED === 'true';
-// When set, only show DCP for listed councils (comma-separated formerCouncil slugs).
-// When unset, all councils show DCP (if DCP_ENABLED is true).
-// Example: NEXT_PUBLIC_ENABLED_LGAS=marrickville,leichhardt,ashfield,waverley,ku_ring_gai
 const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
-  ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
+  ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
   : null;
 
 function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string): boolean {
-  console.error('[DCP gate] DCP_ENABLED:', DCP_ENABLED, '| ENABLED_LGAS:', ENABLED_LGAS, '| formerCouncil:', formerCouncil, '| lga:', lga);
-  if (!DCP_ENABLED) return false;
-  if (!ENABLED_LGAS) return true; // no restriction — show all
-  // Direct former council match (primary path)
-  if (ENABLED_LGAS.includes((formerCouncil || '').toLowerCase())) return true;
-  // Fallback: if formerCouncil detection failed, check normalized LGA name.
-  // e.g. lga="Inner West" → "inner_west" which may be in enabled list,
-  // or lga="Inner West" and enabled list has "marrickville" — treat any
-  // enabled council as sufficient to unlock the whole LGA's DCP.
-  if (lga) {
-    // Strip trailing " council" / " city council" etc. before normalising
-    const lgaNorm = lga.toLowerCase()
-      .replace(/\s+council$/i, '')
-      .replace(/\s+city$/i, '')
-      .trim()
-      .replace(/\s+/g, '_')
-      .replace(/[^a-z0-9_]/g, '');
-    if (ENABLED_LGAS.includes(lgaNorm)) return true;
-    // Known amalgamated LGA → former council mappings for fallback
-    const AMALGAMATED: Record<string, string[]> = {
-      'inner_west': ['marrickville', 'leichhardt', 'ashfield'],
-    };
-    if (AMALGAMATED[lgaNorm]?.some(c => ENABLED_LGAS.includes(c))) return true;
+  // ENABLED_LGAS set → selective release mode: check list only, ignore DCP_ENABLED
+  if (ENABLED_LGAS) {
+    if (ENABLED_LGAS.length === 0) return false;
+    // Direct former council match (primary path)
+    if (ENABLED_LGAS.includes((formerCouncil || '').toLowerCase())) return true;
+    // Fallback: formerCouncil detection failed — check LGA name directly or via
+    // amalgamated council map (e.g. "INNER WEST" → marrickville/leichhardt/ashfield)
+    if (lga) {
+      const lgaNorm = lga.toLowerCase()
+        .replace(/\s+council$/i, '')
+        .replace(/\s+city$/i, '')
+        .trim()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '');
+      if (ENABLED_LGAS.includes(lgaNorm)) return true;
+      const AMALGAMATED: Record<string, string[]> = {
+        'inner_west': ['marrickville', 'leichhardt', 'ashfield'],
+      };
+      if (AMALGAMATED[lgaNorm]?.some(c => ENABLED_LGAS.includes(c))) return true;
+    }
+    return false;
   }
-  return false;
+  // No ENABLED_LGAS → fall back to master switch (full release or fully off)
+  return DCP_ENABLED;
 }
 
 export default function AssessmentPage() {
