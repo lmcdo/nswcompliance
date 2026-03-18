@@ -58,21 +58,129 @@ _HEADER_MAPS: dict[str, HeaderPatternMap] = {}
 
 
 # ── Marrickville ────────────────────────────────────────────────────────
-# Clean structure: chapter_key slug IS the topic for topic-specific chapters.
-# Precinct chapters (part9-*) are precinct-specific — no excludable category.
+# Clean structure: chapter_key slug IS the topic. All 60+ chapter keys are
+# self-describing slugs from the DCP structure (Part 2.x, Part 3, Part 4.x,
+# Part 8, Part 9 precincts). Verified against marrickville_config.py.
+#
+# Excludable categories: parking, fencing, signage, biodiversity, stormwater,
+#   trees, flooding, contamination.
+# Non-excludable (but mapped for UI grouping): access, design, site_analysis,
+#   privacy, solar, safety, environmental, sustainability, landscaping, waste,
+#   commercial, residential, industrial, heritage, precinct, subdivision,
+#   statutory, guidelines, definitions.
 
 _CHAPTER_MAPS["marrickville"] = {
-    "part2-s25-stormwater": "stormwater",
-    # "part2-s18-landscaping" — not excludable (landscaping always applies)
-    # "part8-heritage" — not excludable (managed by HCA flags, not intake)
-    # "part3-subdivision" — not excludable
+    # ── Part 1: Statutory Information ───────────────────────────────────
+    "part1-statutory-info":              "statutory",
+    "da-guidelines":                     "statutory",
+
+    # ── Part 2: General Controls ─────────────────────────────────────────
+    "part2-s01-urban-design":            "design",
+    "part2-s03-site-context-analysis":   "site_analysis",
+    "part2-s05-equity-access-mobility":  "access",
+    "part2-s06-privacy":                 "privacy",
+    "part2-s07-solar-access":            "solar",
+    "part2-s09-community-safety":        "safety",
+    "part2-s10-parking":                 "parking",        # EXCLUDABLE
+    "part2-s11-fencing":                 "fencing",        # EXCLUDABLE
+    "part2-s12-signs":                   "signage",        # EXCLUDABLE
+    "part2-s13-biodiversity":            "biodiversity",   # EXCLUDABLE
+    "part2-s14-unique-env-features":     "environmental",
+    "part2-s16-energy-efficiency":       "sustainability",
+    "part2-s17-water-sensitive":         "stormwater",     # EXCLUDABLE
+    "part2-s18-landscaping":             "landscaping",
+    "part2-s20-tree-management":         "trees",          # EXCLUDABLE
+    "part2-s21-site-facilities-waste":   "waste",
+    "part2-s22-flood-management":        "flooding",       # EXCLUDABLE
+    "part2-s23-acid-sulfate":            "environmental",
+    "part2-s24-contaminated-land":       "contamination",  # EXCLUDABLE
+    "part2-s25-stormwater":              "stormwater",     # EXCLUDABLE
+    "part2-s26-entertainment-precincts": "commercial",
+
+    # ── Part 3: Subdivision ───────────────────────────────────────────────
+    "part3-subdivision":                 "subdivision",
+
+    # ── Part 4: Residential Development ──────────────────────────────────
+    "part4-s1-low-density":              "residential",
+    "part4-s2-multi-dwelling":           "residential",
+    "part4-s3-boarding-houses":          "residential",
+
+    # ── Part 5: Commercial & Mixed Use ────────────────────────────────────
+    "part5-commercial-mixed-use":        "commercial",
+
+    # ── Part 6: Industrial ────────────────────────────────────────────────
+    "part6-industrial":                  "industrial",
+
+    # ── Part 7: Specific Development Types ───────────────────────────────
+    "part7-s1-childcare":                "residential",
+    "part7-s3-sex-industry":             "commercial",
+
+    # ── Part 2: additional sections ──────────────────────────────────────
+    "part2-s08-social-impact":           "design",
+
+    # ── Part 8: Heritage ─────────────────────────────────────────────────
+    # Managed by HCA flags, not intake triggers — not excludable.
+    "part8-heritage":                    "heritage",
+
+    # ── Part 9: Precincts (48 precincts) ─────────────────────────────────
+    # All part9-p* keys map to "precinct" — managed by precinct_id, not intake.
+    "part9-p01-lewisham-north":          "precinct",
+    "part9-p04-newtown-north":           "precinct",
+    "part9-p05-lewisham-south":          "precinct",
+    "part9-p06-petersham-south":         "precinct",
+    "part9-p08-enmore-north":            "precinct",
+    "part9-p10-dulwich-hill-north":      "precinct",
+    "part9-p11-hoskins-park":            "precinct",
+    "part9-p16-abergeldie":              "precinct",
+    "part9-p17-new-canterbury-rd":       "precinct",
+    "part9-p18-dulwich-hill-stn-north":  "precinct",
+    "part9-p19-marrickville-rd-central": "precinct",
+    "part9-p22-dulwich-hill-stn-south":  "precinct",
+    "part9-p23-marrickville-stn-west":   "precinct",
+    "part9-p25-st-peters-triangle":      "precinct",
+    "part9-p26-barwon-park":             "precinct",
+    "part9-p28-cooks-river-west":        "precinct",
+    "part9-p30-the-warren":              "precinct",
+    "part9-p35-parramatta-rd":           "precinct",
+    "part9-p36-petersham-commercial":    "precinct",
+    "part9-p38-dulwich-hill-commercial": "precinct",
+    "part9-p39-marrickville-metro":      "precinct",
+    "part9-p40-marrickville-tc-commercial": "precinct",
+    "part9-p42-camperdown-north":        "precinct",
+    "part9-p45-mcgill-st":               "precinct",
+    "part9-p47-victoria-road":           "precinct",
+    "part9-p48-mary-robert-edith":       "precinct",
+    # Additional precinct keys found in DB (not in original audit)
+    "part9-p02-petersham-north":         "precinct",
+    "part9-p03-stanmore-north":          "precinct",
+    "part9-p07-stanmore-south":          "precinct",
+    "part9-p09-newington":               "precinct",
+    "part9-p12-marrickville-park":       "precinct",
+    "part9-p13-henson-park":             "precinct",
+    "part9-p14-camdenville":             "precinct",
+    "part9-p15-enmore-park":             "precinct",
+    "part9-p20-marrickville-tc-north":   "precinct",
+    "part9-p21-ness-park":               "precinct",
+    "part9-p24-marrickville-tc-south":   "precinct",
+    "part9-p27-barwon-park-south":       "precinct",
+    "part9-p29-sw-marrickville":         "precinct",
+    "part9-p31-unwins-bridge":           "precinct",
+    "part9-p32-cooks-river-east":        "precinct",
+    "part9-p33-princes-highway":         "precinct",
+    "part9-p34-tempe-reserve":           "precinct",
+    "part9-p37-king-st-enmore":          "precinct",
+    "part9-p41-bridge-road":             "precinct",
+    "part9-p43-sydney-steel":            "precinct",
+    "part9-p44-carrington-road":         "precinct",
+    "part9-p46-tempe-lands":             "precinct",
+    "part9-intro":                       "statutory",
+
+    # ── Part 10: Definitions ──────────────────────────────────────────────
+    "part10-definitions":                "definitions",
 }
 
-# Marrickville sections within general chapters that are structurally about a topic
-_HEADER_MAPS["marrickville"] = {
-    # part2-s05 has a dedicated "Car parking" section header
-    ("part2-s05-equity-access-mobility", r"(?i)^car\s+parking$"): "parking",
-}
+# Marrickville: no header patterns needed — chapter_key slugs are sufficient.
+_HEADER_MAPS["marrickville"] = {}
 
 
 # ── Woollahra ───────────────────────────────────────────────────────────
@@ -122,48 +230,178 @@ _HEADER_MAPS["waverley"] = {
 
 
 # ── Ashfield ────────────────────────────────────────────────────────────
-# Mixed: chapter-a-miscellaneous contains many topics. section_header is key.
+# 6 chapter keys. chapter-a-miscellaneous and chapter-c-sustainability are
+# catch-all chapters needing header patterns. The rest map cleanly at chapter level.
+# section_header is 98% unique (provision-level text), so patterns must match
+# the LEADING topic prefix (e.g., "Parking -- Figure 12 -- ..." → "parking").
 
-_CHAPTER_MAPS["ashfield"] = {}  # chapter keys too coarse
+_CHAPTER_MAPS["ashfield"] = {
+    # ── Chapter B: Public Domain ──────────────────────────────────────────
+    # 49 provisions — streetscape, footpath, public space controls
+    "chapter-b-public-domain":          "design",
+
+    # ── Chapter D: Precinct Guidelines ───────────────────────────────────
+    # 570 provisions — precinct-specific controls (Ashfield TC, Hurlstone Park, etc.)
+    "chapter-d-precinct-guidelines":    "precinct",
+
+    # ── Chapter E1: Heritage ──────────────────────────────────────────────
+    # 231 provisions — managed by HCA flags, not intake triggers
+    "chapter-e1-heritage":              "heritage",
+
+    # ── Chapter E2: Haberfield ────────────────────────────────────────────
+    # 121 provisions — Haberfield HCA-specific controls
+    "chapter-e2-haberfield":            "heritage",
+
+    # NOTE: chapter-a-miscellaneous and chapter-c-sustainability omitted here —
+    # they need header patterns to assign specific categories.
+    # chapter-f-dev-category also uses header patterns for dev-type sub-sections.
+}
 
 _HEADER_MAPS["ashfield"] = {
-    ("chapter-a-miscellaneous", r"(?i)^fencing"): "fencing",
+    # ── chapter-a-miscellaneous: 288 provisions ──────────────────────────
+    # Section headers have topic prefix: "Parking -- ...", "Fencing -- ..."
+    # Pattern matches leading topic word (^ or after whitespace).
     ("chapter-a-miscellaneous", r"(?i)^parking"): "parking",
+    ("chapter-a-miscellaneous", r"(?i)^fencing"): "fencing",
     ("chapter-a-miscellaneous", r"(?i)^flood"): "flooding",
     ("chapter-a-miscellaneous", r"(?i)^contaminated"): "contamination",
-    ("chapter-a-miscellaneous", r"(?i)^signage"): "signage",
-    ("chapter-a-miscellaneous", r"(?i)^tree\s+management"): "trees",
-    ("chapter-c-sustainability", r"(?i)^tree\s+management"): "trees",
-    ("chapter-c-sustainability", r"(?i)^water\s+sensitive"): "stormwater",
-    # Heritage chapters (e1, e2) managed by HCA flags — not mapped here
+    ("chapter-a-miscellaneous", r"(?i)^signs?\b|^signage|^advertising"): "signage",
+    ("chapter-a-miscellaneous", r"(?i)^tree\s+management|^tree\s+preservation"): "trees",
+    ("chapter-a-miscellaneous", r"(?i)^stormwater|^water\s+sensitive|^drainage"): "stormwater",
+    ("chapter-a-miscellaneous", r"(?i)^solar\s+access|^sunlight"): "solar",
+    ("chapter-a-miscellaneous", r"(?i)^access\s+and\s+mobility|^equity|^disabled"): "access",
+    ("chapter-a-miscellaneous", r"(?i)^safety|^crime\s+prevention"): "safety",
+    ("chapter-a-miscellaneous", r"(?i)^site\s+and\s+context|^site\s+analysis"): "site_analysis",
+    ("chapter-a-miscellaneous", r"(?i)^landscap"): "landscaping",
+    ("chapter-a-miscellaneous", r"(?i)^good\s+design|^subdivision"): "design",
+    ("chapter-a-miscellaneous", r"(?i)^telecommunications"): "sustainability",
+    ("chapter-a-miscellaneous", r"(?i)^development\s+near\s+rail"): "acoustic",
+
+    # ── chapter-c-sustainability: 196 provisions ─────────────────────────
+    # Sub-sections: Waste and Recycling (~130), Tree Management (~25),
+    # Building Sustainability (~7), GreenWay (~6), Water Sensitive (~5)
+    ("chapter-c-sustainability", r"(?i)^waste|^recycl"): "waste",
+    ("chapter-c-sustainability", r"(?i)^tree\s+management|^tree\s+preservation"): "trees",
+    ("chapter-c-sustainability", r"(?i)^water\s+sensitive|^stormwater|^drainage"): "stormwater",
+    ("chapter-c-sustainability", r"(?i)^building\s+sustainability|^energy|^greenway"): "sustainability",
+
+    # ── chapter-f-dev-category: 223 provisions ───────────────────────────
+    # Dev-type specific chapters — map to the residential/commercial category
+    # based on section header prefix
+    ("chapter-f-dev-category", r"(?i)^residential\s+flat|^apartment"): "residential",
+    ("chapter-f-dev-category", r"(?i)^dwelling\s+house|^dual\s+occupan"): "residential",
+    ("chapter-f-dev-category", r"(?i)^multi.dwelling"): "residential",
+    ("chapter-f-dev-category", r"(?i)^commercial|^industrial"): "commercial",
+    ("chapter-f-dev-category", r"(?i)^car\s+showroom"): "commercial",
+    ("chapter-f-dev-category", r"(?i)^child\s*care"): "residential",
+    ("chapter-f-dev-category", r"(?i)^boarding\s+house"): "residential",
+    ("chapter-f-dev-category", r"(?i)^sex\s+industry"): "commercial",
+    # Parking sub-sections within dev categories
+    ("chapter-f-dev-category", r"(?i)(?:^|\W)parking|car\s*park"): "parking",
 }
 
 
 # ── Leichhardt ──────────────────────────────────────────────────────────
-# Coarse chapter keys. Section headers are uppercase topic names within
-# the general chapters (part-c-s1-general has PARKING, FENCING, etc.)
+# 12 chapter keys. Most are topical enough for direct mapping. Two coarse
+# chapters (part-c-s1-general, part-c-s4-non-residential) need header patterns.
+# part-c-s2-urban-character (182 provisions) is character/design — not excludable.
+# part-g-s1-site-specific (99 provisions) is site-specific precinct controls.
 
-_CHAPTER_MAPS["leichhardt"] = {}  # chapter keys too coarse
+_CHAPTER_MAPS["leichhardt"] = {
+    # ── Part A: Introduction ─────────────────────────────────────────────
+    "part-a-introduction":              "statutory",
+
+    # ── Part B: Connections ───────────────────────────────────────────────
+    "part-b-connections":               "design",
+
+    # ── Part C.S2: Urban Character ────────────────────────────────────────
+    # 182 provisions — design/character controls, not excludable
+    "part-c-s2-urban-character":        "design",
+
+    # ── Part C.S3: Residential ────────────────────────────────────────────
+    # Contains setbacks, privacy, solar, fencing, dormers — mostly not excludable.
+    # Flood and acoustic sub-sections handled by header patterns below.
+    "part-c-s3-residential":            "residential",
+
+    # ── Part C.S5: Entertainment Precincts ────────────────────────────────
+    "part-c-s5-entertainment-precincts": "commercial",
+
+    # ── Part D: Energy ────────────────────────────────────────────────────
+    "part-d-energy":                    "sustainability",
+
+    # ── Part E: Water ─────────────────────────────────────────────────────
+    # All 17 provisions are flood/stormwater — whole chapter is excludable-mapped
+    # via header patterns. Chapter-level catch-all for anything not header-matched:
+    "part-e-water":                     "stormwater",
+
+    # ── Part F: Food ──────────────────────────────────────────────────────
+    "part-f-food":                      "commercial",
+
+    # ── Appendix B: Building Typologies ──────────────────────────────────
+    "appendix-b-building-typologies":   "design",
+
+    # ── Part G: Site-Specific Controls ───────────────────────────────────
+    # 99 provisions for specific sites/precincts
+    "part-g-s1-site-specific":          "precinct",
+    "part-g-s13-pyrmont-bridge-rd":     "precinct",
+
+    # NOTE: part-c-s1-general and part-c-s4-non-residential intentionally
+    # omitted here — they need header patterns to assign specific categories.
+}
 
 _HEADER_MAPS["leichhardt"] = {
-    # part-c-s1-general contains many topic-specific sections
+    # ── part-c-s1-general: 63 provisions, each has a specific topic header ──
     ("part-c-s1-general", r"(?i)(?:^|\W)parking|car\s*park"): "parking",
     ("part-c-s1-general", r"(?i)(?:^|\W)fenc"): "fencing",
     ("part-c-s1-general", r"(?i)swimming\s+pool"): "pool",
     ("part-c-s1-general", r"(?i)(?:^|\W)signage|advertising"): "signage",
     ("part-c-s1-general", r"(?i)(?:^|\W)tree|canopy|prescribed\s+tree"): "trees",
-    ("part-c-s1-general", r"(?i)acoustic"): "acoustic",
+    ("part-c-s1-general", r"(?i)acoustic|noise"): "acoustic",
     ("part-c-s1-general", r"(?i)contamina"): "contamination",
-    # part-c-s4-non-residential has similar topic sections
+    ("part-c-s1-general", r"(?i)heritage"): "heritage",
+    ("part-c-s1-general", r"(?i)landscap"): "landscaping",
+    ("part-c-s1-general", r"(?i)waste|recycl"): "waste",
+    ("part-c-s1-general", r"(?i)solar|sunlight"): "solar",
+    ("part-c-s1-general", r"(?i)privacy"): "privacy",
+    ("part-c-s1-general", r"(?i)stormwater|drainage"): "stormwater",
+    ("part-c-s1-general", r"(?i)flood"): "flooding",
+    # Additional non-excludable topics (UI grouping only)
+    ("part-c-s1-general", r"(?i)^safety|^crime\s+prevention|^CPTED"): "safety",
+    ("part-c-s1-general", r"(?i)^equity|^access\s+and\s+mobility|^disabled"): "access",
+    ("part-c-s1-general", r"(?i)^site\s+and\s+context|^SITE\s+AND\s+CONTEXT"): "site_analysis",
+    ("part-c-s1-general", r"(?i)^demolition"): "demolition",       # EXCLUDABLE
+    ("part-c-s1-general", r"(?i)^subdivision"): "subdivision",
+    ("part-c-s1-general", r"(?i)^open\s+space"): "design",
+    ("part-c-s1-general", r"(?i)^green\s+roof|^green\s+wall|^green\s+living"): "sustainability",
+    ("part-c-s1-general", r"(?i)^site\s+facilit"): "waste",
+    ("part-c-s1-general", r"(?i)^alterations|^corner\s+site|^minor\s+architectural|^laneway|^foreshore|^rock\s+face|^structures\s+in"): "design",
+    ("part-c-s1-general", r"(?i)^general\s+provisions"): "statutory",
+    ("part-c-s1-general", r"(?i)^planning\s+certif|^access\s+to\s+council"): "statutory",
+    # Contamination remediation stages (section headers are stage names)
+    ("part-c-s1-general", r"(?i)^stage\s+[1-4]|^remediation|^independent\s+site\s+aud|^initial\s+eval|^development\s+controls\s+for\s+rem"): "contamination",
+
+    # ── part-c-s4-non-residential: 52 provisions ─────────────────────────
     ("part-c-s4-non-residential", r"(?i)(?:^|\W)parking|car\s*park"): "parking",
-    ("part-c-s4-non-residential", r"(?i)(?:^|\W)signage"): "signage",
-    ("part-c-s4-non-residential", r"(?i)child\s+care"): "childcare",  # not excludable but mapped for completeness
-    # part-e-water contains flood/stormwater
+    ("part-c-s4-non-residential", r"(?i)(?:^|\W)signage|advertising"): "signage",
+    ("part-c-s4-non-residential", r"(?i)waste|recycl"): "waste",
+    ("part-c-s4-non-residential", r"(?i)child\s+care"): "residential",
+    ("part-c-s4-non-residential", r"(?i)outdoor\s+dining"): "commercial",
+    # Dev-type specific controls → commercial (non-excludable)
+    ("part-c-s4-non-residential", r"(?i)^licensed\s+prem|^sex\s+serv|^vehicle\s+repair|^vehicle\s+sales|^home\s+based|^market|^specialised\s+retail|^medical\s+centre|^shopfront|^creative\s+ind|^mixed\s+use|^recreational\s+facilit|^industrial\s+dev|^B7\s+BUSINESS"): "commercial",
+    ("part-c-s4-non-residential", r"(?i)^elevation|^site\s+layout|^interface\s+amen|^building\s+elev"): "design",
+    ("part-c-s4-non-residential", r"(?i)^ecologically|^sustainable"): "sustainability",
+    ("part-c-s4-non-residential", r"(?i)^objectives\s+for\s+non"): "statutory",
+
+    # ── part-e-water: flood/stormwater disambiguation ─────────────────────
     ("part-e-water", r"(?i)flood"): "flooding",
-    ("part-e-water", r"(?i)stormwater"): "stormwater",
-    # part-c-s3-residential has acoustic, flood sections
-    ("part-c-s3-residential", r"(?i)acoustic"): "acoustic",
+    ("part-e-water", r"(?i)stormwater|drainage|water\s+sensitive"): "stormwater",
+
+    # ── part-c-s3-residential: acoustic + flood sub-sections ─────────────
+    ("part-c-s3-residential", r"(?i)acoustic|noise"): "acoustic",
     ("part-c-s3-residential", r"(?i)flood"): "flooding",
+    ("part-c-s3-residential", r"(?i)fenc"): "fencing",
+    ("part-c-s3-residential", r"(?i)solar|sunlight"): "solar",
+    ("part-c-s3-residential", r"(?i)privacy"): "privacy",
 }
 
 

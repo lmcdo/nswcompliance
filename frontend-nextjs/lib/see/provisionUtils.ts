@@ -8,10 +8,6 @@
 export const NUMERIC_MEASUREMENT_RE =
   /\b\d+(?:\.\d+)?\s*(?:m²|m|mm|cm|km|%|metres?|meters?|centimètres?|centimeters?|sqm|square mètres?|ha|hectares?)(?!\w)/i;
 
-// Text-based TOC detection pattern: 3+ section numbers in sequence indicates a TOC entry
-// e.g. "8.4.1.1 Public domain 8.4.1.2 Subdivision 8.4.1.3 Setbacks..."
-const TOC_SECTION_PATTERN = /\d+\.\d+(?:\.\d+)*\s+[A-Z][a-z]/g;
-
 /**
  * Filter and deduplicate a flat provisions array.
  * Removes TOC entries, non-actionable provisions, definitions, and exact-text duplicates.
@@ -27,8 +23,10 @@ export function filterAndDedupeProvisions(provisions: any[]): any[] {
 
     if (p.v2_provision_type === 'TOC') return false;
 
-    const sectionMatches = text.match(TOC_SECTION_PATTERN);
-    if (sectionMatches && sectionMatches.length >= 3) return false;
+    // NOTE: text-based TOC heuristic removed — \s+ in the regex matched newlines, causing
+    // false positives for legitimate provisions whose text contains section headings inline
+    // (e.g. Marrickville Part 2 provisions with "2.9\nCommunity Safety" patterns).
+    // Server-side SQL already filters TOC entries via v2_provision_type and text patterns.
 
     if (p.v2_is_actionable === false) return false;
 

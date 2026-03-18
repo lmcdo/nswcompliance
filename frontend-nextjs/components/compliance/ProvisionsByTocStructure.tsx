@@ -154,14 +154,7 @@ export function ProvisionsByTocStructure({
   isDaMode = false,
   onToggleDaMode,
 }: ProvisionsByTocStructureProps) {
-  // Provision view: 'task' shows all provisions, 'structure' requires TOC selection
-  const [provisionView, setProvisionView] = useState<'task' | 'structure'>('task');
-
-  // On DA mode activation: switch to Document view (requires TOC for chapter dismissal).
-  // On exit: intentionally preserve the current view — don't reset user's navigation context.
-  useEffect(() => {
-    if (isDaMode) setProvisionView('structure');
-  }, [isDaMode]);
+  const [provisionView] = useState<'task' | 'structure'>('structure');
   const [selectedPart, setSelectedPart] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [topicFilters, setTopicFilters] = useState<string[]>([]); // Multi-select topics
@@ -444,14 +437,10 @@ export function ProvisionsByTocStructure({
   // Get provisions for selected part/section - memoized to avoid unnecessary recalculations
   const rawSelectedProvisions = useMemo(() => {
     if (!selectedPart || !tocStructure[selectedPart]) return [];
-
     const part = tocStructure[selectedPart];
-
     if (selectedSection && part.sections[selectedSection]) {
       return part.sections[selectedSection].provisions;
     }
-
-    // Return all provisions for the part
     return (Object.values(part.sections) as any[]).flatMap(s => s.provisions);
   }, [selectedPart, selectedSection, tocStructure]);
 
@@ -514,6 +503,25 @@ export function ProvisionsByTocStructure({
     return deduped;
   }, [tocStructure]);
 
+  // Derives the canonical part key for a provision, normalising source_chapter_key slugs to the
+  // same "Part N" / "Appendix X" labels used in completeTocStructure.
+  // Used in filteredPartCounts, chapterProgress, globalProgress, and isInDaScope so all
+  // chapter-level grouping / assertion lookups are consistent.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const derivePartKey = useCallback((p: any): string => {
+    if (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') return p.v2_dcp_part;
+    const ck: string | undefined = p.source_chapter_key;
+    if (!ck) return 'Other';
+    const mSimple = ck.match(/^part(\d+)-/);
+    const mLetter = ck.match(/^part-([a-z])-/);
+    const mAppendix = ck.match(/^appendix-([a-z\d]+)/);
+    if (mSimple)  return `Part ${mSimple[1]}`;
+    if (mLetter)  return `Part ${mLetter[1].toUpperCase()}`;
+    if (mAppendix) return `Appendix ${mAppendix[1].toUpperCase()}`;
+    if (ck === 'da-guidelines') return 'Part 1';
+    return ck;
+  }, []);
+
   // Per-part filtered provision counts — matches what the right panel actually shows.
   // by_toc.provision_count is the raw API count (includes TOC entries, non-actionable, definitions).
   // Must account for intake triage so numbers match the assessment scope.
@@ -531,10 +539,14 @@ export function ProvisionsByTocStructure({
     if (isDaMode) {
       provisionsToCount = allProvisions.filter(p => {
         // Exclude intake-triaged provisions by structural category (DD-1)
-        if (excludableTopics.size > 0) {
-          const cat = p.v2_structural_category;
-          if (cat && excludableTopics.has(cat)) return false;
-        }
+        const cat = p.v2_structural_category;
+        if (cat && excludableTopics.has(cat)) return false;
+        // Exclude chapter dismissals so sidebar totals match assessment scope
+        const partKey = derivePartKey(p);
+        if (chapterAssertions[partKey]) return false;
+        // Exclude topic dismissals
+        const topic = normalizeTopicKey(p.v2_topic);
+        if (topic && topicAssertions[topic]) return false;
         // Exclude objectives and heritage descriptives (hidden in DA mode)
         if (p.v2_provision_type === 'objective') return false;
         if (p.v2_heritage_type === 'descriptive') return false;
@@ -549,17 +561,16 @@ export function ProvisionsByTocStructure({
     }
 
     for (const p of provisionsToCount) {
-      const partId = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part
-        : (p.source_chapter_key || 'Other');
-      counts[partId] = (counts[partId] || 0) + 1;
+      // When a layer filter is active, only count provisions in that layer
+      if (layerFilter && (p.v2_dcp_layer || p.layer) !== layerFilter) continue;
+      counts[derivePartKey(p)] = (counts[derivePartKey(p)] || 0) + 1;
     }
 
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     console.log('[FilteredPartCounts] Final result:', { counts, total });
 
     return counts;
-  }, [allProvisions, isDaMode, excludableTopics]);
+  }, [allProvisions, isDaMode, excludableTopics, chapterAssertions, topicAssertions, layerFilter, derivePartKey]);
 
   // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
   // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
@@ -586,16 +597,18 @@ export function ProvisionsByTocStructure({
 
     const baseProvisions = useMemo(() => {
     let base;
-    if (provisionView === 'task') {
-      // Task mode: ALL provisions across all parts
+    if (provisionView === 'task' || layerFilter) {
+      // Task mode or layer filter active: use ALL provisions so the layer filter
+      // shows all matching provisions across every section, not just the selected one.
       base = allProvisions;
     } else {
-      // Structure mode: Current behavior (TOC-filtered)
+      // Structure mode: TOC-filtered to selected section
       base = selectedProvisions;
     }
 
     console.log('[BaseProvisions] Set:', {
       provisionView,
+      layerFilter,
       count: base.length,
       byLayer: {
         generic: base.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
@@ -606,7 +619,7 @@ export function ProvisionsByTocStructure({
     });
 
     return base;
-  }, [provisionView, allProvisions, selectedProvisions]);
+  }, [provisionView, layerFilter, allProvisions, selectedProvisions]);
 
   // Heritage counts: Always use allProvisions (full unfiltered set) so the badge
   // shows stable property-level totals regardless of selected part/topic/search.
@@ -822,6 +835,39 @@ export function ProvisionsByTocStructure({
     }
   }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
 
+  // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
+  // Intentionally ignores layerFilter, search, and refinements so the exported document
+  // always covers all in-scope DCP provisions regardless of what the user has filtered in the UI.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provisionsForSeeExport = useMemo((): any[] => {
+    if (!isDaMode) return baseProvisions;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let p: any[] = baseProvisions;
+    if (Object.keys(topicAssertions).length > 0) {
+      const assertedOut = new Set(Object.keys(topicAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const t = (prov.v2_topic || '').toLowerCase().replace(/ /g, '_');
+        return !t || !assertedOut.has(t);
+      });
+    }
+    if (Object.keys(chapterAssertions).length > 0) {
+      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const chKey = (prov.v2_dcp_part && prov.v2_dcp_part !== 'unknown') ? prov.v2_dcp_part : prov.source_chapter_key;
+        return !chKey || !assertedChapters.has(chKey);
+      });
+    }
+    if (!showSuppressedInDA) {
+      p = p.filter((prov: any) =>
+        prov.v2_provision_type !== 'objective' &&
+        prov.v2_heritage_type !== 'descriptive'
+      );
+    }
+    return p;
+  }, [baseProvisions, isDaMode, topicAssertions, chapterAssertions, showSuppressedInDA]);
+
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
     const cat = p.v2_structural_category;
@@ -830,11 +876,9 @@ export function ProvisionsByTocStructure({
     if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
     if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
     if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
-    const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-      ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
-    if (chapterAssertions[chKey]) return false;                    // planner dismissed chapter
+    if (chapterAssertions[derivePartKey(p)]) return false;         // planner dismissed chapter
     return true;
-  }, [excludableTopics, topicAssertions, chapterAssertions]);
+  }, [excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
 
   // Per-chapter assessment progress — scope-aware, used by TocSidebar progress bars
   const chapterProgress = useMemo(() => {
@@ -842,14 +886,13 @@ export function ProvisionsByTocStructure({
     const map: Record<string, { assessed: number; total: number }> = {};
     for (const p of allProvisions) {
       if (!isInDaScope(p)) continue;
-      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
+      const chKey = derivePartKey(p);
       if (!map[chKey]) map[chKey] = { assessed: 0, total: 0 };
       map[chKey].total++;
       if (daResponses.has(p.id)) map[chKey].assessed++;
     }
     return map;
-  }, [isDaMode, allProvisions, daResponses, isInDaScope]);
+  }, [isDaMode, allProvisions, daResponses, isInDaScope, derivePartKey]);
 
   // Global progress with reduction waterfall — single source of truth for all DA progress UI
   const globalProgress = useMemo(() => {
@@ -860,18 +903,16 @@ export function ProvisionsByTocStructure({
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
-      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
       // Count each exclusion reason (priority order — first match wins)
       if (cat && excludableTopics.has(cat)) { triaged++; continue; }
-      if (chapterAssertions[chKey]) { chapterDismissed++; continue; }
+      if (chapterAssertions[derivePartKey(p)]) { chapterDismissed++; continue; }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
       if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
       scopeTotal++;
       if (daResponses.has(p.id)) assessed++;
     }
     return { total, triaged, chapterDismissed, topicDismissed, suppressed, scopeTotal, assessed, remaining: scopeTotal - assessed };
-  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions]);
+  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
 
   // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
@@ -996,21 +1037,6 @@ export function ProvisionsByTocStructure({
     setRefinements(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  // Mode switch handlers
-  const enterTaskMode = () => {
-    setProvisionView('task');
-    setSelectedPart(null);
-    setSelectedSection(null);
-  };
-
-  const enterStructureMode = () => {
-    setProvisionView('structure');
-    // Auto-select first part if none selected
-    if (!selectedPart && Object.keys(completeTocStructure).length > 0) {
-      const firstPart = Object.keys(completeTocStructure)[0];
-      setSelectedPart(firstPart);
-    }
-  };
 
   // Export PDF handler
   const handleExportPdf = async () => {
@@ -1144,9 +1170,9 @@ export function ProvisionsByTocStructure({
         heritageCtx, devDescriptionLocal || undefined,
       );
 
-      // Use filteredProvisions so topic assertions are already applied (asserted-out topics excluded).
-      // filteredProvisions in DA mode has topicAssertions filter applied upstream.
-      const provisionsForPdf = await preparePdfProvisions(filteredProvisions, daResponses ?? undefined);
+      // Use provisionsForSeeExport (baseProvisions + DA-mode scope filters only) so the SEE document
+      // always covers all in-scope provisions, regardless of active layerFilter/search/refinements in the UI.
+      const provisionsForPdf = await preparePdfProvisions(provisionsForSeeExport, daResponses ?? undefined);
       const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
 
       const pathwayDetermination = buildPathwayDetermination(
@@ -1336,30 +1362,6 @@ export function ProvisionsByTocStructure({
                   'Select a section'
                 )}
               </h3>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {/* View mode toggle — only shown when TOC data exists for this council */}
-                {Object.keys(completeTocStructure).length > 1 && (
-                  <div className="inline-flex rounded border border-gray-200 text-xs overflow-hidden flex-shrink-0">
-                    <button
-                      onClick={enterTaskMode}
-                      className={`px-2.5 py-1 transition-colors ${provisionView === 'task' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      Topic
-                    </button>
-                    <button
-                      onClick={enterStructureMode}
-                      className={`px-2.5 py-1 transition-colors border-l border-gray-200 ${provisionView === 'structure' ? 'bg-gray-800 text-white' : 'text-gray-500 hover:bg-gray-50'}`}
-                    >
-                      Document
-                    </button>
-                  </div>
-                )}
-                {provisionView === 'task' && (
-                  <p className="text-xs text-gray-400">
-                    {isDaMode ? 'Filter by topic, review each provision.' : 'Filter by topic or search.'}
-                  </p>
-                )}
-              </div>
               {provisionView === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600 mt-0.5">
                   {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
@@ -1406,6 +1408,21 @@ export function ProvisionsByTocStructure({
               )}
             </div>
           </div>
+
+          <LayerExplanation
+            zone={zone}
+            heritage={heritage}
+            hcaName={hcaName}
+            precinctName={precinctName}
+            formerCouncil={formerCouncil}
+            layerCounts={layerCounts}
+            layerFilter={layerFilter}
+            onLayerFilterChange={setLayerFilter}
+            generalHeritageCount={generalHeritageCount}
+            hcaSpecificCount={hcaSpecificCount}
+            totalHeritageCount={totalHeritageCount}
+            isDaMode={isDaMode}
+          />
 
           <DcpFilterBar
             searchQuery={searchQuery}

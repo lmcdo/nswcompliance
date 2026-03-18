@@ -723,7 +723,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </a>
                     </div>
-                    <div className="text-xs text-purple-700 ml-2">Area 5 (Inner West) - specific thermal comfort and energy targets for this LGA</div>
+                    <div className="text-xs text-purple-700 ml-2">{sustainableInfo.basixArea} - specific thermal comfort and energy targets for this LGA</div>
                     </>
                   )}
                 </div>

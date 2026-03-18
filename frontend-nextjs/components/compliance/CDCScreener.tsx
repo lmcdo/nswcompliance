@@ -49,7 +49,9 @@ function extractNumeric(text: string, unit: 'm' | 'm²' | '%'): number | null {
 
 /**
  * Evaluate CDC criteria using zone, lot area, heritage flag and provision texts.
- * Returns list of criteria with pass/fail/warn results.
+ * Returns list of criteria with pass/fail/warn/unknown results.
+ * No fallback values — if a limit cannot be confirmed from loaded provisions,
+ * result is 'unknown' and the user is directed to verify the PDF directly.
  */
 function evaluateCriteria(
   zoneCode: string,
@@ -59,8 +61,8 @@ function evaluateCriteria(
   provisions: CDCScreenerProps['provisions']
 ): CDCCriterion[] {
   const criteria: CDCCriterion[] = [];
-  const floorAddition = parseFloat(proposed.floorAreaAddition) || 0;
-  const height = parseFloat(proposed.proposedHeight) || 0;
+  const floorAddition = proposed.floorAreaAddition.trim() !== '' ? parseFloat(proposed.floorAreaAddition) : null;
+  const height = proposed.proposedHeight.trim() !== '' ? parseFloat(proposed.proposedHeight) : null;
 
   // ── 1. Heritage Item ─────────────────────────────────────────────────────
   criteria.push({
@@ -86,18 +88,25 @@ function evaluateCriteria(
 
   // ── 3. Lot area ──────────────────────────────────────────────────────────
   if (lotArea) {
-    // Find min lot area from loaded provisions
     const lotProvision = provisions.find(p =>
       /minimum lot area|lot size/i.test(p.provision_text)
     );
-    const minLot = lotProvision ? extractNumeric(lotProvision.provision_text, 'm²') : 450;
-    const limit = minLot || 450;
-    criteria.push({
-      label: `Minimum lot area (${limit} m²)`,
-      result: lotArea >= limit ? 'pass' : 'fail',
-      detail: `Lot is ${Math.round(lotArea)} m² — ${lotArea >= limit ? 'meets' : 'does not meet'} the ${limit} m² minimum.`,
-      provisionRef: lotProvision ? `Part ${lotProvision.v2_part}` : 'SEPP E&C Cl 3.1',
-    });
+    const minLot = lotProvision ? extractNumeric(lotProvision.provision_text, 'm²') : null;
+    if (minLot !== null) {
+      criteria.push({
+        label: `Minimum lot area (${minLot} m²)`,
+        result: lotArea >= minLot ? 'pass' : 'fail',
+        detail: `Lot is ${Math.round(lotArea)} m² — ${lotArea >= minLot ? 'meets' : 'does not meet'} the ${minLot} m² minimum.`,
+        provisionRef: `Part ${lotProvision!.v2_part}`,
+      });
+    } else {
+      criteria.push({
+        label: 'Minimum lot area',
+        result: 'warn',
+        detail: `Lot is ${Math.round(lotArea)} m² — minimum not found in loaded provisions. Verify Cl 3.1 in SEPP E&C PDF before issuing CDC.`,
+        provisionRef: 'SEPP E&C Cl 3.1',
+      });
+    }
   } else {
     criteria.push({
       label: 'Minimum lot area',
@@ -106,46 +115,64 @@ function evaluateCriteria(
     });
   }
 
-  // ── 4. Floor area addition ───────────────────────────────────────────────
-  if (floorAddition > 0) {
-    // Scan provisions for maximum floor area or GFA limit
+  // ── 4. Floor area addition — required input ───────────────────────────────
+  if (floorAddition === null) {
+    criteria.push({
+      label: 'Maximum floor area addition',
+      result: 'unknown',
+      detail: 'Enter proposed floor area addition to check against SEPP E&C limit.',
+    });
+  } else {
     const gfaProvision = provisions.find(p =>
       /floor area|gross floor area|GFA/i.test(p.provision_text) &&
       /maximum|must not exceed/i.test(p.provision_text)
     );
     const maxGfa = gfaProvision ? extractNumeric(gfaProvision.provision_text, 'm²') : null;
-
-    if (maxGfa) {
+    if (maxGfa !== null) {
       criteria.push({
         label: `Maximum floor area addition (${maxGfa} m²)`,
         result: floorAddition <= maxGfa ? 'pass' : 'fail',
         detail: `${floorAddition} m² proposed — ${floorAddition <= maxGfa ? 'within' : 'exceeds'} the ${maxGfa} m² limit.`,
-        provisionRef: gfaProvision ? `Part ${gfaProvision.v2_part}` : undefined,
+        provisionRef: `Part ${gfaProvision!.v2_part}`,
       });
     } else {
       criteria.push({
-        label: 'Floor area addition',
-        result: 'unknown',
-        detail: `${floorAddition} m² proposed. Verify against applicable standard in Part ${zoneCode.startsWith('R') ? '3' : '?'}.`,
+        label: 'Maximum floor area addition',
+        result: 'warn',
+        detail: `${floorAddition} m² proposed — limit not found in loaded provisions. Verify Cl 3.19 in SEPP E&C PDF before issuing CDC.`,
+        provisionRef: 'SEPP E&C Part 3',
       });
     }
   }
 
-  // ── 5. Height ────────────────────────────────────────────────────────────
-  if (height > 0) {
+  // ── 5. Height — required input ────────────────────────────────────────────
+  if (height === null) {
+    criteria.push({
+      label: 'Maximum height',
+      result: 'unknown',
+      detail: 'Enter proposed height to check against SEPP E&C limit.',
+    });
+  } else {
     const heightProvision = provisions.find(p =>
       /height of building|wall height|maximum height/i.test(p.provision_text) &&
       /maximum|must not exceed/i.test(p.provision_text)
     );
-    const maxHeight = heightProvision ? extractNumeric(heightProvision.provision_text, 'm') : 8.5;
-    const limit = maxHeight || 8.5;
-
-    criteria.push({
-      label: `Maximum height (${limit} m)`,
-      result: height <= limit ? 'pass' : 'fail',
-      detail: `${height} m proposed — ${height <= limit ? 'within' : 'exceeds'} the ${limit} m maximum.`,
-      provisionRef: heightProvision ? `Part ${heightProvision.v2_part}` : 'SEPP E&C Cl 3.18',
-    });
+    const maxHeight = heightProvision ? extractNumeric(heightProvision.provision_text, 'm') : null;
+    if (maxHeight !== null) {
+      criteria.push({
+        label: `Maximum height (${maxHeight} m)`,
+        result: height <= maxHeight ? 'pass' : 'fail',
+        detail: `${height} m proposed — ${height <= maxHeight ? 'within' : 'exceeds'} the ${maxHeight} m limit.`,
+        provisionRef: `Part ${heightProvision!.v2_part}`,
+      });
+    } else {
+      criteria.push({
+        label: 'Maximum height',
+        result: 'warn',
+        detail: `${height} m proposed — limit not found in loaded provisions. Verify Cl 3.18 in SEPP E&C PDF before issuing CDC.`,
+        provisionRef: 'SEPP E&C Part 3',
+      });
+    }
   }
 
   return criteria;
@@ -275,7 +302,16 @@ export function CDCScreener({ zoneCode, lotArea, heritageItem = false, provision
           </div>
 
           <p className="text-xs text-gray-400">
-            Preliminary screener only — verify against current SEPP (Exempt and Complying Development Codes) 2008 before issuing CDC.
+            Preliminary screener only — verify all criteria against the current{' '}
+            <a
+              href="https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-gray-600"
+            >
+              SEPP (Exempt and Complying Development Codes) 2008
+            </a>{' '}
+            before issuing a CDC. Items marked unknown must be confirmed from the PDF.
           </p>
         </div>
       )}
