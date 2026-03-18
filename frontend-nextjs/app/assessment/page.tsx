@@ -37,6 +37,7 @@ const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
   : null;
 
 function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string): boolean {
+  console.log('[DCP gate] DCP_ENABLED:', DCP_ENABLED, '| ENABLED_LGAS:', ENABLED_LGAS, '| formerCouncil:', formerCouncil, '| lga:', lga);
   if (!DCP_ENABLED) return false;
   if (!ENABLED_LGAS) return true; // no restriction — show all
   // Direct former council match (primary path)
