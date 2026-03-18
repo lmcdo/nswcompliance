@@ -561,6 +561,8 @@ export function ProvisionsByTocStructure({
     }
 
     for (const p of provisionsToCount) {
+      // When a layer filter is active, only count provisions in that layer
+      if (layerFilter && (p.v2_dcp_layer || p.layer) !== layerFilter) continue;
       counts[derivePartKey(p)] = (counts[derivePartKey(p)] || 0) + 1;
     }
 
@@ -568,7 +570,7 @@ export function ProvisionsByTocStructure({
     console.log('[FilteredPartCounts] Final result:', { counts, total });
 
     return counts;
-  }, [allProvisions, isDaMode, excludableTopics, chapterAssertions, topicAssertions, derivePartKey]);
+  }, [allProvisions, isDaMode, excludableTopics, chapterAssertions, topicAssertions, layerFilter, derivePartKey]);
 
   // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
   // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
@@ -595,16 +597,18 @@ export function ProvisionsByTocStructure({
 
     const baseProvisions = useMemo(() => {
     let base;
-    if (provisionView === 'task') {
-      // Task mode: ALL provisions across all parts
+    if (provisionView === 'task' || layerFilter) {
+      // Task mode or layer filter active: use ALL provisions so the layer filter
+      // shows all matching provisions across every section, not just the selected one.
       base = allProvisions;
     } else {
-      // Structure mode: Current behavior (TOC-filtered)
+      // Structure mode: TOC-filtered to selected section
       base = selectedProvisions;
     }
 
     console.log('[BaseProvisions] Set:', {
       provisionView,
+      layerFilter,
       count: base.length,
       byLayer: {
         generic: base.filter(p => (p.v2_dcp_layer || p.layer) === 'generic').length,
@@ -615,7 +619,7 @@ export function ProvisionsByTocStructure({
     });
 
     return base;
-  }, [provisionView, allProvisions, selectedProvisions]);
+  }, [provisionView, layerFilter, allProvisions, selectedProvisions]);
 
   // Heritage counts: Always use allProvisions (full unfiltered set) so the badge
   // shows stable property-level totals regardless of selected part/topic/search.

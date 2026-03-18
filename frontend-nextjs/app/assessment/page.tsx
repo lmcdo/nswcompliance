@@ -16,6 +16,15 @@ import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
 import { ProvisionsByTocStructure } from '@/components/compliance/ProvisionsByTocStructure';
+import { StateLevelControls } from '@/components/compliance/StateLevelControls';
+import { LepControls } from '@/components/compliance/LepControls';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
+import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
+import FeedbackWidget from '@/components/feedback/FeedbackWidget';
+import { StatusColors } from '@/lib/design-tokens';
+import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
+import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
 const DCP_ENABLED = process.env.NEXT_PUBLIC_DCP_ENABLED === 'true';
 // When set, only show DCP for listed councils (comma-separated formerCouncil slugs).
@@ -30,15 +39,6 @@ function isDcpEnabledForCouncil(formerCouncil: string | undefined): boolean {
   if (!ENABLED_LGAS) return true; // no restriction — show all
   return ENABLED_LGAS.includes((formerCouncil || '').toLowerCase());
 }
-import { StateLevelControls } from '@/components/compliance/StateLevelControls';
-import { LepControls } from '@/components/compliance/LepControls';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
-import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
-import FeedbackWidget from '@/components/feedback/FeedbackWidget';
-import { StatusColors } from '@/lib/design-tokens';
-import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
-import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
 export default function AssessmentPage() {
   // Property data and fetching
@@ -432,27 +432,29 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
                   {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil) ? (
-                    <ProvisionsByTocStructure
-                      key={`toc-${selectedProperty.address}`}
-                      lga={selectedProperty.constraints?.lga}
-                      formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
-                      zone={selectedProperty.constraints?.zone}
-                      heritage={selectedProperty.heritage?.isHeritage || false}
-                      hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
-                        ? selectedProperty.heritage?.heritageItemName
-                        : undefined}
-                      precinctId={selectedProperty.constraints?.precinctId}
-                      precinctName={selectedProperty.constraints?.precinctName}
-                      address={selectedProperty.address}
-                      hcaCode={selectedProperty.heritage?.heritageItemNumber}
-                      heritageItem={selectedProperty.heritage?.heritageType?.toLowerCase().includes('item')}
-                      heritageItemName={selectedProperty.heritage?.heritageItemName}
-                      heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
-                      propertyData={selectedProperty}
-                      lepClauseData={lepClauseData}
-                      isDaMode={isDaMode}
-                      onToggleDaMode={setIsDaMode}
-                    />
+                    <ErrorBoundary fallbackTitle="Error loading DCP provisions">
+                      <ProvisionsByTocStructure
+                        key={`toc-${selectedProperty.address}`}
+                        lga={selectedProperty.constraints?.lga}
+                        formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
+                        zone={selectedProperty.constraints?.zone}
+                        heritage={selectedProperty.heritage?.isHeritage || false}
+                        hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
+                          ? selectedProperty.heritage?.heritageItemName
+                          : undefined}
+                        precinctId={selectedProperty.constraints?.precinctId}
+                        precinctName={selectedProperty.constraints?.precinctName}
+                        address={selectedProperty.address}
+                        hcaCode={selectedProperty.heritage?.heritageItemNumber}
+                        heritageItem={selectedProperty.heritage?.heritageType?.toLowerCase().includes('item')}
+                        heritageItemName={selectedProperty.heritage?.heritageItemName}
+                        heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
+                        propertyData={selectedProperty}
+                        lepClauseData={lepClauseData}
+                        isDaMode={isDaMode}
+                        onToggleDaMode={setIsDaMode}
+                      />
+                    </ErrorBoundary>
                   ) : (
                     <DCPInterestForm
                       councilName={selectedProperty.constraints?.lga || 'Your council'}
