@@ -503,6 +503,25 @@ export function ProvisionsByTocStructure({
     return deduped;
   }, [tocStructure]);
 
+  // Derives the canonical part key for a provision, normalising source_chapter_key slugs to the
+  // same "Part N" / "Appendix X" labels used in completeTocStructure.
+  // Used in filteredPartCounts, chapterProgress, globalProgress, and isInDaScope so all
+  // chapter-level grouping / assertion lookups are consistent.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const derivePartKey = useCallback((p: any): string => {
+    if (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') return p.v2_dcp_part;
+    const ck: string | undefined = p.source_chapter_key;
+    if (!ck) return 'Other';
+    const mSimple = ck.match(/^part(\d+)-/);
+    const mLetter = ck.match(/^part-([a-z])-/);
+    const mAppendix = ck.match(/^appendix-([a-z\d]+)/);
+    if (mSimple)  return `Part ${mSimple[1]}`;
+    if (mLetter)  return `Part ${mLetter[1].toUpperCase()}`;
+    if (mAppendix) return `Appendix ${mAppendix[1].toUpperCase()}`;
+    if (ck === 'da-guidelines') return 'Part 1';
+    return ck;
+  }, []);
+
   // Per-part filtered provision counts — matches what the right panel actually shows.
   // by_toc.provision_count is the raw API count (includes TOC entries, non-actionable, definitions).
   // Must account for intake triage so numbers match the assessment scope.
@@ -520,10 +539,14 @@ export function ProvisionsByTocStructure({
     if (isDaMode) {
       provisionsToCount = allProvisions.filter(p => {
         // Exclude intake-triaged provisions by structural category (DD-1)
-        if (excludableTopics.size > 0) {
-          const cat = p.v2_structural_category;
-          if (cat && excludableTopics.has(cat)) return false;
-        }
+        const cat = p.v2_structural_category;
+        if (cat && excludableTopics.has(cat)) return false;
+        // Exclude chapter dismissals so sidebar totals match assessment scope
+        const partKey = derivePartKey(p);
+        if (chapterAssertions[partKey]) return false;
+        // Exclude topic dismissals
+        const topic = normalizeTopicKey(p.v2_topic);
+        if (topic && topicAssertions[topic]) return false;
         // Exclude objectives and heritage descriptives (hidden in DA mode)
         if (p.v2_provision_type === 'objective') return false;
         if (p.v2_heritage_type === 'descriptive') return false;
@@ -537,35 +560,15 @@ export function ProvisionsByTocStructure({
       });
     }
 
-    const CHAPTER_KEY_RE = /^(part\d+-|part-[a-z]-|appendix-|da-guidelines)/;
     for (const p of provisionsToCount) {
-      const isChapterKeyBased = p.source_chapter_key && CHAPTER_KEY_RE.test(p.source_chapter_key);
-      const hasRealPart = !isChapterKeyBased && p.v2_dcp_part && p.v2_dcp_part !== 'unknown';
-      let partId: string;
-      if (hasRealPart) {
-        partId = p.v2_dcp_part;
-      } else if (p.source_chapter_key) {
-        // Derive parent part ID from chapter key to match by_toc grouping
-        const ck: string = p.source_chapter_key;
-        const mSimple = ck.match(/^part(\d+)-/);
-        const mLetter = ck.match(/^part-([a-z])-/);
-        const mAppendix = ck.match(/^appendix-([a-z\d]+)/);
-        if (mSimple) partId = `Part ${mSimple[1]}`;
-        else if (mLetter) partId = `Part ${mLetter[1].toUpperCase()}`;
-        else if (mAppendix) partId = `Appendix ${mAppendix[1].toUpperCase()}`;
-        else if (ck === 'da-guidelines') partId = 'Part 1';
-        else partId = ck;
-      } else {
-        partId = 'Other';
-      }
-      counts[partId] = (counts[partId] || 0) + 1;
+      counts[derivePartKey(p)] = (counts[derivePartKey(p)] || 0) + 1;
     }
 
     const total = Object.values(counts).reduce((a, b) => a + b, 0);
     console.log('[FilteredPartCounts] Final result:', { counts, total });
 
     return counts;
-  }, [allProvisions, isDaMode, excludableTopics]);
+  }, [allProvisions, isDaMode, excludableTopics, chapterAssertions, topicAssertions, derivePartKey]);
 
   // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
   // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
@@ -869,11 +872,9 @@ export function ProvisionsByTocStructure({
     if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
     if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
     if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
-    const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-      ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
-    if (chapterAssertions[chKey]) return false;                    // planner dismissed chapter
+    if (chapterAssertions[derivePartKey(p)]) return false;         // planner dismissed chapter
     return true;
-  }, [excludableTopics, topicAssertions, chapterAssertions]);
+  }, [excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
 
   // Per-chapter assessment progress — scope-aware, used by TocSidebar progress bars
   const chapterProgress = useMemo(() => {
@@ -881,14 +882,13 @@ export function ProvisionsByTocStructure({
     const map: Record<string, { assessed: number; total: number }> = {};
     for (const p of allProvisions) {
       if (!isInDaScope(p)) continue;
-      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
+      const chKey = derivePartKey(p);
       if (!map[chKey]) map[chKey] = { assessed: 0, total: 0 };
       map[chKey].total++;
       if (daResponses.has(p.id)) map[chKey].assessed++;
     }
     return map;
-  }, [isDaMode, allProvisions, daResponses, isInDaScope]);
+  }, [isDaMode, allProvisions, daResponses, isInDaScope, derivePartKey]);
 
   // Global progress with reduction waterfall — single source of truth for all DA progress UI
   const globalProgress = useMemo(() => {
@@ -899,18 +899,16 @@ export function ProvisionsByTocStructure({
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
-      const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown')
-        ? p.v2_dcp_part : (p.source_chapter_key || 'unknown');
       // Count each exclusion reason (priority order — first match wins)
       if (cat && excludableTopics.has(cat)) { triaged++; continue; }
-      if (chapterAssertions[chKey]) { chapterDismissed++; continue; }
+      if (chapterAssertions[derivePartKey(p)]) { chapterDismissed++; continue; }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
       if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
       scopeTotal++;
       if (daResponses.has(p.id)) assessed++;
     }
     return { total, triaged, chapterDismissed, topicDismissed, suppressed, scopeTotal, assessed, remaining: scopeTotal - assessed };
-  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions]);
+  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
 
   // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
