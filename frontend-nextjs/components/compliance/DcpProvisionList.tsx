@@ -78,10 +78,13 @@ export function DcpProvisionList({
       }).length
     : 0;
 
-  // DA mode: count suppressed provisions (objectives + heritage descriptives) for audit trail
+  // DA mode: count suppressed provisions (objectives, procedural, descriptive) for audit trail
   const suppressedProvisions = isDaMode && baseProvisions
     ? baseProvisions.filter(p =>
-        p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive'
+        p.v2_provision_type === 'objective' ||
+        p.v2_provision_type === 'procedural' ||
+        p.v2_provision_type === 'descriptive' ||
+        p.v2_heritage_type === 'descriptive'
       )
     : [];
 

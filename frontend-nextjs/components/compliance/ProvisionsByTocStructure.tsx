@@ -1048,14 +1048,16 @@ export function ProvisionsByTocStructure({
       });
     }
 
-    // DA mode: suppress objective provisions AND heritage descriptive provisions.
-    // Objectives (v2_provision_type = 'objective') and heritage descriptives
-    // (v2_heritage_type = 'descriptive') are policy intent statements, not enforceable
-    // controls — they are not assessed individually in a SEE compliance table.
+    // DA mode: suppress non-assessable provisions.
+    // 'objective' and 'procedural' (process/admin text) and 'descriptive' (informational/artefact)
+    // are not enforceable controls — they do not require a Complies/Varies/N/A response.
+    // Heritage 'descriptive' types are also suppressed.
     // Can be toggled back on for audit/transparency via showSuppressedInDA.
     if (isDaMode && !showSuppressedInDA) {
       filtered = filtered.filter(p =>
         p.v2_provision_type !== 'objective' &&
+        p.v2_provision_type !== 'procedural' &&
+        p.v2_provision_type !== 'descriptive' &&
         p.v2_heritage_type !== 'descriptive'
       );
     }
@@ -1168,6 +1170,8 @@ export function ProvisionsByTocStructure({
     const topic = normalizeTopicKey(p.v2_topic);
     if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
     if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
+    if (p.v2_provision_type === 'procedural') return false;        // procedural/admin text hidden in DA
+    if (p.v2_provision_type === 'descriptive') return false;       // non-heritage descriptives hidden in DA
     if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
     if (allDismissedChapters.has(derivePartKey(p))) return false;  // chapter dismissed (manual or auto)
     const layer = p.v2_dcp_layer || p.layer;
@@ -1223,7 +1227,6 @@ export function ProvisionsByTocStructure({
     const inScope = new Set<string>();
     for (const p of allProvisions) {
       if (!isInDaScope(p)) continue;
-      if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') continue;
       if (derivePartKey(p) !== selectedPart) continue;
       inScope.add(deriveSectionKey(p));
     }
@@ -1273,7 +1276,7 @@ export function ProvisionsByTocStructure({
         continue;
       }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
-      if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
+      if (p.v2_provision_type === 'objective' || p.v2_provision_type === 'procedural' || p.v2_provision_type === 'descriptive' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
       // Questionnaire-derived exclusions (not manual — counted separately)
       if (layer !== 'condition') {
         if (questionnaireTopics.size > 0 && topic && questionnaireTopics.has(topic)) {
@@ -1341,7 +1344,7 @@ export function ProvisionsByTocStructure({
     const displaySectionKeys = new Set(displayProvisions.map((p: any) => deriveSectionKey(p)));
     const map = new Map<string, string | null>();
     for (const p of baseProvisions) {
-      if (p.v2_provision_type !== 'objective' && p.v2_heritage_type !== 'descriptive') continue;
+      if (p.v2_provision_type !== 'objective' && p.v2_provision_type !== 'procedural' && p.v2_provision_type !== 'descriptive' && p.v2_heritage_type !== 'descriptive') continue;
       // Scope check WITHOUT the provision-type exclusion (we want these types — we just need
       // to know whether their section is otherwise in scope or has been dismissed).
       const cat = p.v2_structural_category;
