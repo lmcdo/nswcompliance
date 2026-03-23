@@ -27,6 +27,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
+import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
+import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
 
 
 export const dynamic = 'force-dynamic';
@@ -99,106 +101,6 @@ function stripOcrHeaderPrefix(text: string | null): string | null {
   return cleaned || text; // never blank out a provision
 }
 
-/**
- * Dev type hierarchy for granular filtering (WITHOUT 'ALL' tag).
- * Generic provisions (tagged 'ALL') come from Layer 1 (v2_dcp_layer='generic'),
- * not from dev_type matching. This prevents 85% of provisions matching everything.
- */
-const DEV_TYPE_HIERARCHY: Record<string, string[]> = {
-  // Dwelling house variants
-  dwelling_house_new: ['dwelling_house_new', 'dwelling_house'],
-  dwelling_house_alteration: ['dwelling_house_alteration', 'dwelling_house'],
-  dwelling_addition: ['dwelling_addition', 'dwelling_house'],
-  dwelling_addition_ground: ['dwelling_addition_ground', 'dwelling_addition', 'dwelling_house'],
-  dwelling_addition_first: ['dwelling_addition_first', 'dwelling_addition', 'dwelling_house'],
-  dwelling_addition_rear: ['dwelling_addition_rear', 'dwelling_addition', 'dwelling_house'],
-
-  // Secondary dwelling
-  secondary_dwelling: ['secondary_dwelling'],
-  secondary_dwelling_new: ['secondary_dwelling_new', 'secondary_dwelling'],
-  secondary_dwelling_conversion: ['secondary_dwelling_conversion', 'secondary_dwelling'],
-
-  // Dual occupancy
-  dual_occupancy: ['dual_occupancy'],
-  dual_occupancy_attached: ['dual_occupancy_attached', 'dual_occupancy'],
-  dual_occupancy_detached: ['dual_occupancy_detached', 'dual_occupancy'],
-
-  // Multi-dwelling
-  multi_dwelling_housing: ['multi_dwelling_housing'],
-  residential_flat_building: ['residential_flat_building'],
-  shop_top_housing: ['shop_top_housing'],
-
-  // Commercial
-  retail_premises: ['retail_premises', 'commercial_premises'],
-  office_premises: ['office_premises', 'commercial_premises'],
-  food_and_drink_premises: ['food_and_drink_premises', 'commercial_premises'],
-  commercial_premises: ['commercial_premises'],
-
-  // Industrial
-  light_industry: ['light_industry', 'industrial_development'],
-  warehouse: ['warehouse', 'industrial_development'],
-  industrial_development: ['industrial_development'],
-
-  // Fallback for legacy types
-  dwelling_house: ['dwelling_house'],
-  boarding_house: ['boarding_house'],
-  child_care_centre: ['child_care_centre'],
-
-  // Ancillary works — compound selections from DA scope input
-  pool: ['pool', 'swimming_pool'],
-  fence: ['fence', 'fencing'],
-  carport: ['carport', 'garage', 'parking'],
-  deck: ['deck', 'terrace'],
-  pergola: ['pergola', 'shade_structure'],
-  retaining_wall: ['retaining_wall'],
-  signage: ['signage'],
-  demolition: ['demolition'],
-  outbuilding: ['outbuilding', 'shed'],
-
-  // Simplified category groupings (for Leichhardt dropdown)
-  residential: [
-    'dwelling_house', 'dual_occupancy', 'secondary_dwelling',
-    'multi_dwelling_housing', 'residential_flat_building', 'boarding_house',
-    'dwelling_addition', 'dwelling_house_new', 'dwelling_house_alteration'
-  ],
-  commercial: [
-    'commercial_premises', 'retail_premises', 'office_premises',
-    'food_and_drink_premises', 'shop_top_housing', 'child_care_centre'
-  ],
-  industrial: [
-    'industrial_development', 'warehouse', 'light_industry'
-  ],
-};
-
-/**
- * Expand a dev_type to its full hierarchy for matching.
- * Returns array of dev_types that should match provisions.
- * Does NOT include 'ALL' - generic provisions come from Layer 1.
- */
-function expandDevTypeHierarchy(devType: string): string[] {
-  // Check if we have a defined hierarchy
-  if (DEV_TYPE_HIERARCHY[devType]) {
-    return DEV_TYPE_HIERARCHY[devType];
-  }
-
-  // Fallback: match exact type only (no ALL)
-  return [devType];
-}
-
-/**
- * Expand multiple dev_types (compound works) to their full hierarchy union.
- * Accepts comma-separated string or array. Returns deduplicated union.
- */
-function expandDevTypeHierarchyMulti(devTypes: string): string[] {
-  const types = devTypes.split(',').map(t => t.trim()).filter(Boolean);
-  const all = new Set<string>();
-  for (const t of types) {
-    for (const expanded of expandDevTypeHierarchy(t)) {
-      all.add(expanded);
-    }
-  }
-  return Array.from(all);
-}
 
 /**
  * Lookup db_slug from heritage_conservation_areas by h_id (Planning Portal C-code)
@@ -249,6 +151,10 @@ async function resolveHcaCode(client: any, hcaCode: string): Promise<string | nu
   console.log(`[HCA Lookup] ${hcaCode} -> no mapping found`);
   return null;
 }
+
+// Module-level cache: former_council values known to have precinct provisions.
+// Populated on first request per LGA; avoids repeated EXISTS queries.
+const formerCouncilsWithPrecinctProvisions = new Set<string>();
 
 /**
  * Deduplicate provisions across all layers
@@ -412,6 +318,24 @@ export async function GET(request: NextRequest) {
       const totalCount = adjustedResults.reduce((sum, r) => sum + r.count, 0);
       const responseTime = Date.now() - startTime;
 
+      // Precinct warning: if no precinct_id was provided, check whether this
+      // former_council has any precinct-layer provisions at all. If it does,
+      // the caller should warn that site-specific precinct controls may be missing.
+      let precinctWarning = false;
+      if (!filters.precinct_id && filters.former_council) {
+        const fc = filters.former_council;
+        if (!formerCouncilsWithPrecinctProvisions.has(fc)) {
+          const { rows } = await client.query(
+            `SELECT 1 FROM regulatory_provisions
+             WHERE source_council = $1 AND v2_dcp_layer = 'precinct'
+               AND v2_is_actionable = true AND is_current = true LIMIT 1`,
+            [fc]
+          );
+          if (rows.length > 0) formerCouncilsWithPrecinctProvisions.add(fc);
+        }
+        precinctWarning = formerCouncilsWithPrecinctProvisions.has(fc);
+      }
+
       // Group provisions based on groupBy parameter
       const byTopic = groupByTopic(adjustedResults);
       const byToc = filters.groupBy === 'toc'
@@ -503,6 +427,7 @@ export async function GET(request: NextRequest) {
           response_time_ms: responseTime,
           api_version: 'v3_relevance_scoring',
           chapter_pdf_urls: chapterPdfUrls,
+          precinct_warning: precinctWarning,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
@@ -555,6 +480,37 @@ function calculateRelevanceSummary(layers: LayerResult[]): any {
 }
 
 /**
+ * Shared SELECT fields for all provision queries.
+ * Each query function extends this base with layer-specific fields.
+ * Uses `rp` table alias — ensure FROM clause aliases regulatory_provisions as rp.
+ */
+const PROVISION_BASE_SELECT = `
+  rp.id,
+  rp.document_id,
+  rp.provision_text,
+  rp.v2_dcp_layer,
+  rp.v2_dcp_part,
+  rp.v2_topic,
+  rp.v2_structural_category,
+  rp.v2_provision_type,
+  rp.v2_precinct_id,
+  rp.v2_marker,
+  rp.v2_display_behavior,
+  rp.v2_display_priority,
+  rp.v2_has_numeric_value,
+  rp.pdf_page,
+  rp.pdf_printed_page,
+  rp.pdf_source_file,
+  rp.pdf_page_image_url,
+  rp.v2_heritage_type,
+  rp.v2_heritage_element,
+  rp.v2_heritage_hca,
+  rp.v2_applicable_dev_types,
+  rp.source_chapter_key,
+  rp.section_header
+`;
+
+/**
  * Query heritage provisions from regulatory_provisions.
  * When filters.hca is set: returns general heritage controls + HCA-specific controls.
  * When filters.hca is not set (e.g. individual heritage items): returns general controls only.
@@ -591,29 +547,7 @@ async function queryHeritageByHca(
   // Query regulatory_provisions for HCA-specific provisions
   // LEFT JOIN heritage_conservation_areas to get human-readable HCA name for keyword search
   let sql = `
-    SELECT
-      rp.id,
-      rp.document_id,
-      rp.provision_text,
-      rp.v2_dcp_layer,
-      rp.v2_dcp_part,
-      rp.v2_topic,
-      rp.v2_structural_category,
-      rp.v2_provision_type,
-      rp.v2_precinct_id,
-      rp.v2_marker,
-      rp.v2_display_behavior,
-      rp.v2_display_priority,
-      rp.v2_has_numeric_value,
-      rp.pdf_page,
-      rp.pdf_printed_page,
-      rp.pdf_source_file,
-      rp.pdf_page_image_url,
-      rp.v2_heritage_type,
-      rp.v2_heritage_element,
-      rp.v2_heritage_hca,
-      rp.v2_applicable_dev_types,
-      rp.source_chapter_key,
+    SELECT ${PROVISION_BASE_SELECT},
       hca.h_name AS hca_display_name
       ${relevanceSelect}
     FROM regulatory_provisions rp
@@ -644,10 +578,11 @@ async function queryHeritageByHca(
   }
 
   // Filter by precinct - only include general provisions or property's precinct
-  // Exclude Part 9 precinct-specific provisions for other precincts
+  // Supports comma-separated precinct IDs for suburbs spanning multiple Chapter D precincts.
   if (filters.precinct_id) {
-    sql += ` AND (rp.v2_precinct_id IS NULL OR rp.v2_precinct_id = $${paramIndex++})`;
-    params.push(filters.precinct_id);
+    const precinctIds = filters.precinct_id.split(',').map((s: string) => s.trim()).filter(Boolean);
+    sql += ` AND (rp.v2_precinct_id IS NULL OR rp.v2_precinct_id = ANY($${paramIndex++}::text[]))`;
+    params.push(precinctIds);
   } else {
     // No precinct specified - exclude all precinct-specific provisions
     sql += ` AND rp.v2_precinct_id IS NULL`;
@@ -693,17 +628,28 @@ async function enrichWithTocSections(
     .filter(p => p.pdf_page != null)
     .map(p => ({ doc_id: p.document_id, page: p.pdf_page, id: p.id }));
 
-  if (docPages.length === 0) return provisions;
+  if (docPages.length === 0) {
+    // No pdf_page data — still apply section_header inference so buildSectionKey works on the frontend
+    return provisions.map(p => ({
+      ...p,
+      toc_section_number: inferSectionNumberFromHeader(p.section_header) || null,
+      toc_section_title: null,
+    }));
+  }
 
   // Batch query TOC sections for all provisions
-  // Uses exact match OR fuzzy match (for IWLEP suffix variations)
-  // Normalize document_id for matching: collapse double-underscores, remove dash separators, normalize hyphens
-  // Handles mismatch between provision doc_ids (e.g. Marrickville__DCP__2011__-__8.0__Heritage)
-  // and TOC doc_ids (e.g. Marrickville_DCP_2011__8.0_Heritage)
+  // Match strategy (in order of specificity):
+  //   1. Exact document_id match
+  //   2. Legacy dash-normalization match (Marrickville__DCP__2011__-__X or Marrickville_DCP_2011_-_X)
+  //   3. IWLEP suffix LIKE match
+  //   4. Slug match: lowercase + collapse all non-alnum runs to single underscore
+  //      Handles: Ashfield underscore vs space-dash, Leichhardt space-dash vs TOC underscore,
+  //               page-split TOC entries (e.g. ..._1_50, ..._51_100 share same provision doc_id)
   const sql = `
     WITH provision_pages AS (
       SELECT DISTINCT document_id, pdf_page,
-        REPLACE(REPLACE(REPLACE(REPLACE(document_id, '__-__', '__'), '_-_', '_'), '__', '_'), '-', '_') as doc_normalized
+        REPLACE(REPLACE(REPLACE(REPLACE(document_id, '__-__', '__'), '_-_', '_'), '__', '_'), '-', '_') as doc_normalized,
+        TRIM('_' FROM REGEXP_REPLACE(REGEXP_REPLACE(LOWER(document_id), '[^a-z0-9]+', '_', 'g'), '_+', '_', 'g')) as doc_slug
       FROM regulatory_provisions
       WHERE id = ANY($1::int[])
     )
@@ -718,6 +664,8 @@ async function enrichWithTocSections(
       OR REPLACE(REPLACE(t.document_id, '__', '_'), '-', '_') = pp.doc_normalized
       OR REPLACE(REPLACE(t.document_id, '__', '_'), '-', '_') LIKE pp.doc_normalized || '%'
       OR t.document_id LIKE REGEXP_REPLACE(pp.document_id, '_with_IWLEP.*$', '') || '%'
+      OR TRIM('_' FROM REGEXP_REPLACE(REGEXP_REPLACE(LOWER(t.document_id), '[^a-z0-9]+', '_', 'g'), '_+', '_', 'g')) = pp.doc_slug
+      OR LEFT(TRIM('_' FROM REGEXP_REPLACE(REGEXP_REPLACE(LOWER(t.document_id), '[^a-z0-9]+', '_', 'g'), '_+', '_', 'g')), LENGTH(pp.doc_slug)) = pp.doc_slug
     )
     AND pp.pdf_page >= t.page_start
     AND (t.page_end IS NULL OR pp.pdf_page <= t.page_end)
@@ -739,13 +687,18 @@ async function enrichWithTocSections(
     }
   }
 
-  // Enrich provisions with TOC info
+  // Enrich provisions with TOC info.
+  // Resolution order for toc_section_number:
+  //   1. TOC JOIN hit — authoritative dcp_table_of_contents section_number
+  //   2. section_header inference — for provisions with null pdf_page or no TOC match
+  //      but whose provision text starts with an embedded section number (e.g. "3.1 Setbacks")
+  //   3. null — genuine un-numbered provisions (introductory / background text)
   return provisions.map(p => {
     const key = `${p.document_id}|${p.pdf_page}`;
     const tocInfo = tocMap.get(key);
     return {
       ...p,
-      toc_section_number: tocInfo?.section_number || null,
+      toc_section_number: tocInfo?.section_number || inferSectionNumberFromHeader(p.section_header) || null,
       toc_section_title: tocInfo?.section_title || null
     };
   });
@@ -792,9 +745,9 @@ async function queryLayer(
   let versionSelect = '';
   if (filters.include_version_metadata) {
     versionSelect = `,
-      regulatory_provisions.version_count,
-      regulatory_provisions.first_seen_date,
-      regulatory_provisions.last_modified_date,
+      rp.version_count,
+      rp.first_seen_date,
+      rp.last_modified_date,
       pv.version_number,
       pv.effective_from,
       pv.effective_to
@@ -809,9 +762,9 @@ async function queryLayer(
     // Historical query - JOIN to get provisions effective at specific date
     const versionDateParamIndex = paramIndex++;
     fromClause = `
-    FROM regulatory_provisions
+    FROM regulatory_provisions rp
     INNER JOIN provision_versions pv ON (
-      pv.provision_id = regulatory_provisions.id
+      pv.provision_id = rp.id
       AND pv.effective_from <= $${versionDateParamIndex}::timestamp
       AND (pv.effective_to IS NULL OR pv.effective_to > $${versionDateParamIndex}::timestamp)
     )`;
@@ -820,40 +773,19 @@ async function queryLayer(
     // Default: current provisions only (fast path)
     if (filters.include_version_metadata) {
       fromClause = `
-    FROM regulatory_provisions
+    FROM regulatory_provisions rp
     LEFT JOIN provision_versions pv ON (
-      pv.id = regulatory_provisions.current_version_id
+      pv.id = rp.current_version_id
     )`;
     } else {
       fromClause = `
-    FROM regulatory_provisions`;
+    FROM regulatory_provisions rp`;
     }
-    whereClause += ' AND regulatory_provisions.is_current = TRUE';
+    whereClause += ' AND rp.is_current = TRUE';
   }
 
   let sql = `
-    SELECT
-      regulatory_provisions.id,
-      regulatory_provisions.document_id,
-      regulatory_provisions.provision_text,
-      regulatory_provisions.v2_dcp_layer,
-      regulatory_provisions.v2_dcp_part,
-      regulatory_provisions.v2_topic,
-      regulatory_provisions.v2_structural_category,
-      regulatory_provisions.v2_provision_type,
-      regulatory_provisions.v2_precinct_id,
-      regulatory_provisions.v2_marker,
-      regulatory_provisions.v2_display_behavior,
-      regulatory_provisions.v2_display_priority,
-      regulatory_provisions.v2_has_numeric_value,
-      regulatory_provisions.pdf_page,
-      regulatory_provisions.pdf_source_file,
-      regulatory_provisions.pdf_page_image_url,
-      regulatory_provisions.v2_heritage_type,
-      regulatory_provisions.v2_heritage_element,
-      regulatory_provisions.v2_heritage_hca,
-      regulatory_provisions.v2_applicable_dev_types,
-      regulatory_provisions.source_chapter_key
+    SELECT ${PROVISION_BASE_SELECT}
       ${relevanceSelect}
       ${versionSelect}
     ${fromClause}
@@ -899,8 +831,9 @@ async function queryLayer(
   } else if (filters.heritage && !filters.hca && layer !== 'condition' && layer !== 'precinct') {
     // Heritage without HCA - include but filter by precinct to avoid showing ALL precincts
     if (filters.precinct_id) {
-      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL OR v2_precinct_id = $${paramIndex++})`;
-      params.push(filters.precinct_id);
+      const precinctIds = filters.precinct_id.split(',').map((s: string) => s.trim()).filter(Boolean);
+      sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL OR v2_precinct_id = ANY($${paramIndex++}::text[]))`;
+      params.push(precinctIds);
     } else {
       // No precinct specified - only show non-precinct heritage provisions
       sql += ` AND ((LOWER(v2_topic) != 'heritage' AND (v2_marker IS NULL OR v2_marker != 'heritage')) OR v2_precinct_id IS NULL)`;
@@ -934,11 +867,12 @@ async function queryLayer(
 
   if (layer === 'precinct') {
     if (filters.precinct_id) {
-      // For precinct layer, filter by precinct ID
-      // Include BOTH specific precinct provisions AND overview provisions (PART_G_OVERVIEW)
-      console.log(`[4-Layer API] Precinct filter: v2_precinct_id = '${filters.precinct_id}' OR 'PART_G_OVERVIEW'`);
-      sql += ` AND (v2_precinct_id = $${paramIndex++} OR v2_precinct_id = 'PART_G_OVERVIEW')`;
-      params.push(filters.precinct_id);
+      // Support comma-separated precinct IDs (e.g. "Ashfield Town Centre,Ashfield East,Ashfield South")
+      // for ambiguous suburbs that span multiple DCP Chapter D precincts.
+      const precinctIds = filters.precinct_id.split(',').map(s => s.trim()).filter(Boolean);
+      console.log(`[4-Layer API] Precinct filter: v2_precinct_id IN [${precinctIds.join(', ')}] OR 'PART_G_OVERVIEW'`);
+      sql += ` AND (v2_precinct_id = ANY($${paramIndex++}::text[]) OR v2_precinct_id = 'PART_G_OVERVIEW')`;
+      params.push(precinctIds);
     } else {
       // No precinct ID - exclude all precinct-specific provisions
       console.log(`[4-Layer API] No precinct_id provided - excluding all precinct provisions`);
@@ -1262,7 +1196,10 @@ function groupByTocStructure(
         sectionTitle = `Control ${provision.v2_marker}`;
       }
     } else {
-      const chapterKey = provision.source_chapter_key || 'Other';
+      const chapterKey = provision.source_chapter_key;
+      // Skip provisions with no chapter classification rather than creating a phantom "Other" group.
+      // These are data-quality gaps; they should be classified in the DB, not surfaced as a chapter.
+      if (!chapterKey) continue;
       partId = extractTocParent(chapterKey);
       sectionId = chapterKey;
       sectionTitle = sectionTitleFromChapterKey(chapterKey);
@@ -1327,6 +1264,7 @@ function formatPartName(partId: string): string {
   // Common patterns
   const patterns: Record<string, string> = {
     'Part 2': 'Part 2: General Provisions',
+    'Part 3': 'Part 3: Subdivision, Amalgamation and Movement Networks',
     'Part 4': 'Part 4: Residential Development',
     'Part 4.1': 'Part 4.1: Low Density Residential',
     'Part 4.2': 'Part 4.2: Multi-Dwelling Housing',

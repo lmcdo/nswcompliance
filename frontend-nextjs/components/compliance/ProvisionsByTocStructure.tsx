@@ -2101,6 +2101,12 @@ export function ProvisionsByTocStructure({
               );
               return (
                 <>
+                  <div className="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+                    <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
+                      Sections <span className="font-normal normal-case tracking-normal text-gray-400 ml-1">— select one to assess</span>
+                    </p>
+                    <span className="text-xs text-gray-400">{sectionIds.length} section{sectionIds.length !== 1 ? 's' : ''}</span>
+                  </div>
                   {allAssessed && (
                     <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs text-green-700 font-medium">
                       All {chProgress.total} section{chProgress.total !== 1 ? 's' : ''} assessed — part complete
@@ -2174,8 +2180,8 @@ export function ProvisionsByTocStructure({
               </div>
             )}
 
-            {/* Action Toolbar - Export (non-DA mode only) */}
-            {filteredProvisions.length > 0 && !isDaMode && (
+            {/* Action Toolbar - Export (non-DA mode only, only when assessable provisions present) */}
+            {filteredProvisions.filter((p: any) => p.v2_provision_type !== 'procedural' && p.v2_provision_type !== 'descriptive').length > 0 && !isDaMode && (
               <div className="px-4 py-3 border-b bg-gray-50">
                 <button
                   onClick={() => setShowExportModal(true)}
