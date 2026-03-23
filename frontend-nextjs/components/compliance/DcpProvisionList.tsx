@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { ChevronDown, Search } from 'lucide-react';
 import { normalizeTopicKey } from '@/lib/see/intake';
 import { PageGroupedProvisions } from './PageGroupedProvisions';
-import type { DaResponse } from '@/hooks/useDASession';
+import type { DaResponse, SectionResponse } from '@/hooks/useDASession';
 
 interface DcpProvisionListProps {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +24,13 @@ interface DcpProvisionListProps {
   isDaMode?: boolean;
   sessionToken: string | null;
   daResponses?: Map<number, DaResponse>;
+  sectionResponses?: Map<string, SectionResponse>;
   excludableTopics: Set<string>;
   onResponseSaved?: (provisionId: number, response: DaResponse) => void;
+  onSectionResponseSaved?: (sectionKey: string, response: SectionResponse) => void;
+  canonicalSectionTitles?: Map<string, string | null>;
+  /** Sections with only objectives/descriptives — no assessable controls, shown separately */
+  suppressedOnlySections?: Map<string, string | null>;
   onViewPdf: (url: string, page: number) => void;
   debouncedSearch: string;
   // Empty state
@@ -43,18 +47,28 @@ interface DcpProvisionListProps {
   // DA mode suppressed provisions toggle (audit/transparency)
   showSuppressedInDA?: boolean;
   onToggleSuppressedInDA?: () => void;
+  /** DCP numeric check values from NumericChecker inputs. */
+  numericCheckValues?: import('./NumericChecker').NumericCheckValues;
+  /** LEP/DCP reference values for inline chips. */
+  lepReference?: {
+    height?: string | null;
+    fsr?: string | null;
+    setbacks?: {
+      side?: { ground?: number; upper?: number; document: string };
+      rear?: { value: number; document: string };
+    } | null;
+  } | null;
 }
 
 export function DcpProvisionList({
   displayProvisions, triageExcludedProvisions, filteredProvisions,
   hasMarkers, showTriageExcluded, onToggleTriageExcluded,
   chapterPdfUrls, formerCouncil, zone, heritage, hcaName, precinctId,
-  isDaMode, sessionToken, daResponses, excludableTopics, onResponseSaved, onViewPdf,
+  isDaMode, sessionToken, daResponses, sectionResponses, excludableTopics, onResponseSaved, onSectionResponseSaved, canonicalSectionTitles, suppressedOnlySections, onViewPdf,
   debouncedSearch, provisionView, layerFilter, onClearLayer,
   topicFilters, onClearTopics, searchScope, onSearchScopeChange,
-  onSearchQueryChange, baseProvisions, showSuppressedInDA, onToggleSuppressedInDA,
+  onSearchQueryChange, baseProvisions, showSuppressedInDA, onToggleSuppressedInDA, lepReference, numericCheckValues,
 }: DcpProvisionListProps) {
-  const [showAllProvisions, setShowAllProvisions] = useState(false);
   // In non-DA mode, excluded provisions are greyed out inline rather than split out.
   // Show a count so the planner knows how many are not applicable to this site.
   const nonApplicableCount = !isDaMode && excludableTopics.size > 0
@@ -83,6 +97,14 @@ export function DcpProvisionList({
         </div>
       )}
 
+      {/* HCA filter transparency — provisions are scoped to this site's HCA */}
+      {heritage && hcaName && (
+        <div className="mb-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <span className="shrink-0">Heritage:</span>
+          <span>Showing provisions for <strong>{hcaName}</strong> only — other precincts are not shown</span>
+        </div>
+      )}
+
       {/* Marker key */}
       {filteredProvisions.length > 0 && hasMarkers && (
         <div className="mb-3 flex items-center gap-3 text-xs text-gray-500">
@@ -108,7 +130,6 @@ export function DcpProvisionList({
                 councilKey={formerCouncil?.toLowerCase()}
                 chapterPdfUrls={chapterPdfUrls}
                 showLayerBadges={true}
-                maxProvisions={showAllProvisions ? undefined : 20}
                 onViewPdf={onViewPdf}
                 highlightQuery={debouncedSearch}
                 zone={zone}
@@ -116,54 +137,31 @@ export function DcpProvisionList({
                 hcaName={hcaName}
                 precinctName={precinctId}
                 isDaMode={isDaMode}
+                sectionGrouped={!isDaMode}
                 sessionToken={sessionToken}
                 daResponses={daResponses}
+                sectionResponses={sectionResponses}
                 excludableTopics={excludableTopics}
                 onResponseSaved={onResponseSaved}
+                onSectionResponseSaved={onSectionResponseSaved}
+                canonicalSectionTitles={canonicalSectionTitles}
+                suppressedSections={suppressedOnlySections}
                 hideShowMoreButton={true}
+                lepReference={lepReference}
+                numericCheckValues={numericCheckValues}
               />
-              {/* Side-by-side action buttons — Option A layout */}
-              {(displayProvisions.length > 20 || suppressedProvisions.length > 0) && (
-                <div className="mt-3 grid grid-cols-2 gap-3 border-t pt-3">
-                  {/* Left: Load more actionable provisions */}
-                  {displayProvisions.length > 20 && !showAllProvisions && (
-                    <button
-                      onClick={() => setShowAllProvisions(true)}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-teal-200 hover:bg-teal-50 transition-colors"
-                    >
-                      <span className="text-sm font-medium text-teal-600">
-                        Load {displayProvisions.length - 20} more
-                      </span>
-                      <span className="text-xs text-teal-600/70">provisions</span>
-                    </button>
-                  )}
-                  {showAllProvisions && displayProvisions.length > 20 && (
-                    <button
-                      onClick={() => setShowAllProvisions(false)}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-gray-200 hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="text-sm font-medium text-gray-600">
-                        Hide {displayProvisions.length - 20}
-                      </span>
-                      <span className="text-xs text-gray-500">provisions</span>
-                    </button>
-                  )}
-                  {displayProvisions.length <= 20 && (
-                    <div />
-                  )}
-
-                  {/* Right: View guidance items (objectives + descriptives) */}
-                  {suppressedProvisions.length > 0 && (
-                    <button
-                      onClick={onToggleSuppressedInDA}
-                      className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-amber-200 hover:bg-amber-50 transition-colors"
-                    >
-                      <span className="text-sm font-medium text-amber-700">
-                        View {suppressedProvisions.length}
-                      </span>
-                      <span className="text-xs text-amber-700/70">guidance items</span>
-                    </button>
-                  )}
+              {/* Guidance items toggle */}
+              {suppressedProvisions.length > 0 && (
+                <div className="mt-3 border-t pt-3">
+                  <button
+                    onClick={onToggleSuppressedInDA}
+                    className="flex flex-col items-center gap-1 px-3 py-2.5 rounded border border-amber-200 hover:bg-amber-50 transition-colors w-full"
+                  >
+                    <span className="text-sm font-medium text-amber-700">
+                      View {suppressedProvisions.length} guidance item{suppressedProvisions.length !== 1 ? 's' : ''}
+                    </span>
+                    <span className="text-xs text-amber-700/70">objectives &amp; descriptives</span>
+                  </button>
                 </div>
               )}
             </>
@@ -211,16 +209,16 @@ export function DcpProvisionList({
                 onClick={onToggleSuppressedInDA}
                 className="w-full flex items-center justify-between px-4 py-2.5 bg-amber-100 hover:bg-amber-200 transition-colors text-sm text-amber-700 font-medium"
               >
-                <span>{suppressedProvisions.length} objectives &amp; heritage guidance — not assessed</span>
+                <span>{suppressedProvisions.length} non-enforceable items not assessed — objectives &amp; heritage descriptions</span>
                 <ChevronDown className={`w-4 h-4 transition-transform ${showSuppressedInDA ? 'rotate-180' : ''}`} />
               </button>
               {showSuppressedInDA && (
                 <div className="border-t border-amber-200 bg-white/50 p-3">
                   <p className="text-xs text-amber-700 mb-3 italic">
-                    These provisions are policy guidance (objectives) or character descriptions, not enforceable controls.
-                    They don't require individual Complies/Varies/N/A assessment. Shown for audit transparency.
+                    Not included in the assessment scope: <strong>objectives</strong> state planning intent but impose no specific requirement; <strong>heritage descriptions</strong> describe character and significance but are not enforceable controls.
+                    Neither type requires a Complies/Varies/N/A response. Shown here for audit transparency.
                   </p>
-                  <PageGroupedProvisions provisionTheme="gray"
+                  <PageGroupedProvisions provisionTheme={"gray" as any}
                     provisions={suppressedProvisions}
                     formerCouncil={formerCouncil}
                     councilKey={formerCouncil?.toLowerCase()}

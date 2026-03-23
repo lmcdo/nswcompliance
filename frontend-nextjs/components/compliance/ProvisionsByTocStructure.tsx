@@ -11,16 +11,15 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import useSWR from 'swr';
 import { TocSidebar, formatPartDisplay } from './TocSidebar';
-import { PageGroupedProvisions, Provision } from './PageGroupedProvisions';
-import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, FileText, ChevronDown, Search, X, Ruler, Download } from 'lucide-react';
-import { COUNCIL_CONFIGS } from '@/lib/council-config';
+import { Loader2, FileText, ChevronDown, ChevronRight, Search, X, Download } from 'lucide-react';
+import { COUNCIL_CONFIGS, isUniversalChapter } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
-import { SEEDocumentData } from '@/lib/see/types';
+import { SEEDocumentData, SectionAssessment } from '@/lib/see/types';
+import { deriveProvisionPartKey, inferSectionNumberFromHeader, buildSectionKey } from '@/lib/see/sectionKey';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
@@ -30,13 +29,15 @@ import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/
 import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro, DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryWorks';
+import { deriveQuestionnaireTopics, deriveQuestionnaireDevTypeExclusions, type WorksScopeAnswers } from '@/lib/see/worksScope';
+import { autoPopulateWorksScopeFromLep, type LepPermissibilityEntry } from '@/lib/see/lepScope';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
-// TODO: Rework numeric checker feature - temporarily disabled
-// import { NumericChecker, type NumericCheckValues } from './NumericChecker';
-// import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
+import type { SetbackReference } from '@/app/api/setbacks/reference/route';
+import { NumericChecker, type NumericCheckValues } from './NumericChecker';
+import { checkProvisionsAgainstValues, type ComplianceResult } from '@/lib/numericCompliance';
 
 
 // Council-specific layer labels (must match PageGroupedProvisions.tsx)
@@ -174,14 +175,12 @@ export function ProvisionsByTocStructure({
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
   const [showTriageExcluded, setShowTriageExcluded] = useState(false);
   const [showSuppressedInDA, setShowSuppressedInDA] = useState(false); // Toggle to show suppressed (objective/descriptive) provisions in DA mode
-
-  // TODO: Rework numeric checker feature - temporarily disabled
-  // Numeric checker values
-  // const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
-  // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
+  const [numericCheckValues, setNumericCheckValues] = useState<NumericCheckValues | undefined>(undefined);
+  const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
+  const [guideExpanded, setGuideExpanded] = useState(false);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, sectionResponses, updateSingleSectionResponse, saveSectionResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, primaryDevType, savedWorksText, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, worksScopeAnswers, saveWorksScopeAnswers } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -276,6 +275,22 @@ export function ProvisionsByTocStructure({
     }
   }, [savedAncillaryWorks]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Restore dev type and works text from session when loaded.
+  // Only restores if the planner hasn't already entered values in this session.
+  // Runs when sessionToken changes (new session loaded) or when saved values arrive.
+  // devType and devWorksText intentionally omitted from deps — we only want
+  // to sync once on session load, not re-trigger on every user edit.
+  useEffect(() => {
+    if (!sessionToken) return;
+    if (primaryDevType && devType === '') {
+      setDevType(primaryDevType);
+    }
+    if (savedWorksText && devWorksText === '') {
+      setDevWorksText(savedWorksText);
+    }
+  }, [sessionToken, primaryDevType, savedWorksText]); // eslint-disable-line react-hooks/exhaustive-deps
+
+
   // Auto-derive intake from scope (dev type + ancillary checkboxes).
   // When ancillary works are selected, intake is auto-derived — no modal needed.
   // Scope-derived answers layer between auto-answers and saved planner overrides.
@@ -346,6 +361,7 @@ export function ProvisionsByTocStructure({
     };
     meta?: {
       chapter_pdf_urls?: Record<string, string> | null;
+      precinct_warning?: boolean;
     };
   }>(apiUrl, fetcher, {
     dedupingInterval: 2000,   // Reduced from 60s to 2s - allow fresh data
@@ -355,6 +371,78 @@ export function ProvisionsByTocStructure({
     errorRetryInterval: 1000, // Wait 1s between retries
     shouldRetryOnError: true, // Enable retry on error
   });
+
+  // Setback reference data — fetched once per zone/lga, used for inline chips
+  const setbackApiUrl = (zone && formerCouncil)
+    ? `/api/setbacks/reference?zone=${encodeURIComponent(zone)}&lga=${encodeURIComponent(formerCouncil)}`
+    : null;
+  const { data: setbackData } = useSWR<{ data: SetbackReference | null }>(
+    setbackApiUrl, fetcher, { revalidateOnFocus: false, revalidateOnMount: true }
+  );
+
+  // LEP permissibility — fetched once per zone/lga to auto-populate scope exclusions.
+  // Only fires in DA mode and only when both zone and lga are known.
+  // Gated server-side by lep_zone_coverage.is_complete.
+  // zone prop may be "E4 Local Centre" — extract code only for LEP lookup
+  const zoneCode = zone?.split(' ')[0];
+  const lepPermUrl = (isDaMode && zoneCode && lga)
+    ? `/api/lep/permissibility?zone=${encodeURIComponent(zoneCode)}&lga=${encodeURIComponent(lga)}`
+    : null;
+  const { data: lepPermData } = useSWR<{
+    covered: boolean;
+    entries: LepPermissibilityEntry[];
+  }>(lepPermUrl, fetcher, { revalidateOnFocus: false, revalidateOnMount: true });
+
+  // SEPP exempt development counts — fetched once per zone to badge ancillary works.
+  // Returns notApplicable=true for non-housing zones (E1–E4, MU1, SP, RE, W, etc.)
+  const seppExemptUrl = (isDaMode && zoneCode)
+    ? `/api/sepp/exempt-complying?zone=${encodeURIComponent(zoneCode)}`
+    : null;
+  const { data: seppExemptData } = useSWR<{
+    notApplicable?: boolean;
+    counts?: Record<string, number>;
+  }>(seppExemptUrl, fetcher, { revalidateOnFocus: false, revalidateOnMount: true });
+
+  // Map SEPP work type names to ancillary work values where counts > 0.
+  const SEPP_TO_ANCILLARY: Record<string, string> = {
+    Deck: 'deck', Pool: 'pool', Fence: 'fencing', Carport: 'parking',
+  };
+  const seppExemptWorks = useMemo((): Set<string> => {
+    if (seppExemptData?.notApplicable || !seppExemptData?.counts) return new Set();
+    const result = new Set<string>();
+    for (const [seppType, ancillaryValue] of Object.entries(SEPP_TO_ANCILLARY)) {
+      if ((seppExemptData.counts[seppType] ?? 0) > 0) result.add(ancillaryValue);
+    }
+    return result;
+  }, [seppExemptData]);
+
+  // LEP-derived scope: fields auto-set to false when use type is provably prohibited.
+  // Merged as lowest priority — explicit user answers (worksScopeAnswers) always win.
+  const lepAutoScope = useMemo(
+    () => autoPopulateWorksScopeFromLep(
+      lepPermData?.entries ?? [],
+      lepPermData?.covered ?? false,
+    ),
+    [lepPermData]
+  );
+
+  const lepProhibitedDevTypes = useMemo(
+    () => new Set(
+      (lepPermData?.entries ?? [])
+        .filter(e => e.permissibility === 'prohibited')
+        .map(e => e.development_type)
+    ),
+    [lepPermData]
+  );
+
+  // Effective works scope: LEP auto-scope as lowest-priority base, user answers on top.
+  // lepAutoScope provides false for provably-prohibited uses; user can override to null/true.
+  const effectiveWorksScopeAnswers = useMemo(
+    () => Object.keys(lepAutoScope).length > 0
+      ? { ...lepAutoScope, ...(worksScopeAnswers ?? {}) } as WorksScopeAnswers
+      : worksScopeAnswers,
+    [worksScopeAnswers, lepAutoScope]
+  );
 
   // DCP names for each council
   const councilDcpNames: Record<string, string> = {
@@ -390,11 +478,35 @@ export function ProvisionsByTocStructure({
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Questionnaire-derived topic exclusions — computed from effective scope answers.
+  // Separate from manual topicAssertions so they auto-recalculate on answer change.
+  const questionnaireTopics = useMemo(
+    () => isDaMode ? deriveQuestionnaireTopics(effectiveWorksScopeAnswers) : new Map<string, string>(),
+    [isDaMode, effectiveWorksScopeAnswers]
+  );
+
+  // Questionnaire-derived dev type exclusions — uses v2_applicable_dev_types directly.
+  // More reliable than topic exclusion for cross-LGA provisions.
+  // A provision is excluded when ALL its tagged dev types are in this confirmed-absent set.
+  const questionnaireDevTypeExclusions = useMemo(
+    () => isDaMode ? deriveQuestionnaireDevTypeExclusions(effectiveWorksScopeAnswers) : new Set<string>(),
+    [isDaMode, effectiveWorksScopeAnswers]
+  );
+
+  // Heritage element scope — which building elements the proposal affects.
+  // When set, heritage chapter shows only controls for those elements (+ general controls).
+  const heritageElementScope = useMemo((): Set<string> | null => {
+    const elems = effectiveWorksScopeAnswers?.heritage_elements;
+    if (!elems || elems.length === 0) return null;
+    return new Set(elems);
+  }, [effectiveWorksScopeAnswers]);
+
   // Expanded dev type tags — computed client-side, no network round-trip needed
   const expandedDevTypes = useMemo(
     () => (isDaMode && devType) ? getScopeDevTypeTags(devType, ancillaryWorksLocal) : [],
     [isDaMode, devType, ancillaryWorksLocal]
   );
+
 
   // Overlay relevance_level/relevance_reason on provisions from v2_applicable_dev_types.
   // Keeps the SWR cache key stable (property-only) — dev type changes never trigger a refetch.
@@ -451,25 +563,8 @@ export function ProvisionsByTocStructure({
     [rawSelectedProvisions],
   );
 
-  // TODO: Rework numeric checker feature - temporarily disabled
-  // Compute numeric compliance results when check values or provisions change
-  // useEffect(() => {
-  //   if (!numericCheckValues || !tocStructure) {
-  //     setComplianceResults([]);
-  //     return;
-  //   }
-
-  //   // Extract all provisions from TOC structure
-  //   const allParts = Object.values(tocStructure);
-  //   const allProvisions = allParts.flatMap((part: any) =>
-  //     Object.values(part.sections || {}).flatMap((section: any) => section.provisions || [])
-  //   );
-
-  //   // Check provisions against user values
-  //   const results = checkProvisionsAgainstValues(allProvisions, numericCheckValues);
-  //   setComplianceResults(results);
-  // }, [numericCheckValues, tocStructure]);
-
+  // Compute numeric compliance results whenever check values or provisions change.
+  // Uses allProvisions (already deduped) — no need to re-extract from tocStructure.
   // Get ALL provisions across all parts (for "export all" option and task mode).
   // Uses tocStructure (by_toc) which has actual provision data.
   // Shared filter+dedupe logic lives in filterAndDedupeProvisions (provisionUtils.ts).
@@ -503,74 +598,70 @@ export function ProvisionsByTocStructure({
     return deduped;
   }, [tocStructure]);
 
+  // Compute DCP numeric reference results whenever check values or provisions change.
+  useEffect(() => {
+    if (!numericCheckValues || allProvisions.length === 0) {
+      setComplianceResults([]);
+      return;
+    }
+    setComplianceResults(checkProvisionsAgainstValues(allProvisions, numericCheckValues));
+  }, [numericCheckValues, allProvisions]);
+
   // Derives the canonical part key for a provision, normalising source_chapter_key slugs to the
   // same "Part N" / "Appendix X" labels used in completeTocStructure.
   // Used in filteredPartCounts, chapterProgress, globalProgress, and isInDaScope so all
   // chapter-level grouping / assertion lookups are consistent.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const derivePartKey = useCallback((p: any): string => {
-    if (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') return p.v2_dcp_part;
-    const ck: string | undefined = p.source_chapter_key;
-    if (!ck) return 'Other';
-    const mSimple = ck.match(/^part(\d+)-/);
-    const mLetter = ck.match(/^part-([a-z])-/);
-    const mAppendix = ck.match(/^appendix-([a-z\d]+)/);
-    if (mSimple)  return `Part ${mSimple[1]}`;
-    if (mLetter)  return `Part ${mLetter[1].toUpperCase()}`;
-    if (mAppendix) return `Appendix ${mAppendix[1].toUpperCase()}`;
-    if (ck === 'da-guidelines') return 'Part 1';
-    return ck;
+    // Delegates to the shared utility in sectionKey.ts — single source of truth
+    // for part key derivation across PageGroupedProvisions, progress counting, and PDF export.
+    return deriveProvisionPartKey(p);
   }, []);
 
-  // Per-part filtered provision counts — matches what the right panel actually shows.
-  // by_toc.provision_count is the raw API count (includes TOC entries, non-actionable, definitions).
-  // Must account for intake triage so numbers match the assessment scope.
-  const filteredPartCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    // In DA mode: exclude both intake-filtered topics AND objectives/descriptives
-    // This makes DCP structure total match the waterfall (363, not 395)
-    let provisionsToCount = allProvisions;
-
-    console.log('[FilteredPartCounts] Starting:', {
-      allProvisionsCount: allProvisions.length,
-      isDaMode,
-    });
-
-    if (isDaMode) {
-      provisionsToCount = allProvisions.filter(p => {
-        // Exclude intake-triaged provisions by structural category (DD-1)
-        const cat = p.v2_structural_category;
-        if (cat && excludableTopics.has(cat)) return false;
-        // Exclude chapter dismissals so sidebar totals match assessment scope
-        const partKey = derivePartKey(p);
-        if (chapterAssertions[partKey]) return false;
-        // Exclude topic dismissals
-        const topic = normalizeTopicKey(p.v2_topic);
-        if (topic && topicAssertions[topic]) return false;
-        // Exclude objectives and heritage descriptives (hidden in DA mode)
-        if (p.v2_provision_type === 'objective') return false;
-        if (p.v2_heritage_type === 'descriptive') return false;
-        return true;
-      });
-
-      console.log('[FilteredPartCounts] After DA filters:', {
-        beforeCount: allProvisions.length,
-        afterCount: provisionsToCount.length,
-        filtered: allProvisions.length - provisionsToCount.length,
-      });
+  // Auto-dismiss chapters where every non-heritage provision has explicit dev type tags
+  // that exclude the current expanded dev types (no ALL tag, no matching tag).
+  // Heritage (condition layer) chapters are never auto-dismissed.
+  // Only active when a dev type is selected in DA mode.
+  //
+  // STRUCTURE MODEL GUARD: Universal chapters (per council scope config) are always
+  // excluded from auto-dismiss regardless of dev type tags. For zone_organized councils
+  // (Marrickville) and topic_universal councils (Leichhardt), Part 2 / Parts A-E are
+  // must-show-to-planner — the planner addresses each section or records N/A explicitly.
+  // Only devTypeGatedPartKeys (e.g. Ashfield Chapter F) are legitimately auto-dismissible.
+  const councilId = formerCouncil?.toLowerCase() || null;
+  const autoDismissedChapters = useMemo((): Set<string> => {
+    if (!isDaMode || expandedDevTypes.length === 0) return new Set();
+    const partProvisions = new Map<string, any[]>();
+    for (const p of allProvisions) {
+      if ((p.v2_dcp_layer || p.layer) === 'condition') continue;
+      const partKey = derivePartKey(p);
+      if (!partKey) continue;
+      // Structure model guard: never auto-dismiss universal chapters
+      if (isUniversalChapter(councilId, partKey)) continue;
+      if (!partProvisions.has(partKey)) partProvisions.set(partKey, []);
+      partProvisions.get(partKey)!.push(p);
     }
-
-    for (const p of provisionsToCount) {
-      // When a layer filter is active, only count provisions in that layer
-      if (layerFilter && (p.v2_dcp_layer || p.layer) !== layerFilter) continue;
-      counts[derivePartKey(p)] = (counts[derivePartKey(p)] || 0) + 1;
+    const result = new Set<string>();
+    for (const [partKey, provisions] of partProvisions) {
+      const noneMatch = provisions.every(p => {
+        const appTypes: string[] | null = p.v2_applicable_dev_types;
+        if (!appTypes || appTypes.includes('ALL')) return false;
+        return !expandedDevTypes.some((t: string) => appTypes.includes(t));
+      });
+      if (noneMatch) result.add(partKey);
     }
+    return result;
+  }, [isDaMode, allProvisions, expandedDevTypes, derivePartKey, councilId]);
 
-    const total = Object.values(counts).reduce((a, b) => a + b, 0);
-    console.log('[FilteredPartCounts] Final result:', { counts, total });
-
-    return counts;
-  }, [allProvisions, isDaMode, excludableTopics, chapterAssertions, topicAssertions, layerFilter, derivePartKey]);
+  /** Section key used in sectionResponses and da_section_responses table.
+   * Resolution: toc_section_number → inferred from section_header → "general" */
+  const deriveSectionKey = useCallback((p: any): string => {
+    const partKey    = derivePartKey(p);
+    const sectionNum = p.toc_section_number
+      || inferSectionNumberFromHeader(p.section_header)
+      || 'general';
+    return `${partKey}::${sectionNum}`;
+  }, [derivePartKey]);
 
   // completeTocStructure: overlay dev_type_match_count client-side from allProvisions.
   // complete_toc has no provision data (just structure) so we derive counts from allProvisions.
@@ -591,6 +682,118 @@ export function ProvisionsByTocStructure({
     }
     return result;
   }, [data?.data?.complete_toc, allProvisions, expandedDevTypes]);
+
+  // Merged set of dismissed chapters — manual (chapterAssertions) + auto-dismissed.
+  // Expanded to include child chapters: dismissing a parent like "Part C" also dismisses
+  // "Part C.1", "Part C.2" etc. (period-separated children present in completeTocStructure).
+  // All filter sites use .has() on this set — expansion here is the single fix point.
+  const allDismissedChapters = useMemo(() => {
+    const base = new Set([...Object.keys(chapterAssertions), ...autoDismissedChapters]);
+    const allPartKeys = Object.keys(completeTocStructure);
+    for (const dismissed of [...base]) {
+      for (const partKey of allPartKeys) {
+        if (partKey.startsWith(dismissed + '.') && !base.has(partKey)) {
+          base.add(partKey);
+        }
+      }
+    }
+    return base;
+  }, [chapterAssertions, autoDismissedChapters, completeTocStructure]);
+
+  // Per-part filtered provision counts — matches what the right panel actually shows.
+  // by_toc.provision_count is the raw API count (includes TOC entries, non-actionable, definitions).
+  // Must account for intake triage so numbers match the assessment scope.
+  const filteredPartCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    // In DA mode: exclude both intake-filtered topics AND objectives/descriptives
+    // This makes DCP structure total match the waterfall (363, not 395)
+    let provisionsToCount = allProvisions;
+
+    console.log('[FilteredPartCounts] Starting:', {
+      allProvisionsCount: allProvisions.length,
+      isDaMode,
+    });
+
+    if (isDaMode) {
+      provisionsToCount = allProvisions.filter(p => {
+        const partKey = derivePartKey(p);
+        // Exclude intake-triaged provisions by structural category (DD-1)
+        // Guard: universal chapters (Mville Part 2, Leichhardt B/C1/D/E) are never
+        // removed from scope by intake triage — planner must address or mark N/A.
+        const cat = p.v2_structural_category;
+        if (cat && excludableTopics.has(cat) && !isUniversalChapter(councilId, partKey)) return false;
+        // Exclude chapter dismissals (manual + auto) so sidebar totals match assessment scope
+        if (allDismissedChapters.has(partKey)) return false;
+        // Exclude topic dismissals (also guarded for universal chapters)
+        const topic = normalizeTopicKey(p.v2_topic);
+        if (topic && topicAssertions[topic] && !isUniversalChapter(councilId, partKey)) return false;
+        // Exclude objectives and heritage descriptives (hidden in DA mode)
+        if (p.v2_provision_type === 'objective') return false;
+        if (p.v2_heritage_type === 'descriptive') return false;
+        // Exclude questionnaire-derived topic scope (non-heritage only)
+        const layer = p.v2_dcp_layer || p.layer;
+        if (layer !== 'condition' && questionnaireTopics.size > 0) {
+          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+          if (t && questionnaireTopics.has(t)) return false;
+        }
+        // Exclude questionnaire-derived dev type scope (non-heritage only)
+        if (layer !== 'condition' && questionnaireDevTypeExclusions.size > 0) {
+          const dts: string[] = p.v2_applicable_dev_types || [];
+          if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) return false;
+        }
+        // Exclude heritage elements outside selected element scope
+        if (layer === 'condition' && heritageElementScope && heritageElementScope.size > 0) {
+          const elems: string[] = p.v2_heritage_element || [];
+          if (elems.length > 0 && !elems.some((e: string) => heritageElementScope.has(e))) return false;
+        }
+        return true;
+      });
+
+      console.log('[FilteredPartCounts] After DA filters:', {
+        beforeCount: allProvisions.length,
+        afterCount: provisionsToCount.length,
+        filtered: allProvisions.length - provisionsToCount.length,
+      });
+    }
+
+    for (const p of provisionsToCount) {
+      // When a layer filter is active, only count provisions in that layer
+      if (layerFilter && (p.v2_dcp_layer || p.layer) !== layerFilter) continue;
+      counts[derivePartKey(p)] = (counts[derivePartKey(p)] || 0) + 1;
+    }
+
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    console.log('[FilteredPartCounts] Final result:', { counts, total });
+
+    return counts;
+  }, [allProvisions, isDaMode, excludableTopics, allDismissedChapters, topicAssertions, layerFilter, derivePartKey, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
+
+  // Canonical section titles — two-pass build to guarantee key format consistency.
+  //
+  // Pass 1: complete_toc (structural data from API). Reliable when the API normalises
+  // part keys to the same format as deriveProvisionPartKey ("Part N", "Appendix X").
+  //
+  // Pass 2: allProvisions via buildSectionKey. Fills gaps where complete_toc part keys
+  // don't match deriveProvisionPartKey output (e.g. raw slugs vs "Part 3"). Uses the
+  // first non-null toc_section_title encountered per section key. Because it uses the
+  // same buildSectionKey as everything else, it is self-consistently correct.
+  const canonicalSectionTitles = useMemo(() => {
+    const map = new Map<string, string | null>();
+    // Pass 1: complete_toc structural data
+    for (const [partId, part] of Object.entries(completeTocStructure as Record<string, any>)) {
+      for (const [sectionId, section] of Object.entries((part.sections || {}) as Record<string, any>)) {
+        map.set(`${partId}::${sectionId}`, section.section_title || null);
+      }
+    }
+    // Pass 2: provision-derived titles for any keys not covered by Pass 1
+    for (const p of allProvisions) {
+      const key = buildSectionKey(p);
+      if (!map.has(key) && p.toc_section_title) {
+        map.set(key, p.toc_section_title);
+      }
+    }
+    return map;
+  }, [completeTocStructure, allProvisions]);
 
   // Intake filtering is now handled by handleAncillaryWorksChange via ancillary work checkboxes
   // Modal-based questions have been removed in favor of the cleaner checkbox UI
@@ -656,13 +859,13 @@ export function ProvisionsByTocStructure({
       allProvisionsCount: allProvisions.length,
       isDaMode,
       excludableTopicsSize: excludableTopics.size,
-      chapterAssertionsCount: Object.keys(chapterAssertions).length,
+      chapterAssertionsCount: allDismissedChapters.size,
       topicAssertionsCount: Object.keys(topicAssertions).length,
     });
 
     // In DA mode: apply ALL filters to match DCP structure total
     if (isDaMode) {
-      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      const assertedChapters = allDismissedChapters;
       const assertedTopics = new Set(Object.keys(topicAssertions));
 
       console.log('[LayerCounts] DA Mode - applying filters:', {
@@ -673,6 +876,7 @@ export function ProvisionsByTocStructure({
 
       const beforeCount = base.length;
       base = allProvisions.filter(p => {
+        const layer = p.v2_dcp_layer || p.layer;
         // Exclude intake-triaged provisions by structural category (DD-1)
         if (excludableTopics.size > 0) {
           const cat = p.v2_structural_category;
@@ -683,8 +887,25 @@ export function ProvisionsByTocStructure({
         if (p.v2_provision_type === 'objective') return false;
         if (p.v2_heritage_type === 'descriptive') return false;
 
-        // Heritage (condition layer) is never filtered by chapter/topic assertions
-        if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
+        // Heritage element scope — must apply before the early 'return true' for condition layer
+        if (layer === 'condition' && heritageElementScope && heritageElementScope.size > 0) {
+          const elems: string[] = p.v2_heritage_element || [];
+          if (elems.length > 0 && !elems.some((e: string) => heritageElementScope.has(e))) return false;
+        }
+
+        // Heritage (condition layer) is never filtered by chapter/topic assertions or questionnaire
+        if (layer === 'condition') return true;
+
+        // Questionnaire-derived topic scope (non-heritage only)
+        if (questionnaireTopics.size > 0) {
+          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+          if (t && questionnaireTopics.has(t)) return false;
+        }
+        // Questionnaire-derived dev type scope (non-heritage only)
+        if (questionnaireDevTypeExclusions.size > 0) {
+          const dts: string[] = p.v2_applicable_dev_types || [];
+          if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) return false;
+        }
 
         // Check chapter dismissal
         const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') ? p.v2_dcp_part : p.source_chapter_key;
@@ -715,7 +936,7 @@ export function ProvisionsByTocStructure({
     console.log('[LayerCounts] Final breakdown:', counts, { total });
 
     return counts;
-  }, [allProvisions, isDaMode, chapterAssertions, topicAssertions, excludableTopics]);
+  }, [allProvisions, isDaMode, allDismissedChapters, topicAssertions, excludableTopics, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
   // Layer-filtered base: applies active layer filter only
   // Used by both filteredProvisions (rendered list) and topic chips (counts).
@@ -771,6 +992,33 @@ export function ProvisionsByTocStructure({
       filtered = filtered.filter(p => p.v2_heritage_type === heritageTypeFilter);
     }
 
+    // X11: questionnaire-derived scope — auto-excluded based on works questionnaire answers.
+    // Heritage (condition layer) is never filtered here.
+    if (isDaMode && (questionnaireTopics.size > 0 || questionnaireDevTypeExclusions.size > 0)) {
+      filtered = filtered.filter(p => {
+        if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
+        if (questionnaireTopics.size > 0) {
+          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+          if (t && questionnaireTopics.has(t)) return false;
+        }
+        if (questionnaireDevTypeExclusions.size > 0) {
+          const dts: string[] = p.v2_applicable_dev_types || [];
+          if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) return false;
+        }
+        return true;
+      });
+    }
+
+    // X12: heritage element scope — show only controls for building elements in scope.
+    // General heritage controls (no specific element) always show.
+    if (isDaMode && heritageElementScope && heritageElementScope.size > 0) {
+      filtered = filtered.filter(p => {
+        if ((p.v2_dcp_layer || p.layer) !== 'condition') return true;
+        if (!p.v2_heritage_element || p.v2_heritage_element.length === 0) return true;
+        return p.v2_heritage_element.some((elem: string) => heritageElementScope.has(elem));
+      });
+    }
+
     // Topic assertion filter — remove provisions whose topic the planner has dismissed.
     // Heritage (condition layer) is never filtered — it has no dismissible topic.
     if (isDaMode && Object.keys(topicAssertions).length > 0) {
@@ -782,10 +1030,10 @@ export function ProvisionsByTocStructure({
       });
     }
 
-    // Chapter assertion filter — remove provisions whose DCP chapter the planner has dismissed.
+    // Chapter assertion filter — remove provisions whose DCP chapter has been dismissed (manual or auto).
     // Heritage (condition layer) is never filtered.
-    if (isDaMode && Object.keys(chapterAssertions).length > 0) {
-      const assertedChapters = new Set(Object.keys(chapterAssertions));
+    if (isDaMode && allDismissedChapters.size > 0) {
+      const assertedChapters = allDismissedChapters;
       filtered = filtered.filter(p => {
         if ((p.v2_dcp_layer || p.layer) === 'condition') return true;
         const chKey = (p.v2_dcp_part && p.v2_dcp_part !== 'unknown') ? p.v2_dcp_part : p.source_chapter_key;
@@ -820,20 +1068,51 @@ export function ProvisionsByTocStructure({
       // Return just provisions
       return scored.map(s => s.provision);
     } else {
-      // Sort by priority (default), with DA mode layer-based tiebreaker (heritage last)
+      // Sort by priority (default), with DA mode relevance-first sort when dev type is selected.
+      const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
+      const hasDaDevType = isDaMode && expandedDevTypes.length > 0;
+
+      if (hasDaDevType) {
+        // Q4 relevance sort: score provisions by specificity to the selected dev type + zone/precinct.
+        // Higher score = more directly applicable = shown first within each section.
+        // Ties broken by display priority.
+        const relevanceScore = (p: any): number => {
+          let score = 0;
+          const appTypes: string[] | null = p.v2_applicable_dev_types;
+          const layer = p.v2_dcp_layer || p.layer;
+          // Dev type match (+3): provision is specifically tagged for the selected dev type
+          if (appTypes && !appTypes.includes('ALL') && expandedDevTypes.some((t: string) => appTypes.includes(t))) {
+            score += 3;
+          }
+          // Zone-specific (+2): use_specific layer provisions are more targeted than LGA-wide
+          if (layer === 'use_specific') score += 2;
+          // Precinct-specific (+2): precinct layer applies to this site only
+          if (layer === 'precinct') score += 2;
+          return score;
+        };
+        return filtered.sort((a, b) => {
+          // Heritage (condition layer) always last — not zone/dev-type specific
+          const aIsHeritage = (a.v2_dcp_layer || a.layer) === 'condition' ? 1 : 0;
+          const bIsHeritage = (b.v2_dcp_layer || b.layer) === 'condition' ? 1 : 0;
+          if (aIsHeritage !== bIsHeritage) return aIsHeritage - bIsHeritage;
+          const scoreDiff = relevanceScore(b) - relevanceScore(a);
+          if (scoreDiff !== 0) return scoreDiff;
+          const aPriority = (priorityOrder as any)[a.v2_display_priority || 'important'] || 2;
+          const bPriority = (priorityOrder as any)[b.v2_display_priority || 'important'] || 2;
+          return aPriority - bPriority;
+        });
+      }
+
       return filtered.sort((a, b) => {
-        const priorityOrder = { critical: 1, important: 2, guideline: 3, contextual: 4 };
-        if (isDaMode) {
-          const aLayer = DA_LAYER_SORT_ORDER[a.v2_dcp_layer || a.layer] ?? 2;
-          const bLayer = DA_LAYER_SORT_ORDER[b.v2_dcp_layer || b.layer] ?? 2;
-          if (aLayer !== bLayer) return aLayer - bLayer;
-        }
-        const aPriority = priorityOrder[a.v2_display_priority || 'important'] || 2;
-        const bPriority = priorityOrder[b.v2_display_priority || 'important'] || 2;
+        const aLayer = DA_LAYER_SORT_ORDER[a.v2_dcp_layer || a.layer] ?? 2;
+        const bLayer = DA_LAYER_SORT_ORDER[b.v2_dcp_layer || b.layer] ?? 2;
+        if (aLayer !== bLayer) return aLayer - bLayer;
+        const aPriority = (priorityOrder as any)[a.v2_display_priority || 'important'] || 2;
+        const bPriority = (priorityOrder as any)[b.v2_display_priority || 'important'] || 2;
         return aPriority - bPriority;
       });
     }
-  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, topicAssertions, chapterAssertions]);
+  }, [baseProvisions, layerFilteredProvisions, layerFilter, searchScope, debouncedSearch, refinements, heritageTypeFilter, heritage, zone, precinctId, isDaMode, expandedDevTypes, topicAssertions, allDismissedChapters]);
 
   // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
   // Intentionally ignores layerFilter, search, and refinements so the exported document
@@ -841,18 +1120,25 @@ export function ProvisionsByTocStructure({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const provisionsForSeeExport = useMemo((): any[] => {
     if (!isDaMode) return baseProvisions;
+    // In DA mode use allProvisions (full unfiltered set) — the comment above is the intent:
+    // "all in-scope DCP provisions regardless of what the user has filtered in the UI."
+    // baseProvisions = selectedProvisions in structure mode (TOC-selected section only), which
+    // would produce a scopeMap covering only the chapter currently open in the left panel.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let p: any[] = baseProvisions;
+    let p: any[] = allProvisions;
     if (Object.keys(topicAssertions).length > 0) {
       const assertedOut = new Set(Object.keys(topicAssertions));
       p = p.filter((prov: any) => {
         if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        // Universal chapters (Mville Part 2, Leichhardt B/C1/D/E) must appear in the
+        // SEE PDF regardless of topic assertions — planner records N/A, not system removal.
+        if (isUniversalChapter(councilId, derivePartKey(prov))) return true;
         const t = (prov.v2_topic || '').toLowerCase().replace(/ /g, '_');
         return !t || !assertedOut.has(t);
       });
     }
-    if (Object.keys(chapterAssertions).length > 0) {
-      const assertedChapters = new Set(Object.keys(chapterAssertions));
+    if (allDismissedChapters.size > 0) {
+      const assertedChapters = allDismissedChapters;
       p = p.filter((prov: any) => {
         if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
         const chKey = (prov.v2_dcp_part && prov.v2_dcp_part !== 'unknown') ? prov.v2_dcp_part : prov.source_chapter_key;
@@ -866,7 +1152,7 @@ export function ProvisionsByTocStructure({
       );
     }
     return p;
-  }, [baseProvisions, isDaMode, topicAssertions, chapterAssertions, showSuppressedInDA]);
+  }, [allProvisions, baseProvisions, isDaMode, topicAssertions, allDismissedChapters, showSuppressedInDA, councilId, derivePartKey]);
 
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
@@ -876,69 +1162,202 @@ export function ProvisionsByTocStructure({
     if (topic && topicAssertions[topic]) return false;             // planner dismissed topic
     if (p.v2_provision_type === 'objective') return false;         // objectives hidden in DA
     if (p.v2_heritage_type === 'descriptive') return false;        // heritage descriptives hidden
-    if (chapterAssertions[derivePartKey(p)]) return false;         // planner dismissed chapter
+    if (allDismissedChapters.has(derivePartKey(p))) return false;  // chapter dismissed (manual or auto)
+    const layer = p.v2_dcp_layer || p.layer;
+    if (layer !== 'condition') {
+      if (questionnaireTopics.size > 0) {                           // questionnaire topic scope
+        const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+        if (t && questionnaireTopics.has(t)) return false;
+      }
+      if (questionnaireDevTypeExclusions.size > 0) {               // questionnaire dev type scope
+        const dts: string[] = p.v2_applicable_dev_types || [];
+        if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) return false;
+      }
+    }
+    if (layer === 'condition' && heritageElementScope && heritageElementScope.size > 0) {  // heritage element scope
+      const elems: string[] = p.v2_heritage_element || [];
+      if (elems.length > 0 && !elems.some((e: string) => heritageElementScope.has(e))) return false;
+    }
     return true;
-  }, [excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
+  }, [excludableTopics, topicAssertions, allDismissedChapters, derivePartKey, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
-  // Per-chapter assessment progress — scope-aware, used by TocSidebar progress bars
+  // Per-chapter assessment progress — section-based, used by TocSidebar progress bars
   const chapterProgress = useMemo(() => {
     if (!isDaMode) return undefined;
-    const map: Record<string, { assessed: number; total: number }> = {};
+    // Count unique sections per chapter; a section is assessed when sectionResponses has an entry for it
+    const chapterSections: Record<string, Set<string>> = {};
+    const chapterAssessedSections: Record<string, Set<string>> = {};
     for (const p of allProvisions) {
       if (!isInDaScope(p)) continue;
+      // Exclude non-enforceable items — mirrors globalProgress suppression so counts are consistent
+      if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') continue;
       const chKey = derivePartKey(p);
-      if (!map[chKey]) map[chKey] = { assessed: 0, total: 0 };
-      map[chKey].total++;
-      if (daResponses.has(p.id)) map[chKey].assessed++;
+      const secKey = deriveSectionKey(p);
+      if (!chapterSections[chKey]) chapterSections[chKey] = new Set();
+      chapterSections[chKey].add(secKey);
+      if (sectionResponses.has(secKey)) {
+        if (!chapterAssessedSections[chKey]) chapterAssessedSections[chKey] = new Set();
+        chapterAssessedSections[chKey].add(secKey);
+      }
+    }
+    const map: Record<string, { assessed: number; total: number }> = {};
+    for (const chKey of Object.keys(chapterSections)) {
+      map[chKey] = {
+        total:    chapterSections[chKey].size,
+        assessed: chapterAssessedSections[chKey]?.size ?? 0,
+      };
     }
     return map;
-  }, [isDaMode, allProvisions, daResponses, isInDaScope, derivePartKey]);
+  }, [isDaMode, allProvisions, sectionResponses, isInDaScope, derivePartKey, deriveSectionKey]);
+
+  // In-scope section keys for the currently selected chapter — drives State A section list
+  const sectionScopeForPart = useMemo(() => {
+    if (!isDaMode || !selectedPart) return new Set<string>();
+    const inScope = new Set<string>();
+    for (const p of allProvisions) {
+      if (!isInDaScope(p)) continue;
+      if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') continue;
+      if (derivePartKey(p) !== selectedPart) continue;
+      inScope.add(deriveSectionKey(p));
+    }
+    return inScope;
+  }, [isDaMode, selectedPart, allProvisions, isInDaScope, derivePartKey, deriveSectionKey]);
+
+  // Next unassessed in-scope section ID after selectedSection — drives State B "Next" button
+  const nextUnassessedSectionId = useMemo(() => {
+    if (!isDaMode || !selectedPart || !selectedSection) return null;
+    const sectionIds = Object.keys(completeTocStructure[selectedPart]?.sections || {});
+    const currentIdx = sectionIds.indexOf(selectedSection);
+    for (let i = currentIdx + 1; i < sectionIds.length; i++) {
+      const secId = sectionIds[i];
+      const secKey = `${selectedPart}::${secId}`;
+      if (sectionScopeForPart.has(secKey) && !sectionResponses.has(secKey)) return secId;
+    }
+    return null;
+  }, [isDaMode, selectedPart, selectedSection, completeTocStructure, sectionScopeForPart, sectionResponses]);
 
   // Global progress with reduction waterfall — single source of truth for all DA progress UI
+  // scopeTotal / assessed / remaining are section-based (each section = one unit of work)
   const globalProgress = useMemo(() => {
     if (!isDaMode) return null;
     const total = allProvisions.length;
-    let triaged = 0, chapterDismissed = 0, topicDismissed = 0, suppressed = 0;
-    let scopeTotal = 0, assessed = 0;
+    let triaged = 0, chapterDismissed = 0, autoChapterDismissed = 0, topicDismissed = 0, suppressed = 0;
+    let questionnaireScoped = 0, heritageElementScoped = 0;
+    // Collect unique section keys that are in scope
+    const inScopeSectionKeys = new Set<string>();
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
+      const layer = p.v2_dcp_layer || p.layer;
       // Count each exclusion reason (priority order — first match wins)
       if (cat && excludableTopics.has(cat)) { triaged++; continue; }
-      if (chapterAssertions[derivePartKey(p)]) { chapterDismissed++; continue; }
+      if (allDismissedChapters.has(derivePartKey(p))) {
+        // Split manual vs auto so waterfall can distinguish them
+        if (autoDismissedChapters.has(derivePartKey(p))) autoChapterDismissed++;
+        else chapterDismissed++;
+        continue;
+      }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
       if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
-      scopeTotal++;
-      if (daResponses.has(p.id)) assessed++;
+      // Questionnaire-derived exclusions (not manual — counted separately)
+      if (layer !== 'condition') {
+        if (questionnaireTopics.size > 0 && topic && questionnaireTopics.has(topic)) {
+          questionnaireScoped++; continue;
+        }
+        if (questionnaireDevTypeExclusions.size > 0) {
+          const dts: string[] = p.v2_applicable_dev_types || [];
+          if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) {
+            questionnaireScoped++; continue;
+          }
+        }
+      }
+      // Heritage element scope exclusions
+      if (layer === 'condition' && heritageElementScope && heritageElementScope.size > 0) {
+        const elems: string[] = p.v2_heritage_element || [];
+        if (elems.length > 0 && !elems.some((e: string) => heritageElementScope.has(e))) {
+          heritageElementScoped++; continue;
+        }
+      }
+      inScopeSectionKeys.add(deriveSectionKey(p));
     }
-    return { total, triaged, chapterDismissed, topicDismissed, suppressed, scopeTotal, assessed, remaining: scopeTotal - assessed };
-  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
+    const scopeTotal = inScopeSectionKeys.size;
+    const assessed   = [...inScopeSectionKeys].filter(k => sectionResponses.has(k)).length;
+    return {
+      total, triaged, chapterDismissed, autoChapterDismissed, topicDismissed, suppressed,
+      questionnaireScoped, heritageElementScoped,
+      scopeTotal, assessed, remaining: scopeTotal - assessed,
+    };
+  }, [isDaMode, allProvisions, sectionResponses, excludableTopics, topicAssertions, allDismissedChapters, autoDismissedChapters, derivePartKey, deriveSectionKey, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
-  // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
-  const hiddenObjectiveCount = useMemo(() => {
-    if (!isDaMode) return 0;
-    return baseProvisions.filter(p =>
-      p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive'
-    ).length;
-  }, [isDaMode, baseProvisions]);
 
   // Triage split — lifted out of JSX so header count and provision list use the same values.
+  // Universal chapters (Mville Part 2, Leichhardt B/C1/D/E) are never moved to the
+  // triage-excluded accordion — planner must see them and record N/A explicitly.
   const splitByTriage = isDaMode && excludableTopics.size > 0;
   const displayProvisions = useMemo(() => {
     if (!splitByTriage) return filteredProvisions;
     return filteredProvisions.filter(p => {
+      if (isUniversalChapter(councilId, derivePartKey(p))) return true;
       const cat = p.v2_structural_category;
       return !cat || !excludableTopics.has(cat);
     });
-  }, [splitByTriage, filteredProvisions, excludableTopics]);
+  }, [splitByTriage, filteredProvisions, excludableTopics, councilId, derivePartKey]);
   const triageExcludedProvisions = useMemo(() => {
     if (!splitByTriage) return [];
     return filteredProvisions.filter(p => {
+      if (isUniversalChapter(councilId, derivePartKey(p))) return false;
       const cat = p.v2_structural_category;
       return cat && excludableTopics.has(cat);
     });
-  }, [splitByTriage, filteredProvisions, excludableTopics]);
+  }, [splitByTriage, filteredProvisions, excludableTopics, councilId, derivePartKey]);
 
+  // Sections that contain ONLY objectives/descriptives — not shown in the normal assessment list
+  // because they have no enforceable controls, but planners may want to record an acknowledgement
+  // narrative (e.g. "the proposal is consistent with the objectives of this section").
+  // Scoped to the current selected part/section view so it tracks what's on screen.
+  //
+  // NOTE: deliberately does NOT call isInDaScope(p) — that function returns false for
+  // objectives/descriptives by design (they are not in the assessable scope). Instead we
+  // apply the chapter/topic/questionnaire scope rules directly, skipping only the provision
+  // type rule, so we can correctly identify sections that are otherwise in scope but contain
+  // only non-enforceable items.
+  const suppressedOnlySections = useMemo(() => {
+    if (!isDaMode || !selectedPart) return undefined;
+    const displaySectionKeys = new Set(displayProvisions.map((p: any) => deriveSectionKey(p)));
+    const map = new Map<string, string | null>();
+    for (const p of baseProvisions) {
+      if (p.v2_provision_type !== 'objective' && p.v2_heritage_type !== 'descriptive') continue;
+      // Scope check WITHOUT the provision-type exclusion (we want these types — we just need
+      // to know whether their section is otherwise in scope or has been dismissed).
+      const cat = p.v2_structural_category;
+      if (cat && excludableTopics.has(cat)) continue;
+      const topic = normalizeTopicKey(p.v2_topic);
+      if (topic && topicAssertions[topic]) continue;
+      if (allDismissedChapters.has(derivePartKey(p))) continue;
+      const layer = p.v2_dcp_layer || p.layer;
+      if (layer !== 'condition') {
+        if (questionnaireTopics.size > 0) {
+          const t = (p.v2_topic || '').toLowerCase().replace(/ /g, '_');
+          if (t && questionnaireTopics.has(t)) continue;
+        }
+        if (questionnaireDevTypeExclusions.size > 0) {
+          const dts: string[] = p.v2_applicable_dev_types || [];
+          if (dts.length > 0 && dts.every((dt: string) => questionnaireDevTypeExclusions.has(dt))) continue;
+        }
+      }
+      if (layer === 'condition' && heritageElementScope && heritageElementScope.size > 0) {
+        const elems: string[] = p.v2_heritage_element || [];
+        if (elems.length > 0 && !elems.some((e: string) => heritageElementScope.has(e))) continue;
+      }
+      const secKey = deriveSectionKey(p);
+      if (!displaySectionKeys.has(secKey) && !map.has(secKey)) {
+        map.set(secKey, canonicalSectionTitles.get(secKey) ?? p.toc_section_title ?? null);
+      }
+    }
+    return map.size > 0 ? map : undefined;
+  }, [isDaMode, selectedPart, baseProvisions, displayProvisions, deriveSectionKey, canonicalSectionTitles,
+      excludableTopics, topicAssertions, allDismissedChapters, derivePartKey,
+      questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
   // Topic chips removed — v2_topic labels unreliable. Structure view replaces topic navigation.
   const availableTopics: string[] = [];
@@ -1005,11 +1424,20 @@ export function ProvisionsByTocStructure({
   // Auto-navigate to next active chapter after dismiss
   const handleAssertChapter = async (chapterKey: string, reason: string | null) => {
     await saveChapterAssertion(chapterKey, reason);
-    // On dismiss (not undo), navigate to next active chapter
-    if (reason !== null && selectedPart === chapterKey) {
+    // On dismiss (not undo), navigate away if viewing the dismissed chapter or a child of it
+    // e.g. dismissing "Part C" while viewing "Part C.1" should also trigger navigation
+    const viewingDismissedChapter =
+      reason !== null &&
+      selectedPart !== null &&
+      (selectedPart === chapterKey || selectedPart.startsWith(chapterKey + '.'));
+    if (viewingDismissedChapter) {
       const parts = Object.keys(completeTocStructure);
-      const updatedAssertions = { ...chapterAssertions, [chapterKey]: reason };
-      const nextPart = parts.find(p => p !== chapterKey && !updatedAssertions[p] && completeTocStructure[p]?.provision_count > 0);
+      const updatedDismissed = new Set([...allDismissedChapters, chapterKey]);
+      // Expand to include children of the newly dismissed key
+      for (const p of parts) {
+        if (p.startsWith(chapterKey + '.')) updatedDismissed.add(p);
+      }
+      const nextPart = parts.find(p => p !== chapterKey && !updatedDismissed.has(p) && completeTocStructure[p]?.provision_count > 0);
       if (nextPart) {
         handleSelectPart(nextPart);
       }
@@ -1022,6 +1450,8 @@ export function ProvisionsByTocStructure({
     setTopicFilters([]); // Reset topic filters when changing sections
     setLayerFilter(null); // Reset layer filter when changing sections
   };
+
+  // Bulk-mark all unassessed sections in the current chapter view
 
   // Toggle topic filter (multi-select)
   const toggleTopic = (topic: string) => {
@@ -1122,7 +1552,7 @@ export function ProvisionsByTocStructure({
       if (activeFilters.length === 0) activeFilters.push('All provisions for this property');
 
       const noFiltersActive = !layerFilter && topicFilters.length === 0 && !debouncedSearch;
-      const hasResponses = isDaMode && daResponses && daResponses.size > 0;
+      const hasResponses = isDaMode && (sectionResponses.size > 0 || (daResponses && daResponses.size > 0));
       const doc = (
         <ProvisionReport
           provisions={provisionsForPdf}
@@ -1152,6 +1582,19 @@ export function ProvisionsByTocStructure({
 
   // SEE Draft export — uses SEEDocument with annotated provisions only
   const handleExportSee = async () => {
+    // Soft completeness gate — warn if sections are unassessed, don't hard-block
+    // (partial export for review is a legitimate workflow step).
+    if (globalProgress && globalProgress.remaining > 0) {
+      const n = globalProgress.remaining;
+      const confirmed = window.confirm(
+        `⚠ INCOMPLETE DOCUMENT\n\n` +
+        `${n} section${n !== 1 ? 's' : ''} in scope ${n === 1 ? 'has' : 'have'} not been assessed.\n\n` +
+        `The exported PDF will be marked INCOMPLETE and will list the unassessed sections in Section 6.5.\n\n` +
+        `This document must not be lodged with a Development Application until all sections are addressed.\n\n` +
+        `Export for review only?`
+      );
+      if (!confirmed) return;
+    }
     try {
       // Refresh responses from DB before building PDF — ensures per-provision annotations
       // saved by DAResponseCapture (which doesn't update parent daResponses state) are current.
@@ -1175,6 +1618,79 @@ export function ProvisionsByTocStructure({
       const provisionsForPdf = await preparePdfProvisions(provisionsForSeeExport, daResponses ?? undefined);
       const annotatedProvisions = provisionsForPdf.filter(p => p.da_status);
 
+      // Section-level model: build section_responses + section_scope for the PDF.
+      // After refreshResponses(), sectionResponses has section_title populated from DB.
+      let sectionResponsesForPdf: SectionAssessment[] | undefined;
+      let sectionScopeForPdf: { section_key: string; section_title: string | null }[] | undefined;
+      if (sectionResponses.size > 0) {
+        // Build ordered scope (unique section keys in provision order).
+        // Prefer canonical title from complete_toc; fall back to DB-stored title from sectionResponses.
+        const scopeMap = new Map<string, string | null>();
+        for (const p of provisionsForSeeExport) {
+          const key = deriveSectionKey(p);
+          if (!scopeMap.has(key)) {
+            const canonicalTitle = canonicalSectionTitles.get(key);
+            scopeMap.set(key, canonicalTitle !== undefined ? canonicalTitle : (sectionResponses.get(key)?.section_title ?? null));
+          }
+        }
+        // Only activate section model if provisions actually loaded — empty scope means
+        // something went wrong upstream; fall back to provision-based PDF render.
+        if (scopeMap.size > 0) {
+          sectionScopeForPdf = [...scopeMap.entries()].map(([k, t]) => ({ section_key: k, section_title: t }));
+          // Only include responses for sections that are currently in scope.
+          // Stale responses from dismissed chapters would otherwise inflate assessed counts
+          // and could show "✓ Fully assessed" incorrectly in the PDF.
+
+          // Build provision requirement text per section for the compliance table.
+          // Takes the first actionable (non-objective) provision text per section (first line, max 150 chars).
+          // Filtered to v2_is_actionable=true to avoid showing objective text (O1 — To ensure...) as requirements.
+          const provisionsBySectionKey = new Map<string, string[]>();
+          for (const p of provisionsForSeeExport) {
+            if (!p.v2_is_actionable) continue;
+            const key = deriveSectionKey(p);
+            if (!provisionsBySectionKey.has(key)) provisionsBySectionKey.set(key, []);
+            const texts = provisionsBySectionKey.get(key)!;
+            if (texts.length < 1 && p.provision_text) {
+              const firstLine = p.provision_text.split('\n')[0].trim().substring(0, 150);
+              if (firstLine) texts.push(firstLine);
+            }
+          }
+
+          sectionResponsesForPdf = [...sectionResponses.entries()]
+            .filter(([key]) => scopeMap.has(key))
+            .map(([key, resp]) => {
+              const canonicalTitle = canonicalSectionTitles.get(key);
+              return {
+                section_key: key,
+                section_title: canonicalTitle !== undefined ? canonicalTitle : (resp.section_title ?? null),
+                status: resp.status,
+                narrative: resp.narrative,
+                key_provisions: provisionsBySectionKey.get(key),
+              };
+            });
+        }
+      }
+
+      // Gate 2: N/A sections without a reason — checked after refresh and scope build so the
+      // count reflects the final in-scope set, not stale pre-refresh state.
+      // A justification is required for every N/A section — omitting it is a leading RAI cause.
+      if (sectionResponsesForPdf) {
+        const naWithoutReason = sectionResponsesForPdf.filter(
+          r => r.status === 'not_applicable' && !r.narrative?.trim()
+        );
+        if (naWithoutReason.length > 0) {
+          const n = naWithoutReason.length;
+          const confirmed = window.confirm(
+            `⚠ N/A SECTIONS WITHOUT REASON\n\n` +
+            `${n} section${n !== 1 ? 's' : ''} ${n === 1 ? 'is' : 'are'} marked N/A but ${n === 1 ? 'has' : 'have'} no reason recorded.\n\n` +
+            `Council assessors require a specific reason for each N/A — e.g. 'No swimming pool proposed', 'Site is not flood prone'.\n\n` +
+            `The exported PDF will show [No reason recorded] for ${n === 1 ? 'this section' : 'these sections'}.\n\n` +
+            `Export for review only?`
+          );
+          if (!confirmed) return;
+        }
+      }
+
       const pathwayDetermination = buildPathwayDetermination(
         propertyContext.zone,
         propertyContext.heritage_status?.in_hca ?? false,
@@ -1186,6 +1702,7 @@ export function ProvisionsByTocStructure({
         height: intakeAnswers?.proposed_height,
         gfa: intakeAnswers?.proposed_gfa,
         lotArea: propertyData?.lotDimensions?.area ?? propertyContext.lot_dimensions?.area,
+        lepCitation: councilConfig?.lepCitation,
       });
 
       const resolvedAddress = address || propertyData?.address || '';
@@ -1212,6 +1729,8 @@ export function ProvisionsByTocStructure({
           }),
         } : {}),
         ...(ancillaryWorksLocal.length > 0 ? { ancillary_works: ancillaryWorksLocal } : {}),
+        ...(sectionResponsesForPdf ? { section_responses: sectionResponsesForPdf } : {}),
+        ...(sectionScopeForPdf ? { section_scope: sectionScopeForPdf } : {}),
       };
 
       const doc = <SEEDocument data={seeData} />;
@@ -1223,6 +1742,15 @@ export function ProvisionsByTocStructure({
       link.download = `Draft-SEE-${formerCouncil}-${dateStr}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
+
+      // Mark session as exported — fire-and-forget, non-blocking
+      if (sessionToken) {
+        fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exported_at: new Date().toISOString() }),
+        }).catch(() => {});
+      }
     } catch (error) {
       alert(`Failed to generate SEE PDF: ${error instanceof Error ? error.message : 'Unknown error'}. Check console for details.`);
     }
@@ -1232,22 +1760,19 @@ export function ProvisionsByTocStructure({
     <div className="space-y-0">
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 
-      {/* ① Enable DA Mode — rendered here so it only appears after provisions load */}
+      {/* Enable DA Mode — rendered here so it only appears after provisions load */}
       {onToggleDaMode && (
         isDaMode ? (
-          <div className="flex items-start gap-3 mb-5">
-            <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
-            <div>
-              <p className="text-base font-semibold text-gray-800">DA Mode active</p>
-              <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
-              <button
-                onClick={() => onToggleDaMode(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
-              >
-                <span className="w-3 h-3 rounded-full inline-block bg-white" />
-                DA Mode on
-              </button>
-            </div>
+          <div className="mb-5">
+            <p className="text-base font-semibold text-gray-800">DA Mode active</p>
+            <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
+            <button
+              onClick={() => onToggleDaMode(false)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
+            >
+              <span className="w-3 h-3 rounded-full inline-block bg-white" />
+              DA Mode on
+            </button>
           </div>
         ) : (
           <div className="flex items-center justify-between mb-5">
@@ -1263,10 +1788,10 @@ export function ProvisionsByTocStructure({
         )
       )}
 
-      {/* ② Set your scope — DA mode only */}
+      {/* ① Set your scope — DA mode only */}
       {isDaMode && (
         <div className="flex items-start gap-3 mb-5">
-          <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
+          <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
           <div className="flex-1">
             <p className="text-base font-semibold text-gray-800">Define your works</p>
             <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
@@ -1297,30 +1822,82 @@ export function ProvisionsByTocStructure({
               onAssertTopicNA={saveTopicAssertion}
               onProposedValuesChange={handleProposedValuesChange}
               globalProgress={globalProgress}
+              worksScopeAnswers={worksScopeAnswers}
+              onWorksScopeChange={saveWorksScopeAnswers}
+              lepScopeDefaults={lepAutoScope}
+              lepProhibitedDevTypes={lepProhibitedDevTypes}
+              seppExemptWorks={seppExemptWorks}
             />
           </div>
         </div>
       )}
 
-      {/* ③ Review provisions — DA mode only */}
+      {/* Step 1 → Step 2 transition hint */}
+      {isDaMode && devType && (
+        <p className="text-xs text-teal-700 -mt-3 mb-4 pl-12">
+          → Use the chapter list on the left to dismiss chapters that don{"'"}t apply, then assess each remaining section below.
+        </p>
+      )}
+
+      {/* ② DCP numeric reference — enter proposed values to see DCP limits inline */}
+      {isDaMode && allProvisions.length > 0 && (
+        <div className="mb-5">
+          <NumericChecker
+            onValuesChange={setNumericCheckValues}
+            results={complianceResults}
+          />
+        </div>
+      )}
+
+      {/* ② Assess sections — DA mode only */}
       {isDaMode && (
-        <div className="flex items-start gap-3 mb-3">
-          <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">3</span>
-          <div>
-            <p className="text-base font-semibold text-gray-800">Assess applicable provisions</p>
-            <p className="text-sm text-gray-700 mt-0.5">
-              Use the DCP chapter list on the left to dismiss entire chapters that don{"'"}t apply. Use the topic filter chips to focus on one category at a time. For each remaining provision, record:{' '}
-              <span className="inline-flex items-center gap-0.5">
-                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
-                {', '}
-                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-amber-100 text-amber-800 border-amber-300">Varies</span>
-                {', or '}
-                <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-gray-100 text-gray-600 border-gray-300">N/A</span>
-              </span>
-              .
-            </p>
+        <div className="mb-3">
+          <div className="flex items-start gap-3">
+            <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-semibold text-gray-800">Assess applicable sections</p>
+              <p className="text-sm text-gray-700 mt-0.5">
+                Select a chapter, then assess each section — record{' '}
+                <span className="inline-flex items-center gap-0.5">
+                  <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
+                  {', '}
+                  <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-amber-100 text-amber-800 border-amber-300">Varies</span>
+                  {', or '}
+                  <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-gray-100 text-gray-600 border-gray-300">N/A</span>
+                </span>
+                .{' '}
+                <button
+                  onClick={() => setGuideExpanded(v => !v)}
+                  className="text-xs text-teal-600 hover:underline underline-offset-2"
+                >
+                  {guideExpanded ? 'Hide guide' : 'How does this work?'}
+                </button>
+              </p>
+              {guideExpanded && (
+                <div className="mt-2 text-xs text-gray-600 bg-teal-50 border border-teal-100 rounded p-2.5 space-y-1.5">
+                  <p><span className="font-semibold text-gray-700">Left panel — Scope (Step 1):</span> Dismiss chapters that don{"'"}t apply to this development. Dismissed chapters go to Schedule B of your SEE as not addressed.</p>
+                  <p><span className="font-semibold text-gray-700">Right panel — Assess (Step 2):</span> For each remaining chapter, click to view its sections. Read the provisions, then record a response. This becomes Section 6 (DCP compliance) of your SEE.</p>
+                  <p><span className="font-semibold text-gray-700">Varies:</span> Use when a non-compliance requires justification — these generate a Schedule A in your SEE.</p>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={handleExportSee}
+              title="Export working draft — requires professional review before DA lodgement"
+              className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              <FileText className="h-4 w-4" />
+              <span>Export SEE</span>
+            </button>
           </div>
         </div>
+      )}
+
+      {/* Precinct warning — shown when LGA has precinct provisions but no precinct_id was resolved */}
+      {data?.meta?.precinct_warning && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5 mb-3">
+          Precinct data is not available for this property — site-specific precinct controls may not be shown.
+        </p>
       )}
 
       {/* Main two-panel layout */}
@@ -1339,6 +1916,7 @@ export function ProvisionsByTocStructure({
             formerCouncil={formerCouncil}
             isDaMode={isDaMode}
             chapterAssertions={chapterAssertions}
+            autoDismissedChapters={autoDismissedChapters}
             onAssertChapter={handleAssertChapter}
             chapterProgress={chapterProgress}
             devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
@@ -1391,7 +1969,7 @@ export function ProvisionsByTocStructure({
                     {globalProgress.assessed}
                     <span className="text-base font-normal text-gray-400"> / {globalProgress.scopeTotal}</span>
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">provisions assessed</div>
+                  <div className="text-xs text-gray-500 mt-0.5">sections assessed</div>
                   {displayProvisions.length < globalProgress.scopeTotal && (
                     <div className="text-xs text-gray-400 mt-0.5">
                       viewing {displayProvisions.length}
@@ -1409,102 +1987,165 @@ export function ProvisionsByTocStructure({
             </div>
           </div>
 
-          <LayerExplanation
-            zone={zone}
-            heritage={heritage}
-            hcaName={hcaName}
-            precinctName={precinctName}
-            formerCouncil={formerCouncil}
-            layerCounts={layerCounts}
-            layerFilter={layerFilter}
-            onLayerFilterChange={setLayerFilter}
-            generalHeritageCount={generalHeritageCount}
-            hcaSpecificCount={hcaSpecificCount}
-            totalHeritageCount={totalHeritageCount}
-            isDaMode={isDaMode}
-          />
+          {/* Global progress bar — DA mode, shows overall session completion */}
+          {isDaMode && globalProgress && globalProgress.scopeTotal > 0 && (
+            <div className="mt-2 -mx-0.5">
+              <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-1 rounded-full transition-all ${globalProgress.remaining === 0 ? 'bg-green-500' : 'bg-teal-500'}`}
+                  style={{ width: `${Math.round((globalProgress.assessed / globalProgress.scopeTotal) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
 
-          <DcpFilterBar
-            searchQuery={searchQuery}
-            onSearchQueryChange={(v) => { setSearchQuery(v); setShowAutocomplete(true); }}
-            debouncedSearch={debouncedSearch}
-            showAutocomplete={showAutocomplete}
-            onShowAutocompleteChange={setShowAutocomplete}
-            searchScope={searchScope}
-            onSearchScopeChange={setSearchScope}
-            baseProvisions={baseProvisions}
-            layerFilteredProvisions={layerFilteredProvisions}
-            filteredProvisions={filteredProvisions}
-            availableTopics={availableTopics}
-            topicFilters={topicFilters}
-            onToggleTopic={toggleTopic}
-            onClearTopics={() => setTopicFilters([])}
-            topicPriorityStats={topicPriorityStats}
-            excludableTopics={excludableTopics}
-            refinements={refinements}
-            onToggleRefinement={toggleRefinement}
-            heritageTypeFilter={heritageTypeFilter}
-            onHeritageTypeFilterChange={setHeritageTypeFilter}
-            layerFilter={layerFilter}
-            onLayerFilterChange={setLayerFilter}
-            layerCounts={layerCounts}
-            layerLabels={layerLabels}
-            zone={zone}
-            heritage={heritage}
-            hcaName={hcaName}
-            precinctName={precinctName}
-            formerCouncil={formerCouncil}
-            generalHeritageCount={generalHeritageCount}
-            hcaSpecificCount={hcaSpecificCount}
-            totalHeritageCount={totalHeritageCount}
-            showExportModal={showExportModal}
-            onShowExportModal={setShowExportModal}
-            onExportPdf={handleExportPdf}
-            selectedPart={selectedPart}
-            provisionView={provisionView}
-            isDaMode={isDaMode}
-          />
+          {/* Filter bar — hidden in State A (DA mode + chapter selected, no section yet) */}
+          {!(isDaMode && selectedPart && !selectedSection) && (
+            <DcpFilterBar
+              searchQuery={searchQuery}
+              onSearchQueryChange={(v) => { setSearchQuery(v); setShowAutocomplete(true); }}
+              debouncedSearch={debouncedSearch}
+              showAutocomplete={showAutocomplete}
+              onShowAutocompleteChange={setShowAutocomplete}
+              searchScope={searchScope}
+              onSearchScopeChange={setSearchScope}
+              baseProvisions={baseProvisions}
+              layerFilteredProvisions={layerFilteredProvisions}
+              filteredProvisions={filteredProvisions}
+              availableTopics={availableTopics}
+              topicFilters={topicFilters}
+              onToggleTopic={toggleTopic}
+              onClearTopics={() => setTopicFilters([])}
+              topicPriorityStats={topicPriorityStats}
+              excludableTopics={excludableTopics}
+              refinements={refinements}
+              onToggleRefinement={toggleRefinement}
+              heritageTypeFilter={heritageTypeFilter}
+              onHeritageTypeFilterChange={setHeritageTypeFilter}
+              layerFilter={layerFilter}
+              onLayerFilterChange={setLayerFilter}
+              layerCounts={layerCounts}
+              layerLabels={layerLabels}
+              zone={zone}
+              heritage={heritage}
+              hcaName={hcaName}
+              precinctName={precinctName}
+              formerCouncil={formerCouncil}
+              generalHeritageCount={generalHeritageCount}
+              hcaSpecificCount={hcaSpecificCount}
+              totalHeritageCount={totalHeritageCount}
+              showExportModal={showExportModal}
+              onShowExportModal={setShowExportModal}
+              onExportPdf={handleExportPdf}
+              selectedPart={selectedPart}
+              provisionView={provisionView}
+              isDaMode={isDaMode}
+            />
+          )}
 
         </div>
 
-        {/* Action Toolbar - Export */}
-        {filteredProvisions.length > 0 && (
-          <div className="px-4 py-3 border-b bg-gray-50">
-            {isDaMode ? (
-              <div className="space-y-2">
-                <button
-                  onClick={handleExportSee}
-                  title="Export working draft — requires professional review before DA lodgement"
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                  <FileText className="h-4 w-4 flex-shrink-0" />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">Export SEE Draft</div>
-                    <div className="text-xs font-normal opacity-80">Working draft — requires professional review</div>
+        {/* State A — chapter selected, no section: show section list */}
+        {isDaMode && selectedPart && !selectedSection ? (
+          <div className="flex-1 overflow-auto">
+            {(() => {
+              const partData = completeTocStructure[selectedPart];
+              const sections = Object.entries((partData?.sections || {}) as Record<string, any>);
+              const chProgress = chapterProgress?.[selectedPart];
+              const allAssessed = chProgress && chProgress.total > 0 && chProgress.assessed === chProgress.total;
+              if (sections.length === 0) return (
+                <p className="p-4 text-sm text-gray-500">No sections found for this chapter.</p>
+              );
+              return (
+                <>
+                  {allAssessed && (
+                    <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs text-green-700 font-medium">
+                      All {chProgress.total} section{chProgress.total !== 1 ? 's' : ''} assessed — chapter complete
+                    </div>
+                  )}
+                  <div className="divide-y divide-gray-100">
+                    {sections.map(([sectionId, section]) => {
+                      const secKey = `${selectedPart}::${sectionId}`;
+                      const title = canonicalSectionTitles.get(secKey) || section.section_title || sectionId;
+                      const inScope = sectionScopeForPart.has(secKey);
+                      const response = sectionResponses.get(secKey);
+                      const status = response?.status;
+                      return (
+                        <button
+                          key={sectionId}
+                          onClick={() => handleSelectSection(selectedPart, sectionId)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left transition-colors ${!inScope ? 'opacity-50' : ''}`}
+                        >
+                          {/* Status indicator */}
+                          <span className={`flex-shrink-0 w-2.5 h-2.5 rounded-full ${
+                            !inScope ? 'bg-gray-200' :
+                            status === 'complies' ? 'bg-green-500' :
+                            status === 'varies' ? 'bg-amber-500' :
+                            status === 'not_applicable' ? 'bg-gray-400' :
+                            'border-2 border-gray-300 bg-white'
+                          }`} />
+                          <span className={`flex-1 text-sm ${inScope ? 'text-gray-800' : 'text-gray-400'}`}>
+                            {sanitizeText(title) || sectionId}
+                          </span>
+                          {status && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${
+                              status === 'complies' ? 'bg-green-100 text-green-800 border-green-300' :
+                              status === 'varies' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                              'bg-gray-100 text-gray-600 border-gray-300'
+                            }`}>
+                              {status === 'not_applicable' ? 'N/A' : status.charAt(0).toUpperCase() + status.slice(1)}
+                            </span>
+                          )}
+                          <ChevronRight className="flex-shrink-0 w-4 h-4 text-gray-300" />
+                        </button>
+                      );
+                    })}
                   </div>
+                </>
+              );
+            })()}
+          </div>
+        ) : (
+          <>
+            {/* State B breadcrumb + next-section nav */}
+            {isDaMode && selectedSection && selectedPart && (
+              <div className="px-4 py-2 border-b bg-gray-50 flex items-center justify-between">
+                <button
+                  onClick={() => setSelectedSection(null)}
+                  className="flex items-center gap-1 text-xs text-teal-700 hover:text-teal-900 font-medium"
+                >
+                  <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+                  {sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart}
                 </button>
-                {hiddenObjectiveCount > 0 && (
-                  <p className="text-xs text-gray-400 text-center">
-                    {hiddenObjectiveCount} objective{hiddenObjectiveCount !== 1 ? 's' : ''} hidden — disable DA Mode to view
-                  </p>
+                {nextUnassessedSectionId && (
+                  <button
+                    onClick={() => handleSelectSection(selectedPart, nextUnassessedSectionId)}
+                    className="flex items-center gap-1 text-xs text-teal-700 hover:text-teal-900 font-medium"
+                  >
+                    Next unassessed
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 )}
               </div>
-            ) : (
-              <button
-                onClick={() => setShowExportModal(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-              >
-                <Download className="h-4 w-4" />
-                {topicFilters.length > 0
-                  ? `Export ${filteredProvisions.length} ${topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')} provision${filteredProvisions.length !== 1 ? 's' : ''}`
-                  : `Export ${filteredProvisions.length === allProvisions.length ? 'all ' : ''}${filteredProvisions.length} provision${filteredProvisions.length !== 1 ? 's' : ''}`}
-              </button>
             )}
-          </div>
-        )}
 
-        {/* Provisions list */}
-        <DcpProvisionList
+            {/* Action Toolbar - Export (non-DA mode only) */}
+            {filteredProvisions.length > 0 && !isDaMode && (
+              <div className="px-4 py-3 border-b bg-gray-50">
+                <button
+                  onClick={() => setShowExportModal(true)}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  {topicFilters.length > 0
+                    ? `Export ${filteredProvisions.length} ${topicFilters.map(t => t.replace(/_/g, ' ')).join(' + ')} provision${filteredProvisions.length !== 1 ? 's' : ''}`
+                    : `Export ${filteredProvisions.length === allProvisions.length ? 'all ' : ''}${filteredProvisions.length} provision${filteredProvisions.length !== 1 ? 's' : ''}`}
+                </button>
+              </div>
+            )}
+
+            {/* Provisions list */}
+            <DcpProvisionList
           displayProvisions={displayProvisions}
           triageExcludedProvisions={triageExcludedProvisions}
           filteredProvisions={filteredProvisions}
@@ -1520,8 +2161,12 @@ export function ProvisionsByTocStructure({
           isDaMode={isDaMode}
           sessionToken={sessionToken}
           daResponses={daResponses}
+          sectionResponses={sectionResponses}
           excludableTopics={excludableTopics}
           onResponseSaved={updateSingleResponse}
+          onSectionResponseSaved={updateSingleSectionResponse}
+          canonicalSectionTitles={canonicalSectionTitles}
+          suppressedOnlySections={suppressedOnlySections}
           onViewPdf={(url, page) => setPdfModal({ url, page })}
           debouncedSearch={debouncedSearch}
           provisionView={provisionView}
@@ -1535,7 +2180,28 @@ export function ProvisionsByTocStructure({
           baseProvisions={baseProvisions}
           showSuppressedInDA={showSuppressedInDA}
           onToggleSuppressedInDA={() => setShowSuppressedInDA(v => !v)}
+          numericCheckValues={numericCheckValues}
+          lepReference={
+            (lepClauseData?.height_limit || lepClauseData?.fsr || setbackData?.data)
+              ? {
+                  height: lepClauseData?.height_limit ?? null,
+                  fsr: lepClauseData?.fsr ?? null,
+                  setbacks: setbackData?.data
+                    ? {
+                        side: setbackData.data.side
+                          ? { ground: setbackData.data.side.ground, upper: setbackData.data.side.upper, document: setbackData.data.side.document }
+                          : undefined,
+                        rear: setbackData.data.rear
+                          ? { value: setbackData.data.rear.value, document: setbackData.data.rear.document }
+                          : undefined,
+                      }
+                    : null,
+                }
+              : null
+          }
         />
+          </>
+        )}
 
       </div>
 

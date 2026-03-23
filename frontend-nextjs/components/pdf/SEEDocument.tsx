@@ -2,7 +2,8 @@
 // No AI, no hardcoded LGA names, no hardcoded zone lists beyond domain logic
 
 import { Document, Page, Text, View, Link } from '@react-pdf/renderer';
-import { SEEDocumentData } from '@/lib/see/types';
+import { SEEDocumentData, SectionAssessment } from '@/lib/see/types';
+import { parseSectionKey } from '@/lib/see/sectionKey';
 import { INTAKE_QUESTIONS, type IntakeAnswers } from '@/lib/see/intake';
 import { ProvisionForPDF } from '@/lib/pdf/types';
 import { ProvisionTable } from './ProvisionTable';
@@ -78,6 +79,31 @@ function DataRow({ label, value }: { label: string; value: string }) {
 }
 
 // ---------------------------------------------------------------------------
+// Section-level assessment helpers
+// ---------------------------------------------------------------------------
+
+// parseSectionKey is imported from @/lib/see/sectionKey — single source of truth.
+
+/** Truncate text for PDF table cells to prevent cell overflow in react-pdf. */
+const PDF_NARRATIVE_MAX = 600;
+function truncateForPdf(text: string | null, max: number = PDF_NARRATIVE_MAX): string {
+  if (!text) return '';
+  return text.length > max
+    ? text.substring(0, max) + '…'
+    : text;
+}
+
+function sectionStatusMeta(status: SectionAssessment['status']): { label: string; color: string } {
+  switch (status) {
+    case 'complies':       return { label: 'Complies',  color: '#15803d' };
+    case 'varies':         return { label: 'Varies',    color: '#d97706' };
+    case 'not_applicable': return { label: 'N/A',       color: '#6b7280' };
+    case 'flagged':        return { label: 'Flagged',   color: '#dc2626' };
+    default:               return { label: '—',         color: '#9ca3af' };
+  }
+}
+
+// ---------------------------------------------------------------------------
 // SEE Document
 // ---------------------------------------------------------------------------
 
@@ -87,7 +113,8 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const { property, see_intro, annotated_provisions, all_provisions,
           generated_date, intake_answers, client_ref, prepared_by,
           pathway_determination, sepp_assessable_controls, lep_assessable_standards,
-          topic_assertions, chapter_assertions, ancillary_works, council_pdf_url } = data;
+          topic_assertions, chapter_assertions, ancillary_works, council_pdf_url,
+          section_responses, section_scope } = data;
   const { heritage_status, lot_dimensions, lep_controls, environmental_constraints,
           additional_local_provisions, planning_portal_layers } = property;
 
@@ -134,6 +161,32 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
   const annotatedCount = annotated_provisions.length;
   const totalCount = all_provisions.length;
   const unannotatedCount = totalCount - annotatedCount;
+
+  // Section-level model metrics (when section_responses is present)
+  const useSectionModel = (section_responses?.length ?? 0) > 0;
+  const secVaries    = section_responses?.filter(s => s.status === 'varies') ?? [];
+  const secComplies  = section_responses?.filter(s => s.status === 'complies') ?? [];
+  const secNA        = section_responses?.filter(s => s.status === 'not_applicable') ?? [];
+  const secFlagged   = section_responses?.filter(s => s.status === 'flagged') ?? [];
+  const secScopeTotal   = section_scope?.length ?? 0;
+  const secAssessedTotal = section_responses?.length ?? 0;
+  const secUnassessedTotal = Math.max(0, secScopeTotal - secAssessedTotal);
+  // Cap at 100%: secAssessedTotal can exceed secScopeTotal when a session has responses
+  // for sections that were later excluded from scope (e.g. chapter assertion added after assessment).
+  const secAssessedPct = secScopeTotal > 0
+    ? Math.min(100, Math.round((secAssessedTotal / secScopeTotal) * 100))
+    : 0;
+  // Sections grouped by part (for per-part tables)
+  const secPartMap = new Map<string, SectionAssessment[]>();
+  for (const s of (section_responses ?? [])) {
+    const { part } = parseSectionKey(s.section_key);
+    if (!secPartMap.has(part)) secPartMap.set(part, []);
+    secPartMap.get(part)!.push(s);
+  }
+  const secSortedParts = [...secPartMap.entries()].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
+  // Unassessed sections (in scope but not yet responded to)
+  const secAssessedKeys = new Set((section_responses ?? []).map(s => s.section_key));
+  const secUnassessedList = (section_scope ?? []).filter(s => !secAssessedKeys.has(s.section_key));
 
   // Compliance percentages (of total applicable provisions)
   const pct = (n: number) => totalCount > 0 ? Math.round((n / totalCount) * 100) : 0;
@@ -699,6 +752,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Requirement</Text>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 2 }}>Proposal</Text>
                 <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 1 }}>Status</Text>
+                <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', padding: 4, flex: 3 }}>Source</Text>
               </View>
               {lep_assessable_standards.map((std, i) => (
                 <View key={i} style={{ flexDirection: 'row', borderBottom: i < lep_assessable_standards.length - 1 ? '1pt solid #f3f4f6' : undefined }}>
@@ -711,6 +765,7 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
                   }}>
                     {std.status === 'pending' ? 'Pending' : std.status === 'complies' ? 'Complies' : std.status === 'varies' ? 'Varies' : std.status}
                   </Text>
+                  <Text style={{ fontSize: 7, color: '#6b7280', padding: 4, flex: 3, fontStyle: 'italic' }}>{std.source ?? ''}</Text>
                 </View>
               ))}
             </View>
@@ -743,215 +798,366 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           </Text>
         )}
 
-        {/* ---- Assessment status summary ---- */}
-        <View style={{ border: '1pt solid #e5e7eb', marginBottom: 14 }}>
-          {/* Compliance rate banner */}
-          {totalCount > 0 && (
-            <View style={{ backgroundColor: assessedPct === 100 ? '#f0fdf4' : '#fffbeb', padding: '6 8', borderBottom: '1pt solid #e5e7eb', flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: assessedPct === 100 ? '#166534' : '#92400e' }}>
-                {totalCount} applicable provisions | {assessedPct}% assessed
-              </Text>
-              {annotatedCount > 0 && (
-                <Text style={{ fontSize: 8, color: '#374151' }}>
-                  Complies {compliesPct}% | Varies {variesPct}% | N/A {naPct}%
+        {useSectionModel ? (
+          /* ================================================================
+             SECTION-LEVEL DCP ASSESSMENT (new model)
+             Assessment unit = DCP section; provisions are reference text only.
+             ================================================================ */
+          <>
+            {/* Summary table */}
+            <View style={{ border: '1pt solid #e5e7eb', marginBottom: 14 }}>
+              <View style={{ backgroundColor: secAssessedPct === 100 ? '#f0fdf4' : '#fffbeb', padding: '6 8', borderBottom: '1pt solid #e5e7eb', flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: secAssessedPct === 100 ? '#166534' : '#92400e' }}>
+                  {secScopeTotal} DCP sections in scope | {secAssessedPct}% assessed
                 </Text>
+                {secAssessedTotal > 0 && (
+                  <Text style={{ fontSize: 8, color: '#374151' }}>
+                    Complies {secComplies.length} | Varies {secVaries.length} | N/A {secNA.length}{secFlagged.length > 0 ? ` | Flagged ${secFlagged.length}` : ''}
+                  </Text>
+                )}
+              </View>
+              <View style={{ backgroundColor: '#f3f4f6', flexDirection: 'row', borderBottom: '1pt solid #e5e7eb', padding: '4 8' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Status</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Sections</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3, marginLeft: 8 }}>Notes</Text>
+              </View>
+              {/* Varies */}
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: secVaries.length > 0 ? '#fffbeb' : '#ffffff' }}>
+                <Text style={{ fontSize: 8, color: '#d97706', fontFamily: 'Helvetica-Bold', flex: 2 }}>Requires attention (Varies)</Text>
+                <Text style={{ fontSize: 8, color: '#d97706', flex: 1, textAlign: 'right' }}>{secVaries.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {secVaries.length > 0 ? 'Sections where the development does not fully comply — justification required.' : 'No sections marked as Varies.'}
+                </Text>
+              </View>
+              {/* Complies */}
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+                <Text style={{ fontSize: 8, color: '#15803d', fontFamily: 'Helvetica-Bold', flex: 2 }}>Complies</Text>
+                <Text style={{ fontSize: 8, color: '#15803d', flex: 1, textAlign: 'right' }}>{secComplies.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {secComplies.length > 0 ? 'Sections assessed as complying with the applicable controls.' : 'No sections confirmed as complying.'}
+                </Text>
+              </View>
+              {/* N/A */}
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+                <Text style={{ fontSize: 8, color: '#6b7280', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable</Text>
+                <Text style={{ fontSize: 8, color: '#6b7280', flex: 1, textAlign: 'right' }}>{secNA.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {secNA.length > 0 ? 'Sections assessed as not applicable to this proposal.' : 'No sections assessed as not applicable.'}
+                </Text>
+              </View>
+              {/* Flagged */}
+              {secFlagged.length > 0 && (
+                <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: '#fef2f2' }}>
+                  <Text style={{ fontSize: 8, color: '#dc2626', fontFamily: 'Helvetica-Bold', flex: 2 }}>Flagged for review</Text>
+                  <Text style={{ fontSize: 8, color: '#dc2626', flex: 1, textAlign: 'right' }}>{secFlagged.length}</Text>
+                  <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>Requires further review or referral before lodgement.</Text>
+                </View>
               )}
-            </View>
-          )}
-          {/* Header row */}
-          <View style={{ backgroundColor: '#f3f4f6', flexDirection: 'row', borderBottom: '1pt solid #e5e7eb', padding: '4 8' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Status</Text>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Provisions</Text>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3, marginLeft: 8 }}>Notes</Text>
-          </View>
-          {/* Varies row */}
-          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: variesProvisions.length > 0 ? '#fffbeb' : '#ffffff' }}>
-            <Text style={{ fontSize: 8, color: '#d97706', fontFamily: 'Helvetica-Bold', flex: 2 }}>Requires attention (Varies)</Text>
-            <Text style={{ fontSize: 8, color: '#d97706', flex: 1, textAlign: 'right' }}>{variesProvisions.length}</Text>
-            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
-              {variesProvisions.length > 0
-                ? 'Development may not fully comply — justification required. See section 6.1.'
-                : 'No provisions marked as Varies — either all assessed as compliant or not yet reviewed.'}
-            </Text>
-          </View>
-          {/* Complies row */}
-          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
-            <Text style={{ fontSize: 8, color: '#15803d', fontFamily: 'Helvetica-Bold', flex: 2 }}>Complies</Text>
-            <Text style={{ fontSize: 8, color: '#15803d', flex: 1, textAlign: 'right' }}>{compliesProvisions.length}</Text>
-            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
-              {compliesProvisions.length > 0
-                ? 'Assessed as compliant by the applicant. See section 6.2.'
-                : 'No provisions confirmed compliant — assessment may be incomplete.'}
-            </Text>
-          </View>
-          {/* N/A manual row */}
-          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
-            <Text style={{ fontSize: 8, color: '#6b7280', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (planner)</Text>
-            <Text style={{ fontSize: 8, color: '#6b7280', flex: 1, textAlign: 'right' }}>{naManualProvisions.length}</Text>
-            <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
-              {naManualProvisions.length > 0
-                ? 'Manually assessed as not applicable to this proposal. See section 6.3.'
-                : 'No provisions manually assessed as not applicable.'}
-            </Text>
-          </View>
-          {/* N/A intake row */}
-          <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: '#f9fafb' }}>
-            <Text style={{ fontSize: 8, color: '#9ca3af', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (intake triage)</Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{naIntakeProvisions.length}</Text>
-            <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, marginLeft: 8 }}>
-              {naIntakeProvisions.length > 0
-                ? 'Auto-excluded: applicability trigger confirmed absent in intake. See section 6.4 and cover page.'
-                : intake_answers
-                  ? 'Structured intake was completed but no provisions were excluded by the answers provided.'
-                  : 'Structured intake was not completed — no automatic exclusions were applied.'}
-            </Text>
-          </View>
-          {/* Unannotated row */}
-          <View style={{ flexDirection: 'row', padding: '3 8', backgroundColor: unannotatedCount > 0 ? '#fef3c7' : '#f0fdf4' }}>
-            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', flex: 2, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
-              {unannotatedCount > 0 ? '⚠ Not yet assessed' : '✓ Fully assessed'}
-            </Text>
-            <Text style={{ fontSize: 8, flex: 1, textAlign: 'right', color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>{unannotatedCount}</Text>
-            <Text style={{ fontSize: 7, flex: 3, marginLeft: 8, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
-              {unannotatedCount > 0
-                ? `${unannotatedCount} of ${totalCount} applicable provisions have not been annotated. This document is incomplete and must not be lodged until all provisions are addressed.`
-                : 'All applicable provisions have been assessed.'}
-            </Text>
-          </View>
-        </View>
-
-        {/* ---- 6.1 Provisions Requiring Attention (varies) ---- */}
-        {variesGroups.length > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#d97706', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d97706' }}>
-              {`6.1 Provisions Requiring Attention — Varies (${variesProvisions.length})`}
-            </Text>
-            <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 8 }}>
-              These provisions have been identified as varying from the DCP standard. Each requires a planning response addressing how the variation is justified or will be resolved.
-            </Text>
-            {variesGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
-            ))}
-          </View>
-        ) : (
-          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.1 Provisions Requiring Attention — Varies (0)</Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been marked as Varies.</Text>
-          </View>
-        )}
-
-        {/* ---- 6.2 Complying Provisions ---- */}
-        {compliesGroups.length > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#15803d', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #15803d' }}>
-              {`6.2 Complying Provisions (${compliesProvisions.length})`}
-            </Text>
-            {compliesGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
-            ))}
-          </View>
-        ) : (
-          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.2 Complying Provisions (0)</Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been confirmed as complying.</Text>
-          </View>
-        )}
-
-        {/* ---- 6.3 Not Applicable — Planner Assessment ---- */}
-        {naManualGroups.length > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #9ca3af' }}>
-              {`6.3 Not Applicable — Planner Assessment (${naManualProvisions.length})`}
-            </Text>
-            <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6 }}>
-              These provisions have been assessed by the applicant as not applicable to the proposed development.
-            </Text>
-            {naManualGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
-            ))}
-          </View>
-        ) : (
-          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.3 Not Applicable — Planner Assessment (0)</Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions were manually assessed as not applicable.</Text>
-          </View>
-        )}
-
-        {/* ---- 6.4 Not Applicable — Excluded by Intake Triage ---- */}
-        {naIntakeGroups.length > 0 ? (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
-              {`6.4 Not Applicable — Excluded by Intake Triage (${naIntakeProvisions.length})`}
-            </Text>
-            <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
-              These provisions were automatically excluded because their applicability trigger was confirmed as absent in the structured intake completed by the applicant. The confirmed inputs are recorded in the "PROPOSAL CHARACTERISTICS — CONFIRMED INPUTS" table on the cover page (page 1) of this document. A provision was only excluded when its trigger was factually impossible given the confirmed answers — answering "Unknown" retains the provision for manual assessment.
-            </Text>
-            {naIntakeGroups.map((group, idx) => (
-              <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
-            ))}
-          </View>
-        ) : (
-          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 2 }}>6.4 Not Applicable — Excluded by Intake Triage (0)</Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
-              {intake_answers
-                ? 'Structured intake was completed. No provisions were automatically excluded by the answers provided — all provisions were retained for manual assessment.'
-                : 'Structured intake was not completed for this assessment. No automatic exclusions were applied.'}
-            </Text>
-          </View>
-        )}
-
-        {/* ---- Ancillary scope note — works selected but no DCP provisions for dev type ---- */}
-        {ancillaryWorksWithNoProvisions.length > 0 && (
-          <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
-            <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
-              Ancillary Works — No DCP Provisions for Development Type
-            </Text>
-            <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
-              The following ancillary works are included in the proposal scope. The applicable DCP does not contain provisions specifically addressing these work types for the nominated development type. No DCP assessment is required for these categories — they are noted here for completeness of the scope record.
-            </Text>
-            <View style={{ flexDirection: 'row', borderBottom: '0.5pt solid #d1d5db', paddingBottom: 3, marginBottom: 3 }}>
-              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 2 }}>Ancillary Work</Text>
-              <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 3 }}>Basis</Text>
-            </View>
-            {ancillaryWorksWithNoProvisions.map(w => (
-              <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2, borderBottom: '0.5pt solid #f3f4f6' }}>
-                <Text style={{ fontSize: 7, color: '#6b7280', flex: 2 }}>{w.label}</Text>
-                <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3 }}>DCP contains no provisions for this work type under the nominated development type</Text>
+              {/* Unassessed */}
+              <View style={{ flexDirection: 'row', padding: '3 8', backgroundColor: secUnassessedTotal > 0 ? '#fef3c7' : '#f0fdf4' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', flex: 2, color: secUnassessedTotal > 0 ? '#92400e' : '#166534' }}>
+                  {secUnassessedTotal > 0 ? 'Not yet assessed' : '✓ Fully assessed'}
+                </Text>
+                <Text style={{ fontSize: 8, flex: 1, textAlign: 'right', color: secUnassessedTotal > 0 ? '#92400e' : '#166534' }}>{secUnassessedTotal}</Text>
+                <Text style={{ fontSize: 7, flex: 3, marginLeft: 8, color: secUnassessedTotal > 0 ? '#92400e' : '#166534' }}>
+                  {secUnassessedTotal > 0
+                    ? `${secUnassessedTotal} of ${secScopeTotal} sections not yet assessed. Document is incomplete.`
+                    : 'All sections in scope have been assessed.'}
+                </Text>
               </View>
-            ))}
-          </View>
-        )}
+            </View>
 
-        {/* ---- 6.5 Provisions Requiring Further Assessment ---- */}
-        {unannotatedProvisions.length > 0 && (
-          <View style={{ marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #fed7aa' }}>
-              {`6.5 Provisions Requiring Further Assessment (${unannotatedProvisions.length})`}
-            </Text>
-            <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 6 }}>
-              The following provisions have not yet been assessed. This document is incomplete until all provisions below have been addressed.
-            </Text>
-            <View style={{ border: '1pt solid #e5e7eb' }}>
-              <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 8' }}>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Section</Text>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3 }}>Provision (first line)</Text>
-                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Source</Text>
-              </View>
-              {unannotatedProvisions.map((p, idx) => {
-                const firstLine = (p.provision_text || '').split('\n')[0].substring(0, 120);
-                const section = p.v2_dcp_part || '—';
-                const source = p.pdf_printed_page ? `PDF p.${p.pdf_printed_page}` : '';
-                return (
-                  <View key={p.id} style={{ flexDirection: 'row', borderBottom: idx < unannotatedProvisions.length - 1 ? '1pt solid #f3f4f6' : undefined, padding: '2 8', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
-                    <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{section}</Text>
-                    <Text style={{ fontSize: 7, color: '#6b7280', flex: 3 }}>{firstLine}{firstLine.length >= 120 ? '…' : ''}</Text>
-                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{source}</Text>
+            {/* Per-part section tables */}
+            {secSortedParts.map(([part, sections]) => {
+              const sortedSections = [...sections].sort((a, b) => {
+                const na = parseSectionKey(a.section_key).sectionNumber;
+                const nb = parseSectionKey(b.section_key).sectionNumber;
+                return na.localeCompare(nb, undefined, { numeric: true });
+              });
+              return (
+                <View key={part} style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: '#1f2937', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
+                    {part}
+                  </Text>
+                  <View style={{ border: '1pt solid #e5e7eb' }}>
+                    {/* Header */}
+                    <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 6' }}>
+                      <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1 }}>Section</Text>
+                      <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Title</Text>
+                      <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1 }}>Status</Text>
+                      <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 4 }}>Compliance Narrative</Text>
+                    </View>
+                    {sortedSections.map((sec, idx) => {
+                      const { sectionNumber } = parseSectionKey(sec.section_key);
+                      // "general" is the internal fallback for unnumbered provisions — suppress it in PDF
+                      const displaySectionNumber = sectionNumber === 'general' ? '—' : sectionNumber;
+                      const { label, color } = sectionStatusMeta(sec.status);
+                      return (
+                        <View key={sec.section_key} style={{ borderBottom: idx < sortedSections.length - 1 ? '1pt solid #f3f4f6' : undefined, backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                          <View style={{ flexDirection: 'row', padding: '3 6' }}>
+                            <Text style={{ fontSize: 7, color: '#374151', flex: 1 }}>{displaySectionNumber}</Text>
+                            <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{truncateForPdf(sec.section_title || '—', 80)}</Text>
+                            <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color, flex: 1 }}>{label}</Text>
+                            <Text style={{ fontSize: 7, color: sec.narrative ? '#374151' : '#9ca3af', flex: 4, fontStyle: sec.narrative ? 'normal' : 'italic' }}>
+                              {sec.narrative ? truncateForPdf(sec.narrative) : '[No narrative recorded]'}
+                            </Text>
+                          </View>
+                          {sec.key_provisions && sec.key_provisions.length > 0 && (
+                            <View style={{ paddingLeft: 10, paddingRight: 6, paddingBottom: 3, backgroundColor: '#f9fafb' }}>
+                              <Text style={{ fontSize: 6, color: '#6b7280', fontStyle: 'italic' }}>
+                                {'DCP: ' + sec.key_provisions.join(' / ')}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })}
                   </View>
-                );
-              })}
+                </View>
+              );
+            })}
+
+            {/* Ancillary scope note */}
+            {ancillaryWorksWithNoProvisions.length > 0 && (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
+                  Ancillary Works — No DCP Provisions for Development Type
+                </Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
+                  The following ancillary works are included in the proposal scope. The applicable DCP does not contain provisions specifically addressing these work types for the nominated development type.
+                </Text>
+                {ancillaryWorksWithNoProvisions.map(w => (
+                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2, borderBottom: '0.5pt solid #f3f4f6' }}>
+                    <Text style={{ fontSize: 7, color: '#6b7280', flex: 2 }}>{w.label}</Text>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3 }}>No DCP provisions for this work type under the nominated development type</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* 6.5 Unassessed sections */}
+            {secUnassessedList.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #fed7aa' }}>
+                  {`6.5 Sections Requiring Further Assessment (${secUnassessedList.length})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 6 }}>
+                  The following DCP sections have not yet been assessed. This document is incomplete until all sections below have been addressed.
+                </Text>
+                <View style={{ border: '1pt solid #e5e7eb' }}>
+                  <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 8' }}>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1 }}>Part</Text>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1 }}>Section</Text>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3 }}>Title</Text>
+                  </View>
+                  {secUnassessedList.map((s, idx) => {
+                    const { part, sectionNumber } = parseSectionKey(s.section_key);
+                    const displaySectionNumber = sectionNumber === 'general' ? '—' : sectionNumber;
+                    return (
+                      <View key={s.section_key} style={{ flexDirection: 'row', borderBottom: idx < secUnassessedList.length - 1 ? '1pt solid #f3f4f6' : undefined, padding: '2 8', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                        <Text style={{ fontSize: 7, color: '#374151', flex: 1 }}>{part}</Text>
+                        <Text style={{ fontSize: 7, color: '#374151', flex: 1 }}>{displaySectionNumber}</Text>
+                        <Text style={{ fontSize: 7, color: '#6b7280', flex: 3 }}>{s.section_title || '—'}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </>
+        ) : (
+          /* ================================================================
+             PROVISION-LEVEL DCP ASSESSMENT (legacy model — per-provision daResponses)
+             ================================================================ */
+          <>
+            {/* ---- Assessment status summary ---- */}
+            <View style={{ border: '1pt solid #e5e7eb', marginBottom: 14 }}>
+              {totalCount > 0 && (
+                <View style={{ backgroundColor: assessedPct === 100 ? '#f0fdf4' : '#fffbeb', padding: '6 8', borderBottom: '1pt solid #e5e7eb', flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: assessedPct === 100 ? '#166534' : '#92400e' }}>
+                    {totalCount} applicable provisions | {assessedPct}% assessed
+                  </Text>
+                  {annotatedCount > 0 && (
+                    <Text style={{ fontSize: 8, color: '#374151' }}>
+                      Complies {compliesPct}% | Varies {variesPct}% | N/A {naPct}%
+                    </Text>
+                  )}
+                </View>
+              )}
+              <View style={{ backgroundColor: '#f3f4f6', flexDirection: 'row', borderBottom: '1pt solid #e5e7eb', padding: '4 8' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Status</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Provisions</Text>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3, marginLeft: 8 }}>Notes</Text>
+              </View>
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: variesProvisions.length > 0 ? '#fffbeb' : '#ffffff' }}>
+                <Text style={{ fontSize: 8, color: '#d97706', fontFamily: 'Helvetica-Bold', flex: 2 }}>Requires attention (Varies)</Text>
+                <Text style={{ fontSize: 8, color: '#d97706', flex: 1, textAlign: 'right' }}>{variesProvisions.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {variesProvisions.length > 0 ? 'Development may not fully comply — justification required. See section 6.1.' : 'No provisions marked as Varies.'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+                <Text style={{ fontSize: 8, color: '#15803d', fontFamily: 'Helvetica-Bold', flex: 2 }}>Complies</Text>
+                <Text style={{ fontSize: 8, color: '#15803d', flex: 1, textAlign: 'right' }}>{compliesProvisions.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {compliesProvisions.length > 0 ? 'Assessed as compliant by the applicant. See section 6.2.' : 'No provisions confirmed compliant.'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8' }}>
+                <Text style={{ fontSize: 8, color: '#6b7280', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (planner)</Text>
+                <Text style={{ fontSize: 8, color: '#6b7280', flex: 1, textAlign: 'right' }}>{naManualProvisions.length}</Text>
+                <Text style={{ fontSize: 7, color: '#6b7280', flex: 3, marginLeft: 8 }}>
+                  {naManualProvisions.length > 0 ? 'Manually assessed as not applicable. See section 6.3.' : 'No provisions manually assessed as not applicable.'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', borderBottom: '1pt solid #f3f4f6', padding: '3 8', backgroundColor: '#f9fafb' }}>
+                <Text style={{ fontSize: 8, color: '#9ca3af', fontFamily: 'Helvetica-Bold', flex: 2 }}>Not applicable (intake triage)</Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{naIntakeProvisions.length}</Text>
+                <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3, marginLeft: 8 }}>
+                  {naIntakeProvisions.length > 0
+                    ? 'Auto-excluded: applicability trigger absent in intake. See section 6.4 and cover page.'
+                    : intake_answers ? 'Intake completed — no provisions auto-excluded.' : 'Intake not completed.'}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', padding: '3 8', backgroundColor: unannotatedCount > 0 ? '#fef3c7' : '#f0fdf4' }}>
+                <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', flex: 2, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
+                  {unannotatedCount > 0 ? '⚠ Not yet assessed' : '✓ Fully assessed'}
+                </Text>
+                <Text style={{ fontSize: 8, flex: 1, textAlign: 'right', color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>{unannotatedCount}</Text>
+                <Text style={{ fontSize: 7, flex: 3, marginLeft: 8, color: unannotatedCount > 0 ? '#92400e' : '#166534' }}>
+                  {unannotatedCount > 0
+                    ? `${unannotatedCount} of ${totalCount} provisions not annotated. Document is incomplete.`
+                    : 'All applicable provisions have been assessed.'}
+                </Text>
+              </View>
             </View>
-          </View>
+
+            {variesGroups.length > 0 ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#d97706', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d97706' }}>
+                  {`6.1 Provisions Requiring Attention — Varies (${variesProvisions.length})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 8 }}>
+                  These provisions have been identified as varying from the DCP standard. Each requires a planning response addressing how the variation is justified or will be resolved.
+                </Text>
+                {variesGroups.map((group, idx) => (
+                  <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
+                ))}
+              </View>
+            ) : (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.1 Provisions Requiring Attention — Varies (0)</Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been marked as Varies.</Text>
+              </View>
+            )}
+
+            {compliesGroups.length > 0 ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#15803d', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #15803d' }}>
+                  {`6.2 Complying Provisions (${compliesProvisions.length})`}
+                </Text>
+                {compliesGroups.map((group, idx) => (
+                  <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
+                ))}
+              </View>
+            ) : (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.2 Complying Provisions (0)</Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions have been confirmed as complying.</Text>
+              </View>
+            )}
+
+            {naManualGroups.length > 0 ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #9ca3af' }}>
+                  {`6.3 Not Applicable — Planner Assessment (${naManualProvisions.length})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 6 }}>
+                  These provisions have been assessed by the applicant as not applicable to the proposed development.
+                </Text>
+                {naManualGroups.map((group, idx) => (
+                  <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
+                ))}
+              </View>
+            ) : (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#6b7280', marginBottom: 2 }}>6.3 Not Applicable — Planner Assessment (0)</Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>No provisions were manually assessed as not applicable.</Text>
+              </View>
+            )}
+
+            {naIntakeGroups.length > 0 ? (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #d1d5db' }}>
+                  {`6.4 Not Applicable — Excluded by Intake Triage (${naIntakeProvisions.length})`}
+                </Text>
+                <Text style={{ fontSize: 7, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
+                  These provisions were automatically excluded because their applicability trigger was confirmed as absent in the structured intake completed by the applicant. The confirmed inputs are recorded in the cover page table.
+                </Text>
+                {naIntakeGroups.map((group, idx) => (
+                  <ProvisionTable key={group.topic} group={group} sectionNumber={idx + 1} isFirst={idx === 0} councilPdfUrl={council_pdf_url} />
+                ))}
+              </View>
+            ) : (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 2 }}>6.4 Not Applicable — Excluded by Intake Triage (0)</Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+                  {intake_answers ? 'Intake completed — no provisions auto-excluded.' : 'Intake not completed — no automatic exclusions applied.'}
+                </Text>
+              </View>
+            )}
+
+            {ancillaryWorksWithNoProvisions.length > 0 && (
+              <View style={{ marginBottom: 12, padding: '6 8', backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb' }}>
+                <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: '#9ca3af', marginBottom: 3 }}>
+                  Ancillary Works — No DCP Provisions for Development Type
+                </Text>
+                <Text style={{ fontSize: 8, color: '#9ca3af', marginBottom: 6, fontStyle: 'italic' }}>
+                  The following ancillary works are included in the proposal scope. The applicable DCP does not contain provisions specifically addressing these work types for the nominated development type.
+                </Text>
+                <View style={{ flexDirection: 'row', borderBottom: '0.5pt solid #d1d5db', paddingBottom: 3, marginBottom: 3 }}>
+                  <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 2 }}>Ancillary Work</Text>
+                  <Text style={{ fontSize: 7, fontFamily: 'Helvetica-Bold', color: '#6b7280', flex: 3 }}>Basis</Text>
+                </View>
+                {ancillaryWorksWithNoProvisions.map(w => (
+                  <View key={w.value} style={{ flexDirection: 'row', paddingVertical: 2, borderBottom: '0.5pt solid #f3f4f6' }}>
+                    <Text style={{ fontSize: 7, color: '#6b7280', flex: 2 }}>{w.label}</Text>
+                    <Text style={{ fontSize: 7, color: '#9ca3af', flex: 3 }}>DCP contains no provisions for this work type under the nominated development type</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {unannotatedProvisions.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#92400e', marginBottom: 4, paddingBottom: 3, borderBottom: '1pt solid #fed7aa' }}>
+                  {`6.5 Provisions Requiring Further Assessment (${unannotatedProvisions.length})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: '#92400e', marginBottom: 6 }}>
+                  The following provisions have not yet been assessed. This document is incomplete until all provisions below have been addressed.
+                </Text>
+                <View style={{ border: '1pt solid #e5e7eb' }}>
+                  <View style={{ flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottom: '1pt solid #e5e7eb', padding: '3 8' }}>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 2 }}>Section</Text>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 3 }}>Provision (first line)</Text>
+                    <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#374151', flex: 1, textAlign: 'right' }}>Source</Text>
+                  </View>
+                  {unannotatedProvisions.map((p, idx) => {
+                    const firstLine = (p.provision_text || '').split('\n')[0].substring(0, 120);
+                    const section = p.v2_dcp_part || '—';
+                    const source = p.pdf_printed_page ? `PDF p.${p.pdf_printed_page}` : '';
+                    return (
+                      <View key={p.id} style={{ flexDirection: 'row', borderBottom: idx < unannotatedProvisions.length - 1 ? '1pt solid #f3f4f6' : undefined, padding: '2 8', backgroundColor: idx % 2 === 0 ? '#ffffff' : '#fafafa' }}>
+                        <Text style={{ fontSize: 7, color: '#374151', flex: 2 }}>{section}</Text>
+                        <Text style={{ fontSize: 7, color: '#6b7280', flex: 3 }}>{firstLine}{firstLine.length >= 120 ? '…' : ''}</Text>
+                        <Text style={{ fontSize: 7, color: '#9ca3af', flex: 1, textAlign: 'right' }}>{source}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+          </>
         )}
 
         {/* ---- Schedule B — Non-Applicable DCP Chapters/Topics ---- */}
@@ -1014,11 +1220,118 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
       </Page>
 
       {/* ================================================================
+          PAGE — Section 7: Environmental Impact Assessment
+          ================================================================ */}
+      <Page size="A4" style={styles.page}>
+        <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 6, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
+          7. Environmental Impact Assessment
+        </Text>
+        <Text style={{ fontSize: 8, color: '#6b7280', marginBottom: 12, fontStyle: 'italic' }}>
+          Required under EP&A Act 1979 s4.15(1)(b) — likely impacts of the development on the natural and built environments, and social/economic impacts.
+        </Text>
+
+        {/* 7.1 Natural Environment */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1f2937', marginBottom: 6, paddingBottom: 3, borderBottom: '1pt solid #e5e7eb' }}>
+            7.1 Natural Environment
+          </Text>
+          {/* Auto-populated constraint flags */}
+          {(environmental_constraints?.flood_prone ||
+            environmental_constraints?.terrestrial_biodiversity ||
+            environmental_constraints?.contaminated_land ||
+            environmental_constraints?.bushfire_prone ||
+            environmental_constraints?.drinking_water_catchment ||
+            planning_portal_layers?.tree_canopy_coverage_class) && (
+            <View style={{ marginBottom: 6, padding: 8, backgroundColor: '#fefce8', border: '1pt solid #fef08a', borderRadius: 2 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#713f12', marginBottom: 4 }}>Constraint flags — address in assessment below:</Text>
+              {environmental_constraints?.flood_prone && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Flood prone land — stormwater management and flood impact must be addressed</Text>
+              )}
+              {environmental_constraints?.bushfire_prone && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Bushfire prone land — compliance with Planning for Bushfire Protection 2019 required</Text>
+              )}
+              {environmental_constraints?.contaminated_land && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Contaminated land in vicinity — site contamination assessment may be required</Text>
+              )}
+              {environmental_constraints?.terrestrial_biodiversity && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Terrestrial biodiversity map — biodiversity values assessment may be required</Text>
+              )}
+              {environmental_constraints?.drinking_water_catchment && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Drinking water catchment — development must not adversely impact water quality</Text>
+              )}
+              {planning_portal_layers?.tree_canopy_coverage_class && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Tree canopy: {planning_portal_layers.tree_canopy_coverage_class} — tree impacts must be assessed by a qualified arborist</Text>
+              )}
+            </View>
+          )}
+          <View style={{ padding: 10, backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', borderRadius: 2, minHeight: 60 }}>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+              [Consultant to address: stormwater runoff and drainage impacts; tree removal/retention and canopy impacts (arborist report if required); biodiversity impacts; soil and water quality; flood risk management; any remediation requirements for contaminated land.]
+            </Text>
+          </View>
+        </View>
+
+        {/* 7.2 Built Environment */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1f2937', marginBottom: 6, paddingBottom: 3, borderBottom: '1pt solid #e5e7eb' }}>
+            7.2 Built Environment
+          </Text>
+          {(heritage_status.in_hca || heritage_status.heritage_item) && (
+            <View style={{ marginBottom: 6, padding: 8, backgroundColor: '#fefce8', border: '1pt solid #fef08a', borderRadius: 2 }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: '#713f12', marginBottom: 2 }}>Heritage context:</Text>
+              {heritage_status.heritage_item && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Listed heritage item — built form impacts on heritage significance must be addressed</Text>
+              )}
+              {heritage_status.in_hca && !heritage_status.heritage_item && (
+                <Text style={{ fontSize: 8, color: '#78350f' }}>• Heritage conservation area ({heritage_status.hca_name || 'HCA'}) — consistency with character and streetscape must be demonstrated</Text>
+              )}
+            </View>
+          )}
+          <View style={{ padding: 10, backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', borderRadius: 2, minHeight: 60 }}>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+              [Consultant to address: bulk, scale and massing relative to adjoining development; solar access and overshadowing impacts on neighbours; visual privacy (overlooking); streetscape character and context; impacts on heritage significance (if applicable); views and view sharing.]
+            </Text>
+          </View>
+        </View>
+
+        {/* 7.3 Social and Economic Impacts */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1f2937', marginBottom: 6, paddingBottom: 3, borderBottom: '1pt solid #e5e7eb' }}>
+            7.3 Social and Economic Impacts
+          </Text>
+          <View style={{ padding: 10, backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', borderRadius: 2, minHeight: 40 }}>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+              [Consultant to address: contribution to housing supply; employment impacts (if applicable); amenity impacts on adjoining properties; traffic and parking impacts; any displacement of existing uses.]
+            </Text>
+          </View>
+        </View>
+
+        {/* 7.4 Site Suitability */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontFamily: 'Helvetica-Bold', color: '#1f2937', marginBottom: 6, paddingBottom: 3, borderBottom: '1pt solid #e5e7eb' }}>
+            7.4 Site Suitability
+          </Text>
+          <View style={{ padding: 10, backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', borderRadius: 2, minHeight: 40 }}>
+            <Text style={{ fontSize: 8, color: '#9ca3af', fontStyle: 'italic' }}>
+              [Consultant to address: suitability of the site for the proposed development given its zoning ({property.zone}), physical characteristics, and constraints identified above. Confirm the site can accommodate the proposed development without unacceptable impacts.]
+            </Text>
+          </View>
+        </View>
+
+        {/* ---- Footer ---- */}
+        <View style={styles.footer}>
+          <Text style={styles.footerLeft}>{footerRef}</Text>
+          <Text style={styles.footerCenter}>{property.address}</Text>
+          <Text style={styles.footerRight}>Environmental Impact Assessment</Text>
+        </View>
+      </Page>
+
+      {/* ================================================================
           FINAL PAGE — Conclusion + Report Information
           ================================================================ */}
       <Page size="A4" style={styles.page}>
         <Text style={{ fontSize: 14, fontFamily: 'Helvetica-Bold', color: '#0f766e', marginBottom: 12, paddingBottom: 6, borderBottom: '2pt solid #0f766e' }}>
-          7. Conclusion
+          8. Conclusion
         </Text>
 
         {/* Auto-generated conclusion from assessment data */}
@@ -1026,20 +1339,42 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
             {`This Statement of Environmental Effects has assessed the proposed development at ${property.address} against the applicable planning controls under the Environmental Planning and Assessment Act 1979 (NSW).`}
           </Text>
-          {totalCount > 0 && annotatedCount > 0 && (
-            <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
-              {`Of the ${totalCount} applicable DCP provisions, ${compliesProvisions.length} (${compliesPct}%) have been assessed as complying with the relevant controls${variesProvisions.length > 0 ? `, ${variesProvisions.length} (${variesPct}%) require further consideration as the development varies from the applicable standard` : ''}${naManualProvisions.length + naIntakeProvisions.length > 0 ? `, and ${naManualProvisions.length + naIntakeProvisions.length} (${naPct}%) are not applicable to the proposed works` : ''}.`}
-            </Text>
-          )}
-          {variesProvisions.length > 0 && (
-            <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
-              {`The ${variesProvisions.length} provision${variesProvisions.length !== 1 ? 's' : ''} identified as varying from the DCP standard${variesProvisions.length !== 1 ? ' are' : ' is'} detailed in Section 6.1 of this report. Each variation should be assessed on its planning merit having regard to the objectives of the applicable control.`}
-            </Text>
-          )}
-          {unannotatedCount > 0 && (
-            <Text style={{ fontSize: 9, color: '#92400e', lineHeight: 1.5, marginBottom: 6 }}>
-              {`Note: ${unannotatedCount} provision${unannotatedCount !== 1 ? 's have' : ' has'} not yet been assessed. This document is incomplete and must not be lodged until all provisions in Section 6.5 have been addressed.`}
-            </Text>
+          {useSectionModel ? (
+            <>
+              {secScopeTotal > 0 && secAssessedTotal > 0 && (
+                <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`Of the ${secScopeTotal} DCP sections in scope, ${secComplies.length} have been assessed as complying with the applicable controls${secVaries.length > 0 ? `, ${secVaries.length} require${secVaries.length === 1 ? 's' : ''} further consideration as the development varies from the applicable standard` : ''}${secNA.length > 0 ? `, and ${secNA.length} are not applicable to the proposed works` : ''}${secFlagged.length > 0 ? `. ${secFlagged.length} section${secFlagged.length !== 1 ? 's have' : ' has'} been flagged for further review` : ''}.`}
+                </Text>
+              )}
+              {secVaries.length > 0 && (
+                <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`The ${secVaries.length} section${secVaries.length !== 1 ? 's' : ''} identified as varying from the DCP standard should be assessed on planning merit having regard to the objectives of the applicable controls.`}
+                </Text>
+              )}
+              {secUnassessedTotal > 0 && (
+                <Text style={{ fontSize: 9, color: '#92400e', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`Note: ${secUnassessedTotal} DCP section${secUnassessedTotal !== 1 ? 's have' : ' has'} not yet been assessed. This document is incomplete and must not be lodged until all sections in Section 6.5 have been addressed.`}
+                </Text>
+              )}
+            </>
+          ) : (
+            <>
+              {totalCount > 0 && annotatedCount > 0 && (
+                <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`Of the ${totalCount} applicable DCP provisions, ${compliesProvisions.length} (${compliesPct}%) have been assessed as complying with the relevant controls${variesProvisions.length > 0 ? `, ${variesProvisions.length} (${variesPct}%) require further consideration as the development varies from the applicable standard` : ''}${naManualProvisions.length + naIntakeProvisions.length > 0 ? `, and ${naManualProvisions.length + naIntakeProvisions.length} (${naPct}%) are not applicable to the proposed works` : ''}.`}
+                </Text>
+              )}
+              {variesProvisions.length > 0 && (
+                <Text style={{ fontSize: 9, color: '#1f2937', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`The ${variesProvisions.length} provision${variesProvisions.length !== 1 ? 's' : ''} identified as varying from the DCP standard${variesProvisions.length !== 1 ? ' are' : ' is'} detailed in Section 6.1 of this report. Each variation should be assessed on its planning merit having regard to the objectives of the applicable control.`}
+                </Text>
+              )}
+              {unannotatedCount > 0 && (
+                <Text style={{ fontSize: 9, color: '#92400e', lineHeight: 1.5, marginBottom: 6 }}>
+                  {`Note: ${unannotatedCount} provision${unannotatedCount !== 1 ? 's have' : ' has'} not yet been assessed. This document is incomplete and must not be lodged until all provisions in Section 6.5 have been addressed.`}
+                </Text>
+              )}
+            </>
           )}
         </View>
         <View style={{ backgroundColor: '#f9fafb', border: '1pt solid #e5e7eb', padding: 12, marginBottom: 16 }}>
@@ -1054,13 +1389,28 @@ export function SEEDocument({ data }: { data: SEEDocumentData }) {
           <View style={styles.dataTable}>
             <DataRow label="Generated:" value={generated_date} />
             <DataRow label="Property:" value={property.address} />
-            <DataRow label="Total applicable provisions:" value={`${totalCount}`} />
-            <DataRow label="Annotated (Varies + Complies + N/A):" value={`${annotatedCount}`} />
-            <DataRow label="  — Requires attention (Varies):" value={`${variesProvisions.length}`} />
-            <DataRow label="  — Complies:" value={`${compliesProvisions.length}`} />
-            <DataRow label="  — Not applicable (planner):" value={`${naManualProvisions.length}`} />
-            <DataRow label="  — Not applicable (intake triage):" value={`${naIntakeProvisions.length}`} />
-            <DataRow label="Not yet assessed:" value={unannotatedCount > 0 ? `${unannotatedCount} — INCOMPLETE` : '0 — fully assessed'} />
+            {useSectionModel ? (
+              <>
+                <DataRow label="Assessment model:" value="Section-level (DCP sections as unit of assessment)" />
+                <DataRow label="DCP sections in scope:" value={`${secScopeTotal}`} />
+                <DataRow label="Sections assessed:" value={`${secAssessedTotal}`} />
+                <DataRow label="  — Requires attention (Varies):" value={`${secVaries.length}`} />
+                <DataRow label="  — Complies:" value={`${secComplies.length}`} />
+                <DataRow label="  — Not applicable:" value={`${secNA.length}`} />
+                {secFlagged.length > 0 && <DataRow label="  — Flagged for review:" value={`${secFlagged.length}`} />}
+                <DataRow label="Sections not yet assessed:" value={secUnassessedTotal > 0 ? `${secUnassessedTotal} — INCOMPLETE` : '0 — fully assessed'} />
+              </>
+            ) : (
+              <>
+                <DataRow label="Total applicable provisions:" value={`${totalCount}`} />
+                <DataRow label="Annotated (Varies + Complies + N/A):" value={`${annotatedCount}`} />
+                <DataRow label="  — Requires attention (Varies):" value={`${variesProvisions.length}`} />
+                <DataRow label="  — Complies:" value={`${compliesProvisions.length}`} />
+                <DataRow label="  — Not applicable (planner):" value={`${naManualProvisions.length}`} />
+                <DataRow label="  — Not applicable (intake triage):" value={`${naIntakeProvisions.length}`} />
+                <DataRow label="Not yet assessed:" value={unannotatedCount > 0 ? `${unannotatedCount} — INCOMPLETE` : '0 — fully assessed'} />
+              </>
+            )}
             <DataRow label="Structured intake:" value={intake_answers ? 'Completed' : 'Not completed — no automatic exclusions applied'} />
             {(chapter_assertions?.length ?? 0) > 0 && (
               <DataRow label="Schedule B — dismissed chapters:" value={`${chapter_assertions!.length} DCP chapter${chapter_assertions!.length !== 1 ? 's' : ''} asserted not applicable`} />
