@@ -45,12 +45,16 @@ interface TocSidebarProps {
   /** DA mode — enables chapter dismiss buttons */
   isDaMode?: boolean;
   chapterAssertions?: Record<string, string>;
+  /** Chapters auto-dismissed because they have zero provisions for the selected dev type */
+  autoDismissedChapters?: Set<string>;
   onAssertChapter?: (chapterKey: string, reason: string | null) => Promise<void>;
   chapterProgress?: Record<string, { assessed: number; total: number }>;
   /** Selected dev type slug — enables suggestion mode when set */
   devType?: string;
   /** Human-readable dev type label for dismiss reasons */
   devTypeLabel?: string;
+  /** LGA-specific term for the top structural level — "part" or "chapter" */
+  topLevelTerm?: 'part' | 'chapter';
 }
 
 export function TocSidebar({
@@ -64,10 +68,12 @@ export function TocSidebar({
   formerCouncil,
   isDaMode,
   chapterAssertions,
+  autoDismissedChapters,
   onAssertChapter,
   chapterProgress,
   devType,
   devTypeLabel,
+  topLevelTerm = 'part',
 }: TocSidebarProps) {
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
@@ -84,19 +90,25 @@ export function TocSidebar({
   };
 
   // Sort parts by a logical order
-  const sortedParts = Object.entries(tocStructure).sort((a, b) => {
+  const sortedParts = Object.entries(tocStructure).filter(([id]) => id !== 'Other').sort((a, b) => {
     const order = getPartOrder(a[0]);
     const orderB = getPartOrder(b[0]);
     return order - orderB;
   });
 
-  // Dev-type suggestion: chapters where dev_type_match_count === 0 and not already dismissed
+  // Infer parent-child relationships from part IDs (no hardcoding required)
+  const partParents = inferPartParents(sortedParts.map(([id]) => id));
+  const rootParts = sortedParts.filter(([id]) => !partParents[id]);
+  const childParts = (parentId: string) => sortedParts.filter(([id]) => partParents[id] === parentId);
+
+  // Dev-type suggestion: chapters where dev_type_match_count === 0 and not already dismissed (manual or auto)
   const suggestedDismissals = isDaMode && devType
     ? sortedParts
         .filter(([partId, part]) => {
-          if (chapterAssertions?.[partId]) return false; // already dismissed
+          if (chapterAssertions?.[partId]) return false; // already manually dismissed
+          if (autoDismissedChapters?.has(partId)) return false; // already auto-dismissed
           if (part.dev_type_match_count === undefined) return false; // no dev type stats
-          return part.dev_type_match_count === 0 && part.provision_count > 0;
+          return part.dev_type_match_count === 0 && (filteredPartCounts?.[partId] ?? 0) > 0;
         })
         .map(([partId]) => partId)
     : [];
@@ -119,7 +131,10 @@ export function TocSidebar({
   return (
     <div className="h-full overflow-y-auto">
       <div className="p-3 border-b bg-gray-50">
-        <h3 className="text-base font-bold text-gray-900">
+        <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-0.5">
+          DCP Structure
+        </p>
+        <h3 className="text-sm font-semibold text-gray-800 leading-tight">
           {formerCouncil === 'Ashfield' ? 'Ashfield DCP 2016'
             : formerCouncil === 'Leichhardt' ? 'Leichhardt DCP 2013'
             : formerCouncil === 'Marrickville' ? 'Marrickville DCP 2011'
@@ -128,11 +143,9 @@ export function TocSidebar({
             : formerCouncil ? `${formerCouncil} DCP`
             : 'DCP'}
         </h3>
-        <div className="mt-0.5 space-y-0.5">
-          <p className="text-xs text-gray-500">
-            DCP Structure
-          </p>
-        </div>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Select a {topLevelTerm} to begin
+        </p>
       </div>
 
       {/* Batch dismiss banner — quantifies provision reduction */}
@@ -170,6 +183,32 @@ export function TocSidebar({
         );
       })()}
 
+      {/* Resume button — DA mode, session in progress, jump to first unassessed chapter */}
+      {isDaMode && chapterProgress && (() => {
+        const resumePart = sortedParts.find(([id]) => {
+          if (chapterAssertions?.[id]) return false;
+          if (autoDismissedChapters?.has(id)) return false;
+          const prog = chapterProgress[id];
+          return prog && prog.total > 0 && prog.assessed < prog.total;
+        });
+        if (!resumePart) return null;
+        const [resumeId] = resumePart;
+        const { label } = formatPartDisplay(resumeId);
+        const prog = chapterProgress[resumeId];
+        const isStarted = prog.assessed > 0;
+        return (
+          <div className="mx-2 mt-2">
+            <button
+              onClick={() => onSelectPart(resumeId)}
+              className="w-full text-left text-xs px-2.5 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-md transition-colors font-medium flex items-center justify-between"
+            >
+              <span>{isStarted ? 'Continue' : 'Start'}: {label}</span>
+              <span className="opacity-75">→</span>
+            </button>
+          </div>
+        );
+      })()}
+
       {/* Total provisions applicable — positioned before TOC for clarity */}
       {(() => {
         const total = Object.values(filteredPartCounts || {}).reduce((sum, count) => sum + count, 0);
@@ -183,74 +222,133 @@ export function TocSidebar({
       })()}
 
       <nav className="p-2">
-        {sortedParts.map(([partId, part]) => {
-          const filteredPart = filteredTocStructure[partId];
-          const hasProvisions = !!(filteredPartCounts?.[partId] ?? filteredPart?.provision_count);
-          // For dismiss button: use complete structure count so chapters with filtered-out
-          // provisions (e.g. precinct layer hidden) can still be asserted not applicable.
-          const hasAnyProvisions = part.provision_count > 0;
-          const isAsserted = isDaMode === true && !!chapterAssertions?.[partId];
-          const assertedReason = chapterAssertions?.[partId];
-          const { desc: partDesc } = formatPartDisplay(partId);
-
-          return (
-            <div key={partId}>
-              <PartNode
-                part={part}
-                filteredPart={filteredPart}
-                filteredPartCounts={filteredPartCounts}
-                hasProvisions={hasProvisions}
-                hasAnyProvisions={hasAnyProvisions}
-                isExpanded={expandedParts.has(partId)}
-                isSelected={selectedPart === partId}
-                selectedSection={selectedPart === partId ? selectedSection : null}
-                onToggle={() => togglePart(partId)}
-                onSelectPart={() => { if (!isAsserted) onSelectPart(partId); }}
-                onSelectSection={(sectionId) => { if (!isAsserted) onSelectSection(partId, sectionId); }}
-                isDaMode={isDaMode}
-                isAsserted={isAsserted}
-                assertedReason={assertedReason}
-                onDismiss={() => setPendingDismiss(partId)}
-                onUndo={() => onAssertChapter?.(partId, null)}
-                chapterProgress={chapterProgress}
-                isSuggestedForDismissal={suggestedDismissals.includes(partId)}
-              />
-              {/* Inline reason picker — shown directly under this part when pending */}
-              {pendingDismiss === partId && (
-                <div className="ml-5 mt-1 mb-2 bg-white border border-gray-200 rounded p-2 space-y-1 shadow-sm">
-                  {CHAPTER_PRESET_REASONS(partDesc || '').map(r => (
-                    <button key={r}
-                      onClick={() => { onAssertChapter?.(partId, r); setPendingDismiss(null); }}
-                      className="block w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600">
-                      {r}
-                    </button>
-                  ))}
-                  <div className="flex gap-1 pt-1">
-                    <input
-                      value={customReason}
-                      onChange={e => setCustomReason(e.target.value)}
-                      placeholder="Other reason..."
-                      className="flex-1 text-xs border rounded px-2 py-1"
-                    />
-                    <button
-                      onClick={() => {
-                        if (customReason.trim()) {
-                          onAssertChapter?.(partId, customReason.trim());
-                          setPendingDismiss(null);
-                          setCustomReason('');
-                        }
-                      }}
-                      className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">
-                      OK
-                    </button>
-                  </div>
-                  <button onClick={() => setPendingDismiss(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {rootParts.map(([partId, part]) => (
+          <PartTree
+            key={partId}
+            partId={partId}
+            part={part}
+            tocStructure={tocStructure}
+            filteredTocStructure={filteredTocStructure}
+            filteredPartCounts={filteredPartCounts}
+            expandedParts={expandedParts}
+            selectedPart={selectedPart}
+            selectedSection={selectedSection}
+            onToggle={togglePart}
+            onSelectPart={onSelectPart}
+            onSelectSection={onSelectSection}
+            isDaMode={isDaMode}
+            chapterAssertions={chapterAssertions}
+            autoDismissedChapters={autoDismissedChapters}
+            onAssertChapter={onAssertChapter}
+            chapterProgress={chapterProgress}
+            suggestedDismissals={suggestedDismissals}
+            pendingDismiss={pendingDismiss}
+            setPendingDismiss={setPendingDismiss}
+            customReason={customReason}
+            setCustomReason={setCustomReason}
+            childParts={childParts}
+            depth={0}
+          />
+        ))}
       </nav>
+    </div>
+  );
+}
+
+/**
+ * Recursive renderer — renders a part and any inferred children indented below it.
+ * No DCP-specific knowledge required; hierarchy is inferred from part IDs.
+ */
+function PartTree({
+  partId, part, tocStructure, filteredTocStructure, filteredPartCounts,
+  expandedParts, selectedPart, selectedSection,
+  onToggle, onSelectPart, onSelectSection,
+  isDaMode, chapterAssertions, autoDismissedChapters, onAssertChapter, chapterProgress,
+  suggestedDismissals, pendingDismiss, setPendingDismiss, customReason, setCustomReason,
+  childParts, depth,
+}: {
+  partId: string; part: TocPart;
+  tocStructure: Record<string, TocPart>;
+  filteredTocStructure: Record<string, TocPart>;
+  filteredPartCounts?: Record<string, number>;
+  expandedParts: Set<string>; selectedPart: string | null; selectedSection: string | null;
+  onToggle: (id: string) => void; onSelectPart: (id: string) => void;
+  onSelectSection: (partId: string, sectionId: string) => void;
+  isDaMode?: boolean; chapterAssertions?: Record<string, string>;
+  autoDismissedChapters?: Set<string>;
+  onAssertChapter?: (key: string, reason: string | null) => Promise<void>;
+  chapterProgress?: Record<string, { assessed: number; total: number }>;
+  suggestedDismissals: string[]; pendingDismiss: string | null;
+  setPendingDismiss: (id: string | null) => void;
+  customReason: string; setCustomReason: (v: string) => void;
+  childParts: (parentId: string) => [string, TocPart][];
+  depth: number;
+}) {
+  const filteredPart = filteredTocStructure[partId];
+  const hasProvisions = !!(filteredPartCounts?.[partId] ?? filteredPart?.provision_count);
+  const hasAnyProvisions = part.provision_count > 0;
+  const isManuallyAsserted = isDaMode === true && !!chapterAssertions?.[partId];
+  const isAutoDismissed = isDaMode === true && (autoDismissedChapters?.has(partId) ?? false);
+  const isAsserted = isManuallyAsserted || isAutoDismissed;
+  const assertedReason = chapterAssertions?.[partId] ?? (isAutoDismissed ? 'No provisions for this development type' : undefined);
+  const { desc: partDesc } = formatPartDisplay(partId);
+  const children = childParts(partId);
+
+  return (
+    <div style={depth > 0 ? { paddingLeft: `${depth * 12}px` } : undefined}>
+      <PartNode
+        part={part}
+        filteredPart={filteredPart}
+        filteredPartCounts={filteredPartCounts}
+        hasProvisions={hasProvisions}
+        hasAnyProvisions={hasAnyProvisions}
+        isExpanded={expandedParts.has(partId)}
+        isSelected={selectedPart === partId}
+        selectedSection={selectedPart === partId ? selectedSection : null}
+        onToggle={() => onToggle(partId)}
+        onSelectPart={() => { if (!isAsserted) onSelectPart(partId); }}
+        onSelectSection={(sectionId) => { if (!isAsserted) onSelectSection(partId, sectionId); }}
+        isDaMode={isDaMode}
+        isAsserted={isAsserted}
+        assertedReason={assertedReason}
+        onDismiss={() => setPendingDismiss(partId)}
+        onUndo={isManuallyAsserted ? () => onAssertChapter?.(partId, null) : undefined}
+        chapterProgress={chapterProgress}
+        isSuggestedForDismissal={suggestedDismissals.includes(partId)}
+      />
+      {pendingDismiss === partId && (
+        <div className="ml-5 mt-1 mb-2 bg-white border border-gray-200 rounded p-2 space-y-1 shadow-sm">
+          {CHAPTER_PRESET_REASONS(partDesc || '').map(r => (
+            <button key={r}
+              onClick={() => { onAssertChapter?.(partId, r); setPendingDismiss(null); }}
+              className="block w-full text-left text-xs px-2 py-1 rounded hover:bg-gray-50 text-gray-600">
+              {r}
+            </button>
+          ))}
+          <div className="flex gap-1 pt-1">
+            <input value={customReason} onChange={e => setCustomReason(e.target.value)}
+              placeholder="Other reason..." className="flex-1 text-xs border rounded px-2 py-1" />
+            <button onClick={() => { if (customReason.trim()) { onAssertChapter?.(partId, customReason.trim()); setPendingDismiss(null); setCustomReason(''); } }}
+              className="text-xs px-2 py-1 bg-teal-600 text-white rounded hover:bg-teal-700">OK</button>
+          </div>
+          <button onClick={() => setPendingDismiss(null)} className="text-xs text-gray-400 hover:text-gray-600">Cancel</button>
+        </div>
+      )}
+      {/* Render inferred children indented */}
+      {children.map(([childId, childPart]) => (
+        <PartTree key={childId} partId={childId} part={childPart}
+          tocStructure={tocStructure} filteredTocStructure={filteredTocStructure}
+          filteredPartCounts={filteredPartCounts} expandedParts={expandedParts}
+          selectedPart={selectedPart} selectedSection={selectedSection}
+          onToggle={onToggle} onSelectPart={onSelectPart} onSelectSection={onSelectSection}
+          isDaMode={isDaMode} chapterAssertions={chapterAssertions}
+          autoDismissedChapters={autoDismissedChapters}
+          onAssertChapter={onAssertChapter} chapterProgress={chapterProgress}
+          suggestedDismissals={suggestedDismissals} pendingDismiss={pendingDismiss}
+          setPendingDismiss={setPendingDismiss} customReason={customReason}
+          setCustomReason={setCustomReason} childParts={childParts} depth={depth + 1}
+        />
+      ))}
     </div>
   );
 }
@@ -342,6 +440,20 @@ function PartNode({
           <Folder className={cn("h-3.5 w-3.5 flex-shrink-0", hasProvisions ? "text-teal-600" : "text-gray-400")} />
         )}
 
+        {/* DA mode: progress state dot */}
+        {isDaMode && !isAsserted && (() => {
+          const prog = chapterProgress?.[part.part_id];
+          if (!prog || prog.total === 0) return null;
+          const done = prog.assessed === prog.total;
+          const started = prog.assessed > 0;
+          return (
+            <span
+              className={`w-2 h-2 rounded-full flex-shrink-0 ${done ? 'bg-green-500' : started ? 'bg-amber-400' : 'bg-gray-300'}`}
+              title={done ? 'All sections assessed' : started ? `${prog.assessed} of ${prog.total} assessed` : 'Not started'}
+            />
+          );
+        })()}
+
         {/* Part name with description */}
         <div className="flex-1 min-w-0">
           {(() => {
@@ -368,14 +480,16 @@ function PartNode({
 
         {/* Asserted-out indicator OR dismiss button (DA mode) */}
         {isAsserted ? (
-          <button
-            onClick={(e) => { e.stopPropagation(); onUndo?.(); }}
-            className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0 px-1"
-            title="Restore chapter to assessment scope"
-          >
-            undo
-          </button>
-        ) : isDaMode && (hasAnyProvisions ?? hasProvisions) ? (
+          onUndo ? (
+            <button
+              onClick={(e) => { e.stopPropagation(); onUndo(); }}
+              className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0 px-1"
+              title="Restore chapter to assessment scope"
+            >
+              undo
+            </button>
+          ) : null
+        ) : isDaMode && hasProvisions ? (
           <button
             onClick={(e) => { e.stopPropagation(); onDismiss?.(); }}
             className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 text-base leading-none px-1"
@@ -511,6 +625,32 @@ function SectionNode({ section, filteredSection, hasProvisions, isSelected, onCl
 }
 
 /**
+ * Infer parent-child relationships from part IDs without any DCP-specific knowledge.
+ * Rule: partB is a child of partA if partA is a strict prefix of partB
+ * (i.e. partB starts with partA followed by a space or separator).
+ * Works for: "Chapter F" → "Chapter F Part 1", "Part C" → "Part C Section 2", etc.
+ * Returns a map of partId → parentId (undefined = root).
+ */
+export function inferPartParents(partIds: string[]): Record<string, string | undefined> {
+  const parents: Record<string, string | undefined> = {};
+  // Sort by length descending so we find the most specific (longest) parent first
+  const sorted = [...partIds].sort((a, b) => b.length - a.length);
+  for (const partId of sorted) {
+    parents[partId] = undefined;
+    for (const candidate of sorted) {
+      if (candidate === partId) continue;
+      if (candidate.length >= partId.length) continue;
+      // candidate is a prefix if partId starts with candidate + a non-alphanumeric separator
+      if (partId.startsWith(candidate) && /^[\s\-_]/.test(partId.slice(candidate.length))) {
+        parents[partId] = candidate;
+        break;
+      }
+    }
+  }
+  return parents;
+}
+
+/**
  * Get sort order for parts
  */
 function getPartOrder(partId: string): number {
@@ -545,9 +685,6 @@ function getPartOrder(partId: string): number {
     'Chapter D': 23,
     'Chapter E1': 24,
     'Chapter F': 25,
-    'Chapter F Part 1': 25.1,
-    'Chapter F Part 5': 25.5,
-    'Chapter F Part 7': 25.7,
     // Fallback
     'Other': 99,
     'unknown': 100,
@@ -560,6 +697,20 @@ function getPartOrder(partId: string): number {
   if (waverleyMatch) {
     const letter = waverleyMatch[1].charCodeAt(0) - 'A'.charCodeAt(0); // B=1, C=2, D=3, E=4, F=5
     return 30 + letter * 20 + parseInt(waverleyMatch[2]);
+  }
+
+  // Generic "Chapter X Part N" → parent order + sub-part fraction (e.g. "Chapter F Part 10" → 25.10)
+  const legacyChapterPart = partId.match(/^Chapter ([A-Z]\d*) Part (\d+)$/);
+  if (legacyChapterPart) {
+    const parentOrder = getPartOrder(`Chapter ${legacyChapterPart[1]}`);
+    return parentOrder + parseInt(legacyChapterPart[2]) / 100;
+  }
+
+  // Generic "Part X Section N" → parent order + sub-part fraction (e.g. "Part C Section 4" → 12.04)
+  const legacyPartSection = partId.match(/^Part ([A-Z]) Section (\d+)$/);
+  if (legacyPartSection) {
+    const parentOrder = getPartOrder(`Part ${legacyPartSection[1]}`);
+    return parentOrder + parseInt(legacyPartSection[2]) / 100;
   }
 
   // Slug-style chapter keys: chapter-b3-general-development, chapter-e1-heritage, ...
@@ -688,7 +839,7 @@ export function formatPartDisplay(partId: string): { label: string; desc?: strin
 
   // Check for known part with description
   if (PART_DESCRIPTIONS[partId]) {
-    return PART_DESCRIPTIONS[partId];
+    return PART_DESCRIPTIONS[partId] as { label: string; desc?: string };
   }
 
   // Shorten common patterns (legacy)
@@ -701,6 +852,18 @@ export function formatPartDisplay(partId: string): { label: string; desc?: strin
     'Chapter F Part 7': 'Ch F.7',
   };
   if (shortMap[partId]) return { label: shortMap[partId] };
+
+  // Generic "Chapter X Part N" → Ch X.N  (e.g. "Chapter F Part 10" → "Ch F.10")
+  const chapterPartN = partId.match(/^Chapter ([A-Z]\d*) Part (\d+)$/);
+  if (chapterPartN) return { label: `Ch ${chapterPartN[1]}.${chapterPartN[2]}` };
+
+  // Generic "Part X Section N" → Part X.N  (e.g. "Part C Section 4" → "Part C.4")
+  const partSectionN = partId.match(/^Part ([A-Z]) Section (\d+)$/);
+  if (partSectionN) return { label: `Part ${partSectionN[1]}.${partSectionN[2]}` };
+
+  // Generic "Part N.M" decimal → Part N.M  (e.g. "Part 4.3")
+  const partDecimal = partId.match(/^Part (\d+\.\d+)$/);
+  if (partDecimal) return { label: `Part ${partDecimal[1]}` };
 
   // Auto-format slug-style keys (source_chapter_key used as partId)
   // chapter-{code}-{desc}: e.g. chapter-b3-general-development, chapter-c-sustainability

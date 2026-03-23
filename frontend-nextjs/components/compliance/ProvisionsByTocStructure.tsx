@@ -335,6 +335,13 @@ export function ProvisionsByTocStructure({
     ? COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     : null;
 
+  // LGA-specific top-level structural term — derived from config key prefix ("Part A" → "part", "Chapter A" → "chapter")
+  const tocTopLevelTerm: 'part' | 'chapter' = (() => {
+    const firstKey = councilConfig?.universalPartKeys?.[0] ?? '';
+    return firstKey.toLowerCase().startsWith('chapter') ? 'chapter' : 'part';
+  })();
+  const TocTopLevelTermCap = tocTopLevelTerm === 'chapter' ? 'Chapter' : 'Part';
+
   // Build API URL with groupBy=toc
   const params = new URLSearchParams();
   params.set('groupBy', 'toc');
@@ -1843,7 +1850,7 @@ export function ProvisionsByTocStructure({
       {/* Step 1 → Step 2 transition hint */}
       {isDaMode && devType && (
         <p className="text-xs text-teal-700 -mt-3 mb-4 pl-12">
-          → Use the part list on the left to dismiss parts that don{"'"}t apply, then assess each remaining section below.
+          → In the <span className="font-semibold">DCP Structure</span> panel, dismiss {tocTopLevelTerm}s that don{"'"}t apply, then select each remaining {tocTopLevelTerm} to assess its sections.
         </p>
       )}
 
@@ -1859,14 +1866,16 @@ export function ProvisionsByTocStructure({
 
       {/* ② Assess sections — DA mode only */}
       {isDaMode && (
-        <div className="mb-3">
+        <div className="mb-3 space-y-3">
+          {/* Step 2 */}
           <div className="flex items-start gap-3">
             <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
             <div className="flex-1 min-w-0">
-              <p className="text-base font-semibold text-gray-800">Assess applicable sections</p>
+              <p className="text-base font-semibold text-gray-800">Assess each section</p>
               <p className="text-sm text-gray-700 mt-0.5">
-                Select a part, then assess each section — record{' '}
-                <span className="inline-flex items-center gap-0.5">
+                In the <span className="font-semibold text-gray-800">DCP Structure</span> panel, select a {tocTopLevelTerm} to see its sections.
+                In the <span className="font-semibold text-gray-800">Provisions</span> panel, read each section and record{' '}
+                <span className="inline-flex items-center gap-0.5 flex-wrap">
                   <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
                   {', '}
                   <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-amber-100 text-amber-800 border-amber-300">Varies</span>
@@ -1883,11 +1892,23 @@ export function ProvisionsByTocStructure({
               </p>
               {guideExpanded && (
                 <div className="mt-2 text-xs text-gray-600 bg-teal-50 border border-teal-100 rounded p-2.5 space-y-1.5">
-                  <p><span className="font-semibold text-gray-700">Left panel — Scope (Step 1):</span> Dismiss parts that don{"'"}t apply to this development. Dismissed parts go to Schedule B of your SEE as not addressed.</p>
-                  <p><span className="font-semibold text-gray-700">Right panel — Assess (Step 2):</span> For each remaining part, click to view its sections. Read the provisions, then record a response. This becomes Section 6 (DCP compliance) of your SEE.</p>
-                  <p><span className="font-semibold text-gray-700">Varies:</span> Use when a non-compliance requires justification — these generate a Schedule A in your SEE.</p>
+                  <p><span className="font-semibold text-gray-700">DCP Structure panel (left) — Step 1:</span> Dismiss {tocTopLevelTerm}s that don{"'"}t apply to this development. Dismissed {tocTopLevelTerm}s are recorded as not addressed in Schedule B of your SEE.</p>
+                  <p><span className="font-semibold text-gray-700">DCP Structure panel (left) — Step 2:</span> Select each remaining {tocTopLevelTerm} to open it. You{"'"}ll see a list of its sections with their assessment status.</p>
+                  <p><span className="font-semibold text-gray-700">Provisions panel (right):</span> Select a section to read its provisions, then record a response at the top of the panel. Work through all sections in the {tocTopLevelTerm} before moving to the next.</p>
+                  <p><span className="font-semibold text-gray-700">Varies:</span> Use when a non-compliance needs justification — these become Schedule A of your SEE with space for your written response.</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Step 3 — Export SEE */}
+          <div className="flex items-start gap-3">
+            <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">3</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-base font-semibold text-gray-800">Export your SEE</p>
+              <p className="text-sm text-gray-700 mt-0.5">
+                When all sections are assessed, export a working draft of your Statement of Environmental Effects.
+              </p>
             </div>
             <button
               onClick={handleExportSee}
@@ -1929,6 +1950,7 @@ export function ProvisionsByTocStructure({
             chapterProgress={chapterProgress}
             devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
             devTypeLabel={isDaMode && devType ? DEV_TYPE_OPTIONS.find(o => o.value === devType)?.label : undefined}
+            topLevelTerm={tocTopLevelTerm}
           />
         </div>
       )}
@@ -1939,18 +1961,21 @@ export function ProvisionsByTocStructure({
         <div className="p-4 border-b bg-white">
           <div className="flex items-center justify-between">
             <div>
+              {provisionView === 'structure' && (
+                <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-0.5">Provisions</p>
+              )}
               <h3 className="text-lg font-semibold text-gray-900">
                 {provisionView === 'task' ? (
                   'DCP Provisions'
                 ) : selectedPart ? (
                   sanitizeText(completeTocStructure[selectedPart]?.part_name) || selectedPart
                 ) : (
-                  'Select a section'
+                  `Select a ${tocTopLevelTerm} from the DCP Structure panel`
                 )}
               </h3>
               {provisionView === 'structure' && selectedSection && selectedPart && (
                 <p className="text-sm text-gray-600 mt-0.5">
-                  {sanitizeText(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
+                  {cleanSectionTitle(completeTocStructure[selectedPart]?.sections[selectedSection]?.section_title)}
                 </p>
               )}
               {/* X14: high canopy coverage note — only relevant context for DCP provisions */}
