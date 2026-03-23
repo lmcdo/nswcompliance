@@ -1226,15 +1226,23 @@ export function ProvisionsByTocStructure({
   // Next unassessed in-scope section ID after selectedSection — drives State B "Next" button
   const nextUnassessedSectionId = useMemo(() => {
     if (!isDaMode || !selectedPart || !selectedSection) return null;
-    const sectionIds = Object.keys(completeTocStructure[selectedPart]?.sections || {});
+    // Derive section IDs from sectionScopeForPart — works even when complete_toc.sections is empty
+    const prefix = selectedPart + '::';
+    const sectionIds = [...sectionScopeForPart]
+      .filter(k => k.startsWith(prefix))
+      .map(k => k.slice(prefix.length))
+      .sort((a, b) => {
+        const na = parseFloat(a), nb = parseFloat(b);
+        return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b);
+      });
     const currentIdx = sectionIds.indexOf(selectedSection);
     for (let i = currentIdx + 1; i < sectionIds.length; i++) {
       const secId = sectionIds[i];
       const secKey = `${selectedPart}::${secId}`;
-      if (sectionScopeForPart.has(secKey) && !sectionResponses.has(secKey)) return secId;
+      if (!sectionResponses.has(secKey)) return secId;
     }
     return null;
-  }, [isDaMode, selectedPart, selectedSection, completeTocStructure, sectionScopeForPart, sectionResponses]);
+  }, [isDaMode, selectedPart, selectedSection, sectionScopeForPart, sectionResponses]);
 
   // Global progress with reduction waterfall — single source of truth for all DA progress UI
   // scopeTotal / assessed / remaining are section-based (each section = one unit of work)
@@ -1835,7 +1843,7 @@ export function ProvisionsByTocStructure({
       {/* Step 1 → Step 2 transition hint */}
       {isDaMode && devType && (
         <p className="text-xs text-teal-700 -mt-3 mb-4 pl-12">
-          → Use the chapter list on the left to dismiss chapters that don{"'"}t apply, then assess each remaining section below.
+          → Use the part list on the left to dismiss parts that don{"'"}t apply, then assess each remaining section below.
         </p>
       )}
 
@@ -1857,7 +1865,7 @@ export function ProvisionsByTocStructure({
             <div className="flex-1 min-w-0">
               <p className="text-base font-semibold text-gray-800">Assess applicable sections</p>
               <p className="text-sm text-gray-700 mt-0.5">
-                Select a chapter, then assess each section — record{' '}
+                Select a part, then assess each section — record{' '}
                 <span className="inline-flex items-center gap-0.5">
                   <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
                   {', '}
@@ -1875,8 +1883,8 @@ export function ProvisionsByTocStructure({
               </p>
               {guideExpanded && (
                 <div className="mt-2 text-xs text-gray-600 bg-teal-50 border border-teal-100 rounded p-2.5 space-y-1.5">
-                  <p><span className="font-semibold text-gray-700">Left panel — Scope (Step 1):</span> Dismiss chapters that don{"'"}t apply to this development. Dismissed chapters go to Schedule B of your SEE as not addressed.</p>
-                  <p><span className="font-semibold text-gray-700">Right panel — Assess (Step 2):</span> For each remaining chapter, click to view its sections. Read the provisions, then record a response. This becomes Section 6 (DCP compliance) of your SEE.</p>
+                  <p><span className="font-semibold text-gray-700">Left panel — Scope (Step 1):</span> Dismiss parts that don{"'"}t apply to this development. Dismissed parts go to Schedule B of your SEE as not addressed.</p>
+                  <p><span className="font-semibold text-gray-700">Right panel — Assess (Step 2):</span> For each remaining part, click to view its sections. Read the provisions, then record a response. This becomes Section 6 (DCP compliance) of your SEE.</p>
                   <p><span className="font-semibold text-gray-700">Varies:</span> Use when a non-compliance requires justification — these generate a Schedule A in your SEE.</p>
                 </div>
               )}
@@ -2045,28 +2053,36 @@ export function ProvisionsByTocStructure({
 
         </div>
 
-        {/* State A — chapter selected, no section: show section list */}
+        {/* State A — part selected, no section: show section list */}
         {isDaMode && selectedPart && !selectedSection ? (
           <div className="flex-1 overflow-auto">
             {(() => {
-              const partData = completeTocStructure[selectedPart];
-              const sections = Object.entries((partData?.sections || {}) as Record<string, any>);
+              // Derive sections from allProvisions scope — works when complete_toc.sections is empty
+              const prefix = selectedPart + '::';
+              const sectionIds = [...sectionScopeForPart]
+                .filter(k => k.startsWith(prefix))
+                .map(k => k.slice(prefix.length))
+                .sort((a, b) => {
+                  const na = parseFloat(a), nb = parseFloat(b);
+                  return (!isNaN(na) && !isNaN(nb)) ? na - nb : a.localeCompare(b);
+                });
               const chProgress = chapterProgress?.[selectedPart];
               const allAssessed = chProgress && chProgress.total > 0 && chProgress.assessed === chProgress.total;
-              if (sections.length === 0) return (
-                <p className="p-4 text-sm text-gray-500">No sections found for this chapter.</p>
+              if (sectionIds.length === 0) return (
+                <p className="p-4 text-sm text-gray-500">No sections found for this part.</p>
               );
               return (
                 <>
                   {allAssessed && (
                     <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs text-green-700 font-medium">
-                      All {chProgress.total} section{chProgress.total !== 1 ? 's' : ''} assessed — chapter complete
+                      All {chProgress.total} section{chProgress.total !== 1 ? 's' : ''} assessed — part complete
                     </div>
                   )}
                   <div className="divide-y divide-gray-100">
-                    {sections.map(([sectionId, section]) => {
+                    {sectionIds.map((sectionId) => {
                       const secKey = `${selectedPart}::${sectionId}`;
-                      const title = canonicalSectionTitles.get(secKey) || section.section_title || sectionId;
+                      const tocSection = (completeTocStructure[selectedPart]?.sections as Record<string, any>)?.[sectionId];
+                      const title = canonicalSectionTitles.get(secKey) || tocSection?.section_title || sectionId;
                       const inScope = sectionScopeForPart.has(secKey);
                       const response = sectionResponses.get(secKey);
                       const status = response?.status;
