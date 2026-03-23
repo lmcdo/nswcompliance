@@ -25,102 +25,48 @@ import { stripSectionHeader } from '@/lib/provision-text-formatter';
 import { CrossReferenceList, type DocumentType } from './CrossReferenceLink';
 import type { CrossReference } from '@/hooks/useCrossReferences';
 import { DAResponseCapture } from './DAResponseCapture';
-import type { DaResponse } from '@/hooks/useDASession';
+import { SectionResponseCapture } from './SectionResponseCapture';
+import type { DaResponse, SectionResponse } from '@/hooks/useDASession';
+import { buildSectionKey, parseSectionKey } from '@/lib/see/sectionKey';
 import type { NumericCheckValues } from './NumericChecker';
 
-// ─── Numeric Compliance Check Utilities ──────────────────────────────────────
 
 /**
- * Extract the first numeric value (with unit) from provision text.
- * Returns { value, isMin, isMax } or null.
+ * Extract first numeric limit from DCP provision text and compare against proposed value.
+ * Returns a compact display string like "max 3.5m / proposed 4m" or null if not extractable.
+ * Framed as reference only — not a compliance assertion.
  */
-function extractNumericLimit(text: string): { value: number; isMin: boolean; isMax: boolean } | null {
-  // Find all numeric values with context — look for a value adjacent to a direction keyword
-  // Pattern: "maximum X m" or "must not exceed X m" or "minimum X m" etc.
-  const maxPattern = /(?:maximum|must not exceed|not exceed|no more than)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/gi;
-  const minPattern = /(?:minimum|not less than|at least)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/gi;
-
-  const maxMatch = maxPattern.exec(text);
-  const minMatch = minPattern.exec(text);
-
-  if (maxMatch) return { value: parseFloat(maxMatch[1]), isMin: false, isMax: true };
-  if (minMatch) return { value: parseFloat(minMatch[1]), isMin: true, isMax: false };
-
-  // Fallback: bare number with unit near direction word anywhere in text
-  const isMin = /\bminimum\b|\bnot less than\b|\bat least\b/i.test(text);
-  const isMax = /\bmaximum\b|\bnot exceed\b|\bmust not exceed\b|\bno more than\b/i.test(text);
-  if (!isMin && !isMax) return null;
-
-  const match = text.match(/\b(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)\b/i);
-  if (!match) return null;
-
-  return { value: parseFloat(match[1]), isMin, isMax };
-}
-
-type NumericComplianceResult = 'complies' | 'borderline' | 'fails' | null;
-
-/**
- * Compare a user's proposed value against a provision's numeric limit.
- */
-function checkNumericCompliance(
-  provisionText: string,
+function checkNumericComplianceRef(
+  text: string,
   v2Topic: string | undefined,
   v2Marker: string | undefined,
-  checkValues: NumericCheckValues
-): { result: NumericComplianceResult; chip: string } | null {
+  values: NumericCheckValues
+): string | null {
   const topic = (v2Topic || '').toLowerCase();
   const marker = (v2Marker || '').toLowerCase();
 
-  // Route metric to the right input field
   let userValueStr = '';
+  let metricLabel = '';
   if (topic.includes('height') || marker === 'height') {
-    userValueStr = checkValues.height;
-  } else if (topic.includes('built_form') || topic.includes('floor_space') || topic.includes('fsr')) {
-    userValueStr = checkValues.gfa;
+    userValueStr = values.height; metricLabel = 'm';
+  } else if (topic.includes('floor_space') || topic.includes('fsr') || topic.includes('built_form')) {
+    userValueStr = values.gfa; metricLabel = 'm²';
   } else if (topic.includes('site_coverage') || topic.includes('coverage')) {
-    userValueStr = checkValues.siteCoverage;
+    userValueStr = values.siteCoverage; metricLabel = '%';
   } else if (topic.includes('parking') || marker === 'parking') {
-    userValueStr = checkValues.carSpaces;
-  } else {
-    return null; // No matching metric
+    userValueStr = values.carSpaces; metricLabel = ' spaces';
   }
-
   if (!userValueStr) return null;
-  const userValue = parseFloat(userValueStr);
-  if (isNaN(userValue)) return null;
 
-  const limit = extractNumericLimit(provisionText);
-  if (!limit) return null;
+  const maxMatch = text.match(/(?:maximum|must not exceed|not exceed|no more than)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/i);
+  const minMatch = text.match(/(?:minimum|not less than|at least)\s+(\d+(?:\.\d+)?)\s*(?:m²|m2|m|%|metres?)/i);
+  if (!maxMatch && !minMatch) return null;
 
-  const { value: limitValue, isMin, isMax } = limit;
-  const BORDERLINE_THRESHOLD = 0.1; // 10% within limit
-
-  let result: NumericComplianceResult = null;
-  let chip = '';
-
-  if (isMax) {
-    if (userValue <= limitValue) {
-      const ratio = userValue / limitValue;
-      result = ratio >= (1 - BORDERLINE_THRESHOLD) ? 'borderline' : 'complies';
-      chip = result === 'complies' ? `✓ ${userValue} ≤ ${limitValue} max` : `~ ${userValue} ≈ ${limitValue} max`;
-    } else {
-      result = 'fails';
-      chip = `✗ ${userValue} > ${limitValue} max`;
-    }
-  } else if (isMin) {
-    if (userValue >= limitValue) {
-      const ratio = limitValue / userValue;
-      result = ratio >= (1 - BORDERLINE_THRESHOLD) ? 'borderline' : 'complies';
-      chip = result === 'complies' ? `✓ ${userValue} ≥ ${limitValue} min` : `~ ${userValue} ≈ ${limitValue} min`;
-    } else {
-      result = 'fails';
-      chip = `✗ ${userValue} < ${limitValue} min`;
-    }
-  } else {
-    return null; // No direction detected
-  }
-
-  return { result, chip };
+  const limitValue = parseFloat((maxMatch || minMatch)![1]);
+  const qualifier = maxMatch ? 'max' : 'min';
+  const proposed = parseFloat(userValueStr);
+  if (isNaN(proposed)) return `${qualifier} ${limitValue}${metricLabel}`;
+  return `${qualifier} ${limitValue}${metricLabel} · proposed ${proposed}${metricLabel}`;
 }
 
 /**
@@ -233,6 +179,7 @@ export interface Provision {
   // TOC section info (from dcp_table_of_contents)
   toc_section_number?: string | null;
   toc_section_title?: string | null;
+  section_header?: string | null;
   v2_display_priority?: 'critical' | 'important' | 'guideline' | 'contextual';
   // Dev type relevance scoring
   relevance_level?: 'primary' | 'general' | 'secondary';
@@ -250,6 +197,43 @@ interface PageGroup {
   // TOC section info (from first provision with TOC data)
   tocSectionNumber: string | null;
   tocSectionTitle: string | null;
+}
+
+/** Section-based group — used in DA mode instead of PDF page groups */
+interface SectionGroup {
+  sectionKey: string;
+  sectionNumber: string | null;
+  sectionTitle: string | null;
+  provisions: Provision[];
+}
+
+function groupProvisionsBySection(
+  provisions: Provision[],
+  canonicalSectionTitles?: Map<string, string | null>,
+): SectionGroup[] {
+  const sectionMap = new Map<string, SectionGroup>();
+  for (const prov of provisions) {
+    const key = buildSectionKey(prov);
+    if (!sectionMap.has(key)) {
+      // Prefer canonical title from complete_toc; fall back to provision field
+      const canonicalTitle = canonicalSectionTitles?.get(key);
+      const sectionTitle = canonicalTitle !== undefined ? canonicalTitle : (prov.toc_section_title || null);
+      sectionMap.set(key, {
+        sectionKey: key,
+        sectionNumber: prov.toc_section_number || null,
+        sectionTitle,
+        provisions: [],
+      });
+    }
+    sectionMap.get(key)!.provisions.push(prov);
+  }
+  // Sort by section number (natural sort), undefined sections at end
+  return Array.from(sectionMap.values()).sort((a, b) => {
+    if (!a.sectionNumber && !b.sectionNumber) return 0;
+    if (!a.sectionNumber) return 1;
+    if (!b.sectionNumber) return -1;
+    return a.sectionNumber.localeCompare(b.sectionNumber, undefined, { numeric: true });
+  });
 }
 
 interface ThemeConfig {
@@ -290,14 +274,33 @@ interface PageGroupedProvisionsProps {
   isDaMode?: boolean;
   sessionToken?: string | null;
   daResponses?: Map<number, { response_text: string | null; compliance_status: string | null }>;
+  /** Section-level responses — keyed by section_key */
+  sectionResponses?: Map<string, SectionResponse>;
+  /** Canonical section titles from complete_toc — prevents non-deterministic title from first-provision heuristic */
+  canonicalSectionTitles?: Map<string, string | null>;
+  /** Sections containing only objectives/descriptives — no assessable controls.
+   * Rendered below the main list so planners can optionally record an acknowledgement narrative. */
+  suppressedSections?: Map<string, string | null>;
   /** Normalized v2_topic values that were auto-excluded by structured intake */
   excludableTopics?: Set<string>;
   onResponseSaved?: (provisionId: number, response: DaResponse) => void;
-  // Numeric compliance check
+  onSectionResponseSaved?: (sectionKey: string, response: SectionResponse) => void;
+  /** DCP numeric reference — proposed values entered by planner for inline limit comparison. */
   numericCheckValues?: NumericCheckValues;
+  /** LEP/DCP reference values for inline chips. Reference only — not assessed. */
+  lepReference?: {
+    height?: string | null;
+    fsr?: string | null;
+    setbacks?: {
+      side?: { ground?: number; upper?: number; document: string };
+      rear?: { value: number; document: string };
+    } | null;
+  } | null;
   // Pagination control
   hideShowMoreButton?: boolean;   // Hide the "Show more" button (for custom button layout)
   remainingCount?: number;        // Number of additional provisions available to load
+  /** Force section-grouped layout without DA session (browsing mode). Sections start expanded. */
+  sectionGrouped?: boolean;
 }
 
 // Compliance status badge config for DA mode header — keyed on DaResponse['compliance_status']
@@ -306,6 +309,13 @@ const DA_STATUS_BADGE: Record<Exclude<DaResponse['compliance_status'], null>, { 
   complies:       { label: 'Complies', cls: 'bg-green-100 text-green-700 border-green-200' },
   varies:         { label: 'Varies',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
   not_applicable: { label: 'N/A',      cls: 'bg-gray-100  text-gray-500  border-gray-200'  },
+};
+
+const SECTION_STATUS_BADGE: Record<Exclude<SectionResponse['status'], null>, { label: string; cls: string }> = {
+  complies:       { label: 'Complies', cls: 'bg-green-100 text-green-700 border-green-200' },
+  varies:         { label: 'Varies',   cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+  not_applicable: { label: 'N/A',      cls: 'bg-gray-100  text-gray-500  border-gray-200'  },
+  flagged:        { label: 'Flagged',  cls: 'bg-red-50   text-red-700   border-red-200'    },
 };
 
 // Default theme (teal, used by most paths)
@@ -511,11 +521,17 @@ export function PageGroupedProvisions({
   isDaMode = false,
   sessionToken,
   daResponses,
+  sectionResponses,
+  canonicalSectionTitles,
+  suppressedSections,
   excludableTopics,
   onResponseSaved,
+  onSectionResponseSaved,
   numericCheckValues,
+  lepReference,
   hideShowMoreButton,
   remainingCount,
+  sectionGrouped = false,
 }: PageGroupedProvisionsProps) {
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
 
@@ -541,8 +557,12 @@ export function PageGroupedProvisions({
   // Group provisions by page
   const pageGroups = useMemo(() => groupProvisionsByPage(provisions, chapterPdfUrls), [provisions, chapterPdfUrls]);
 
-  // Track expanded page groups
+  // Track expanded page groups (non-DA mode and suppressed sections in browse mode)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+
+  // DA mode: tracks which sections the planner has explicitly opened.
+  // Starts empty = all sections collapsed (assess-first workflow).
+  const [daExpandedSections, setDaExpandedSections] = useState<Set<string>>(new Set());
 
   // Internal state for expanded provisions (used when prop not provided)
   const [internalExpandedProvisions, setInternalExpandedProvisions] = useState<Set<number>>(new Set());
@@ -568,15 +588,37 @@ export function PageGroupedProvisions({
   });
 
   const toggleGroup = (key: string) => {
-    setCollapsedGroups(prev => {
+    if (isDaMode) {
+      setDaExpandedSections(prev => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key); else next.add(key);
+        return next;
+      });
+    } else {
+      setCollapsedGroups(prev => {
+        const next = new Set(prev);
+        if (next.has(key)) next.delete(key); else next.add(key);
+        return next;
+      });
+    }
+  };
+
+  // Advance to the next section without a status response — linear progression through assessment.
+  const handleNextSection = (currentKey: string) => {
+    const currentIdx = sectionGroups.findIndex(s => s.sectionKey === currentKey);
+    const nextSection = sectionGroups.slice(currentIdx + 1)
+      .find(s => !sectionResponses?.get(s.sectionKey)?.status);
+    if (!nextSection) return;
+    setDaExpandedSections(prev => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.add(key);
-      }
+      next.delete(currentKey);
+      next.add(nextSection.sectionKey);
       return next;
     });
+    setTimeout(() => {
+      document.querySelector(`[data-section-key="${nextSection.sectionKey}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 50);
   };
 
   const [showAll, setShowAll] = useState(false);
@@ -599,6 +641,12 @@ export function PageGroupedProvisions({
   const displayGroups = useMemo(
     () => groupProvisionsByPage(displayProvisions, chapterPdfUrls),
     [displayProvisions, chapterPdfUrls]
+  );
+
+  // Section groups for DA mode or TOC browse mode (sectionGrouped) — group by toc_section_number
+  const sectionGroups = useMemo(
+    () => (isDaMode || sectionGrouped) ? groupProvisionsBySection(displayProvisions, canonicalSectionTitles) : [],
+    [isDaMode, sectionGrouped, displayProvisions, canonicalSectionTitles]
   );
 
   const getLayerColor = (layer: string | null | undefined): string => {
@@ -672,6 +720,311 @@ export function PageGroupedProvisions({
     [provisions, showMarkers]
   );
 
+  // Section-grouped rendering — used in DA mode (assess workflow) and TOC browse mode.
+  // When sectionGroups is empty (all provisions filtered by search/layer), render an
+  // empty state rather than falling through to page-grouped rendering, which would
+  // surface provision-level DAResponseCapture widgets and break the section model.
+  if (isDaMode || sectionGrouped) {
+    if (sectionGroups.length === 0) {
+      return (
+        <div className="py-6 text-center text-sm text-gray-400 italic">
+          No sections visible — adjust your search or filter to see assessable sections.
+        </div>
+      );
+    }
+    return (
+      <div className="space-y-3">
+        {hasMarkers && <MarkerLegend />}
+        {sectionGroups.map((section) => {
+          const sectionResp = sectionResponses?.get(section.sectionKey);
+          const sectionStatus = sectionResp?.status ?? null;
+          const sectionBadge = sectionStatus ? SECTION_STATUS_BADGE[sectionStatus] : null;
+          // DA mode: collapsed-first (assess workflow — planner opens one section at a time).
+          // Browse mode: expanded-first (reading workflow — provisions visible immediately).
+          const isCollapsed = isDaMode
+            ? !daExpandedSections.has(section.sectionKey)
+            : collapsedGroups.has(section.sectionKey);
+
+          return (
+            <div key={section.sectionKey} data-section-key={section.sectionKey} className={`border rounded-lg overflow-hidden ${theme.borderColorClass}`}>
+              {/* Section header */}
+              <div
+                className="flex items-center justify-between px-3 py-2 bg-gray-50 border-b cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => toggleGroup(section.sectionKey)}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  {isCollapsed ? (
+                    <ChevronRight className="h-4 w-4 text-gray-500 shrink-0" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-gray-500 shrink-0" />
+                  )}
+                  <span className="text-sm text-gray-600 truncate">
+                    {section.sectionNumber && (
+                      <span className="font-semibold text-teal-700">{section.sectionNumber}</span>
+                    )}
+                    {section.sectionNumber && section.sectionTitle && ' '}
+                    {section.sectionTitle && (
+                      <span className="font-medium text-gray-700">
+                        {(() => {
+                          const clean = sanitizeText(section.sectionTitle);
+                          return clean.length > 60 ? clean.substring(0, 60) + '…' : clean;
+                        })()}
+                      </span>
+                    )}
+                    {!section.sectionNumber && !section.sectionTitle && (
+                      <span className="text-gray-400 italic">General provisions</span>
+                    )}
+                    <span className="text-gray-400 ml-1.5">
+                      · {section.provisions.length} provision{section.provisions.length !== 1 ? 's' : ''}
+                    </span>
+                  </span>
+                </div>
+                {sectionBadge && (
+                  <span className={`text-xs px-2 py-0.5 rounded border font-medium shrink-0 ml-2 ${sectionBadge.cls}`}>
+                    {sectionBadge.label}
+                  </span>
+                )}
+              </div>
+
+              {/* Expanded section content — assess-first layout */}
+              {!isCollapsed && (
+                <div>
+                  {/* Section assessment — above provisions so planner assesses before reading */}
+                  {isDaMode && !!onSectionResponseSaved && (
+                    <div className="border-b border-gray-100">
+                      <SectionResponseCapture
+                        sectionKey={section.sectionKey}
+                        sectionTitle={section.sectionTitle}
+                        sessionToken={sessionToken ?? null}
+                        existingResponse={sectionResp}
+                        onSaved={(key, response) => {
+                          onSectionResponseSaved(key, response);
+                          // Auto-collapse once planner has set a status
+                          if (response.status !== null) {
+                            setDaExpandedSections(prev => {
+                              const next = new Set(prev);
+                              next.delete(section.sectionKey);
+                              return next;
+                            });
+                          }
+                        }}
+                      />
+                      {/* Next → linear progression — advances to next unassessed section */}
+                      {(() => {
+                        const currentIdx = sectionGroups.findIndex(s => s.sectionKey === section.sectionKey);
+                        const nextSection = sectionGroups.slice(currentIdx + 1)
+                          .find(s => !sectionResponses?.get(s.sectionKey)?.status);
+                        if (!nextSection) return null;
+                        const nextLabel = nextSection.sectionNumber
+                          ? `§${nextSection.sectionNumber}`
+                          : nextSection.sectionTitle
+                            ? nextSection.sectionTitle.substring(0, 30)
+                            : 'next section';
+                        return (
+                          <div className="px-3 pb-2 flex justify-end">
+                            <button
+                              onClick={() => handleNextSection(section.sectionKey)}
+                              className="text-xs text-teal-700 hover:text-teal-900 font-medium"
+                            >
+                              Next: {nextLabel} →
+                            </button>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  {/* Provisions — read-only reference text */}
+                  <div className="divide-y divide-gray-100">
+                    {section.provisions.map((provision, provIdx) => {
+                      const isExpanded = expandedProvisions.has(provision.id);
+                      const layer = provision.v2_dcp_layer || provision.layer;
+                      const isEven = provIdx % 2 === 0;
+                      const bgClass = isEven ? theme.zebraStripeBg : theme.zebraStripeAltBg;
+
+                      return (
+                        <div
+                          key={provision.id}
+                          data-provision-id={provision.id}
+                          className={`px-4 py-3 ${bgClass} border-l-4`}
+                          style={{ borderLeftColor: layer === 'precinct' ? '#8b5cf6' : layer === 'condition' ? '#f59e0b' : layer === 'use_specific' ? '#3b82f6' : '#14b8a6' }}
+                        >
+                          {/* Provision header */}
+                          <div className="flex items-start gap-2 mb-1">
+                            {showMarkers && provision.v2_marker && getLayerLabel(layer).toLowerCase() !== provision.v2_marker.toLowerCase() && (
+                              <Badge
+                                variant="outline"
+                                className="text-sm font-mono bg-white shrink-0 cursor-help"
+                                title={provision.v2_marker.startsWith('C') ? `Control ${provision.v2_marker.slice(1)}` : provision.v2_marker.startsWith('O') ? `Objective ${provision.v2_marker.slice(1)}` : provision.v2_marker}
+                              >
+                                {provision.v2_marker}
+                              </Badge>
+                            )}
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge className={`text-sm font-medium shrink-0 ${getLayerColor(layer)}`}>
+                                  {getLayerLabel(layer)}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{getLayerTooltip(layer)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            {/* PDF link for individual provision — image URL first, R2 chapter URL fallback */}
+                            {(() => {
+                              const imageUrl = provision.pdf_page_image_url;
+                              const chapterUrl = !imageUrl && provision.pdf_page && provision.source_chapter_key
+                                ? chapterPdfUrls?.[provision.source_chapter_key]
+                                : null;
+                              if (imageUrl) {
+                                return (
+                                  <button
+                                    onClick={() => onViewPdf(imageUrl, provision.pdf_printed_page || provision.pdf_page || 0)}
+                                    className="p-0.5 rounded hover:bg-teal-100 shrink-0"
+                                    title={`PDF page ${provision.pdf_printed_page || provision.pdf_page}`}
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700" />
+                                  </button>
+                                );
+                              }
+                              if (chapterUrl) {
+                                return (
+                                  <button
+                                    onClick={() => onViewPdf(`${chapterUrl}#page=${provision.pdf_page}`, provision.pdf_page || 0)}
+                                    className="p-0.5 rounded hover:bg-teal-100 shrink-0"
+                                    title={`PDF page ${provision.pdf_page}`}
+                                  >
+                                    <FileText className="w-3.5 h-3.5 text-teal-500 hover:text-teal-700" />
+                                  </button>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
+
+                          {/* Provision text */}
+                          <div
+                            className="text-sm text-gray-700 cursor-pointer"
+                            onClick={() => onToggleProvision(provision.id)}
+                          >
+                            {isExpanded ? (
+                              <FormattedProvisionText
+                                text={stripSectionHeader(provision.provision_text, provision.toc_section_title)}
+                                compact
+                                stripMarker={showMarkers && provision.v2_marker ? provision.v2_marker : undefined}
+                                highlightQuery={highlightQuery}
+                                theme={provisionTheme}
+                                councilKey={councilKey}
+                              />
+                            ) : (
+                              <p className={theme.textClampLines === 2 ? 'line-clamp-2' : 'line-clamp-3'}>
+                                {showMarkers && provision.v2_marker
+                                  ? stripSectionHeader(provision.provision_text, provision.toc_section_title)
+                                      .replace(new RegExp(`^\\s*${provision.v2_marker}\\s+`, 'i'), '')
+                                  : stripSectionHeader(provision.provision_text, provision.toc_section_title)}
+                              </p>
+                            )}
+                          </div>
+                          {provision.provision_text.length > theme.expandThreshold && (
+                            <button
+                              className="text-xs text-blue-600 hover:text-blue-800 mt-1 font-medium"
+                              onClick={(e) => { e.stopPropagation(); onToggleProvision(provision.id); }}
+                            >
+                              {isExpanded ? '↑ Show less' : '+ Show more'}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Show more */}
+        {!hideShowMoreButton && maxProvisions && provisions.length > maxProvisions && (
+          showAll ? (
+            <button onClick={() => setShowAll(false)} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 font-medium border-t border-gray-100 hover:bg-gray-50 transition-colors">
+              Hide {provisions.length - maxProvisions} provisions
+            </button>
+          ) : (
+            <button onClick={() => setShowAll(true)} className="w-full py-2.5 text-sm text-teal-600 hover:text-teal-800 font-medium border-t border-gray-100 hover:bg-teal-50 transition-colors">
+              Show {provisions.length - maxProvisions} more provisions
+            </button>
+          )
+        )}
+
+        {/* Objectives-only sections — no enforceable controls, not in assessment scope,
+            but planner may optionally record a consistency narrative for professional completeness */}
+        {suppressedSections && suppressedSections.size > 0 && (
+          <div className="mt-1 space-y-2">
+            <p className="text-xs text-gray-400 italic px-1 pt-2 border-t border-gray-100">
+              Objectives &amp; design guidance — no enforceable controls, not counted in scope:
+            </p>
+            {[...suppressedSections.entries()].map(([sectionKey, sectionTitle]) => {
+              const { sectionNumber } = parseSectionKey(sectionKey);
+              const displayNum = sectionNumber === 'general' ? null : sectionNumber;
+              const sectionResp = sectionResponses?.get(sectionKey);
+              const sectionStatus = sectionResp?.status ?? null;
+              const sectionBadge = sectionStatus ? SECTION_STATUS_BADGE[sectionStatus] : null;
+              const isCollapsed = isDaMode
+                ? !daExpandedSections.has(sectionKey)
+                : collapsedGroups.has(sectionKey);
+              return (
+                <div key={sectionKey} className="border border-dashed border-gray-200 rounded-lg overflow-hidden opacity-75">
+                  <div
+                    className="flex items-center justify-between px-3 py-2 bg-gray-50/50 cursor-pointer hover:bg-gray-100/50 transition-colors"
+                    onClick={() => toggleGroup(sectionKey)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      {isCollapsed ? (
+                        <ChevronRight className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                      )}
+                      <span className="text-xs text-gray-500 truncate">
+                        {displayNum && <span className="font-medium text-gray-500">{displayNum}</span>}
+                        {displayNum && sectionTitle && ' '}
+                        {sectionTitle && <span className="text-gray-500">{sanitizeText(sectionTitle)}</span>}
+                        {!displayNum && !sectionTitle && <span className="italic text-gray-400">General objectives</span>}
+                        <span className="text-gray-400 ml-1.5">· objectives only</span>
+                      </span>
+                    </div>
+                    {sectionBadge && (
+                      <span className={`text-xs px-2 py-0.5 rounded border font-medium shrink-0 ml-2 ${sectionBadge.cls}`}>
+                        {sectionBadge.label}
+                      </span>
+                    )}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="px-3 pb-1 bg-white/50">
+                      <p className="text-xs text-gray-400 italic py-2">
+                        This section contains only objectives and design guidance. No enforceable controls apply.
+                        You may optionally record a consistency statement below.
+                      </p>
+                      {isDaMode && !!onSectionResponseSaved && (
+                        <SectionResponseCapture
+                          sectionKey={sectionKey}
+                          sectionTitle={sectionTitle}
+                          sessionToken={sessionToken ?? null}
+                          existingResponse={sectionResp}
+                          onSaved={onSectionResponseSaved}
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Non-DA mode: page-grouped rendering (original)
   return (
     <div className="space-y-3">
       {/* Marker Legend - shown only when provisions have C/O markers */}
@@ -831,12 +1184,21 @@ export function PageGroupedProvisions({
 
                         {/* DA Mode status badge — shows saved compliance status inline */}
                         {isDaMode && (() => {
-                          const status = daResponses?.get(provision.id)?.compliance_status;
+                          const resp = daResponses?.get(provision.id);
+                          const status = resp?.compliance_status;
                           if (!status) return null;
-                          const badge = DA_STATUS_BADGE[status];
+                          const badge = DA_STATUS_BADGE[status as keyof typeof DA_STATUS_BADGE];
+                          const isPreFilled = status === 'not_applicable' &&
+                            typeof resp?.response_text === 'string' &&
+                            resp.response_text.includes('Override if the purpose');
                           return (
-                            <span className={`text-xs px-1.5 py-0.5 rounded border font-medium flex-shrink-0 ${badge.cls}`}>
-                              {badge.label}
+                            <span className="inline-flex items-center gap-1 flex-shrink-0">
+                              <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${badge.cls}`}>
+                                {badge.label}
+                              </span>
+                              {isPreFilled && (
+                                <span className="text-xs text-gray-400 italic">pre-filled</span>
+                              )}
                             </span>
                           );
                         })()}
@@ -849,25 +1211,91 @@ export function PageGroupedProvisions({
                         )}
                       </div>
 
-                      {/* Numeric Compliance Check Chip */}
-                      {numericCheckValues && provision.v2_has_numeric_value && (() => {
-                        const check = checkNumericCompliance(
+                      {/* LEP/DCP reference chips — shown on relevant provisions, reference only */}
+                      {lepReference && (() => {
+                        const cat = provision.v2_structural_category;
+
+                        if (cat === 'height' && lepReference.height) {
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center text-xs px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 font-medium mb-1 cursor-default">
+                                  LEP max: {lepReference.height}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                LEP height limit — reference only. Not assessed by this tool. Verify against current LEP schedules.
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        }
+
+                        if ((cat === 'site_coverage' || cat === 'fsr') && lepReference.fsr) {
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center text-xs px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 font-medium mb-1 cursor-default">
+                                  LEP max FSR: {lepReference.fsr}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                LEP floor space ratio — reference only. Not assessed by this tool. Verify against current LEP schedules.
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        }
+
+                        if (cat === 'setbacks' && lepReference.setbacks) {
+                          const { side, rear } = lepReference.setbacks;
+                          const parts: string[] = [];
+                          if (side?.ground != null) parts.push(`side ≥${side.ground}m`);
+                          if (side?.upper != null && side.upper !== side.ground) parts.push(`(≥${side.upper}m upper)`);
+                          if (rear?.value != null) parts.push(`rear ≥${rear.value}m`);
+                          if (parts.length === 0) return null;
+                          const doc = side?.document || rear?.document || 'DCP';
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="inline-flex items-center text-xs px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 font-medium mb-1 cursor-default">
+                                  DCP: {parts.join(' · ')}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="right" className="max-w-xs">
+                                Setback reference from {doc}. Reference only — not assessed by this tool. Front setbacks are qualitative in this DCP.
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        }
+
+                        return null;
+                      })()}
+
+                      {/* DCP numeric reference chip — shows DCP limit from provision text vs proposed value */}
+                      {numericCheckValues && (() => {
+                        const topic = (provision.v2_topic || '').toLowerCase();
+                        const cat = provision.v2_structural_category || '';
+                        // Only attempt on categories where DCP has hard limits
+                        const relevant = cat === 'height' || cat === 'site_coverage' || cat === 'parking' ||
+                          topic.includes('height') || topic.includes('coverage') || topic.includes('parking');
+                        if (!relevant) return null;
+                        const check = checkNumericComplianceRef(
                           provision.provision_text,
                           provision.v2_topic,
                           provision.v2_marker,
                           numericCheckValues
                         );
                         if (!check) return null;
-                        const chipStyle = check.result === 'complies'
-                          ? 'bg-green-100 text-green-800 border-green-300'
-                          : check.result === 'borderline'
-                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                          : 'bg-red-100 text-red-800 border-red-300';
                         return (
-                          <div className={`inline-flex items-center gap-1 text-xs font-mono px-2 py-0.5 rounded border mb-1 ${chipStyle}`}>
-                            <Ruler className="w-3 h-3" />
-                            {check.chip}
-                          </div>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border bg-slate-50 text-slate-600 border-slate-200 font-medium mb-1 cursor-default font-mono">
+                                DCP: {check}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="max-w-xs">
+                              DCP provision limit — indicative reference only. Not a compliance determination. Verify against the full provision text.
+                            </TooltipContent>
+                          </Tooltip>
                         );
                       })()}
 
@@ -918,10 +1346,10 @@ export function PageGroupedProvisions({
                       )}
 
                       {/* Cross-References - shown when enabled and available */}
-                      {showCrossReferences && crossReferencesMap?.[provision.id]?.length > 0 && (
+                      {showCrossReferences && (crossReferencesMap?.[provision.id]?.length ?? 0) > 0 && (
                         <div className="mt-2 pt-2 border-t border-gray-100">
                           <CrossReferenceList
-                            references={crossReferencesMap[provision.id]}
+                            references={crossReferencesMap![provision.id]}
                             currentDocType="dcp"
                             currentProvisionId={provision.id}
                             onNavigate={onNavigateCrossRef}
@@ -939,6 +1367,12 @@ export function PageGroupedProvisions({
                           existingResponse={daResponses?.get(provision.id) as any}
                           isLocked={excludableTopics ? excludableTopics.has(provision.v2_structural_category || '') : false}
                           onSaved={(response) => onResponseSaved?.(provision.id, response)}
+                          provisionContext={{
+                            category: provision.v2_structural_category,
+                            topic: provision.v2_topic,
+                            marker: provision.v2_marker,
+                            sectionHeader: provision.section_header,
+                          }}
                         />
                       )}
                     </div>
