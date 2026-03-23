@@ -25,7 +25,7 @@ import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { DAModeCard } from './DAModeCard';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
-import { buildPropertyContext, preparePdfProvisions, sanitizeText } from '@/lib/see/propertyContext';
+import { buildPropertyContext, preparePdfProvisions, sanitizeText, cleanSectionTitle } from '@/lib/see/propertyContext';
 import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/provisionUtils';
 import { assembleDescription, buildSeeIntro, DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryWorks';
@@ -2082,7 +2082,8 @@ export function ProvisionsByTocStructure({
                     {sectionIds.map((sectionId) => {
                       const secKey = `${selectedPart}::${sectionId}`;
                       const tocSection = (completeTocStructure[selectedPart]?.sections as Record<string, any>)?.[sectionId];
-                      const title = canonicalSectionTitles.get(secKey) || tocSection?.section_title || sectionId;
+                      const rawTitle = canonicalSectionTitles.get(secKey) || tocSection?.section_title || '';
+                      const title = cleanSectionTitle(rawTitle) || sectionId;
                       const inScope = sectionScopeForPart.has(secKey);
                       const response = sectionResponses.get(secKey);
                       const status = response?.status;
@@ -2101,7 +2102,7 @@ export function ProvisionsByTocStructure({
                             'border-2 border-gray-300 bg-white'
                           }`} />
                           <span className={`flex-1 text-sm ${inScope ? 'text-gray-800' : 'text-gray-400'}`}>
-                            {sanitizeText(title) || sectionId}
+                            {title}
                           </span>
                           {status && (
                             <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${

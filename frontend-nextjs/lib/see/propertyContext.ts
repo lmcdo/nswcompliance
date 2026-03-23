@@ -32,6 +32,24 @@ export function sanitizeText(text: string | undefined | null): string {
     .trim();
 }
 
+/**
+ * Clean a raw DB section title for display in the DA mode section list.
+ * Handles: UTF-8 corruption (via sanitizeText), trailing dots/spaces, ALL-CAPS → Title Case.
+ */
+export function cleanSectionTitle(text: string | undefined | null): string {
+  const cleaned = sanitizeText(text);
+  if (!cleaned) return '';
+  // Strip trailing dots and whitespace
+  const stripped = cleaned.replace(/[.\s]+$/, '').trim();
+  if (!stripped) return '';
+  // If the string is all-uppercase (and longer than 3 chars to avoid "C1"), convert to Title Case
+  const isAllCaps = stripped === stripped.toUpperCase() && stripped.length > 3 && /[A-Z]/.test(stripped);
+  if (!isAllCaps) return stripped;
+  return stripped
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 /** Sanitize a number for PDF rendering — returns undefined for invalid or negative values */
 function sanitizeNumber(value: unknown): number | undefined {
   if (value === null || value === undefined) return undefined;
