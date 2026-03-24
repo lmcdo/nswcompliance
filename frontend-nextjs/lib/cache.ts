@@ -62,7 +62,7 @@ class LRUCache<T> {
   set(key: string, data: T): void {
     // If cache is full, remove oldest (first) entry
     if (this.cache.size >= this.maxSize && !this.cache.has(key)) {
-      const firstKey = this.cache.keys().next().value;
+      const firstKey = this.cache.keys().next().value as string;
       this.cache.delete(firstKey);
     }
 

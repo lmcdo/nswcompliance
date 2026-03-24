@@ -114,7 +114,7 @@ export class MigrationOrchestrator {
  phase.status = 'failed';
  phase.endTime = new Date().toISOString();
 
- this.emitEvent('phase-fail', phase.id, { phase, error: error.message });
+ this.emitEvent('phase-fail', phase.id, { phase, error: error instanceof Error ? error.message : String(error) });
 
  console.error(` Phase ${phase.name} failed:`, error);
  return false;

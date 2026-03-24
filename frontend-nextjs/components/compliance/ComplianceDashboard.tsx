@@ -57,6 +57,8 @@ export interface ProvisionContent {
   section_header: string;
   provision_text: string;
   document_id: string;
+  version?: any;
+  [key: string]: any;
 }
 
 export interface ComplianceConstraint {
@@ -69,6 +71,8 @@ export interface ComplianceConstraint {
     document: string;
     authority_level: 'LEP' | 'DCP' | 'SEPP';
   };
+  provision_id?: number;
+  full_text?: string;
   provisions?: ProvisionContent[];
   seppMetadata?: {
     epiName: string;
@@ -88,7 +92,6 @@ export interface ComplianceConstraint {
   // Relevance filter fields
   requiresAction?: boolean;
   category?: 'basix' | 'environmental_overlay' | 'informational' | 'prohibition';
-  provision_id?: number;
 }
 
 export interface ComplianceData {
@@ -686,7 +689,7 @@ export function ComplianceDashboard({
 
         // Step 2: Fetch categorized requirements for this specific precinct
         // Include heritage flag to also fetch universal HCA provisions when property is in HCA
-        const isHeritage = propertyData.heritage?.heritage === true;
+        const isHeritage = propertyData.heritage?.isHeritage === true;
         const requestBody = {
           precinctId: precinctId,
           precinctName: precinctName,
@@ -728,7 +731,7 @@ export function ComplianceDashboard({
     };
 
     fetchCategorizedRequirements();
-  }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council, propertyData?.heritage?.heritage]);
+  }, [propertyData?.address, propertyData?.constraints?.lga, propertyData?.council, propertyData?.heritage?.isHeritage]);
 
   // REMOVED: Old useEffect for DCP Complete - now using SWR hook above
 
@@ -744,7 +747,7 @@ export function ComplianceDashboard({
     if (hasRealProvisions) {
       setSelectedProvision({
         constraint,
-        provisions: constraint.provisions
+        provisions: constraint.provisions || []
       });
       setPanelOpen(true);
       return;
@@ -1242,7 +1245,7 @@ export function ComplianceDashboard({
             return (
               <LandUseZoningCard
                 zone={propertyData.constraints.zone}
-                zoneDescription={propertyData.constraints.zoneDescription}
+                zoneDescription={propertyData.constraints.zoneDescription ?? undefined}
                 legislationUrl={zoneResult?.['legislationUrl']}
                 epiName={zoneResult?.['EPI Name']}
                 amendment={zoneResult?.['Amendment']}
@@ -1255,7 +1258,7 @@ export function ComplianceDashboard({
           <HeritageDetails
             heritage={propertyData.heritage}
             propertyGeometry={propertyData.geometry}
-            lga={propertyData.constraints?.lga}
+            lga={propertyData.constraints?.lga ?? undefined}
             formerCouncil={propertyData.constraints?.formerCouncil || ''}
             onViewDCPHeritage={() => {
               // Switch to combined mode and expand heritage category
@@ -1466,7 +1469,7 @@ export function ComplianceDashboard({
               console.log('[ComplianceDashboard] RENDER CHECK: categorizedRequirements?', !!categorizedRequirements);
               console.log('[ComplianceDashboard] RENDER CHECK: categories?', !!categorizedRequirements?.categories);
               console.log('[ComplianceDashboard] RENDER CHECK: categories length:', categorizedRequirements?.categories?.length);
-              const isHeritage = propertyData?.heritage?.heritage === true;
+              const isHeritage = propertyData?.heritage?.isHeritage === true;
               return categorizedRequirements && categorizedRequirements.categories && (
                 <CategorizedRequirementsCard
                   categories={categorizedRequirements.precinct_categories || categorizedRequirements.categories}

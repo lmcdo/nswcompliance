@@ -115,6 +115,23 @@ All PDF images served via `getPdfImageUrl()` in `lib/pdf-image-url.ts` — do no
 
 ---
 
+## GitHub Actions Secrets
+
+These must be set under repo Settings → Secrets and variables → Actions:
+
+| Secret | Used by | Notes |
+|---|---|---|
+| `DATABASE_URL` | All DCP workflows | Supabase pooler connection string |
+| `R2_ACCOUNT_ID` | dcp-monitor, dcp-commit, post-commit check | Cloudflare R2 account |
+| `R2_BUCKET_NAME` | As above | |
+| `R2_ACCESS_KEY_ID` | As above | |
+| `R2_SECRET_ACCESS_KEY` | As above | |
+| `TELEGRAM_BOT_TOKEN` | All DCP workflows | Alert bot |
+| `TELEGRAM_CHAT_ID` | All DCP workflows | Target chat/channel |
+| `VERIFY_APP_URL` | dcp-commit post-commit check | Production app URL, e.g. `https://verify.plotdetect.com.au`. Used by API smoke test. |
+
+---
+
 ## Notes
 
 - Cross-references: no flag needed — DB enrichment feature, UI renders what's resolved

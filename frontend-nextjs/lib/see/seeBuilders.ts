@@ -246,15 +246,16 @@ export function buildLepStandards(
   propertyContext: Record<string, any>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   lepClauseData?: Record<string, any>,
-  proposedValues?: { height?: string; gfa?: string; lotArea?: number }
+  proposedValues?: { height?: string; gfa?: string; lotArea?: number; lepCitation?: string }
 ): LepAssessableStandard[] {
   const standards: LepAssessableStandard[] = [];
 
   const zone = propertyContext.zone ?? '';
   const zoneCode = zone.split(' ')[0];
-  const lepName = propertyContext.planning_portal_layers?.height_map?.epiName
-    ?? propertyContext.planning_portal_layers?.fsr_map?.epiName
-    ?? 'Local Environmental Plan';
+  // lepCitation passed from council config — the authoritative instrument name for this LGA.
+  // planning_portal_layers.height_map / fsr_map are string values (not objects), so epiName
+  // cannot be derived from them. The council config is the single source of truth for LEP name.
+  const lepName = proposedValues?.lepCitation ?? 'Local Environmental Plan';
 
   // Permitted use — always include, confirms proposed development type is allowed in zone
   if (zoneCode) {

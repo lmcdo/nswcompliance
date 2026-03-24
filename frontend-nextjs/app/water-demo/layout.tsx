@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function WaterDemoLayout({
   children,
 }: {
-  children: React.Node;
+  children: React.ReactNode;
 }) {
   return children;
 }

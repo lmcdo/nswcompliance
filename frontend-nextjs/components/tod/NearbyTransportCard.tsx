@@ -155,9 +155,11 @@ export function NearbyTransportCard({
   // See DCP Provisions tab for council-specific TOD parking requirements
 
   // Check if any transport qualifies for TOD
-  const hasQualifyingTransport = stops.some(stop =>
+  const qualifyingCount = stops.filter(stop =>
     qualifiesForTOD(stop.type, stop.distance, stop.frequency)
-  );
+  ).length;
+  const hasQualifyingTransport = qualifyingCount > 0;
+  const nonQualifyingCount = stops.length - qualifyingCount;
 
   return (
     <div className="space-y-3">
@@ -166,7 +168,13 @@ export function NearbyTransportCard({
         <div className="flex items-center gap-2">
           <MapPin className="w-4 h-4 text-emerald-600" />
           <span className="text-sm font-medium text-gray-700">
-            {stops.length} transport option{stops.length !== 1 ? 's' : ''} nearby
+            {hasQualifyingTransport
+              ? <>
+                  {qualifyingCount} within TOD threshold
+                  {nonQualifyingCount > 0 && <span className="font-normal text-gray-500"> · {nonQualifyingCount} other nearby</span>}
+                </>
+              : <>{stops.length} transport option{stops.length !== 1 ? 's' : ''} nearby</>
+            }
           </span>
         </div>
         {hasQualifyingTransport && (

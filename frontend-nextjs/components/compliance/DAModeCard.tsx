@@ -11,6 +11,7 @@ import { DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
 import type { IntakeAnswers } from '@/lib/see/intake';
 import type { Provision } from './PageGroupedProvisions';
+import { HERITAGE_ELEMENTS, SCOPE_TOPIC_MAP, type WorksScopeAnswers } from '@/lib/see/worksScope';
 
 interface DAModeCardProps {
   devType: string;
@@ -48,10 +49,22 @@ interface DAModeCardProps {
   onProposedValuesChange?: (field: 'proposed_height' | 'proposed_gfa', value: string) => void;
   /** Global progress — single source of truth from ProvisionsByTocStructure */
   globalProgress?: {
-    total: number; triaged: number; chapterDismissed: number;
+    total: number; triaged: number; chapterDismissed: number; autoChapterDismissed: number;
     topicDismissed: number; suppressed: number;
+    questionnaireScoped: number; heritageElementScoped: number;
     scopeTotal: number; assessed: number; remaining: number;
   } | null;
+  /** Works scope questionnaire answers */
+  worksScopeAnswers?: WorksScopeAnswers | null;
+  onWorksScopeChange?: (answers: WorksScopeAnswers) => void;
+  /** Auto-derived scope from LEP permissibility data (lowest priority, user answers override) */
+  lepScopeDefaults?: Partial<WorksScopeAnswers>;
+  /** LEP land use slugs that are explicitly prohibited in the current zone */
+  lepProhibitedDevTypes?: Set<string>;
+  /** True when lep_zone_coverage.is_complete for this zone/LGA — only enforce filtering when we have full coverage data */
+  lepPermCovered?: boolean;
+  /** Ancillary work values that have SEPP exempt development provisions for this zone */
+  seppExemptWorks?: Set<string>;
 }
 
 export function DAModeCard({
@@ -83,6 +96,12 @@ export function DAModeCard({
   onAssertTopicNA,
   onProposedValuesChange,
   globalProgress,
+  worksScopeAnswers,
+  onWorksScopeChange,
+  lepScopeDefaults,
+  lepProhibitedDevTypes,
+  lepPermCovered,
+  seppExemptWorks,
 }: DAModeCardProps) {
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState('');
@@ -92,6 +111,12 @@ export function DAModeCard({
   const devTypeLabel = useMemo(() => {
     return DEV_TYPE_OPTIONS.find(opt => opt.value === devType)?.label || devType;
   }, [devType]);
+
+  // True when the selected primary dev type is explicitly prohibited in this zone per LEP data
+  const selectedDevTypeProhibited = useMemo(() => {
+    const opt = DEV_TYPE_OPTIONS.find(o => o.value === devType);
+    return opt?.lepSlug ? (lepProhibitedDevTypes?.has(opt.lepSlug) ?? false) : false;
+  }, [devType, lepProhibitedDevTypes]);
 
   // Derive scope summary and heritage count (progress now comes from globalProgress prop)
   const derivedStats = useMemo(() => {
@@ -211,11 +236,28 @@ export function DAModeCard({
             className="w-full text-sm border border-teal-200 rounded px-3 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-teal-400 text-gray-700"
           >
             <option value="">Select type…</option>
-            {DEV_TYPE_OPTIONS.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
+            {DEV_TYPE_OPTIONS.map(opt => {
+              const isZoneProhibited = lepPermCovered && opt.lepSlug
+                ? (lepProhibitedDevTypes?.has(opt.lepSlug) ?? false)
+                : false;
+              return (
+                <option key={opt.value} value={opt.value} disabled={isZoneProhibited}>
+                  {opt.label}{isZoneProhibited ? ' — not permitted in this zone' : ''}
+                </option>
+              );
+            })}
           </select>
         </div>
+
+        {/* Permissibility warning — shown when selected dev type is prohibited in zone per LEP data */}
+        {selectedDevTypeProhibited && (
+          <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded px-3 py-2 text-xs text-red-800">
+            <span className="flex-shrink-0 font-bold text-red-500 mt-0.5">!</span>
+            <span>
+              <strong>{devTypeLabel}</strong> is prohibited in this zone under the LEP — a DA for this development type will not be approved. Review the Planning Controls tab for permitted uses in this zone.
+            </span>
+          </div>
+        )}
 
         {/* Ancillary works checkboxes — shown after primary type selected */}
         {devType && (
@@ -226,6 +268,7 @@ export function DAModeCard({
             <div className="grid grid-cols-2 gap-x-3 gap-y-1">
               {ANCILLARY_WORKS.map(work => {
                 const checked = ancillaryWorks.includes(work.value);
+                const isExempt = seppExemptWorks?.has(work.value) ?? false;
                 return (
                   <label key={work.value} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900">
                     <input
@@ -240,10 +283,116 @@ export function DAModeCard({
                       className="w-3.5 h-3.5 rounded border-teal-300 text-teal-600 focus:ring-teal-500 focus:ring-1"
                     />
                     {work.label}
+                    {isExempt && (
+                      <span className="text-[10px] text-purple-500 font-medium leading-none">exempt?</span>
+                    )}
                   </label>
                 );
               })}
             </div>
+          </div>
+        )}
+
+        {/* Works scope questionnaire — shown after dev type is selected */}
+        {devType && onWorksScopeChange && (
+          <div className="pt-2 border-t border-teal-100 space-y-3">
+            <p className="text-xs font-medium text-teal-800">What does this proposal involve?</p>
+
+            {/* Use-type scope questions */}
+            <div className="space-y-2">
+              {SCOPE_TOPIC_MAP.map(({ field, reason: _reason }) => {
+                const labels: Record<string, { q: string; hint: string }> = {
+                  has_commercial:           { q: 'Commercial or retail use?', hint: 'Shop, café, office, food premises' },
+                  has_boarding_house:       { q: 'Boarding house or co-living?', hint: 'Affordable rental, shared accommodation' },
+                  has_multi_dwelling:       { q: 'Multi-dwelling or dual occupancy?', hint: 'Two or more dwellings on one lot' },
+                  is_subdivision:           { q: 'Land subdivision?', hint: 'Creating new lots' },
+                  has_child_care:           { q: 'Child care or community facility?', hint: 'Day care, school, place of worship' },
+                  has_home_business:        { q: 'Home business or home industry?', hint: 'Trade, professional, or light industry from home' },
+                  has_tourist_accommodation:{ q: 'Tourist or short-term accommodation?', hint: 'B&B, serviced apartment, Airbnb' },
+                  has_industrial:           { q: 'Industrial or warehouse use?', hint: 'Factory, storage, logistics' },
+                };
+                const config = labels[field];
+                if (!config) return null;
+                const lepAutoValue = (lepScopeDefaults as Record<string, boolean | null | undefined> | undefined)?.[field] ?? null;
+                const userSavedValue = (worksScopeAnswers as Record<string, boolean | null | undefined> | null | undefined)?.[field] ?? null;
+                const current = userSavedValue !== null ? userSavedValue : lepAutoValue;
+                const isLepAuto = userSavedValue === null && lepAutoValue !== null;
+                return (
+                  <div key={field} className="flex items-start gap-2">
+                    <span className="text-xs text-gray-600 flex-1 pt-0.5">
+                      {config.q}
+                      <span className="text-gray-400 ml-1">({config.hint})</span>
+                    </span>
+                    <div className="flex gap-1 flex-shrink-0 items-center">
+                      {([true, false] as const).map(val => (
+                        <button
+                          key={String(val)}
+                          onClick={() => onWorksScopeChange({
+                            ...(worksScopeAnswers ?? { heritage_elements: null, has_commercial: null, has_boarding_house: null, has_multi_dwelling: null, is_subdivision: null, has_child_care: null, has_home_business: null, has_tourist_accommodation: null, has_industrial: null }),
+                            [field]: current === val ? null : val,
+                          })}
+                          className={`px-2 py-0.5 text-xs rounded border transition-colors ${
+                            current === val
+                              ? val
+                                ? 'bg-amber-100 border-amber-400 text-amber-800 font-medium'
+                                : isLepAuto
+                                  ? 'bg-gray-100 border-gray-300 text-gray-500 font-medium'
+                                  : 'bg-teal-100 border-teal-400 text-teal-800 font-medium'
+                              : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
+                          }`}
+                        >
+                          {val ? 'Yes' : 'No'}
+                        </button>
+                      ))}
+                      {isLepAuto && (
+                        <span className="text-[10px] text-gray-400 leading-none ml-0.5">zone</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Heritage element scope — only for heritage properties */}
+            {heritage && (
+              <div className="pt-2 border-t border-teal-100">
+                <p className="text-xs font-medium text-teal-800 mb-1.5">
+                  Which building elements does this proposal affect?
+                  <span className="text-gray-400 font-normal ml-1">(select all that apply)</span>
+                </p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                  {HERITAGE_ELEMENTS.map(({ value, label }) => {
+                    const selected = worksScopeAnswers?.heritage_elements?.includes(value) ?? false;
+                    return (
+                      <label key={value} className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer hover:text-gray-900">
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => {
+                            const current = worksScopeAnswers?.heritage_elements ?? [];
+                            const next = selected
+                              ? current.filter(e => e !== value)
+                              : [...current, value];
+                            onWorksScopeChange({
+                              ...(worksScopeAnswers ?? { heritage_elements: null, has_commercial: null, has_boarding_house: null, has_multi_dwelling: null, is_subdivision: null, has_child_care: null, has_home_business: null, has_tourist_accommodation: null, has_industrial: null }),
+                              heritage_elements: next,
+                            });
+                          }}
+                          className="w-3.5 h-3.5 rounded border-teal-300 text-teal-600 focus:ring-teal-500 focus:ring-1"
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+                {(worksScopeAnswers?.heritage_elements?.length ?? 0) > 0 && (
+                  <p className="text-xs text-teal-600 mt-1.5">
+                    Heritage chapter will show controls for selected elements only.
+                    General controls always shown.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -269,99 +418,48 @@ export function DAModeCard({
           </div>
         )}
 
-        {/* Scope summary — shown after intake, replaces simple "intake completed" line */}
-        {intakeAnswers ? (
-          <div className="pt-2 border-t border-teal-100">
-            <div className="mb-2">
-              <span className="text-xs font-medium text-teal-800">Topics to assess</span>
+        {/* Scope summary */}
+        <div className="pt-2 border-t border-teal-100 space-y-1">
+          {/* Previously-dismissed topics — undo only (topic assertions from prior sessions) */}
+          {Object.entries(topicAssertions).map(([topic, reason]) => (
+            <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
+              <span className="w-3 font-bold">⊘</span>
+              <span className="capitalize line-through flex-1">{topic.replace(/_/g, ' ')}</span>
+              <span className="text-gray-300 truncate max-w-32" title={reason}>{reason}</span>
+              <button onClick={() => onAssertTopicNA(topic, null)}
+                className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0">undo</button>
             </div>
-
-            <div className="space-y-1">
-              {/* Heritage — always first if property has HCA */}
-              {heritage && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-teal-500 font-bold w-3">✓</span>
-                  <span className="font-medium text-gray-700">
-                    Heritage{hcaName ? ` — ${hcaName}` : ' Conservation Area'}
-                  </span>
-                  <span className="text-gray-400 ml-auto">{heritagePros}</span>
+          ))}
+          {/* Section count — primary scope signal */}
+          {globalProgress && (
+            <>
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-teal-800">Sections to assess:</span>
+                <span className="text-xs font-bold text-teal-900">{globalProgress.scopeTotal}</span>
+              </div>
+              {globalProgress.triaged > 0 && (
+                <div className="text-xs text-gray-400">
+                  + {globalProgress.triaged} provisions excluded for your dev type
                 </div>
               )}
-              {/* Precinct — second if applies */}
-              {precinctName && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-teal-500 font-bold w-3">✓</span>
-                  <span className="font-medium text-gray-700">{precinctName}</span>
-                </div>
-              )}
-              {/* Previously-dismissed topics — shown for undo only */}
-              {Object.entries(topicAssertions).map(([topic, reason]) => (
-                <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="w-3 font-bold">⊘</span>
-                  <span className="capitalize line-through flex-1">{topic.replace(/_/g, ' ')}</span>
-                  <span className="text-gray-300 truncate max-w-32" title={reason}>{reason}</span>
-                  <button onClick={() => onAssertTopicNA(topic, null)}
-                    className="text-xs text-teal-500 hover:text-teal-700 flex-shrink-0">undo</button>
-                </div>
-              ))}
-              {/* Excluded — always visible */}
-              {scopeSummary.excluded.length > 0 && (
-                <div className="pt-0.5">
-                  <p className="text-xs text-gray-400 mb-0.5 pl-1">
-                    These {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} have no provisions for your development type
-                  </p>
-                  <div className="space-y-0.5 ml-1">
-                    {scopeSummary.excluded.map(({ topic, count }) => {
-                      const selectedWork = ANCILLARY_WORKS.find(w =>
-                        ancillaryWorks.includes(w.value) && (w.devTypeTag === topic || w.value === topic)
-                      );
-                      return (
-                        <div key={topic} className="flex items-center gap-2 text-xs text-gray-400">
-                          <span className="w-3 text-gray-300 font-bold">✕</span>
-                          <span className="capitalize line-through">{topic.replace(/_/g, ' ')}</span>
-                          {selectedWork && (
-                            <span className="text-gray-300 italic">selected — none for this dev type</span>
-                          )}
-                          <span className="ml-auto">{count}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Total provisions to assess — use actual scopeTotal, not topic counts */}
-              {globalProgress && (
-                <div className="pt-2 mt-2 border-t border-teal-100">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-semibold text-teal-800">Total provisions to assess:</span>
-                    <span className="text-xs font-bold text-teal-900">{globalProgress.scopeTotal}</span>
-                  </div>
-                  {globalProgress.triaged > 0 && (
-                    <div className="text-xs text-gray-500">
-                      (+ {globalProgress.triaged} in {scopeSummary.excluded.length} topic{scopeSummary.excluded.length !== 1 ? 's' : ''} with 0 provisions for your dev type)
-                    </div>
-                  )}
-                </div>
-              )}
+            </>
+          )}
+          {/* Prompt to refine scope if questionnaire not yet run */}
+          {!intakeAnswers && (
+            <div className="flex items-center justify-between pt-0.5">
+              <span className="text-xs text-gray-500">
+                {ancillaryWorks.length > 0 ? 'Scope set from your selections' : 'Refine scope for your works'}
+              </span>
+              <button onClick={onRunIntake}
+                className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0">
+                {ancillaryWorks.length > 0 ? 'Review →' : 'Refine →'}
+              </button>
             </div>
-            {intakeSetAt && (
-              <p className="text-xs text-gray-400 mt-2">Scope set {intakeSetAt}</p>
-            )}
-          </div>
-        ) : (
-          <div className="flex items-center justify-between pt-1 border-t border-teal-100">
-            <span className="text-xs text-gray-500">
-              {ancillaryWorks.length > 0 ? 'Scope set from your selections — review to override' : 'Filter out provisions that don\'t apply'}
-            </span>
-            <button
-              onClick={onRunIntake}
-              className="text-xs text-teal-600 underline underline-offset-2 hover:text-teal-800 ml-3 flex-shrink-0"
-            >
-              {ancillaryWorks.length > 0 ? 'Review scope →' : 'Set scope →'}
-            </button>
-          </div>
-        )}
+          )}
+          {intakeSetAt && (
+            <p className="text-xs text-gray-400">Scope set {intakeSetAt}</p>
+          )}
+        </div>
 
         {/* Corpus + progress */}
         {layerCounts && (
@@ -411,7 +509,7 @@ export function DAModeCard({
           </div>
           <div className="flex items-center justify-between">
             <span className="text-xs text-gray-500">
-              {globalProgress.remaining} of {globalProgress.scopeTotal} remaining
+              {globalProgress.remaining} of {globalProgress.scopeTotal} section{globalProgress.scopeTotal !== 1 ? 's' : ''} remaining
             </span>
             {globalProgress.remaining === 0 && (
               <span className="text-xs font-medium text-green-600">All assessed</span>
@@ -420,7 +518,9 @@ export function DAModeCard({
 
           {/* Scope reduction waterfall — ALWAYS visible for audit trail */}
           {(globalProgress.triaged > 0 || globalProgress.chapterDismissed > 0 ||
-            globalProgress.topicDismissed > 0 || globalProgress.suppressed > 0) && (
+            globalProgress.autoChapterDismissed > 0 ||
+            globalProgress.topicDismissed > 0 || globalProgress.suppressed > 0 ||
+            (globalProgress.questionnaireScoped ?? 0) > 0 || (globalProgress.heritageElementScoped ?? 0) > 0) && (
             <>
               <div className="bg-amber-50 border border-amber-200 rounded px-3 py-2 space-y-2">
                 {/* Header */}
@@ -472,6 +572,12 @@ export function DAModeCard({
                         <div className="text-amber-600 text-[11px] italic">You dismissed entire DCP chapters from scope</div>
                       </div>
                     )}
+                    {globalProgress.autoChapterDismissed > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.autoChapterDismissed} in chapters auto-excluded</div>
+                        <div className="text-amber-600 text-[11px] italic">No provisions in these chapters apply to your development type</div>
+                      </div>
+                    )}
                     {globalProgress.topicDismissed > 0 && (
                       <div>
                         <div className="font-medium">− {globalProgress.topicDismissed} in topics you dismissed</div>
@@ -491,6 +597,18 @@ export function DAModeCard({
                             (Can toggle to view them)
                           </button>
                         </div>
+                      </div>
+                    )}
+                    {(globalProgress.questionnaireScoped ?? 0) > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.questionnaireScoped} use-type provisions out of scope</div>
+                        <div className="text-amber-600 text-[11px] italic">Excluded by LEP zone restrictions or questionnaire answers (commercial, boarding house, multi-dwelling, etc.)</div>
+                      </div>
+                    )}
+                    {(globalProgress.heritageElementScoped ?? 0) > 0 && (
+                      <div>
+                        <div className="font-medium">− {globalProgress.heritageElementScoped} heritage provisions for elements not in scope</div>
+                        <div className="text-amber-600 text-[11px] italic">Heritage controls for building elements not involved in your proposal</div>
                       </div>
                     )}
                   </div>

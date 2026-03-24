@@ -6,17 +6,19 @@ import { ANCILLARY_WORKS } from './ancillaryWorks';
 export interface DevTypeOption {
   value: string;
   label: string;
+  /** Primary LEP land use slug — used to check zone permissibility */
+  lepSlug?: string;
 }
 
 export const DEV_TYPE_OPTIONS: DevTypeOption[] = [
-  { value: 'new_dwelling',        label: 'New dwelling' },
-  { value: 'extension_single',    label: 'Single-storey extension' },
-  { value: 'extension_double',    label: 'Two-storey extension' },
-  { value: 'alterations',         label: 'Alterations and additions' },
-  { value: 'secondary_dwelling',  label: 'Secondary dwelling (granny flat)' },
-  { value: 'dual_occupancy',      label: 'Dual occupancy' },
+  { value: 'new_dwelling',        label: 'New dwelling',                     lepSlug: 'dwelling_houses' },
+  { value: 'extension_single',    label: 'Single-storey extension',          lepSlug: 'dwelling_houses' },
+  { value: 'extension_double',    label: 'Two-storey extension',             lepSlug: 'dwelling_houses' },
+  { value: 'alterations',         label: 'Alterations and additions',        lepSlug: 'dwelling_houses' },
+  { value: 'secondary_dwelling',  label: 'Secondary dwelling (granny flat)', lepSlug: 'secondary_dwellings' },
+  { value: 'dual_occupancy',      label: 'Dual occupancy',                   lepSlug: 'dual_occupancies' },
   { value: 'change_of_use',       label: 'Change of use' },
-  { value: 'subdivision',         label: 'Subdivision' },
+  { value: 'subdivision',         label: 'Subdivision',                      lepSlug: 'subdivision_of_land' },
   { value: 'other',               label: 'Other' },
 ];
 

@@ -59,7 +59,7 @@ function buildClarificationResponse(
     message: `I'm not sure what you're asking. Could you try rephrasing it?${hasProperty ? '' : '\n\nTip: Select a property above for specific development control questions.'}`,
     suggestedQuestions: suggestions.slice(0, 4),
     citations: [],
-    category: 'clarification_needed',
+    category: 'synthesis' as import('@/lib/ai/classifier').QuestionCategory,
     isRefusal: false,
   };
 }
@@ -101,7 +101,7 @@ export async function POST(
 
     // Security Layer 3: Enhanced rate limiting (bot detection)
     const { limit, window } = getRateLimit(request);
-    const rateLimitResult = await checkRateLimit(clientIP, undefined, limit, window);
+    const rateLimitResult = await checkRateLimit(clientIP, null, limit, window);
 
     if (!rateLimitResult.success) {
       recordViolation(clientIP);
@@ -137,7 +137,7 @@ export async function POST(
       // Encode response for obfuscation
       const encoded = encodeResponse({
         answer: clarificationResponse.message,
-        citations: clarificationResponse.citations,
+        citations: clarificationResponse.citations.map(c => c.source),
         confidence: classification.confidence,
         suggestedQuestions: clarificationResponse.suggestedQuestions,
         category: 'clarification_needed',
@@ -159,7 +159,7 @@ export async function POST(
     // Security Layer 4: Encode response (obfuscation)
     const encoded = encodeResponse({
       answer: formattedResponse.message,
-      citations: formattedResponse.citations,
+      citations: formattedResponse.citations.map(c => c.source),
       confidence: classification.confidence,
       suggestedQuestions: formattedResponse.suggestedQuestions,
       category: classification.category,

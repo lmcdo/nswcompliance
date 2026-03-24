@@ -2,6 +2,7 @@
 // Maps ancillary selections to intake answers for auto-triage.
 
 import type { IntakeAnswers } from './intake';
+import { expandDevTypeHierarchy } from './devTypeHierarchy';
 
 export interface AncillaryWork {
   value: string;
@@ -60,6 +61,12 @@ export function deriveIntakeFromScope(
     result[work.intakeField] = ancillarySet.has(work.value) ? 'yes' : 'no';
   }
 
+  // Retaining walls often disturb tree roots — leave trees_affected unset (unknown) rather
+  // than auto-excluding tree provisions when the user hasn't explicitly confirmed no trees.
+  if (ancillarySet.has('retaining') && !ancillarySet.has('trees')) {
+    delete result.trees_affected;
+  }
+
   // Impervious surfaces auto-inferred — never asked manually
   result.new_impervious_surfaces = inferImperviousSurfaces(primaryType, ancillary);
 
@@ -68,16 +75,19 @@ export function deriveIntakeFromScope(
 
 /**
  * Get all dev type tags for API expansion from scope selection.
- * Returns the primary type + devTypeTags from selected ancillary works.
+ * Returns the full hierarchy-expanded union of primary type + selected ancillary works,
+ * so client-side isPrimary checks match server-side provision matching.
  */
 export function getScopeDevTypeTags(primaryType: string, ancillary: string[]): string[] {
-  const tags: string[] = [];
-  if (primaryType) tags.push(primaryType);
+  const all = new Set<string>();
+  if (primaryType) {
+    for (const t of expandDevTypeHierarchy(primaryType)) all.add(t);
+  }
   const ancillarySet = new Set(ancillary);
   for (const work of ANCILLARY_WORKS) {
     if (work.devTypeTag && ancillarySet.has(work.value)) {
-      tags.push(work.devTypeTag);
+      for (const t of expandDevTypeHierarchy(work.devTypeTag)) all.add(t);
     }
   }
-  return tags;
+  return Array.from(all);
 }

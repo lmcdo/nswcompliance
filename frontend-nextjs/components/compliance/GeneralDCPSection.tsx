@@ -16,7 +16,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronRight, FileText, FileImage, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, FileImage, Info, X } from 'lucide-react';
 import { PdfPageButton } from './PdfPageButton';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { prioritizeRequirements, getPriorityStats, canSubdivide, isSubdivisionRequirement, hasHeritage, isHeritageRequirement, groupByCategory } from '@/lib/requirement-prioritization';

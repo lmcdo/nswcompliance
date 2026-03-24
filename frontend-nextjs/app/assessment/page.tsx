@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  *   - Tab 2 "DCP Provisions": Council-level provisions via ProvisionsByTocStructure (TOC-based view)
  */
 
-import React from 'react';
+import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { PropertySearch } from '@/components/property/PropertySearch';
 import { DCPInterestForm } from '@/components/compliance/DCPInterestForm';
@@ -26,6 +26,7 @@ import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurr
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
+import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
 // NEXT_PUBLIC_ENABLED_LGAS: comma-separated LGA slugs with DCP live.
@@ -81,11 +82,28 @@ export default function AssessmentPage() {
     setIsDaMode,
   } = useAssessmentUI(selectedAddress);
 
+  const heritageClass = useMemo(
+    () => classifyHeritageType(selectedProperty?.heritage?.heritageType),
+    [selectedProperty?.heritage?.heritageType]
+  );
+
+  // Lazy mount: ProvisionsByTocStructure only mounts after the user first activates the DCP tab.
+  // Prevents the SWR fetch and DA session initialisation from firing on every property search
+  // when the planner is working on SEPP/LEP tabs.
+  const [dcpEverActivated, setDcpEverActivated] = useState(false);
+  // Ref to read viewMode inside the address-change effect without adding it as a dependency.
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+  // Reset when address changes, but only if not currently on the DCP tab (if they're on DCP,
+  // we want the new address's provisions to load immediately without requiring another tab click).
+  useEffect(() => {
+    if (viewModeRef.current !== 'dcp') setDcpEverActivated(false);
+  }, [selectedAddress]);
+
   // Navigation handler for Pattern Book -> DCP cross-references
   const handleNavigateToDcp = (topic: string, hcaSlug?: string) => {
+    setDcpEverActivated(true);
     setViewMode('dcp');
-    // TODO: Apply topic and HCA filters to ProvisionsByTocStructure
-    // This will require adding filter state and props to ProvisionsByTocStructure
     console.log('[Pattern Book Navigation] Switching to DCP tab:', { topic, hcaSlug });
   };
 
@@ -405,7 +423,7 @@ export default function AssessmentPage() {
                       id="tab-dcp"
                       aria-selected={viewMode === 'dcp'}
                       aria-controls="panel-dcp"
-                      onClick={() => setViewMode('dcp')}
+                      onClick={() => { setDcpEverActivated(true); setViewMode('dcp'); }}
                       className={`flex-1 px-3 md:px-6 py-3 text-sm font-medium transition-colors min-h-[48px] ${
                         viewMode === 'dcp'
                           ? 'bg-teal-600 text-white'
@@ -448,6 +466,7 @@ export default function AssessmentPage() {
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
                   {isDcpEnabledForCouncil(selectedProperty.constraints?.lga) ? (
+                    dcpEverActivated && (
                     <ErrorBoundary fallbackTitle="Error loading DCP provisions">
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
@@ -455,14 +474,14 @@ export default function AssessmentPage() {
                         formerCouncil={selectedProperty.constraints?.formerCouncil || ''}
                         zone={selectedProperty.constraints?.zone}
                         heritage={selectedProperty.heritage?.isHeritage || false}
-                        hcaName={selectedProperty.heritage?.heritageType?.toLowerCase().includes('conservation area')
+                        hcaName={heritageClass.isConservationArea
                           ? selectedProperty.heritage?.heritageItemName
                           : undefined}
                         precinctId={selectedProperty.constraints?.precinctId}
                         precinctName={selectedProperty.constraints?.precinctName}
                         address={selectedProperty.address}
                         hcaCode={selectedProperty.heritage?.heritageItemNumber}
-                        heritageItem={selectedProperty.heritage?.heritageType?.toLowerCase().includes('item')}
+                        heritageItem={heritageClass.isItem}
                         heritageItemName={selectedProperty.heritage?.heritageItemName}
                         heritageItemNumber={selectedProperty.heritage?.heritageItemNumber}
                         propertyData={selectedProperty}
@@ -471,6 +490,7 @@ export default function AssessmentPage() {
                         onToggleDaMode={setIsDaMode}
                       />
                     </ErrorBoundary>
+                    )
                   ) : (
                     <DCPInterestForm
                       councilName={selectedProperty.constraints?.lga || 'Your council'}

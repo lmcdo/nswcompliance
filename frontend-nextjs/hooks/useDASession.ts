@@ -3,10 +3,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { IntakeAnswers } from '@/lib/see/intake';
 import { assembleDescription } from '@/lib/see/devTypes';
+import type { WorksScopeAnswers } from '@/lib/see/worksScope';
 
 export interface DaResponse {
   response_text: string | null;
   compliance_status: 'complies' | 'varies' | 'not_applicable' | null;
+}
+
+export interface SectionResponse {
+  status: 'complies' | 'varies' | 'not_applicable' | 'flagged' | null;
+  narrative: string | null;
+  section_title?: string | null;
 }
 
 interface BulkResponseItem {
@@ -21,17 +28,25 @@ interface UseDASessionReturn {
   daResponses: Map<number, DaResponse>;
   refreshResponses: () => Promise<void>;
   updateSingleResponse: (provisionId: number, response: DaResponse) => void;
+  sectionResponses: Map<string, SectionResponse>;
+  updateSingleSectionResponse: (sectionKey: string, response: SectionResponse) => void;
+  saveSectionResponse: (sectionKey: string, sectionTitle: string | null, response: SectionResponse) => Promise<void>;
   developmentDescription: string;
   saveDescription: (text: string) => Promise<void>;
   intakeAnswers: IntakeAnswers | null;
   saveIntakeAnswers: (answers: IntakeAnswers) => Promise<void>;
   ancillaryWorks: string[];
+  primaryDevType: string;
+  savedWorksText: string;
   saveScope: (primaryType: string, ancillary: string[], worksText: string, intake: IntakeAnswers) => Promise<void>;
   topicAssertions: Record<string, string>;
   saveTopicAssertion: (topic: string, reason: string | null) => Promise<void>;
   chapterAssertions: Record<string, string>;
   saveChapterAssertion: (chapterKey: string, reason: string | null) => Promise<void>;
   bulkSaveResponses: (responses: BulkResponseItem[]) => Promise<void>;
+  worksScopeAnswers: WorksScopeAnswers | null;
+  saveWorksScopeAnswers: (answers: WorksScopeAnswers) => Promise<void>;
+  exportedAt: string | null;
   error: Error | null;
 }
 
@@ -42,14 +57,18 @@ function buildEnvelope(
   topics: Record<string, string>,
   chapters: Record<string, string>,
   primaryDevType?: string,
+  worksScope?: WorksScopeAnswers | null,
+  worksText?: string,
 ) {
   return {
     _v: 3,
     ...(primaryDevType !== undefined ? { primary_dev_type: primaryDevType } : {}),
+    ...(worksText !== undefined ? { works_text: worksText } : {}),
     ancillary_works: ancillary,
     intake: intake,
     topic_assertions: topics,
     chapter_assertions: chapters,
+    ...(worksScope !== undefined ? { works_scope: worksScope } : {}),
   };
 }
 
@@ -61,11 +80,16 @@ export function useDASession(
   const [sessionToken, setSessionToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [daResponses, setDaResponses] = useState<Map<number, DaResponse>>(new Map());
+  const [sectionResponses, setSectionResponses] = useState<Map<string, SectionResponse>>(new Map());
   const [developmentDescription, setDevelopmentDescription] = useState<string>('');
   const [intakeAnswers, setIntakeAnswers] = useState<IntakeAnswers | null>(null);
   const [ancillaryWorks, setAncillaryWorks] = useState<string[]>([]);
+  const [primaryDevType, setPrimaryDevType] = useState<string>('');
+  const [savedWorksText, setSavedWorksText] = useState<string>('');
   const [topicAssertions, setTopicAssertions] = useState<Record<string, string>>({});
   const [chapterAssertions, setChapterAssertions] = useState<Record<string, string>>({});
+  const [worksScopeAnswers, setWorksScopeAnswers] = useState<WorksScopeAnswers | null>(null);
+  const [exportedAt, setExportedAt] = useState<string | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   // Refs for latest state — avoids stale closures in save callbacks
@@ -77,6 +101,8 @@ export function useDASession(
   topicAssertionsRef.current = topicAssertions;
   const chapterAssertionsRef = useRef(chapterAssertions);
   chapterAssertionsRef.current = chapterAssertions;
+  const worksScopeRef = useRef(worksScopeAnswers);
+  worksScopeRef.current = worksScopeAnswers;
 
   const loadResponses = useCallback(async (token: string) => {
     try {
@@ -86,6 +112,7 @@ export function useDASession(
 
       // Load dev_type into description state
       setDevelopmentDescription(data.session?.dev_type || '');
+      setExportedAt(data.session?.exported_at ?? null);
 
       // Load proposed_values — supports v3/v2 envelope or legacy flat IntakeAnswers
       const pv = data.session?.proposed_values;
@@ -93,8 +120,11 @@ export function useDASession(
         if ((pv as any)._v === 3) {
           setIntakeAnswers((pv as any).intake ?? null);
           setAncillaryWorks((pv as any).ancillary_works ?? []);
+          setPrimaryDevType((pv as any).primary_dev_type ?? '');
+          setSavedWorksText((pv as any).works_text ?? '');
           setTopicAssertions((pv as any).topic_assertions ?? {});
           setChapterAssertions((pv as any).chapter_assertions ?? {});
+          setWorksScopeAnswers((pv as any).works_scope ?? null);
         } else if ((pv as any)._v === 2) {
           setIntakeAnswers((pv as any).intake ?? null);
           setAncillaryWorks([]);  // v2 has no ancillary data
@@ -113,6 +143,12 @@ export function useDASession(
         map.set(Number(provId), resp as DaResponse);
       }
       setDaResponses(map);
+
+      const sectionMap = new Map<string, SectionResponse>();
+      for (const [key, resp] of Object.entries(data.section_responses || {})) {
+        sectionMap.set(key, resp as SectionResponse);
+      }
+      setSectionResponses(sectionMap);
     } catch (err) {
       console.error('[useDASession] Failed to load responses:', err);
       setError(err instanceof Error ? err : new Error(String(err)));
@@ -163,7 +199,7 @@ export function useDASession(
     intake: IntakeAnswers,
   ) => {
     if (!sessionToken) return;
-    const envelope = buildEnvelope(intake, ancillary, topicAssertionsRef.current, chapterAssertionsRef.current, primaryType);
+    const envelope = buildEnvelope(intake, ancillary, topicAssertionsRef.current, chapterAssertionsRef.current, primaryType, undefined, worksText);
     const description = assembleDescription(primaryType, ancillary, worksText);
 
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
@@ -177,6 +213,7 @@ export function useDASession(
     if (!res.ok) throw new Error('Failed to save scope');
     setIntakeAnswers(intake);
     setAncillaryWorks(ancillary);
+    setSavedWorksText(worksText);
   }, [sessionToken]);
 
   const saveTopicAssertion = useCallback(async (topic: string, reason: string | null) => {
@@ -199,7 +236,7 @@ export function useDASession(
     const current = chapterAssertionsRef.current;
     const next = { ...current };
     if (reason === null) { delete next[chapterKey]; } else { next[chapterKey] = reason; }
-    const envelope = buildEnvelope(intakeRef.current, ancillaryRef.current, topicAssertionsRef.current, next);
+    const envelope = buildEnvelope(intakeRef.current, ancillaryRef.current, topicAssertionsRef.current, next, undefined, worksScopeRef.current);
     const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -208,6 +245,46 @@ export function useDASession(
     if (!res.ok) throw new Error('Failed to save chapter assertion');
     setChapterAssertions(next);
   }, [sessionToken]);
+
+  const saveWorksScopeAnswers = useCallback(async (answers: WorksScopeAnswers) => {
+    if (!sessionToken) return;
+    const envelope = buildEnvelope(intakeRef.current, ancillaryRef.current, topicAssertionsRef.current, chapterAssertionsRef.current, undefined, answers);
+    const res = await fetch(`/api/da-sessions?token=${encodeURIComponent(sessionToken)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ proposed_values: envelope }),
+    });
+    if (!res.ok) throw new Error('Failed to save works scope');
+    setWorksScopeAnswers(answers);
+  }, [sessionToken]);
+
+  const updateSingleSectionResponse = useCallback((sectionKey: string, response: SectionResponse) => {
+    setSectionResponses(prev => {
+      const next = new Map(prev);
+      next.set(sectionKey, response);
+      return next;
+    });
+  }, []);
+
+  const saveSectionResponse = useCallback(async (
+    sectionKey: string,
+    sectionTitle: string | null,
+    response: SectionResponse,
+  ) => {
+    if (!sessionToken) return;
+    const res = await fetch(`/api/da-sessions/${sessionToken}/section-responses`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        section_key: sectionKey,
+        section_title: sectionTitle,
+        status: response.status || null,
+        narrative: response.narrative || null,
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to save section response');
+    updateSingleSectionResponse(sectionKey, { ...response, section_title: sectionTitle });
+  }, [sessionToken, updateSingleSectionResponse]);
 
   const bulkSaveResponses = useCallback(async (responses: BulkResponseItem[]) => {
     if (!sessionToken || responses.length === 0) return;
@@ -277,17 +354,25 @@ export function useDASession(
     daResponses,
     refreshResponses,
     updateSingleResponse,
+    sectionResponses,
+    updateSingleSectionResponse,
+    saveSectionResponse,
     developmentDescription,
     saveDescription,
     intakeAnswers,
     saveIntakeAnswers,
     ancillaryWorks,
+    primaryDevType,
+    savedWorksText,
     saveScope,
     topicAssertions,
     saveTopicAssertion,
     chapterAssertions,
     saveChapterAssertion,
     bulkSaveResponses,
+    worksScopeAnswers,
+    saveWorksScopeAnswers,
+    exportedAt,
     error,
   };
 }

@@ -59,10 +59,11 @@ interface PropertyData {
 }
 
 interface PropertyDetailsComprehensiveProps {
- propertyData: PropertyData;
+ propertyData?: PropertyData;
+ lepClauseData?: any;
 }
 
-export function PropertyDetailsComprehensive({ propertyData }: PropertyDetailsComprehensiveProps) {
+export function PropertyDetailsComprehensive({ propertyData, lepClauseData }: PropertyDetailsComprehensiveProps) {
  const [isCardCollapsed, setIsCardCollapsed] = useState(false)
 
  if (!propertyData) {

@@ -1282,25 +1282,66 @@ def extract_chapter(
                 "total_provisions": len(provision_texts),
             }
 
-        # 3. Atomic DB transaction
+        # 3. Provision count gate — before touching the DB.
+        # A large drop almost always means a scanned PDF, extraction failure, or
+        # format change — not a genuine DCP amendment. Never silently commit.
+        try:
+            count_cur = conn.cursor()
+            count_cur.execute(
+                """
+                SELECT COUNT(*) FROM regulatory_provisions
+                WHERE source_council = %s
+                  AND is_current = TRUE
+                  AND (source_chapter_key = %s OR source_chapter_key IS NULL)
+                """,
+                (council, chapter_key),
+            )
+            prev_count = count_cur.fetchone()[0]
+            count_cur.close()
+        except Exception:
+            prev_count = 0
+
+        new_count = len(sections)
+        print(f"    Provision count: {prev_count} existing -> {new_count} new")
+
+        if prev_count > 20 and new_count < prev_count * 0.75:
+            verdict = "WARN" if (dry_run or review) else "ABORT"
+            print(
+                f"    [{verdict}] Count dropped {prev_count} -> {new_count} "
+                f"({new_count/prev_count:.0%}). Likely scanned PDF or format change."
+            )
+            if not dry_run and not review:
+                print(f"    Skipping DB commit for {chapter_key} — investigate before re-extracting.")
+                return False, None
+
+        if new_count < 5:
+            verdict = "WARN" if (dry_run or review) else "ABORT"
+            print(f"    [{verdict}] Only {new_count} sections extracted — likely empty or scanned PDF.")
+            if not dry_run and not review:
+                return False, None
+
+        # 4. Atomic DB transaction
         now = datetime.now(timezone.utc)
         page_start = sections[0]["page_start"]
         page_end   = sections[-1]["page_end"]
 
         try:
-            # Soft-delete existing provisions from this chapter
+            # Soft-delete existing provisions from this chapter.
+            # The NULL-safe OR clause covers legacy provisions (extracted before
+            # migration 008 added source_chapter_key) so they are retired correctly
+            # when a chapter is re-extracted — not left live alongside new provisions.
             cur.execute(
                 """
                 UPDATE regulatory_provisions
                 SET is_current = FALSE
-                WHERE source_chapter_key = %s
-                  AND source_council = %s
+                WHERE source_council = %s
                   AND is_current = TRUE
+                  AND (source_chapter_key = %s OR source_chapter_key IS NULL)
                 """,
-                (chapter_key, council),
+                (council, chapter_key),
             )
             soft_deleted = cur.rowcount
-            print(f"    Soft-deleted {soft_deleted} old provisions")
+            print(f"    Soft-deleted {soft_deleted} old provisions (incl. legacy NULL-keyed)")
 
             # Bulk INSERT new provisions
             inserted = 0

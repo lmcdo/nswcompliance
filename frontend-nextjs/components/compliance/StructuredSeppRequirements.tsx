@@ -44,7 +44,7 @@ function sanitizeText(text: string | undefined | null): string {
 }
 
 interface RequirementItem {
-  [key: string]: string | boolean | object;
+  [key: string]: string | boolean | object | undefined;
   legal_text?: string;
   legal_citation?: string;
   resource?: {

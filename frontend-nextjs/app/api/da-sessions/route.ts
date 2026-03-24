@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     const sessionResult = await query(
-      `SELECT id, address, former_council, zone, dev_type, proposed_values, created_at
+      `SELECT id, address, former_council, zone, dev_type, proposed_values, created_at, exported_at
        FROM da_sessions WHERE session_token = $1`,
       [token]
     );
@@ -69,7 +69,23 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    return NextResponse.json({ session, responses });
+    // Load section-level responses
+    const sectionResponsesResult = await query(
+      `SELECT section_key, section_title, status, narrative, updated_at
+       FROM da_section_responses WHERE da_session_id = $1`,
+      [session.id]
+    );
+
+    const section_responses: Record<string, { status: string | null; narrative: string | null; section_title: string | null }> = {};
+    for (const row of sectionResponsesResult.rows) {
+      section_responses[row.section_key] = {
+        status: row.status,
+        narrative: row.narrative,
+        section_title: row.section_title,
+      };
+    }
+
+    return NextResponse.json({ session, responses, section_responses });
   } catch (error) {
     console.error('[DA Sessions] GET error:', error);
     return NextResponse.json({ error: 'Failed to retrieve session' }, { status: 500 });
@@ -88,7 +104,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { dev_type, proposed_values } = body;
+    const { dev_type, proposed_values, exported_at } = body;
 
     // proposed_values must be a plain object if provided
     const safeProposedValues =
@@ -100,6 +116,11 @@ export async function PATCH(request: NextRequest) {
       await query(
         `UPDATE da_sessions SET dev_type = $1, proposed_values = $2 WHERE session_token = $3`,
         [dev_type || null, JSON.stringify(safeProposedValues), token]
+      );
+    } else if (exported_at !== undefined) {
+      await query(
+        `UPDATE da_sessions SET exported_at = $1 WHERE session_token = $2`,
+        [exported_at || null, token]
       );
     } else {
       await query(

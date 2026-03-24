@@ -48,12 +48,13 @@ interface Provision {
 }
 
 interface Props {
-  zoneCode: string;       // e.g. "R2"
+  zoneCode: string;           // e.g. "R2"
   lotArea?: number | null;    // m² — from property context
-  heritageItem?: boolean;     // from property context
+  heritageItem?: boolean;     // true = individually listed heritage item (LEP Schedule 5)
+  heritageAffected?: boolean; // true = any heritage flag (item OR conservation area)
 }
 
-export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false }: Props) {
+export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false, heritageAffected = false }: Props) {
   const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
   const [expanded, setExpanded] = useState(residentialZones.includes(zoneCode));
   const [selectedType, setSelectedType] = useState<WorkTypeKey | null>(null);
@@ -143,6 +144,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
             zoneCode={zoneCode}
             lotArea={lotArea}
             heritageItem={heritageItem}
+            heritageAffected={heritageAffected}
             provisions={provisions}
           />
 
@@ -294,7 +296,7 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
             {/* Compliance-grade guarantee */}
             <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-purple-100 pt-3">
               <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <span>Compliance-grade guarantee: Deterministic extraction from SEPP Exempt & Complying 2008, no AI interpretation of regulations</span>
+              <span>Provision text extracted from SEPP (Exempt and Complying Development Codes) 2008. Zone eligibility and property-specific constraints must be independently verified before issuing a CDC.</span>
             </div>
           </div>
         </CardContent>

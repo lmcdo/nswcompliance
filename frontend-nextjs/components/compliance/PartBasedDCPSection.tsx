@@ -34,11 +34,11 @@ interface GeneralRequirement {
   pdf_page?: number;
   pdf_page_image_url?: string;
   pdf_path?: string;
-  part_name?: string | null;
-  part_number?: string | null;
+  part_name?: string;
+  part_number?: string;
   objective?: string | null;
   user_category?: string | null;
-  section_type?: string | null;
+  section_type?: string;
   priority_level?: number | null;
 }
 

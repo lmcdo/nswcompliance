@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const formerCouncil = body.formerCouncil || 'Unknown';
 
     // Normalize LGA to title case
-    const normalizedLGA = lga.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    const normalizedLGA = lga.split(' ').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
 
     const pool = getPool();
 

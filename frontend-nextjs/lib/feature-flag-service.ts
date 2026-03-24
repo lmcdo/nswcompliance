@@ -22,11 +22,14 @@ class LocalStorageFeatureFlagService implements FeatureFlagService {
 
  // Return default flags
  return {
+ authoritativeRouteMigration: false,
  newDevelopmentSelector: false,
- enhancedComplianceStatus: false,
- advancedComplianceChecklist: false,
- realTimeValidation: false,
- debugMode: process.env.NODE_ENV === 'development',
+ newComplianceStatus: false,
+ newComplianceChecklist: false,
+ unifiedStateManagement: false,
+ legacyRouteFallback: true,
+ enableCaching: true,
+ enableAnalytics: false,
  };
  }
 

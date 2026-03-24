@@ -366,9 +366,14 @@ export function StateLevelControls({
           const ecResponse = await fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`);
           if (ecResponse.ok) {
             const data = await ecResponse.json();
-            const counts = data.counts || {};
-            const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0) as number;
-            setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
+            // notApplicable means zone is not covered by Housing Code — treat as 0 work types
+            if (data.notApplicable) {
+              setExemptComplyingCount(0);
+            } else {
+              const counts = data.counts || {};
+              const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0) as number;
+              setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
+            }
           }
         } catch (err) {
           console.error('[PathwaySummary] Failed to fetch E&C counts:', err);
@@ -388,15 +393,15 @@ export function StateLevelControls({
   // First try calculated dimensions from lot geometry, then fallback to property data
   const propertyAreaStr = propertyData?.propertyArea;
   const lotSize = propertyData?.lotDimensions?.area
-    || (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) : null)
-    || propertyData?.geometry?.area;
+    ?? (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) || null : null)
+    ?? propertyData?.geometry?.area;
 
   // Lot width - from calculated geometry (cadastre), then fallbacks
   const lotWidth = propertyData?.lotDimensions?.frontage
-    || propertyData?.geometry?.frontageWidth
-    || propertyData?.geometry?.estimatedWidth
-    || propertyData?.constraints?.lotWidth
-    || NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
+    ?? propertyData?.geometry?.frontageWidth
+    ?? propertyData?.geometry?.estimatedWidth
+    ?? propertyData?.constraints?.lotWidth
+    ?? NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
 
   // Lot depth - from calculated geometry
   const lotDepth = propertyData?.lotDimensions?.depth || null;
@@ -553,7 +558,8 @@ export function StateLevelControls({
         <ExemptComplyingProvisions
           zoneCode={zoneCode}
           lotArea={lotSize}
-          heritageItem={propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item')}
+          heritageItem={!!(propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item'))}
+          heritageAffected={!!propertyData?.heritage?.isHeritage}
         />
       )}
 
@@ -687,7 +693,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
-                    <div className="text-xs text-purple-700 ml-2">Zone 56 = Sydney Metropolitan - moderate climate with specific energy/thermal targets</div>
+                    <div className="text-xs text-purple-700 ml-2">Climate Zone {sustainableInfo.climateZone} — verify thermal performance targets against Table 3 of SEPP Sustainable Buildings 2022.</div>
                     </>
                   )}
                   {sustainableInfo.basixArea && (
@@ -726,7 +732,7 @@ export function StateLevelControls({
               />
             ) : (
               <p className="text-sm text-gray-500 italic">
-                No structured SEPP requirements for this development type
+                No Housing SEPP structured requirements for this development type
               </p>
             )}
 
@@ -782,7 +788,7 @@ export function StateLevelControls({
             {/* Compliance-grade guarantee */}
             <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-purple-100 pt-3 mt-4">
               <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <span>Compliance-grade guarantee: Deterministic extraction from state planning policies, no AI interpretation of regulations</span>
+              <span>Provision text sourced from NSW Planning Portal and SEPP instruments. Zone eligibility, heritage classification, and property-specific constraints require independent verification against current legislation.</span>
             </div>
           </CardContent>
         )}
@@ -817,7 +823,7 @@ export function StateLevelControls({
         const roads: any[] = propertyData?.roadClassifications || [];
         if (!roads.length) return null;
         const highImpact = roads
-          .map((r: any) => ({ ...r, impact: roadHierarchyAnnotation(r.functional_hierarchy || '') }))
+          .map((r: any) => ({ ...r, impact: roadHierarchyAnnotation(r.functional_hierarchy || '', r.distance_meters) }))
           .filter((r: any) => r.impact.isHighImpact)
           .sort((a: any, b: any) => a.distance_meters - b.distance_meters);
         if (!highImpact.length) return null;
@@ -829,7 +835,6 @@ export function StateLevelControls({
               <div>
                 <p className="text-sm font-semibold text-amber-900">
                   {primary.road_name} — {primary.functional_hierarchy}
-                  <span className="text-xs font-normal text-amber-700 ml-1">({Math.round(primary.distance_meters)}m)</span>
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5">{primary.impact.annotation}</p>
                 {highImpact.length > 1 && (
@@ -1329,7 +1334,7 @@ export function StateLevelControls({
                         <strong>Other seniors housing:</strong> 0.5 parking spaces per bedroom
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 24 - Boarding houses and seniors housing
+                        SEPP (Housing) 2021, Schedule 4 Part 5 — Seniors housing parking
                       </p>
                     </div>
                     <button

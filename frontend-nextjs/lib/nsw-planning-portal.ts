@@ -1039,8 +1039,11 @@ export class NSWPlanningPortalService {
            anefLevel: anefLevel,
            anefCode: anefCode,
            epiName: attrs.EPI_NAME,
-           lgaName: attrs.LGA_NAME
-         };
+           lgaName: attrs.LGA_NAME,
+           airport: null,
+           buildingAcceptability: null,
+           standardReference: ''
+         } as any;
        })
        .catch(() => null),
      // Flood data

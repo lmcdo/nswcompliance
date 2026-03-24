@@ -109,8 +109,8 @@ export function PersistentFeedbackHub({
       propertyAddress
     };
 
-    setFeedbackHistory(prev => [newFeedback, ...prev]);
-    setSessionState(prev => ({
+    setFeedbackHistory((prev: FeedbackItem[]) => [newFeedback, ...prev]);
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       hasSubmitted: true,
       submittedCount: prev.submittedCount + 1,
@@ -163,7 +163,7 @@ export function PersistentFeedbackHub({
   };
 
   const handleDismiss = useCallback((section?: string) => {
-    setSessionState(prev => ({
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       isVisible: false,
       dismissedSections: section
@@ -181,17 +181,17 @@ export function PersistentFeedbackHub({
 
   const handleMinimize = () => {
     setIsMinimized(true);
-    setSessionState(prev => ({ ...prev, isVisible: false }));
+    setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: false }));
   };
 
   const handleMaximize = () => {
     setIsMinimized(false);
-    setSessionState(prev => ({ ...prev, isVisible: true }));
+    setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: true }));
   };
 
   const handleClearHistory = () => {
     setFeedbackHistory([]);
-    setSessionState(prev => ({
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       submittedCount: 0,
       lastSubmittedAt: undefined,
@@ -206,7 +206,7 @@ export function PersistentFeedbackHub({
       {/* Feedback Trigger */}
       {(sessionState.isVisible || activeTrigger) && (
         <SmartFeedbackTrigger
-          type={activeTrigger || 'general'}
+          type={(activeTrigger || 'general') as 'missing_data' | 'general' | 'address_issue' | 'incorrect_calculation'}
           context={{
             propertyAddress,
             section: activeTrigger || 'general',
@@ -249,7 +249,7 @@ export function PersistentFeedbackHub({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDismiss(activeTrigger)}
+                      onClick={() => handleDismiss(activeTrigger ?? undefined)}
                       className="h-6 w-6 p-0"
                       title="Dismiss for this section"
                     >
@@ -417,7 +417,7 @@ export function PersistentFeedbackHub({
                 <label className="text-xs font-semibold text-blue-900 block mb-2">
                   Your Professional Role * (Auto-selected)
                 </label>
-                <Select value={sessionState.userType} onValueChange={(value) => setSessionState(prev => ({ ...prev, userRole: value }))}>
+                <Select value={sessionState.userType} onValueChange={(value) => setSessionState((prev: FeedbackSessionState) => ({ ...prev, userRole: value }))}>
                   <SelectTrigger className="text-sm bg-white border-blue-300">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>

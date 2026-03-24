@@ -85,6 +85,7 @@ export interface PropertyData {
  lotDetails?: LotDetails;
  lotDimensions?: LotDimensions | null;
  cornerLot?: CornerLotResult | null;
+ council?: string;
 }
 
 export interface PlanningLayer {
@@ -240,6 +241,25 @@ export class PropertyDataService {
    }
  }
 
+ // Chapter D precinct locality fallback: if PostGIS found no precinct and formerCouncil is now
+ // known, query dcp_precinct_localities to match the address suburb against the DB-owned mapping.
+ // Must run after suburbModule so formerCouncil is populated.
+ if (!constraints.precinctId && constraints.formerCouncil && precinctModule) {
+   try {
+     const localityPrecinctIds = await precinctModule.getPrecinctFromLocality(
+       propertyData.address,
+       constraints.formerCouncil,
+     );
+     if (localityPrecinctIds && localityPrecinctIds.length > 0) {
+       constraints.precinctId = localityPrecinctIds.join(',');
+       constraints.precinctName = localityPrecinctIds[0];
+       console.log(`[PropertyDataService] Locality precinct match: '${constraints.formerCouncil}' → '${constraints.precinctId}'`);
+     }
+   } catch (error) {
+     console.error('[PropertyDataService] Locality precinct lookup failed:', error);
+   }
+ }
+
  // For single-council LGAs (e.g. Waverley) the inner-west mapping returns null.
  // Fall back to the LGA config key so the provisions API gets a former_council param.
  if (!constraints.formerCouncil && constraints.lga) {
@@ -324,7 +344,7 @@ export class PropertyDataService {
  geometry: propertyData.geometry,
  coordinates: { lat, lon }, // FIX: Add WGS84 coordinates for precinct matching
  seppRouting,
- planningLayers: layers, // Pass through ALL layer data
+ planningLayers: layers as any, // Pass through ALL layer data
  roadClassifications, // Road functional hierarchy for setback calculations
  anefData: enrichedAnefData, // Aircraft noise exposure forecast data (with derived building acceptability)
  lotDetails: lotGeometry ? {

@@ -475,7 +475,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
                           className="w-full text-sm border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-400"
                         >
                           <option value="">Select...</option>
-                          {question.options.map(opt => (
+                          {question.options.map((opt: any) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
                         </select>
@@ -486,7 +486,7 @@ export function CDCPathway({ propertyData }: CDCPathwayProps) {
                       <p className="text-sm text-gray-700 mt-1">
                         <strong>
                           {question.type === 'select'
-                            ? question.options?.find(o => o.value === answer.value)?.label || answer.value
+                            ? question.options?.find((o: any) => o.value === answer.value)?.label || answer.value
                             : (isNaN(answer.value) || answer.value <= 0)
                             ? <span className="text-red-500 italic">Enter a value</span>
                             : `${answer.value}${question.unit || ''}`}

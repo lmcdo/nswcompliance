@@ -10,9 +10,8 @@ if (typeof window !== 'undefined') {
     capture_pageview: true,
     capture_pageleave: true,
     session_recording: {
-      recordCanvas: false,
       recordCrossOriginIframes: false
-    },
+    } as any,
     loaded: (posthog) => {
       if (process.env.NODE_ENV === 'development') posthog.debug()
     }

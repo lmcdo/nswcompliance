@@ -336,16 +336,34 @@ export async function GET(request: NextRequest) {
         precinctWarning = formerCouncilsWithPrecinctProvisions.has(fc);
       }
 
+      // Fetch chapter registry: PDF URLs + chapter labels for part-name derivation.
+      // Done before TOC grouping so buildPartNameMap can drive part titles automatically.
+      const chapterPdfUrls: Record<string, string> = {};
+      const chapterLabels: Record<string, string> = {};
+      if (filters.former_council) {
+        const registryResult = await client.query(
+          `SELECT chapter_key, r2_public_pdf_url, chapter_label
+           FROM dcp_chapter_registry
+           WHERE council = $1`,
+          [filters.former_council.toLowerCase()]
+        );
+        for (const row of registryResult.rows) {
+          if (row.r2_public_pdf_url) chapterPdfUrls[row.chapter_key] = row.r2_public_pdf_url;
+          if (row.chapter_label) chapterLabels[row.chapter_key] = row.chapter_label;
+        }
+      }
+      const partNameMap = buildPartNameMap(chapterLabels);
+
       // Group provisions based on groupBy parameter
       const byTopic = groupByTopic(adjustedResults);
       const byToc = filters.groupBy === 'toc'
-        ? groupByTocStructure(adjustedResults, filters.former_council)
+        ? groupByTocStructure(adjustedResults, filters.former_council, partNameMap)
         : undefined;
 
       // Get complete DCP TOC structure (unfiltered) for sidebar navigation
       // When dev_type provided, includes dev_type_match_count per chapter
       const completeToc = filters.groupBy === 'toc' && filters.former_council
-        ? await getCompleteTocStructure(client, filters.former_council, filters.dev_type)
+        ? await getCompleteTocStructure(client, filters.former_council, filters.dev_type, partNameMap)
         : undefined;
 
       // Reconcile complete_toc sections with by_toc sections.
@@ -370,22 +388,6 @@ export async function GET(request: NextRequest) {
           if (!hasOverlap) {
             completePart.sections = {};
           }
-        }
-      }
-
-      // Look up public PDF URLs for this council's chapters (stored in dcp_chapter_registry).
-      // Returns a map of chapter_key → r2_public_pdf_url so the frontend can deep-link
-      // each provision to its own chapter PDF via #page=N.
-      const chapterPdfUrls: Record<string, string> = {};
-      if (filters.former_council) {
-        const pdfUrlResult = await client.query(
-          `SELECT chapter_key, r2_public_pdf_url
-           FROM dcp_chapter_registry
-           WHERE council = $1 AND r2_public_pdf_url IS NOT NULL`,
-          [filters.former_council.toLowerCase()]
-        );
-        for (const row of pdfUrlResult.rows) {
-          chapterPdfUrls[row.chapter_key] = row.r2_public_pdf_url;
         }
       }
 
@@ -1042,7 +1044,7 @@ function sectionTitleFromChapterKey(chapterKey: string): string {
  * Get complete DCP TOC structure for a council (unfiltered by property)
  * Used for sidebar navigation to show all parts even if current property has no provisions from some parts
  */
-async function getCompleteTocStructure(client: any, formerCouncil: string, devType?: string): Promise<Record<string, TocPart>> {
+async function getCompleteTocStructure(client: any, formerCouncil: string, devType?: string, partNameMap?: Record<string, string>): Promise<Record<string, TocPart>> {
   const councilName = formerCouncil.charAt(0).toUpperCase() + formerCouncil.slice(1).toLowerCase();
 
   // When devType is provided, also compute how many provisions in each chapter match
@@ -1105,7 +1107,7 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
     const partId = hasRealPart
       ? row.v2_dcp_part
       : extractTocParent(row.source_chapter_key || '');
-    const partName = formatPartName(partId);
+    const partName = partNameMap?.[partId] ?? formatPartName(partId);
     const count = parseInt(row.provision_count);
     const devCount = expandedTypes ? parseInt(row.dev_type_match_count) : undefined;
 
@@ -1142,7 +1144,8 @@ async function getCompleteTocStructure(client: any, formerCouncil: string, devTy
 
 function groupByTocStructure(
   layers: LayerResult[],
-  formerCouncil?: string
+  formerCouncil?: string,
+  partNameMap?: Record<string, string>
 ): Record<string, TocPart> {
   const byToc: Record<string, TocPart> = {};
 
@@ -1205,7 +1208,7 @@ function groupByTocStructure(
       sectionTitle = sectionTitleFromChapterKey(chapterKey);
     }
 
-    const partName = formatPartName(partId);
+    const partName = partNameMap?.[partId] ?? formatPartName(partId);
 
     if (!byToc[partId]) {
       byToc[partId] = {
@@ -1270,6 +1273,7 @@ function formatPartName(partId: string): string {
     'Part 4.2': 'Part 4.2: Multi-Dwelling Housing',
     'Part 5': 'Part 5: Commercial Development',
     'Part 6': 'Part 6: Industrial Development',
+    'Part 7': 'Part 7: Miscellaneous',
     'Part 8': 'Part 8: Heritage',
     'Part 9': 'Part 9: Precincts',
     'Part C Section 1': 'Part C Section 1: General Controls',
@@ -1302,4 +1306,39 @@ function formatPartName(partId: string): string {
   }
 
   return partId;
+}
+
+/**
+ * Build a part-name map from dcp_chapter_registry chapter_label values.
+ * For parts with a single chapter, the label encodes the part name directly:
+ *   "Part 3 · Subdivision, Amalgamation and Movement Networks"
+ * For multi-chapter parts (e.g. Part 7 with sub-sections 7.1, 7.2...) the
+ * label suffix begins with a section number ("7.1 Child Care Centres") — those
+ * fall back to the hardcoded formatPartName lookup.
+ */
+function buildPartNameMap(chapterLabels: Record<string, string>): Record<string, string> {
+  const partChapters: Record<string, string[]> = {};
+  for (const key of Object.keys(chapterLabels)) {
+    const partId = extractTocParent(key);
+    if (!partChapters[partId]) partChapters[partId] = [];
+    partChapters[partId].push(key);
+  }
+  const partNames: Record<string, string> = {};
+  for (const [partId, keys] of Object.entries(partChapters)) {
+    if (keys.length === 1) {
+      const label = chapterLabels[keys[0]];
+      const prefix = partId + ' \u00b7 ';
+      if (label && label.startsWith(prefix)) {
+        const desc = label.slice(prefix.length).trim();
+        // Don't auto-derive if desc looks like a section number (e.g. "7.1 Child Care...")
+        if (desc && !/^\d+\.\d+/.test(desc) && !/^Section\s/i.test(desc)) {
+          partNames[partId] = `${partId}: ${desc}`;
+          continue;
+        }
+      }
+    }
+    // Fall back to hardcoded name (multi-section parts, or label format mismatch)
+    partNames[partId] = formatPartName(partId);
+  }
+  return partNames;
 }

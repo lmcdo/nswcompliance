@@ -385,6 +385,44 @@ export function registerPrecinctPatterns(councilName: string, patterns: RegExp[]
 }
 
 /**
+ * Look up precinct IDs for an address by matching suburb tokens against dcp_precinct_localities.
+ *
+ * Returns an array of precinct_id values — usually one, but can be multiple when a suburb
+ * spans several Chapter D precincts (e.g. "Ashfield" → three sub-precincts).
+ * Returns null if no match is found.
+ *
+ * This is the data-driven replacement for hardcoded suburb→precinct dicts.
+ * The mapping is owned by the dcp_precinct_localities table, populated from the
+ * authoritative section_header values already in regulatory_provisions.
+ */
+export async function getPrecinctFromLocality(
+  address: string,
+  council: string,
+): Promise<string[] | null> {
+  try {
+    // Match address (uppercased) against all known localities for this council.
+    // Longer locality names rank higher to prefer specific matches ("SUMMER HILL" > "HILL").
+    const result = await getDbPool().query<{ precinct_id: string }>(`
+      SELECT precinct_id
+      FROM dcp_precinct_localities
+      WHERE LOWER(council) = LOWER($1)
+        AND UPPER($2) LIKE ('%' || locality || '%')
+      ORDER BY LENGTH(locality) DESC
+    `, [council, address]);
+
+    if (result.rows.length === 0) return null;
+
+    // Deduplicate (a single suburb may have multiple rows if it maps to several precincts)
+    const ids = [...new Set(result.rows.map(r => r.precinct_id))];
+    console.log(`[Precinct Service] Locality match for '${council}' in "${address}": ${ids.join(', ')}`);
+    return ids;
+  } catch (error) {
+    console.error('[Precinct Service] getPrecinctFromLocality error:', error);
+    return null;
+  }
+}
+
+/**
  * Get DCP provisions for a precinct
  * Queries the new dcp_precinct_provisions table
  */

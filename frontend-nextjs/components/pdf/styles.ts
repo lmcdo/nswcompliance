@@ -215,11 +215,13 @@ export const styles = StyleSheet.create({
     padding: 4,  // Reduced from 6 to 4
   },
   tableCellLabel: {
-    width: 250,          // Increased from 200 to 250 for long labels like "Additional Local Provisions (Clause 6.x):"
+    // 160pt fits all DataRow label text (longest: "Legislative basis:" ~18 chars).
+    // "Additional Local Provisions (Clause 6.x):" uses a separate custom View, not DataRow.
+    width: 160,
     fontSize: 10,
     fontWeight: 'normal',
     color: '#4b5563',
-    paddingRight: 8,     // Add padding between label and value
+    paddingRight: 8,
   },
   tableCellValue: {
     flexGrow: 1,

@@ -81,7 +81,7 @@ export async function assessPatternBookEligibility(
   const exclusionResult = await checkExclusions(constraints, dbPool);
 
   // Step 3: If exclusions triggered, check overrides
-  let overrideResult = { anyOverrideable: false, overrides: [], summary: '' };
+  let overrideResult: any = { anyOverrideable: false, overrides: [], summary: '' };
   if (exclusionResult.hasExclusions) {
     overrideResult = await checkOverrides(exclusionResult.triggered, dbPool);
   }
@@ -123,7 +123,7 @@ export async function assessPatternBookEligibility(
   }
   // Case 2: Exclusions triggered, but all overrideable → CONDITIONAL
   else if (exclusionResult.hasExclusions && overrideResult.anyOverrideable) {
-    const allOverrideable = overrideResult.overrides.every(o => o.canOverride);
+    const allOverrideable = overrideResult.overrides.every((o: any) => o.canOverride);
 
     if (allOverrideable) {
       status = 'CONDITIONAL';

@@ -31,17 +31,77 @@ export interface SetbackFallback {
   guidance?: SetbackGuidance[];
 }
 
+/**
+ * DCP Structure Model — three patterns found across NSW councils.
+ *
+ * dev_type_organized  — Primary chapters keyed to dev categories (Ashfield Chapter F).
+ *                       Dev type dropdown = chapter selector. Auto-dismiss of off-category
+ *                       chapters is architecturally defensible.
+ *
+ * zone_organized      — Top-level parts keyed to zone tier (Marrickville Parts 4/5/6).
+ *                       Zone gates chapter loading (already done by API layer system).
+ *                       Universal topic sections (e.g. Part 2) always load regardless of
+ *                       dev type. Dev type = sub-part selector + relevance sort only.
+ *
+ * topic_universal     — Almost all chapters apply to all dev types (Leichhardt).
+ *                       Only explicit dev-type-specific parts (e.g. Part F Food) gated.
+ *                       Dev type = relevance sort only. Planner must address or N/A
+ *                       every section in universalPartKeys.
+ *
+ * For new LGA onboarding: read the DCP table of contents, classify each top-level
+ * chapter as universal / zone_structural / devtype_structural / condition / precinct,
+ * then set this field and populate universalPartKeys + devTypeGatedPartKeys.
+ */
+// Not a fixed enum — new councils may have hybrid or novel structures.
+// Use as a human-readable label only. Business logic branches on
+// universalPartKeys and devTypeGatedPartKeys, not on this field.
+// Known values: 'dev_type_organized' (Ashfield), 'zone_organized' (Marrickville),
+// 'topic_universal' (Leichhardt). Future councils may require different descriptions.
+export type DcpStructureModel = string;
+
 export interface CouncilConfig {
   id: string;
   name: string;
   parentLGA?: string | null;  // For merged councils (e.g., Inner West)
   dcpCitation: string;
+  /** Full name of the applicable LEP for instrument citation in SEE documents e.g. 'Inner West Local Environmental Plan 2022' */
+  lepCitation?: string;
   dcpExplanation: string;
   totalProvisions: number;
   primaryLayer: 'generic' | 'precinct' | 'condition' | 'use_specific';
   zoneFilterEffective: boolean;
   devTypeFilterEffective: boolean;
   devTypeNote?: string; // Displayed when dev type has no effect
+
+  /**
+   * DCP structure model — determines how DA mode uses dev type.
+   * See DcpStructureModel above. Required for all councils.
+   */
+  dcpStructureModel: DcpStructureModel;
+
+  /**
+   * Part keys (matching v2_dcp_part values in DB) that are ALWAYS in scope
+   * for every DA on this council — the planner must address or explicitly
+   * mark N/A. The system must never auto-dismiss these based on dev type.
+   * Zone/heritage/precinct gating still applies to chapters not in this list.
+   */
+  universalPartKeys: string[];
+
+  /**
+   * Part keys where dev type is a legitimate structural gate — the DCP document
+   * itself partitions these by dev category. Auto-dismiss of non-matching
+   * part keys is architecturally defensible.
+   * Empty for zone_organized and topic_universal councils.
+   */
+  devTypeGatedPartKeys: string[];
+
+  /**
+   * What the dev type dropdown does in DA mode for this council.
+   * chapter_selector  — selects which devTypeGatedPartKeys are active (Ashfield)
+   * subpart_selector  — selects primary sub-part within zone-gated chapters + sort (Marrickville)
+   * sort_only         — relevance sort only, no section filtering (Leichhardt)
+   */
+  daDevTypeRole: 'chapter_selector' | 'subpart_selector' | 'sort_only';
   availableDevTypes?: { id: string; name: string; count: number }[];
   topicFilterRequired: boolean;
   warningThreshold: number;
@@ -67,6 +127,37 @@ export interface CouncilConfig {
   categoryGroups: Record<string, CategoryGroup>;
   // Fallback setback guidance when DB has no data
   setbackFallback?: SetbackFallback;
+}
+
+/**
+ * Returns true if the given part key is a "universal" chapter for this council —
+ * one that must always be shown to the planner and cannot be auto-dismissed
+ * by dev type. Use this as a guard in auto-dismiss logic.
+ *
+ * Note: zone/heritage/precinct gating still applies for chapters NOT in
+ * universalPartKeys — those are handled by the for-property API layer system.
+ */
+export function isUniversalChapter(councilId: string | null, partKey: string): boolean {
+  const config = getCouncilConfig(councilId);
+  return config.universalPartKeys.includes(partKey);
+}
+
+/**
+ * Returns true if dev type is a legitimate structural gate for this chapter —
+ * i.e. the DCP document itself partitions this chapter by dev category.
+ * Auto-dismissing non-matching parts is architecturally defensible.
+ */
+export function isDevTypeGatedChapter(councilId: string | null, partKey: string): boolean {
+  const config = getCouncilConfig(councilId);
+  return config.devTypeGatedPartKeys.some(k => partKey === k || partKey.startsWith(k));
+}
+
+/**
+ * Returns the role of the dev type dropdown in DA mode for this council.
+ * Use this to control what downstream filtering the dropdown triggers.
+ */
+export function getDaDevTypeRole(councilId: string | null): CouncilConfig['daDevTypeRole'] {
+  return getCouncilConfig(councilId).daDevTypeRole;
 }
 
 /**

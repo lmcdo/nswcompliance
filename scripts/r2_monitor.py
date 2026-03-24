@@ -57,6 +57,22 @@ HEADERS = {
 
 SANITY_MAX_CHANGE_PCT = 40  # Alert if >40% of a council's chapters changed in one run
 
+# ── Telegram alerting ────────────────────────────────────────────────────────
+def send_telegram(message: str) -> None:
+    """Send a Telegram message. Silently no-ops if env vars not set."""
+    token   = os.environ.get("TELEGRAM_BOT_TOKEN")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{token}/sendMessage",
+            json={"chat_id": chat_id, "text": message},
+            timeout=10,
+        )
+    except Exception:
+        pass  # Never let alerting kill the pipeline
+
 
 def sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -184,15 +200,25 @@ def run_monitor(
             if remote_len:
                 remote_len = int(remote_len)
 
-            # Skip full download if Content-Length unchanged and not forced
-            if (
+            # Skip full download only if BOTH Content-Length AND ETag match stored values.
+            # Content-Length alone is not reliable — some councils serve different PDFs
+            # at the same byte count. Requiring both signals reduces false-negative risk.
+            stored_etag = chapter.get("url_etag")
+            new_etag_head = head.get("etag")
+            content_length_match = (
                 not force
                 and stored_hash
                 and remote_len
                 and stored_len
                 and remote_len == stored_len
-            ):
-                print(f"    [unchanged] Content-Length {remote_len:,} bytes matches stored")
+            )
+            etag_match = (
+                stored_etag
+                and new_etag_head
+                and stored_etag == new_etag_head
+            )
+            if content_length_match and etag_match:
+                print(f"    [unchanged] Content-Length + ETag both match stored")
                 cur.execute(
                     "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
                     (now, chapter_id),
@@ -202,6 +228,9 @@ def run_monitor(
                 results["unchanged"] += 1
                 results["checked"] += 1
                 continue
+            elif content_length_match and not etag_match:
+                # Content-Length matches but ETag differs or absent — download and hash anyway
+                print(f"    Content-Length unchanged but ETag mismatch/absent — downloading for hash check")
 
             # Step 2: Full download + hash comparison
             print(f"    Downloading for hash check...")
@@ -352,9 +381,33 @@ def main():
     print(f"  Changed   : {n_changed}")
     print(f"  Failed    : {results['failed']}")
 
+    # ── Persistent-failure alert ─────────────────────────────────────────────
+    # Warn about chapters that have failed repeatedly — these need investigation.
     if results["failed"] > 0:
         print(f"\n  {results['failed']} chapter(s) had download errors.")
         print("  Chapters with check_failures >= 3 should be investigated.")
+
+    # ── Sanity check ─────────────────────────────────────────────────────────
+    warnings = sanity_check(results, results["checked"] + results["unchanged"])
+    for w in warnings:
+        print(f"\n  {w}")
+
+    # ── Telegram notifications ───────────────────────────────────────────────
+    # Always notify so we have proof the pipeline ran (or didn't run cleanly).
+    total_checked = results["checked"] + results["unchanged"]
+
+    if results["failed"] > 0 and n_changed == 0:
+        # BUG FIX: previously this branch exited 0 — looked like "all clear"
+        # when actually nothing was successfully checked. Now exits 1 to fail CI.
+        msg = (
+            f"DCP Monitor ERROR\n"
+            f"{results['failed']}/{total_checked} chapters failed to check.\n"
+            f"No changes detected but run was not clean — investigate download errors."
+        )
+        print(f"\n  ERROR: {results['failed']} chapters failed with no changes detected.")
+        print("  This is not a clean 'all current' result — run should be investigated.")
+        send_telegram(msg)
+        sys.exit(1)
 
     if n_changed > 0:
         print(f"\n  Changed chapters (queued for re-extraction):")
@@ -362,9 +415,17 @@ def main():
             print(f"    [{c['council']}] {c['chapter_key']} → {c['new_version']}")
             print(f"      {c['r2_path']}")
 
-        warnings = sanity_check(results, results["checked"] + results["unchanged"])
-        for w in warnings:
-            print(f"\n  ⚠️  {w}")
+        chapters_list = "\n".join(
+            f"  [{c['council']}] {c['chapter_key']} -> {c['new_version']}"
+            for c in results["changed"]
+        )
+        warn_text = ("\n" + "\n".join(warnings)) if warnings else ""
+        fail_text = f"\n  {results['failed']} chapter(s) failed to check." if results["failed"] else ""
+        send_telegram(
+            f"DCP Monitor: {n_changed} chapter(s) changed\n"
+            f"{chapters_list}{fail_text}{warn_text}\n\n"
+            f"Review file will be generated — approve before provisions go live."
+        )
 
         print(f"\n  Next step: run the extraction pipeline on changed chapters.")
         print(f"  Chapters flagged with needs_extraction=TRUE in dcp_chapter_registry.")
@@ -373,6 +434,9 @@ def main():
             sys.exit(1)
         sys.exit(2)  # exit code 2 = changes detected (CI trigger)
     else:
+        send_telegram(
+            f"DCP Monitor: no changes ({results['checked']} chapters checked)"
+        )
         print("\n  No changes detected. All chapters are current.")
         sys.exit(0)
 

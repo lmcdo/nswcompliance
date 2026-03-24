@@ -249,7 +249,7 @@ function groupProvisionsByPage(provisions: Provision[]): PageGroup[] {
 
   // Add ungrouped provisions at end if any
   if (ungrouped.length > 0) {
-    groups.push({ pageNumber: null, pageUrl: null, provisions: ungrouped });
+    groups.push({ pageNumber: null, pageUrl: null as any, provisions: ungrouped });
   }
 
   return groups;

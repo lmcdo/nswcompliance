@@ -21,7 +21,8 @@ interface CDCCriterion {
 interface CDCScreenerProps {
   zoneCode: string;
   lotArea?: number | null;        // m² — pre-filled from property context
-  heritageItem?: boolean;         // pre-filled from property context
+  heritageItem?: boolean;         // true = listed heritage item (LEP Schedule 5) — CDC not permitted
+  heritageAffected?: boolean;     // true = any heritage flag (item OR HCA) — warn even if not listed item
   provisions: Array<{
     provision_text: string;
     v2_topic?: string;
@@ -57,6 +58,7 @@ function evaluateCriteria(
   zoneCode: string,
   lotArea: number | null,
   heritageItem: boolean,
+  heritageAffected: boolean,
   proposed: ProposedValues,
   provisions: CDCScreenerProps['provisions']
 ): CDCCriterion[] {
@@ -64,13 +66,17 @@ function evaluateCriteria(
   const floorAddition = proposed.floorAreaAddition.trim() !== '' ? parseFloat(proposed.floorAreaAddition) : null;
   const height = proposed.proposedHeight.trim() !== '' ? parseFloat(proposed.proposedHeight) : null;
 
-  // ── 1. Heritage Item ─────────────────────────────────────────────────────
+  // ── 1. Heritage status ───────────────────────────────────────────────────
+  // heritageItem = listed in LEP Schedule 5 → CDC not permitted (hard fail)
+  // heritageAffected = any heritage flag (HCA, conservation area) → warn, not auto-fail
   criteria.push({
-    label: 'Not a heritage item',
-    result: heritageItem ? 'fail' : 'pass',
+    label: 'Heritage item status',
+    result: heritageItem ? 'fail' : heritageAffected ? 'warn' : 'pass',
     detail: heritageItem
-      ? 'Properties listed as heritage items are not eligible for CDC. A DA is required.'
-      : 'Property is not listed as a heritage item.',
+      ? 'Property is listed as a heritage item — CDC is not permitted. A Development Application (DA) is required.'
+      : heritageAffected
+      ? 'Not a listed heritage item, but property is marked as heritage-affected (likely within a Heritage Conservation Area). CDC may still apply, but heritage constraints must be verified in the LEP and council DCP before issuing.'
+      : 'Property is not listed as a heritage item and has no heritage flag.',
     provisionRef: 'SEPP E&C — General exclusion',
   });
 
@@ -78,7 +84,7 @@ function evaluateCriteria(
   const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
   const isResidential = residentialZones.includes(zoneCode);
   criteria.push({
-    label: 'Residential zone',
+    label: 'Housing Code applicability',
     result: isResidential ? 'pass' : 'warn',
     detail: isResidential
       ? `${zoneCode} is a residential zone — Housing Code applies.`
@@ -178,7 +184,7 @@ function evaluateCriteria(
   return criteria;
 }
 
-export function CDCScreener({ zoneCode, lotArea, heritageItem = false, provisions }: CDCScreenerProps) {
+export function CDCScreener({ zoneCode, lotArea, heritageItem = false, heritageAffected = false, provisions }: CDCScreenerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [manualLotArea, setManualLotArea] = useState('');
   const [proposed, setProposed] = useState<ProposedValues>({
@@ -190,7 +196,7 @@ export function CDCScreener({ zoneCode, lotArea, heritageItem = false, provision
 
   const effectiveLotArea = lotArea || (manualLotArea ? parseFloat(manualLotArea) : null);
 
-  const criteria = evaluateCriteria(zoneCode, effectiveLotArea, heritageItem, proposed, provisions);
+  const criteria = evaluateCriteria(zoneCode, effectiveLotArea, heritageItem, heritageAffected, proposed, provisions);
 
   const failCount = criteria.filter(c => c.result === 'fail').length;
   const warnCount = criteria.filter(c => c.result === 'warn').length;

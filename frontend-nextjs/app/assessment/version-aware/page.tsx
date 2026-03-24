@@ -117,7 +117,7 @@ export default function VersionAwareAssessmentPage() {
  documentType="LEP"
  documentIdentifier={`${selectedProperty.lga}-LEP`}
  selectedDate={assessmentDate}
- onVersionChange={handleVersionChange}
+ onVersionChange={handleVersionChange as any}
  />
  )}
 

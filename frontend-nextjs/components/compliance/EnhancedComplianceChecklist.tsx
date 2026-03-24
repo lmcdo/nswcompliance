@@ -184,7 +184,7 @@ export const EnhancedComplianceChecklist: React.FC<EnhancedComplianceChecklistPr
  </div>
 
  {/* Evidence Section */}
- {flags.advancedComplianceChecklist && (
+ {flags.newComplianceChecklist && (
  <EvidenceSection
  items={items}
  onEvidenceUpdate={(itemId, evidence) => {

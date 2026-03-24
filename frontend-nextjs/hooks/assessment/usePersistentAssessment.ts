@@ -238,7 +238,7 @@ export function usePersistentAssessment() {
 
  setState(prev => ({
  ...prev,
- complianceData: result.data,
+ complianceData: (result as any).data,
  complianceLoading: false,
  showResults: true
  }));

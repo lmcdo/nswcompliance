@@ -103,11 +103,11 @@ export function HeritageDetails({ heritage, propertyGeometry, lga, formerCouncil
   // Otherwise use Planning API HCA data
   if (isHeritageDataActuallyHCA && !hasSpecificHeritageItem) {
     const displayHCA = hcaData || {
-      name: heritage.heritageItemName || '',
-      id: heritage.heritageItemNumber || '',
-      significance: heritage.heritageSignificance || 'Local',
-      legislativeClause: heritage.heritageClause || 'Clause 5.10',
-      layClass: heritage.heritageType || 'Conservation Area',
+      name: heritage?.heritageItemName || '',
+      id: heritage?.heritageItemNumber || '',
+      significance: heritage?.heritageSignificance || 'Local',
+      legislativeClause: heritage?.heritageClause || 'Clause 5.10',
+      layClass: heritage?.heritageType || 'Conservation Area',
       epiName: ''
     };
 

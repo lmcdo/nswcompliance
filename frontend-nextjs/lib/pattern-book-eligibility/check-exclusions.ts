@@ -140,7 +140,7 @@ export async function checkExclusions(
       case 'heritage':
         const isItem = constraints.heritage?.heritageType?.toLowerCase().includes('item');
         const itemName = constraints.heritage?.heritageItemName;
-        const itemNumber = constraints.heritage?.heritageItemNumber;
+        const itemNumber = (constraints.heritage as any)?.heritageItemNumber;
 
         if (isItem && itemName) {
           reason = `Property is a Heritage Item: ${itemName}`;

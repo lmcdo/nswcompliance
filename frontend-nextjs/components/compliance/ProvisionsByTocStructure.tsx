@@ -1844,6 +1844,7 @@ export function ProvisionsByTocStructure({
               onWorksScopeChange={saveWorksScopeAnswers}
               lepScopeDefaults={lepAutoScope}
               lepProhibitedDevTypes={lepProhibitedDevTypes}
+              lepPermCovered={lepPermData?.covered ?? false}
               seppExemptWorks={seppExemptWorks}
             />
           </div>

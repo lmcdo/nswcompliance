@@ -58,10 +58,10 @@ export default function AssessmentDashboard() {
     }
 
     // Listen for custom address selection event
-    document.addEventListener('addressSelected', handleAddressSelected as EventListener)
+    document.addEventListener('addressSelected', handleAddressSelected as unknown as EventListener)
 
     return () => {
-      document.removeEventListener('addressSelected', handleAddressSelected as EventListener)
+      document.removeEventListener('addressSelected', handleAddressSelected as unknown as EventListener)
     }
   }, [])
 
