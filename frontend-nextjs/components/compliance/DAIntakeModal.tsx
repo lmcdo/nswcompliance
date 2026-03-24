@@ -136,9 +136,11 @@ export function DAIntakeModal({
     }
   };
 
-  /** Check if a field is auto-answered from property data */
+  /** Check if a field is auto-answered from property data (either 'yes' or 'no') */
   const isPropertyAutoAnswered = (field: keyof IntakeAnswers) =>
-    AUTO_ANSWER_SOURCES[field] && initialAnswers?.[field] === 'no' && !overriddenFields.has(field);
+    AUTO_ANSWER_SOURCES[field] &&
+    (initialAnswers?.[field] === 'no' || initialAnswers?.[field] === 'yes') &&
+    !overriddenFields.has(field);
 
   /** Check if a field is auto-derived from scope (ancillary checkboxes) */
   const isScopeDerived = (field: keyof IntakeAnswers) =>
@@ -261,8 +263,8 @@ export function DAIntakeModal({
                 const autoFields = (Object.entries(AUTO_ANSWER_SOURCES) as [keyof IntakeAnswers, typeof AUTO_ANSWER_SOURCES[keyof IntakeAnswers]][])
                   .filter(([field, src]) => {
                     if (!src || overriddenFields.has(field)) return false;
-                    // Show only if the initialAnswers has this field set to 'no' (auto-populated)
-                    return initialAnswers?.[field] === 'no';
+                    const v = initialAnswers?.[field];
+                    return v === 'no' || v === 'yes';
                   });
                 if (autoFields.length === 0) return null;
                 return (
@@ -274,15 +276,21 @@ export function DAIntakeModal({
                       {autoFields.map(([field, src]) => {
                         const q = INTAKE_QUESTIONS.find(q => q.field === field);
                         const label = q?.question ?? field.replace(/_/g, ' ');
+                        const autoValue = initialAnswers?.[field];
+                        const isYes = autoValue === 'yes';
                         return (
                           <div key={field} className="flex items-start justify-between gap-3">
                             <div className="flex-1 min-w-0">
                               <p className="text-sm text-gray-700 leading-snug">{label}</p>
-                              <p className="text-xs text-blue-600 mt-0.5">{src!.citation}</p>
+                              <p className={`text-xs mt-0.5 ${isYes ? 'text-amber-600' : 'text-blue-600'}`}>{src!.citation}</p>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className="text-xs px-2 py-0.5 rounded bg-gray-200 border border-gray-400 text-gray-700 font-medium">
-                                No
+                              <span className={`text-xs px-2 py-0.5 rounded border font-medium ${
+                                isYes
+                                  ? 'bg-amber-50 border-amber-400 text-amber-700'
+                                  : 'bg-gray-200 border-gray-400 text-gray-700'
+                              }`}>
+                                {isYes ? 'Yes' : 'No'}
                               </span>
                               <button
                                 onClick={() => {
