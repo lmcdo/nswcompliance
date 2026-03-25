@@ -1795,16 +1795,17 @@ export function ProvisionsByTocStructure({
             </button>
           </div>
         ) : (
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
+          <p className="text-xs text-gray-500 mb-5">
+            Preparing a DA?{' '}
             <button
               onClick={() => onToggleDaMode(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all"
             >
-              <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
+              <span className="w-2 h-2 rounded-full inline-block bg-teal-300" />
               Enable DA Mode
             </button>
-          </div>
+            {' '}to scope these {allProvisions.length.toLocaleString()} provisions to your works and export a SEE draft — or browse freely below.
+          </p>
         )
       )}
 
