@@ -24,6 +24,7 @@ import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from 
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
 import { DAModeCard } from './DAModeCard';
+import { DAIntakeModal } from './DAIntakeModal';
 import { getExcludableTopics, getTopicExclusionReason, normalizeTopicKey, autoPopulateFromConstraints, DEFAULT_INTAKE_ANSWERS, type IntakeAnswers } from '@/lib/see/intake';
 import { buildPropertyContext, preparePdfProvisions, sanitizeText, cleanSectionTitle } from '@/lib/see/propertyContext';
 import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/provisionUtils';
@@ -171,6 +172,7 @@ export function ProvisionsByTocStructure({
   });
   const [heritageTypeFilter, setHeritageTypeFilter] = useState<string | null>(null);
   const [pdfModal, setPdfModal] = useState<{ url: string; page: number } | null>(null);
+  const [showIntakeModal, setShowIntakeModal] = useState(false);
   // PDF export always uses filtered provisions (respects layer, topic, and search filters)
   const [showExportModal, setShowExportModal] = useState(false); // PDF export modal visibility
   const [showTriageExcluded, setShowTriageExcluded] = useState(false);
@@ -1814,6 +1816,7 @@ export function ProvisionsByTocStructure({
             <p className="text-base font-semibold text-gray-800">Define your works</p>
             <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
             <DAModeCard
+              onRunIntake={() => setShowIntakeModal(true)}
               devType={devType}
               devWorksText={devWorksText}
               devDescriptionLocal={devDescriptionLocal}
@@ -1849,6 +1852,24 @@ export function ProvisionsByTocStructure({
             />
           </div>
         </div>
+      )}
+
+      {/* Intake modal — site constraints questionnaire */}
+      {isDaMode && (
+        <DAIntakeModal
+          open={showIntakeModal}
+          onApply={async (answers) => {
+            await saveIntakeAnswers(answers);
+            setShowIntakeModal(false);
+          }}
+          onSkip={() => setShowIntakeModal(false)}
+          provisions={allProvisions}
+          initialAnswers={mergedIntakeAnswers}
+          heritage={heritage}
+          hcaName={hcaName}
+          precinctName={precinctName}
+          hasAncillaryScope={ancillaryWorksLocal.length > 0}
+        />
       )}
 
       {/* Step 1 → Step 2 transition hint */}
