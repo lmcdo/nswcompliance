@@ -1817,6 +1817,7 @@ export function ProvisionsByTocStructure({
             <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
             <DAModeCard
               onRunIntake={() => setShowIntakeModal(true)}
+              onToggleObjectives={() => toggleRefinement('objectivesOnly')}
               devType={devType}
               devWorksText={devWorksText}
               devDescriptionLocal={devDescriptionLocal}

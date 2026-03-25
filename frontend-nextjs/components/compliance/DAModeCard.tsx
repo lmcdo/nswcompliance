@@ -26,6 +26,8 @@ interface DAModeCardProps {
   onDevTypeChange: (val: string) => void;
   onDevWorksChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onRunIntake?: () => void;
+  /** Toggle objectives/descriptive provisions into the provision list view */
+  onToggleObjectives?: () => void;
   /** Project identity — appear on SEE cover */
   clientRef: string;
   preparedBy: string;
@@ -80,6 +82,7 @@ export function DAModeCard({
   onDevTypeChange,
   onDevWorksChange,
   onRunIntake,
+  onToggleObjectives,
   clientRef,
   preparedBy,
   onClientRefChange,
@@ -535,9 +538,16 @@ export function DAModeCard({
                   </button>
                 </div>
 
-                {/* Summary line — always visible */}
+                {/* Summary line — always visible. All counts are provisions, scopeTotal is sections. */}
                 <div className="text-xs text-amber-700 font-medium">
-                  {globalProgress.total} total → {globalProgress.scopeTotal} in assessment scope
+                  {(() => {
+                    const excluded = globalProgress.triaged + globalProgress.suppressed +
+                      globalProgress.chapterDismissed + globalProgress.autoChapterDismissed +
+                      globalProgress.topicDismissed + (globalProgress.questionnaireScoped ?? 0) +
+                      (globalProgress.heritageElementScoped ?? 0);
+                    const inScope = globalProgress.total - excluded;
+                    return `${globalProgress.total} total → ${inScope} provisions in scope (${globalProgress.scopeTotal} sections)`;
+                  })()}
                 </div>
 
                 {/* Waterfall breakdown — expandable */}
@@ -591,7 +601,7 @@ export function DAModeCard({
                           Policy statements (objectives = intent; heritage descriptives = character guidance).
                           Not individually assessed — they don&apos;t require binary Complies/Varies/N/A responses.{' '}
                           <button
-                            onClick={() => setShowWaterfall(v => !v)}
+                            onClick={() => { if (onToggleObjectives) onToggleObjectives(); }}
                             className="text-amber-700 hover:underline font-medium"
                           >
                             (Can toggle to view them)
