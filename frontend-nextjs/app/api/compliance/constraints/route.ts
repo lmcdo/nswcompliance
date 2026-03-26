@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
     // IMPORTANT: Use original 'lga' for heritage mapping, not mapped 'targetLGA'
     // Heritage mapping uses "INNER WEST", but DCP queries use "Ashfield/Marrickville/Leichhardt"
     const precinct = enablePrecinctMatching && address
-      ? await getPrecinctForAddress(address, lga, coordinates, heritageItemName)
+      ? await getPrecinctForAddress(address, lga ?? '', coordinates, heritageItemName)
       : null;
 
     let precinctControls: any[] = [];

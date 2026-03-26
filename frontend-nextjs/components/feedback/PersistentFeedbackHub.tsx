@@ -85,7 +85,7 @@ export function PersistentFeedbackHub({
   useEffect(() => {
     const timer = setTimeout(() => {
       // Show feedback trigger for relevant sections
-      if (shouldShowFeedbackForSection() && !sessionState.dismissedSections.has(activeTrigger)) {
+      if (shouldShowFeedbackForSection() && !sessionState.dismissedSections.has(activeTrigger ?? '')) {
         setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: true }));
         setActiveTrigger(sections?.[0] || 'general');
       }
@@ -206,7 +206,7 @@ export function PersistentFeedbackHub({
       {/* Feedback Trigger */}
       {(sessionState.isVisible || activeTrigger) && (
         <SmartFeedbackTrigger
-          type={activeTrigger || 'general'}
+          type={(activeTrigger || 'general') as 'address_issue' | 'missing_data' | 'incorrect_calculation' | 'general'}
           context={{
             propertyAddress,
             section: activeTrigger || 'general',
@@ -249,7 +249,7 @@ export function PersistentFeedbackHub({
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDismiss(activeTrigger)}
+                      onClick={() => handleDismiss(activeTrigger ?? undefined)}
                       className="h-6 w-6 p-0"
                       title="Dismiss for this section"
                     >
@@ -264,7 +264,7 @@ export function PersistentFeedbackHub({
                 <div className="mb-3 text-xs text-gray-600">
                   <div className="flex justify-between">
                     <span>Session progress:</span>
-                    <span>{formatDuration(Date.now() - sessionState.sessionStartTime)}</span>
+                    <span>{formatDuration(Date.now() - sessionState.sessionStartTime.getTime())}</span>
                   </div>
                   {sessionState.submittedCount > 0 && (
                     <div className="flex justify-between">
@@ -417,7 +417,7 @@ export function PersistentFeedbackHub({
                 <label className="text-xs font-semibold text-blue-900 block mb-2">
                   Your Professional Role * (Auto-selected)
                 </label>
-                <Select value={sessionState.userType} onValueChange={(value) => setSessionState(prev => ({ ...prev, userRole: value }))}>
+                <Select value={sessionState.userRole} onValueChange={(value) => setSessionState(prev => ({ ...prev, userRole: value }))}>
                   <SelectTrigger className="text-sm bg-white border-blue-300">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
@@ -434,7 +434,7 @@ export function PersistentFeedbackHub({
               <div className="flex gap-2">
                 <Button
                   onClick={handleSuggestionSubmit}
-                  disabled={!suggestionText.trim() || !sessionState.userType}
+                  disabled={!suggestionText.trim() || !sessionState.userRole}
                   className="flex-1 text-xs"
                 >
                   Submit Insight
