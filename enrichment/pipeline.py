@@ -1,0 +1,1024 @@
+#!/usr/bin/env python3
+"""
+Enrichment Pipeline - Phase 1: Numeric Extraction
+
+Runs numeric extraction on all provisions and updates v2_ columns.
+
+Usage:
+    python enrichment/pipeline.py --phase numeric [--limit 100] [--dry-run]
+"""
+
+import os
+import sys
+import json
+import argparse
+from datetime import datetime
+from typing import Dict, List, Any, Optional
+
+from dotenv import load_dotenv
+load_dotenv()
+
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from enrichment.extractors.numeric_extractor import NumericExtractor
+from enrichment.extractors.site_condition_tagger import SiteConditionTagger
+from enrichment.extractors.type_classifier import TypeClassifier
+from enrichment.extractors.applicability_tagger import ApplicabilityTagger
+from enrichment.extractors.layer_topic_tagger import LayerTopicTagger
+from enrichment.extractors.actionable_classifier import ActionableClassifier
+
+
+ENRICHMENT_VERSION = "1.0.0"
+
+
+def get_connection():
+    """Get database connection."""
+    return psycopg2.connect(os.getenv('SUPABASE_DB_URL'))
+
+
+def run_actionability_classification(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    force_reprocess: bool = False,
+) -> Dict[str, Any]:
+    """Run actionability classification on provisions.
+
+    This is Phase 0 of enrichment — must run before all other phases, which
+    filter by v2_is_actionable = TRUE.
+
+    Uses heading-based structural rules first (Controls → True, Objectives → False),
+    then falls back to ActionableClassifier content analysis.
+
+    By default only processes rows where v2_is_actionable IS NULL (new provisions).
+    Set force_reprocess=True to also re-evaluate rows already marked FALSE against
+    the current classifier rules. This is required whenever classifier logic is
+    improved, to retroactively correct stale classifications. Rows already marked
+    TRUE are never re-processed (they can only be widened, not narrowed, by
+    classifier improvements — see ADR-001).
+
+    Args:
+        limit: Maximum number of provisions to process. None = all.
+        dry_run: If True, classify but do not write results to the database.
+        batch_size: Number of provisions to fetch and update per database round-trip.
+        force_reprocess: If True, re-evaluate provisions already marked FALSE in
+            addition to NULL rows. Use after classifier rule changes to eliminate
+            stale false negatives. Default False to preserve existing behaviour
+            for incremental runs.
+
+    Returns:
+        Dict with keys: total_processed, actionable, non_actionable, errors,
+        and (when force_reprocess=True) flipped_to_actionable.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    classifier = ActionableClassifier()
+
+    if force_reprocess:
+        # Re-evaluate both NULL and existing FALSE rows.
+        # TRUE rows are intentionally excluded — classifier improvements only
+        # widen coverage, never retract it (conservative default per ADR-001).
+        count_sql = """
+            SELECT COUNT(*) as total
+            FROM regulatory_provisions
+            WHERE (v2_is_actionable IS NULL OR v2_is_actionable = false)
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+        """
+    else:
+        count_sql = """
+            SELECT COUNT(*) as total
+            FROM regulatory_provisions
+            WHERE v2_is_actionable IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+        """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions (force_reprocess={force_reprocess})...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats: Dict[str, Any] = {
+        "total_processed": 0,
+        "actionable": 0,
+        "non_actionable": 0,
+        "errors": 0,
+        "flipped_to_actionable": 0,
+    }
+
+    processed = 0
+
+    # Pagination strategy differs between modes:
+    #
+    # Normal mode (NULL rows): always fetch from OFFSET 0. As rows are classified
+    # they leave the NULL set, so the next batch is genuinely new rows.
+    #
+    # force_reprocess mode (NULL + FALSE rows): rows that stay false after
+    # classification do NOT leave the target set, so re-fetching from OFFSET 0
+    # would return the same rows indefinitely. Use keyset pagination instead:
+    # advance by last-seen ID so every batch is a genuinely new window.
+    last_id = 0
+
+    while processed < total:
+        if force_reprocess:
+            fetch_sql = """
+                SELECT id, provision_text, document_id, section_header,
+                       v2_is_actionable as prior_value
+                FROM regulatory_provisions
+                WHERE (v2_is_actionable IS NULL OR v2_is_actionable = false)
+                  AND provision_text IS NOT NULL
+                  AND provision_text != ''
+                  AND id > %s
+                ORDER BY id
+                LIMIT %s
+            """
+            cur.execute(fetch_sql, (last_id, batch_size))
+        else:
+            fetch_sql = """
+                SELECT id, provision_text, document_id, section_header,
+                       v2_is_actionable as prior_value
+                FROM regulatory_provisions
+                WHERE v2_is_actionable IS NULL
+                  AND provision_text IS NOT NULL
+                  AND provision_text != ''
+                ORDER BY id
+                LIMIT %s
+            """
+            cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                is_actionable, _ = classifier.classify(
+                    prov['provision_text'],
+                    document_id=prov['document_id'],
+                    section_header=prov['section_header'],
+                )
+                updates.append((is_actionable, prov['id']))
+
+                if is_actionable:
+                    stats['actionable'] += 1
+                    if force_reprocess and prov.get('prior_value') is False:
+                        stats['flipped_to_actionable'] += 1
+                else:
+                    stats['non_actionable'] += 1
+
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        if updates and not dry_run:
+            for is_actionable, prov_id in updates:
+                cur.execute("""
+                    UPDATE regulatory_provisions
+                    SET v2_is_actionable = %s
+                    WHERE id = %s
+                """, (is_actionable, prov_id))
+            conn.commit()
+
+        # Advance keyset cursor for force_reprocess mode.
+        if force_reprocess and provisions:
+            last_id = provisions[-1]['id']
+
+        pct = (processed / total) * 100 if total > 0 else 100
+        flip_info = f", Flipped false->true: {stats['flipped_to_actionable']}" if force_reprocess else ""
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Actionable: {stats['actionable']}, Non-actionable: {stats['non_actionable']}, "
+              f"Errors: {stats['errors']}{flip_info}")
+
+    stats['total_processed'] = processed
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def run_numeric_extraction(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 500,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """
+    Run numeric extraction on provisions.
+
+    Args:
+        limit: Maximum number of provisions to process (None = all)
+        dry_run: If True, don't commit changes
+        batch_size: Number of provisions to process per batch
+        actionable_only: If True, only process actionable provisions (default)
+
+    Returns:
+        Statistics about the run
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    extractor = NumericExtractor()
+
+    # Get count of provisions to process
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+    count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM regulatory_provisions
+        WHERE v2_enriched_at IS NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0,
+        "with_numeric": 0,
+        "without_numeric": 0,
+        "errors": 0,
+        "start_time": datetime.now().isoformat(),
+        "version": ENRICHMENT_VERSION
+    }
+
+    processed = 0
+
+    while processed < total:
+        # Fetch batch of provisions
+        fetch_sql = f"""
+            SELECT id, provision_text
+            FROM regulatory_provisions
+            WHERE v2_enriched_at IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+              {actionable_filter}
+            ORDER BY id
+            LIMIT %s
+        """
+        cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        # Process each provision
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                result = extractor.extract(prov['provision_text'])
+
+                updates.append({
+                    'id': prov['id'],
+                    'has_numeric': result['has_numeric'],
+                    'values': json.dumps(result['values']) if result['values'] else None
+                })
+
+                if result['has_numeric']:
+                    stats['with_numeric'] += 1
+                else:
+                    stats['without_numeric'] += 1
+
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        # Apply updates
+        if updates and not dry_run:
+            update_sql = """
+                UPDATE regulatory_provisions
+                SET v2_has_numeric_value = %s,
+                    v2_extracted_values = %s,
+                    v2_enrichment_version = %s,
+                    v2_enriched_at = NOW()
+                WHERE id = %s
+            """
+
+            for upd in updates:
+                cur.execute(update_sql, (
+                    upd['has_numeric'],
+                    upd['values'],
+                    ENRICHMENT_VERSION,
+                    upd['id']
+                ))
+
+            conn.commit()
+
+        # Progress update
+        pct = (processed / total) * 100 if total > 0 else 100
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Numeric: {stats['with_numeric']}, "
+              f"Non-numeric: {stats['without_numeric']}, "
+              f"Errors: {stats['errors']}")
+
+    stats['total_processed'] = processed
+    stats['end_time'] = datetime.now().isoformat()
+
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def run_site_condition_tagging(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """
+    Run site condition tagging on provisions.
+
+    Tags provisions that require specific site conditions (heritage/flood/bushfire).
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    tagger = SiteConditionTagger()
+
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+
+    # Get count - only process provisions not yet tagged
+    count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM regulatory_provisions
+        WHERE v2_site_condition_required IS NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0,
+        "heritage": 0,
+        "flood": 0,
+        "bushfire": 0,
+        "general": 0,
+        "errors": 0,
+    }
+
+    processed = 0
+
+    while processed < total:
+        fetch_sql = f"""
+            SELECT id, provision_text
+            FROM regulatory_provisions
+            WHERE v2_site_condition_required IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+              {actionable_filter}
+            ORDER BY id
+            LIMIT %s
+        """
+        cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                condition, confidence = tagger.tag(prov['provision_text'])
+
+                # Store condition or 'none' for general provisions
+                # Using 'none' instead of NULL so we know it's been processed
+                db_value = condition if condition else 'none'
+                updates.append((db_value, prov['id']))
+
+                if condition == 'heritage':
+                    stats['heritage'] += 1
+                elif condition == 'flood':
+                    stats['flood'] += 1
+                elif condition == 'bushfire':
+                    stats['bushfire'] += 1
+                else:
+                    stats['general'] += 1
+
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        # Apply updates
+        if updates and not dry_run:
+            for condition, prov_id in updates:
+                cur.execute("""
+                    UPDATE regulatory_provisions
+                    SET v2_site_condition_required = %s
+                    WHERE id = %s
+                """, (condition, prov_id))
+            conn.commit()
+
+        pct = (processed / total) * 100 if total > 0 else 100
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Heritage: {stats['heritage']}, Flood: {stats['flood']}, "
+              f"Bushfire: {stats['bushfire']}, General: {stats['general']}")
+
+    stats['total_processed'] = processed
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def run_type_classification(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """
+    Run type classification on provisions.
+
+    Classifies provisions as control/objective/definition/note/procedural.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    classifier = TypeClassifier()
+
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+
+    count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM regulatory_provisions
+        WHERE v2_provision_type IS NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0,
+        "control": 0,
+        "objective": 0,
+        "definition": 0,
+        "note": 0,
+        "procedural": 0,
+        "errors": 0,
+    }
+
+    processed = 0
+
+    while processed < total:
+        fetch_sql = f"""
+            SELECT id, provision_text
+            FROM regulatory_provisions
+            WHERE v2_provision_type IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+              {actionable_filter}
+            ORDER BY id
+            LIMIT %s
+        """
+        cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                prov_type, confidence = classifier.classify(prov['provision_text'])
+                updates.append((prov_type, prov['id']))
+                stats[prov_type] = stats.get(prov_type, 0) + 1
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        if updates and not dry_run:
+            for prov_type, prov_id in updates:
+                cur.execute("""
+                    UPDATE regulatory_provisions
+                    SET v2_provision_type = %s
+                    WHERE id = %s
+                """, (prov_type, prov_id))
+            conn.commit()
+
+        pct = (processed / total) * 100 if total > 0 else 100
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Control: {stats['control']}, Obj: {stats['objective']}, "
+              f"Def: {stats['definition']}, Note: {stats['note']}, Proc: {stats['procedural']}")
+
+    stats['total_processed'] = processed
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def run_applicability_tagging(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """
+    Run applicability tagging on provisions.
+
+    Tags provisions with applicable zones and development types.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    tagger = ApplicabilityTagger()
+
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+
+    count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM regulatory_provisions
+        WHERE v2_applicable_zones IS NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0,
+        "with_specific_zones": 0,
+        "with_specific_dev_types": 0,
+        "all_zones": 0,
+        "all_dev_types": 0,
+        "errors": 0,
+    }
+
+    processed = 0
+
+    while processed < total:
+        fetch_sql = f"""
+            SELECT id, provision_text, document_id
+            FROM regulatory_provisions
+            WHERE v2_applicable_zones IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+              {actionable_filter}
+            ORDER BY id
+            LIMIT %s
+        """
+        cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                zones, dev_types = tagger.tag(prov['provision_text'], prov['document_id'])
+                updates.append((zones, dev_types, prov['id']))
+
+                if 'ALL' not in zones:
+                    stats['with_specific_zones'] += 1
+                else:
+                    stats['all_zones'] += 1
+
+                if 'ALL' not in dev_types:
+                    stats['with_specific_dev_types'] += 1
+                else:
+                    stats['all_dev_types'] += 1
+
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        if updates and not dry_run:
+            for zones, dev_types, prov_id in updates:
+                cur.execute("""
+                    UPDATE regulatory_provisions
+                    SET v2_applicable_zones = %s,
+                        v2_applicable_dev_types = %s
+                    WHERE id = %s
+                """, (zones, dev_types, prov_id))
+            conn.commit()
+
+        pct = (processed / total) * 100 if total > 0 else 100
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Specific zones: {stats['with_specific_zones']}, "
+              f"Specific dev types: {stats['with_specific_dev_types']}")
+
+    stats['total_processed'] = processed
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def run_layer_tagging(
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    batch_size: int = 1000,
+    actionable_only: bool = True
+) -> Dict[str, Any]:
+    """
+    Run layer + topic tagging on provisions (4-layer model).
+
+    Tags provisions with:
+    - v2_dcp_layer: generic | use_specific | condition | precinct
+    - v2_dcp_part: Part 2.6, Part C Section 1, etc.
+    - v2_topic: setbacks, parking, solar, etc.
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    tagger = LayerTopicTagger()
+
+    actionable_filter = "AND v2_is_actionable = true" if actionable_only else ""
+
+    count_sql = f"""
+        SELECT COUNT(*) as total
+        FROM regulatory_provisions
+        WHERE v2_dcp_layer IS NULL
+          AND provision_text IS NOT NULL
+          AND provision_text != ''
+          {actionable_filter}
+    """
+    cur.execute(count_sql)
+    total = cur.fetchone()['total']
+
+    if limit:
+        total = min(total, limit)
+
+    print(f"Processing {total} provisions...")
+    print(f"Batch size: {batch_size}")
+    print(f"Dry run: {dry_run}")
+    print("=" * 60)
+
+    stats = {
+        "total_processed": 0,
+        "generic": 0,
+        "use_specific": 0,
+        "condition": 0,
+        "precinct": 0,
+        "with_topic": 0,
+        "errors": 0,
+    }
+
+    processed = 0
+
+    # Do NOT use OFFSET — rows are updated out of the WHERE clause each batch,
+    # so OFFSET would skip ahead into a shrinking result. Always fetch from OFFSET 0.
+    while processed < total:
+        fetch_sql = f"""
+            SELECT id, document_id, provision_text
+            FROM regulatory_provisions
+            WHERE v2_dcp_layer IS NULL
+              AND provision_text IS NOT NULL
+              AND provision_text != ''
+              {actionable_filter}
+            ORDER BY id
+            LIMIT %s
+        """
+        cur.execute(fetch_sql, (batch_size,))
+        provisions = cur.fetchall()
+
+        if not provisions:
+            break
+
+        updates = []
+        for prov in provisions:
+            if limit and processed >= limit:
+                break
+
+            try:
+                layer, part, topic = tagger.tag(prov['document_id'], prov['provision_text'])
+                updates.append((layer, part, topic, prov['id']))
+
+                stats[layer] = stats.get(layer, 0) + 1
+                if topic:
+                    stats['with_topic'] += 1
+
+                processed += 1
+
+            except Exception as e:
+                print(f"Error processing provision {prov['id']}: {e}")
+                stats['errors'] += 1
+                processed += 1
+
+        if updates and not dry_run:
+            for layer, part, topic, prov_id in updates:
+                cur.execute("""
+                    UPDATE regulatory_provisions
+                    SET v2_dcp_layer = %s,
+                        v2_dcp_part = %s,
+                        v2_topic = %s
+                    WHERE id = %s
+                """, (layer, part, topic, prov_id))
+            conn.commit()
+
+        pct = (processed / total) * 100 if total > 0 else 100
+        print(f"Processed {processed}/{total} ({pct:.1f}%) - "
+              f"Generic: {stats['generic']}, Use: {stats['use_specific']}, "
+              f"Condition: {stats['condition']}, Precinct: {stats['precinct']}, "
+              f"With topic: {stats['with_topic']}")
+
+    stats['total_processed'] = processed
+    cur.close()
+    conn.close()
+
+    return stats
+
+
+def get_enrichment_status() -> Dict[str, Any]:
+    """Get current enrichment status."""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+
+    cur.execute("""
+        SELECT
+            COUNT(*) as total,
+            COUNT(CASE WHEN v2_is_actionable = true THEN 1 END) as actionable,
+            COUNT(CASE WHEN v2_is_actionable = false THEN 1 END) as boilerplate,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_enriched_at IS NOT NULL THEN 1 END) as enriched,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_has_numeric_value = true THEN 1 END) as with_numeric,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_has_numeric_value = false THEN 1 END) as without_numeric,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required = 'heritage' THEN 1 END) as heritage,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required = 'flood' THEN 1 END) as flood,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required = 'bushfire' THEN 1 END) as bushfire,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required = 'none' THEN 1 END) as general_no_condition,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_site_condition_required IS NOT NULL THEN 1 END) as site_condition_tagged,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type IS NOT NULL THEN 1 END) as type_classified,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type = 'control' THEN 1 END) as type_control,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type = 'objective' THEN 1 END) as type_objective,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type = 'definition' THEN 1 END) as type_definition,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type = 'note' THEN 1 END) as type_note,
+            COUNT(CASE WHEN v2_is_actionable = true AND v2_provision_type = 'procedural' THEN 1 END) as type_procedural
+        FROM regulatory_provisions
+    """)
+    result = cur.fetchone()
+
+    cur.close()
+    conn.close()
+
+    actionable = result['actionable']
+    enriched = result['enriched']
+
+    return {
+        "total_provisions": result['total'],
+        "actionable": actionable,
+        "boilerplate": result['boilerplate'],
+        "enriched": enriched,
+        "pending": actionable - enriched,
+        "with_numeric_values": result['with_numeric'],
+        "without_numeric_values": result['without_numeric'],
+        "enrichment_pct": (enriched / actionable * 100) if actionable > 0 else 0,
+        "site_condition_tagged": result['site_condition_tagged'],
+        "heritage": result['heritage'],
+        "flood": result['flood'],
+        "bushfire": result['bushfire'],
+        "general_no_condition": result['general_no_condition'],
+        "type_classified": result['type_classified'],
+        "type_control": result['type_control'],
+        "type_objective": result['type_objective'],
+        "type_definition": result['type_definition'],
+        "type_note": result['type_note'],
+        "type_procedural": result['type_procedural'],
+    }
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Run enrichment pipeline")
+    parser.add_argument("--phase", choices=["actionability", "numeric", "site_condition", "type", "applicability", "layer", "status"], default="status",
+                       help="Which phase to run (default: status)")
+    parser.add_argument("--limit", type=int, help="Limit number of provisions to process")
+    parser.add_argument("--dry-run", action="store_true", help="Don't commit changes")
+    parser.add_argument("--batch-size", type=int, default=500,
+                       help="Batch size for processing (default: 500)")
+    parser.add_argument("--all", action="store_true",
+                       help="Process all provisions (including boilerplate)")
+
+    args = parser.parse_args()
+
+    if args.phase == "actionability":
+        print("\n=== Running Actionability Classification (Phase 0) ===")
+        print("(Processes provisions where v2_is_actionable IS NULL)")
+        stats = run_actionability_classification(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"Actionable: {stats['actionable']:,}")
+        print(f"Non-actionable: {stats['non_actionable']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "status":
+        status = get_enrichment_status()
+        print("\n=== Enrichment Status ===")
+        print(f"Total provisions: {status['total_provisions']:,}")
+        print(f"  Actionable: {status['actionable']:,}")
+        print(f"  Boilerplate: {status['boilerplate']:,}")
+        print(f"\nNumeric extraction:")
+        print(f"  With numeric values: {status['with_numeric_values']:,}")
+        print(f"  Without numeric values: {status['without_numeric_values']:,}")
+        print(f"\nSite conditions (tagged: {status['site_condition_tagged']:,}/{status['actionable']:,}):")
+        print(f"  Heritage-specific: {status['heritage']:,}")
+        print(f"  Flood-specific: {status['flood']:,}")
+        print(f"  Bushfire-specific: {status['bushfire']:,}")
+        print(f"  General (no condition): {status['general_no_condition']:,}")
+        print(f"\nProvision types (classified: {status['type_classified']:,}/{status['actionable']:,}):")
+        print(f"  Control: {status['type_control']:,}")
+        print(f"  Objective: {status['type_objective']:,}")
+        print(f"  Definition: {status['type_definition']:,}")
+        print(f"  Note: {status['type_note']:,}")
+        print(f"  Procedural: {status['type_procedural']:,}")
+
+    elif args.phase == "numeric":
+        print("\n=== Running Numeric Extraction ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        else:
+            print("(Processing ALL provisions including boilerplate)")
+        stats = run_numeric_extraction(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"With numeric: {stats['with_numeric']:,}")
+        print(f"Without numeric: {stats['without_numeric']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "site_condition":
+        print("\n=== Running Site Condition Tagging ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        stats = run_site_condition_tagging(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"Heritage-specific: {stats['heritage']:,}")
+        print(f"Flood-specific: {stats['flood']:,}")
+        print(f"Bushfire-specific: {stats['bushfire']:,}")
+        print(f"General (no condition): {stats['general']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "type":
+        print("\n=== Running Type Classification ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        stats = run_type_classification(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"Control: {stats['control']:,}")
+        print(f"Objective: {stats['objective']:,}")
+        print(f"Definition: {stats['definition']:,}")
+        print(f"Note: {stats['note']:,}")
+        print(f"Procedural: {stats['procedural']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "applicability":
+        print("\n=== Running Applicability Tagging ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        stats = run_applicability_tagging(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"With specific zones: {stats['with_specific_zones']:,}")
+        print(f"With specific dev types: {stats['with_specific_dev_types']:,}")
+        print(f"General (all zones): {stats['all_zones']:,}")
+        print(f"General (all dev types): {stats['all_dev_types']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+    elif args.phase == "layer":
+        print("\n=== Running Layer + Topic Tagging (4-Layer Model) ===")
+        actionable_only = not args.all
+        if actionable_only:
+            print("(Processing actionable provisions only)")
+        stats = run_layer_tagging(
+            limit=args.limit,
+            dry_run=args.dry_run,
+            batch_size=args.batch_size,
+            actionable_only=actionable_only
+        )
+        print("\n=== Results ===")
+        print(f"Processed: {stats['total_processed']:,}")
+        print(f"Layer distribution:")
+        print(f"  Generic: {stats['generic']:,}")
+        print(f"  Use-specific: {stats['use_specific']:,}")
+        print(f"  Condition: {stats['condition']:,}")
+        print(f"  Precinct: {stats['precinct']:,}")
+        print(f"With topic assigned: {stats['with_topic']:,}")
+        print(f"Errors: {stats['errors']:,}")
+
+        if args.dry_run:
+            print("\n[DRY RUN - No changes committed]")
+
+
+if __name__ == "__main__":
+    main()
