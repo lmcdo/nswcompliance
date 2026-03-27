@@ -189,12 +189,17 @@ export function ProvisionsByTocStructure({
 
   // Clear scope form fields whenever the address changes — form always starts fresh.
   // Intake answers and DA responses persist server-side via useDASession.
+  // Refs are cleared immediately (synchronously) so any debounced callbacks that fire
+  // before the next render don't read stale dev type or works text values.
   useEffect(() => {
     setDevType('');
     setDevWorksText('');
     setAncillaryWorksLocal([]);
     setClientRef('');
     setPreparedBy('');
+    devTypeRef.current = '';
+    devWorksTextRef.current = '';
+    ancillaryInitializedRef.current = false;
   }, [address]);
 
   // Structured development description state
@@ -212,6 +217,9 @@ export function ProvisionsByTocStructure({
   devWorksTextRef.current = devWorksText;
   const intakeAnswersRef = useRef(intakeAnswers);
   intakeAnswersRef.current = intakeAnswers;
+  // Tracks whether ancillary works have been initialised from server session.
+  // Prevents re-applying server state after the user has made local edits.
+  const ancillaryInitializedRef = useRef(false);
 
 
   // Clear any pending debounce on unmount to avoid state updates after teardown
@@ -269,12 +277,15 @@ export function ProvisionsByTocStructure({
     if (isDaMode && address) refreshResponsesRef.current();
   }, [isDaMode, address]);
 
-  // Restore ancillary works from session when loaded
+  // Restore ancillary works from session when loaded — one-time initialisation only.
+  // ancillaryInitializedRef prevents re-applying server state after the user has
+  // made local edits (which would clobber their changes on the next savedAncillaryWorks update).
   useEffect(() => {
-    if (savedAncillaryWorks.length > 0 && ancillaryWorksLocal.length === 0) {
+    if (!ancillaryInitializedRef.current && savedAncillaryWorks.length > 0) {
       setAncillaryWorksLocal(savedAncillaryWorks);
+      ancillaryInitializedRef.current = true;
     }
-  }, [savedAncillaryWorks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [savedAncillaryWorks]);
 
   // Auto-derive intake from scope (dev type + ancillary checkboxes).
   // When ancillary works are selected, intake is auto-derived — no modal needed.

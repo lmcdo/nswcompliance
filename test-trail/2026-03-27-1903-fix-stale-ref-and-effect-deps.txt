@@ -1,0 +1,11 @@
+=== TEST TRAIL ===
+Branch: fix/stale-ref-and-effect-deps
+Date:   Fri Mar 27 19:03:12 AUSEDT 2026
+
+--- TypeScript: errors in ProvisionsByTocStructure.tsx ---
+components/compliance/ProvisionsByTocStructure.tsx(842,27): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ critical: number; important: number; guideline: number; contextual: number; }'.
+components/compliance/ProvisionsByTocStructure.tsx(843,27): error TS7053: Element implicitly has an 'any' type because expression of type 'any' can't be used to index type '{ critical: number; important: number; guideline: number; contextual: number; }'.
+components/compliance/ProvisionsByTocStructure.tsx(1310,15): error TS2322: Type '{ total: number; triaged: number; chapterDismissed: number; topicDismissed: number; suppressed: number; scopeTotal: number; assessed: number; remaining: number; } | null' is not assignable to type '{ total: number; triaged: number; chapterDismissed: number; autoChapterDismissed: number; topicDismissed: number; suppressed: number; questionnaireScoped: number; heritageElementScoped: number; scopeTotal: number; assessed: number; remaining: number; } | null | undefined'.
+
+(2 pre-existing errors at lines 842/843/1310 — unchanged from baseline)
+=== END ===
