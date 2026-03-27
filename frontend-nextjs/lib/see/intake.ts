@@ -60,6 +60,8 @@ export interface AutoAnswerSource {
   citation: string;
   /** One-sentence rationale for the SEE audit trail when answer is 'no'. */
   rationale: string;
+  /** One-sentence rationale when constraint is confirmed present (answer is 'yes'). */
+  rationale_yes?: string;
 }
 
 /**
@@ -71,51 +73,61 @@ export const AUTO_ANSWER_SOURCES: Partial<Record<keyof IntakeAnswers, AutoAnswer
     propertyField: 'constraints.floodProne',
     citation: 'LEP Part 5 — Flood Prone Land',
     rationale: 'Site confirmed not flood prone per LEP mapping',
+    rationale_yes: 'Site is flood prone per LEP mapping — flood management provisions are in scope',
   },
   bushfire_prone: {
     propertyField: 'constraints.bushfireProne',
     citation: 'LEP Part 5 — Bushfire Prone Land',
     rationale: 'Site confirmed not bushfire prone per LEP mapping',
+    rationale_yes: 'Site is bushfire prone per LEP mapping — bushfire provisions are in scope',
   },
   acid_sulfate_soils: {
     propertyField: 'constraints.acidSulfateSoils',
     citation: 'LEP Part 5 — Acid Sulfate Soils',
     rationale: 'Site confirmed no acid sulfate soils per LEP mapping',
+    rationale_yes: 'Site has acid sulfate soils per LEP mapping — acid sulfate provisions are in scope',
   },
   coastal: {
     propertyField: 'constraints.coastalEnvironment.inCoastalArea',
     citation: 'SEPP (Resilience and Hazards) 2021 — Coastal Management',
     rationale: 'Site confirmed not in coastal management area',
+    rationale_yes: 'Site is in a coastal management area — coastal provisions are in scope',
   },
   biodiversity: {
     propertyField: 'constraints.terrestrialBiodiversity.inBiodiversityArea',
     citation: 'LEP Part 5 — Terrestrial Biodiversity',
     rationale: 'Site confirmed no terrestrial biodiversity overlay',
+    rationale_yes: 'Site is in a terrestrial biodiversity area — biodiversity provisions are in scope',
   },
   acoustic_zone: {
     propertyField: 'constraints.anefData.inAnefZone',
     citation: 'SEPP (Transport Infrastructure) 2021 — Aircraft Noise',
     rationale: 'Site confirmed not in ANEF aircraft noise zone per portal mapping',
+    rationale_yes: 'Site is in an ANEF aircraft noise zone — acoustic provisions are in scope',
   },
   mine_subsidence: {
     propertyField: 'constraints.mineSubsidence.inDistrict',
     citation: 'SEPP (Resilience and Hazards) 2021 — Mine Subsidence Ch.3',
     rationale: 'Site confirmed not in mine subsidence district per portal mapping',
+    rationale_yes: 'Site is in a mine subsidence district — mine subsidence provisions are in scope',
   },
   landslide_risk: {
     propertyField: 'constraints.landslideRisk.hasRisk',
     citation: 'LEP Part 5 — Landslide Risk',
     rationale: 'Site confirmed not in landslide risk area per LEP mapping',
+    rationale_yes: 'Site is in a landslide risk area — landslide provisions are in scope',
   },
   contaminated_land: {
     propertyField: 'constraints.contaminatedLand.hasNotifiedSites',
     citation: 'SEPP (Resilience and Hazards) 2021 — Contaminated Land Ch.4',
     rationale: 'No EPA-notified contaminated sites within 500m confirmed per portal mapping',
+    rationale_yes: 'EPA-notified contaminated sites within 500m — contamination provisions are in scope',
   },
   drinking_water_catchment: {
     propertyField: 'constraints.drinkingWaterCatchment.inCatchment',
     citation: 'SEPP (Resilience and Hazards) 2021 — Drinking Water Catchment Ch.2',
     rationale: 'Site confirmed not in drinking water catchment area per portal mapping',
+    rationale_yes: 'Site is in a drinking water catchment area — drinking water provisions are in scope',
   },
 };
 
@@ -283,6 +295,35 @@ const TOPIC_EXCLUSION_REASONS: Record<string, string> = {
   landslide: 'Site confirmed not in landslide risk area (LEP Part 5)',
   drinking_water: 'Site confirmed not in drinking water catchment (SEPP Resilience and Hazards 2021 Ch.2)',
   demolition: 'No demolition works in proposal confirmed',
+  // Works scope questionnaire — use-type exclusions
+  commercial: 'No commercial or retail component confirmed',
+  retail: 'No commercial or retail component confirmed',
+  food_premises: 'No commercial or retail component confirmed',
+  neighbourhood_shop: 'No commercial or retail component confirmed',
+  boarding_house: 'No boarding house or co-living component confirmed',
+  co_living: 'No boarding house or co-living component confirmed',
+  multi_dwelling: 'No multi-dwelling or dual occupancy component confirmed',
+  residential_flat: 'No multi-dwelling or dual occupancy component confirmed',
+  dual_occupancy: 'No multi-dwelling or dual occupancy component confirmed',
+  subdivision: 'No land subdivision in proposal confirmed',
+  child_care: 'No child care, education, or community facility component confirmed',
+  childcare: 'No child care, education, or community facility component confirmed',
+  child_care_facility: 'No child care, education, or community facility component confirmed',
+  education: 'No child care, education, or community facility component confirmed',
+  community_facility: 'No child care, education, or community facility component confirmed',
+  community_facilities: 'No child care, education, or community facility component confirmed',
+  home_business: 'No home business or home industry component confirmed',
+  home_industry: 'No home business or home industry component confirmed',
+  home_occupation: 'No home business or home industry component confirmed',
+  tourist_accommodation: 'No tourist, visitor, or short-term accommodation component confirmed',
+  visitor_accommodation: 'No tourist, visitor, or short-term accommodation component confirmed',
+  short_term_rental: 'No tourist, visitor, or short-term accommodation component confirmed',
+  tourist: 'No tourist, visitor, or short-term accommodation component confirmed',
+  serviced_apartment: 'No tourist, visitor, or short-term accommodation component confirmed',
+  industrial: 'No industrial or warehouse use confirmed',
+  warehouse: 'No industrial or warehouse use confirmed',
+  light_industrial: 'No industrial or warehouse use confirmed',
+  heavy_industrial: 'No industrial or warehouse use confirmed',
 };
 
 // Dev-mode parity assertion: every topic in TRIGGER_TO_TOPICS must have a TOPIC_EXCLUSION_REASONS entry.
@@ -375,7 +416,8 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
 
 /**
  * Auto-populates intake answers from property constraints fetched from NSW Planning Portal.
- * Only sets 'no' when the constraint is definitively absent — never sets 'yes' or 'unknown'.
+ * Sets 'no' when the constraint is definitively absent; 'yes' when definitively present.
+ * Never sets 'unknown' — that is the default and means "not yet determined".
  * Returns a partial — caller must merge over existing answers (existing answers always win).
  *
  * Usage:
@@ -385,22 +427,46 @@ export const DEFAULT_INTAKE_ANSWERS: IntakeAnswers = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function autoPopulateFromConstraints(constraints: Record<string, any>): Partial<IntakeAnswers> {
   const result: Partial<IntakeAnswers> = {};
+
+  // --- Flood ---
   if (constraints.floodProne === false) result.flood_prone = 'no';
+  else if (constraints.floodProne === true) result.flood_prone = 'yes';
+
+  // --- Bushfire ---
   if (constraints.bushfireProne === false) result.bushfire_prone = 'no';
-  // acidSulfateSoils is a string class or undefined/null — falsy means absent
+  else if (constraints.bushfireProne === true) result.bushfire_prone = 'yes';
+
+  // acidSulfateSoils is a string class or undefined/null — falsy means absent, truthy means present.
   if (!constraints.acidSulfateSoils) result.acid_sulfate_soils = 'no';
-  // coastal/biodiversity: portal only sets these when the overlay IS found.
+  else result.acid_sulfate_soils = 'yes';
+
+  // coastal/biodiversity: portal only sets inCoastalArea/inBiodiversityArea when the overlay IS found.
   // Absent (undefined/null) = layer not detected = site confirmed NOT in that area.
-  if (constraints.coastalEnvironment?.inCoastalArea !== true) result.coastal = 'no';
-  if (constraints.terrestrialBiodiversity?.inBiodiversityArea !== true) result.biodiversity = 'no';
+  if (constraints.coastalEnvironment?.inCoastalArea === true) result.coastal = 'yes';
+  else result.coastal = 'no';
+
+  if (constraints.terrestrialBiodiversity?.inBiodiversityArea === true) result.biodiversity = 'yes';
+  else result.biodiversity = 'no';
+
   // anefData lives at propertyData.anefData (top level), not inside constraints.
   // Call sites must merge it in: autoPopulateFromConstraints({ ...constraints, anefData })
-  if (constraints.anefData?.inAnefZone === false) result.acoustic_zone = 'no';
+  if (constraints.anefData?.inAnefZone === true) result.acoustic_zone = 'yes';
+  else if (constraints.anefData?.inAnefZone === false) result.acoustic_zone = 'no';
+  // anefData absent = portal didn't return ANEF data; leave as 'unknown'.
+
   // Remaining LEP Part 5 / SEPP (Resilience and Hazards) 2021 constraints.
   // Portal only sets these when the overlay IS found — absent means confirmed not present.
-  if (constraints.mineSubsidence?.inDistrict !== true) result.mine_subsidence = 'no';
-  if (constraints.landslideRisk?.hasRisk !== true) result.landslide_risk = 'no';
-  if (constraints.contaminatedLand?.hasNotifiedSites !== true) result.contaminated_land = 'no';
-  if (constraints.drinkingWaterCatchment?.inCatchment !== true) result.drinking_water_catchment = 'no';
+  if (constraints.mineSubsidence?.inDistrict === true) result.mine_subsidence = 'yes';
+  else result.mine_subsidence = 'no';
+
+  if (constraints.landslideRisk?.hasRisk === true) result.landslide_risk = 'yes';
+  else result.landslide_risk = 'no';
+
+  if (constraints.contaminatedLand?.hasNotifiedSites === true) result.contaminated_land = 'yes';
+  else result.contaminated_land = 'no';
+
+  if (constraints.drinkingWaterCatchment?.inCatchment === true) result.drinking_water_catchment = 'yes';
+  else result.drinking_water_catchment = 'no';
+
   return result;
 }

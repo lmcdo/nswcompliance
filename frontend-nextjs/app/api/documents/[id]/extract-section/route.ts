@@ -81,7 +81,7 @@ export async function GET(
         const provisionText = provResult.rows[0].provision_text;
 
         // Extract references using LGA-specific patterns
-        const refs = extractReferences(provisionText, config);
+        const refs = extractReferences(provisionText, config as any);
 
         for (const ref of refs) {
           // Check cache first
@@ -92,7 +92,7 @@ export async function GET(
             cacheHits++;
           } else {
             // Extract on-demand
-            const section = extractSection(fullText, ref.reference, config, ref.type);
+            const section = extractSection(fullText, ref.reference, config as any, ref.type === 'appendix' ? undefined : ref.type);
             if (section) {
               sections.push(section);
               cacheSection(documentId, section);
@@ -114,7 +114,7 @@ export async function GET(
         cacheHits++;
       } else {
         // Extract on-demand
-        const section = extractSection(fullText, targetRef, config);
+        const section = extractSection(fullText, targetRef, config as any);
         if (section) {
           sections.push(section);
           cacheSection(documentId, section);
@@ -130,7 +130,7 @@ export async function GET(
         details: `Could not find section ${targetRef || 'auto-detected'} in document`,
         debug: {
           documentId,
-          lgaConfig: config.lga,
+          lgaConfig: (config as any).lga,
           searchedFor: targetRef || 'auto-detect from provision'
         }
       }, { status: 404 });
@@ -142,7 +142,7 @@ export async function GET(
       success: true,
       data: {
         documentId,
-        lgaConfig: config.lga,
+        lgaConfig: (config as any).lga,
         sections,
         totalSections: sections.length
       },

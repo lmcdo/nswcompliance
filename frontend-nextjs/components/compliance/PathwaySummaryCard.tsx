@@ -125,7 +125,7 @@ export function PathwaySummaryCard({
                 {housingLmrApplicable ? 'Applicable' : 'Not applicable'}
               </strong>
               {!housingLmrApplicable && zoneCode && (
-                <span className="text-xs text-gray-500 ml-1">({zoneCode} zone)</span>
+                <span className="text-xs text-gray-500 ml-1"> ({zoneCode} zone)</span>
               )}
             </span>
           </div>

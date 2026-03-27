@@ -9,6 +9,15 @@
  */
 
 // ============================================================================
+// GEOJSON TYPE SHIMS (avoids @types/geojson dependency)
+// ============================================================================
+declare namespace GeoJSON {
+  interface Polygon { type: 'Polygon'; coordinates: number[][][]; }
+  interface LineString { type: 'LineString'; coordinates: number[][]; }
+  interface Point { type: 'Point'; coordinates: number[]; }
+}
+
+// ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
 

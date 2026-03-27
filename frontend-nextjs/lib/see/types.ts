@@ -64,6 +64,17 @@ export interface ChapterAssertion {
   reason: string;
 }
 
+/** A single DCP section assessment for the section-level model. */
+export interface SectionAssessment {
+  /** Section key — format: `${partKey}::${sectionNumber}` e.g. 'Part 1::2.1' */
+  section_key: string;
+  section_title: string | null;
+  status: 'complies' | 'varies' | 'not_applicable' | 'flagged' | null;
+  narrative: string | null;
+  /** Leading provision text(s) from this section — shown as DCP requirement in compliance table */
+  key_provisions?: string[];
+}
+
 export interface SEEDocumentData {
   property: PropertyContext;
   development_description: string;
@@ -92,4 +103,8 @@ export interface SEEDocumentData {
   ancillary_works?: string[];
   /** R2 public PDF URL for deep-linking provisions to DCP source pages */
   council_pdf_url?: string;
+  /** Section-level assessment responses (section-level DA model) */
+  section_responses?: SectionAssessment[];
+  /** All unique DCP sections in scope — used for completeness tracking in the PDF */
+  section_scope?: { section_key: string; section_title: string | null }[];
 }

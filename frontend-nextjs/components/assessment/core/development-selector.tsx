@@ -1,7 +1,7 @@
 import { ChevronDown } from "lucide-react"
 import { Card } from "@/components/ui/card"
 
-export function DevelopmentSelector() {
+export function DevelopmentSelector(props: Record<string, any> = {}) {
  return (
  <Card className="p-6 shadow-sm">
  <div className="space-y-4">

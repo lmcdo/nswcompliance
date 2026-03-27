@@ -21,7 +21,7 @@ export function useSetbacks(propertyId?: number, zone?: string) {
  setError(null);
 
  try {
- const data = await assessmentAPI.calculateSetbacks(propertyId, zone);
+ const data = await assessmentAPI.calculateSetbacks(propertyId!, zone!);
  setSetbacks(data);
  } catch (err) {
  setError(err instanceof Error ? err.message : 'Failed to calculate setbacks');

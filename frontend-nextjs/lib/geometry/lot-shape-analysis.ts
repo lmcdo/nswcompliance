@@ -3,10 +3,12 @@
  *
  * Detects battleaxe lots (flag lots/panhandle lots) from cadastre geometry.
  *
- * Battleaxe signature:
- * - Narrow "handle" (access way) typically 3-6m wide
- * - Wide "head" (main lot) typically 10-25m wide
- * - Handle is minority of lot length (<40%)
+ * Battleaxe signature (NSW Standard Instrument LEP definition):
+ * - A lot that relies on a strip of land ("the handle") narrower than
+ *   the remainder of the lot to provide access to a road.
+ * - Detection is proportion-based: handle must be < 40% of head width.
+ *   This covers small suburban battleaxes (3-5m handle) and large rural
+ *   ones (e.g. 18-20m handle on a 60m+ lot) equally.
  *
  * NSW SEPP Housing 2021 Requirements:
  * - Minimum access way width: 3m
@@ -15,7 +17,7 @@
  * Algorithm: Width profile analysis
  * 1. Find lot's principal axis (longest dimension)
  * 2. Take perpendicular cross-sections
- * 3. Detect narrow→wide pattern
+ * 3. Detect narrow→wide pattern using proportion-based threshold
  */
 
 import type { LotGeometry } from '@/types/property';
@@ -30,7 +32,10 @@ const MIN_MAIN_LOT_DIMENSION = 12.0; // meters
 const MIN_MAIN_LOT_AREA = 144.0; // 12m × 12m in sqm
 
 // Detection thresholds
-const MAX_HANDLE_WIDTH = 6.5; // Handle must be narrower than this
+// Proportion-based: handle must be < 40% of head width (per legislative definition
+// of battleaxe as a lot with a handle "narrower than the remainder"). This works
+// for both small suburban handles (3-5m on 12-15m lots) and large rural ones.
+const HANDLE_TO_HEAD_MAX_RATIO = 0.40;
 const MIN_HEAD_WIDTH = 9.0; // Head must be wider than this
 const MAX_NARROW_PERCENTAGE = 0.65; // Handle must be <65% of lot length (typically 30-50%, allow up to 60%)
 const MIN_WIDTH_RATIO = 0.65; // Handle/head width ratio must be below this
@@ -150,17 +155,20 @@ export function detectBattleaxeLot(geometry: LotGeometry): BattleaxeDetectionRes
   const maxWidth = Math.max(...widths);
   const widthRatio = minWidth / maxWidth;
 
+  // Proportion-based narrow threshold: handle must be < 40% of head width.
+  // Using maxWidth as a proxy for head width at this stage.
+  const narrowThreshold = maxWidth * HANDLE_TO_HEAD_MAX_RATIO;
+
   // Count narrow vs wide sections
-  const narrowSlices = widths.filter((w) => w < MAX_HANDLE_WIDTH).length;
-  const wideSlices = widths.filter((w) => w >= MIN_HEAD_WIDTH).length;
+  const narrowSlices = widths.filter((w) => w < narrowThreshold).length;
   const narrowPercentage = narrowSlices / widths.length;
 
   // Battleaxe detection criteria
-  const hasNarrowHandle = minWidth < MAX_HANDLE_WIDTH && minWidth > 0;
+  const hasNarrowHandle = minWidth < narrowThreshold && minWidth > 0;
   const hasWideHead = maxWidth >= MIN_HEAD_WIDTH;
   const hasSignificantContrast = widthRatio < MIN_WIDTH_RATIO;
   const handleIsMinority = narrowPercentage < MAX_NARROW_PERCENTAGE;
-  const hasConsecutiveNarrow = hasConsecutiveNarrowSection(widths, 3);
+  const hasConsecutiveNarrow = hasConsecutiveNarrowSection(widths, 3, narrowThreshold);
 
   const isBattleaxe =
     hasNarrowHandle &&
@@ -345,10 +353,10 @@ function measureWidthAtX(polygon: Point[], x: number): number {
 /**
  * Check if there are consecutive narrow sections (handle pattern)
  */
-function hasConsecutiveNarrowSection(widths: number[], minConsecutive: number): boolean {
+function hasConsecutiveNarrowSection(widths: number[], minConsecutive: number, threshold: number): boolean {
   let consecutive = 0;
   for (const w of widths) {
-    if (w < MAX_HANDLE_WIDTH) {
+    if (w < threshold) {
       consecutive++;
       if (consecutive >= minConsecutive) return true;
     } else {

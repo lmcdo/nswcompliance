@@ -1,0 +1,110 @@
+name: DCP Watchdog
+
+# Daily check for stuck extractions — catches cases where the monitor fired
+# but the workflow_run chain broke and needs_extraction=TRUE rows aged without
+# being processed.
+
+on:
+  schedule:
+    # Daily at 10:00 UTC — well after the Monday 02:00 UTC monitor run
+    - cron: '0 10 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  watchdog:
+    name: Check for stuck or unprocessed extractions
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements-monitor.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements-monitor.txt
+
+      - name: Check for stuck chapters
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python - <<'PYEOF'
+import os, sys
+import psycopg2
+import requests
+from datetime import datetime, timezone, timedelta
+
+DATABASE_URL = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
+
+def send_telegram(msg):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        return
+    try:
+        requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            json={"chat_id": TELEGRAM_CHAT_ID, "text": msg},
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+conn = psycopg2.connect(DATABASE_URL)
+cur = conn.cursor()
+
+# Chapters flagged for extraction but not extracted in >25 hours
+# (should have been processed by the auto-trigger chain after Monday monitor)
+cur.execute("""
+    SELECT council, chapter_key, url_last_changed
+    FROM dcp_chapter_registry
+    WHERE needs_extraction = TRUE
+      AND (last_extracted_at IS NULL OR url_last_changed > last_extracted_at)
+      AND url_last_changed < NOW() - INTERVAL '25 hours'
+    ORDER BY council, chapter_key
+""")
+stuck = cur.fetchall()
+
+# Chapters with repeated download failures
+cur.execute("""
+    SELECT council, chapter_key, check_failures, url_last_checked
+    FROM dcp_chapter_registry
+    WHERE check_failures >= 3
+      AND is_active = TRUE
+    ORDER BY check_failures DESC, council, chapter_key
+""")
+failing = cur.fetchall()
+
+cur.close()
+conn.close()
+
+issues = []
+
+if stuck:
+    chapter_list = "\n".join(f"  [{c}/{k}] changed {d}" for c, k, d in stuck)
+    issues.append(f"{len(stuck)} chapters stuck (needs_extraction=TRUE >25h):\n{chapter_list}")
+    print(f"STUCK CHAPTERS: {len(stuck)}")
+    for c, k, d in stuck:
+        print(f"  [{c}] {k} — changed {d}")
+
+if failing:
+    fail_list = "\n".join(f"  [{c}/{k}] {f} failures" for c, k, f, _ in failing)
+    issues.append(f"{len(failing)} chapters with repeated download failures:\n{fail_list}")
+    print(f"FAILING CHAPTERS: {len(failing)}")
+    for c, k, f, checked in failing:
+        print(f"  [{c}] {k} — {f} failures, last checked {checked}")
+
+if issues:
+    send_telegram("DCP Watchdog alert\n\n" + "\n\n".join(issues))
+    sys.exit(1)
+else:
+    print("Watchdog: no stuck or failing chapters.")
+    sys.exit(0)
+PYEOF

@@ -24,7 +24,7 @@ import { NearbyTransportCard } from '../tod/NearbyTransportCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { ExemptComplyingProvisions } from './ExemptComplyingProvisions';
 import { PathwaySummaryCard } from './PathwaySummaryCard';
-import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone } from '@/lib/regulatory-constants';
+import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRApplicable } from '@/lib/regulatory-constants';
 import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 
@@ -35,11 +35,11 @@ interface StateLevelControlsProps {
   onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
 }
 
+// ADG applies to residential flat buildings only (SEPP Housing 2021 Part 4).
+// multi_dwelling_housing (townhouses) and boarding_house use separate standards.
 const APARTMENT_DEV_TYPES = [
-  'multi_dwelling_housing',
   'residential_flat_building',
   'shop_top_housing',
-  'boarding_house',
   'mixed_use'
 ];
 
@@ -124,38 +124,20 @@ export function StateLevelControls({
   // Use LGA-specific SEPP mapping if provided, otherwise use NSW default
   const SEPP_MAPPING = lgaConfig?.sepp?.sepp_id_mapping || DEFAULT_SEPP_MAPPING;
 
-  // Load ADG requirements when SEPP Housing 2021 detected AND zone permits residential
+  // Load ADG requirements for residential flat building development types.
+  // ADG applies statewide to RFBs under SEPP Housing 2021 — no SEPP detection needed.
   const loadADGRequirements = useCallback(async () => {
     if (!developmentType) return;
 
-    const applicableSepps = propertyData?.constraints?.applicableSepps || [];
-    console.log('[StateLevelControls] Applicable SEPPs from portal:', applicableSepps);
-
-    // Check zone permits residential
-    const zone = propertyData?.constraints?.zone;
-    const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-    const residentialZones = NSW_PLANNING_CONSTANTS.ZONES.RESIDENTIAL;
-    const permitsResidential = residentialZones.includes(zoneCode);
-
-    if (!permitsResidential) {
-      console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - skipping ADG`);
-      setAdgRequirements([]);
-      return;
-    }
-
-    // Check if Housing SEPP applies
-    const hasHousingSEPP = applicableSepps.some((sepp: string) => 
-      sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
-    );
-
-    if (!hasHousingSEPP) {
+    // ADG only applies to residential flat building development types
+    if (!APARTMENT_DEV_TYPES.includes(developmentType)) {
       setAdgRequirements([]);
       return;
     }
 
     setLoadingAdg(true);
     try {
-      console.log('[StateLevelControls] Fetching ADG requirements (Housing SEPP detected)');
+      console.log('[StateLevelControls] Fetching ADG requirements (RFB development type)');
       const response = await fetch(`/api/adg/requirements`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
@@ -230,7 +212,7 @@ export function StateLevelControls({
     // Filter out residential-only SEPPs if zone doesn't permit residential
     if (!permitsResidential) {
       const beforeFilter = dbSeppIds.length;
-      dbSeppIds = dbSeppIds.filter(seppId => seppId !== 'housing_2021');
+      dbSeppIds = dbSeppIds.filter((seppId: any) => seppId !== 'housing_2021');
       if (beforeFilter > dbSeppIds.length) {
         console.log(`[StateLevelControls] ${zoneCode} zone does not permit residential - excluding Housing SEPP (ADG, Secondary Dwellings)`);
       }
@@ -371,7 +353,8 @@ export function StateLevelControls({
         });
         if (pbResponse.ok) {
           const data = await pbResponse.json();
-          setPatternBookStatus(data.status);
+          const eligibility = data.data?.eligibility || data;
+          setPatternBookStatus(eligibility.status);
         }
       } catch (err) {
         console.error('[PathwaySummary] Failed to fetch Pattern Book status:', err);
@@ -383,9 +366,14 @@ export function StateLevelControls({
           const ecResponse = await fetch(`/api/sepp/exempt-complying?zone=${zoneCode}`);
           if (ecResponse.ok) {
             const data = await ecResponse.json();
-            const counts = data.counts || {};
-            const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0);
-            setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
+            // notApplicable means zone is not covered by Housing Code — treat as 0 work types
+            if (data.notApplicable) {
+              setExemptComplyingCount(0);
+            } else {
+              const counts = data.counts || {};
+              const totalCount = Object.values(counts).reduce((a: any, b: any) => a + b, 0) as number;
+              setExemptComplyingCount(totalCount > 0 ? Object.keys(counts).length : 0);
+            }
           }
         } catch (err) {
           console.error('[PathwaySummary] Failed to fetch E&C counts:', err);
@@ -405,15 +393,15 @@ export function StateLevelControls({
   // First try calculated dimensions from lot geometry, then fallback to property data
   const propertyAreaStr = propertyData?.propertyArea;
   const lotSize = propertyData?.lotDimensions?.area
-    || (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) : null)
-    || propertyData?.geometry?.area;
+    ?? (propertyAreaStr ? parseFloat(propertyAreaStr.replace(/[^0-9.]/g, '')) || null : null)
+    ?? propertyData?.geometry?.area;
 
   // Lot width - from calculated geometry (cadastre), then fallbacks
   const lotWidth = propertyData?.lotDimensions?.frontage
-    || propertyData?.geometry?.frontageWidth
-    || propertyData?.geometry?.estimatedWidth
-    || propertyData?.constraints?.lotWidth
-    || NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
+    ?? propertyData?.geometry?.frontageWidth
+    ?? propertyData?.geometry?.estimatedWidth
+    ?? propertyData?.constraints?.lotWidth
+    ?? NSW_PLANNING_CONSTANTS.HOUSING_SEPP.DEFAULT_LOT_WIDTH_M; // Default estimate if not available
 
   // Lot depth - from calculated geometry
   const lotDepth = propertyData?.lotDimensions?.depth || null;
@@ -422,10 +410,10 @@ export function StateLevelControls({
   const stationDistance = propertyData?.constraints?.todPrecinct?.stationDistance
     || nearbyTransport.find(s => s.type === 'heavy_rail')?.distance;
 
-  // Check if property is in LMR area (residential zone)
   // Zone may include colon (e.g., "R2: Low Density") - strip non-alphanumeric chars
   const zoneCode = zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
-  const isLMRArea = (NSW_PLANNING_CONSTANTS.HOUSING_SEPP.ELIGIBLE_ZONES as readonly string[]).includes(zoneCode);
+  // LMR applicability: Stage 2 (R1–R4 within designated regions) OR Stage 1 (R2 statewide, excl. 4 LGAs)
+  const isLMRArea = zone && lga ? isLMRApplicable(zone, lga) : false;
 
   // Show Housing SEPP LMR section for residential zones
   const showHousingSEPPSection = isLMRArea && lotSize && lotWidth;
@@ -436,8 +424,8 @@ export function StateLevelControls({
     sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
   );
   
-  // Show ADG section if Housing SEPP applies OR if it's apartment development OR if we fetched ADG requirements
-  const showADGSection = hasHousingSEPP || isApartmentDevelopment || adgRequirements.length > 0;
+  // ADG applies statewide to residential flat buildings — gate on dev type, not SEPP detection
+  const showADGSection = isApartmentDevelopment || adgRequirements.length > 0;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
@@ -570,7 +558,8 @@ export function StateLevelControls({
         <ExemptComplyingProvisions
           zoneCode={zoneCode}
           lotArea={lotSize}
-          heritageItem={propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item')}
+          heritageItem={!!(propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item'))}
+          heritageAffected={!!propertyData?.heritage?.isHeritage}
         />
       )}
 
@@ -704,7 +693,7 @@ export function StateLevelControls({
                         <FileImage className="w-4 h-4 text-purple-500 hover:text-purple-700" />
                       </button>
                     </div>
-                    <div className="text-xs text-purple-700 ml-2">Zone 56 = Sydney Metropolitan - moderate climate with specific energy/thermal targets</div>
+                    <div className="text-xs text-purple-700 ml-2">Climate Zone {sustainableInfo.climateZone} — verify thermal performance targets against Table 3 of SEPP Sustainable Buildings 2022.</div>
                     </>
                   )}
                   {sustainableInfo.basixArea && (
@@ -743,7 +732,7 @@ export function StateLevelControls({
               />
             ) : (
               <p className="text-sm text-gray-500 italic">
-                No structured SEPP requirements for this development type
+                No Housing SEPP structured requirements for this development type
               </p>
             )}
 
@@ -799,7 +788,7 @@ export function StateLevelControls({
             {/* Compliance-grade guarantee */}
             <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-purple-100 pt-3 mt-4">
               <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <span>Compliance-grade guarantee: Deterministic extraction from state planning policies, no AI interpretation of regulations</span>
+              <span>Provision text sourced from NSW Planning Portal and SEPP instruments. Zone eligibility, heritage classification, and property-specific constraints require independent verification against current legislation.</span>
             </div>
           </CardContent>
         )}
@@ -834,7 +823,7 @@ export function StateLevelControls({
         const roads: any[] = propertyData?.roadClassifications || [];
         if (!roads.length) return null;
         const highImpact = roads
-          .map((r: any) => ({ ...r, impact: roadHierarchyAnnotation(r.functional_hierarchy || '') }))
+          .map((r: any) => ({ ...r, impact: roadHierarchyAnnotation(r.functional_hierarchy || '', r.distance_meters) }))
           .filter((r: any) => r.impact.isHighImpact)
           .sort((a: any, b: any) => a.distance_meters - b.distance_meters);
         if (!highImpact.length) return null;
@@ -846,7 +835,6 @@ export function StateLevelControls({
               <div>
                 <p className="text-sm font-semibold text-amber-900">
                   {primary.road_name} — {primary.functional_hierarchy}
-                  <span className="text-xs font-normal text-amber-700 ml-1">({Math.round(primary.distance_meters)}m)</span>
                 </p>
                 <p className="text-xs text-amber-700 mt-0.5">{primary.impact.annotation}</p>
                 {highImpact.length > 1 && (
@@ -1346,7 +1334,7 @@ export function StateLevelControls({
                         <strong>Other seniors housing:</strong> 0.5 parking spaces per bedroom
                       </p>
                       <p className="text-xs text-gray-500 mt-2">
-                        SEPP (Housing) 2021, Clause 24 - Boarding houses and seniors housing
+                        SEPP (Housing) 2021, Schedule 4 Part 5 — Seniors housing parking
                       </p>
                     </div>
                     <button

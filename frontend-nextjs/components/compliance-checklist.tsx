@@ -24,9 +24,9 @@ interface ChecklistItem {
 
 interface ComplianceChecklistProps {
  propertyData?: any;
- developmentType: string;
- zoneCode: string;
- propertyId: string | null;
+ developmentType?: string;
+ zoneCode?: string;
+ propertyId?: string | null;
  onComplianceUpdate?: (status: any) => void;
 }
 

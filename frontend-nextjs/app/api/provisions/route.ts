@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
     const responseTime = Date.now() - startTime;
 
     // Log metrics for migration monitoring
-    logMigrationMetrics('provisions', implementation, responseTime, true);
+    logMigrationMetrics('provisions', (implementation === 'tier1' ? 'postgresql' : implementation) as 'postgresql' | 'subprocess', responseTime, true);
 
     return NextResponse.json({
       success: true,
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     console.error('Provision search error:', error);
 
     // Log error metrics
-    logMigrationMetrics('provisions', 'unknown', responseTime, false,
+    logMigrationMetrics('provisions', 'subprocess', responseTime, false,
       error instanceof Error ? error.message : 'Unknown error'
     );
 

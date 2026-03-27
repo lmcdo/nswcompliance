@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { address, coordinates, developmentType = 'dwelling_house' } = validation.data;
+    const { address, developmentType = 'dwelling_house' } = validation.data;
+    const coordinates = (body as any).coordinates;
 
     const baseUrl = getBaseUrl(request);
     console.log(`[Assessment/Full] Starting for: ${address}`);

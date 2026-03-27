@@ -82,8 +82,8 @@ describe('autoPopulateFromConstraints', () => {
   test('flood_prone=no when floodProne false', () => {
     expect(autoPopulateFromConstraints({ floodProne: false }).flood_prone).toBe('no');
   });
-  test('flood_prone unset when floodProne true', () => {
-    expect(autoPopulateFromConstraints({ floodProne: true }).flood_prone).toBeUndefined();
+  test('flood_prone=yes when floodProne true', () => {
+    expect(autoPopulateFromConstraints({ floodProne: true }).flood_prone).toBe('yes');
   });
   test('flood_prone unset when floodProne absent', () => {
     expect(autoPopulateFromConstraints({}).flood_prone).toBeUndefined();
@@ -91,8 +91,8 @@ describe('autoPopulateFromConstraints', () => {
   test('bushfire_prone=no when bushfireProne false', () => {
     expect(autoPopulateFromConstraints({ bushfireProne: false }).bushfire_prone).toBe('no');
   });
-  test('bushfire_prone unset when bushfireProne true', () => {
-    expect(autoPopulateFromConstraints({ bushfireProne: true }).bushfire_prone).toBeUndefined();
+  test('bushfire_prone=yes when bushfireProne true', () => {
+    expect(autoPopulateFromConstraints({ bushfireProne: true }).bushfire_prone).toBe('yes');
   });
   test('acid_sulfate_soils=no when acidSulfateSoils null', () => {
     expect(autoPopulateFromConstraints({ acidSulfateSoils: null }).acid_sulfate_soils).toBe('no');
@@ -100,14 +100,14 @@ describe('autoPopulateFromConstraints', () => {
   test('acid_sulfate_soils=no when acidSulfateSoils absent', () => {
     expect(autoPopulateFromConstraints({}).acid_sulfate_soils).toBe('no');
   });
-  test('acid_sulfate_soils unset when acidSulfateSoils has value', () => {
-    expect(autoPopulateFromConstraints({ acidSulfateSoils: 'Class 2' }).acid_sulfate_soils).toBeUndefined();
+  test('acid_sulfate_soils=yes when acidSulfateSoils has value', () => {
+    expect(autoPopulateFromConstraints({ acidSulfateSoils: 'Class 2' }).acid_sulfate_soils).toBe('yes');
   });
   test('coastal=no when coastalEnvironment.inCoastalArea false', () => {
     expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: false } }).coastal).toBe('no');
   });
-  test('coastal unset when coastalEnvironment.inCoastalArea true', () => {
-    expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: true } }).coastal).toBeUndefined();
+  test('coastal=yes when coastalEnvironment.inCoastalArea true', () => {
+    expect(autoPopulateFromConstraints({ coastalEnvironment: { inCoastalArea: true } }).coastal).toBe('yes');
   });
   test('coastal=no when coastalEnvironment absent (portal absence = not in coastal area)', () => {
     expect(autoPopulateFromConstraints({}).coastal).toBe('no');
@@ -115,8 +115,8 @@ describe('autoPopulateFromConstraints', () => {
   test('biodiversity=no when inBiodiversityArea false', () => {
     expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: false } }).biodiversity).toBe('no');
   });
-  test('biodiversity unset when inBiodiversityArea true', () => {
-    expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: true } }).biodiversity).toBeUndefined();
+  test('biodiversity=yes when inBiodiversityArea true', () => {
+    expect(autoPopulateFromConstraints({ terrestrialBiodiversity: { inBiodiversityArea: true } }).biodiversity).toBe('yes');
   });
   test('biodiversity=no when terrestrialBiodiversity absent (portal absence = not in biodiversity area)', () => {
     expect(autoPopulateFromConstraints({}).biodiversity).toBe('no');
@@ -124,8 +124,8 @@ describe('autoPopulateFromConstraints', () => {
   test('acoustic_zone=no when anefData.inAnefZone false', () => {
     expect(autoPopulateFromConstraints({ anefData: { inAnefZone: false } }).acoustic_zone).toBe('no');
   });
-  test('acoustic_zone unset when inAnefZone true', () => {
-    expect(autoPopulateFromConstraints({ anefData: { inAnefZone: true } }).acoustic_zone).toBeUndefined();
+  test('acoustic_zone=yes when inAnefZone true', () => {
+    expect(autoPopulateFromConstraints({ anefData: { inAnefZone: true } }).acoustic_zone).toBe('yes');
   });
   test('acoustic_zone unset when anefData absent', () => {
     expect(autoPopulateFromConstraints({}).acoustic_zone).toBeUndefined();

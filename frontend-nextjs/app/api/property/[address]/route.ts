@@ -67,7 +67,6 @@ export async function GET(
  'Origin': 'https://www.planningportal.nsw.gov.au',
  'Referer': 'https://www.planningportal.nsw.gov.au/'
  },
- timeout: 10000
  }
  );
 

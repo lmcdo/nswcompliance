@@ -242,7 +242,7 @@ export class ReportGenerator {
  };
 
  } catch (error) {
- throw new Error(`Report generation failed: ${error.message}`);
+ throw new Error(`Report generation failed: ${error instanceof Error ? error.message : String(error)}`);
  }
  }
 
@@ -301,7 +301,7 @@ export class ReportGenerator {
  console.error(`Failed to generate section ${section.id}:`, error);
  content.sections[section.id] = {
  title: section.title,
- content: `Error generating section: ${error.message}`,
+ content: `Error generating section: ${error instanceof Error ? error.message : String(error)}`,
  error: true
  };
  }

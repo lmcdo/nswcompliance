@@ -65,7 +65,7 @@ export function PropertyCard() {
  const [isLoading, setIsLoading] = useState(false)
 
  // CDC eligibility check
- const { checkEligibility, result: cdcResult, isLoading: cdcLoading } = useCdcEligibility()
+ const { checkEligibility, result: cdcResult, isLoading: cdcLoading } = useCdcEligibility as any as () => any
 
  const fetchPropertyData = async (addr: string) => {
    if (!addr) return
@@ -86,7 +86,7 @@ export function PropertyCard() {
        const specialProvisions = data.planningLayers?.find(layer =>
          layer.layerName === 'Special Provisions'
        )
-       const seppOverlays = specialProvisions?.results?.map(result => ({
+       const seppOverlays = specialProvisions?.results?.map((result: any) => ({
          seppName: result['EPI Name'] || result.title || 'Unknown SEPP',
          mapType: result['Map Type'] || '',
          value: result['Class'] || result['Type'] || '',
@@ -334,7 +334,7 @@ export function PropertyCard() {
                {cdcResult.exclusions && cdcResult.exclusions.length > 0 && (
                  <div className="space-y-1">
                    <div className="text-xs text-gray-600 font-medium">Exclusion reasons:</div>
-                   {cdcResult.exclusions.map((exc, i) => (
+                   {cdcResult.exclusions.map((exc: any, i: number) => (
                      <div key={i} className="flex items-start gap-2 text-sm">
                        <XCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
                        <span className="text-red-700">{exc.reason}</span>

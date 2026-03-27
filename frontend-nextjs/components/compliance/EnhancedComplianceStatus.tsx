@@ -33,6 +33,7 @@ export const EnhancedComplianceStatus: React.FC<ComplianceStatusProps> = ({
  const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
  const [showOnlyIssues, setShowOnlyIssues] = useState(false);
  const [sortBy, setSortBy] = useState<'severity' | 'lastChecked' | 'provision'>('severity');
+ const [groupByState, setGroupBy] = useState(groupBy);
 
  // Initialize compliance on mount
  useEffect(() => {
@@ -213,7 +214,7 @@ export const EnhancedComplianceStatus: React.FC<ComplianceStatusProps> = ({
  </label>
 
  <select
- value={groupBy}
+ value={groupByState}
  onChange={(e) => setGroupBy(e.target.value as any)}
  className="px-3 py-1 border rounded-md text-sm"
  >

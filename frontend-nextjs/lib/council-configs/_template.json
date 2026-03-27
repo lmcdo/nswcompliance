@@ -6,6 +6,7 @@
   "name": "Example Council",
   "parentLGA": null,
   "dcpCitation": "Example Council Development Control Plan 2024",
+  "lepCitation": "Example Council Local Environmental Plan 2024",
   "dcpExplanation": "Brief explanation of the DCP structure and how to navigate it. Describe:\n- Main organizational approach (topic-based, development-type based, etc.)\n- Key chapters and what they contain\n- Any unique features or quirks\n- Recommended filtering strategies",
   "totalProvisions": 0,
   "primaryLayer": "generic",

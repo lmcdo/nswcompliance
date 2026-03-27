@@ -81,16 +81,61 @@ export async function POST(request: NextRequest) {
     `, [zone, lga, lepDevType]);
 
     if (!permissibilityResult.rows.length) {
-      // Development type not found in land use table = PROHIBITED
-      console.log(`[Permissibility Check] ${lepDevType} not found in land use table for ${zone} - PROHIBITED`);
+      console.log(`[Permissibility Check] ${lepDevType} not found in land use table for ${zone} / ${lga}`);
 
-      // Find alternative options
+      // Coverage gate: only conclude prohibition when the zone/LGA table is complete.
+      const coverageResult = await query(`
+        SELECT is_complete FROM lep_zone_coverage WHERE zone = $1 AND lga = $2
+      `, [zone, lga]);
+
+      const isCovered =
+        coverageResult.rows.length > 0 && coverageResult.rows[0].is_complete === true;
+
+      if (!isCovered) {
+        // Incomplete data — cannot determine permissibility either way.
+        return NextResponse.json({
+          success: false,
+          permitted: null,
+          coverage_incomplete: true,
+          zone,
+          lga,
+          reason: `LEP land use table for ${zone} zone / ${lga} is not yet complete — cannot determine permissibility for ${lepDevType.replace(/_/g, ' ')}`
+        }, { status: 422 });
+      }
+
+      // Zone is covered. Check whether "any other development" catch-all is permitted.
+      const catchAllResult = await query(`
+        SELECT permissibility FROM lep_land_use_table
+        WHERE zone = $1 AND lga = $2 AND development_type = 'any_other_development'
+      `, [zone, lga]);
+
+      const catchAllPermissibility = catchAllResult.rows[0]?.permissibility;
+
+      if (catchAllPermissibility === 'permitted') {
+        // Not explicitly listed, but falls under "any other development not specified" → permitted with consent.
+        return NextResponse.json({
+          success: true,
+          permitted: true,
+          permissibility: 'permitted',
+          zone,
+          zone_name: `${zone} Zone`,
+          lga,
+          formerCouncil,
+          source: 'catch_all',
+          notes: `${lepDevType.replace(/_/g, ' ')} is not specifically listed — permitted under "any other development not specified in item 2 or 4"`,
+          summary: `${lepDevType.replace(/_/g, ' ')} is permitted with consent in ${zone} zone (catch-all clause).`,
+          lep_controls: { general: { max_height: constraints.maxHeight, max_fsr: constraints.maxFsr }, dev_type_specific: [] },
+          dcp_sections: [],
+        });
+      }
+
+      // Catch-all is prohibited (e.g. RE1, W1, SP1/SP2 zones) or absent.
       const alternatives = await query(`
         SELECT DISTINCT development_type
         FROM lep_land_use_table
         WHERE zone = $1
           AND lga = $2
-          AND permissibility IN ('permitted', 'permissible')
+          AND permissibility = 'permitted'
         ORDER BY development_type
         LIMIT 10
       `, [zone, lga]);
@@ -98,11 +143,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: false,
         permitted: false,
-        zone: zone,
+        zone,
         zone_name: `${zone} Zone`,
-        lga: lga,
-        formerCouncil: formerCouncil,
-        reason: `${lepDevType.replace(/_/g, ' ')} is prohibited in ${zone} zone`,
+        lga,
+        formerCouncil,
+        reason: `${lepDevType.replace(/_/g, ' ')} is not listed and the zone does not permit unlisted development — effectively prohibited in ${zone} zone`,
         alternative_options: alternatives.rows.map((r: any) => r.development_type)
       });
     }
@@ -116,7 +161,7 @@ export async function POST(request: NextRequest) {
         FROM lep_land_use_table
         WHERE zone = $1
           AND lga = $2
-          AND permissibility IN ('permitted', 'permissible')
+          AND permissibility = 'permitted'
         ORDER BY development_type
         LIMIT 10
       `, [zone, lga]);

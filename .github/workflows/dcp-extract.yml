@@ -1,8 +1,9 @@
 name: DCP Chapter Extraction
 
 on:
-  # Auto-trigger after every DCP Chapter Monitor run
-  # First thing the script does is check needs_extraction=TRUE — exits 0 if nothing to do
+  # Auto-trigger after monitor detects changes — always runs in REVIEW mode.
+  # Generates a review artifact for human inspection. No DB writes.
+  # To commit reviewed provisions to production, use dcp-commit.yml manually.
   workflow_run:
     workflows: ["DCP Chapter Monitor"]
     types: [completed]
@@ -21,8 +22,10 @@ on:
 
 jobs:
   extract:
-    name: Extract changed DCP chapters
+    name: Extract changed DCP chapters (review mode)
     runs-on: ubuntu-latest
+    # Only run after a clean monitor completion — not after monitor errors
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       - name: Checkout
@@ -41,7 +44,7 @@ jobs:
       - name: Build extraction arguments
         id: args
         run: |
-          ARGS=""
+          ARGS="--review"
           if [ -n "${{ github.event.inputs.council }}" ]; then
             ARGS="$ARGS --council ${{ github.event.inputs.council }}"
           fi
@@ -50,7 +53,7 @@ jobs:
           fi
           echo "args=$ARGS" >> $GITHUB_OUTPUT
 
-      - name: Run DCP extraction
+      - name: Run DCP extraction (review mode — no DB writes)
         id: extract
         env:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
@@ -58,21 +61,56 @@ jobs:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           set +e
           python scripts/dcp_extract_changed.py ${{ steps.args.outputs.args }}
           echo "exit_code=$?" >> $GITHUB_OUTPUT
-        # Exit code 2 = extracted successfully — not a failure, just informational
         continue-on-error: true
 
+      - name: Upload review file as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dcp-review-${{ github.run_id }}
+          path: reviews/
+          if-no-files-found: ignore
+          retention-days: 14
+
       - name: Report outcome
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           CODE=${{ steps.extract.outputs.exit_code }}
+          RUN_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           if [ "$CODE" = "0" ]; then
-            echo "✅ Nothing to extract. All chapters are current."
+            echo "Nothing to extract — no chapters with needs_extraction=TRUE."
           elif [ "$CODE" = "2" ]; then
-            echo "✅ Extraction complete. Provisions updated in database."
+            echo "Review file generated. Download from artifacts and inspect before committing."
+            echo "To commit: Actions -> DCP Commit Reviewed Provisions -> Run workflow"
+            # Telegram: notify with artifact link
+            python - <<'PYEOF'
+import os, requests
+token = os.environ.get("TELEGRAM_BOT_TOKEN")
+chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+run_url = os.environ.get("RUN_URL", "")
+if token and chat_id:
+    requests.post(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        json={"chat_id": chat_id, "text": (
+            f"DCP Review ready\n"
+            f"Download review file, inspect provisions, then run:\n"
+            f"Actions -> DCP Commit Reviewed Provisions\n\n"
+            f"Artifact: {run_url}"
+        )},
+        timeout=10,
+    )
+PYEOF
           else
-            echo "❌ Extraction failed with exit code $CODE."
+            echo "Extraction failed with exit code $CODE."
             exit 1
           fi
+        env:
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}

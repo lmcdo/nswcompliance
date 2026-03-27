@@ -7,18 +7,22 @@ import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 export function sanitizeText(text: string | undefined | null): string {
   if (!text) return '';
   return text
-    .replace(/â€"/g, '—')
-    .replace(/â€˜/g, "'")
-    .replace(/â€™/g, "'")
-    .replace(/â€œ/g, '"')
-    .replace(/â€\u009D/g, '"')
-    .replace(/â˜…/g, '★')
-    .replace(/Â²/g, '²')
-    .replace(/Â°/g, '°')
-    .replace(/â€¢/g, '•')
-    .replace(/â€¦/g, '…')
-    .replace(/Ã©/g, 'é')
-    .replace(/Ã¨/g, 'è')
+    // Windows-1252 mojibake of UTF-8-encoded typographic characters.
+    // Pattern: UTF-8 bytes misread as Windows-1252 → three Unicode codepoints.
+    // E.g. en dash U+2013 = UTF-8 E2 80 93 → W1252 â (E2) € (80) " (93=U+201C).
+    .replace(/\u00e2\u20ac\u201c/g, '\u2013')  // en dash –  (UTF-8: E2 80 93)
+    .replace(/\u00e2\u20ac\u201d/g, '\u2014')  // em dash —  (UTF-8: E2 80 94)
+    .replace(/\u00e2\u20ac\u02dc/g, '\u2018')  // left single quote '  (UTF-8: E2 80 98)
+    .replace(/\u00e2\u20ac\u2122/g, '\u2019')  // right single quote '  (UTF-8: E2 80 99)
+    .replace(/\u00e2\u20ac\u0153/g, '\u201c')  // left double quote "  (UTF-8: E2 80 9C)
+    .replace(/\u00e2\u20ac\u009d/g, '\u201d')  // right double quote "  (UTF-8: E2 80 9D)
+    .replace(/\u00e2\u20ac\u00a2/g, '\u2022')  // bullet •  (UTF-8: E2 80 A2)
+    .replace(/\u00e2\u20ac\u00a6/g, '\u2026')  // ellipsis …  (UTF-8: E2 80 A6)
+    .replace(/\u00e2\u02dc\u2026/g, '\u2605')  // star ★  (UTF-8: E2 98 85)
+    .replace(/\u00c2\u00b2/g, '\u00b2')        // superscript 2 ²  (UTF-8: C2 B2)
+    .replace(/\u00c2\u00b0/g, '\u00b0')        // degree °  (UTF-8: C2 B0)
+    .replace(/\u00c3\u00a9/g, '\u00e9')        // é  (UTF-8: C3 A9)
+    .replace(/\u00c3\u00a8/g, '\u00e8')        // è  (UTF-8: C3 A8)
     // Fix spacing artifacts in numbers
     .replace(/(\d)\s+(\d)\s+(\d)\s+(m|c|k)\s+m\s+\$/g, '$1$2$3$4m')  // "1 8 0 m m $" -> "180mm"
     .replace(/\s+\$/g, '')  // Remove trailing "$" artifacts
@@ -28,8 +32,26 @@ export function sanitizeText(text: string | undefined | null): string {
     })
     .replace(/·/g, ' · ')  // Fix middle dot spacing
     .replace(/\s{2,}/g, ' ')  // Multiple spaces to single
-    .replace(/^[â€"\s]+/, '')
+    .replace(/^[\u2013\u2014\s]+/, '')  // Strip leading dashes (en/em) + whitespace
     .trim();
+}
+
+/**
+ * Clean a raw DB section title for display in the DA mode section list.
+ * Handles: UTF-8 corruption (via sanitizeText), trailing dots/spaces, ALL-CAPS → Title Case.
+ */
+export function cleanSectionTitle(text: string | undefined | null): string {
+  const cleaned = sanitizeText(text);
+  if (!cleaned) return '';
+  // Strip trailing dots and whitespace
+  const stripped = cleaned.replace(/[.\s]+$/, '').trim();
+  if (!stripped) return '';
+  // If the string is all-uppercase (and longer than 3 chars to avoid "C1"), convert to Title Case
+  const isAllCaps = stripped === stripped.toUpperCase() && stripped.length > 3 && /[A-Z]/.test(stripped);
+  if (!isAllCaps) return stripped;
+  return stripped
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Sanitize a number for PDF rendering — returns undefined for invalid or negative values */

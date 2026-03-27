@@ -65,12 +65,59 @@ export const TOD_THRESHOLDS = {
 /**
  * Housing SEPP Low and Mid-Rise (LMR) Standards
  *
- * SEPP (Housing) 2021 - Division 2, Subdivision 3
- * @see https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0714#pt.3-div.2-sdiv.3
+ * Two-stage rollout under SEPP (Housing) 2021 amendments:
+ *
+ * Stage 1 (effective 1 Jul 2024): Dual occupancy + semi-detached in R2, statewide
+ *   except Blue Mountains, Hawkesbury, Wollondilly, Bathurst Regional.
+ *
+ * Stage 2 (effective 28 Feb 2025): Full LMR housing types (terraces, MDF, apartments
+ *   up to 6 storeys, shop-top) within 800m of 171 nominated stations/town centres.
+ *   Geographic scope: Greater Sydney, Central Coast, Lower Hunter/Newcastle,
+ *   Illawarra-Shoalhaven only.
+ *
+ * @see https://www.planning.nsw.gov.au/policy-and-legislation/housing/low-and-mid-rise-housing-policy
  */
 export const HOUSING_SEPP_LMR = {
-  /** Zones where LMR housing provisions apply */
+  /** Zones eligible for Stage 2 LMR (full housing types near nominated centres) */
   ELIGIBLE_ZONES: ['R1', 'R2', 'R3', 'R4'] as const,
+
+  /** Zone eligible for Stage 1 (dual occ/semi-detached, statewide R2) */
+  STAGE1_ZONE: 'R2' as const,
+
+  /**
+   * LGAs excluded from Stage 1 statewide dual occupancy provisions.
+   * Lowercase, no punctuation for matching.
+   */
+  STAGE1_EXCLUDED_LGAS: [
+    'blue mountains',
+    'hawkesbury',
+    'wollondilly',
+    'bathurst regional',
+  ] as const,
+
+  /**
+   * LGAs within the four Stage 2 designated regions.
+   * Greater Sydney, Central Coast, Lower Hunter/Newcastle, Illawarra-Shoalhaven.
+   * Lowercase for case-insensitive matching against portal LGA names.
+   */
+  STAGE2_REGION_LGAS: [
+    // Greater Sydney
+    'bayside', 'blacktown', 'blue mountains', 'burwood', 'camden', 'campbelltown',
+    'canada bay', 'canterbury-bankstown', 'canterbury bankstown', 'cumberland',
+    'fairfield', 'georges river', 'the hills', 'hills shire', 'hornsby',
+    "hunter's hill", 'hunters hill', 'inner west', 'ku-ring-gai', 'ku ring gai',
+    'lane cove', 'liverpool', 'mosman', 'north sydney', 'northern beaches',
+    'parramatta', 'city of parramatta', 'penrith', 'randwick', 'ryde',
+    'strathfield', 'sutherland', 'sydney', 'city of sydney', 'waverley',
+    'willoughby', 'wollondilly', 'woollahra',
+    // Central Coast
+    'central coast',
+    // Lower Hunter / Newcastle
+    'newcastle', 'city of newcastle', 'lake macquarie', 'cessnock', 'maitland',
+    'port stephens',
+    // Illawarra-Shoalhaven
+    'wollongong', 'shellharbour', 'shoalhaven', 'kiama',
+  ] as const,
 
   /** Default lot width assumption when cadastral data unavailable (meters) */
   DEFAULT_LOT_WIDTH_M: 15,
@@ -268,9 +315,45 @@ export function isInTODAccessibleArea(
 }
 
 /**
- * Helper function: Check if zone is eligible for LMR housing
+ * Helper function: Check if zone is eligible for LMR Stage 2 (full housing types)
  */
 export function isLMREligibleZone(zone: string): boolean {
   const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
   return (HOUSING_SEPP_LMR.ELIGIBLE_ZONES as readonly string[]).includes(zoneCode);
+}
+
+/**
+ * Helper function: Check if LGA is within a Stage 2 designated region
+ * (Greater Sydney, Central Coast, Lower Hunter/Newcastle, Illawarra-Shoalhaven)
+ */
+export function isLMRStage2Region(lga: string): boolean {
+  const normalised = lga.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim();
+  return (HOUSING_SEPP_LMR.STAGE2_REGION_LGAS as readonly string[]).some(
+    eligible => normalised.includes(eligible) || eligible.includes(normalised)
+  );
+}
+
+/**
+ * Helper function: Check if property qualifies for any LMR provisions.
+ *
+ * Returns true if:
+ * - Stage 2: eligible zone (R1–R4) AND LGA is in a designated Stage 2 region, OR
+ * - Stage 1: R2 zone AND LGA is not excluded from statewide dual occ provisions
+ */
+export function isLMRApplicable(zone: string, lga: string): boolean {
+  const zoneCode = zone.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+  const normalisedLga = lga.toLowerCase().replace(/[^a-z0-9 -]/g, '').trim();
+
+  // Stage 2: full LMR housing types in designated regions
+  if (isLMREligibleZone(zone) && isLMRStage2Region(lga)) return true;
+
+  // Stage 1: dual occ / semi-detached statewide in R2 (excluding 4 LGAs)
+  if (zoneCode === HOUSING_SEPP_LMR.STAGE1_ZONE) {
+    const excluded = (HOUSING_SEPP_LMR.STAGE1_EXCLUDED_LGAS as readonly string[]).some(
+      ex => normalisedLga.includes(ex)
+    );
+    return !excluded;
+  }
+
+  return false;
 }

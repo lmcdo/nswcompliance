@@ -59,7 +59,7 @@ export function LayerExplanation({
   totalHeritageCount,
   isDaMode,
 }: LayerExplanationProps) {
-  const [showBreakdown, setShowBreakdown] = useState(isDaMode); // Expanded by default in DA mode
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   console.log('[LayerExplanation] Received props:', {
     formerCouncil,
@@ -161,8 +161,8 @@ export function LayerExplanation({
         </div>
       )}
 
-      {/* Filter buttons */}
-      <div>
+      {/* Filter buttons — hidden in DA mode (section-first workflow; layer filtering breaks section grouping) */}
+      {!isDaMode && <div>
         <div className="text-xs font-semibold text-gray-700 mb-2">
           Filter by source (how provisions apply):
         </div>
@@ -206,10 +206,10 @@ export function LayerExplanation({
             </button>
           ))}
         </div>
-      </div>
+      </div>}
 
-      {/* Heritage HCA details - show when heritage layer is selected */}
-      {layerFilter === 'condition' && heritage && totalHeritageCount && totalHeritageCount > 0 && (
+      {/* Heritage HCA details - show when heritage layer is selected (non-DA mode only) */}
+      {!isDaMode && layerFilter === 'condition' && heritage && totalHeritageCount && totalHeritageCount > 0 && (
         <div className="mt-3 pt-3 border-t border-amber-200">
           <div className="bg-amber-50/50 rounded-md p-3 space-y-2">
             <div className="flex items-center gap-2 mb-2">

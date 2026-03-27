@@ -70,12 +70,12 @@ interface GeneralRequirement {
   pdf_page_image_url?: string;
   pdf_path?: string;
   // Phase 1: Contextual presentation fields
-  part_name?: string | null;
-  part_number?: string | null;
-  objective?: string | null;
-  user_category?: string | null;
-  section_type?: string | null;
-  priority_level?: number | null;
+  part_name?: string;
+  part_number?: string;
+  objective?: string;
+  user_category?: string;
+  section_type?: string;
+  priority_level?: number;
 }
 
 interface PrecinctProvision {
@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
 
-      const spatialResult = await query<{ precinct_id: string; precinct_name: string; former_council: string | null }>(
+      const spatialResult = await query(
         spatialQuery,
         [coordinates.lon, coordinates.lat]
       );
@@ -305,7 +305,7 @@ export async function POST(request: NextRequest) {
       generalProvisionsParams = [queryLGA, zoneAliases, developmentType];
     }
 
-    const generalProvisions = await query<GeneralProvision>(
+    const generalProvisions = await query(
       generalProvisionsQuery,
       generalProvisionsParams
     );
@@ -372,7 +372,7 @@ export async function POST(request: NextRequest) {
               dpr.id
           `;
 
-          const precinctReqResult = await query<any>(precinctReqQuery, [detectedPrecinctId]);
+          const precinctReqResult = await query(precinctReqQuery, [detectedPrecinctId]);
 
           // Step 2: Get general provisions from regulatory_provisions (Parts 2, 4.1, 7)
           console.log(`  → Fetching general Marrickville provisions (Parts 2, 4.1, 7)...`);
@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
             ORDER BY pdf_page, id
           `;
 
-          const generalProvResult = await query<any>(generalProvQuery, [`%Marrickville%`]);
+          const generalProvResult = await query(generalProvQuery, [`%Marrickville%`]);
 
           console.log(`  → Found ${precinctReqResult.rows.length} precinct requirements`);
           console.log(`  → Found ${generalProvResult.rows.length} general provisions`);
@@ -421,12 +421,12 @@ export async function POST(request: NextRequest) {
             precinct_id: prov.ref_number || detectedPrecinctId,
             precinct_name: prov.section_header || detectedNeighbourhoodName,
             category: prov.category_name,
-            subcategory: null,
+            subcategory: undefined,
             requirement_text: prov.provision_text,
-            value_numeric: null,
-            unit: null,
+            value_numeric: undefined,
+            unit: undefined,
             has_conditionals: false,
-            conditional_text: null,
+            conditional_text: undefined,
             confidence: 'high',
             pdf_page: prov.pdf_page,
             pdf_page_image_url: prov.pdf_page_image_url
@@ -467,12 +467,12 @@ export async function POST(request: NextRequest) {
               subcategory: prov.section_header,
               requirement_text: prov.provision_text,
               verbatim_source_text: prov.provision_text, // For legacy data, provision_text IS the verbatim
-              value_numeric: null,
-              value_min: null,
-              value_max: null,
-              unit: null,
+              value_numeric: undefined,
+              value_min: undefined,
+              value_max: undefined,
+              unit: undefined,
               has_conditionals: false,
-              conditional_text: null,
+              conditional_text: undefined,
               confidence: 'high',
               pdf_page: prov.pdf_page,
               pdf_page_image_url: prov.pdf_page_image_url,
@@ -520,7 +520,7 @@ export async function POST(request: NextRequest) {
               dpr.id
           `;
 
-          const precinctReqResult = await query<any>(precinctReqQuery, [detectedPrecinctId]);
+          const precinctReqResult = await query(precinctReqQuery, [detectedPrecinctId]);
 
           // Step 2: Get general provisions from regulatory_provisions
           console.log(`  → Fetching general ${formerCouncil} provisions...`);
@@ -600,7 +600,7 @@ export async function POST(request: NextRequest) {
             `;
           }
 
-          const generalProvResult = await query<any>(generalProvQuery, [`%${formerCouncil}%`]);
+          const generalProvResult = await query(generalProvQuery, [`%${formerCouncil}%`]);
 
           console.log(`  → Found ${precinctReqResult.rows.length} precinct requirements`);
           console.log(`  → Found ${generalProvResult.rows.length} general provisions`);
@@ -611,12 +611,12 @@ export async function POST(request: NextRequest) {
             precinct_id: prov.ref_number || detectedPrecinctId,
             precinct_name: prov.section_header || detectedNeighbourhoodName,
             category: prov.category_name,
-            subcategory: null,
+            subcategory: undefined,
             requirement_text: prov.provision_text,
-            value_numeric: null,
-            unit: null,
+            value_numeric: undefined,
+            unit: undefined,
             has_conditionals: false,
-            conditional_text: null,
+            conditional_text: undefined,
             confidence: 'high',
             pdf_page: prov.pdf_page,
             pdf_page_image_url: prov.pdf_page_image_url
@@ -677,12 +677,12 @@ export async function POST(request: NextRequest) {
               subcategory: prov.section_header,
               requirement_text: prov.provision_text,
               verbatim_source_text: prov.provision_text, // For legacy data, provision_text IS the verbatim
-              value_numeric: null,
-              value_min: null,
-              value_max: null,
-              unit: null,
+              value_numeric: undefined,
+              value_min: undefined,
+              value_max: undefined,
+              unit: undefined,
               has_conditionals: false,
-              conditional_text: null,
+              conditional_text: undefined,
               confidence: 'high',
               pdf_page: prov.pdf_page,
               pdf_page_image_url: prov.pdf_page_image_url,
@@ -744,7 +744,7 @@ export async function POST(request: NextRequest) {
         console.log(`✓ Fallback already processed above`);
       } else if (fallbackQuery && fallbackParams.length > 0) {
         // Only execute if query was set in one of the branches above
-        fallbackResult = await query<GeneralProvision>(
+        fallbackResult = await query(
           fallbackQuery,
           fallbackParams
         );
@@ -847,12 +847,12 @@ export async function POST(request: NextRequest) {
           precinct_id: prov.ref_number || detectedPrecinctId,
           precinct_name: prov.section_header || detectedNeighbourhoodName,
           category: prov.category_name,
-          subcategory: null,
+          subcategory: undefined,
           requirement_text: prov.provision_text,
-          value_numeric: null,
-          unit: null,
+          value_numeric: undefined,
+          unit: undefined,
           has_conditionals: false,
-          conditional_text: null,
+          conditional_text: undefined,
           confidence: 'high',
           pdf_page: prov.pdf_page,
           pdf_page_image_url: prov.pdf_page_image_url
@@ -872,12 +872,12 @@ export async function POST(request: NextRequest) {
             subcategory: prov.section_header,
             requirement_text: prov.provision_text,
             verbatim_source_text: prov.provision_text, // For legacy data, provision_text IS the verbatim
-            value_numeric: null,
-            value_min: null,
-            value_max: null,
-            unit: null,
+            value_numeric: undefined,
+            value_min: undefined,
+            value_max: undefined,
+            unit: undefined,
             has_conditionals: false,
-            conditional_text: null,
+            conditional_text: undefined,
             confidence: 'high',
             pdf_page: prov.pdf_page,
             pdf_page_image_url: prov.pdf_page_image_url,
@@ -1085,7 +1085,7 @@ export async function POST(request: NextRequest) {
 
       console.log(`[DEBUG] Query params: queryLGA="${queryLGA}", councilForQuery="${councilForQuery}", queryParams:`, queryParams);
 
-      generalRequirements = await query<GeneralRequirement>(
+      generalRequirements = await query(
         generalRequirementsQuery,
         queryParams
       );
@@ -1161,7 +1161,7 @@ export async function POST(request: NextRequest) {
         ORDER BY display_order
       `;
 
-      const precinctProvisionsResult = await query<PrecinctProvision>(
+      const precinctProvisionsResult = await query(
         precinctProvisionsQuery,
         [detectedPrecinctId]
       );
@@ -1189,7 +1189,7 @@ export async function POST(request: NextRequest) {
         ORDER BY dpr.category, dpr.id
       `;
 
-      const precinctRequirementsResult = await query<PrecinctRequirement>(
+      const precinctRequirementsResult = await query(
         precinctRequirementsQuery,
         [detectedPrecinctId]
       );

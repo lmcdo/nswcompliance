@@ -7,10 +7,13 @@ const DOC_ID = 'State_Environmental_Planning_Policy_Exempt_and_Complying_Develop
 // Part 3  = Housing Code           (R1, R2, R3, R4, RU5 — standard Sydney metro)
 // Part 3A = Rural Housing Code     (R5, RU1, RU2, RU3, RU4, RU6)
 // Parts 3B/3C/3D are geographic (Low Rise Diversity, Greenfield, Inland) — handled separately
-function zoneToPartMap(zoneCode: string): string {
-  const ruralZones = ['R5', 'RU1', 'RU2', 'RU3', 'RU4', 'RU6'];
-  if (ruralZones.includes(zoneCode)) return '3A';
-  return '3'; // default: Housing Code covers R1-R4, RU5
+// Returns null for zones not covered by any Housing Code part — caller must handle explicitly.
+function zoneToPartMap(zoneCode: string): string | null {
+  const housingCodeZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
+  const ruralHousingCodeZones = ['R5', 'RU1', 'RU2', 'RU3', 'RU4', 'RU6'];
+  if (housingCodeZones.includes(zoneCode)) return '3';
+  if (ruralHousingCodeZones.includes(zoneCode)) return '3A';
+  return null; // Zone not covered by Housing Code — e.g. RE1, B1, IN1, SP zones
 }
 
 const VALID_WORK_TYPES = ['Deck', 'Fence', 'Carport', 'Pool'];
@@ -32,6 +35,21 @@ export async function GET(request: NextRequest) {
   }
 
   const part = zoneToPartMap(zone);
+
+  // Explicitly reject zones not covered by any Housing Code part.
+  // Returning an empty result with notApplicable=true prevents the client
+  // from showing Housing Code provisions or Fast-Track pathways for ineligible zones.
+  if (part === null) {
+    return NextResponse.json({
+      part: null,
+      zone,
+      workType: workType || null,
+      provisions: [],
+      counts: {},
+      notApplicable: true,
+      notApplicableReason: `${zone || 'This'} zone is not covered by the Housing Code (SEPP Exempt & Complying Development Codes 2008, Parts 3 or 3A). Exempt and complying development pathways are not available for this zone class.`,
+    });
+  }
 
   try {
     let query: string;

@@ -84,6 +84,9 @@ interface EligibilityResult {
     next_steps: string[];
     estimated_complexity: 'low' | 'medium' | 'high';
   };
+  reasons?: string[];
+  numericCheck?: any;
+  nextSteps?: string[];
 }
 
 // Helper: Transform exclusionType to human-readable title
@@ -366,7 +369,7 @@ export function PatternBookEligibilityCard({
                 </div>
               </div>
               <p className="text-[10px] text-blue-600 mt-2 italic">
-                Source: SEPP Codes 2008 Schedule 1 (validated extraction)
+                Exclusion triggers: SEPP (Exempt &amp; Complying) Codes 2008 Schedule 1 — Pattern Book CDC standards: SEPP (Housing) 2021 Part 3
               </p>
             </div>
 
@@ -409,7 +412,18 @@ export function PatternBookEligibilityCard({
                   <h5 className="text-sm font-semibold text-blue-900 mb-2">Next Steps</h5>
                   <ul className="text-sm text-blue-800 space-y-1">
                     <li>• Apply Pattern Book design standards from SEPP Housing 2021 Part 3A</li>
-                    <li>• Check DCP provisions for any additional local controls</li>
+                    <li className="flex items-center gap-1.5">
+                      <span>• Check DCP provisions for any additional local controls</span>
+                      {onNavigateToDcp && (
+                        <button
+                          onClick={() => onNavigateToDcp('general')}
+                          className="inline-flex items-center gap-1 text-xs text-teal-700 hover:text-teal-900 font-medium underline underline-offset-2"
+                        >
+                          Go to DCP
+                          <ArrowRight className="h-3 w-3" />
+                        </button>
+                      )}
+                    </li>
                     <li>• Prepare CDC application with accredited certifier</li>
                   </ul>
                 </div>
@@ -450,6 +464,7 @@ export function PatternBookEligibilityCard({
                       url: `/pdf-pages/${pdfPath}/${pdfPath}_page_${page}.png`,
                       label: `SEPP - Page ${page}`
                     })}
+                    onNavigateToDcp={onNavigateToDcp}
                   />
                 ))}
               </div>
@@ -484,7 +499,7 @@ export function PatternBookEligibilityCard({
 
                 <div className="space-y-3">
                   <h5 className="text-sm font-medium text-gray-700">Standards by Design Type:</h5>
-                  {eligibility.numericCheck.details.map((failure, idx) => (
+                  {eligibility.numericCheck.details.map((failure: any, idx: number) => (
                     <NumericFailureCard
                       key={idx}
                       failure={failure}
@@ -508,7 +523,7 @@ export function PatternBookEligibilityCard({
                 </div>
 
                 <div className="space-y-2 text-sm">
-                  {eligibility.nextSteps.map((step, idx) => (
+                  {eligibility.nextSteps.map((step: any, idx: number) => (
                     <div key={idx} className="flex items-start gap-2">
                       <ArrowRight className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
                       <p className="text-blue-800">{step}</p>
@@ -522,7 +537,7 @@ export function PatternBookEligibilityCard({
             {/* Compliance-grade guarantee badge */}
             <div className="flex items-center gap-2 text-xs text-gray-600 border-t border-gray-200 pt-3 mt-4">
               <Shield className="h-4 w-4 text-green-600 flex-shrink-0" />
-              <span>Compliance-grade guarantee: Deterministic extraction from SEPP Housing 2021, no AI interpretation of regulations</span>
+              <span>Exclusion triggers and numeric standards extracted from SEPP (Housing) 2021. Verify property-specific constraints before lodging a Pattern Book application.</span>
             </div>
           </CardContent>
         )}
@@ -535,7 +550,7 @@ export function PatternBookEligibilityCard({
           onClose={() => setViewingPdf(null)}
           pageNumber={viewingPdf.pageNumber}
           imageUrl={viewingPdf.url}
-          label={viewingPdf.label}
+          {...({ label: viewingPdf.label } as any)}
         />
       )}
     </>
@@ -545,10 +560,12 @@ export function PatternBookEligibilityCard({
 // Exclusion blocker card with SEPP reference
 function ExclusionBlockerCard({
   exclusion,
-  onViewPdf
+  onViewPdf,
+  onNavigateToDcp,
 }: {
   exclusion: Exclusion;
   onViewPdf: (page: number, pdfPath: string) => void;
+  onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
 }) {
   return (
     <div className="bg-white border-2 border-red-200 rounded-lg p-4">
@@ -602,6 +619,18 @@ function ExclusionBlockerCard({
             </p>
           )}
         </div>
+      )}
+
+      {/* Heritage-specific DCP cross-reference */}
+      {exclusion.exclusionType === 'heritage' && onNavigateToDcp && (
+        <button
+          onClick={() => onNavigateToDcp('heritage')}
+          className="mt-3 flex items-center gap-1.5 text-xs text-teal-700 hover:text-teal-900 font-medium"
+        >
+          <FileText className="h-3.5 w-3.5" />
+          Review DCP heritage controls
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
       )}
     </div>
   );

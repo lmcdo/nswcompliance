@@ -37,7 +37,7 @@ export interface LGAMappings {
  * Get all LGA configurations
  */
 export function getLGAMappings(): LGAMappings {
-  return lgaMappingsConfig as LGAMappings;
+  return lgaMappingsConfig as unknown as LGAMappings;
 }
 
 /**

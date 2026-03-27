@@ -8,7 +8,7 @@
 - **NEVER run queries without WHERE clauses** on main tables
 - **NEVER create fake/placeholder data** - ask if real data unavailable
 - **BEFORE FIXING ANY UI BUG:** Read `frontend-nextjs/COMPONENT_MAP.md` to find the ACTUAL component being used
-- **BEFORE ANY LGA ONBOARDING WORK:** Read `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` — covers all known artifact classes, pre-import QA checklist, and onboarding sequence. Also read `frontend-nextjs/lib/dcp-format-configs.ts` to see existing council patterns.
+- **BEFORE ANY LGA ONBOARDING WORK:** Read `docs/DCP_SCOPE_CONFIG_REFERENCE.md` FIRST — has confirmed universalPartKeys/devTypeGatedPartKeys/daDevTypeRole for all 13 target councils. Then read `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` for artifact classes, pre-import QA checklist, and onboarding sequence. Also read `frontend-nextjs/lib/dcp-format-configs.ts` to see existing council patterns.
 
 ## Investigation Before Action (NON-NEGOTIABLE)
 - **ALWAYS investigate thoroughly BEFORE making changes or proposing solutions**
@@ -121,6 +121,7 @@
 - `db-clean-tasks/README.md` - DB cleanup history (2026-02: dropped 16 tables)
 - `.claude/prp/INDEX.md` - Architecture overview
 - `.claude/DATA_QUALITY_TRACKER.md` - DQ issues and fixes
+- `docs/DCP_SCOPE_CONFIG_REFERENCE.md` - Confirmed universalPartKeys/devTypeGatedPartKeys/daDevTypeRole for all 13 target councils (READ FIRST for any LGA onboarding or DA mode work)
 - `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` - Known artifact classes + pre-import QA checklist (READ AT START OF EVERY NEW LGA ONBOARDING)
 - `.claude/docs/LGA_EXTRACTION_RUNBOOK.md` - Step-by-step extraction pipeline with gates (READ WHEN DOING LGA ONBOARDING)
 - `DEPLOYMENT.md` - Deploy guide
@@ -128,6 +129,38 @@
 - `docs/screencasts/INDEX.md` - Screencast scripts index
 - `docs/user-stories/` - User story documents
 - `docs/DCP_MONITORING.md` - DCP chapter PDF versioning & monitoring system (R2, dcp_chapter_registry, GitHub Actions)
+- `docs/DCP_UPDATE_GOVERNANCE.md` - **READ BEFORE ANY DCP UPDATE WORK** — policy requiring human review gate before provisions go live. Auto-extraction to review only; manual commit required via dcp-commit.yml with CONFIRM. No exceptions.
+
+## DCP Structure Model — ARCHITECTURAL FIRST-CLASS CONCEPT
+
+Every council DCP has a structure that determines auto-dismiss aggressiveness, SEE scope, and professional workflow. **Identify the structure before any LGA onboarding or DA mode work.** The three Inner West patterns below are known examples — not a fixed taxonomy. Research confirmed across 13 NSW councils (Inner West × 3, Inner East × 4, pipeline × 6+). Full per-council config values: `docs/DCP_SCOPE_CONFIG_REFERENCE.md`.
+
+### Known patterns (Inner West councils — not a complete taxonomy)
+
+**`dev_type_organized` — Ashfield**
+DCP chapters are partitioned by development category (Chapter F: F1 Dwelling Houses, F2 Dual Occupancy, etc.). Dev type dropdown selects which F sub-chapter is active. Auto-dismiss of off-category chapters is structurally defensible — the document itself says they don't apply. `v2_applicable_dev_types` can function as a scope gate for these chapters.
+
+**`zone_organized` — Marrickville**
+Top-level parts split by zone tier (Part 4 Residential, Part 5 Commercial, Part 6 Industrial). Zone gating is already handled by the for-property API layer system. Universal topic sections (Part 2: General Controls, 16 sub-sections) always load — planner must address or N/A each. Dev type = sub-part selector within Part 4 + relevance sort only.
+
+**`topic_universal` — Leichhardt**
+Nearly all chapters apply to all dev types and zones. Only Part F (Food) is dev-type gated. Everything else is universal. Dev type = relevance sort only. Planner must address or N/A virtually every section.
+
+**These three patterns are from one LGA. Do not treat as a fixed taxonomy.**
+Future councils may have hybrid structures, lot-size-conditional chapters, SEPP-override sections, or organizing principles not seen yet. The code branches on `universalPartKeys` and `devTypeGatedPartKeys` arrays — not on the model label. New councils populate those arrays correctly for their actual DCP structure; the label is descriptive only.
+
+### What actually controls DA mode behavior (not the model label)
+
+- `universalPartKeys` — chapters that must always be shown to the planner; system cannot pre-filter
+- `devTypeGatedPartKeys` — chapters where dev type is a legitimate structural gate; auto-dismiss defensible
+- `daDevTypeRole` — what the dev type dropdown does: `chapter_selector` / `subpart_selector` / `sort_only`
+
+### Rules (non-negotiable)
+1. **Never auto-dismiss chapters in `universalPartKeys`.** These must reach the planner.
+2. **For `universalPartKeys` chapters, intake exclusions (topic assertions, structural category triage) must not remove provisions from scope.** They should produce N/A candidates, not silent removal.
+3. **`v2_applicable_dev_types` on `universalPartKeys` provisions = relevance signal only.** Not a scope gate.
+4. **N/A is the professional instrument for universal chapters.** Planner records it; system does not pre-empt it.
+5. **Always identify chapter scope rules in Step 0 of `/classify-lga`** before tagging or onboarding any new council.
 
 ## Deployment & Branching (NON-NEGOTIABLE)
 

@@ -16,7 +16,7 @@ export function withFeatureFlagSafeguard<T extends Record<string, any>>(
  const SafeguardedComponent: React.FC<T> = (props) => {
  const { flags } = useFeatureFlags();
 
- const isEnabled = flags[flagName] === true;
+ const isEnabled = flags[flagName as keyof typeof flags] === true;
 
  if (isEnabled) {
  return React.createElement(WrappedComponent, props);

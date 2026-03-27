@@ -39,7 +39,7 @@ export function extractVersionFromPlanningAPI(layerResult: {
     regulation_year: regulationYear,
     amendment_reference: layerResult['Amendment'] || null,
     amendment_date: parsedCurrencyDate?.toISOString() || null, // When NSW amended it (for reference)
-    version_status: layerResult['Amendment'] ? 'amended' : 'current',
+    version_status: 'current' as 'current' | 'unverified' | 'superseded',
     last_verified_date: today.toISOString(), // TODAY - we just retrieved from live API
     days_since_verified: 0, // Just verified today from Planning Portal
     staleness_level: 'current' // Always current for live API data

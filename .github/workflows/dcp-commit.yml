@@ -1,0 +1,139 @@
+name: DCP Commit Reviewed Provisions
+
+# This workflow ONLY runs manually — never automatically.
+# Run this AFTER inspecting the review artifact from DCP Chapter Extraction.
+# This is the human approval gate before provisions go live in production.
+
+on:
+  workflow_dispatch:
+    inputs:
+      council:
+        description: 'Council to commit (required — do not commit blind)'
+        required: true
+        default: ''
+      confirmed:
+        description: 'Type CONFIRM to proceed — I have reviewed the extraction output'
+        required: true
+        default: ''
+
+jobs:
+  commit:
+    name: Commit reviewed provisions to production DB
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmed }}" != "CONFIRM" ]; then
+            echo "Confirmation required. Set confirmed=CONFIRM after reviewing the extraction artifact."
+            exit 1
+          fi
+          echo "Confirmed. Proceeding with production commit for council: ${{ github.event.inputs.council }}"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements-extract.txt
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements-extract.txt
+
+      - name: Commit provisions to production DB
+        id: commit
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set +e
+          python scripts/dcp_extract_changed.py --council ${{ github.event.inputs.council }}
+          echo "exit_code=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Post-commit validation
+        id: validation
+        if: steps.commit.outputs.exit_code == '2'
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          VERIFY_APP_URL: ${{ secrets.VERIFY_APP_URL }}
+        run: |
+          set +e
+          python scripts/dcp_post_commit_check.py --council ${{ github.event.inputs.council }}
+          echo "validation_code=$?" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Report and notify
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          COUNCIL: ${{ github.event.inputs.council }}
+          TRIGGERED_BY: ${{ github.actor }}
+        run: |
+          CODE=${{ steps.commit.outputs.exit_code }}
+          VCODE=${{ steps.validation.outputs.validation_code || '0' }}
+          if [ "$CODE" = "2" ]; then
+            if [ "$VCODE" = "0" ]; then
+              echo "Provisions committed and validated for $COUNCIL."
+              python - <<'PYEOF'
+import os, requests
+token = os.environ.get("TELEGRAM_BOT_TOKEN")
+chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+council = os.environ.get("COUNCIL", "")
+actor = os.environ.get("TRIGGERED_BY", "")
+if token and chat_id:
+    requests.post(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        json={"chat_id": chat_id, "text": (
+            f"DCP Committed to production\n"
+            f"Council: {council}\n"
+            f"Approved by: {actor}\n"
+            f"Post-commit checks: PASSED\n"
+            f"Provisions are now live."
+        )},
+        timeout=10,
+    )
+PYEOF
+            else
+              echo "WARNING: Provisions committed but post-commit validation failed for $COUNCIL."
+              python - <<'PYEOF'
+import os, requests
+token = os.environ.get("TELEGRAM_BOT_TOKEN")
+chat_id = os.environ.get("TELEGRAM_CHAT_ID")
+council = os.environ.get("COUNCIL", "")
+actor = os.environ.get("TRIGGERED_BY", "")
+if token and chat_id:
+    requests.post(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        json={"chat_id": chat_id, "text": (
+            f"DCP VALIDATION WARNING\n"
+            f"Council: {council}\n"
+            f"Approved by: {actor}\n"
+            f"Provisions committed but post-commit checks FAILED.\n"
+            f"Check Actions log for details before users are affected."
+        )},
+        timeout=10,
+    )
+PYEOF
+              exit 1
+            fi
+          elif [ "$CODE" = "0" ]; then
+            echo "Nothing to commit — no needs_extraction=TRUE chapters for $COUNCIL."
+          else
+            echo "Commit failed with exit code $CODE. Production DB unchanged."
+            exit 1
+          fi

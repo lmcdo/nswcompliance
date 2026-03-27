@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { flushSync } from 'react-dom';
 import { detectDevTypeFromZone } from '@/lib/requirement-prioritization';
 
 interface LotDimensions {
@@ -153,13 +152,13 @@ export function usePropertyAssessment(): UsePropertyAssessmentReturn {
     console.log('Address (normalized):', normalizedAddress);
     console.log('Coordinates:', coordinates);
 
-    // Use flushSync to force immediate render of loading state
-    flushSync(() => {
-      setSelectedAddress(normalizedAddress);
-      setSelectedCoordinates(coordinates || null);
-      setLoading(true);
-      setError(null);
-    });
+    // Note: no flushSync here — React 18 auto-batches these inside async functions.
+    // flushSync caused an 844ms synchronous blocking render (INP regression) when
+    // ProvisionsByTocStructure was mounted with a large provision set.
+    setSelectedAddress(normalizedAddress);
+    setSelectedCoordinates(coordinates || null);
+    setLoading(true);
+    setError(null);
 
     // Track start time for minimum loading duration
     const startTime = Date.now();

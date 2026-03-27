@@ -22,6 +22,7 @@ export function getProvisionDisplayTitle(provision: {
   section_header?: string;
   provision_text?: string;
   id?: string | number;
+  document_id?: string;
 }): string {
   // Priority 1: ref_number (e.g., "4.3", "Part A")
   if (provision.ref_number && provision.ref_number.trim() !== '') {

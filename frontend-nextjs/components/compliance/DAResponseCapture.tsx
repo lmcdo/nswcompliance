@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Check } from 'lucide-react';
+import { getTemplate, type ProvisionContext } from '@/lib/see/responseTemplates';
 
 export interface DaResponse {
   response_text: string | null;
@@ -15,6 +16,8 @@ interface DAResponseCaptureProps {
   onSaved?: (response: DaResponse) => void;
   /** When true: provision was auto-excluded by intake triage. Renders a locked badge instead of interactive controls. */
   isLocked?: boolean;
+  /** Provision context for context-aware template selection */
+  provisionContext?: ProvisionContext;
 }
 
 const STATUS_OPTIONS = [
@@ -23,18 +26,13 @@ const STATUS_OPTIONS = [
   { value: 'not_applicable', label: 'N/A', color: 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200' },
 ] as const;
 
-const STATUS_TEMPLATES: Record<string, string> = {
-  complies:        'The proposed development complies with this control.',
-  varies:          'The proposed development varies from this control. [Reason and justification to be completed.]',
-  not_applicable:  'This control does not apply to the proposed development.',
-};
-
 export function DAResponseCapture({
   provisionId,
   sessionToken,
   existingResponse,
   onSaved,
   isLocked = false,
+  provisionContext = {},
 }: DAResponseCaptureProps) {
   const [responseText, setResponseText] = useState(existingResponse?.response_text || '');
   const [complianceStatus, setComplianceStatus] = useState<DaResponse['compliance_status']>(
@@ -88,10 +86,10 @@ export function DAResponseCapture({
     const newStatus = status === complianceStatus ? null : status;
     setComplianceStatus(newStatus);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    // Pre-fill template when text is empty or is a previous template value
-    const isTemplate = responseText.trim() === '' || Object.values(STATUS_TEMPLATES).includes(responseText);
+    // Pre-fill template when text is empty or already contains a template value
+    const isTemplate = responseText.trim() === '';
     if (newStatus && isTemplate) {
-      const template = STATUS_TEMPLATES[newStatus];
+      const template = getTemplate(newStatus, provisionContext);
       setResponseText(template);
       save(template, newStatus);
     } else {

@@ -160,7 +160,7 @@ export async function cachedFetch<T>(
 ): Promise<T> {
  // Try to get from cache first
  const cached = APICache.get<T>(endpoint, params, cacheConfig);
- if (cached && (!cacheConfig?.staleWhileRevalidate || !APICache.isExpired(cached as any, cacheConfig.ttl || 15 * 60 * 1000))) {
+ if (cached && (!cacheConfig?.staleWhileRevalidate || !((APICache as any).isExpired(cached as any, cacheConfig.ttl || 15 * 60 * 1000)))) {
  return cached;
  }
 

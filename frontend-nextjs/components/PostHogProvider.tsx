@@ -10,9 +10,8 @@ if (typeof window !== 'undefined') {
     defaults: '2025-05-24',
     person_profiles: 'identified_only',
     session_recording: {
-      recordCanvas: false,
       recordCrossOriginIframes: false
-    },
+    } as any,
     loaded: (posthog) => {
       if (process.env.NODE_ENV === 'development') posthog.debug()
     }

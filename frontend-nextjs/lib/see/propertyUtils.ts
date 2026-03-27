@@ -192,25 +192,35 @@ export interface RoadImpactInfo {
 /**
  * Return impact info for a road functional_hierarchy string.
  * High impact = Motorway, Primary Road, Arterial Road.
+ * When distanceMeters is provided and > 5, uses proximity language instead of "frontage".
  */
-export function roadHierarchyAnnotation(hierarchy: string): RoadImpactInfo {
+export function roadHierarchyAnnotation(hierarchy: string, distanceMeters?: number): RoadImpactInfo {
   const h = hierarchy.toLowerCase();
+  const isFrontage = distanceMeters === undefined || distanceMeters <= 5;
+  const dist = distanceMeters !== undefined ? Math.round(distanceMeters) : null;
+
   if (h.includes('motorway')) {
     return {
       isHighImpact: true,
-      annotation: 'Motorway frontage — TfNSW consultation required; restricted driveway access; traffic noise assessment required.',
+      annotation: isFrontage
+        ? 'Motorway frontage — TfNSW consultation required; restricted driveway access; traffic noise assessment required.'
+        : `Within ${dist}m of a Motorway — TfNSW consultation likely required; traffic noise assessment required.`,
     };
   }
   if (h.includes('primary')) {
     return {
       isHighImpact: true,
-      annotation: 'Primary Road frontage — TfNSW consultation likely required; traffic noise assessment required.',
+      annotation: isFrontage
+        ? 'Primary Road frontage — TfNSW consultation likely required; traffic noise assessment required.'
+        : `Within ${dist}m of a Primary Road — TfNSW consultation likely required; traffic noise assessment required.`,
     };
   }
   if (h.includes('arterial')) {
     return {
       isHighImpact: true,
-      annotation: 'Arterial Road frontage — traffic noise assessment likely required; access restrictions may apply.',
+      annotation: isFrontage
+        ? 'Arterial Road frontage — traffic noise assessment likely required; access restrictions may apply.'
+        : `Within ${dist}m of an Arterial Road — traffic noise assessment likely required.`,
     };
   }
   return { isHighImpact: false, annotation: '' };
