@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 interface Document {
   documentId: string;
@@ -218,6 +219,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const responseTime = Date.now() - startTime;
     console.error('[Browse Documents] Error:', error);
+    captureServerException(error, { endpoint: '/api/browse/documents' });
 
     return NextResponse.json(
       {

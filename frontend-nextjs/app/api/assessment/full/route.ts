@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
 import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 interface AssessmentRequest {
   address: string;
@@ -218,6 +219,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[Assessment/Full] Error:', error);
+    captureServerException(error, { endpoint: '/api/assessment/full' });
     return NextResponse.json({
       success: false,
       error: 'Failed to load assessment data',
