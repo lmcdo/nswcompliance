@@ -28,6 +28,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 
 export const dynamic = 'force-dynamic';
@@ -525,6 +526,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[4-Layer API] Error:', error);
+    captureServerException(error, { endpoint: '/api/provisions/for-property' });
     return NextResponse.json(
       {
         success: false,
