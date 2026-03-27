@@ -34,7 +34,7 @@ interface FeedbackData {
   propertyId?: string;
 }
 
-interface FeedbackSessionState {
+export interface FeedbackSessionState {
   isVisible: boolean;
   hasSubmitted: boolean;
   submittedCount: number;

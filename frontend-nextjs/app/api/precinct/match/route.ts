@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     console.log('[Precinct Match API] Matching address:', { address, lga, hasCoordinates: !!coordinates, heritageItemName });
 
     // Get precinct for address - pass coordinates and heritage data if available
-    const precinct = await getPrecinctForAddress(address, lga, coordinates, heritageItemName);
+    const precinct = await getPrecinctForAddress(address, lga ?? '', coordinates, heritageItemName);
 
     if (precinct) {
       console.log('[Precinct Match API] Matched to precinct:', precinct.precinctNumber);
