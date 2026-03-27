@@ -155,6 +155,19 @@ export const searchRateLimiter = redis
     })
   : null;
 
+/**
+ * Data endpoint rate limiter: 30 requests per minute per IP
+ * Applied to provision/browse/assessment read endpoints
+ */
+export const dataRateLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, '1 m'),
+      analytics: true,
+      prefix: 'rl:data',
+    })
+  : null;
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
