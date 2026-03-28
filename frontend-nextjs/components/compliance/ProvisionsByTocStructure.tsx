@@ -1300,7 +1300,7 @@ export function ProvisionsByTocStructure({
             <p className="text-base font-semibold text-gray-800">Define your works</p>
             <p className="text-sm text-gray-700 mt-0.5 mb-2">
               {daDevTypeRole === 'sort_only'
-                ? 'Select your development type. For this council, all provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.'
+                ? `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, all ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.`
                 : daDevTypeRole === 'chapter_selector'
                 ? 'Select your development type. Chapters that don\'t apply to your dev type are automatically removed from scope.'
                 : 'Select your development type and any ancillary development. Controls that don\'t apply are automatically removed.'}
