@@ -141,6 +141,7 @@ export function DcpProvisionList({
                 precinctName={precinctId}
                 isDaMode={isDaMode}
                 sectionGrouped={isDaMode}
+                maxProvisions={isDaMode ? undefined : 30}
                 sessionToken={sessionToken}
                 daResponses={daResponses}
                 sectionResponses={sectionResponses}
@@ -149,7 +150,7 @@ export function DcpProvisionList({
                 onSectionResponseSaved={onSectionResponseSaved}
                 canonicalSectionTitles={canonicalSectionTitles}
                 suppressedSections={suppressedOnlySections}
-                hideShowMoreButton={true}
+                hideShowMoreButton={isDaMode}
                 lepReference={lepReference}
                 numericCheckValues={numericCheckValues}
               />
