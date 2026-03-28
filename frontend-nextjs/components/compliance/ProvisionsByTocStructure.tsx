@@ -1263,23 +1263,20 @@ export function ProvisionsByTocStructure({
             <div>
               <p className="text-base font-semibold text-gray-800">DA Mode active</p>
               <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
-              <button
-                onClick={() => onToggleDaMode(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
-              >
-                <span className="w-3 h-3 rounded-full inline-block bg-white" />
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-500" />
                 DA Mode on
-              </button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
+          <div className="mb-5">
+            <p className="text-sm text-gray-600 mb-2">Enable DA Mode to record compliance notes and export a working SEE draft.</p>
             <button
               onClick={() => onToggleDaMode(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border-2 bg-white text-teal-700 border-teal-400 hover:bg-teal-50 hover:border-teal-500 transition-all"
             >
-              <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
+              <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-400" />
               Enable DA Mode
             </button>
           </div>
