@@ -1263,9 +1263,17 @@ export function ProvisionsByTocStructure({
             <div>
               <p className="text-base font-semibold text-gray-800">DA Mode active</p>
               <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200">
-                <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-500" />
-                DA Mode on
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                  <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-500" />
+                  DA Mode on
+                </div>
+                <button
+                  onClick={() => onToggleDaMode(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                >
+                  Exit DA Mode
+                </button>
               </div>
             </div>
           </div>
