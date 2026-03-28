@@ -16,7 +16,7 @@ import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, FileText, ChevronDown, Search, X, Ruler, Download } from 'lucide-react';
-import { COUNCIL_CONFIGS } from '@/lib/council-config';
+import { COUNCIL_CONFIGS, getDaDevTypeRole } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
@@ -331,6 +331,7 @@ export function ProvisionsByTocStructure({
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     ? COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     : null;
+  const daDevTypeRole = getDaDevTypeRole(formerCouncil?.toLowerCase() ?? null);
 
   // Build API URL with groupBy=toc
   const params = new URLSearchParams();
@@ -1297,7 +1298,13 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
             <p className="text-base font-semibold text-gray-800">Define your works</p>
-            <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
+            <p className="text-sm text-gray-700 mt-0.5 mb-2">
+              {daDevTypeRole === 'sort_only'
+                ? 'Select your development type. For this council, all provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.'
+                : daDevTypeRole === 'chapter_selector'
+                ? 'Select your development type. Chapters that don\'t apply to your dev type are automatically removed from scope.'
+                : 'Select your development type and any ancillary development. Controls that don\'t apply are automatically removed.'}
+            </p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -1415,6 +1422,14 @@ export function ProvisionsByTocStructure({
                     {globalProgress.total} total
                     {globalProgress.total !== globalProgress.scopeTotal && (
                       <> → {globalProgress.scopeTotal} in scope</>
+                    )}
+                    {(globalProgress.suppressed > 0 || globalProgress.triaged > 0) && (
+                      <span className="block text-[11px] text-gray-300 mt-0.5">
+                        {[
+                          globalProgress.suppressed > 0 && `${globalProgress.suppressed} objectives/guidance not assessed`,
+                          globalProgress.triaged > 0 && `${globalProgress.triaged} excluded by intake`,
+                        ].filter(Boolean).join(' · ')}
+                      </span>
                     )}
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
