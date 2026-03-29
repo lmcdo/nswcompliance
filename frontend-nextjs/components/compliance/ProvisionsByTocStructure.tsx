@@ -16,7 +16,7 @@ import { LayerExplanation } from './LayerExplanation';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Loader2, FileText, ChevronDown, Search, X, Ruler, Download } from 'lucide-react';
-import { COUNCIL_CONFIGS } from '@/lib/council-config';
+import { COUNCIL_CONFIGS, getDaDevTypeRole } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
@@ -331,6 +331,7 @@ export function ProvisionsByTocStructure({
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     ? COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     : null;
+  const daDevTypeRole = getDaDevTypeRole(formerCouncil?.toLowerCase() ?? null);
 
   // Build API URL with groupBy=toc
   const params = new URLSearchParams();
@@ -378,21 +379,24 @@ export function ProvisionsByTocStructure({
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
 
-  // Auto-select first part on load ONLY in structure mode
+  // Auto-select first part on load ONLY in non-DA structure mode
   useEffect(() => {
-    if (provisionView === 'structure' && data?.data?.complete_toc && !selectedPart) {
+    if (provisionView === 'structure' && !isDaMode && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
-        // Sort parts numerically (extract number from "Part X" or "Chapter X")
-        const sortedParts = parts.sort((a, b) => {
-          const numA = parseInt(a.match(/\d+/)?.[0] || '999');
-          const numB = parseInt(b.match(/\d+/)?.[0] || '999');
-          return numA - numB;
-        });
+        // Sort: extract trailing letter (Part A → "A"), handle sub-parts (Part C.1 → "C.1"),
+        // fall back to raw string so "Part A" always beats "Part C.1"
+        const partSortKey = (p: string) => {
+          const m = p.match(/Part\s+([A-Z])(?:\.(\d+))?/i);
+          if (m) return m[1].toUpperCase() + (m[2] ? `.${m[2].padStart(3, '0')}` : '');
+          const n = p.match(/\d+/);
+          return n ? n[0].padStart(6, '0') : p;
+        };
+        const sortedParts = parts.sort((a, b) => partSortKey(a).localeCompare(partSortKey(b)));
         setSelectedPart(sortedParts[0]);
       }
     }
-  }, [provisionView, data, selectedPart]);
+  }, [provisionView, isDaMode, data, selectedPart]);
 
   // Debounce search input with 300ms delay
   useEffect(() => {
@@ -1263,23 +1267,28 @@ export function ProvisionsByTocStructure({
             <div>
               <p className="text-base font-semibold text-gray-800">DA Mode active</p>
               <p className="text-sm text-gray-700 mt-0.5 mb-3">Tell us what you're actually building, and we'll filter to only the rules that matter for your project. Then assess each provision and export your SEE draft.</p>
-              <button
-                onClick={() => onToggleDaMode(false)}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-teal-600 text-white border-teal-600 shadow-sm transition-all"
-              >
-                <span className="w-3 h-3 rounded-full inline-block bg-white" />
-                DA Mode on
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium bg-teal-50 text-teal-700 border border-teal-200">
+                  <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-500" />
+                  DA Mode on
+                </div>
+                <button
+                  onClick={() => onToggleDaMode(false)}
+                  className="text-xs text-gray-400 hover:text-gray-600 underline underline-offset-2"
+                >
+                  Exit DA Mode
+                </button>
+              </div>
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between mb-5">
-            <p className="text-xs text-gray-500">Preparing a DA? Enable DA Mode to record compliance notes and export a working SEE draft.</p>
+          <div className="mb-5">
+            <p className="text-sm text-gray-600 mb-2">Enable DA Mode to record compliance notes and export a working SEE draft.</p>
             <button
               onClick={() => onToggleDaMode(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all flex-shrink-0 ml-3"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border-2 bg-white text-teal-700 border-teal-400 hover:bg-teal-50 hover:border-teal-500 transition-all"
             >
-              <span className="w-3 h-3 rounded-full inline-block bg-teal-300" />
+              <span className="w-2.5 h-2.5 rounded-full inline-block bg-teal-400" />
               Enable DA Mode
             </button>
           </div>
@@ -1292,7 +1301,13 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">2</span>
           <div className="flex-1">
             <p className="text-base font-semibold text-gray-800">Define your works</p>
-            <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
+            <p className="text-sm text-gray-700 mt-0.5 mb-2">
+              {daDevTypeRole === 'sort_only'
+                ? `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, all ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.`
+                : daDevTypeRole === 'chapter_selector'
+                ? 'Select your development type. Chapters that don\'t apply to your dev type are automatically removed from scope.'
+                : 'Select your development type and any ancillary development. Controls that don\'t apply are automatically removed.'}
+            </p>
             <DAModeCard
               devType={devType}
               devWorksText={devWorksText}
@@ -1368,6 +1383,7 @@ export function ProvisionsByTocStructure({
             chapterProgress={chapterProgress}
             devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
             devTypeLabel={isDaMode && devType ? DEV_TYPE_OPTIONS.find(o => o.value === devType)?.label : undefined}
+            daDevTypeRole={daDevTypeRole}
           />
         </div>
       )}
@@ -1410,6 +1426,14 @@ export function ProvisionsByTocStructure({
                     {globalProgress.total} total
                     {globalProgress.total !== globalProgress.scopeTotal && (
                       <> → {globalProgress.scopeTotal} in scope</>
+                    )}
+                    {(globalProgress.suppressed > 0 || globalProgress.triaged > 0) && (
+                      <span className="block text-[11px] text-gray-300 mt-0.5">
+                        {[
+                          globalProgress.suppressed > 0 && `${globalProgress.suppressed} objectives/guidance not assessed`,
+                          globalProgress.triaged > 0 && `${globalProgress.triaged} excluded by intake`,
+                        ].filter(Boolean).join(' · ')}
+                      </span>
                     )}
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
