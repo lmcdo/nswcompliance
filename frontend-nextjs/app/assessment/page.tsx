@@ -41,9 +41,9 @@ function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string 
   if (!ENABLED_LGAS) return true; // no restriction — show all
   const council = (formerCouncil || '').toLowerCase();
   if (ENABLED_LGAS.includes(council)) return true;
-  // Fallback: if formerCouncil is empty (precinct miss), check if any enabled key is a
-  // prefix of the lga slug — handles 'Inner West' and 'Inner West Council' both → 'inner_west' prefix
-  if (!council && lga) {
+  // Also check LGA slug — handles ENABLED_LGAS=['inner_west'] enabling all former councils
+  // of that LGA (leichhardt, marrickville, ashfield) without listing each explicitly.
+  if (lga) {
     const lgaSlug = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
     return ENABLED_LGAS.some(key => lgaSlug === key || lgaSlug.startsWith(key + '_') || lgaSlug.startsWith(key));
   }
