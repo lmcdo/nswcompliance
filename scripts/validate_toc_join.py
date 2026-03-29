@@ -29,9 +29,10 @@ import psycopg2.extras
 # Marrickville: 92.8% is stable baseline
 DEFAULT_THRESHOLD = 85.0
 
-KNOWN_CAPS = {
+KNOWN_CAPS: dict = {
     # council: (cap_pct, reason)
-    "ashfield": (93.8, "chapter_e2_haberfield has no TOC entry — needs separate extraction"),
+    # Ashfield: was capped at 93.8% (e2_haberfield no TOC). Fixed in migration 018 — catch-all entry inserted.
+    # If a future council has a structural cap, add it here with the reason.
 }
 
 # ── DB connection ──────────────────────────────────────────────────────────────
