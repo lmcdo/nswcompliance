@@ -4,6 +4,7 @@ import React, { Component, ReactNode } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import posthog from 'posthog-js';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -26,13 +27,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    // Log error to console in development
     if (process.env.NODE_ENV === 'development') {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
-    
-    // In production, you could send this to an error reporting service
-    // logErrorToService(error, errorInfo);
+    posthog.captureException(error, {
+      componentStack: errorInfo.componentStack,
+      fallbackTitle: this.props.fallbackTitle,
+    });
   }
 
   render() {

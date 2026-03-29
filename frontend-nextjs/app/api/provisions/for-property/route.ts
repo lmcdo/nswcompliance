@@ -29,6 +29,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
+import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 
 export const dynamic = 'force-dynamic';
@@ -209,6 +211,15 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    const clientIP = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientIP, dataRateLimiter, 30, 60000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again in a minute.' },
+        { status: 429, headers: createRateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
 
     // Parse filters
@@ -442,6 +453,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[4-Layer API] Error:', error);
+    captureServerException(error, { endpoint: '/api/provisions/for-property' });
     return NextResponse.json(
       {
         success: false,

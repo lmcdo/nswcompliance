@@ -190,8 +190,12 @@ enrichment/
 !enrichment/extractors/actionable_classifier.py
 !enrichment/extractors/applicability_tagger.py
 !enrichment/extractors/marker_extractor.py
+!enrichment/extractors/gemini_actionability_classifier.py
 !enrichment/tests/
 !enrichment/tests/__init__.py
+# tests/enrichment/ is the pytest test suite (separate from enrichment/tests/).
+# Must be explicitly un-ignored because the 'enrichment/' rule above matches at any depth.
+!tests/enrichment/
 !enrichment/tests/test_numeric_extractor.py
 extractors/
 

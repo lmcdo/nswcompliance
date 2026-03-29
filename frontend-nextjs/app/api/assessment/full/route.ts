@@ -21,6 +21,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 interface AssessmentRequest {
   address: string;
@@ -47,6 +49,15 @@ export async function POST(request: NextRequest) {
   const timing: Partial<TimingInfo> = {};
 
   try {
+    const clientIP = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientIP, searchRateLimiter, 20, 60000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again in a minute.' },
+        { status: 429, headers: createRateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     const body: AssessmentRequest = await request.json();
 
     // Validate input with Zod schema
@@ -208,6 +219,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[Assessment/Full] Error:', error);
+    captureServerException(error, { endpoint: '/api/assessment/full' });
     return NextResponse.json({
       success: false,
       error: 'Failed to load assessment data',

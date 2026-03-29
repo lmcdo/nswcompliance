@@ -47,7 +47,7 @@ export default function RootLayout({
  
  {/* Google Maps API with optimized loading strategy */}
  <Script
- src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCi5UBAg6X-k6W8v1vv9XEQaML9aQE-w60&libraries=places"
+ src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
  strategy="afterInteractive"
  />
 

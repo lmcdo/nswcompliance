@@ -29,32 +29,26 @@ import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
 import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
-// NEXT_PUBLIC_ENABLED_LGAS: comma-separated LGA slugs with DCP live.
-// e.g. "inner_west,waverley,ku_ring_gai" — add LGAs as their DCP is processed.
-// When unset/empty → DCP off everywhere.
-// NEXT_PUBLIC_DCP_ENABLED=true with no ENABLED_LGAS → DCP on for all LGAs (full release).
 const DCP_ENABLED = process.env.NEXT_PUBLIC_DCP_ENABLED === 'true';
+// When set, only show DCP for listed councils (comma-separated formerCouncil slugs).
+// When unset, all councils show DCP (if DCP_ENABLED is true).
+// Example: NEXT_PUBLIC_ENABLED_LGAS=marrickville,leichhardt,ashfield,waverley,ku_ring_gai
 const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
-  ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+  ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
   : null;
 
-function normaliseLgaSlug(lga: string): string {
-  return lga.toLowerCase()
-    .replace(/\bcouncil\b/g, '')
-    .replace(/\bcity\b/g, '')
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[^a-z0-9_]/g, '')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
-function isDcpEnabledForCouncil(lga?: string): boolean {
-  if (ENABLED_LGAS) {
-    if (!lga || ENABLED_LGAS.length === 0) return false;
-    return ENABLED_LGAS.includes(normaliseLgaSlug(lga));
+function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string | undefined): boolean {
+  if (!DCP_ENABLED) return false;
+  if (!ENABLED_LGAS) return true; // no restriction — show all
+  const council = (formerCouncil || '').toLowerCase();
+  if (ENABLED_LGAS.includes(council)) return true;
+  // Also check LGA slug — handles ENABLED_LGAS=['inner_west'] enabling all former councils
+  // of that LGA (leichhardt, marrickville, ashfield) without listing each explicitly.
+  if (lga) {
+    const lgaSlug = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    return ENABLED_LGAS.some(key => lgaSlug === key || lgaSlug.startsWith(key + '_') || lgaSlug.startsWith(key));
   }
-  return DCP_ENABLED;
+  return false;
 }
 
 export default function AssessmentPage() {
@@ -465,8 +459,7 @@ export default function AssessmentPage() {
 
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-                  {isDcpEnabledForCouncil(selectedProperty.constraints?.lga) ? (
-                    dcpEverActivated && (
+                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil, selectedProperty.constraints?.lga) ? (
                     <ErrorBoundary fallbackTitle="Error loading DCP provisions">
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
@@ -490,7 +483,6 @@ export default function AssessmentPage() {
                         onToggleDaMode={setIsDaMode}
                       />
                     </ErrorBoundary>
-                    )
                   ) : (
                     <DCPInterestForm
                       councilName={selectedProperty.constraints?.lga || 'Your council'}

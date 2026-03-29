@@ -7,9 +7,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
 import { FullAssessmentSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { searchRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 
 export async function POST(request: NextRequest) {
  try {
+  const clientIP = getClientIdentifier(request);
+  const rateLimitResult = await checkRateLimit(clientIP, searchRateLimiter, 20, 60000);
+  if (!rateLimitResult.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again in a minute.' },
+      { status: 429, headers: createRateLimitHeaders(rateLimitResult) }
+    );
+  }
+
  const body = await request.json();
 
  // Validate request using FullAssessmentSchema

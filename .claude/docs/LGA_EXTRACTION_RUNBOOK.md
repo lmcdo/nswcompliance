@@ -21,8 +21,9 @@ The extraction is semi-automated, not fully automated. Here's what's automated v
 
 The extraction script is triggered by `needs_extraction=TRUE` in `dcp_chapter_registry`. The populate script sets this flag. On successful extraction, it's cleared to `FALSE`. Failed chapters stay `TRUE` and are retried on next run.
 
-**Reference docs (read before starting):**
-- `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` — known artifact classes, detection, and fixes
+**This runbook is the single source of truth for LGA onboarding.** Follow it top-to-bottom. Supplementary detail only (not required reading):
+- `docs/DCP_EXTRACTION_KNOWN_PATTERNS.md` — extended artifact class catalogue, §7 TOC population detail
+- `docs/DCP_SCOPE_CONFIG_REFERENCE.md` — confirmed universalPartKeys/devTypeGatedPartKeys per council
 - `frontend-nextjs/lib/dcp-format-configs.ts` — existing per-council formatting configs
 
 ---
@@ -349,6 +350,53 @@ GROUP BY 1, 2 ORDER BY 1;
 ```
 
 See `memory/heritage.md` for HCA tagging rules if this council has individual HCA sections.
+
+---
+
+## Step 7d — Populate `dcp_table_of_contents`
+
+**Required for DA mode section grouping.** Without this, all provisions collapse to a single "General provisions" group because the JOIN on `toc_section_number` always returns NULL.
+
+### Get page ranges from the extracted provisions:
+
+```sql
+SELECT document_id, min(pdf_page) as page_start, max(pdf_page) as page_end, count(*) as n
+FROM regulatory_provisions
+WHERE source_council = '<council>'
+  AND is_current = TRUE
+GROUP BY document_id
+ORDER BY page_start;
+```
+
+### Insert one row per chapter PDF:
+
+```sql
+INSERT INTO dcp_table_of_contents (document_id, section_number, title, page_start, page_end)
+VALUES
+  ('<council>_DCP_<year>__<part_slug>', '1', 'Part A Introduction', 1, 45),
+  ('<council>_DCP_<year>__<part_slug>', '2', 'Part B Controls', 1, 80),
+  -- one row per document_id from the query above
+;
+```
+
+**Critical:** `document_id` in TOC must exactly match `document_id` on `regulatory_provisions`. Case, underscores, everything.
+
+If a council splits one logical chapter across multiple PDFs (e.g. Leichhardt Part G across 3 files), all three `document_id` values should map to the same `section_number`.
+
+### Verify the JOIN works:
+
+```sql
+SELECT p.id, p.document_id, t.section_number as toc_section_number
+FROM regulatory_provisions p
+LEFT JOIN dcp_table_of_contents t
+  ON p.document_id = t.document_id
+  AND p.pdf_page BETWEEN t.page_start AND t.page_end
+WHERE p.source_council = '<council>'
+  AND p.is_current = TRUE
+LIMIT 20;
+```
+
+**Gate:** `toc_section_number` is non-NULL for the majority of provisions. NULL = document_id mismatch — fix the INSERT values.
 
 ---
 

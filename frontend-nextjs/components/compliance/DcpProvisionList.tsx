@@ -125,6 +125,13 @@ export function DcpProvisionList({
 
       {(displayProvisions.length > 0 || triageExcludedProvisions.length > 0) && (
         <>
+          {/* Provision count — always show so user knows scope */}
+          {!isDaMode && displayProvisions.length > 0 && (
+            <p className="text-xs text-gray-500 mb-3">
+              Showing {Math.min(30, displayProvisions.length)} of {displayProvisions.length} provision{displayProvisions.length !== 1 ? 's' : ''}
+              {displayProvisions.length > 30 && ` — use "Show more" below to see all`}
+            </p>
+          )}
           {displayProvisions.length > 0 && (
             <>
               <PageGroupedProvisions provisionTheme="green"
@@ -140,7 +147,8 @@ export function DcpProvisionList({
                 hcaName={hcaName}
                 precinctName={precinctId}
                 isDaMode={isDaMode}
-                sectionGrouped={!isDaMode}
+                sectionGrouped={isDaMode}
+                maxProvisions={isDaMode ? undefined : 30}
                 sessionToken={sessionToken}
                 daResponses={daResponses}
                 sectionResponses={sectionResponses}
@@ -149,7 +157,7 @@ export function DcpProvisionList({
                 onSectionResponseSaved={onSectionResponseSaved}
                 canonicalSectionTitles={canonicalSectionTitles}
                 suppressedSections={suppressedOnlySections}
-                hideShowMoreButton={true}
+                hideShowMoreButton={isDaMode}
                 lepReference={lepReference}
                 numericCheckValues={numericCheckValues}
               />

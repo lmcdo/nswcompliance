@@ -8,6 +8,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
+import { captureServerException } from '@/lib/posthog-server';
 
 interface Document {
   documentId: string;
@@ -21,6 +23,15 @@ export async function GET(request: NextRequest) {
   const startTime = Date.now();
 
   try {
+    const clientIP = getClientIdentifier(request);
+    const rateLimitResult = await checkRateLimit(clientIP, dataRateLimiter, 30, 60000);
+    if (!rateLimitResult.success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again in a minute.' },
+        { status: 429, headers: createRateLimitHeaders(rateLimitResult) }
+      );
+    }
+
     console.log('[Browse Documents] Fetching all DCP documents');
 
     // Get all DCP documents with TOC status and provision counts
@@ -208,6 +219,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const responseTime = Date.now() - startTime;
     console.error('[Browse Documents] Error:', error);
+    captureServerException(error, { endpoint: '/api/browse/documents' });
 
     return NextResponse.json(
       {

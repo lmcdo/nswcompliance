@@ -1,0 +1,11 @@
+=== TEST TRAIL ===
+Branch:  fix/posthog-error-tracking
+Date:    Fri Mar 27 18:50:39 AUSEDT 2026
+
+--- TypeScript: type check ---
+No errors in changed files
+
+--- Python: enrichment tests (unchanged, reference) ---
+97 passed (see previous trail)
+
+=== END ===

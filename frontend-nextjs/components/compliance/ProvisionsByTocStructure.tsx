@@ -13,8 +13,8 @@ import useSWR from 'swr';
 import { TocSidebar, formatPartDisplay } from './TocSidebar';
 import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { Card, CardContent } from '@/components/ui/card';
-import { Loader2, FileText, ChevronDown, ChevronRight, Search, X, Download } from 'lucide-react';
-import { COUNCIL_CONFIGS, isUniversalChapter } from '@/lib/council-config';
+import { Loader2, FileText, ChevronDown, ChevronRight, Search, X, Ruler, Download } from 'lucide-react';
+import { COUNCIL_CONFIGS, isUniversalChapter, getDaDevTypeRole } from '@/lib/council-config';
 import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
@@ -33,6 +33,7 @@ import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryW
 import { deriveQuestionnaireTopics, deriveQuestionnaireDevTypeExclusions, type WorksScopeAnswers } from '@/lib/see/worksScope';
 import { autoPopulateWorksScopeFromLep, type LepPermissibilityEntry } from '@/lib/see/lepScope';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
+import { buildSectionKey } from '@/lib/see/sectionKey';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
@@ -182,7 +183,7 @@ export function ProvisionsByTocStructure({
   const [guideExpanded, setGuideExpanded] = useState(false);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, sectionResponses, updateSingleSectionResponse, saveSectionResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, primaryDevType, savedWorksText, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, worksScopeAnswers, saveWorksScopeAnswers } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, sectionResponses, updateSingleSectionResponse, saveSectionResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, primaryDevType, savedWorksText, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses, worksScopeAnswers, saveWorksScopeAnswers } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -190,12 +191,17 @@ export function ProvisionsByTocStructure({
 
   // Clear scope form fields whenever the address changes — form always starts fresh.
   // Intake answers and DA responses persist server-side via useDASession.
+  // Refs are cleared immediately (synchronously) so any debounced callbacks that fire
+  // before the next render don't read stale dev type or works text values.
   useEffect(() => {
     setDevType('');
     setDevWorksText('');
     setAncillaryWorksLocal([]);
     setClientRef('');
     setPreparedBy('');
+    devTypeRef.current = '';
+    devWorksTextRef.current = '';
+    ancillaryInitializedRef.current = false;
   }, [address]);
 
   // Structured development description state
@@ -213,6 +219,9 @@ export function ProvisionsByTocStructure({
   devWorksTextRef.current = devWorksText;
   const intakeAnswersRef = useRef(intakeAnswers);
   intakeAnswersRef.current = intakeAnswers;
+  // Tracks whether ancillary works have been initialised from server session.
+  // Prevents re-applying server state after the user has made local edits.
+  const ancillaryInitializedRef = useRef(false);
 
 
   // Clear any pending debounce on unmount to avoid state updates after teardown
@@ -270,12 +279,15 @@ export function ProvisionsByTocStructure({
     if (isDaMode && address) refreshResponsesRef.current();
   }, [isDaMode, address]);
 
-  // Restore ancillary works from session when loaded
+  // Restore ancillary works from session when loaded — one-time initialisation only.
+  // ancillaryInitializedRef prevents re-applying server state after the user has
+  // made local edits (which would clobber their changes on the next savedAncillaryWorks update).
   useEffect(() => {
-    if (savedAncillaryWorks.length > 0 && ancillaryWorksLocal.length === 0) {
+    if (!ancillaryInitializedRef.current && savedAncillaryWorks.length > 0) {
       setAncillaryWorksLocal(savedAncillaryWorks);
+      ancillaryInitializedRef.current = true;
     }
-  }, [savedAncillaryWorks]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [savedAncillaryWorks]);
 
   // Restore dev type and works text from session when loaded.
   // Only restores if the planner hasn't already entered values in this session.
@@ -336,6 +348,7 @@ export function ProvisionsByTocStructure({
   const councilConfig = formerCouncil?.toLowerCase() && COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     ? COUNCIL_CONFIGS[formerCouncil.toLowerCase()]
     : null;
+  const daDevTypeRole = getDaDevTypeRole(formerCouncil?.toLowerCase() ?? null);
 
   // LGA-specific top-level structural term — derived from config key prefix ("Part A" → "part", "Chapter A" → "chapter")
   const tocTopLevelTerm: 'part' | 'chapter' = (() => {
@@ -463,21 +476,24 @@ export function ProvisionsByTocStructure({
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
 
-  // Auto-select first part on load ONLY in structure mode
+  // Auto-select first part on load ONLY in non-DA structure mode
   useEffect(() => {
-    if (provisionView === 'structure' && data?.data?.complete_toc && !selectedPart) {
+    if (provisionView === 'structure' && !isDaMode && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
-        // Sort parts numerically (extract number from "Part X" or "Chapter X")
-        const sortedParts = parts.sort((a, b) => {
-          const numA = parseInt(a.match(/\d+/)?.[0] || '999');
-          const numB = parseInt(b.match(/\d+/)?.[0] || '999');
-          return numA - numB;
-        });
+        // Sort: extract trailing letter (Part A → "A"), handle sub-parts (Part C.1 → "C.1"),
+        // fall back to raw string so "Part A" always beats "Part C.1"
+        const partSortKey = (p: string) => {
+          const m = p.match(/Part\s+([A-Z])(?:\.(\d+))?/i);
+          if (m) return m[1].toUpperCase() + (m[2] ? `.${m[2].padStart(3, '0')}` : '');
+          const n = p.match(/\d+/);
+          return n ? n[0].padStart(6, '0') : p;
+        };
+        const sortedParts = parts.sort((a, b) => partSortKey(a).localeCompare(partSortKey(b)));
         setSelectedPart(sortedParts[0]);
       }
     }
-  }, [provisionView, data, selectedPart]);
+  }, [provisionView, isDaMode, data, selectedPart]);
 
   // Debounce search input with 300ms delay
   useEffect(() => {
@@ -1165,6 +1181,39 @@ export function ProvisionsByTocStructure({
     return p;
   }, [allProvisions, baseProvisions, isDaMode, topicAssertions, allDismissedChapters, showSuppressedInDA, councilId, derivePartKey]);
 
+  // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
+  // Intentionally ignores layerFilter, search, and refinements so the exported document
+  // always covers all in-scope DCP provisions regardless of what the user has filtered in the UI.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const provisionsForSeeExport = useMemo((): any[] => {
+    if (!isDaMode) return baseProvisions;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let p: any[] = baseProvisions;
+    if (Object.keys(topicAssertions).length > 0) {
+      const assertedOut = new Set(Object.keys(topicAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const t = (prov.v2_topic || '').toLowerCase().replace(/ /g, '_');
+        return !t || !assertedOut.has(t);
+      });
+    }
+    if (Object.keys(chapterAssertions).length > 0) {
+      const assertedChapters = new Set(Object.keys(chapterAssertions));
+      p = p.filter((prov: any) => {
+        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
+        const chKey = (prov.v2_dcp_part && prov.v2_dcp_part !== 'unknown') ? prov.v2_dcp_part : prov.source_chapter_key;
+        return !chKey || !assertedChapters.has(chKey);
+      });
+    }
+    if (!showSuppressedInDA) {
+      p = p.filter((prov: any) =>
+        prov.v2_provision_type !== 'objective' &&
+        prov.v2_heritage_type !== 'descriptive'
+      );
+    }
+    return p;
+  }, [baseProvisions, isDaMode, topicAssertions, chapterAssertions, showSuppressedInDA]);
+
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
     const cat = p.v2_structural_category;
@@ -1815,7 +1864,13 @@ export function ProvisionsByTocStructure({
           <span className="font-serif text-4xl font-black leading-none flex-shrink-0 text-teal-500 select-none">1</span>
           <div className="flex-1">
             <p className="text-base font-semibold text-gray-800">Define your works</p>
-            <p className="text-sm text-gray-700 mt-0.5 mb-2">Select your development type and any ancillary development. Controls that don't apply are automatically removed.</p>
+            <p className="text-sm text-gray-700 mt-0.5 mb-2">
+              {daDevTypeRole === 'sort_only'
+                ? `Select your development type. For ${formerCouncil ? `${formerCouncil} DCP` : 'this council'}, all ${globalProgress?.total ?? allProvisions.length} provisions apply regardless of dev type — your selection re-orders them by relevance but does not remove any.`
+                : daDevTypeRole === 'chapter_selector'
+                ? 'Select your development type. Chapters that don\'t apply to your dev type are automatically removed from scope.'
+                : 'Select your development type and any ancillary development. Controls that don\'t apply are automatically removed.'}
+            </p>
             <DAModeCard
               onRunIntake={() => setShowIntakeModal(true)}
               onToggleObjectives={() => toggleRefinement('objectivesOnly')}
@@ -1978,6 +2033,7 @@ export function ProvisionsByTocStructure({
             devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
             devTypeLabel={isDaMode && devType ? DEV_TYPE_OPTIONS.find(o => o.value === devType)?.label : undefined}
             topLevelTerm={tocTopLevelTerm}
+            daDevTypeRole={daDevTypeRole}
           />
         </div>
       )}
@@ -2023,6 +2079,14 @@ export function ProvisionsByTocStructure({
                     {globalProgress.total} total
                     {globalProgress.total !== globalProgress.scopeTotal && (
                       <> → {globalProgress.scopeTotal} in scope</>
+                    )}
+                    {(globalProgress.suppressed > 0 || globalProgress.triaged > 0) && (
+                      <span className="block text-[11px] text-gray-300 mt-0.5">
+                        {[
+                          globalProgress.suppressed > 0 && `${globalProgress.suppressed} objectives/guidance not assessed`,
+                          globalProgress.triaged > 0 && `${globalProgress.triaged} excluded by intake`,
+                        ].filter(Boolean).join(' · ')}
+                      </span>
                     )}
                   </div>
                   <div className="text-2xl font-bold text-gray-900">
