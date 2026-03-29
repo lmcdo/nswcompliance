@@ -379,21 +379,24 @@ export function ProvisionsByTocStructure({
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
 
-  // Auto-select first part on load ONLY in structure mode
+  // Auto-select first part on load ONLY in non-DA structure mode
   useEffect(() => {
-    if (provisionView === 'structure' && data?.data?.complete_toc && !selectedPart) {
+    if (provisionView === 'structure' && !isDaMode && data?.data?.complete_toc && !selectedPart) {
       const parts = Object.keys(data.data.complete_toc);
       if (parts.length > 0) {
-        // Sort parts numerically (extract number from "Part X" or "Chapter X")
-        const sortedParts = parts.sort((a, b) => {
-          const numA = parseInt(a.match(/\d+/)?.[0] || '999');
-          const numB = parseInt(b.match(/\d+/)?.[0] || '999');
-          return numA - numB;
-        });
+        // Sort: extract trailing letter (Part A → "A"), handle sub-parts (Part C.1 → "C.1"),
+        // fall back to raw string so "Part A" always beats "Part C.1"
+        const partSortKey = (p: string) => {
+          const m = p.match(/Part\s+([A-Z])(?:\.(\d+))?/i);
+          if (m) return m[1].toUpperCase() + (m[2] ? `.${m[2].padStart(3, '0')}` : '');
+          const n = p.match(/\d+/);
+          return n ? n[0].padStart(6, '0') : p;
+        };
+        const sortedParts = parts.sort((a, b) => partSortKey(a).localeCompare(partSortKey(b)));
         setSelectedPart(sortedParts[0]);
       }
     }
-  }, [provisionView, data, selectedPart]);
+  }, [provisionView, isDaMode, data, selectedPart]);
 
   // Debounce search input with 300ms delay
   useEffect(() => {
@@ -1380,6 +1383,7 @@ export function ProvisionsByTocStructure({
             chapterProgress={chapterProgress}
             devType={isDaMode && devType ? getScopeDevTypeTags(devType, ancillaryWorksLocal).join(',') : undefined}
             devTypeLabel={isDaMode && devType ? DEV_TYPE_OPTIONS.find(o => o.value === devType)?.label : undefined}
+            daDevTypeRole={daDevTypeRole}
           />
         </div>
       )}

@@ -55,6 +55,8 @@ interface TocSidebarProps {
   devTypeLabel?: string;
   /** LGA-specific term for the top structural level — "part" or "chapter" */
   topLevelTerm?: 'part' | 'chapter';
+  /** How dev type affects scope for this council. sort_only = no chapter gating, suppress dismiss suggestions */
+  daDevTypeRole?: 'chapter_selector' | 'subpart_selector' | 'sort_only';
 }
 
 export function TocSidebar({
@@ -74,6 +76,7 @@ export function TocSidebar({
   devType,
   devTypeLabel,
   topLevelTerm = 'part',
+  daDevTypeRole,
 }: TocSidebarProps) {
   const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set());
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
@@ -101,8 +104,10 @@ export function TocSidebar({
   const rootParts = sortedParts.filter(([id]) => !partParents[id]);
   const childParts = (parentId: string) => sortedParts.filter(([id]) => partParents[id] === parentId);
 
-  // Dev-type suggestion: chapters where dev_type_match_count === 0 and not already dismissed (manual or auto)
-  const suggestedDismissals = isDaMode && devType
+  // Dev-type suggestion: chapters where dev_type_match_count === 0 and not already dismissed.
+  // Suppressed for sort_only councils (e.g. Leichhardt) where dev type is a relevance sort only —
+  // all chapters apply regardless of dev type; suggesting dismissal would be architecturally wrong.
+  const suggestedDismissals = isDaMode && devType && daDevTypeRole !== 'sort_only'
     ? sortedParts
         .filter(([partId, part]) => {
           if (chapterAssertions?.[partId]) return false; // already manually dismissed
@@ -518,7 +523,7 @@ function PartNode({
 
         // For suggested-for-dismissal chapters that have not been started,
         // show match ratio instead of progress bar
-        if (isSuggestedForDismissal && assessed === 0 && part.dev_type_match_count !== undefined) {
+        if (isSuggestedForDismissal && assessed === 0 && part.dev_type_match_count !== undefined && daDevTypeRole !== 'sort_only') {
           return (
             <div className="ml-9 mt-0.5 mb-0.5">
               <span className="text-[10px] text-amber-600" title={`None of the ${filteredCount} provisions in this chapter apply to your development type`}>
