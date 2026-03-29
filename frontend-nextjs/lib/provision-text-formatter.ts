@@ -360,6 +360,22 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
           continue;
         }
       }
+
+      // Pattern 3: Letter-prefixed section codes (e.g., "A1.1 HEADING", "B3.2 Title")
+      // Common in Leichhardt DCP where sections are labeled A1.1, A1.2, B1.1, etc.
+      const letterSectionMatch = line.match(/^([A-Z]\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
+      if (letterSectionMatch) {
+        const titleText = letterSectionMatch[2];
+        const wordCount = titleText.split(/\s+/).length;
+        if (titleText.length <= 80 && wordCount <= 12) {
+          elements.push({
+            type: 'heading',
+            content: `${letterSectionMatch[1]} ${titleText}`,
+            level: 3
+          });
+          continue;
+        }
+      }
     }
 
     // Check for NB/Note patterns (e.g., "NB:", "Note:", etc.)

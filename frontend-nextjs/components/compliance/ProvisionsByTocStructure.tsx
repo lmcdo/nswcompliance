@@ -1810,17 +1810,17 @@ export function ProvisionsByTocStructure({
             </button>
           </div>
         ) : (
-          <p className="text-xs text-gray-500 mb-5">
-            Preparing a DA?{' '}
+          <div className="mb-5 p-4 rounded-lg border border-teal-200 bg-teal-50">
+            <p className="text-sm font-semibold text-teal-900 mb-1">Preparing a DA?</p>
+            <p className="text-sm text-teal-800 mb-3">Scope these {allProvisions.length.toLocaleString()} provisions to your works and export a SEE draft.</p>
             <button
               onClick={() => onToggleDaMode(true)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-all"
             >
-              <span className="w-2 h-2 rounded-full inline-block bg-teal-300" />
+              <span className="w-2 h-2 rounded-full inline-block bg-white" />
               Enable DA Mode
             </button>
-            {' '}to scope these {allProvisions.length.toLocaleString()} provisions to your works and export a SEE draft — or browse freely below.
-          </p>
+          </div>
         )
       )}
 
