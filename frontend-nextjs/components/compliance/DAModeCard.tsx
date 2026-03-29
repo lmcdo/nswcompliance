@@ -54,6 +54,7 @@ interface DAModeCardProps {
     total: number; triaged: number; chapterDismissed: number; autoChapterDismissed: number;
     topicDismissed: number; suppressed: number;
     questionnaireScoped: number; heritageElementScoped: number;
+    provisionScopeTotal: number;
     scopeTotal: number; assessed: number; remaining: number;
   } | null;
   /** Works scope questionnaire answers */
@@ -540,14 +541,7 @@ export function DAModeCard({
 
                 {/* Summary line — always visible. All counts are provisions, scopeTotal is sections. */}
                 <div className="text-xs text-amber-700 font-medium">
-                  {(() => {
-                    const excluded = globalProgress.triaged + globalProgress.suppressed +
-                      globalProgress.chapterDismissed + globalProgress.autoChapterDismissed +
-                      globalProgress.topicDismissed + (globalProgress.questionnaireScoped ?? 0) +
-                      (globalProgress.heritageElementScoped ?? 0);
-                    const inScope = globalProgress.total - excluded;
-                    return `${globalProgress.total} total → ${inScope} provisions in scope (${globalProgress.scopeTotal} sections)`;
-                  })()}
+                  {`${globalProgress.total} total → ${globalProgress.provisionScopeTotal} provisions in scope (${globalProgress.scopeTotal} sections)`}
                 </div>
 
                 {/* Waterfall breakdown — expandable */}
