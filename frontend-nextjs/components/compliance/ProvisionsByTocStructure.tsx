@@ -1280,6 +1280,7 @@ export function ProvisionsByTocStructure({
     let questionnaireScoped = 0, heritageElementScoped = 0;
     // Collect unique section keys that are in scope
     const inScopeSectionKeys = new Set<string>();
+    let provisionScopeTotal = 0;
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
@@ -1314,13 +1315,14 @@ export function ProvisionsByTocStructure({
         }
       }
       inScopeSectionKeys.add(deriveSectionKey(p));
+      provisionScopeTotal++;
     }
     const scopeTotal = inScopeSectionKeys.size;
     const assessed   = [...inScopeSectionKeys].filter(k => sectionResponses.has(k)).length;
     return {
       total, triaged, chapterDismissed, autoChapterDismissed, topicDismissed, suppressed,
       questionnaireScoped, heritageElementScoped,
-      scopeTotal, assessed, remaining: scopeTotal - assessed,
+      scopeTotal, provisionScopeTotal, assessed, remaining: scopeTotal - assessed,
     };
   }, [isDaMode, allProvisions, sectionResponses, excludableTopics, topicAssertions, allDismissedChapters, autoDismissedChapters, derivePartKey, deriveSectionKey, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
