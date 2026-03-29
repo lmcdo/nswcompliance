@@ -33,7 +33,6 @@ import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryW
 import { deriveQuestionnaireTopics, deriveQuestionnaireDevTypeExclusions, type WorksScopeAnswers } from '@/lib/see/worksScope';
 import { autoPopulateWorksScopeFromLep, type LepPermissibilityEntry } from '@/lib/see/lepScope';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
-import { buildSectionKey } from '@/lib/see/sectionKey';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
@@ -1180,39 +1179,6 @@ export function ProvisionsByTocStructure({
     }
     return p;
   }, [allProvisions, baseProvisions, isDaMode, topicAssertions, allDismissedChapters, showSuppressedInDA, councilId, derivePartKey]);
-
-  // Provisions for SEE export — baseProvisions filtered only by DA-mode scope rules.
-  // Intentionally ignores layerFilter, search, and refinements so the exported document
-  // always covers all in-scope DCP provisions regardless of what the user has filtered in the UI.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const provisionsForSeeExport = useMemo((): any[] => {
-    if (!isDaMode) return baseProvisions;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let p: any[] = baseProvisions;
-    if (Object.keys(topicAssertions).length > 0) {
-      const assertedOut = new Set(Object.keys(topicAssertions));
-      p = p.filter((prov: any) => {
-        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
-        const t = (prov.v2_topic || '').toLowerCase().replace(/ /g, '_');
-        return !t || !assertedOut.has(t);
-      });
-    }
-    if (Object.keys(chapterAssertions).length > 0) {
-      const assertedChapters = new Set(Object.keys(chapterAssertions));
-      p = p.filter((prov: any) => {
-        if ((prov.v2_dcp_layer || prov.layer) === 'condition') return true;
-        const chKey = (prov.v2_dcp_part && prov.v2_dcp_part !== 'unknown') ? prov.v2_dcp_part : prov.source_chapter_key;
-        return !chKey || !assertedChapters.has(chKey);
-      });
-    }
-    if (!showSuppressedInDA) {
-      p = p.filter((prov: any) =>
-        prov.v2_provision_type !== 'objective' &&
-        prov.v2_heritage_type !== 'descriptive'
-      );
-    }
-    return p;
-  }, [baseProvisions, isDaMode, topicAssertions, chapterAssertions, showSuppressedInDA]);
 
   // Scope helper — true when a provision is in the active DA assessment scope
   const isInDaScope = useCallback((p: any) => {
