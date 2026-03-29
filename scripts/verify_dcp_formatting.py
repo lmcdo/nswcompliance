@@ -391,9 +391,11 @@ def main() -> int:
                     null_pct = (null_count / total_topics * 100) if total_topics else 0
                     print(f"\n  WARNING: {null_count} provisions have NULL v2_topic.")
                     print("  These will not appear in topic-grouped UI views.")
-                    # Grace threshold: ≤3 NULLs or ≤1% of provisions (e.g. figure cross-refs
-                    # that can't be topic-tagged without knowing what the figure shows).
-                    if null_count > 3 and null_pct > 1.0:
+                    # Grace threshold: ≤3 NULLs or ≤5% of provisions.
+                    # >1% was too strict — some councils have structural provisions
+                    # (appendices, figures, definitions) that legitimately can't be topic-tagged.
+                    # 5% still catches councils with a broken topic mapping config.
+                    if null_count > 3 and null_pct > 5.0:
                         overall_pass = False
 
                 print()

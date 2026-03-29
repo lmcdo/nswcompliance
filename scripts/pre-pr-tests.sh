@@ -34,8 +34,18 @@ echo ""
   cd ..
 
   echo ""
-  echo "--- Smoke tests (requires running dev server on :3003) ---"
+  echo "--- DB: TOC JOIN rates (requires Supabase connection) ---"
   REPO_ROOT="$(git rev-parse --show-toplevel)"
+  python "$REPO_ROOT/scripts/validate_toc_join.py" 2>&1 || true
+
+  echo ""
+  echo "--- DB: DCP formatting / NULL topic check ---"
+  for council in marrickville leichhardt ashfield; do
+    python "$REPO_ROOT/scripts/verify_dcp_formatting.py" --council "$council" 2>&1 | grep "OVERALL" || true
+  done
+
+  echo ""
+  echo "--- Smoke tests (requires running dev server on :3003) ---"
   bash "$REPO_ROOT/scripts/smoke_test.sh" 2>&1 || true
 
   echo ""

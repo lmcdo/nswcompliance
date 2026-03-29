@@ -387,6 +387,7 @@ scripts/
 !scripts/smoke_test.sh
 !scripts/smoke_parse.py
 !scripts/pre-pr-tests.sh
+!scripts/validate_toc_join.py
 !scripts/install_hooks.sh
 !scripts/README.md
 !scripts/templates/
