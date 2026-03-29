@@ -1332,7 +1332,7 @@ export function ProvisionsByTocStructure({
           <div>
             <p className="text-base font-semibold text-gray-800">Assess applicable provisions</p>
             <p className="text-sm text-gray-700 mt-0.5">
-              {daDevTypeRole === 'sort_only'
+              {councilConfig?.daDevTypeRole === 'sort_only'
                 ? <>Work through each section below. Use <span className="font-medium">N/A</span> for sections that genuinely don{"'"}t apply to this development — it is the professional instrument for universal controls. Then record:</>
                 : <>Dismiss chapters on the left that don{"'"}t apply to your development type, then work through each remaining section. For each section, record:</>}{' '}
               <span className="inline-flex items-center gap-0.5">
