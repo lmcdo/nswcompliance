@@ -109,8 +109,8 @@ export function PersistentFeedbackHub({
       propertyAddress
     };
 
-    setFeedbackHistory(prev => [newFeedback, ...prev]);
-    setSessionState(prev => ({
+    setFeedbackHistory((prev: FeedbackItem[]) => [newFeedback, ...prev]);
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       hasSubmitted: true,
       submittedCount: prev.submittedCount + 1,
@@ -163,7 +163,7 @@ export function PersistentFeedbackHub({
   };
 
   const handleDismiss = useCallback((section?: string) => {
-    setSessionState(prev => ({
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       isVisible: false,
       dismissedSections: section
@@ -181,17 +181,17 @@ export function PersistentFeedbackHub({
 
   const handleMinimize = () => {
     setIsMinimized(true);
-    setSessionState(prev => ({ ...prev, isVisible: false }));
+    setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: false }));
   };
 
   const handleMaximize = () => {
     setIsMinimized(false);
-    setSessionState(prev => ({ ...prev, isVisible: true }));
+    setSessionState((prev: FeedbackSessionState) => ({ ...prev, isVisible: true }));
   };
 
   const handleClearHistory = () => {
     setFeedbackHistory([]);
-    setSessionState(prev => ({
+    setSessionState((prev: FeedbackSessionState) => ({
       ...prev,
       submittedCount: 0,
       lastSubmittedAt: undefined,
@@ -418,6 +418,7 @@ export function PersistentFeedbackHub({
                   Your Professional Role * (Auto-selected)
                 </label>
                 <Select value={sessionState.userRole} onValueChange={(value) => setSessionState(prev => ({ ...prev, userRole: value }))}>
+
                   <SelectTrigger className="text-sm bg-white border-blue-300">
                     <SelectValue placeholder="Select your role" />
                   </SelectTrigger>
