@@ -251,6 +251,61 @@ WHERE former_council = 'marrickville'
 2. Verify heritage chapter provisions get `v2_marker='heritage'` and `v2_dcp_layer='condition'`
 3. Confirm "General" provisions in heritage chapter are `v2_is_actionable=False`
 4. Check topic distribution: no single topic should have >40% of all provisions (suggests config error)
+5. **Populate `dcp_table_of_contents`** — required for DA mode section grouping (see §7 below)
+
+---
+
+## §7 — TOC Population (`dcp_table_of_contents`)
+
+**This step is required for DA mode section grouping to work correctly.**
+
+Without entries in `dcp_table_of_contents`, the `enrichWithTocSections` JOIN returns NULL for every provision → all provisions collapse to a single "General provisions" group in the DA mode TOC section view.
+
+### Why it matters
+- `buildSectionKey()` resolves: `toc_section_number` → `inferSectionNumberFromHeader()` → `'general'` fallback
+- If `toc_section_number` is always NULL, 100% of provisions fall to `'general'` regardless of actual DCP structure
+- Symptom: DA mode shows "442 provisions — General Controls" as one flat undifferentiated group
+
+### What to populate
+
+One row per **chapter PDF** in `dcp_table_of_contents`:
+
+```sql
+INSERT INTO dcp_table_of_contents (document_id, section_number, title, page_start, page_end)
+VALUES
+  ('<council>_DCP_<year>__<part_slug>', '1', 'Part A Introduction', 1, 45),
+  ('<council>_DCP_<year>__<part_slug>', '2', 'Part B General Controls', 1, 80),
+  -- ...
+;
+```
+
+**`document_id` must match the `document_id` values on `regulatory_provisions` exactly** — the JOIN is `p.document_id = t.document_id AND p.pdf_page BETWEEN t.page_start AND t.page_end`.
+
+### Getting page ranges
+
+```sql
+-- Get min/max pdf_page per document_id for a council
+SELECT document_id, min(pdf_page) as page_start, max(pdf_page) as page_end, count(*) as n
+FROM regulatory_provisions
+WHERE former_council = '<council>'
+GROUP BY document_id
+ORDER BY page_start;
+```
+
+Use this output as the basis for INSERT values. Verify page ranges against the actual PDF (title page offsets can shift things).
+
+### Leichhardt example (migration 015)
+
+Leichhardt had document_ids in TOC using the old extraction format (`Leichhardt_DCP_2013__3__Part_A__Introduction__with_IWLEP_2022_amendments`) while provisions used the normalised slug format (`Leichhardt_DCP_2013__part_a_introduction`). The JOIN always returned NULL.
+
+Fix was an UPDATE migration (`migrations/015_toc_normalize_leichhardt_document_ids.sql`) mapping each old TOC `document_id` to the matching provision `document_id`. For new councils, populate with the correct format from the start.
+
+### Checklist
+- [ ] Query `regulatory_provisions` to get distinct `document_id` values and page ranges
+- [ ] Verify `document_id` format matches provision `document_id` exactly (no trailing underscores, correct casing)
+- [ ] Insert one row per chapter into `dcp_table_of_contents`
+- [ ] Spot-check: `SELECT toc_section_number FROM ... enrichWithTocSections` for a sample provision → should be non-NULL
+- [ ] If a council has multi-PDF chapters (e.g. Leichhardt Part G split across 3 PDFs), all three `document_id` values should map to the same logical TOC entry — use `IN (...)` on INSERT or separate rows with same `section_number`
 
 ---
 
@@ -356,8 +411,9 @@ This is the recommended order for a clean onboarding:
 6. **Write `enrichment/config/<name>_config.py`** — layer/topic mapping; verify with 20-provision spot check (§8)
 7. **Run populate script** — insert into `dcp_chapter_registry`
 8. **Full extract + enrich** — layer, site_condition, type, numeric phases
-9. **Final QA** — all §9 checks pass, 10-provision manual spot check
-10. **Import to production** — `is_current=True` for new provisions, retire old if applicable
+9. **Populate `dcp_table_of_contents`** — query `document_id` + page ranges from `regulatory_provisions`, insert one row per chapter PDF (§7). Required before DA mode is usable.
+10. **Final QA** — all §9 checks pass, 10-provision manual spot check
+11. **Import to production** — `is_current=True` for new provisions, retire old if applicable
 
 ---
 
