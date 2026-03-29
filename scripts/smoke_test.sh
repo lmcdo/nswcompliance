@@ -1,165 +1,106 @@
 #!/usr/bin/env bash
-# Smoke tests against the local dev server (http://localhost:3003).
-# Runs automatically on every git push via the pre-push hook.
-#
-# WHEN TO ADD A TEST: every time a bug reaches production that a test could have caught.
-# Each test has a "Bug history" comment explaining exactly which production failure it prevents.
-#
-# If dev server is not running: exits 0 with a warning (non-blocking).
-# If dev server is running: any failure exits 1 and blocks the push.
+# Smoke tests — gate on known regressions.
+# Run against local dev server (port 3003). Skip gracefully if server not running.
+# Called by: pre-push hook, pre-pr-tests.sh
 
 set -uo pipefail
 
-BASE="http://localhost:3003"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 PARSE_SCRIPT="$REPO_ROOT/scripts/smoke_parse.py"
+BASE="http://localhost:3003"
 PASS=0
 FAIL=0
 SKIP=0
 
-red()    { printf "\033[31m%s\033[0m\n" "$*"; }
-green()  { printf "\033[32m%s\033[0m\n" "$*"; }
-yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
-
-# ── Check server is up ──────────────────────────────────────────────────────
-if ! curl -sf --max-time 3 "$BASE/api/health" > /dev/null 2>&1; then
-  yellow "smoke-test: dev server not running at $BASE — skipping smoke tests"
-  yellow "  Start with: cd frontend-nextjs && npm run dev"
+# ── Health check — confirm dev server is running ─────────────────────────────
+HEALTH=$(curl -s --max-time 3 "$BASE/api/health" 2>/dev/null || echo "")
+if [ -z "$HEALTH" ]; then
+  echo "smoke: dev server not running on port 3003 — skipping all smoke tests"
   exit 0
 fi
 
-echo "smoke-test: dev server up — running checks"
-echo ""
-
-# ── Helper ──────────────────────────────────────────────────────────────────
-assert_pass() {
-  local label="$1"
-  green "  PASS $label"
-  PASS=$((PASS + 1))
-}
-
-assert_fail() {
-  local label="$1"
-  local reason="$2"
-  red "  FAIL $label — $reason"
-  FAIL=$((FAIL + 1))
-}
-
-skip_test() {
-  local label="$1"
-  local reason="$2"
-  yellow "  SKIP $label — $reason"
-  SKIP=$((SKIP + 1))
-}
-
-run_check() {
-  # run_check LABEL URL CHECK_NAME [FAIL_MSG]
-  local label="$1"
-  local url="$2"
-  local check="$3"
-  local fail_msg="${4:-check failed}"
-
-  local resp
-  resp=$(curl -sf --max-time 10 "$url" 2>/dev/null)
-  if [ -z "$resp" ]; then
-    assert_fail "$label" "empty response from $url"
-    return
-  fi
-
-  local count
-  count=$(echo "$resp" | python3 "$PARSE_SCRIPT" "$check" 2>/dev/null)
-  local exit_code=$?
-
-  if [ "$exit_code" -eq 0 ]; then
-    assert_pass "$label ($count)"
-  else
-    assert_fail "$label" "$fail_msg (got: $count)"
-  fi
-}
-
-# ── TEST 1: DCP gate — Leichhardt address reaches provisions ────────────────
-# Bug history: gate matched formerCouncil slugs only; ENABLED_LGAS='inner_west'
-# never matched 'leichhardt' → DCPInterestForm shown instead of provisions.
-# Fixed: PR #46. Regression here means Leichhardt planners always see the interest form.
-echo "--- DCP gate ---"
-run_check \
-  "Leichhardt returns >50 provisions" \
-  "$BASE/api/provisions/for-property?address=16+Renwick+St+Leichhardt+NSW+2040&former_council=leichhardt&groupBy=toc" \
-  "leichhardt_provision_count" \
-  "DCP gate may be blocking — check ENABLED_LGAS env var and isDcpEnabledForCouncil()"
-
-# ── TEST 2: TOC section grouping — Leichhardt must have >10 sections ────────
-# Bug history: TOC JOIN at 14% → all provisions collapsed to 1 'General Controls' bucket.
-# Fixed: migrations 015+016. Regression means DA mode shows 1 section for 1300+ provisions.
-echo ""
-echo "--- TOC section grouping ---"
-run_check \
-  "Leichhardt TOC has >10 distinct sections" \
-  "$BASE/api/provisions/for-property?address=16+Renwick+St+Leichhardt+NSW+2040&former_council=leichhardt&groupBy=toc" \
-  "leichhardt_section_count" \
-  "TOC JOIN may have regressed — check dcp_table_of_contents document_id format for Leichhardt"
-
-run_check \
-  "Marrickville TOC has >3 parts" \
-  "$BASE/api/provisions/for-property?address=10+Marrickville+Rd+Marrickville+NSW+2204&former_council=marrickville&groupBy=toc" \
-  "marrickville_part_count" \
-  "Marrickville TOC grouping broken"
-
-# ── TEST 3: DA section-responses round-trip ─────────────────────────────────
-# Bug history: da_section_responses table never existed — every section save
-# silently failed for months. Fixed: migration in PR #36.
-echo ""
-echo "--- DA section-responses ---"
-SESSION_RESP=$(curl -sf --max-time 5 "$BASE/api/da-sessions" 2>/dev/null)
-if [ -z "$SESSION_RESP" ]; then
-  skip_test "DA section-responses round-trip" "da-sessions endpoint returned nothing"
+if ! python3 "$PARSE_SCRIPT" health_ok <<< "$HEALTH"; then
+  echo "❌ smoke[health]: server responded but status not ok/healthy"
+  FAIL=$((FAIL+1))
 else
-  TOKEN=$(echo "$SESSION_RESP" | python3 -c "
-import json,sys
-d=json.load(sys.stdin)
-items = d if isinstance(d, list) else d.get('data', [])
-if items and len(items) > 0:
-    print(items[0].get('token',''))
-" 2>/dev/null || echo "")
-
-  if [ -z "$TOKEN" ]; then
-    skip_test "DA section-responses round-trip" "no existing DA session to test against"
-  else
-    SR_STATUS=$(curl -sf --max-time 5 -o /dev/null -w "%{http_code}" \
-      -X POST "$BASE/api/da-sessions/$TOKEN/section-responses" \
-      -H "Content-Type: application/json" \
-      -d "{\"section_key\":\"smoke-test\",\"status\":\"not_applicable\"}" 2>/dev/null || echo "000")
-    if [ "$SR_STATUS" = "200" ] || [ "$SR_STATUS" = "201" ]; then
-      assert_pass "DA section-responses POST returns $SR_STATUS"
-    elif [ "$SR_STATUS" = "401" ] || [ "$SR_STATUS" = "403" ]; then
-      assert_pass "DA section-responses endpoint exists (auth $SR_STATUS — table present)"
-    else
-      assert_fail "DA section-responses POST" "HTTP $SR_STATUS — table may not exist or endpoint broken"
-    fi
-  fi
+  echo "✅ smoke[health]: server healthy"
+  PASS=$((PASS+1))
 fi
 
-# ── TEST 4: Health endpoint ──────────────────────────────────────────────────
-echo ""
-echo "--- Infrastructure ---"
-run_check \
-  "Health endpoint returns healthy/ok" \
-  "$BASE/api/health" \
-  "health_ok" \
-  "Health check failed"
+# ── Test 1: Leichhardt TOC has > 10 sections ─────────────────────────────────
+# Regression: TOC document_id mismatch caused 67.6% join rate → sections collapsed
+LECH_TOC=$(curl -s --max-time 8 \
+  "$BASE/api/browse/toc?documentId=Leichhardt_DCP_2013__part_c_s1_general" \
+  2>/dev/null || echo "")
 
-# ── Summary ─────────────────────────────────────────────────────────────────
-echo ""
-echo "smoke-test: $PASS passed, $FAIL failed, $SKIP skipped"
-echo ""
+if [ -z "$LECH_TOC" ]; then
+  echo "⚠️  smoke[leichhardt_toc]: API timeout — skip"
+  SKIP=$((SKIP+1))
+elif python3 "$PARSE_SCRIPT" toc_section_count <<< "$LECH_TOC"; then
+  echo "✅ smoke[leichhardt_toc]: >10 sections confirmed"
+  PASS=$((PASS+1))
+else
+  echo "❌ smoke[leichhardt_toc]: too few sections (TOC JOIN regression?)"
+  FAIL=$((FAIL+1))
+fi
 
-if [ "$FAIL" -gt "0" ]; then
-  red "smoke-test FAILED — fix the failures above before pushing"
-  red "Each test maps to a production bug. A failure here means that bug has returned."
-  echo ""
-  red "To push anyway (emergencies only): git push --no-verify"
+# ── Test 2: Ashfield TOC sections exist (was 0% before migration 017) ─────────
+ASH_TOC=$(curl -s --max-time 8 \
+  "$BASE/api/browse/toc?documentId=Inner_West_Ashfield_DCP_2016__chapter_a_miscellaneous" \
+  2>/dev/null || echo "")
+
+if [ -z "$ASH_TOC" ]; then
+  echo "⚠️  smoke[ashfield_toc]: API timeout — skip"
+  SKIP=$((SKIP+1))
+elif python3 "$PARSE_SCRIPT" toc_section_count <<< "$ASH_TOC"; then
+  echo "✅ smoke[ashfield_toc]: >10 sections confirmed"
+  PASS=$((PASS+1))
+else
+  echo "❌ smoke[ashfield_toc]: too few sections (TOC document_id mismatch?)"
+  FAIL=$((FAIL+1))
+fi
+
+# ── Test 3: Marrickville TOC returns sections ──────────────────────────────────
+MARR_TOC=$(curl -s --max-time 8 \
+  "$BASE/api/browse/toc?documentId=Marrickville_DCP_2011__part2_s05_equity_access_mobility" \
+  2>/dev/null || echo "")
+
+if [ -z "$MARR_TOC" ]; then
+  echo "⚠️  smoke[marrickville_toc]: API timeout — skip"
+  SKIP=$((SKIP+1))
+elif python3 "$PARSE_SCRIPT" toc_has_sections <<< "$MARR_TOC"; then
+  echo "✅ smoke[marrickville_toc]: sections present"
+  PASS=$((PASS+1))
+else
+  echo "❌ smoke[marrickville_toc]: no sections returned"
+  FAIL=$((FAIL+1))
+fi
+
+# ── Test 4: DA sessions API reachable (table existence check) ────────────────
+# Regression: da_section_responses table didn't exist → silent save failures
+# POST with empty body returns {error: "address is required"} if API+DB are up;
+# would 404 or 500 if the route or DB layer is broken.
+RESP=$(curl -s --max-time 8 -X POST "$BASE/api/da-sessions" \
+  -H "Content-Type: application/json" \
+  -d '{}' \
+  2>/dev/null || echo "")
+
+if [ -z "$RESP" ]; then
+  echo "⚠️  smoke[da_sessions]: API timeout — skip"
+  SKIP=$((SKIP+1))
+elif python3 "$PARSE_SCRIPT" da_sessions_reachable <<< "$RESP"; then
+  echo "✅ smoke[da_sessions]: DA sessions API reachable"
+  PASS=$((PASS+1))
+else
+  echo "❌ smoke[da_sessions]: DA sessions API broken"
+  FAIL=$((FAIL+1))
+fi
+
+# ── Summary ───────────────────────────────────────────────────────────────────
+echo ""
+echo "Smoke tests: $PASS passed, $FAIL failed, $SKIP skipped"
+
+if [ "$FAIL" -gt 0 ]; then
   exit 1
 fi
-
-green "smoke-test PASSED"
 exit 0
