@@ -31,6 +31,7 @@ import { NUMERIC_MEASUREMENT_RE, filterAndDedupeProvisions } from '@/lib/see/pro
 import { assembleDescription, buildSeeIntro, DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 import { deriveIntakeFromScope, getScopeDevTypeTags } from '@/lib/see/ancillaryWorks';
 import { buildPathwayDetermination, buildSeppControls, buildLepStandards } from '@/lib/see/seeBuilders';
+import { buildSectionKey } from '@/lib/see/sectionKey';
 import { DCPInterestForm } from './DCPInterestForm';
 import { DcpFilterBar } from './DcpFilterBar';
 import { DcpProvisionList } from './DcpProvisionList';
@@ -181,7 +182,7 @@ export function ProvisionsByTocStructure({
   // const [complianceResults, setComplianceResults] = useState<ComplianceResult[]>([]);
 
   // DA Mode session
-  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses } = useDASession(
+  const { sessionToken, isLoading: sessionIsLoading, daResponses, refreshResponses, updateSingleResponse, developmentDescription, saveDescription, intakeAnswers, saveIntakeAnswers, ancillaryWorks: savedAncillaryWorks, saveScope, topicAssertions, saveTopicAssertion, chapterAssertions, saveChapterAssertion, bulkSaveResponses, sectionResponses, saveSectionResponse } = useDASession(
     isDaMode ? (address || null) : null,
     formerCouncil,
     zone
@@ -910,7 +911,8 @@ export function ProvisionsByTocStructure({
     if (!isDaMode) return null;
     const total = allProvisions.length;
     let triaged = 0, chapterDismissed = 0, topicDismissed = 0, suppressed = 0;
-    let scopeTotal = 0, assessed = 0;
+    let provisionScopeTotal = 0;
+    const inScopeSections = new Set<string>();
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
@@ -919,11 +921,21 @@ export function ProvisionsByTocStructure({
       if (chapterAssertions[derivePartKey(p)]) { chapterDismissed++; continue; }
       if (topic && topicAssertions[topic]) { topicDismissed++; continue; }
       if (p.v2_provision_type === 'objective' || p.v2_heritage_type === 'descriptive') { suppressed++; continue; }
-      scopeTotal++;
-      if (daResponses.has(p.id)) assessed++;
+      provisionScopeTotal++;
+      inScopeSections.add(buildSectionKey(p));
     }
-    return { total, triaged, chapterDismissed, topicDismissed, suppressed, scopeTotal, assessed, remaining: scopeTotal - assessed };
-  }, [isDaMode, allProvisions, daResponses, excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
+    const scopeTotal = inScopeSections.size;
+    const assessed = [...inScopeSections].filter(k => sectionResponses.has(k)).length;
+    return {
+      total, triaged, chapterDismissed, topicDismissed, suppressed,
+      provisionScopeTotal,
+      scopeTotal, assessed, remaining: scopeTotal - assessed,
+      // DAModeCard expects these but ProvisionsByTocStructure doesn't compute them:
+      autoChapterDismissed: 0,
+      questionnaireScoped: 0,
+      heritageElementScoped: 0,
+    };
+  }, [isDaMode, allProvisions, sectionResponses, excludableTopics, topicAssertions, chapterAssertions, derivePartKey]);
 
   // Count of non-actionable provisions hidden in DA mode (objectives + heritage descriptives)
   const hiddenObjectiveCount = useMemo(() => {
@@ -1320,7 +1332,9 @@ export function ProvisionsByTocStructure({
           <div>
             <p className="text-base font-semibold text-gray-800">Assess applicable provisions</p>
             <p className="text-sm text-gray-700 mt-0.5">
-              Use the DCP chapter list on the left to dismiss entire chapters that don{"'"}t apply. Use the topic filter chips to focus on one category at a time. For each remaining provision, record:{' '}
+              {daDevTypeRole === 'sort_only'
+                ? <>Work through each section below. Use <span className="font-medium">N/A</span> for sections that genuinely don{"'"}t apply to this development — it is the professional instrument for universal controls. Then record:</>
+                : <>Dismiss chapters on the left that don{"'"}t apply to your development type, then work through each remaining section. For each section, record:</>}{' '}
               <span className="inline-flex items-center gap-0.5">
                 <span className="px-1.5 py-0.5 rounded border text-xs font-medium bg-green-100 text-green-800 border-green-300">Complies</span>
                 {', '}
@@ -1533,6 +1547,8 @@ export function ProvisionsByTocStructure({
           daResponses={daResponses}
           excludableTopics={excludableTopics}
           onResponseSaved={updateSingleResponse}
+          sectionResponses={sectionResponses}
+          onSectionResponseSaved={(sectionKey, response) => saveSectionResponse(sectionKey, null, response)}
           onViewPdf={(url, page) => setPdfModal({ url, page })}
           debouncedSearch={debouncedSearch}
           provisionView={provisionView}

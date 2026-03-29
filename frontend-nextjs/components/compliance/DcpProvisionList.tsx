@@ -140,7 +140,7 @@ export function DcpProvisionList({
                 hcaName={hcaName}
                 precinctName={precinctId}
                 isDaMode={isDaMode}
-                sectionGrouped={!isDaMode}
+                sectionGrouped={isDaMode}
                 sessionToken={sessionToken}
                 daResponses={daResponses}
                 sectionResponses={sectionResponses}
