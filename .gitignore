@@ -384,6 +384,10 @@ scripts/
 !scripts/validate_requirement_data.py
 !scripts/validate_pdf_coverage.py
 !scripts/verify_dcp_formatting.py
+!scripts/smoke_test.sh
+!scripts/smoke_parse.py
+!scripts/pre-pr-tests.sh
+!scripts/install_hooks.sh
 !scripts/README.md
 !scripts/templates/
 !scripts/templates/sepp_requirement_template.json
