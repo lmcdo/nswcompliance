@@ -36,10 +36,18 @@ const ENABLED_LGAS = process.env.NEXT_PUBLIC_ENABLED_LGAS
   ? process.env.NEXT_PUBLIC_ENABLED_LGAS.split(',').map(s => s.trim().toLowerCase())
   : null;
 
-function isDcpEnabledForCouncil(formerCouncil: string | undefined): boolean {
+function isDcpEnabledForCouncil(formerCouncil: string | undefined, lga?: string | undefined): boolean {
   if (!DCP_ENABLED) return false;
   if (!ENABLED_LGAS) return true; // no restriction — show all
-  return ENABLED_LGAS.includes((formerCouncil || '').toLowerCase());
+  const council = (formerCouncil || '').toLowerCase();
+  if (ENABLED_LGAS.includes(council)) return true;
+  // Fallback: if formerCouncil is empty (precinct miss), check if any enabled key is a
+  // prefix of the lga slug — handles 'Inner West' and 'Inner West Council' both → 'inner_west' prefix
+  if (!council && lga) {
+    const lgaSlug = lga.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    return ENABLED_LGAS.some(key => lgaSlug === key || lgaSlug.startsWith(key + '_') || lgaSlug.startsWith(key));
+  }
+  return false;
 }
 
 export default function AssessmentPage() {
@@ -433,7 +441,7 @@ export default function AssessmentPage() {
 
                 {/* DCP Tab Content — provisions when enabled for this council, register interest otherwise */}
                 <div role="tabpanel" id="panel-dcp" aria-labelledby="tab-dcp" className={viewMode !== 'dcp' ? 'hidden' : ''}>
-                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil) ? (
+                  {isDcpEnabledForCouncil(selectedProperty.constraints?.formerCouncil, selectedProperty.constraints?.lga) ? (
                     <ErrorBoundary fallbackTitle="Error loading DCP provisions">
                       <ProvisionsByTocStructure
                         key={`toc-${selectedProperty.address}`}
