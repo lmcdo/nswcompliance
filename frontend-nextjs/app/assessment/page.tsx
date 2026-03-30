@@ -23,6 +23,7 @@ import { LepControls } from '@/components/compliance/LepControls';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { PropertyDetailsComprehensive } from '@/components/property-details-comprehensive';
 import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurrencyNotice';
+import { InstrumentCurrency } from '@/components/compliance/InstrumentCurrency';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
 import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
@@ -337,6 +338,11 @@ export default function AssessmentPage() {
                 propertyData={selectedProperty}
                 lepClauseData={lepClauseData}
               />
+            )}
+
+            {/* Data currency indicator */}
+            {selectedProperty?.constraints?.formerCouncil && (
+              <InstrumentCurrency council={selectedProperty.constraints.formerCouncil} />
             )}
 
           </div>

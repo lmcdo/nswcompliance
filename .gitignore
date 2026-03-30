@@ -370,6 +370,10 @@ scripts/
 !scripts/baselines/
 !scripts/r2_upload_pdfs.py
 !scripts/r2_monitor.py
+!scripts/legislation_monitor.py
+!scripts/update_instrument_provisions.py
+!scripts/hub_scrapers/__init__.py
+!scripts/hub_scrapers/inner_west.py
 !scripts/run_migration_007.py
 !scripts/run_migration_008.py
 !scripts/populate_waverley_registry.py
