@@ -2,10 +2,12 @@
 """
 Legislation Monitor
 ===================
-Weekly check of legislation.nsw.gov.au for SEPP and LEP version changes.
-Reads from instrument_registry, updates instrument_currency.
+Weekly check of AustLII consolidated copies of NSW SEPPs and LEPs for
+"As at" date changes. AustLII receives PCO data weekly and publishes
+within 2 working days — provides ~7-day lag detection without Cloudflare.
 
-Run alongside r2_monitor.py on the Monday 02:00 UTC schedule.
+When PCO API access is granted, swap austlii_url → legislation_url
+and update the fetch + parse logic to use the XML export endpoint.
 
 Usage:
     python scripts/legislation_monitor.py               # all active instruments
@@ -19,7 +21,6 @@ Exit codes:
 """
 
 import argparse
-import hashlib
 import os
 import re
 import sys
@@ -33,7 +34,6 @@ if sys.platform == "win32":
 
 import psycopg2
 import requests
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -48,22 +48,15 @@ HEADERS = {
     "Accept": "text/html,*/*",
 }
 
-# CSS selectors tried in order to find the version string on legislation pages
-VERSION_SELECTORS = [
-    "span.legislation-version",
-    "div.version-details",
-    "p.version",
-    ".doc-version",
-    "h1 + div",  # fallback — grab text near the title
-]
+# AustLII consolidated regulation URLs for monitored instruments
+# classic.austlii.edu.au — clean 200, no Cloudflare
+AUSTLII_URLS: dict[str, str] = {
+    "sepp_housing_2021":         "https://classic.austlii.edu.au/au/legis/nsw/consol_reg/sepp2021448/",
+    "sepp_exempt_complying_2008": "https://classic.austlii.edu.au/au/legis/nsw/consol_reg/seppacdc2008721/",
+}
 
-# Regex patterns tried in order against page text to extract version info
-VERSION_PATTERNS = [
-    r"Version\s+(\d+[\w.]*)\s*[-–—]\s*([^\n<]+)",       # "Version 15 - commenced 1 Jan 2026"
-    r"Version\s+(\d+[\w.]*)\s*\(([^)]+)\)",               # "Version 15 (commenced 1 Jan 2026)"
-    r"(Version\s+\d+[\w.]*)",                              # bare "Version 15"
-    r"commenced\s+(\d{1,2}\s+\w+\s+\d{4})",               # "commenced 15 March 2026"
-]
+# "As at DD Month YYYY" in the <PRE> block at the top of each AustLII page
+AS_AT_PATTERN = re.compile(r"As at\s+(\d{1,2}\s+\w+\s+\d{4})", re.IGNORECASE)
 
 
 @dataclass
@@ -71,8 +64,7 @@ class InstrumentResult:
     instrument_key: str
     instrument_label: str
     changed: bool
-    new_hash: str
-    new_version: str | None
+    new_as_at: str | None
     stored_version: str | None
     error: str | None = None
 
@@ -92,14 +84,10 @@ def send_telegram(message: str) -> None:
         pass
 
 
-def sha256(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
-
-
-def fetch_legislation_page(url: str) -> tuple[str, str]:
+def fetch_as_at(url: str) -> str | None:
     """
-    Fetch a legislation.nsw.gov.au page.
-    Returns (html_content, content_hash).
+    Fetch an AustLII consolidated regulation page and return the "As at" date string.
+    Returns None if not found.
     Raises RuntimeError on non-200.
     """
     resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
@@ -108,85 +96,74 @@ def fetch_legislation_page(url: str) -> tuple[str, str]:
         resp = requests.get(url, headers=HEADERS, timeout=30, allow_redirects=True)
     if resp.status_code != 200:
         raise RuntimeError(f"HTTP {resp.status_code}: {url}")
-    return resp.text, sha256(resp.content)
-
-
-def extract_version(html: str) -> str | None:
-    """
-    Try to extract a version string from legislation page HTML.
-    Returns the version string, or None if not parseable.
-    """
-    soup = BeautifulSoup(html, "lxml")
-
-    # Try CSS selectors first
-    for selector in VERSION_SELECTORS:
-        el = soup.select_one(selector)
-        if el:
-            text = el.get_text(" ", strip=True)
-            if text:
-                return text[:200]  # cap length
-
-    # Fall back to regex on full page text
-    text = soup.get_text(" ", strip=True)
-    for pattern in VERSION_PATTERNS:
-        m = re.search(pattern, text, re.IGNORECASE)
-        if m:
-            return m.group(0)[:200]
-
-    return None
+    m = AS_AT_PATTERN.search(resp.text)
+    return m.group(1) if m else None
 
 
 def check_instrument(instrument: dict, dry_run: bool, conn) -> InstrumentResult:
     key = instrument["instrument_key"]
     label = instrument["instrument_label"]
-    url = instrument["legislation_url"]
-    stored_hash = instrument["content_hash"]
     stored_version = instrument["current_version"]
+    legislation_url = instrument["legislation_url"]
+
+    austlii_url = AUSTLII_URLS.get(key)
+    if not austlii_url:
+        # No AustLII URL mapped — skip with a note (e.g. LEPs, which are council-specific)
+        print(f"\n  {key} — no AustLII URL mapped, skipping")
+        return InstrumentResult(
+            instrument_key=key, instrument_label=label,
+            changed=False, new_as_at=None,
+            stored_version=stored_version,
+            error="no AustLII URL mapped",
+        )
 
     print(f"\n  {key}")
+    print(f"    AustLII: {austlii_url}")
 
     try:
-        html, new_hash = fetch_legislation_page(url)
-        new_version = extract_version(html)
+        new_as_at = fetch_as_at(austlii_url)
 
         print(f"    Stored version : {stored_version or '(none)'}")
-        print(f"    Fetched version: {new_version or '(not parseable)'}")
-        print(f"    Hash match     : {new_hash == stored_hash}")
+        print(f"    AustLII As at  : {new_as_at or '(not found)'}")
 
-        changed = (new_hash != stored_hash) or (
-            new_version and stored_version and new_version != stored_version
+        changed = bool(
+            new_as_at
+            and stored_version
+            and new_as_at != stored_version
         )
+        # Also flag as changed if we now have a date and stored nothing before
+        first_run = new_as_at and not stored_version
 
         now = datetime.now(timezone.utc)
         cur = conn.cursor()
 
         if changed:
-            print(f"    [CHANGED]")
+            print(f"    [CHANGED] {stored_version} → {new_as_at}")
             if not dry_run:
                 cur.execute(
                     """
                     UPDATE instrument_registry
-                    SET content_hash = %s, current_version = %s,
-                        last_checked = %s, last_changed = %s,
-                        needs_review = TRUE, check_failures = 0
+                    SET current_version = %s, last_checked = %s,
+                        last_changed = %s, needs_review = TRUE,
+                        check_failures = 0
                     WHERE instrument_key = %s
                     """,
-                    (new_hash, new_version, now, now, key),
+                    (new_as_at, now, now, key),
                 )
                 conn.commit()
         else:
-            print(f"    [unchanged]")
+            status = "(first run — baseline set)" if first_run else "[unchanged]"
+            print(f"    {status}")
             if not dry_run:
                 cur.execute(
                     """
                     UPDATE instrument_registry
-                    SET content_hash = %s, current_version = %s,
-                        last_checked = %s, check_failures = 0
+                    SET current_version = %s, last_checked = %s, check_failures = 0
                     WHERE instrument_key = %s
                     """,
-                    (new_hash, new_version, now, key),
+                    (new_as_at or stored_version, now, key),
                 )
-                # Update currency table — confirmed current
+                # Update currency — confirmed current as of this check
                 cur.execute(
                     """
                     INSERT INTO instrument_currency
@@ -194,13 +171,13 @@ def check_instrument(instrument: dict, dry_run: bool, conn) -> InstrumentResult:
                          verified_at, version_label, source_url)
                     VALUES (NULL, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (council, instrument_key) DO UPDATE
-                        SET verified_at = EXCLUDED.verified_at,
+                        SET verified_at   = EXCLUDED.verified_at,
                             version_label = EXCLUDED.version_label,
-                            updated_at = NOW()
+                            updated_at    = NOW()
                     """,
                     (
                         key, label, instrument["instrument_type"],
-                        now, new_version, url,
+                        now, new_as_at or stored_version, legislation_url,
                     ),
                 )
                 conn.commit()
@@ -208,15 +185,16 @@ def check_instrument(instrument: dict, dry_run: bool, conn) -> InstrumentResult:
 
         return InstrumentResult(
             instrument_key=key, instrument_label=label,
-            changed=changed, new_hash=new_hash,
-            new_version=new_version, stored_version=stored_version,
+            changed=changed, new_as_at=new_as_at,
+            stored_version=stored_version,
         )
 
     except Exception as exc:
         print(f"    [ERROR] {exc}")
         cur = conn.cursor()
         cur.execute(
-            "UPDATE instrument_registry SET check_failures = check_failures + 1, last_checked = %s WHERE instrument_key = %s",
+            "UPDATE instrument_registry SET check_failures = check_failures + 1, "
+            "last_checked = %s WHERE instrument_key = %s",
             (datetime.now(timezone.utc), key),
         )
         if not dry_run:
@@ -224,13 +202,13 @@ def check_instrument(instrument: dict, dry_run: bool, conn) -> InstrumentResult:
         cur.close()
         return InstrumentResult(
             instrument_key=key, instrument_label=label,
-            changed=False, new_hash="", new_version=None,
+            changed=False, new_as_at=None,
             stored_version=stored_version, error=str(exc),
         )
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Weekly legislation.nsw.gov.au monitor")
+    parser = argparse.ArgumentParser(description="Weekly SEPP/LEP change monitor via AustLII")
     parser.add_argument("--key", help="Check specific instrument_key only")
     parser.add_argument("--dry-run", action="store_true", help="No DB writes")
     args = parser.parse_args()
@@ -241,7 +219,7 @@ def main():
     cur = conn.cursor()
     query = """
         SELECT instrument_key, instrument_label, instrument_type,
-               legislation_url, current_version, content_hash
+               legislation_url, current_version
         FROM instrument_registry
         WHERE is_active = TRUE
     """
@@ -257,6 +235,8 @@ def main():
 
     print("=" * 60)
     print(f"Legislation Monitor — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    print("Source: AustLII consolidated copies (classic.austlii.edu.au)")
+    print("Note: ~7-day lag vs legislation.nsw.gov.au")
     if args.dry_run:
         print("DRY RUN")
     print(f"Checking {len(instruments)} instruments...")
@@ -266,17 +246,18 @@ def main():
     for instrument in instruments:
         result = check_instrument(instrument, args.dry_run, conn)
         results.append(result)
-        time.sleep(2)  # polite delay between legislation.nsw.gov.au requests
+        time.sleep(2)
 
     conn.close()
 
+    real_results = [r for r in results if not r.error or r.error != "no AustLII URL mapped"]
     changed = [r for r in results if r.changed]
-    errors = [r for r in results if r.error]
+    errors = [r for r in results if r.error and r.error != "no AustLII URL mapped"]
 
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"  Checked  : {len(results)}")
+    print(f"  Checked  : {len(real_results)}")
     print(f"  Changed  : {len(changed)}")
     print(f"  Errors   : {len(errors)}")
 
@@ -284,7 +265,7 @@ def main():
         for r in errors:
             print(f"  ERROR [{r.instrument_key}]: {r.error}")
         send_telegram(
-            f"Legislation Monitor ERROR\n"
+            "Legislation Monitor ERROR\n"
             + "\n".join(f"  {r.instrument_key}: {r.error}" for r in errors)
         )
 
@@ -294,13 +275,13 @@ def main():
             lines.append(
                 f"  {r.instrument_key}\n"
                 f"    Was: {r.stored_version or '(unknown)'}\n"
-                f"    Now: {r.new_version or '(not parseable — hash changed)'}"
+                f"    Now: {r.new_as_at}"
             )
         msg = (
             f"LEGISLATION CHANGE DETECTED\n"
-            f"{len(changed)} instrument(s) changed:\n\n"
+            f"{len(changed)} instrument(s) updated on AustLII:\n\n"
             + "\n\n".join(lines)
-            + "\n\nReview amendments on legislation.nsw.gov.au before updating provisions."
+            + "\n\nVerify on legislation.nsw.gov.au before updating provisions."
             + "\nThen run: python scripts/update_instrument_provisions.py --key <key>"
         )
         print(f"\n{msg}")
@@ -310,8 +291,10 @@ def main():
     if errors and not changed:
         sys.exit(1)
 
-    send_telegram(f"Legislation Monitor: no changes ({len(results)} instruments checked)")
-    print("\n  No changes. All instruments current.")
+    send_telegram(
+        f"Legislation Monitor: no changes ({len(real_results)} instruments checked via AustLII)"
+    )
+    print("\n  No changes. All instruments current on AustLII.")
     sys.exit(0)
 
 
