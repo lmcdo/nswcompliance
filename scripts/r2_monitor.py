@@ -2,16 +2,18 @@
 """
 Weekly DCP Chapter Monitor
 ===========================
-Polls every council_url in dcp_chapter_registry, detects PDF changes via
-content hash, uploads new versions to R2, and flags chapters for re-extraction.
+For each council, scrapes the hub page (council_page_url) to re-discover
+current PDF URLs, then hash-checks changed/new URLs and uploads to R2.
 
-Run this on a weekly schedule (cron, GitHub Actions, or manual).
+This approach survives council CMS migrations — URLs are re-discovered
+weekly from the hub page rather than assumed stable in the registry.
 
 Usage:
     python3 scripts/r2_monitor.py               # check all active chapters
     python3 scripts/r2_monitor.py --council marrickville
     python3 scripts/r2_monitor.py --dry-run     # report only, no changes
     python3 scripts/r2_monitor.py --force       # re-download all regardless of Content-Length
+    python3 scripts/r2_monitor.py --reseed      # update council_url for all chapters from hub scrape
 
 Exit codes:
     0 = no changes detected
@@ -24,6 +26,8 @@ import hashlib
 import os
 import sys
 import time
+from collections import defaultdict
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,6 +39,24 @@ import psycopg2
 import requests
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+
+# Hub scrapers — keyed by council slug
+# Councils not listed fall back to per-chapter council_url checking
+sys.path.insert(0, str(Path(__file__).parent))
+try:
+    from hub_scrapers import HUB_SCRAPERS, HubScrapeError
+except ImportError:
+    HUB_SCRAPERS = {}
+    HubScrapeError = Exception
+
+
+@dataclass
+class DiffResult:
+    url_same:     list[str] = field(default_factory=list)   # chapter_keys: URL unchanged
+    url_migrated: list[tuple] = field(default_factory=list) # (key, old_url, new_url)
+    removed:      list[str] = field(default_factory=list)   # keys in registry, not on hub
+    added:        list[dict] = field(default_factory=list)  # {url, label} on hub, no key match
+    count_ok:     bool = True
 
 load_dotenv(Path(__file__).parent.parent / ".env")
 
@@ -132,12 +154,70 @@ def r2_path_for_version(current_path: str, new_version: str) -> str:
     return "/".join(parts)
 
 
+def diff_urls(
+    discovered: list[dict],
+    stored: list[dict],
+    hub_expected_count: int | None,
+) -> DiffResult:
+    """
+    Diff hub-discovered chapters against registry-stored chapters.
+
+    Args:
+        discovered: list of {chapter_key, url, label} from hub scraper
+                    chapter_key may be None for unrecognised PDFs
+        stored:     list of registry rows {chapter_key, council_url, ...}
+        hub_expected_count: baseline chapter count for anomaly gate (None = skip gate)
+
+    Returns DiffResult with categorised changes.
+    """
+    result = DiffResult()
+
+    # Anomaly gate: abort if scrape returned < 80% of expected
+    if hub_expected_count and len(discovered) < hub_expected_count * 0.8:
+        result.count_ok = False
+        return result
+
+    discovered_by_key = {d["chapter_key"]: d for d in discovered if d["chapter_key"]}
+    unmatched = [d for d in discovered if d["chapter_key"] is None]
+    stored_by_key = {s["chapter_key"]: s for s in stored}
+
+    for key, stored_ch in stored_by_key.items():
+        if key not in discovered_by_key:
+            result.removed.append(key)
+        elif discovered_by_key[key]["url"] != stored_ch["council_url"]:
+            result.url_migrated.append((key, stored_ch["council_url"], discovered_by_key[key]["url"]))
+        else:
+            result.url_same.append(key)
+
+    result.added = unmatched  # hub PDFs with no matching chapter_key
+    return result
+
+
+def _update_instrument_currency(conn, council: str, dry_run: bool) -> None:
+    """Update instrument_currency.verified_at for a council's DCP after a clean run."""
+    if dry_run:
+        return
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO instrument_currency (council, instrument_key, instrument_label, instrument_type, verified_at)
+        VALUES (%s, 'dcp', %s, 'dcp', NOW())
+        ON CONFLICT (council, instrument_key) DO UPDATE
+            SET verified_at = NOW(), updated_at = NOW()
+        """,
+        (council, f"{council.title()} DCP"),
+    )
+    conn.commit()
+    cur.close()
+
+
 def run_monitor(
     council_filter: str | None,
     s3,
     conn,
     dry_run: bool = False,
     force: bool = False,
+    reseed: bool = False,
 ) -> dict:
     """
     Main monitor loop.
@@ -146,11 +226,12 @@ def run_monitor(
     cur = conn.cursor()
     now = datetime.now(timezone.utc)
 
-    # Fetch active chapters with council URLs
+    # Fetch active chapters including hub page URL and expected count
     query = """
         SELECT id, council, chapter_key, chapter_label, council_url,
+               council_page_url, hub_expected_count,
                r2_current_path, r2_version_label,
-               content_hash, url_content_length, check_failures
+               content_hash, url_content_length, url_etag, check_failures
         FROM dcp_chapter_registry
         WHERE is_active = TRUE
           AND council_url IS NOT NULL
@@ -165,8 +246,14 @@ def run_monitor(
     rows = cur.fetchall()
     cols = [d[0] for d in cur.description]
     chapters = [dict(zip(cols, row)) for row in rows]
+    cur.close()
 
-    print(f"Checking {len(chapters)} chapters...")
+    # Group by council for hub-scrape approach
+    by_council: dict[str, list[dict]] = defaultdict(list)
+    for ch in chapters:
+        by_council[ch["council"]].append(ch)
+
+    print(f"Checking {len(chapters)} chapters across {len(by_council)} councils...")
 
     results = {
         "checked": 0,
@@ -174,154 +261,249 @@ def run_monitor(
         "unchanged": 0,
         "failed": 0,
         "skipped_no_url": 0,
+        "hub_alerts": [],
     }
 
-    for chapter in chapters:
-        chapter_id   = chapter["id"]
-        council      = chapter["council"]
-        key          = chapter["chapter_key"]
-        label        = chapter["chapter_label"]
-        url          = chapter["council_url"]
-        r2_path      = chapter["r2_current_path"]
-        version      = chapter["r2_version_label"]
-        stored_hash  = chapter["content_hash"]
-        stored_len   = chapter["url_content_length"]
-        failures     = chapter["check_failures"] or 0
+    for council, council_chapters in by_council.items():
+        hub_url = council_chapters[0].get("council_page_url")
+        hub_expected = council_chapters[0].get("hub_expected_count")
+        scraper = HUB_SCRAPERS.get(council)
 
-        print(f"\n  {council}/{key}")
+        # ── Hub scrape (if scraper registered and hub URL available) ───────────
+        if scraper and hub_url:
+            print(f"\n[{council}] Scraping hub page...")
+            expected_keys = {ch["chapter_key"] for ch in council_chapters}
+            expected_labels = {
+                ch["chapter_key"]: ch["chapter_label"]
+                for ch in council_chapters
+                if ch.get("chapter_label")
+            }
+            try:
+                discovered = scraper(hub_url, expected_keys, expected_labels=expected_labels)
+                print(f"  Hub returned {len(discovered)} PDF links (expected ~{hub_expected})")
 
-        try:
-            # Step 1: Quick HEAD check on Content-Length
-            head = head_request(url)
-            if head.get("status") not in (200, 206):
-                raise RuntimeError(f"HEAD returned HTTP {head.get('status')}: {url}")
+                diff = diff_urls(discovered, council_chapters, hub_expected)
 
-            remote_len = head.get("content_length")
-            if remote_len:
-                remote_len = int(remote_len)
+                if not diff.count_ok:
+                    msg = (
+                        f"DCP Monitor: hub scrape anomaly [{council}]\n"
+                        f"Returned {len(discovered)} links, expected ~{hub_expected}.\n"
+                        f"Possible scrape failure or hub page restructure. Skipping council."
+                    )
+                    print(f"  ABORT: {msg}")
+                    send_telegram(msg)
+                    results["hub_alerts"].append(msg)
+                    results["failed"] += len(council_chapters)
+                    continue
 
-            # Skip full download only if BOTH Content-Length AND ETag match stored values.
-            # Content-Length alone is not reliable — some councils serve different PDFs
-            # at the same byte count. Requiring both signals reduces false-negative risk.
-            stored_etag = chapter.get("url_etag")
-            new_etag_head = head.get("etag")
-            content_length_match = (
-                not force
-                and stored_hash
-                and remote_len
-                and stored_len
-                and remote_len == stored_len
-            )
-            etag_match = (
-                stored_etag
-                and new_etag_head
-                and stored_etag == new_etag_head
-            )
-            if content_length_match and etag_match:
-                print(f"    [unchanged] Content-Length + ETag both match stored")
+                # URL migrations — update registry and proceed to hash check
+                for key, old_url, new_url in diff.url_migrated:
+                    print(f"  [URL MIGRATED] {key}\n    {old_url}\n    → {new_url}")
+                    if not dry_run:
+                        cur2 = conn.cursor()
+                        cur2.execute(
+                            "UPDATE dcp_chapter_registry SET council_url = %s WHERE council = %s AND chapter_key = %s",
+                            (new_url, council, key),
+                        )
+                        conn.commit()
+                        cur2.close()
+                    # Update the in-memory chapter dict so hash check uses new URL
+                    for ch in council_chapters:
+                        if ch["chapter_key"] == key:
+                            ch["council_url"] = new_url
+                    send_telegram(f"DCP URL migration [{council}/{key}]\n{old_url}\n→ {new_url}")
+                    results["hub_alerts"].append(f"URL migration: {council}/{key}")
+
+                # Removed chapters
+                for key in diff.removed:
+                    msg = f"DCP chapter removed from hub [{council}/{key}] — verify before disabling"
+                    print(f"  [REMOVED] {key}")
+                    send_telegram(msg)
+                    results["hub_alerts"].append(msg)
+
+                # New/unmatched chapters
+                for item in diff.added:
+                    msg = f"New chapter on hub [{council}]: {item['label']}\n{item['url']}\nAdd to registry manually."
+                    print(f"  [NEW] {item['label']}")
+                    send_telegram(msg)
+                    results["hub_alerts"].append(msg)
+
+                # If reseed mode: update council_url for all matched chapters
+                if reseed and not dry_run:
+                    discovered_map = {d["chapter_key"]: d["url"] for d in discovered if d["chapter_key"]}
+                    cur2 = conn.cursor()
+                    updated = 0
+                    for key, url in discovered_map.items():
+                        cur2.execute(
+                            "UPDATE dcp_chapter_registry SET council_url = %s WHERE council = %s AND chapter_key = %s AND council_url != %s",
+                            (url, council, key, url),
+                        )
+                        updated += cur2.rowcount
+                    conn.commit()
+                    cur2.close()
+                    print(f"  [reseed] Updated {updated} council_url values for {council}")
+
+            except HubScrapeError as exc:
+                msg = f"DCP Monitor: hub scrape failed [{council}]: {exc}"
+                print(f"  HUB ERROR: {exc}")
+                send_telegram(msg)
+                results["hub_alerts"].append(msg)
+                results["failed"] += len(council_chapters)
+                continue
+
+        # ── Per-chapter hash check ─────────────────────────────────────────────
+        council_changed = 0
+        cur = conn.cursor()
+        for chapter in council_chapters:
+            chapter_id  = chapter["id"]
+            ch_council  = chapter["council"]
+            key         = chapter["chapter_key"]
+            label       = chapter["chapter_label"]
+            url         = chapter["council_url"]
+            r2_path     = chapter["r2_current_path"]
+            version     = chapter["r2_version_label"]
+            stored_hash = chapter["content_hash"]
+            stored_len  = chapter["url_content_length"]
+            failures    = chapter["check_failures"] or 0
+
+            print(f"\n  {ch_council}/{key}")
+
+            try:
+                # Step 1: Quick HEAD check on Content-Length
+                head = head_request(url)
+                if head.get("status") not in (200, 206):
+                    raise RuntimeError(f"HEAD returned HTTP {head.get('status')}: {url}")
+
+                remote_len = head.get("content_length")
+                if remote_len:
+                    remote_len = int(remote_len)
+
+                # Skip full download only if BOTH Content-Length AND ETag match stored values.
+                stored_etag = chapter.get("url_etag")
+                new_etag_head = head.get("etag")
+                content_length_match = (
+                    not force
+                    and stored_hash
+                    and remote_len
+                    and stored_len
+                    and remote_len == stored_len
+                )
+                etag_match = (
+                    stored_etag
+                    and new_etag_head
+                    and stored_etag == new_etag_head
+                )
+                if content_length_match and etag_match:
+                    print(f"    [unchanged] Content-Length + ETag both match stored")
+                    cur.execute(
+                        "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
+                        (now, chapter_id),
+                    )
+                    if not dry_run:
+                        conn.commit()
+                    results["unchanged"] += 1
+                    results["checked"] += 1
+                    continue
+                elif content_length_match and not etag_match:
+                    print(f"    Content-Length unchanged but ETag mismatch/absent — downloading for hash check")
+
+                # Step 2: Full download + hash comparison
+                print(f"    Downloading for hash check...")
+                content, resp_headers = download_pdf(url)
+                new_hash = sha256(content)
+                new_len = len(content)
+                new_etag = resp_headers.get("ETag")
+                new_lm = resp_headers.get("Last-Modified")
+
+                if new_hash == stored_hash:
+                    print(f"    [unchanged] Hash matches stored ({new_hash[:16]}...)")
+                    cur.execute(
+                        """
+                        UPDATE dcp_chapter_registry
+                        SET url_last_checked=%s, url_content_length=%s,
+                            url_etag=%s, url_last_modified=%s, check_failures=0
+                        WHERE id=%s
+                        """,
+                        (now, new_len, new_etag, new_lm, chapter_id),
+                    )
+                    if not dry_run:
+                        conn.commit()
+                    results["unchanged"] += 1
+                    results["checked"] += 1
+                    continue
+
+                # ── CHANGE DETECTED ──────────────────────────────────────────
+                print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
+                print(f"    Old size: {stored_len or '?':,}  New size: {new_len:,}")
+
+                new_version = next_version_label(version or "v1.0-baseline")
+                new_r2_path = r2_path_for_version(
+                    r2_path or f"source-pdfs/dcps/{ch_council}/v1.0-baseline/{key}.pdf",
+                    new_version,
+                )
+
+                if not dry_run:
+                    s3.put_object(
+                        Bucket=R2_BUCKET_NAME,
+                        Key=new_r2_path,
+                        Body=content,
+                        ContentType="application/pdf",
+                    )
+                    print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
+                    cur.execute(
+                        """
+                        UPDATE dcp_chapter_registry
+                        SET r2_current_path=%s, r2_version_label=%s,
+                            content_hash=%s, url_content_length=%s,
+                            url_etag=%s, url_last_modified=%s,
+                            url_last_checked=%s, url_last_changed=%s,
+                            needs_extraction=TRUE, check_failures=0
+                        WHERE id=%s
+                        """,
+                        (
+                            new_r2_path, new_version,
+                            new_hash, new_len,
+                            new_etag, new_lm,
+                            now, now,
+                            chapter_id,
+                        ),
+                    )
+                    conn.commit()
+                else:
+                    print(f"    [dry-run] would upload to r2://{R2_BUCKET_NAME}/{new_r2_path}")
+
+                results["changed"].append({
+                    "council": ch_council,
+                    "chapter_key": key,
+                    "chapter_label": label,
+                    "old_hash": stored_hash,
+                    "new_hash": new_hash,
+                    "new_version": new_version,
+                    "r2_path": new_r2_path,
+                })
+                council_changed += 1
+                results["checked"] += 1
+
+            except Exception as exc:
+                print(f"    [ERROR] {exc}")
+                new_failures = failures + 1
                 cur.execute(
-                    "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
-                    (now, chapter_id),
+                    "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=%s WHERE id=%s",
+                    (now, new_failures, chapter_id),
                 )
                 if not dry_run:
                     conn.commit()
-                results["unchanged"] += 1
-                results["checked"] += 1
-                continue
-            elif content_length_match and not etag_match:
-                # Content-Length matches but ETag differs or absent — download and hash anyway
-                print(f"    Content-Length unchanged but ETag mismatch/absent — downloading for hash check")
+                results["failed"] += 1
 
-            # Step 2: Full download + hash comparison
-            print(f"    Downloading for hash check...")
-            content, resp_headers = download_pdf(url)
-            new_hash = sha256(content)
-            new_len = len(content)
-            new_etag = resp_headers.get("ETag")
-            new_lm = resp_headers.get("Last-Modified")
+            time.sleep(2)  # polite delay — reduced request volume vs old approach
 
-            if new_hash == stored_hash:
-                print(f"    [unchanged] Hash matches stored ({new_hash[:16]}...)")
-                cur.execute(
-                    """
-                    UPDATE dcp_chapter_registry
-                    SET url_last_checked=%s, url_content_length=%s,
-                        url_etag=%s, url_last_modified=%s, check_failures=0
-                    WHERE id=%s
-                    """,
-                    (now, new_len, new_etag, new_lm, chapter_id),
-                )
-                if not dry_run:
-                    conn.commit()
-                results["unchanged"] += 1
-                results["checked"] += 1
-                continue
+        # Update instrument_currency for this council after clean run
+        if council_changed == 0 and results["failed"] == 0:
+            _update_instrument_currency(conn, council, dry_run)
+            print(f"\n  [{council}] instrument_currency updated — verified_at=NOW()")
 
-            # ── CHANGE DETECTED ──────────────────────────────────────────────
-            print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
-            print(f"    Old size: {stored_len or '?':,}  New size: {new_len:,}")
+        cur.close()
 
-            new_version = next_version_label(version or "v1.0-baseline")
-            new_r2_path = r2_path_for_version(r2_path or f"source-pdfs/dcps/{council}/v1.0-baseline/{key}.pdf", new_version)
-
-            if not dry_run:
-                # Upload new version to R2
-                s3.put_object(
-                    Bucket=R2_BUCKET_NAME,
-                    Key=new_r2_path,
-                    Body=content,
-                    ContentType="application/pdf",
-                )
-                print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
-
-                # Update registry
-                cur.execute(
-                    """
-                    UPDATE dcp_chapter_registry
-                    SET r2_current_path=%s, r2_version_label=%s,
-                        content_hash=%s, url_content_length=%s,
-                        url_etag=%s, url_last_modified=%s,
-                        url_last_checked=%s, url_last_changed=%s,
-                        needs_extraction=TRUE, check_failures=0
-                    WHERE id=%s
-                    """,
-                    (
-                        new_r2_path, new_version,
-                        new_hash, new_len,
-                        new_etag, new_lm,
-                        now, now,
-                        chapter_id,
-                    ),
-                )
-                conn.commit()
-            else:
-                print(f"    [dry-run] would upload to r2://{R2_BUCKET_NAME}/{new_r2_path}")
-
-            results["changed"].append({
-                "council": council,
-                "chapter_key": key,
-                "chapter_label": label,
-                "old_hash": stored_hash,
-                "new_hash": new_hash,
-                "new_version": new_version,
-                "r2_path": new_r2_path,
-            })
-            results["checked"] += 1
-
-        except Exception as exc:
-            print(f"    [ERROR] {exc}")
-            new_failures = failures + 1
-            cur.execute(
-                "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=%s WHERE id=%s",
-                (now, new_failures, chapter_id),
-            )
-            if not dry_run:
-                conn.commit()
-            results["failed"] += 1
-
-        time.sleep(0.3)  # polite delay
-
-    cur.close()
     return results
 
 
@@ -348,6 +530,7 @@ def main():
     parser.add_argument("--council", help="Filter to specific council")
     parser.add_argument("--dry-run", action="store_true", help="Report changes without writing to DB or R2")
     parser.add_argument("--force", action="store_true", help="Re-download all even if Content-Length unchanged")
+    parser.add_argument("--reseed", action="store_true", help="Update council_url for all chapters from hub scrape (run once after CMS migration)")
     args = parser.parse_args()
 
     s3 = boto3.client(
@@ -367,7 +550,7 @@ def main():
     print("=" * 60)
 
     try:
-        results = run_monitor(args.council, s3, conn, args.dry_run, args.force)
+        results = run_monitor(args.council, s3, conn, args.dry_run, args.force, args.reseed)
     finally:
         conn.close()
 
