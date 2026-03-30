@@ -751,8 +751,9 @@ export function ProvisionsByTocStructure({
         // Exclude topic dismissals (also guarded for universal chapters)
         const topic = normalizeTopicKey(p.v2_topic);
         if (topic && topicAssertions[topic] && !isUniversalChapter(councilId, partKey)) return false;
-        // Exclude objectives and heritage descriptives (hidden in DA mode)
-        if (p.v2_provision_type === 'objective') return false;
+        // Exclude objectives, procedural, descriptive, and heritage descriptives (hidden in DA mode).
+        // Must match the suppressed filter in globalProgress to keep sidebar totals consistent.
+        if (p.v2_provision_type === 'objective' || p.v2_provision_type === 'procedural' || p.v2_provision_type === 'descriptive') return false;
         if (p.v2_heritage_type === 'descriptive') return false;
         // Exclude questionnaire-derived topic scope (non-heritage only)
         const layer = p.v2_dcp_layer || p.layer;
@@ -2046,7 +2047,7 @@ export function ProvisionsByTocStructure({
                   <div className="text-xs text-gray-400 mb-1">
                     {globalProgress.total} total
                     {globalProgress.total !== globalProgress.scopeTotal && (
-                      <> → {globalProgress.scopeTotal} in scope</>
+                      <> → {globalProgress.scopeTotal} sections in scope</>
                     )}
                     {(globalProgress.suppressed > 0 || globalProgress.triaged > 0) && (
                       <span className="block text-[11px] text-gray-300 mt-0.5">
