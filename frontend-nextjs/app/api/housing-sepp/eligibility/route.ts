@@ -18,7 +18,8 @@ interface DevelopmentStandard {
   sourceClause: string;
   sourceProvisionId: number | null;
   effectiveDate: string;
-  pdfPageImageUrl: string | null;
+  pdfUrl: string | null;
+  pdfPage: number | null;
 }
 
 interface EligibilityResult {
@@ -130,7 +131,8 @@ export async function POST(request: NextRequest) {
         source_document,
         legislation_url,
         effective_date,
-        pdf_page_image_url
+        pdf_page,
+        r2_pdf_url
       FROM housing_sepp_standards
       ORDER BY development_type, standard_type
     `);
@@ -164,7 +166,8 @@ export async function POST(request: NextRequest) {
         sourceClause: row.source_clause,
         sourceProvisionId: row.source_provision_id,
         effectiveDate: row.effective_date,
-        pdfPageImageUrl: row.pdf_page_image_url
+        pdfUrl: row.r2_pdf_url ?? null,
+        pdfPage: row.pdf_page ?? null
       });
     }
 
