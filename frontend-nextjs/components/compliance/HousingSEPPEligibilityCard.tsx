@@ -16,7 +16,7 @@ import {
   XCircle,
   Info,
   Building,
-  FileImage
+  FileText
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,7 +32,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { PdfImageModal } from '@/components/ui/pdf-image-modal';
 import { AuthorityColors } from '@/lib/design-tokens';
 
 interface DevelopmentStandard {
@@ -42,7 +41,8 @@ interface DevelopmentStandard {
   sourceClause: string;
   sourceProvisionId: number | null;
   effectiveDate: string;
-  pdfPageImageUrl: string | null;
+  pdfUrl: string | null;
+  pdfPage: number | null;
 }
 
 interface EligibilityResult {
@@ -103,7 +103,6 @@ function formatValue(value: number, unit: string): string {
 
 function EligibilityRow({ result }: { result: EligibilityResult }) {
   const [expanded, setExpanded] = useState(false);
-  const [viewingPdfImage, setViewingPdfImage] = useState<string | null>(null);
 
   return (
     <Collapsible open={expanded} onOpenChange={setExpanded}>
@@ -200,16 +199,16 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
                     <span className="text-xs text-gray-400 font-mono">
                       §{std.sourceClause}
                     </span>
-                    {std.pdfPageImageUrl && (
+                    {std.pdfUrl && std.pdfPage && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          setViewingPdfImage(std.pdfPageImageUrl);
+                          window.open(`${std.pdfUrl}#page=${std.pdfPage}`, '_blank');
                         }}
                         className="p-1 rounded hover:bg-purple-100 transition-colors"
-                        title={`View PDF for Clause ${std.sourceClause}`}
+                        title={`View PDF page ${std.pdfPage} — Clause ${std.sourceClause}`}
                       >
-                        <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
+                        <FileText className="w-5 h-5 text-purple-500 hover:text-purple-700" />
                       </button>
                     )}
                   </div>
@@ -231,13 +230,6 @@ function EligibilityRow({ result }: { result: EligibilityResult }) {
         </CollapsibleContent>
       </div>
 
-      {/* PDF Image Modal */}
-      <PdfImageModal
-        isOpen={!!viewingPdfImage}
-        imageUrl={viewingPdfImage}
-        onClose={() => setViewingPdfImage(null)}
-        title="SEPP (Housing) 2021"
-      />
     </Collapsible>
   );
 }
