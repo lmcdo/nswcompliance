@@ -1280,6 +1280,7 @@ export function ProvisionsByTocStructure({
     let questionnaireScoped = 0, heritageElementScoped = 0;
     // Collect unique section keys that are in scope
     const inScopeSectionKeys = new Set<string>();
+    let provisionScopeTotal = 0;
     for (const p of allProvisions) {
       const cat = p.v2_structural_category;
       const topic = normalizeTopicKey(p.v2_topic);
@@ -1314,13 +1315,14 @@ export function ProvisionsByTocStructure({
         }
       }
       inScopeSectionKeys.add(deriveSectionKey(p));
+      provisionScopeTotal++;
     }
     const scopeTotal = inScopeSectionKeys.size;
     const assessed   = [...inScopeSectionKeys].filter(k => sectionResponses.has(k)).length;
     return {
       total, triaged, chapterDismissed, autoChapterDismissed, topicDismissed, suppressed,
       questionnaireScoped, heritageElementScoped,
-      scopeTotal, assessed, remaining: scopeTotal - assessed,
+      scopeTotal, provisionScopeTotal, assessed, remaining: scopeTotal - assessed,
     };
   }, [isDaMode, allProvisions, sectionResponses, excludableTopics, topicAssertions, allDismissedChapters, autoDismissedChapters, derivePartKey, deriveSectionKey, questionnaireTopics, questionnaireDevTypeExclusions, heritageElementScope]);
 
@@ -1810,17 +1812,17 @@ export function ProvisionsByTocStructure({
             </button>
           </div>
         ) : (
-          <p className="text-xs text-gray-500 mb-5">
-            Preparing a DA?{' '}
+          <div className="mb-5 p-4 rounded-lg border border-teal-200 bg-teal-50">
+            <p className="text-sm font-semibold text-teal-900 mb-1">Preparing a DA?</p>
+            <p className="text-sm text-teal-800 mb-3">Scope these {allProvisions.length.toLocaleString()} provisions to your works and export a SEE draft.</p>
             <button
               onClick={() => onToggleDaMode(true)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border bg-white text-teal-700 border-teal-300 hover:bg-teal-50 transition-all"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold bg-teal-600 text-white hover:bg-teal-700 shadow-sm transition-all"
             >
-              <span className="w-2 h-2 rounded-full inline-block bg-teal-300" />
+              <span className="w-2 h-2 rounded-full inline-block bg-white" />
               Enable DA Mode
             </button>
-            {' '}to scope these {allProvisions.length.toLocaleString()} provisions to your works and export a SEE draft — or browse freely below.
-          </p>
+          </div>
         )
       )}
 

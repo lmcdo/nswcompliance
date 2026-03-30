@@ -408,6 +408,17 @@ COUNCIL_SUBSECTION_PATTERNS: dict[str, list[re.Pattern]] = {
             r"|Design Guidance|Performance Criteria)\s*$"
         ),
     ],
+    # Marrickville DCP 2011: two-level split.
+    # Level 1: "Objectives" / "Controls" keyword headings (standalone lines).
+    # Level 2: O\d+ and C\d+ numbered markers at the start of a line.
+    # Note: The Marrickville SECTION_RE also matches C\d+ as section codes, but
+    # the TOC guard (5+ matches per page) fires on pages with many C-markers,
+    # absorbing them into the parent section. The subsection patterns re-split
+    # these accumulated controls into individual provisions.
+    "marrickville": [
+        re.compile(r"(?m)^()(Objectives?|Controls?)\s*$"),
+        re.compile(r"(?m)^((?:O|C)\d+)\s+(.+)"),
+    ],
     # Ashfield DCP 2016: two-level split.
     # Level 1: keyword headings (Performance Criteria, Design Solutions, etc.)
     # Level 2: PC/DS/O/C numbered markers within each keyword section.
@@ -1203,6 +1214,38 @@ def extract_chapter(
                 print(f"    [ERROR] PDF extraction failed: {exc}")
                 cur.close()
                 return False, None
+
+            # Apply subsection patterns to the default extraction path too.
+            # (extract_by_page_ranges handles this internally; the default path does not.)
+            if subsection_patterns and sections:
+                expanded: list[dict] = []
+                for sec in sections:
+                    sub_secs = split_content_at_subsections(
+                        sec["content"],
+                        sec["section_number"],
+                        sec["section_title"],
+                        sec["page_start"],
+                        sec["page_end"],
+                        sec["tables"],
+                        subsection_patterns[0],
+                    )
+                    for pattern in subsection_patterns[1:]:
+                        further: list[dict] = []
+                        for s in sub_secs:
+                            further.extend(split_content_at_subsections(
+                                s["content"],
+                                s["section_number"],
+                                s["section_title"],
+                                s["page_start"],
+                                s["page_end"],
+                                s["tables"],
+                                pattern,
+                                parent_text_heading=s.get("text_heading"),
+                            ))
+                        sub_secs = further
+                    expanded.extend(sub_secs)
+                sections = expanded
+
             table_count = sum(len(s["tables"]) for s in sections)
             print(f"    Extracted: {len(sections)} sections, {table_count} tables")
 
@@ -1314,7 +1357,7 @@ def extract_chapter(
                 print(f"    Skipping DB commit for {chapter_key} — investigate before re-extracting.")
                 return False, None
 
-        if new_count < 5:
+        if new_count < 3:
             verdict = "WARN" if (dry_run or review) else "ABORT"
             print(f"    [{verdict}] Only {new_count} sections extracted — likely empty or scanned PDF.")
             if not dry_run and not review:

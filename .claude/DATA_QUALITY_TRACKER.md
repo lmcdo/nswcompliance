@@ -11,6 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
+| DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ⏳ Open | P2 |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
 | DQ-26: Marrickville truncated pdf_page_image_url stems | ✅ Fixed 2026-03-04 | P1 (was) |
@@ -37,6 +38,18 @@
 | DQ-21: Double-underscore doc_id patterns | ✅ FIXED | P2 (was) |
 | DQ-22: TOC provisions marked actionable | ✅ FIXED | P1 (was) |
 | DQ-23: Duplicate provisions in TOC view | ✅ FIXED | P1 (was) |
+
+---
+
+## DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all only
+
+**Status:** ⏳ Open
+**Found:** 2026-03-29
+**Blocking:** No (catch-all entry inserted in migration 018 — TOC JOIN now 100%)
+
+**Problem:** The Haberfield neighbourhood chapter (121 provisions, all on pdf_page=2) has no extracted section-level TOC data. A depth=0 catch-all entry was inserted so the JOIN works, but all 121 provisions will group under a single "E2 Haberfield Neighbourhood" bucket rather than section-level groupings.
+
+**Required action:** Extract section-level TOC from the Haberfield chapter PDF and insert proper entries, then delete the catch-all. Contact: same chapter PDF used during Ashfield extraction (`Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield`).
 
 ---
 

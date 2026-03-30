@@ -198,22 +198,24 @@ WHERE former_council = 'marrickville'
 
 ## §7 — Duplicate `is_current=True` Provisions
 
+Two distinct sub-types. The second (§7b) is the more dangerous one.
+
+### §7a — NULL source_chapter_key (pipeline cannot retire)
+
 **What it looks like:** Two provisions with the same `provision_text` content but different `document_id` formats — one old-style (single-underscore), one new-style (double-underscore) — both with `is_current=True`.
 
 **Root cause:** First-pass extractions set `is_current=True` with `source_chapter_key=NULL`. The retirement step in `dcp_extract_changed.py` uses `WHERE source_chapter_key = %s` — so it cannot retire these original provisions. When a chapter is re-extracted, both old and new provisions coexist as current.
 
 **Detection:**
 ```sql
-SELECT former_council, source_chapter_key, count(*)
-FROM regulatory_provisions
-WHERE is_current = TRUE
-  AND former_council = 'marrickville'
-GROUP BY former_council, source_chapter_key
-HAVING count(*) > (SELECT count(*) FROM regulatory_provisions WHERE source_chapter_key IS NULL AND is_current = TRUE AND former_council = 'marrickville' LIMIT 1)
-ORDER BY count(*) DESC;
+-- Provisions with NULL source_chapter_key and is_current=True
+SELECT count(*) FROM regulatory_provisions
+WHERE former_council = '<council>'
+  AND source_chapter_key IS NULL
+  AND is_current = TRUE;
 ```
 
-Or simpler: count provisions where `source_chapter_key IS NULL AND is_current = TRUE` per council — if > 0, those are unretiable first-pass provisions.
+If > 0, those are unretirable first-pass provisions.
 
 **Fix:** For each re-extracted chapter, manually retire old provisions:
 ```sql
@@ -225,6 +227,95 @@ WHERE former_council = 'marrickville'
 ```
 
 **Prevention:** The retirement logic in `dcp_extract_changed.py` (lines 416–424) works correctly for all extractions run after 2026-01-01 (source_chapter_key is populated). First-pass provisions are a one-time legacy issue per council.
+
+---
+
+### §7b — Different document_id format families (silent parallel datasets)
+
+**What it looks like:**
+
+Two extractions of the same DCP exist simultaneously, both `is_current=TRUE`, using completely different `document_id` naming conventions:
+```
+-- Old extraction (spaces/hyphens)
+Leichhardt DCP 2013 - 5 -  Part C Place Section 1 - with IWLEP 2022 amendments March 23
+
+-- New extraction (double-underscore slugs)
+Leichhardt_DCP_2013__part_c_s1_general
+```
+
+These are treated as **separate documents** by the versioning system — `is_current` retirement is scoped per `document_id`, so the new extraction does not retire the old one. Both stay live. The API filter `document_id ILIKE '%CouncilName%'` hits BOTH, returning combined provisions from two different extraction passes.
+
+**Symptoms in the UI:**
+- Sidebar shows duplicate part entries (e.g., "Part C Section 1: 516" AND "Part C: 328" for the same chapter)
+- `allProvisions` total is inflated (sum of both extractions)
+- DA mode waterfall totals are wrong
+- `source_council` is NULL for one set (invisible to `validate_toc_join.py`)
+
+**Root cause (Leichhardt 2026-03):** New extraction used underscore format doc IDs. The `_tag_leichhardt()` tagger checks `'Section 1' in doc` — this only matches the old space format. New format fell through to `v2_dcp_part = 'unknown'` for all 508 provisions. Import was not blocked. Both coexisted for weeks.
+
+**Detection — run BEFORE any new extraction import:**
+```sql
+-- How many is_current provisions already exist for this council?
+SELECT
+  CASE WHEN document_id ~ '^[A-Z][a-z]+ DCP' THEN 'old-format (spaces)'
+       WHEN document_id LIKE '%\_DCP\_%\_\_%' THEN 'new-format (double-underscore)'
+       ELSE 'other'
+  END as format_family,
+  COUNT(*) as cnt,
+  COUNT(DISTINCT document_id) as distinct_doc_ids
+FROM regulatory_provisions
+WHERE document_id ILIKE '%<CouncilName>%'
+  AND is_current = TRUE
+GROUP BY 1;
+```
+
+If two format families are returned: **STOP.** One must be explicitly retired before the other is imported.
+
+**Three hard gates before importing a new extraction:**
+
+1. **Format family collision gate:** If existing `is_current=TRUE` provisions use a different `document_id` naming convention than the new extraction, retire the old set first. Never let two format families coexist.
+
+2. **v2_dcp_part coverage gate:** After enrichment, `v2_dcp_part = 'unknown'` for >10% of provisions is a blocker. It means the tagger cannot parse the `document_id` format — fix the tagger first, do not import.
+   ```sql
+   SELECT
+     round(100.0 * COUNT(*) FILTER (WHERE v2_dcp_part = 'unknown') / COUNT(*), 1) as unknown_pct
+   FROM regulatory_provisions
+   WHERE document_id ILIKE '%<CouncilName>%' AND is_current = TRUE AND v2_is_actionable = TRUE;
+   ```
+   **Gate: <10% unknown. >10% = fix tagger before import.**
+
+3. **Granularity floor gate:** Compare new extraction's per-chapter provision count against existing:
+   ```sql
+   -- Existing counts per chapter (before import)
+   SELECT source_chapter_key, COUNT(*) as existing_count
+   FROM regulatory_provisions
+   WHERE document_id ILIKE '%<CouncilName>%' AND is_current = TRUE AND v2_is_actionable = TRUE
+   GROUP BY source_chapter_key ORDER BY existing_count DESC;
+   ```
+   If any chapter in the new extraction has <50% of the existing chapter's count, that is a granularity regression. Investigate before importing. (Leichhardt: 62 new vs 516 existing for same chapter = 12% — should have been an immediate stop.)
+
+**Fix when already in production (both families live):**
+```sql
+-- Step 1: Identify which family has correct v2_dcp_part values
+SELECT v2_dcp_part, COUNT(*) FROM regulatory_provisions
+WHERE document_id ILIKE '%<CouncilName>%' AND is_current = TRUE AND v2_is_actionable = TRUE
+GROUP BY v2_dcp_part ORDER BY COUNT(*) DESC;
+-- Correct family: has meaningful dcp_part values (not all 'unknown')
+-- Incorrect family: v2_dcp_part = 'unknown' for most/all
+
+-- Step 2: Retire the incorrect family
+UPDATE regulatory_provisions SET is_current = FALSE
+WHERE document_id LIKE '<wrong-format-prefix>%' AND source_council = '<council>';
+
+-- Step 3: Set source_council on the surviving family if NULL
+UPDATE regulatory_provisions SET source_council = '<council>'
+WHERE document_id ILIKE '%<CouncilName>%' AND source_council IS NULL;
+```
+
+**Prevention going forward:**
+- Always run the "format family collision" query above before importing any new extraction
+- Always set `source_council` in the extraction script at import time — never leave it NULL
+- Always check `v2_dcp_part` unknown rate after enrichment before going live
 
 ---
 
@@ -313,6 +404,35 @@ Fix was an UPDATE migration (`migrations/015_toc_normalize_leichhardt_document_i
 
 Run this for every council before bulk import to production.
 
+### Step 0: Existing data collision check (run FIRST, before anything else)
+
+```sql
+-- Are there already is_current=TRUE provisions for this council?
+SELECT
+  CASE WHEN document_id ~ '^[A-Za-z]+ DCP' THEN 'old-format (spaces/hyphens)'
+       WHEN document_id ~ '__[a-z]' THEN 'new-format (double-underscore slug)'
+       ELSE 'other'
+  END as format_family,
+  COUNT(*) as total,
+  COUNT(*) FILTER (WHERE v2_is_actionable = TRUE) as actionable,
+  COUNT(*) FILTER (WHERE v2_dcp_part = 'unknown' OR v2_dcp_part IS NULL) as unclassified
+FROM regulatory_provisions
+WHERE document_id ILIKE '%<CouncilName>%' AND is_current = TRUE
+GROUP BY 1;
+```
+
+**Gate:** If two format families are returned → stop. Retire the superseded family explicitly before importing the new extraction (see §7b).
+
+**Gate:** `unclassified` > 10% of `actionable` → fix the tagger for this council's `document_id` format before importing.
+
+**Also check `source_council` coverage:**
+```sql
+SELECT source_council, COUNT(*) FROM regulatory_provisions
+WHERE document_id ILIKE '%<CouncilName>%' AND is_current = TRUE
+GROUP BY source_council;
+```
+Any row with `source_council = NULL` means the extraction script didn't set it. Fix before import — provisions with NULL `source_council` are invisible to `validate_toc_join.py` and TOC-join monitoring.
+
 ### Step 1: Format artifact scan
 ```bash
 python scripts/verify_dcp_formatting.py --council <name> --limit 100
@@ -390,6 +510,21 @@ WHERE former_council = '<council>'
   AND is_current = TRUE;
 ```
 
+### Step 5b: Granularity regression check (when re-extracting an existing council)
+
+If is_current=TRUE provisions already exist for this council, compare the new extraction's per-chapter counts against the existing. A new extraction should have equal or more provisions per chapter, not fewer.
+
+```sql
+-- Existing chapter counts (run against production before switching is_current)
+SELECT source_chapter_key, COUNT(*) as existing_n
+FROM regulatory_provisions
+WHERE document_id ILIKE '%<CouncilName>%'
+  AND is_current = TRUE AND v2_is_actionable = TRUE
+GROUP BY source_chapter_key ORDER BY existing_n DESC;
+```
+
+**Gate: If any chapter in the new extraction has <50% of the existing count → stop.** Either the new extraction is coarser (whole sections bundled into single provisions), or chapters were missed. Leichhardt example: 62 new vs 516 existing = 12% — that's a section-bundling error, not a real extraction.
+
 ### Step 6: Manual spot inspection (10 provisions)
 Select 10 provisions across different chapters and compare against the actual DCP PDF pages. Verify:
 - No header/footer bleed
@@ -403,17 +538,20 @@ Select 10 provisions across different chapters and compare against the actual DC
 
 This is the recommended order for a clean onboarding:
 
+**0. Run §9 Step 0 collision check** — confirm no existing is_current provisions in a conflicting format family. If they exist, retire them first.
+
 1. **Survey the PDF structure** — `python scripts/survey_dcp.py <pdf>` — understand chapters, page ranges, section codes
 2. **Extract 50 provisions as a sample** — `python scripts/dcp_extract_changed.py --council <name> --dry-run --limit 50`
 3. **Run verify script** — identify formatting artifacts (§1–§4)
 4. **Write `dcp-format-configs.ts` entry** — add cleanup rules for detected artifacts
-5. **Run pre-import QA** (§9) on full extraction in staging
-6. **Write `enrichment/config/<name>_config.py`** — layer/topic mapping; verify with 20-provision spot check (§8)
+5. **Write `enrichment/config/<name>_config.py`** — layer/topic mapping; verify tagger correctly sets `v2_dcp_part` for this council's `document_id` format (not 'unknown'). Run on the 50-provision sample before full extract.
+6. **Verify `source_council` is set** in the extraction script — never import with `source_council = NULL`
 7. **Run populate script** — insert into `dcp_chapter_registry`
 8. **Full extract + enrich** — layer, site_condition, type, numeric phases
-9. **Populate `dcp_table_of_contents`** — query `document_id` + page ranges from `regulatory_provisions`, insert one row per chapter PDF (§7). Required before DA mode is usable.
-10. **Final QA** — all §9 checks pass, 10-provision manual spot check
-11. **Import to production** — `is_current=True` for new provisions, retire old if applicable
+9. **Run pre-import QA** (§9 all steps) — including granularity check against any existing data
+10. **Populate `dcp_table_of_contents`** — query `document_id` + page ranges from `regulatory_provisions`, insert one row per chapter PDF (§7). Required before DA mode is usable.
+11. **Final QA** — all §9 checks pass, 10-provision manual spot check, `v2_dcp_part` unknown rate <10%
+12. **Import to production** — `is_current=True` for new provisions, retire old format family if applicable
 
 ---
 
@@ -461,5 +599,6 @@ mycouncil: {
 | DQ-02 | Marrickville | Heritage "General" marked actionable (intro/objectives text) | 818 | 2026-02-05 |
 | DQ-26 | Marrickville | Truncated `pdf_page_image_url` stems | 391 (57 chapters) | 2026-03-04 |
 | DQ-27 | Marrickville | LaTeX math token artifacts | 36 | 2026-03-04 |
+| DQ-28 | Leichhardt | Coarse extraction (underscore doc_id format) coexisted with correct extraction — dual is_current=TRUE, v2_dcp_part='unknown' for all 508 new provisions, granularity 62 vs 516 for same chapter | 528 retired | 2026-03-30 |
 
 See `.claude/DATA_QUALITY_TRACKER.md` for full issue history.

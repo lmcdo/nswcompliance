@@ -295,6 +295,27 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
     // Council-specific artifact filtering is handled by preProcessProvisionText()
     // in lib/dcp-format-configs.ts before text reaches this parser.
 
+    // Handle markdown headings (e.g., "# A1.1 Section title", "## Subheading")
+    // These appear in Leichhardt and other councils where the extractor uses markdown
+    // heading syntax to mark section boundaries within provision text.
+    if (!skipHeadings) {
+      const mdHeading = line.match(/^(#{1,2})\s+(.+)/);
+      if (mdHeading) {
+        elements.push({
+          type: mdHeading[1].length === 1 ? 'heading' : 'subheading',
+          content: mdHeading[2],
+          level: mdHeading[1].length === 1 ? 1 : 2
+        });
+        continue;
+      }
+    } else {
+      // skipHeadings: strip markdown heading markers but keep the text as a paragraph
+      const mdHeadingStrip = line.match(/^#{1,2}\s+(.+)/);
+      if (mdHeadingStrip) {
+        line = mdHeadingStrip[1];
+      }
+    }
+
     // Check for section headers (e.g., "4.1.9 Additional controls")
     // Section headers MAY be in database (section_header field), but not always
     // Parse them from text if they exist and skipHeadings is false
@@ -334,6 +355,22 @@ export function parseProvisionText(rawText: string, options?: ParseOptions): For
           elements.push({
             type: 'heading',
             content: `${listSectionMatch[1]} ${titleText}`,
+            level: 3
+          });
+          continue;
+        }
+      }
+
+      // Pattern 3: Letter-prefixed section codes (e.g., "A1.1 HEADING", "B3.2 Title")
+      // Common in Leichhardt DCP where sections are labeled A1.1, A1.2, B1.1, etc.
+      const letterSectionMatch = line.match(/^([A-Z]\d+\.\d+(?:\.\d+)?)\s+(.+?)(?:\s*$)/);
+      if (letterSectionMatch) {
+        const titleText = letterSectionMatch[2];
+        const wordCount = titleText.split(/\s+/).length;
+        if (titleText.length <= 80 && wordCount <= 12) {
+          elements.push({
+            type: 'heading',
+            content: `${letterSectionMatch[1]} ${titleText}`,
             level: 3
           });
           continue;

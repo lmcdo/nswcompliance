@@ -285,7 +285,7 @@ class TestActionableClassification:
         # - ashfield:     was (1200-2000), actual 5941 (15 document variants in DB
         #   including spaced + underscored document_id formats both ILIKE-matching)
         expected_ranges = {
-            'marrickville': (2000, 3500),
+            'marrickville': (4000, 6000),  # Re-extraction with O/C subsection patterns (2026-03-29)
             'leichhardt': (1500, 2200),
             'ashfield': (5000, 7000),
         }
@@ -385,6 +385,7 @@ class TestFalseNegativeMonitoring:
             FROM regulatory_provisions
             WHERE provision_text ILIKE '%must%'
               AND v2_is_actionable = false
+              AND is_current = true
               AND document_id ILIKE '%DCP%'
               AND (section_header NOT ILIKE '%— Objectives%'
                    OR section_header IS NULL)
@@ -394,9 +395,9 @@ class TestFalseNegativeMonitoring:
         false_negative_count = cur.fetchone()[0]
         cur.close()
 
-        # Post-force_reprocess, the only remaining false provisions with 'must'
-        # outside objectives sections should be Ashfield E1 Heritage narrative
-        # text (~10-15 provisions). Threshold set to 20 to allow headroom.
+        # Scoped to is_current=TRUE to exclude retired provisions from prior
+        # extractions. Remaining false negatives should be Ashfield E1 Heritage
+        # narrative text (~10-15 provisions). Threshold set to 20.
         # If this trips, run: python -m enrichment.pipeline --reprocess-false
         assert false_negative_count < 20, (
             f"{false_negative_count} non-objectives DCP provisions with 'must' marked "
@@ -414,6 +415,7 @@ class TestFalseNegativeMonitoring:
             FROM regulatory_provisions
             WHERE provision_text ILIKE '%shall%'
               AND v2_is_actionable = false
+              AND is_current = true
               AND document_id ILIKE '%DCP%'
               AND (section_header NOT ILIKE '%— Objectives%'
                    OR section_header IS NULL)
@@ -443,6 +445,7 @@ class TestFalseNegativeMonitoring:
             FROM regulatory_provisions
             WHERE (provision_text ILIKE '%must%' OR provision_text ILIKE '%shall%')
               AND v2_is_actionable = false
+              AND is_current = true
               AND document_id ILIKE '%DCP%'
               AND (
                 section_header ILIKE '%— Controls%'

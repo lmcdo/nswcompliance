@@ -276,7 +276,7 @@ Automated checks only catch patterns we've already seen. Novel patterns need hum
 ```sql
 SELECT id, provision_text
 FROM regulatory_provisions
-WHERE former_council = '<name>'
+WHERE source_council = '<name>'
   AND v2_is_actionable = true
 ORDER BY random()
 LIMIT 10;
@@ -317,11 +317,22 @@ Runs 3 sections:
 3. **is_current audit**: counts first-pass provisions with NULL source_chapter_key (these cannot be auto-retired if re-extracted)
 
 **Pass gate (Section 1):** < 5% of sampled provisions have flagged artifact lines.
+**Pass gate (NULL topics):** ≤ 5% of actionable provisions have NULL v2_topic. Above this = broken enrichment config.
 
-**Fail gate (≥ 5%):**
+**Fail gate — artifact check (≥ 5%):**
 1. Note which labels are flagged
 2. Add or update the config entry in `frontend-nextjs/lib/dcp-format-configs.ts`
 3. Rerun to confirm pass gate before proceeding
+
+**Fail gate — NULL topics (> 5%):**
+If NULL topic provisions are structural artifacts (Contents pages, bare page numbers, definition index pages), mark them non-actionable:
+```sql
+UPDATE regulatory_provisions SET v2_is_actionable = false
+WHERE source_council = '<council>' AND is_current = true
+  AND v2_topic IS NULL AND v2_is_actionable = true
+  AND (provision_text ILIKE 'Contents%' OR provision_text = '');
+```
+Inspect any remaining NULL-topic actionable provisions manually before bulk-updating.
 
 The script prints a `dcp-format-configs.ts` skeleton automatically when format checks fail — use it as a starting point, but verify the exact patterns against what you saw in Step 7a.
 
@@ -385,18 +396,77 @@ If a council splits one logical chapter across multiple PDFs (e.g. Leichhardt Pa
 
 ### Verify the JOIN works:
 
-```sql
-SELECT p.id, p.document_id, t.section_number as toc_section_number
-FROM regulatory_provisions p
-LEFT JOIN dcp_table_of_contents t
-  ON p.document_id = t.document_id
-  AND p.pdf_page BETWEEN t.page_start AND t.page_end
-WHERE p.source_council = '<council>'
-  AND p.is_current = TRUE
-LIMIT 20;
+```bash
+python scripts/validate_toc_join.py --council <council> --gate --verbose
 ```
 
-**Gate:** `toc_section_number` is non-NULL for the majority of provisions. NULL = document_id mismatch — fix the INSERT values.
+**Gate:** exits 0, reports JOIN rate ≥ 85%. If it fails:
+
+- "NO TOC" — TOC INSERT didn't land. Check the `document_id` values you inserted match the ones in `regulatory_provisions` exactly.
+- FAIL with unmatched document_ids listed — `document_id` in TOC doesn't match provisions. Fix the INSERT values and re-run.
+- FAIL with low JOIN rate but no unmatched ids — page range gaps. See Known Issues below.
+
+The validator auto-detects whether TOC has been loaded at all, distinguishing a missing import from a broken join. Orphaned TOC entries (TOC rows with no matching provisions) are shown as informational — they don't fail the gate.
+
+**Note — page range gaps:** If provisions exist outside the TOC page ranges (e.g. introductory provisions on page 1 but first TOC entry starts at page 3), extend `page_start` to 1 on the first entry:
+```sql
+UPDATE dcp_table_of_contents
+SET page_start = 1
+WHERE document_id = '<council>_DCP_<year>__<part_slug>'
+  AND page_start = <original_start>;
+```
+Re-run the validator to confirm.
+
+**Note — absolute vs relative page numbers:** If a council compiled multiple chapters into one PDF for TOC extraction but extracted provisions per-chapter PDF, page numbers will be mismatched (TOC shows absolute pages 300+, provisions use relative pages 1+). Solution: add a depth=0 catch-all entry with page_start=1, page_end=NULL for affected chapters. See migration 017 comments for the pattern.
+
+**Deferred TOC items — tagging policy (NON-NEGOTIABLE):** If a chapter cannot be given a real TOC entry at this stage (e.g. PDF not available, OCR required, section structure unclear), you MUST:
+
+1. Insert a catch-all entry so the JOIN doesn't fail:
+   ```sql
+   -- TODO: replace catch-all once <reason> is resolved — <what needs to happen>
+   INSERT INTO dcp_table_of_contents (document_id, section_number, section_title, page_start, page_end)
+   VALUES ('<document_id>', 'CATCHALL', '<chapter title> (catch-all)', 1, NULL);
+   ```
+2. Add a line to `.claude/DATA_QUALITY_TRACKER.md` under the council's section:
+   ```
+   - [ ] TOC: <chapter_key> — <reason deferred> — requires: <action>
+   ```
+3. The open issue must be visible in `DATA_QUALITY_TRACKER.md` before you mark the council complete.
+
+Do NOT leave a deferred TOC item as a comment in a migration file only. It will be forgotten.
+
+---
+
+## Step 7e — Rule Extraction (Deterministic Phase)
+
+**Mandatory. Run after enrichment. Do not defer to Phase 3.**
+
+```bash
+python -m enrichment.rule_extraction_pipeline --phase deterministic --council <council>
+```
+
+This runs the deterministic extractor against all actionable provisions for the council and writes `v2_extracted_rules` (jsonb) and `v2_extraction_status` (text) to `regulatory_provisions`. No LLM required — this phase is pure regex + classifier.
+
+**Gate — DB check:**
+
+```sql
+SELECT v2_extraction_status, COUNT(*)
+FROM regulatory_provisions
+WHERE source_council = '<council>' AND is_current = TRUE AND v2_is_actionable = TRUE
+GROUP BY v2_extraction_status ORDER BY 1;
+```
+
+Expected distribution: most provisions in `complete` or `needs_llm`. `NULL` status = pipeline did not run.
+
+| Status | Meaning |
+|--------|---------|
+| `complete` | Rule fully extracted deterministically |
+| `needs_llm` | Provision has conditions/cross-refs that require LLM phase — acceptable at this stage |
+| `NULL` | Pipeline never ran — extraction step failed silently, re-run |
+
+**Gate:** < 5% NULL status. If NULL rate is high, check council key matches `source_council` exactly and re-run.
+
+**Note:** The `needs_llm` backlog is tracked — do not try to resolve it here. That is Phase 3 work. The gate only requires deterministic phase completed (< 5% NULL).
 
 ---
 
@@ -408,6 +478,37 @@ LIMIT 20;
 4. For heritage addresses (Woollahra: Paddington, Double Bay), heritage provisions appear
 
 **Gate:** Address lookup returns DCP provisions. If LGA not detected, check `LGA_ALIASES` in `frontend-nextjs/lib/lga-configs/index.ts`.
+
+---
+
+## Step 9 — Quality Gate (Must Pass Before Council is Complete)
+
+A council is not complete until it reaches **Grade A**. Grade B is not acceptable for a council marked production-ready.
+
+```bash
+python scripts/dcp_quality_report.py --council <council> --gate
+```
+
+**Gate:** exits 0 with `Grade: A` (score ≥ 85).
+
+| Grade | Score | Status |
+|-------|-------|--------|
+| A | ≥ 85 | ✅ Council complete — proceed to merge + deploy |
+| B | 70–84 | ❌ **Stop.** Diagnose which sub-scores are pulling below 85 and fix before proceeding. |
+| C or below | < 70 | ❌ Major structural problem — re-investigate from Step 7. |
+
+**How to diagnose a B score:**
+
+The report breaks score into sub-components. Common causes:
+
+| Sub-score failing | Likely cause | Fix |
+|-------------------|-------------|-----|
+| Low granularity (median chars high, O/C markers present) | Provisions not split at Objective/Control boundaries | Add split patterns to `COUNCIL_SUBSECTION_PATTERNS` in `dcp_extract_changed.py`, re-extract |
+| High NULL topic rate | Enrichment config missing section codes | Fix `enrichment/config/{lga}_config.py`, re-run Step 7 |
+| Low rule extraction coverage | Deterministic phase not run or low completion | Re-run Step 7e |
+| Low TOC JOIN rate | Page range gaps or unmatched document_ids | Fix via Step 7d, re-run `validate_toc_join.py` |
+
+Do not mark a council complete or open a PR for it until Grade A is confirmed.
 
 ---
 
