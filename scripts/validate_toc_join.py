@@ -96,6 +96,65 @@ WHERE EXISTS (
 )
 """
 
+# ── Section granularity check ──────────────────────────────────────────────────
+# Councils where each chapter document IS one section by structural design —
+# e.g. Marrickville's per-topic chapter files. "0 of 1 assessed" per chapter
+# is correct for these, so the coarse-TOC gate is skipped.
+CHAPTER_PER_SECTION_COUNCILS = {"marrickville"}
+
+# Min provisions for a chapter to be flagged as coarse (avoids noise on genuine
+# single-section chapters — e.g. Leichhardt Part F Food has 21 provisions in 1 section
+# by design).
+GRANULARITY_MIN_PROVISIONS = 30
+
+# Known chapters exempted from the granularity gate.
+# Format: {document_id: reason}
+# Add here only when the "1 section" result is verified and understood — never
+# to suppress a real gap without a fix plan recorded in DATA_QUALITY_TRACKER.md.
+KNOWN_GRANULARITY_EXEMPTIONS: dict = {
+    # Ashfield chapter_e2_haberfield: no TOC data exists for this chapter — catch-all
+    # entry added in migration 018 so JOIN rate is 100%, but actual section granularity
+    # requires a PDF TOC extraction. Tracked in DATA_QUALITY_TRACKER as DQ-28.
+    "Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield": (
+        "No TOC extracted — catch-all entry only. DQ-28. Requires PDF TOC extraction."
+    ),
+    # Ashfield chapter_b_public_domain: extraction artifact — all 49 provisions were
+    # assigned pdf_page=4 regardless of actual page. TOC has correct sections 1-10
+    # but they are unreachable by page-based JOIN. Re-extraction required.
+    "Inner_West_Ashfield_DCP_2016__chapter_b_public_domain": (
+        "Extraction artifact: all provisions on pdf_page=4, masking sections 2-10. "
+        "TOC is structurally correct. Re-extraction required to fix page assignment."
+    ),
+}
+
+COARSE_TOC_SQL = """
+WITH section_keys AS (
+  SELECT
+    p.source_council,
+    p.document_id,
+    p.id,
+    p.pdf_page,
+    COALESCE(t.section_number, 'general') AS section_key
+  FROM regulatory_provisions p
+  LEFT JOIN dcp_table_of_contents t
+    ON  t.document_id = p.document_id
+    AND p.pdf_page    >= t.page_start
+    AND (t.page_end IS NULL OR p.pdf_page <= t.page_end)
+  WHERE p.is_current = true
+    AND p.v2_is_actionable = true
+    AND p.source_council = %s
+)
+SELECT
+  document_id,
+  COUNT(*)                     AS prov_count,
+  COUNT(DISTINCT section_key)  AS unique_sections
+FROM section_keys
+GROUP BY document_id
+HAVING COUNT(*) > {min_provs}
+   AND COUNT(DISTINCT section_key) = 1
+ORDER BY prov_count DESC
+"""
+
 ORPHAN_TOC_SQL = """
 SELECT t.document_id, count(*) AS toc_rows
 FROM dcp_table_of_contents t
@@ -124,6 +183,51 @@ LIMIT 20
 
 
 # ── Reporting ──────────────────────────────────────────────────────────────────
+
+def check_section_granularity(cur, council: str) -> bool:
+    """Returns True if no chapter has suspiciously coarse TOC data.
+
+    Flags chapters with >GRANULARITY_MIN_PROVISIONS actionable provisions that
+    all resolve to a single section key — the signature of a missing sub-section
+    TOC (e.g. Ashfield chapter_d before migration 021, Leichhardt Part D before
+    migration 020).
+
+    Skipped for CHAPTER_PER_SECTION_COUNCILS (e.g. Marrickville) where each
+    chapter document is structurally a single section.
+    """
+    if council in CHAPTER_PER_SECTION_COUNCILS:
+        print(f"  {council}: section granularity check SKIPPED (chapter-per-section council)")
+        return True
+
+    if not _toc_loaded(cur, council):
+        print(f"  {council}: section granularity check SKIPPED (no TOC loaded yet)")
+        return True
+
+    sql = COARSE_TOC_SQL.format(min_provs=GRANULARITY_MIN_PROVISIONS)
+    cur.execute(sql, (council,))
+    coarse = cur.fetchall()
+
+    # Filter out known exemptions
+    real_failures = [(d, p, s) for d, p, s in coarse if d not in KNOWN_GRANULARITY_EXEMPTIONS]
+    exempted = [(d, p) for d, p, s in coarse if d in KNOWN_GRANULARITY_EXEMPTIONS]
+
+    if exempted:
+        for doc_id, prov_count in exempted:
+            reason = KNOWN_GRANULARITY_EXEMPTIONS[doc_id]
+            print(f"  {council}: [{prov_count} provs] {doc_id} — EXEMPT: {reason}")
+
+    if real_failures:
+        print(f"  {council}: section granularity FAIL — {len(real_failures)} chapter(s) with >{GRANULARITY_MIN_PROVISIONS} provisions in 1 section:")
+        for doc_id, prov_count, _ in real_failures:
+            print(f"    [{prov_count} provs] {doc_id}")
+        return False
+
+    if not exempted:
+        print(f"  {council}: section granularity PASS")
+    else:
+        print(f"  {council}: section granularity PASS (with {len(exempted)} known exemption(s))")
+    return True
+
 
 def _toc_loaded(cur, council: str) -> bool:
     """Returns True if ANY dcp_table_of_contents rows share document_ids with this council's provisions.
@@ -211,19 +315,36 @@ def run(args) -> int:
 
     print(f"\n=== TOC JOIN Rate Validation (threshold: >={threshold}%) ===\n")
 
-    all_passed = True
+    join_passed = True
     for council in councils:
         ok = check_council(cur, council, threshold, verbose=args.verbose or args.gate)
         if not ok:
-            all_passed = False
+            join_passed = False
 
     print()
-    if all_passed:
+    if join_passed:
         print("  PASS — all councils meet TOC JOIN threshold")
     else:
         print("  FAIL — one or more councils below threshold")
         if args.gate:
             print("         Run with --verbose to see unmatched document_ids")
+
+    # Section granularity check — catches coarse TOC (one entry for a whole chapter
+    # that should have multiple sections). Skipped for chapter-per-section councils.
+    granularity_passed = True
+    if not args.skip_granularity:
+        print(f"\n=== Section Granularity Check (min provisions: {GRANULARITY_MIN_PROVISIONS}) ===\n")
+        for council in councils:
+            ok = check_section_granularity(cur, council)
+            if not ok:
+                granularity_passed = False
+        print()
+        if granularity_passed:
+            print("  PASS — no coarse-TOC chapters detected")
+        else:
+            print("  FAIL — coarse TOC chapters found (add per-section entries via migration)")
+
+    all_passed = join_passed and granularity_passed
 
     conn.close()
 
@@ -248,6 +369,10 @@ def main():
     parser.add_argument(
         "--verbose", "-v", action="store_true",
         help="Show unmatched document_ids and orphaned TOC entries on failure"
+    )
+    parser.add_argument(
+        "--skip-granularity", action="store_true",
+        help="Skip the section granularity check (useful when deliberately loading coarse TOC first)"
     )
     args = parser.parse_args()
     sys.exit(run(args))
