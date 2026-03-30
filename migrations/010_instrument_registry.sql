@@ -55,7 +55,7 @@ VALUES
 
     ('lep', 'inner_west_lep_2022',
      'Inner West Local Environmental Plan 2022',
-     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0191',
+     'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2022-0457',
      'Zone objectives, local provisions, heritage; zone/height/FSR from Planning Portal spatial API')
 ON CONFLICT (instrument_key) DO NOTHING;
 
