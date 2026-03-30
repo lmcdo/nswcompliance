@@ -614,7 +614,7 @@ async function queryHeritageByHca(
     params.push(filters.topic.replace(/ /g, '_'));
   }
 
-  sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT 500`;
+  sql += ` ORDER BY rp.v2_dcp_part, rp.id LIMIT 2000`;
 
   const result = await client.query(sql, params);
 
