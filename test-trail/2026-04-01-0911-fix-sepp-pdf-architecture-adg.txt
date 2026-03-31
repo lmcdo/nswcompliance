@@ -1,0 +1,25 @@
+# Test Trail: fix/sepp-pdf-architecture — ADG + E&C PDF migration
+
+Date: 2026-04-01
+Branch: fix/sepp-pdf-architecture
+Commit: fc70f7a7
+
+## Changes
+- migrations/023_adg_and_ec_r2_pdf_url.sql: adds r2_pdf_url to sepp_adg_requirements + documents
+- frontend-nextjs/app/api/adg/summary/route.ts: pdfUrl (r2_pdf_url) replaces pdfPageImageUrl
+- frontend-nextjs/app/api/adg/separation-table/route.ts: pdfUrl (r2_pdf_url) replaces pdf_page_image_url
+- frontend-nextjs/app/api/setbacks/adg/route.ts: pdfUrl (R2 URL) replaces pdf_page_image_url path
+- frontend-nextjs/components/compliance/ADGBuildingSeparationTable.tsx: FileText button opens PDF#page=N; PdfImageModal removed
+- scripts/r2_upload_pdfs.py: apartment-design-guide (182pp) + sepp-exempt-complying-2008 entries added
+
+## TypeScript check
+npx tsc --noEmit — no errors in modified ADG files.
+Pre-existing errors in scripts/extract-sepp-structured.ts (unrelated, present before this PR).
+
+## Build
+Next.js build not run (no server available). Vercel preview will validate.
+
+## Manual check
+- ADGBuildingSeparationTable: FileImage + getPdfImageUrl imports removed, viewingPdfPage state removed, modal block removed
+- setbacks/adg route: source.pdfUrl now returns R2 URL (not PNG path)
+- All three ADG API routes return r2_pdf_url from DB (migration 023 sets this)
