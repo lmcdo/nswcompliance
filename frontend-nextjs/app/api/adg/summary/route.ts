@@ -26,7 +26,7 @@ interface SummaryMetric {
   sectionCode: string;
   sourcePage: number;
   sourceUrl: string;
-  pdfPageImageUrl: string | null;
+  pdfUrl: string | null;
 }
 
 /**
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
         secondary_unit,
         source_page,
         source_url,
-        pdf_page_image_url
+        r2_pdf_url
       FROM sepp_adg_requirements
       WHERE criteria_id IN (${placeholders})
     `;
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
           sectionCode: row.section_code,
           sourcePage: row.source_page,
           sourceUrl: row.source_url,
-          pdfPageImageUrl: row.pdf_page_image_url
+          pdfUrl: row.r2_pdf_url ?? null
         };
       })
       .filter((m): m is SummaryMetric => m !== null);

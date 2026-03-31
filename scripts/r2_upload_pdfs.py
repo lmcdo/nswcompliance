@@ -914,6 +914,26 @@ LOCAL_FILES = [
         "local_path":    PROJECT_ROOT / "docs" / "adg" / "adg-part-3.pdf",
         "council_url":   None,  # No council URL - manual update
     },
+    {
+        "council":       "state",
+        "dcp_name":      "Apartment Design Guide (Full)",
+        "chapter_key":   "apartment-design-guide",
+        "chapter_label": "Apartment Design Guide (Full, 182pp)",
+        "doc_type":      "adg",
+        "sort_order":    2,
+        "local_path":    PROJECT_ROOT / "docs" / "adg" / "apartment-design-guide.pdf",
+        "council_url":   None,
+    },
+    {
+        "council":       "state",
+        "dcp_name":      "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008",
+        "chapter_key":   "sepp-exempt-complying-2008",
+        "chapter_label": "SEPP Exempt and Complying 2008",
+        "doc_type":      "sepp",
+        "sort_order":    3,
+        "local_path":    PROJECT_ROOT / "scripts" / "sepp_exempt_complying_2008.pdf",
+        "council_url":   None,
+    },
 ]
 
 # ─── Council lookup ────────────────────────────────────────────────────────────
