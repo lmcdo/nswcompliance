@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
         legal_status: 'STATUTORY',
         url: 'https://www.planning.nsw.gov.au/sites/default/files/2023-03/apartment-design-guide-part-3-siting-the-development.pdf',
         page: 63,
-        pdf_page_image_url: '/pdf-pages/adg/adg-part-3_page_63.png'
+        pdfUrl: 'https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/source-pdfs/adgs/v1.0-baseline/apartment-design-guide.pdf'
       },
       notes: [] as string[]
     };

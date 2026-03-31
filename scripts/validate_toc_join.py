@@ -112,19 +112,9 @@ GRANULARITY_MIN_PROVISIONS = 30
 # Add here only when the "1 section" result is verified and understood — never
 # to suppress a real gap without a fix plan recorded in DATA_QUALITY_TRACKER.md.
 KNOWN_GRANULARITY_EXEMPTIONS: dict = {
-    # Ashfield chapter_e2_haberfield: no TOC data exists for this chapter — catch-all
-    # entry added in migration 018 so JOIN rate is 100%, but actual section granularity
-    # requires a PDF TOC extraction. Tracked in DATA_QUALITY_TRACKER as DQ-28.
-    "Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield": (
-        "No TOC extracted — catch-all entry only. DQ-28. Requires PDF TOC extraction."
-    ),
-    # Ashfield chapter_b_public_domain: extraction artifact — all 49 provisions were
-    # assigned pdf_page=4 regardless of actual page. TOC has correct sections 1-10
-    # but they are unreachable by page-based JOIN. Re-extraction required.
-    "Inner_West_Ashfield_DCP_2016__chapter_b_public_domain": (
-        "Extraction artifact: all provisions on pdf_page=4, masking sections 2-10. "
-        "TOC is structurally correct. Re-extraction required to fix page assignment."
-    ),
+    # Add entries here only when a structural gap is verified and understood.
+    # Both chapter_b_public_domain and chapter_e2_haberfield were here — fixed in
+    # migration 024 (expanded COUNCIL_CHAPTER_RANGES + re-extraction + new TOC entries).
 }
 
 COARSE_TOC_SQL = """

@@ -142,7 +142,15 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("A-Part15", "Stormwater Management",         124, 126),
     ],
     ("ashfield", "chapter-b-public-domain"): [
-        ("B-Part1",  "Public Domain",                   4,  11),
+        # PDF TOC (page 3) lists 10 topics — multiple topics share pages (6,7,8,10).
+        # Split into 7 distinct page groups so provisions spread across pages.
+        ("B-intro",  "Introduction",                    1,   3),
+        ("B-s1",     "Active Street Frontages",         4,   5),
+        ("B-s2-3",   "Awnings and Street Trees",        6,   6),
+        ("B-s4-5",   "Wind Effects and Reflectivity",   7,   7),
+        ("B-s6-7",   "Public Domain Plan and Footways", 8,   8),
+        ("B-s8",     "External Lighting",               9,   9),
+        ("B-s9-10",  "Undergrounding and Public Art",  10,  10),
     ],
     ("ashfield", "chapter-c-sustainability"): [
         ("C-Part1",  "Building Sustainability",         3,   9),
@@ -167,7 +175,26 @@ COUNCIL_CHAPTER_RANGES: dict[tuple[str, str], list[tuple[str, str, int, int]]] =
         ("E1-Heritage", "Heritage Items and Conservation Areas", 3, 392),
     ],
     ("ashfield", "chapter-e2-haberfield"): [
-        ("E2-Haberfield", "Haberfield Neighbourhood",  2,  22),
+        # 21 numbered sub-sections (2.2.1-2.2.21). Most on their own page.
+        # Some sub-sections share a page — grouped into one range.
+        # Verified from PDF via inspect_e2_sections.py (2026-03-31).
+        ("E2-intro",   "Introduction",                          1,  2),
+        ("E2-s2-1",    "Desired Future Character",              3,  4),
+        ("E2-s2-2-3",  "General and Pattern of Development",    5,  5),
+        ("E2-s2-4",    "Building Form",                         6,  6),
+        ("E2-s2-5",    "Roof Forms",                            7,  7),
+        ("E2-s2-6",    "Siting Setbacks and Levels",            8,  8),
+        ("E2-s2-7",    "Walls",                                 9,  9),
+        ("E2-s2-8-9",  "Chimneys and Joinery",                 10, 10),
+        ("E2-s2-10",   "Windows and Doors",                    11, 11),
+        ("E2-s2-11-12","Window Sunhoods and Verandahs",        12, 12),
+        ("E2-s2-13",   "Garages and Carports",                 13, 13),
+        ("E2-s2-14-15","Outbuildings and Colour Schemes",      14, 14),
+        ("E2-s2-16",   "Fences and Gates",                     15, 15),
+        ("E2-s2-17",   "Garden Elements",                      16, 16),
+        ("E2-s2-18-19","Modern Technology and Commercial",     17, 18),
+        ("E2-s2-20",   "Non-Conforming Houses",                19, 19),
+        ("E2-s2-21",   "New Dwellings",                        20, 22),
     ],
     ("ashfield", "chapter-f-dev-category"): [
         ("F-Part1",  "Dwelling Houses and Dual Occupancies",  3,  28),

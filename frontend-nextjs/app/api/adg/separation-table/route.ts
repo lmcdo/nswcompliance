@@ -30,7 +30,7 @@ interface ADGSeparationTable {
   rows: SeparationRow[];
   source_url: string;
   source_page: number;
-  pdf_page_image_url: string | null;
+  pdfUrl: string | null;
   requirement_text: string;
   note: string;
 }
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           building_height_category,
           source_page,
           source_url,
-          pdf_page_image_url
+          r2_pdf_url
         FROM sepp_adg_requirements
         WHERE section_code = '3F'
           AND criteria_id LIKE '3F-1%'
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
         rows: separationRows,
         source_url: row.source_url || 'https://www.planning.nsw.gov.au/sites/default/files/2023-03/apartment-design-guide-part-3-siting-the-development.pdf',
         source_page: row.source_page || 63,
-        pdf_page_image_url: row.pdf_page_image_url || null,
+        pdfUrl: row.r2_pdf_url || null,
         requirement_text: row.requirement_text || '',
         note: 'Minimum separation between habitable rooms/balconies and non-habitable rooms to side/rear boundaries',
       };
