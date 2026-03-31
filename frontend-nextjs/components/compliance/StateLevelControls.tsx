@@ -57,6 +57,13 @@ export function StateLevelControls({
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
   const [transportLoading, setTransportLoading] = useState(false);
+  const [walkingDistance, setWalkingDistance] = useState<{
+    walking_m: number | null;
+    crow_flies_m: number | null;
+    tod_eligible: boolean | null;
+    station_name: string;
+  } | null>(null);
+  const [walkingDistanceLoading, setWalkingDistanceLoading] = useState(false);
   const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({
     sepp: false,
@@ -336,6 +343,45 @@ export function StateLevelControls({
 
     fetchTransport();
   }, [propertyLat, propertyLng]);
+
+  // Fetch walking network distance for nearest qualifying rail station
+  useEffect(() => {
+    if (!propertyLat || !propertyLng || nearbyTransport.length === 0) return;
+
+    const railStation = nearbyTransport.find(
+      s => (s.type === 'heavy_rail' || s.type === 'light_rail') &&
+        s.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M &&
+        s.lat && s.lng
+    );
+    if (!railStation) return;
+
+    setWalkingDistanceLoading(true);
+    fetch('/api/spatial/tod', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        property_lat: propertyLat,
+        property_lng: propertyLng,
+        station_lat: railStation.lat,
+        station_lng: railStation.lng,
+        station_name: railStation.name,
+        tod_threshold_m: NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M,
+      }),
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.walking_m !== undefined) {
+          setWalkingDistance({
+            walking_m: data.walking_m,
+            crow_flies_m: data.crow_flies_m,
+            tod_eligible: data.tod_eligible,
+            station_name: railStation.name,
+          });
+        }
+      })
+      .catch(() => { /* spatial API unavailable — silently skip */ })
+      .finally(() => setWalkingDistanceLoading(false));
+  }, [nearbyTransport, propertyLat, propertyLng]);
 
   // Fetch pathway summary data for PathwaySummaryCard
   useEffect(() => {
@@ -1165,6 +1211,42 @@ export function StateLevelControls({
                         Verify against current LEP controls until rezoning is gazetted.
                       </p>
                     </div>
+                  )}
+                </div>
+              )}
+
+              {/* Walking network distance from city2graph spatial API */}
+              {(walkingDistanceLoading || walkingDistance) && (
+                <div className="bg-white border border-purple-200 rounded-lg p-3">
+                  <p className="text-xs font-semibold text-purple-900 mb-1">Walking Network Distance</p>
+                  {walkingDistanceLoading ? (
+                    <div className="animate-pulse h-3 bg-purple-100 rounded w-2/3" />
+                  ) : walkingDistance && (
+                    <>
+                      <div className="flex items-center gap-4 mt-1">
+                        <div>
+                          <p className="text-xs text-gray-500">Walking route</p>
+                          <p className={`text-sm font-bold ${walkingDistance.tod_eligible ? 'text-green-700' : 'text-red-700'}`}>
+                            {walkingDistance.walking_m != null ? `${walkingDistance.walking_m}m` : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Crow-flies</p>
+                          <p className="text-sm font-medium text-gray-700">
+                            {walkingDistance.crow_flies_m != null ? `${walkingDistance.crow_flies_m}m` : '—'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-gray-500">Threshold</p>
+                          <p className={`text-xs font-semibold px-1.5 py-0.5 rounded ${walkingDistance.tod_eligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                            {walkingDistance.tod_eligible ? 'Within 800m' : 'Outside 800m'}
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        To {walkingDistance.station_name} via OSM walking network
+                      </p>
+                    </>
                   )}
                 </div>
               )}
