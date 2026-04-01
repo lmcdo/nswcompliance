@@ -25,8 +25,9 @@ export async function POST(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (err) {
-    console.error('[spatial/tod] fetch failed:', err);
-    return NextResponse.json({ error: 'Spatial API unavailable' }, { status: 503 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[spatial/tod] fetch failed:', msg);
+    return NextResponse.json({ error: 'Spatial API unavailable', detail: msg }, { status: 503 });
   }
 }
 
