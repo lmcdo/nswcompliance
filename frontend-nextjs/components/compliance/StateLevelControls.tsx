@@ -6,7 +6,7 @@
  * Separated from DCP (council-level) provisions
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Scale, Building2, Car, FileImage, Clock, Shield, AlertTriangle, Info } from 'lucide-react';
@@ -56,6 +56,8 @@ export function StateLevelControls({
   const [loadingSepp, setLoadingSepp] = useState(false);
   const [loadingAdg, setLoadingAdg] = useState(false);
   const [nearbyTransport, setNearbyTransport] = useState<any[]>([]);
+  const nearbyTransportRef = useRef<any[]>([]);
+  const walkingFetchedRef = useRef<string | null>(null); // tracks coords for which we've fetched
   const [transportLoading, setTransportLoading] = useState(false);
   const [walkingDistance, setWalkingDistance] = useState<{
     walking_m: number | null;
@@ -330,7 +332,10 @@ export function StateLevelControls({
           const data = await response.json();
           // Filter to stops within 1km
           const nearby = (data.suggestions || []).filter((s: any) => s.distance <= NSW_PLANNING_CONSTANTS.TOD.TRANSPORT_PROXIMITY_SEARCH_M);
+          nearbyTransportRef.current = nearby;
           setNearbyTransport(nearby);
+          // Reset walking fetch guard when transport data arrives for new coords
+          walkingFetchedRef.current = null;
         }
       } catch (err) {
         console.error('Failed to fetch transport:', err);
@@ -343,12 +348,21 @@ export function StateLevelControls({
     fetchTransport();
   }, [propertyLat, propertyLng]);
 
-  // Fetch walking network distance for nearest qualifying rail station
+  // Fetch walking network distance for nearest qualifying rail station.
+  // Reads transport via ref to avoid render loop. Guarded to fire once per property.
   useEffect(() => {
-    if (!propertyLat || !propertyLng || nearbyTransport.length === 0) return;
+    if (!propertyLat || !propertyLng) return;
 
-    const railStation = nearbyTransport.find(
-      s => (s.type === 'heavy_rail' || s.type === 'light_rail') &&
+    const coordKey = `${propertyLat},${propertyLng}`;
+    if (walkingFetchedRef.current === coordKey) return;
+
+    const stops = nearbyTransportRef.current;
+    if (stops.length === 0) return;
+
+    walkingFetchedRef.current = coordKey;
+
+    const railStation = stops.find(
+      (s: any) => (s.type === 'heavy_rail' || s.type === 'light_rail') &&
         s.distance <= NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M &&
         s.lat && s.lng
     );
@@ -358,6 +372,7 @@ export function StateLevelControls({
       ? NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M
       : NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M;
 
+    const controller = new AbortController();
     setWalkingDistanceLoading(true);
     const spatialBase = process.env.NEXT_PUBLIC_SPATIAL_API_URL || '/api/spatial';
     fetch(`${spatialBase}/tod`, {
@@ -371,7 +386,7 @@ export function StateLevelControls({
         station_name: railStation.name,
         tod_threshold_m: threshold,
       }),
-      signal: AbortSignal.timeout(90000),
+      signal: controller.signal,
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
@@ -385,9 +400,11 @@ export function StateLevelControls({
           });
         }
       })
-      .catch(() => { /* spatial API unavailable — silently skip */ })
+      .catch(() => { /* spatial API unavailable or aborted — silently skip */ })
       .finally(() => setWalkingDistanceLoading(false));
-  }, [nearbyTransport, propertyLat, propertyLng]);
+
+    return () => controller.abort();
+  }, [propertyLat, propertyLng, transportLoading]);
 
   // Fetch pathway summary data for PathwaySummaryCard
   useEffect(() => {
