@@ -1181,8 +1181,13 @@ export class NSWPlanningPortalService {
  }
  propertyData.address = cleanAddress;
 
+ // searchResult.address includes the street number; propertyData.address (from valuation API) omits it
+ const mergedPropertyData = searchResult.address
+   ? { ...propertyData, address: searchResult.address }
+   : propertyData;
+
  return {
- propertyData,
+ propertyData: mergedPropertyData,
  constraints,
  layers: allLayers, // Return merged layers including TOD/HIA
  roadClassifications, // Return road classification data for setback calculations
