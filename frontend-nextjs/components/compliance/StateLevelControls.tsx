@@ -131,13 +131,11 @@ export function StateLevelControls({
   // Use LGA-specific SEPP mapping if provided, otherwise use NSW default
   const SEPP_MAPPING = lgaConfig?.sepp?.sepp_id_mapping || DEFAULT_SEPP_MAPPING;
 
-  // Load ADG requirements for residential flat building development types.
-  // ADG applies statewide to RFBs under SEPP Housing 2021 — no SEPP detection needed.
+  // Load ADG requirements when zone permits apartment development.
+  // ADG applies statewide to RFBs under SEPP Housing 2021 — gate on zone, not dev type.
   const loadADGRequirements = useCallback(async () => {
-    if (!developmentType) return;
-
-    // ADG only applies to residential flat building development types
-    if (!APARTMENT_DEV_TYPES.includes(developmentType)) {
+    const zoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+    if (!(NSW_PLANNING_CONSTANTS.ZONES.APARTMENT_PERMITTING as readonly string[]).includes(zoneCode)) {
       setAdgRequirements([]);
       return;
     }
@@ -471,8 +469,9 @@ export function StateLevelControls({
     sepp === 'SEPP_HOUSING_2021' || sepp === 'SEPP_65'
   );
   
-  // ADG applies statewide to residential flat buildings — gate on dev type, not SEPP detection
-  const showADGSection = isApartmentDevelopment || adgRequirements.length > 0;
+  // ADG applies to any zone that permits apartment development — gate on zone, not dev type
+  const adgZoneCode = propertyData?.constraints?.zone?.split(' ')[0]?.replace(/[^A-Z0-9]/gi, '')?.toUpperCase() || '';
+  const showADGSection = (NSW_PLANNING_CONSTANTS.ZONES.APARTMENT_PERMITTING as readonly string[]).includes(adgZoneCode) || adgRequirements.length > 0;
 
   // Get land zoning layer data
   const landZoningLayer = propertyData?.planningLayers?.find(
