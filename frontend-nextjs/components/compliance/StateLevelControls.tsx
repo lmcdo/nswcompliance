@@ -354,7 +354,8 @@ export function StateLevelControls({
     if (!railStation) return;
 
     setWalkingDistanceLoading(true);
-    fetch('/api/spatial/tod', {
+    const spatialBase = process.env.NEXT_PUBLIC_SPATIAL_API_URL || '/api/spatial';
+    fetch(`${spatialBase}/tod`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
