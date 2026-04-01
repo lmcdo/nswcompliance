@@ -62,6 +62,7 @@ export function StateLevelControls({
     crow_flies_m: number | null;
     tod_eligible: boolean | null;
     station_name: string;
+    threshold_m: number;
   } | null>(null);
   const [walkingDistanceLoading, setWalkingDistanceLoading] = useState(false);
   const [viewingPdfPage, setViewingPdfPage] = useState<{pageNumber: number, url: string, label: string} | null>(null);
@@ -353,6 +354,10 @@ export function StateLevelControls({
     );
     if (!railStation) return;
 
+    const threshold = railStation.type === 'light_rail'
+      ? NSW_PLANNING_CONSTANTS.TOD.LIGHT_RAIL_WALKABLE_M
+      : NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M;
+
     setWalkingDistanceLoading(true);
     const spatialBase = process.env.NEXT_PUBLIC_SPATIAL_API_URL || '/api/spatial';
     fetch(`${spatialBase}/tod`, {
@@ -364,7 +369,7 @@ export function StateLevelControls({
         station_lat: railStation.lat,
         station_lng: railStation.lng,
         station_name: railStation.name,
-        tod_threshold_m: NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M,
+        tod_threshold_m: threshold,
       }),
       signal: AbortSignal.timeout(90000),
     })
@@ -376,6 +381,7 @@ export function StateLevelControls({
             crow_flies_m: data.crow_flies_m,
             tod_eligible: data.tod_eligible,
             station_name: railStation.name,
+            threshold_m: threshold,
           });
         }
       })
@@ -1240,7 +1246,7 @@ export function StateLevelControls({
                         <div>
                           <p className="text-xs text-gray-500">Threshold</p>
                           <p className={`text-xs font-semibold px-1.5 py-0.5 rounded ${walkingDistance.tod_eligible ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {walkingDistance.tod_eligible ? 'Within 800m' : 'Outside 800m'}
+                            {walkingDistance.tod_eligible ? `Within ${walkingDistance.threshold_m}m` : `Outside ${walkingDistance.threshold_m}m`}
                           </p>
                         </div>
                       </div>

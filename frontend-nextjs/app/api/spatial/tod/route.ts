@@ -30,17 +30,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Spatial API unavailable', detail: msg }, { status: 503 });
   }
 }
-
-export async function GET() {
-  const spatialApiUrl = process.env.SPATIAL_API_URL;
-  if (!spatialApiUrl) {
-    return NextResponse.json({ configured: false, error: 'SPATIAL_API_URL not set' });
-  }
-  try {
-    const r = await fetch(`${spatialApiUrl}/graph-status`, { signal: AbortSignal.timeout(5000) });
-    const data = await r.json();
-    return NextResponse.json({ configured: true, spatial_url: spatialApiUrl, graph_status: data });
-  } catch (err) {
-    return NextResponse.json({ configured: true, spatial_url: spatialApiUrl, error: String(err) });
-  }
-}
