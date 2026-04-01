@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Info, ChevronDown, ExternalLink, FileImage } from 'lucide-react';
-import { getPdfImageUrl } from '@/lib/pdf-image-url';
+import { Info, ChevronDown, ExternalLink, FileText } from 'lucide-react';
 
 interface ADGBuildingSeparationTableProps {
   buildingHeight?: number | null;
@@ -36,7 +35,7 @@ interface ADGStandards {
     legal_status: string;
     url: string;
     page: number;
-    pdf_page_image_url?: string;
+    pdfUrl?: string | null;
   };
   notes: string[];
 }
@@ -49,7 +48,6 @@ export function ADGBuildingSeparationTable({
   const [data, setData] = useState<ADGStandards | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewingPdfPage, setViewingPdfPage] = useState(false);
   const [localHeight, setLocalHeight] = useState<string>(buildingHeight?.toString() || '');
 
   // Sync local state with prop
@@ -269,13 +267,13 @@ export function ADGBuildingSeparationTable({
           <span className="text-red-600 font-semibold">{data.source.legal_status}</span>
         </p>
         <div className="flex items-center gap-3 pt-1">
-          {data.source.pdf_page_image_url && (
+          {data.source.pdfUrl && (
             <button
-              onClick={() => setViewingPdfPage(true)}
+              onClick={() => window.open(`${data.source.pdfUrl}#page=${data.source.page}`, '_blank')}
               className="p-1.5 rounded hover:bg-purple-100 transition-colors"
-              title={`View PDF Page ${data.source.page}`}
+              title={`View PDF page ${data.source.page}`}
             >
-              <FileImage className="w-5 h-5 text-purple-500 hover:text-purple-700" />
+              <FileText className="w-5 h-5 text-purple-500 hover:text-purple-700" />
             </button>
           )}
           <a
@@ -290,35 +288,6 @@ export function ADGBuildingSeparationTable({
         </div>
       </div>
 
-      {/* PDF Page Viewer Modal */}
-      {viewingPdfPage && data.source.pdf_page_image_url && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-75 p-4"
-          onClick={() => setViewingPdfPage(false)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-lg shadow-xl overflow-hidden">
-            <div className="sticky top-0 bg-white border-b px-4 py-2 flex items-center justify-between z-10">
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">ADG Building Separation (3F-1)</h3>
-                <p className="text-xs text-gray-500">Page {data.source.page}</p>
-              </div>
-              <button
-                onClick={() => setViewingPdfPage(false)}
-                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
-              >
-                Close
-              </button>
-            </div>
-            <div className="p-4 overflow-auto max-h-[calc(90vh-60px)]" onClick={(e) => e.stopPropagation()}>
-              <img
-                src={getPdfImageUrl(data.source.pdf_page_image_url) || data.source.pdf_page_image_url}
-                alt={`ADG Page ${data.source.page}`}
-                className="w-full h-auto rounded shadow"
-              />
-            </div>
-          </div>
-        </div>
-      )}
         </>
       )}
     </div>
