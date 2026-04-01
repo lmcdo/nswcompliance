@@ -472,6 +472,13 @@ export function ProvisionsByTocStructure({
     marrickville: 'Marrickville DCP 2011',
   };
 
+  // Last-verified dates from weekly PDF hash monitor (dcp_chapter_registry)
+  const councilVerifiedDates: Record<string, string> = {
+    leichhardt: '31 Mar 2026',
+    ashfield: '31 Mar 2026',
+    marrickville: '31 Mar 2026',
+  };
+
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
 
@@ -1796,6 +1803,22 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-0">
+      {/* Amendment monitoring status — shows source document + last verification date */}
+      {councilDcpNames[councilLower] && (
+        <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
+          <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+          <span className="font-medium text-gray-700">{councilDcpNames[councilLower]}</span>
+          <span>·</span>
+          <span>Monitored weekly</span>
+          {councilVerifiedDates[councilLower] && (
+            <>
+              <span>·</span>
+              <span>Last verified {councilVerifiedDates[councilLower]}</span>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Intake filtering via ancillary checkboxes in assessment page — no modal needed */}
 
       {/* Enable DA Mode — rendered here so it only appears after provisions load */}

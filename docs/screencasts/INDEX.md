@@ -4,8 +4,14 @@
 
 ## Test Properties
 - **35 Albert Street, Ashfield** (R2 Low Density Residential, 736 sqm)
+- **10 Norman Street → resolves to 10 Cove Street, Haberfield** (R2, Heritage Conservation Area, 500m², FSR 0.5:1, Height 7m) — **use for heritage DA demos**
 - **10 Railway Parade, Summer Hill** (Heritage Conservation Area)
 - **185 Parramatta Road, Annandale** (Commercial/heritage shopfront)
+
+## LawTech / Grant Applications
+| File | Audience | Length | Status |
+|------|----------|--------|--------|
+| lawtech-hub-90s.md | Lander & Rogers LawTech Hub | 90s | API-verified 2026-04-01 |
 
 ## Persona Scripts
 
