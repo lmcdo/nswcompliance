@@ -367,6 +367,7 @@ export function StateLevelControls({
         station_name: railStation.name,
         tod_threshold_m: NSW_PLANNING_CONSTANTS.TOD.HEAVY_RAIL_WALKABLE_M,
       }),
+      signal: AbortSignal.timeout(90000),
     })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
