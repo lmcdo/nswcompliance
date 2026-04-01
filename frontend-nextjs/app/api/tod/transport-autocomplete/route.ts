@@ -130,6 +130,8 @@ export async function GET(request: NextRequest) {
  type: station.type,
  distance: station.distance,
  frequency: station.frequency,
+ lat: station.lat,
+ lng: station.lng,
  label: `${station.name} (${Math.round(station.distance)}m)`,
  value: station.name
  }));
