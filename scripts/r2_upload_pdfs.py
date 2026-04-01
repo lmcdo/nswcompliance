@@ -916,9 +916,9 @@ LOCAL_FILES = [
     },
     {
         "council":       "state",
-        "dcp_name":      "Apartment Design Guide (Full)",
+        "dcp_name":      "Apartment Design Guide (full)",
         "chapter_key":   "apartment-design-guide",
-        "chapter_label": "Apartment Design Guide (Full, 182pp)",
+        "chapter_label": "Apartment Design Guide",
         "doc_type":      "adg",
         "sort_order":    2,
         "local_path":    PROJECT_ROOT / "docs" / "adg" / "apartment-design-guide.pdf",
@@ -928,11 +928,12 @@ LOCAL_FILES = [
         "council":       "state",
         "dcp_name":      "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008",
         "chapter_key":   "sepp-exempt-complying-2008",
-        "chapter_label": "SEPP Exempt and Complying 2008",
+        "chapter_label": "SEPP Exempt and Complying Development Codes 2008",
         "doc_type":      "sepp",
         "sort_order":    3,
-        "local_path":    PROJECT_ROOT / "scripts" / "sepp_exempt_complying_2008.pdf",
-        "council_url":   None,
+        # Extraction origin — page numbers in regulatory_provisions match this version
+        "local_path":    PROJECT_ROOT / "archive" / "2026-01-extraction-outputs" / "extraction_outputs" / "sepps" / "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation" / "auto" / "State Environmental Planning Policy (Exempt and Complying Development Codes) 2008 - NSW Legislation_origin.pdf",
+        "council_url":   "https://legislation.nsw.gov.au/view/html/inforce/current/epi-2008-0572",
     },
 ]
 

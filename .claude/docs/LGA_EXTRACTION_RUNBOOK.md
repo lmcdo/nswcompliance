@@ -368,7 +368,44 @@ See `memory/heritage.md` for HCA tagging rules if this council has individual HC
 
 **Required for DA mode section grouping.** Without this, all provisions collapse to a single "General provisions" group because the JOIN on `toc_section_number` always returns NULL.
 
-### Get page ranges from the extracted provisions:
+### Automated extraction (primary method)
+
+Use `scripts/extract_toc.py` for each chapter PDF. The script tries two modes in order:
+1. **toc-page** — scans early pages for a printed TOC (5+ section-code hits → parses section names and page numbers)
+2. **heading-scan** — walks every page detecting section headings via SECTION_RE
+
+Run for each chapter, using the R2 key from `dcp_chapter_registry.r2_current_path`:
+
+```bash
+# Get the R2 keys for this council:
+python -c "
+import psycopg2; from pathlib import Path
+env = {}
+for line in Path('frontend-nextjs/.env.local').read_text().splitlines():
+    if '=' in line and not line.startswith('#'):
+        k,_,v = line.partition('='); env[k.strip()] = v.strip().strip('\"').strip(\"'\")
+conn = psycopg2.connect(env['DATABASE_URL'])
+cur = conn.cursor()
+cur.execute(\"SELECT chapter_key, r2_current_path, document_id FROM dcp_chapter_registry WHERE council = '<council>' ORDER BY chapter_key\")
+for r in cur.fetchall(): print(r)
+"
+
+# Run extract_toc.py for each chapter (--output both prints SQL + writes to DB):
+python scripts/extract_toc.py \
+    --pdf <r2_key_from_above> \
+    --document-id <document_id> \
+    --council <council> \
+    --output both \
+    --replace
+
+# If exit code = 2 (catch-all only): see "Deferred TOC items" below.
+```
+
+**Critical:** `document_id` passed to `--document-id` must exactly match `document_id` on `regulatory_provisions`. Use the value from `dcp_chapter_registry.document_id` or query `regulatory_provisions` directly.
+
+### Manual fallback (if automated extraction produces wrong results)
+
+If `extract_toc.py` misidentifies sections (e.g. council has unusual heading style), fall back to manual SQL. First inspect the page distribution of extracted provisions:
 
 ```sql
 SELECT document_id, min(pdf_page) as page_start, max(pdf_page) as page_end, count(*) as n
@@ -379,18 +416,7 @@ GROUP BY document_id
 ORDER BY page_start;
 ```
 
-### Insert one row per chapter PDF:
-
-```sql
-INSERT INTO dcp_table_of_contents (document_id, section_number, title, page_start, page_end)
-VALUES
-  ('<council>_DCP_<year>__<part_slug>', '1', 'Part A Introduction', 1, 45),
-  ('<council>_DCP_<year>__<part_slug>', '2', 'Part B Controls', 1, 80),
-  -- one row per document_id from the query above
-;
-```
-
-**Critical:** `document_id` in TOC must exactly match `document_id` on `regulatory_provisions`. Case, underscores, everything.
+Then write per-section INSERT rows manually (see migration 024 for the pattern).
 
 If a council splits one logical chapter across multiple PDFs (e.g. Leichhardt Part G across 3 files), all three `document_id` values should map to the same `section_number`.
 
@@ -402,31 +428,22 @@ python scripts/validate_toc_join.py --council <council> --gate --verbose
 
 **Gate:** exits 0, reports JOIN rate ≥ 85%. If it fails:
 
-- "NO TOC" — TOC INSERT didn't land. Check the `document_id` values you inserted match the ones in `regulatory_provisions` exactly.
-- FAIL with unmatched document_ids listed — `document_id` in TOC doesn't match provisions. Fix the INSERT values and re-run.
-- FAIL with low JOIN rate but no unmatched ids — page range gaps. See Known Issues below.
+- "NO TOC" — TOC INSERT didn't land. Check the `document_id` values match provisions exactly.
+- FAIL with unmatched document_ids listed — `document_id` in TOC doesn't match provisions. Fix and re-run.
+- FAIL with low JOIN rate but no unmatched ids — page range gaps. Extend `page_start` to 1 on the first entry:
+  ```sql
+  UPDATE dcp_table_of_contents
+  SET page_start = 1
+  WHERE document_id = '<doc_id>' AND page_start = <original_start>;
+  ```
 
-The validator auto-detects whether TOC has been loaded at all, distinguishing a missing import from a broken join. Orphaned TOC entries (TOC rows with no matching provisions) are shown as informational — they don't fail the gate.
-
-**Note — page range gaps:** If provisions exist outside the TOC page ranges (e.g. introductory provisions on page 1 but first TOC entry starts at page 3), extend `page_start` to 1 on the first entry:
-```sql
-UPDATE dcp_table_of_contents
-SET page_start = 1
-WHERE document_id = '<council>_DCP_<year>__<part_slug>'
-  AND page_start = <original_start>;
-```
-Re-run the validator to confirm.
+**Section granularity gate:** also runs automatically — flags chapters with >30 actionable provisions all mapping to one section (signature of single-entry `COUNCIL_CHAPTER_RANGES`). If flagged, expand `COUNCIL_CHAPTER_RANGES` in `dcp_extract_changed.py` to per-section entries, re-extract, and re-run migration. See migration 024 for the pattern.
 
 **Note — absolute vs relative page numbers:** If a council compiled multiple chapters into one PDF for TOC extraction but extracted provisions per-chapter PDF, page numbers will be mismatched (TOC shows absolute pages 300+, provisions use relative pages 1+). Solution: add a depth=0 catch-all entry with page_start=1, page_end=NULL for affected chapters. See migration 017 comments for the pattern.
 
-**Deferred TOC items — tagging policy (NON-NEGOTIABLE):** If a chapter cannot be given a real TOC entry at this stage (e.g. PDF not available, OCR required, section structure unclear), you MUST:
+**Deferred TOC items — tagging policy (NON-NEGOTIABLE):** If a chapter cannot be given a real TOC entry at this stage (e.g. PDF not available, OCR required, section structure unclear):
 
-1. Insert a catch-all entry so the JOIN doesn't fail:
-   ```sql
-   -- TODO: replace catch-all once <reason> is resolved — <what needs to happen>
-   INSERT INTO dcp_table_of_contents (document_id, section_number, section_title, page_start, page_end)
-   VALUES ('<document_id>', 'CATCHALL', '<chapter title> (catch-all)', 1, NULL);
-   ```
+1. `extract_toc.py` automatically outputs a catch-all entry and exits with code 2.
 2. Add a line to `.claude/DATA_QUALITY_TRACKER.md` under the council's section:
    ```
    - [ ] TOC: <chapter_key> — <reason deferred> — requires: <action>

@@ -11,7 +11,7 @@
 
 | Issue | Status | Priority |
 |-------|--------|----------|
-| DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ⏳ Open | P2 |
+| DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all entry only, no section-level TOC extracted | ✅ Fixed 2026-03-30 | P2 (was) |
 | DQ-24: Transport & Infrastructure SEPP v2_topic retag | ⏳ Backlog | P3 |
 | DQ-25: Transport & Infrastructure sepp_structured_requirements empty | ⏳ Backlog | P2 |
 | DQ-26: Marrickville truncated pdf_page_image_url stems | ✅ Fixed 2026-03-04 | P1 (was) |
@@ -43,13 +43,20 @@
 
 ## DQ-28: Ashfield chapter_e2_haberfield TOC — catch-all only
 
-**Status:** ⏳ Open
+**Status:** ✅ Fixed 2026-03-30
 **Found:** 2026-03-29
-**Blocking:** No (catch-all entry inserted in migration 018 — TOC JOIN now 100%)
+**Fixed:** 2026-03-30
 
-**Problem:** The Haberfield neighbourhood chapter (121 provisions, all on pdf_page=2) has no extracted section-level TOC data. A depth=0 catch-all entry was inserted so the JOIN works, but all 121 provisions will group under a single "E2 Haberfield Neighbourhood" bucket rather than section-level groupings.
+**Problem:** The Haberfield neighbourhood chapter (121 provisions, all on pdf_page=2) had no extracted section-level TOC data. A depth=0 catch-all entry was inserted in migration 018 so the JOIN worked, but all 121 provisions grouped under a single bucket.
 
-**Required action:** Extract section-level TOC from the Haberfield chapter PDF and insert proper entries, then delete the catch-all. Contact: same chapter PDF used during Ashfield extraction (`Inner_West_Ashfield_DCP_2016__chapter_e2_haberfield`).
+**Root cause:** `COUNCIL_CHAPTER_RANGES` for both `chapter_b_public_domain` and `chapter_e2_haberfield` had a single entry covering the whole chapter. The extractor sets `pdf_page = page_start` of the matching range, so all provisions got the same page.
+
+**Fix (migration 024):**
+- Expanded `COUNCIL_CHAPTER_RANGES` to per-section entries (7 for chapter_b, 17 for chapter_e2)
+- Re-extracted both chapters: chapter_b 49→55 provisions across 7 pages; chapter_e2 121→134 across 17 pages
+- Deleted old overlapping TOC entries; inserted 7 (chapter_b) + 17 (chapter_e2) non-overlapping TOC entries
+- `KNOWN_GRANULARITY_EXEMPTIONS` emptied — both chapters now pass the granularity gate
+- Ashfield grade: 93.7% → 100% TOC JOIN; Grade A confirmed
 
 ---
 
