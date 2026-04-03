@@ -4,18 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useFeatureFlags } from '@/components/providers/FeatureFlagProvider';
 import { ChecklistItem } from './ChecklistItem';
 import { EvidenceSection } from './EvidenceSection';
+import type { ComplianceItem } from './types';
 
-export interface ComplianceItem {
- id: string;
- title: string;
- description: string;
- status: 'pending' | 'compliant' | 'non-compliant' | 'not-applicable';
- tier: 'tier1' | 'tier2' | 'tier3';
- authority: string;
- confidence: number;
- evidence?: string[];
- requirements?: string[];
-}
+export type { ComplianceItem };
 
 interface EnhancedComplianceChecklistProps {
  propertyId?: string;

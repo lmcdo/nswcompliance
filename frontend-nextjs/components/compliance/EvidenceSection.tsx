@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { ComplianceItem } from './EnhancedComplianceChecklist';
+import type { ComplianceItem } from './types';
 
 interface EvidenceSectionProps {
  items: ComplianceItem[];

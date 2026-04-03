@@ -1,5 +1,5 @@
 import React from 'react';
-import { ComplianceItem } from './EnhancedComplianceChecklist';
+import type { ComplianceItem } from './types';
 
 interface ChecklistItemProps {
  item: ComplianceItem;

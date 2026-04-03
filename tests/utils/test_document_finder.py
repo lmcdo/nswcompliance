@@ -20,41 +20,45 @@ class TestDocumentFinder:
 
     @pytest.fixture
     def temp_docs_dir(self):
-        """Create temporary directory structure for testing"""
+        """Create temporary directory structure for testing.
+
+        DocumentFinder takes a base_path (e.g. "docs") and internally builds
+        legacy_base = base_path/dcps/INNERWEST, so we create files there and
+        yield the root, not the innerwest dir.
+        """
         temp_dir = tempfile.mkdtemp()
-        base_path = os.path.join(temp_dir, "docs", "dcps", "INNERWEST")
-        
-        # Create directory structure
-        os.makedirs(base_path, exist_ok=True)
-        os.makedirs(os.path.join(base_path, "leichhardt"), exist_ok=True)
-        os.makedirs(os.path.join(base_path, "Marrickville"), exist_ok=True)
-        
+        innerwest = os.path.join(temp_dir, "dcps", "INNERWEST")
+
+        # Create directory structure — all files at flat root since
+        # _find_pdfs_in_directory uses os.listdir (no recursion).
+        os.makedirs(innerwest, exist_ok=True)
+
         # Create test PDF files
         test_files = [
-            # Ashfield files (root)
-            os.path.join(base_path, "Ashfield DCP Chapter F.pdf"),
-            os.path.join(base_path, "Chapter E2 Haberfield.pdf"),
-            
+            # Ashfield files
+            os.path.join(innerwest, "Ashfield DCP Chapter F.pdf"),
+            os.path.join(innerwest, "Chapter E2 Haberfield.pdf"),
+
             # Leichhardt files
-            os.path.join(base_path, "leichhardt", "Leichhardt Part C Section 1.pdf"),
-            os.path.join(base_path, "leichhardt", "Part C Place Section 2.pdf"),
-            
+            os.path.join(innerwest, "Leichhardt Part C Section 1.pdf"),
+            os.path.join(innerwest, "Leichhardt Part C Place Section 2.pdf"),
+
             # Marrickville files
-            os.path.join(base_path, "Marrickville", "Marrickville DCP Contents.pdf"),
+            os.path.join(innerwest, "Marrickville DCP Contents.pdf"),
         ]
-        
+
         for file_path in test_files:
             Path(file_path).touch()
-        
-        yield base_path
-        
+
+        yield temp_dir
+
         # Cleanup
         shutil.rmtree(temp_dir)
 
     def test_init_default_path(self):
         """Test DocumentFinder initialization with default path"""
         finder = DocumentFinder()
-        assert finder.base_path == "docs/dcps/INNERWEST/"
+        assert finder.base_path == "docs"
         assert len(finder.council_paths) == 3
 
     def test_init_custom_path(self):
@@ -113,9 +117,9 @@ class TestDocumentFinder:
         assert len(docs) > 0
 
     def test_get_setback_documents_nonexistent_area(self, temp_docs_dir):
-        """Test behavior with nonexistent council area directory"""
-        # Remove Marrickville directory
-        marrickville_path = os.path.join(temp_docs_dir, "Marrickville")
+        """Test behavior with nonexistent base directory"""
+        # Remove the entire INNERWEST directory to simulate missing data
+        marrickville_path = os.path.join(temp_docs_dir, "dcps", "INNERWEST")
         shutil.rmtree(marrickville_path)
         
         finder = DocumentFinder(temp_docs_dir)
