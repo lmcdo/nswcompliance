@@ -15,10 +15,9 @@ on:
         required: false
         default: ''
       dry_run:
-        description: 'Dry run (extract but no DB writes)'
+        description: 'Dry run (extract but no DB writes) — pass "true" or "false"'
         required: false
-        type: boolean
-        default: false
+        default: 'false'
 
 jobs:
   extract:

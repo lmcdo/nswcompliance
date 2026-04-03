@@ -11,15 +11,13 @@ on:
         required: false
         default: ''
       dry_run:
-        description: 'Dry run (no DB writes or R2 uploads)'
+        description: 'Dry run (no DB writes or R2 uploads) — pass "true" or "false"'
         required: false
-        type: boolean
-        default: false
+        default: 'false'
       force:
-        description: 'Force re-download all chapters regardless of Content-Length'
+        description: 'Force re-download all chapters regardless of Content-Length — pass "true" or "false"'
         required: false
-        type: boolean
-        default: false
+        default: 'false'
 
 jobs:
   monitor:
