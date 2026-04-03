@@ -1,3 +1,15 @@
+export interface ComplianceItem {
+ id: string;
+ title: string;
+ description: string;
+ status: 'pending' | 'compliant' | 'non-compliant' | 'not-applicable';
+ tier: 'tier1' | 'tier2' | 'tier3';
+ authority: string;
+ confidence: number;
+ evidence?: string[];
+ requirements?: string[];
+}
+
 export interface ComplianceCheck {
  id: string;
  provision: string;

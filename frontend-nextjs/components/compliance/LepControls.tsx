@@ -36,6 +36,14 @@ export function LepControls({
 
   return (
     <div className="space-y-6">
+      {/* Data currency indicator */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+        <span className="font-medium text-gray-700">{lepName}</span>
+        <span>·</span>
+        <span>Sourced live — NSW Planning Portal</span>
+      </div>
+
       <Card className="border-blue-200 bg-blue-50/30">
         <CardHeader>
           <CardTitle className="text-lg text-blue-900">

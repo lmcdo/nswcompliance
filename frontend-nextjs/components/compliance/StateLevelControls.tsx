@@ -591,6 +591,14 @@ export function StateLevelControls({
 
   return (
     <div className="space-y-4">
+      {/* Data currency indicator */}
+      <div className="flex items-center gap-2 text-xs text-gray-500">
+        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+        <span className="font-medium text-gray-700">NSW State Planning Instruments</span>
+        <span>·</span>
+        <span>Sourced live — NSW Planning Portal</span>
+      </div>
+
       {/* SEPP Tab Intro Banner */}
       <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
         <div className="font-semibold text-amber-900 mb-1">State Environmental Planning Policies</div>
