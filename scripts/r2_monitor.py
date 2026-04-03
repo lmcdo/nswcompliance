@@ -67,6 +67,7 @@ R2_SECRET_ACCESS_KEY = os.environ["R2_SECRET_ACCESS_KEY"]
 DATABASE_URL         = os.environ.get("DATABASE_URL") or os.environ["SUPABASE_DB_URL"]
 
 R2_ENDPOINT          = f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+R2_PUBLIC_BASE       = "https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/"
 SOURCE_PDF_PREFIX    = "source-pdfs"
 
 HEADERS = {
@@ -321,12 +322,13 @@ def run_monitor(
                     send_telegram(msg)
                     results["hub_alerts"].append(msg)
 
-                # New/unmatched chapters
+                # New/unmatched chapters — log to CI stdout only, no Telegram noise.
+                # These are typically maps, appendices, amendment notices alongside
+                # provision chapters on the hub page. Add to registry manually if
+                # they turn out to be substantive provision chapters.
                 for item in diff.added:
-                    msg = f"New chapter on hub [{council}]: {item['label']}\n{item['url']}\nAdd to registry manually."
-                    print(f"  [NEW] {item['label']}")
-                    send_telegram(msg)
-                    results["hub_alerts"].append(msg)
+                    print(f"  [NEW] {item['label']}  {item['url']}")
+                    results["hub_alerts"].append(f"new_chapter_on_hub: {council} — {item['label']}")
 
                 # If reseed mode: update council_url for all matched chapters
                 if reseed and not dry_run:
@@ -434,7 +436,8 @@ def run_monitor(
 
                 # ── CHANGE DETECTED ──────────────────────────────────────────
                 print(f"    [CHANGED] {stored_hash[:16] if stored_hash else 'NEW'} → {new_hash[:16]}")
-                print(f"    Old size: {stored_len or '?':,}  New size: {new_len:,}")
+                old_size = f"{stored_len:,}" if stored_len else "?"
+                print(f"    Old size: {old_size}  New size: {new_len:,}")
 
                 new_version = next_version_label(version or "v1.0-baseline")
                 new_r2_path = r2_path_for_version(
@@ -450,10 +453,12 @@ def run_monitor(
                         ContentType="application/pdf",
                     )
                     print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
+                    new_public_url = R2_PUBLIC_BASE + new_r2_path
                     cur.execute(
                         """
                         UPDATE dcp_chapter_registry
                         SET r2_current_path=%s, r2_version_label=%s,
+                            r2_public_pdf_url=%s,
                             content_hash=%s, url_content_length=%s,
                             url_etag=%s, url_last_modified=%s,
                             url_last_checked=%s, url_last_changed=%s,
@@ -462,6 +467,7 @@ def run_monitor(
                         """,
                         (
                             new_r2_path, new_version,
+                            new_public_url,
                             new_hash, new_len,
                             new_etag, new_lm,
                             now, now,
