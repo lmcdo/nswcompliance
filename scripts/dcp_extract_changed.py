@@ -27,6 +27,7 @@ import os
 import re
 import sys
 import tempfile
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -593,6 +594,28 @@ _STANDALONE_SECTION_CODE_RE = re.compile(
 # figure callouts, diagram text) that pdfplumber extracts as reversed or
 # garbled characters. Filtering to upright-only chars removes them.
 UPRIGHT_ONLY_COUNCILS = {"ku_ring_gai"}
+
+
+# ── Provision diff helpers ───────────────────────────────────────────────────
+
+def _normalize_for_diff(text: str) -> str:
+    """
+    Normalize provision text for comparison only — collapses formatting
+    differences that don't represent content changes (whitespace, unicode
+    variants). Never used for storage.
+    """
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKC", text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _extract_numbers(text: str) -> list[str]:
+    """Extract all numeric values (with optional units) from provision text."""
+    return re.findall(
+        r'\b\d+(?:\.\d+)?(?:\s*m\b|\s*mm\b|\s*%|\s*sqm\b|\s*ha\b)?', text
+    )
 
 
 def _upright_only(page: Any) -> Any:
@@ -1170,6 +1193,221 @@ def fetch_pending_chapters(cur, council_filter: str | None) -> list[dict]:
     return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
+# ── Provision diff ──────────────────────────────────────────────────────────
+
+def diff_provisions(
+    new_sections: list[dict],
+    council: str,
+    chapter_key: str,
+    document_id: str,
+    cur,
+) -> dict:
+    """
+    Compare newly extracted provisions against current DB provisions.
+
+    Returns:
+        {
+          "status": "ok" | "restructure" | "regeneration_artifact" | "map_change",
+          "changed": [...],    # {ref_number, old_text, new_text, has_numeric_change, old_page, new_page}
+          "added": [...],      # {ref_number, new_text, new_page}
+          "removed": [...],    # {ref_number, old_text}
+          "renumbered": [...], # {old_ref_number, new_ref_number, text}
+          "page_shift": int | None,
+          "unchanged_count": int,
+        }
+    """
+    # Fetch current DB provisions for this chapter
+    cur.execute(
+        """
+        SELECT ref_number, provision_text, pdf_page
+        FROM regulatory_provisions
+        WHERE source_council = %s
+          AND source_chapter_key = %s
+          AND is_current = TRUE
+        ORDER BY pdf_page, ref_number
+        """,
+        (council, chapter_key),
+    )
+    old_provisions = {
+        row[0]: {"text": row[1], "page": row[2]}
+        for row in cur.fetchall()
+    }
+
+    # Build new provisions map from extracted sections
+    new_provisions = {}
+    for section in new_sections:
+        ref = build_ref_number(document_id, section["section_number"])
+        text = build_provision_text(section)
+        new_provisions[ref] = {"text": text, "page": section["page_start"]}
+
+    result: dict = {
+        "status": "ok",
+        "changed": [], "added": [], "removed": [],
+        "renumbered": [], "page_shift": None,
+        "unchanged_count": 0,
+    }
+
+    matched_old: set[str] = set()
+    matched_new: set[str] = set()
+
+    # Match by ref_number first
+    for ref, new_prov in new_provisions.items():
+        if ref in old_provisions:
+            old_prov = old_provisions[ref]
+            matched_old.add(ref)
+            matched_new.add(ref)
+            if _normalize_for_diff(old_prov["text"]) == _normalize_for_diff(new_prov["text"]):
+                result["unchanged_count"] += 1
+            else:
+                old_nums = _extract_numbers(old_prov["text"] or "")
+                new_nums = _extract_numbers(new_prov["text"] or "")
+                result["changed"].append({
+                    "ref_number": ref,
+                    "old_text": old_prov["text"],
+                    "new_text": new_prov["text"],
+                    "has_numeric_change": old_nums != new_nums,
+                    "old_page": old_prov["page"],
+                    "new_page": new_prov["page"],
+                })
+
+    # Unmatched provisions — candidates for removal or renumbering
+    unmatched_old = {r: old_provisions[r] for r in old_provisions if r not in matched_old}
+    unmatched_new = {r: new_provisions[r] for r in new_provisions if r not in matched_new}
+
+    # Fuzzy match unmatched — catches renumbering (>90% char similarity)
+    used_old: set[str] = set()
+    used_new: set[str] = set()
+    for new_ref, new_prov in unmatched_new.items():
+        best_old_ref = None
+        best_score = 0.0
+        new_norm = _normalize_for_diff(new_prov["text"] or "")
+        for old_ref, old_prov in unmatched_old.items():
+            if old_ref in used_old:
+                continue
+            old_norm = _normalize_for_diff(old_prov["text"] or "")
+            shorter = min(len(new_norm), len(old_norm))
+            if shorter == 0:
+                continue
+            sample = min(200, shorter)
+            matches = sum(1 for a, b in zip(new_norm[:sample], old_norm[:sample]) if a == b)
+            score = matches / sample
+            if score > 0.9 and score > best_score:
+                best_score = score
+                best_old_ref = old_ref
+        if best_old_ref:
+            result["renumbered"].append({
+                "old_ref_number": best_old_ref,
+                "new_ref_number": new_ref,
+                "text": new_prov["text"],
+            })
+            used_old.add(best_old_ref)
+            used_new.add(new_ref)
+
+    for old_ref, old_prov in unmatched_old.items():
+        if old_ref not in used_old:
+            result["removed"].append({"ref_number": old_ref, "old_text": old_prov["text"]})
+
+    for new_ref, new_prov in unmatched_new.items():
+        if new_ref not in used_new:
+            result["added"].append({"ref_number": new_ref, "new_text": new_prov["text"], "new_page": new_prov["page"]})
+
+    # Anomaly detection
+    total_old = len(old_provisions)
+    total_new = len(new_provisions)
+    total_changes = len(result["changed"]) + len(result["added"]) + len(result["removed"])
+
+    if total_old > 0 and total_changes / total_old > 0.5:
+        # >50% of provisions changed/added/removed — wholesale restructure or extraction failure
+        result["status"] = "restructure"
+    elif len(result["changed"]) > 0 and len(result["changed"]) > 0.3 * total_old:
+        # >30% provisions changed but each diff is tiny — Waverley-style PDF regeneration
+        avg_diff = sum(
+            abs(len(c["new_text"] or "") - len(c["old_text"] or ""))
+            for c in result["changed"]
+        ) / len(result["changed"])
+        if avg_diff < 25:
+            result["status"] = "regeneration_artifact"
+    elif total_changes == 0 and result["unchanged_count"] == 0 and total_old > 0:
+        # PDF hash changed but zero text extracted — spatial/map document
+        result["status"] = "map_change"
+
+    # Page shift: all changed provisions have the same non-zero page offset
+    if result["changed"]:
+        offsets = [
+            c["new_page"] - c["old_page"]
+            for c in result["changed"]
+            if c["old_page"] is not None and c["new_page"] is not None
+        ]
+        if offsets and len(set(offsets)) == 1 and offsets[0] != 0:
+            result["page_shift"] = offsets[0]
+
+    return result
+
+
+def _insert_provision_changes(
+    cur,
+    diff: dict,
+    council: str,
+    chapter_key: str,
+    version: str,
+    now: datetime,
+) -> None:
+    """Write provision_changes rows for all deltas in a diff result."""
+    change_type_map = {
+        "restructure": "restructure",
+        "regeneration_artifact": "regeneration_artifact",
+        "map_change": "map_change",
+    }
+    status_change_type = change_type_map.get(diff["status"])
+
+    def ins(change_type, ref_number, old_text=None, new_text=None,
+            old_ref=None, has_numeric=False, old_page=None, new_page=None):
+        cur.execute(
+            """
+            INSERT INTO provision_changes (
+                changed_at, council, chapter_key, dcp_version,
+                ref_number, change_type,
+                old_text, new_text, old_ref_number,
+                has_numeric_change, old_pdf_page, new_pdf_page
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """,
+            (now, council, chapter_key, version,
+             ref_number, change_type,
+             old_text, new_text, old_ref,
+             has_numeric, old_page, new_page),
+        )
+
+    # For anomaly statuses write a single summary row
+    if status_change_type in ("regeneration_artifact", "map_change"):
+        ins(status_change_type, "_summary")
+        return
+
+    page_shift = diff.get("page_shift")
+
+    for c in diff["changed"]:
+        ct = "page_shift" if (page_shift and not c["has_numeric_change"]
+                              and _normalize_for_diff(c["old_text"] or "") == _normalize_for_diff(c["new_text"] or ""))  \
+             else "changed"
+        ins(ct, c["ref_number"],
+            old_text=c["old_text"], new_text=c["new_text"],
+            has_numeric=c["has_numeric_change"],
+            old_page=c["old_page"], new_page=c["new_page"])
+
+    for a in diff["added"]:
+        ins("added", a["ref_number"], new_text=a["new_text"], new_page=a.get("new_page"))
+
+    for r in diff["removed"]:
+        ins("removed", r["ref_number"], old_text=r["old_text"])
+
+    for rn in diff["renumbered"]:
+        ins("renumbered", rn["new_ref_number"],
+            old_text=rn["text"], new_text=rn["text"],
+            old_ref=rn["old_ref_number"])
+
+    if status_change_type == "restructure":
+        ins("restructure", "_summary")
+
+
 # ── Per-chapter extraction ──────────────────────────────────────────────────
 
 def extract_chapter(
@@ -1296,12 +1534,16 @@ def extract_chapter(
         if dry_run or review:
             if dry_run:
                 print(f"    [dry-run] Would soft-delete old provisions and insert {len(sections)} new ones")
-            cur.close()
 
             if not review:
+                cur.close()
                 return True, None
 
             # ── Build review data ─────────────────────────────────────────
+            # Run diff before closing cursor so we can show before/after
+            review_diff = diff_provisions(sections, council, chapter_key, document_id, cur)
+            cur.close()
+
             # Import artifact checker from verify script
             from scripts.verify_dcp_formatting import check_provision
 
@@ -1350,19 +1592,29 @@ def extract_chapter(
                 "artifact_counts": dict(artifact_counts),
                 "artifact_samples": dict(flagged_samples.most_common(5)),
                 "total_provisions": len(provision_texts),
+                "diff": review_diff,
             }
 
         # 3. Provision count gate — before touching the DB.
         # A large drop almost always means a scanned PDF, extraction failure, or
         # format change — not a genuine DCP amendment. Never silently commit.
+        #
+        # COUNT query uses source_chapter_key = %s only (strict match).
+        # Previously used OR source_chapter_key IS NULL to catch legacy provisions,
+        # but that inflates the count to the entire council's NULL-sourced provision
+        # total for every chapter, causing false aborts on both new chapters (0
+        # existing → correct, but inflated to 1500+) and re-extraction of legacy
+        # chapters. The soft-delete logic below still uses the NULL-safe clause
+        # (correct — it must catch legacy provisions for replacement), but the
+        # COUNT gate must be chapter-specific to avoid false positives.
         try:
             count_cur = conn.cursor()
             count_cur.execute(
                 """
                 SELECT COUNT(*) FROM regulatory_provisions
                 WHERE source_council = %s
+                  AND source_chapter_key = %s
                   AND is_current = TRUE
-                  AND (source_chapter_key = %s OR source_chapter_key IS NULL)
                 """,
                 (council, chapter_key),
             )
@@ -1390,102 +1642,213 @@ def extract_chapter(
             if not dry_run and not review:
                 return False, None
 
-        # 4. Atomic DB transaction
+        # 4. Diff against current DB provisions
         now = datetime.now(timezone.utc)
         page_start = sections[0]["page_start"]
         page_end   = sections[-1]["page_end"]
 
-        try:
-            # Soft-delete existing provisions from this chapter.
-            # The NULL-safe OR clause covers legacy provisions (extracted before
-            # migration 008 added source_chapter_key) so they are retired correctly
-            # when a chapter is re-extracted — not left live alongside new provisions.
-            cur.execute(
-                """
-                UPDATE regulatory_provisions
-                SET is_current = FALSE
-                WHERE source_council = %s
-                  AND is_current = TRUE
-                  AND (source_chapter_key = %s OR source_chapter_key IS NULL)
-                """,
-                (council, chapter_key),
-            )
-            soft_deleted = cur.rowcount
-            print(f"    Soft-deleted {soft_deleted} old provisions (incl. legacy NULL-keyed)")
+        diff = diff_provisions(sections, council, chapter_key, document_id, cur)
+        status = diff["status"]
 
-            # Bulk INSERT new provisions
-            inserted = 0
-            for section in sections:
-                ref_number     = build_ref_number(document_id, section["section_number"])
-                provision_text = build_provision_text(section)
+        n_changed  = len(diff["changed"])
+        n_added    = len(diff["added"])
+        n_removed  = len(diff["removed"])
+        n_renamed  = len(diff["renumbered"])
+        n_same     = diff["unchanged_count"]
+        page_shift = diff.get("page_shift")
 
-                is_preamble = section["section_number"] == "preamble"
-                # v2_is_actionable:
-                #   False  — preamble (TOC/cover) or structural non-actionable set by
-                #            split_content_at_subsections (intro text, objectives headings)
-                #   NULL   — all other provisions: the enrichment pipeline's actionability
-                #            phase (ActionableClassifier) will determine this before any
-                #            other phase runs.
-                v2_actionable = False if is_preamble else section.get("v2_is_actionable", None)
+        print(f"    Diff: {n_same} unchanged, {n_changed} changed, "
+              f"{n_added} added, {n_removed} removed, {n_renamed} renumbered"
+              + (f", page_shift={page_shift:+d}" if page_shift else "")
+              + f"  [status={status}]")
 
+        # Anomaly gates — abort before touching DB
+        if status == "regeneration_artifact":
+            print(f"    [SKIP] regeneration_artifact — PDF re-exported with no substantive "
+                  f"changes ({n_changed} tiny diffs across {n_same + n_changed} provisions). "
+                  f"No DB update.")
+            cur.close()
+            return True, None   # not a failure — just nothing to commit
+
+        if status == "map_change":
+            print(f"    [SKIP] map_change — PDF hash changed but zero text extracted. "
+                  f"Flag for manual spatial review.")
+            cur.close()
+            return True, None
+
+        if status == "restructure":
+            print(f"    [WARN] restructure — >50% provisions unmatched. "
+                  f"Falling back to full replace. Manual review recommended.")
+            # Fall through to full replace below
+
+        # Determine whether this is a first-time extraction (no existing provisions)
+        first_extraction = (n_same == 0 and n_changed == 0 and n_removed == 0
+                            and n_renamed == 0)
+
+        if not dry_run and not review:
+            try:
+                if status == "restructure" or first_extraction:
+                    # Full replace: soft-delete all existing + bulk insert
+                    # NULL-safe OR covers legacy provisions without source_chapter_key
+                    cur.execute(
+                        """
+                        UPDATE regulatory_provisions
+                        SET is_current = FALSE
+                        WHERE source_council = %s
+                          AND is_current = TRUE
+                          AND (source_chapter_key = %s OR source_chapter_key IS NULL)
+                        """,
+                        (council, chapter_key),
+                    )
+                    soft_deleted = cur.rowcount
+                    print(f"    Soft-deleted {soft_deleted} old provisions (full replace)")
+
+                    inserted = 0
+                    for section in sections:
+                        ref_number     = build_ref_number(document_id, section["section_number"])
+                        provision_text = build_provision_text(section)
+                        is_preamble    = section["section_number"] == "preamble"
+                        # v2_is_actionable:
+                        #   False — preamble/structural non-actionable
+                        #   NULL  — let ActionableClassifier decide
+                        v2_actionable  = False if is_preamble else section.get("v2_is_actionable", None)
+                        cur.execute(
+                            """
+                            INSERT INTO regulatory_provisions (
+                                document_id, ref_number, section_header,
+                                provision_text, pdf_page, pdf_source_file,
+                                page_range, extraction_method,
+                                source_chapter_key, source_council,
+                                is_current, v2_is_actionable
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s,'pdfplumber-ci',%s,%s,TRUE,%s)
+                            """,
+                            (
+                                document_id, ref_number, section["section_title"],
+                                provision_text, section["page_start"], chapter_key,
+                                section.get("pages", [section["page_start"]]),
+                                chapter_key, council, v2_actionable,
+                            ),
+                        )
+                        inserted += 1
+                    print(f"    [OK] Inserted {inserted} provisions (full replace)")
+
+                else:
+                    # Targeted update — only touch what changed
+                    updated = inserted = removed = renamed = 0
+
+                    for c in diff["changed"]:
+                        cur.execute(
+                            """
+                            UPDATE regulatory_provisions
+                            SET provision_text   = %s,
+                                pdf_page         = %s,
+                                v2_is_actionable = NULL
+                            WHERE source_council    = %s
+                              AND source_chapter_key = %s
+                              AND ref_number         = %s
+                              AND is_current         = TRUE
+                            """,
+                            (c["new_text"], c["new_page"], council, chapter_key, c["ref_number"]),
+                        )
+                        updated += 1
+
+                    for a in diff["added"]:
+                        section = next(
+                            (s for s in sections
+                             if build_ref_number(document_id, s["section_number"]) == a["ref_number"]),
+                            None,
+                        )
+                        if section is None:
+                            continue
+                        is_preamble   = section["section_number"] == "preamble"
+                        v2_actionable = False if is_preamble else section.get("v2_is_actionable", None)
+                        cur.execute(
+                            """
+                            INSERT INTO regulatory_provisions (
+                                document_id, ref_number, section_header,
+                                provision_text, pdf_page, pdf_source_file,
+                                page_range, extraction_method,
+                                source_chapter_key, source_council,
+                                is_current, v2_is_actionable
+                            ) VALUES (%s,%s,%s,%s,%s,%s,%s,'pdfplumber-ci',%s,%s,TRUE,%s)
+                            """,
+                            (
+                                document_id, a["ref_number"], section["section_title"],
+                                a["new_text"], section["page_start"], chapter_key,
+                                section.get("pages", [section["page_start"]]),
+                                chapter_key, council, v2_actionable,
+                            ),
+                        )
+                        inserted += 1
+
+                    for r in diff["removed"]:
+                        cur.execute(
+                            """
+                            UPDATE regulatory_provisions
+                            SET is_current = FALSE
+                            WHERE source_council     = %s
+                              AND source_chapter_key = %s
+                              AND ref_number         = %s
+                              AND is_current         = TRUE
+                            """,
+                            (council, chapter_key, r["ref_number"]),
+                        )
+                        removed += 1
+
+                    for rn in diff["renumbered"]:
+                        cur.execute(
+                            """
+                            UPDATE regulatory_provisions
+                            SET ref_number = %s
+                            WHERE source_council     = %s
+                              AND source_chapter_key = %s
+                              AND ref_number         = %s
+                              AND is_current         = TRUE
+                            """,
+                            (rn["new_ref_number"], council, chapter_key, rn["old_ref_number"]),
+                        )
+                        renamed += 1
+
+                    # Soft-delete legacy NULL-keyed provisions on every targeted update
+                    cur.execute(
+                        """
+                        UPDATE regulatory_provisions
+                        SET is_current = FALSE
+                        WHERE source_council     = %s
+                          AND is_current         = TRUE
+                          AND source_chapter_key IS NULL
+                        """,
+                        (council,),
+                    )
+
+                    print(f"    [OK] Targeted update: {updated} updated, {inserted} inserted, "
+                          f"{removed} removed, {renamed} renamed")
+
+                # Write provision_changes audit rows (skip for first-time extractions)
+                if not first_extraction:
+                    _insert_provision_changes(cur, diff, council, chapter_key, version, now)
+
+                # Mark chapter extracted in registry
                 cur.execute(
                     """
-                    INSERT INTO regulatory_provisions (
-                        document_id,
-                        ref_number,
-                        section_header,
-                        provision_text,
-                        pdf_page,
-                        pdf_source_file,
-                        page_range,
-                        extraction_method,
-                        source_chapter_key,
-                        source_council,
-                        is_current,
-                        v2_is_actionable
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s,
-                        'pdfplumber-ci',
-                        %s, %s, TRUE, %s
-                    )
+                    UPDATE dcp_chapter_registry
+                    SET needs_extraction        = FALSE,
+                        last_extracted_at       = %s,
+                        last_extracted_version  = %s,
+                        page_start              = %s,
+                        page_end                = %s
+                    WHERE id = %s
                     """,
-                    (
-                        document_id,
-                        ref_number,
-                        section["section_title"],
-                        provision_text,
-                        section["page_start"],
-                        chapter_key,
-                        section.get("pages", [section["page_start"]]),
-                        chapter_key,
-                        council,
-                        v2_actionable,
-                    ),
+                    (now, version, page_start, page_end, chapter_id),
                 )
-                inserted += 1
 
-            # Mark chapter extracted in registry
-            cur.execute(
-                """
-                UPDATE dcp_chapter_registry
-                SET needs_extraction        = FALSE,
-                    last_extracted_at       = %s,
-                    last_extracted_version  = %s,
-                    page_start              = %s,
-                    page_end                = %s
-                WHERE id = %s
-                """,
-                (now, version, page_start, page_end, chapter_id),
-            )
+                conn.commit()
 
-            conn.commit()
-            print(f"    [OK] Inserted {inserted} provisions (pages {page_start}–{page_end})")
-
-        except Exception as exc:
-            conn.rollback()
-            print(f"    [ERROR] DB transaction failed — rolled back: {exc}")
-            cur.close()
-            return False, None
+            except Exception as exc:
+                conn.rollback()
+                print(f"    [ERROR] DB transaction failed — rolled back: {exc}")
+                cur.close()
+                return False, None
 
         cur.close()
         return True, None
@@ -1548,6 +1911,74 @@ def write_review_file(council: str, chapters: list[dict]) -> Path:
         lines.append(f"CHAPTER: {chapter_key}")
         lines.append(f"  {ch['section_count']} sections  |  {ch['table_count']} tables  |  {ch['total_provisions']} provisions")
         lines.append("")
+
+        # Diff summary (if available)
+        diff = ch.get("diff")
+        if diff:
+            ds = diff["status"]
+            status_label = {
+                "ok": "ok",
+                "restructure": "RESTRUCTURE (full replace needed)",
+                "regeneration_artifact": "REGENERATION ARTIFACT (no substantive changes)",
+                "map_change": "MAP/SPATIAL CHANGE (no text to extract)",
+            }.get(ds, ds)
+            lines.append(f"  DIFF SUMMARY  [{status_label}]")
+            lines.append(f"    {diff['unchanged_count']} unchanged  |  "
+                         f"{len(diff['changed'])} changed  |  "
+                         f"{len(diff['added'])} added  |  "
+                         f"{len(diff['removed'])} removed  |  "
+                         f"{len(diff['renumbered'])} renumbered"
+                         + (f"  page_shift={diff['page_shift']:+d}" if diff.get("page_shift") else ""))
+
+            # Numeric changes first
+            numeric = [c for c in diff["changed"] if c["has_numeric_change"]]
+            if numeric:
+                lines.append("")
+                lines.append(f"  *** NUMERIC CHANGES ({len(numeric)}) — review carefully:")
+                for c in numeric[:10]:
+                    lines.append(f"    {c['ref_number']}:")
+                    lines.append(f"      WAS: {(c['old_text'] or '')[:120]}")
+                    lines.append(f"      NOW: {(c['new_text'] or '')[:120]}")
+                if len(numeric) > 10:
+                    lines.append(f"    ... and {len(numeric) - 10} more numeric changes")
+
+            # Other changed provisions
+            other_changed = [c for c in diff["changed"] if not c["has_numeric_change"]]
+            if other_changed:
+                lines.append("")
+                lines.append(f"  Changed provisions ({len(other_changed)}):")
+                for c in other_changed[:5]:
+                    lines.append(f"    {c['ref_number']}:")
+                    lines.append(f"      WAS: {(c['old_text'] or '')[:100]}")
+                    lines.append(f"      NOW: {(c['new_text'] or '')[:100]}")
+                if len(other_changed) > 5:
+                    lines.append(f"    ... and {len(other_changed) - 5} more")
+
+            if diff["added"]:
+                lines.append("")
+                lines.append(f"  Added ({len(diff['added'])}):")
+                for a in diff["added"][:5]:
+                    lines.append(f"    {a['ref_number']}: {(a['new_text'] or '')[:100]}")
+                if len(diff["added"]) > 5:
+                    lines.append(f"    ... and {len(diff['added']) - 5} more")
+
+            if diff["removed"]:
+                lines.append("")
+                lines.append(f"  Removed ({len(diff['removed'])}):")
+                for r in diff["removed"][:5]:
+                    lines.append(f"    {r['ref_number']}: {(r['old_text'] or '')[:100]}")
+                if len(diff["removed"]) > 5:
+                    lines.append(f"    ... and {len(diff['removed']) - 5} more")
+
+            if diff["renumbered"]:
+                lines.append("")
+                lines.append(f"  Renumbered ({len(diff['renumbered'])}):")
+                for rn in diff["renumbered"][:5]:
+                    lines.append(f"    {rn['old_ref_number']} → {rn['new_ref_number']}")
+                if len(diff["renumbered"]) > 5:
+                    lines.append(f"    ... and {len(diff['renumbered']) - 5} more")
+
+            lines.append("")
 
         # Section list
         lines.append("  SECTIONS:")

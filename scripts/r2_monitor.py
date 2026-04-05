@@ -232,7 +232,8 @@ def run_monitor(
         SELECT id, council, chapter_key, chapter_label, council_url,
                council_page_url, hub_expected_count,
                r2_current_path, r2_version_label,
-               content_hash, url_content_length, url_etag, check_failures
+               content_hash, url_content_length, url_etag, check_failures,
+               COALESCE(is_spatial, FALSE) AS is_spatial
         FROM dcp_chapter_registry
         WHERE is_active = TRUE
           AND council_url IS NOT NULL
@@ -367,6 +368,7 @@ def run_monitor(
             stored_hash = chapter["content_hash"]
             stored_len  = chapter["url_content_length"]
             failures    = chapter["check_failures"] or 0
+            is_spatial  = chapter.get("is_spatial", False)
 
             print(f"\n  {ch_council}/{key}")
 
@@ -454,6 +456,7 @@ def run_monitor(
                     )
                     print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
                     new_public_url = R2_PUBLIC_BASE + new_r2_path
+                    # Spatial chapters: hash-tracked but not extracted — never set needs_extraction
                     cur.execute(
                         """
                         UPDATE dcp_chapter_registry
@@ -462,7 +465,7 @@ def run_monitor(
                             content_hash=%s, url_content_length=%s,
                             url_etag=%s, url_last_modified=%s,
                             url_last_checked=%s, url_last_changed=%s,
-                            needs_extraction=TRUE, check_failures=0
+                            needs_extraction=%s, check_failures=0
                         WHERE id=%s
                         """,
                         (
@@ -471,10 +474,19 @@ def run_monitor(
                             new_hash, new_len,
                             new_etag, new_lm,
                             now, now,
+                            not is_spatial,  # spatial chapters never need extraction
                             chapter_id,
                         ),
                     )
                     conn.commit()
+                    if is_spatial:
+                        send_telegram(
+                            f"DCP spatial amendment detected — {ch_council}/{key}\n"
+                            f"{label}\n"
+                            f"Map or boundary document changed. Manual review required.\n"
+                            f"{url}"
+                        )
+                        print(f"    [SPATIAL] Telegram alert sent — manual review required")
                 else:
                     print(f"    [dry-run] would upload to r2://{R2_BUCKET_NAME}/{new_r2_path}")
 
