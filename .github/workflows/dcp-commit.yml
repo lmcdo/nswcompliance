@@ -86,49 +86,20 @@ jobs:
         run: |
           CODE=${{ steps.commit.outputs.exit_code }}
           VCODE=${{ steps.validation.outputs.validation_code || '0' }}
+          tg_send() {
+            if [ -n "$TELEGRAM_BOT_TOKEN" ] && [ -n "$TELEGRAM_CHAT_ID" ]; then
+              curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+                -H "Content-Type: application/json" \
+                -d "{\"chat_id\":\"${TELEGRAM_CHAT_ID}\",\"text\":\"$1\"}"
+            fi
+          }
           if [ "$CODE" = "2" ]; then
             if [ "$VCODE" = "0" ]; then
               echo "Provisions committed and validated for $COUNCIL."
-              python - <<'PYEOF'
-import os, requests
-token = os.environ.get("TELEGRAM_BOT_TOKEN")
-chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-council = os.environ.get("COUNCIL", "")
-actor = os.environ.get("TRIGGERED_BY", "")
-if token and chat_id:
-    requests.post(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        json={"chat_id": chat_id, "text": (
-            f"DCP Committed to production\n"
-            f"Council: {council}\n"
-            f"Approved by: {actor}\n"
-            f"Post-commit checks: PASSED\n"
-            f"Provisions are now live."
-        )},
-        timeout=10,
-    )
-PYEOF
+              tg_send "DCP Committed to production\nCouncil: ${COUNCIL}\nApproved by: ${TRIGGERED_BY}\nPost-commit checks: PASSED\nProvisions are now live."
             else
               echo "WARNING: Provisions committed but post-commit validation failed for $COUNCIL."
-              python - <<'PYEOF'
-import os, requests
-token = os.environ.get("TELEGRAM_BOT_TOKEN")
-chat_id = os.environ.get("TELEGRAM_CHAT_ID")
-council = os.environ.get("COUNCIL", "")
-actor = os.environ.get("TRIGGERED_BY", "")
-if token and chat_id:
-    requests.post(
-        f"https://api.telegram.org/bot{token}/sendMessage",
-        json={"chat_id": chat_id, "text": (
-            f"DCP VALIDATION WARNING\n"
-            f"Council: {council}\n"
-            f"Approved by: {actor}\n"
-            f"Provisions committed but post-commit checks FAILED.\n"
-            f"Check Actions log for details before users are affected."
-        )},
-        timeout=10,
-    )
-PYEOF
+              tg_send "DCP VALIDATION WARNING\nCouncil: ${COUNCIL}\nApproved by: ${TRIGGERED_BY}\nProvisions committed but post-commit checks FAILED.\nCheck Actions log for details before users are affected."
               exit 1
             fi
           elif [ "$CODE" = "0" ]; then
