@@ -1599,14 +1599,11 @@ def extract_chapter(
         # A large drop almost always means a scanned PDF, extraction failure, or
         # format change — not a genuine DCP amendment. Never silently commit.
         #
-        # COUNT query uses source_chapter_key = %s only (strict match).
-        # Previously used OR source_chapter_key IS NULL to catch legacy provisions,
-        # but that inflates the count to the entire council's NULL-sourced provision
-        # total for every chapter, causing false aborts on both new chapters (0
-        # existing → correct, but inflated to 1500+) and re-extraction of legacy
-        # chapters. The soft-delete logic below still uses the NULL-safe clause
-        # (correct — it must catch legacy provisions for replacement), but the
-        # COUNT gate must be chapter-specific to avoid false positives.
+        # COUNT query and soft-delete both use strict source_chapter_key = %s.
+        # Previously included OR source_chapter_key IS NULL, which inflated counts
+        # to the entire council's legacy provision total and caused first_extraction
+        # to wipe all NULL-keyed (legacy) provisions across every chapter. Legacy
+        # NULL provisions are preserved until explicitly migrated per-chapter.
         try:
             count_cur = conn.cursor()
             count_cur.execute(
@@ -1688,15 +1685,17 @@ def extract_chapter(
         if not dry_run and not review:
             try:
                 if status == "restructure" or first_extraction:
-                    # Full replace: soft-delete all existing + bulk insert
-                    # NULL-safe OR covers legacy provisions without source_chapter_key
+                    # Full replace: soft-delete all existing + bulk insert.
+                    # Strict source_chapter_key = %s only — never wipe NULL-keyed
+                    # (legacy) provisions, which belong to other chapters not yet
+                    # migrated. First extraction has no existing provisions to delete.
                     cur.execute(
                         """
                         UPDATE regulatory_provisions
                         SET is_current = FALSE
                         WHERE source_council = %s
                           AND is_current = TRUE
-                          AND (source_chapter_key = %s OR source_chapter_key IS NULL)
+                          AND source_chapter_key = %s
                         """,
                         (council, chapter_key),
                     )
@@ -1808,18 +1807,6 @@ def extract_chapter(
                             (rn["new_ref_number"], council, chapter_key, rn["old_ref_number"]),
                         )
                         renamed += 1
-
-                    # Soft-delete legacy NULL-keyed provisions on every targeted update
-                    cur.execute(
-                        """
-                        UPDATE regulatory_provisions
-                        SET is_current = FALSE
-                        WHERE source_council     = %s
-                          AND is_current         = TRUE
-                          AND source_chapter_key IS NULL
-                        """,
-                        (council,),
-                    )
 
                     print(f"    [OK] Targeted update: {updated} updated, {inserted} inserted, "
                           f"{removed} removed, {renamed} renamed")
