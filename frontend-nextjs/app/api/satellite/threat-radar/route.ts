@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
+
+/**
+ * POST /api/satellite/threat-radar
+ * Body: { address: string, email: string, council_name: string }
+ *
+ * Resolves address → lat/lng/prop_id, then subscribes to weekly Threat Radar monitoring.
+ */
+export async function POST(request: NextRequest) {
+  let body: { address?: string; email?: string; council_name?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const address = body.address?.trim();
+  const email = body.email?.trim();
+
+  if (!address) return NextResponse.json({ error: 'address is required' }, { status: 400 });
+  if (!email) return NextResponse.json({ error: 'email is required' }, { status: 400 });
+
+  // Resolve address
+  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
+  const propResp = await fetch(propUrl).catch(() => null);
+  if (!propResp?.ok) {
+    return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
+  }
+
+  const propData = await propResp.json();
+  if (!propData.success || !propData.property) {
+    return NextResponse.json({ error: propData.error ?? 'Could not resolve address' }, { status: 422 });
+  }
+
+  const prop_id = String(propData.property.prop_id);
+
+  // council_name: caller may override; otherwise use lga_name from NSW Planning Portal response
+  const council_name = body.council_name?.trim() || propData.property.lga_name || null;
+  if (!council_name) {
+    return NextResponse.json(
+      { error: 'Could not determine council name for this address. Please provide council_name.' },
+      { status: 422 },
+    );
+  }
+
+  let lat: number | null = propData.property.coordinates?.lat ?? null;
+  let lng: number | null = propData.property.coordinates?.lng ?? null;
+
+  if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
+    const ring: [number, number][] = propData.lotGeometry.rings[0];
+    lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+    lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+  }
+
+  if (!lat || !lng) {
+    return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
+  }
+
+  // Subscribe
+  const subResp = await fetch(`${PYTHON_API}/pipeline/threat-radar/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ address, prop_id, lat, lng, email, council_name }),
+  }).catch(() => null);
+
+  if (!subResp?.ok) {
+    const text = await subResp?.text().catch(() => '');
+    return NextResponse.json({ error: `Subscribe failed: ${text}` }, { status: 502 });
+  }
+
+  return NextResponse.json(await subResp.json());
+}
