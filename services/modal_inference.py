@@ -35,6 +35,7 @@ inference_image = (
     .pip_install([
         "rasterio==1.3.11",                   # pin to avoid backtracking to source-only versions
         "groundingdino-py",                   # pre-install so samgeo doesn't do it at runtime
+        "transformers>=4.26.0,<5.0",          # groundingdino incompatible with transformers 5.x
         "segment-geospatial",
         "torch==2.4.0",                       # 2.4+ supports numpy 2.x
         "torchvision==0.19.0",
