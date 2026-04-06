@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
 interface SolarYieldOutputs {
@@ -28,6 +28,9 @@ interface ReportData {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
+const POLL_INTERVAL_MS = 2000;
+const POLL_TIMEOUT_MS = 180_000;
+
 const MATERIAL_LABELS: Record<string, string> = {
   colorbond_dark: 'Colorbond (dark)',
   colorbond_light: 'Colorbond (light)',
@@ -49,11 +52,45 @@ export default function SolarYieldPage() {
   const [state, setState] = useState<PageState>('idle');
   const [report, setReport] = useState<ReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    pollRef.current = null;
+    timeoutRef.current = null;
+  };
+
+  useEffect(() => () => stopPolling(), []);
+
+  const poll = (jobId: string) => {
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/satellite/solar-yield?jobId=${jobId}`);
+        const json = await res.json();
+        if (json.status === 'complete') {
+          stopPolling();
+          setReport(json.data);
+          setState('complete');
+        }
+      } catch {
+        // silently retry
+      }
+    }, POLL_INTERVAL_MS);
+
+    timeoutRef.current = setTimeout(() => {
+      stopPolling();
+      setErrorMsg('The report is taking longer than expected. Try again in a few minutes.');
+      setState('error');
+    }, POLL_TIMEOUT_MS);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim()) return;
 
+    stopPolling();
     setState('running');
     setReport(null);
     setErrorMsg('');
@@ -68,11 +105,10 @@ export default function SolarYieldPage() {
       const json = await res.json();
 
       if (!res.ok) {
-        throw new Error(json.error || 'Failed to run report');
+        throw new Error(json.error || 'Failed to start report');
       }
 
-      setReport(json);
-      setState('complete');
+      poll(json.jobId);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setErrorMsg(msg);

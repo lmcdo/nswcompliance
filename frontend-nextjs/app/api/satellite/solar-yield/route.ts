@@ -1,17 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+const getSupabase = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
+
+const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
+const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/solar-yield
  * Body: { address: string }
  *
- * Direct FastAPI call — no Trigger.dev, no polling.
- *
  * 1. Resolve address → lat/lng via /api/property/[address]
- * 2. Call Python POST /pipeline/solar-yield
- * 3. Return pipeline result immediately
+ * 2. Pre-allocate property_reports row (jobId)
+ * 3. Trigger satellite-job-runner Trigger.dev task (no Vercel timeout)
+ * 4. Return { jobId } — frontend polls /api/reports/status?jobId=X
  */
 export async function POST(request: NextRequest) {
   let body: { address?: string };
@@ -66,28 +72,85 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
   }
 
-  // Step 2: call Python directly
-  let pythonResp: Response;
-  try {
-    pythonResp = await fetch(`${PYTHON_API}/pipeline/solar-yield`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, prop_id, lat, lng, lot_geometry: lotGeometry }),
-      signal: AbortSignal.timeout(55_000),
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: `Solar yield pipeline failed: ${msg}` }, { status: 502 });
+  // Step 2: pre-allocate report row
+  const { data: reportRow, error: insertError } = await getSupabase()
+    .from('property_reports')
+    .insert({
+      product: 'solar-yield',
+      address,
+      lat,
+      lng,
+      prop_id,
+      run_date: new Date().toISOString().slice(0, 10),
+      inputs: { lat, lng },
+      outputs: null,
+      confidence: 'pending',
+      data_sources: [],
+    })
+    .select('id')
+    .single();
+
+  if (insertError || !reportRow) {
+    console.error('[solar-yield] Failed to pre-allocate report row:', insertError);
+    return NextResponse.json({ error: 'Failed to initialise report' }, { status: 500 });
   }
 
-  if (!pythonResp.ok) {
-    const text = await pythonResp.text().catch(() => '');
+  const jobId = reportRow.id as string;
+
+  // Step 3: enqueue Trigger.dev task
+  const triggerResp = await fetch(TRIGGER_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${TRIGGER_SECRET}`,
+    },
+    body: JSON.stringify({
+      payload: {
+        product: 'solar-yield',
+        address,
+        lat,
+        lng,
+        prop_id,
+        report_id: jobId,
+        extra_body: { lot_geometry: lotGeometry },
+      },
+    }),
+  });
+
+  if (!triggerResp.ok) {
+    const text = await triggerResp.text();
+    console.error('[solar-yield] Trigger.dev error:', text);
     return NextResponse.json(
-      { error: `Solar yield pipeline error (${pythonResp.status}): ${text}` },
-      { status: 502 },
+      { jobId, warning: 'Pipeline enqueue failed — retry or check Trigger.dev dashboard' },
+      { status: 202 },
     );
   }
 
-  const result = await pythonResp.json();
-  return NextResponse.json(result);
+  return NextResponse.json({ jobId }, { status: 202 });
+}
+
+/**
+ * GET /api/satellite/solar-yield?jobId=<uuid>
+ */
+export async function GET(request: NextRequest) {
+  const jobId = request.nextUrl.searchParams.get('jobId');
+  if (!jobId) {
+    return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
+  }
+
+  const { data, error } = await getSupabase()
+    .from('property_reports')
+    .select('*')
+    .eq('id', jobId)
+    .single();
+
+  if (error || !data) {
+    return NextResponse.json({ status: 'pending' });
+  }
+
+  if (data.confidence === 'pending') {
+    return NextResponse.json({ status: 'pending' });
+  }
+
+  return NextResponse.json({ status: 'complete', data });
 }
