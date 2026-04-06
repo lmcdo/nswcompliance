@@ -6,7 +6,7 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
 const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
   // -------------------------------------------------------------------------
   if (action === 'detect') {
     // Pre-allocate report row so frontend can poll immediately
-    const { data: reportRow, error: insertError } = await supabase
+    const { data: reportRow, error: insertError } = await getSupabase()
       .from('granny_flat_reports')
       .insert({
         product: 'granny-flat',

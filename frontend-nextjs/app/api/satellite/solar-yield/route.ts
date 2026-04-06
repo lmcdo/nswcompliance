@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
+const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 2: Pre-allocate report row so frontend can poll immediately
-  const { data: reportRow, error: insertError } = await supabase
+  const { data: reportRow, error: insertError } = await getSupabase()
     .from('property_reports')
     .insert({
       product: 'solar-yield',
@@ -120,7 +120,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('property_reports')
     .select('*')
     .eq('id', jobId)
