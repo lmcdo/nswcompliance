@@ -172,63 +172,68 @@ def _detect_panels_samgeo(
     lot_geometry: Optional[dict] = None,
 ) -> tuple[int, float]:
     """
-    Run LangSAM text-prompt detection for "solar panel", clipped to the lot boundary.
+    Detect solar panels via Modal GPU inference (LangSAM).
+
+    Sends aerial tile as base64 to Modal endpoint, receives panel masks.
+    Falls back to (0, 0.0) if Modal URL not configured or request fails.
 
     Returns:
         (panel_count, total_area_m2)
         Area estimated from pixel count at zoom 20 (~0.098m/pixel).
     """
-    if not SAMGEO_VALIDATED:
-        logger.warning("samgeo not yet validated — run spike_solar_samgeo.py first.")
+    modal_url = os.environ.get("MODAL_INFERENCE_URL", "").rstrip("/")
+    if not modal_url:
+        logger.warning("MODAL_INFERENCE_URL not set — skipping panel detection.")
         return 0, 0.0
 
     try:
-        from samgeo.text_sam import LangSAM
-        import numpy as np
-        from PIL import Image
-    except ImportError:
-        logger.error("samgeo not installed")
+        import base64
+        import requests as _req
+
+        with open(tile_path, "rb") as f:
+            image_b64 = base64.b64encode(f.read()).decode()
+
+        resp = _req.post(
+            f"{modal_url}/detect-panels",
+            json={"image_b64": image_b64},
+            timeout=150,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+    except Exception as e:
+        logger.error(f"Modal detect-panels failed: {e}")
         return 0, 0.0
 
-    model = LangSAM()
-    masks, boxes, phrases, logits = model.predict(
-        image=tile_path,
-        text_prompt="solar panel",
-        box_threshold=0.3,
-        text_threshold=0.25,
-        return_results=True,
-    )
-
-    if masks is None or len(masks) == 0:
+    masks = result.get("masks", [])
+    if not masks:
         return 0, 0.0
 
-    # Build lot pixel mask for clipping
+    # Apply lot clipping: keep only masks whose bbox centre is inside the lot pixel mask
     lot_pixel_mask = None
     if bbox and lot_geometry:
-        img_size = Image.open(tile_path).size  # (width, height)
-        lot_pixel_mask = _lot_polygon_to_pixel_mask(lot_geometry, bbox, img_size)
-        if lot_pixel_mask is not None:
-            logger.debug("Lot boundary clipping active.")
-        else:
-            logger.warning("Lot mask failed — counting all detections (may include neighbours).")
+        try:
+            from PIL import Image
+            import numpy as np
+            img_size = Image.open(tile_path).size
+            lot_pixel_mask = _lot_polygon_to_pixel_mask(lot_geometry, bbox, img_size)
+        except Exception:
+            pass
 
-    pixel_size_m = 0.098  # zoom 20, 3×3 grid: ~75m / 768px
-    total_pixels = 0
+    pixel_size_m = 0.098
     panel_count = 0
+    total_pixels = 0
 
-    for mask in masks:
-        mask_np = np.array(mask).astype(bool)
-
+    for m in masks:
+        area_px = m["area_px"]
         if lot_pixel_mask is not None:
-            # Keep only pixels inside the lot boundary
-            clipped = mask_np & lot_pixel_mask
-        else:
-            clipped = mask_np
-
-        px = int(clipped.sum())
-        if px > 0:
-            panel_count += 1
-            total_pixels += px
+            # Use bbox centre as a proxy for lot membership
+            x1, y1, x2, y2 = m["bbox_pixel"]
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            import numpy as np
+            if not lot_pixel_mask[cy, cx]:
+                continue
+        panel_count += 1
+        total_pixels += area_px
 
     area_m2 = total_pixels * (pixel_size_m ** 2)
     return panel_count, round(area_m2, 1)

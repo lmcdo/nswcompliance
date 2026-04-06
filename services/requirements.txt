@@ -1,0 +1,32 @@
+# Core API
+fastapi==0.116.1
+uvicorn==0.35.0
+pydantic==2.11.7
+psycopg2-binary==2.9.10
+python-dotenv==1.1.1
+requests==2.32.5
+
+# Shadow Detector + shadow_model.py
+geopandas==1.0.1
+pybdshadow==0.4.2
+shapely==2.1.1
+
+# sentinel2.py (Shadow, Threat Radar)
+numpy==2.1.3
+pystac-client==0.8.3
+rasterio==1.4.3
+
+# Flood Truth — Sentinel-1 via Planetary Computer
+planetary-computer==1.0.0
+
+# Solar Yield — pvlib yield estimation
+pvlib==0.11.3
+
+# nsw_imagery.py (Solar Yield, Granny Flat aerial tiles)
+Pillow==11.3.0
+
+# samgeo + torch (Solar Yield panel detection, Granny Flat structure detection)
+# TOO LARGE for Railway free tier (~4GB). Deploy to Modal/RunPod/Lambda Labs GPU.
+# samgeo==1.2.0
+# torch==2.2.0
+# torchvision==0.17.0

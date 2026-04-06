@@ -257,22 +257,46 @@ def _detect_structures_samgeo(
     lot_geometry: Optional[dict],
 ) -> list[dict]:
     """
-    Run multi-prompt LangSAM detection, clip to lot, deduplicate, filter by area.
+    Detect buildings/sheds/garages via Modal GPU inference (LangSAM).
 
-    Prompts: "building" (main structure), "shed", "garage" (outbuildings).
-    IoU deduplication removes duplicate masks across prompts.
-    Area filter removes anything < MIN_STRUCTURE_AREA_M2.
+    Sends aerial tile as base64 to Modal endpoint. Modal runs multi-prompt
+    LangSAM, IoU dedup, and area filter — returns clean structure list.
+
+    Lot clipping: applied here after Modal returns, using bbox → pixel mapping.
 
     Returns list of dicts: {area_px, area_m2, bbox_pixel, matched_prompt}
     """
-    from samgeo.text_sam import LangSAM
+    import base64
+    import requests as _req
     from PIL import Image
-    import numpy as np
 
+    modal_url = os.environ.get("MODAL_INFERENCE_URL", "").rstrip("/")
+    if not modal_url:
+        logger.warning("MODAL_INFERENCE_URL not set — skipping structure detection.")
+        return []
+
+    try:
+        with open(tile_path, "rb") as f:
+            image_b64 = base64.b64encode(f.read()).decode()
+
+        resp = _req.post(
+            f"{modal_url}/detect-structures",
+            json={"image_b64": image_b64},
+            timeout=150,
+        )
+        resp.raise_for_status()
+        result = resp.json()
+    except Exception as e:
+        logger.error(f"Modal detect-structures failed: {e}")
+        return []
+
+    raw_structures = result.get("structures", [])
+    if not raw_structures:
+        return []
+
+    # Lot clipping: filter by bbox centre inside lot pixel mask
     img = Image.open(tile_path)
     w, h = img.size
-
-    # Build lot pixel mask for clipping
     lot_arr = None
     if lot_geometry and "rings" in lot_geometry:
         rings_px = _mercator_rings_to_pixel_via_bbox(
@@ -280,61 +304,20 @@ def _detect_structures_samgeo(
         )
         lot_arr = _build_lot_arr(rings_px, w, h)
 
-    model = LangSAM()
-    all_masks: list[tuple] = []  # (mask_np, prompt_label)
-
-    for prompt, box_thresh, text_thresh in DETECTION_PROMPTS:
-        try:
-            masks, _, _, _ = model.predict(
-                image=tile_path,
-                text_prompt=prompt,
-                box_threshold=box_thresh,
-                text_threshold=text_thresh,
-                return_results=True,
-            )
-            if masks is None:
-                continue
-            for m in masks:
-                mask_np = np.array(m, dtype=bool)
-                all_masks.append((mask_np, prompt))
-        except Exception as e:
-            logger.warning(f"LangSAM prompt '{prompt}' failed: {e}")
-
-    if not all_masks:
-        return []
-
-    # Clip to lot boundary
-    if lot_arr is not None:
-        all_masks = [(m, p) for m, p in all_masks if _mask_passes_lot_check(m, lot_arr)]
-
-    if not all_masks:
-        return []
-
-    # IoU deduplication: greedily keep largest non-overlapping masks
-    all_masks.sort(key=lambda x: x[0].sum(), reverse=True)  # largest first
-    kept: list[tuple] = []
-    for candidate_mask, candidate_prompt in all_masks:
-        duplicate = False
-        for kept_mask, _ in kept:
-            if _compute_iou(candidate_mask, kept_mask) > IOU_DEDUP_THRESHOLD:
-                duplicate = True
-                break
-        if not duplicate:
-            kept.append((candidate_mask, candidate_prompt))
-
-    # Area filter and convert to output dicts
     structures = []
-    for i, (mask_np, prompt) in enumerate(kept):
-        area_px = int(mask_np.sum())
-        area_m2 = _pixel_area_to_m2(area_px, bbox, w, h)
+    for s in raw_structures:
+        x1, y1, x2, y2 = s["bbox_pixel"]
+        cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+        if lot_arr is not None and not lot_arr[cy, cx]:
+            continue  # centre outside lot — skip
+        area_m2 = _pixel_area_to_m2(s["area_px"], bbox, w, h)
         if area_m2 < MIN_STRUCTURE_AREA_M2:
             continue
-        ys, xs = np.where(mask_np)
         structures.append({
-            "area_px": area_px,
+            "area_px": s["area_px"],
             "area_m2": round(area_m2, 1),
-            "bbox_pixel": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())],
-            "matched_prompt": prompt,
+            "bbox_pixel": s["bbox_pixel"],
+            "matched_prompt": s["matched_prompt"],
         })
 
     return structures
