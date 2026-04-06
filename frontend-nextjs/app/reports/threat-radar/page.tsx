@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
 interface SubscribeResult {
   subscription_id: string;
@@ -80,14 +81,13 @@ export default function ThreatRadarPage() {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Property address
             </label>
-            <input
-              type="text"
+            <AddressAutocomplete
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={setAddress}
+              onSelect={(addr) => setAddress(addr)}
               placeholder="e.g. 16 O'Connor St Haberfield NSW 2045"
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               disabled={state === 'running'}
-              required
             />
           </div>
           <div>

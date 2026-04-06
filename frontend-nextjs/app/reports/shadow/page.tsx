@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
 interface ShadowScenario {
   scenario: string;
@@ -88,11 +89,10 @@ export default function ShadowPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="flex gap-3 mb-8">
-        <input
-          type="text"
+        <AddressAutocomplete
           value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          placeholder="Enter a NSW property address..."
+          onChange={setAddress}
+          onSelect={(addr) => setAddress(addr)}
           className="flex-1 px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
           disabled={state === 'running'}
         />
