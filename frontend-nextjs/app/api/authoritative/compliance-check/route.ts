@@ -38,10 +38,11 @@ export async function POST(request: NextRequest) {
       special_provisions
     };
 
-    console.log('[Enhanced API] Calling FastAPI server at http://localhost:8000/compliance');
+    const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+    console.log(`[Enhanced API] Calling FastAPI server at ${PYTHON_API}/compliance`);
     console.log('[Enhanced API] Request payload:', JSON.stringify(complianceRequest));
 
-    const response = await fetch('http://localhost:8000/compliance', {
+    const response = await fetch(`${PYTHON_API}/compliance`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -80,6 +81,6 @@ export async function GET() {
     version: 'fastapi_v1',
     required_fields: ['zone_code'],
     optional_fields: ['property_id', 'development_type', 'include_development_permissions', 'basix_provisions', 'special_provisions'],
-    backend: 'FastAPI server at http://localhost:8000'
+    backend: `FastAPI server at ${process.env.PYTHON_API_URL || 'http://localhost:8000'}`
   });
 }
