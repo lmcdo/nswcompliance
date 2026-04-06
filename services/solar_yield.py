@@ -181,9 +181,9 @@ def _detect_panels_samgeo(
         (panel_count, total_area_m2)
         Area estimated from pixel count at zoom 20 (~0.098m/pixel).
     """
-    modal_url = os.environ.get("MODAL_INFERENCE_URL", "").rstrip("/")
+    modal_url = os.environ.get("MODAL_PANELS_URL", "").strip()
     if not modal_url:
-        logger.warning("MODAL_INFERENCE_URL not set — skipping panel detection.")
+        logger.warning("MODAL_PANELS_URL not set — skipping panel detection.")
         return 0, 0.0
 
     try:
@@ -194,7 +194,7 @@ def _detect_panels_samgeo(
             image_b64 = base64.b64encode(f.read()).decode()
 
         resp = _req.post(
-            f"{modal_url}/detect-panels",
+            modal_url,
             json={"image_b64": image_b64},
             timeout=150,
         )

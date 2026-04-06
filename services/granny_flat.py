@@ -270,9 +270,9 @@ def _detect_structures_samgeo(
     import requests as _req
     from PIL import Image
 
-    modal_url = os.environ.get("MODAL_INFERENCE_URL", "").rstrip("/")
+    modal_url = os.environ.get("MODAL_STRUCTURES_URL", "").strip()
     if not modal_url:
-        logger.warning("MODAL_INFERENCE_URL not set — skipping structure detection.")
+        logger.warning("MODAL_STRUCTURES_URL not set — skipping structure detection.")
         return []
 
     try:
@@ -280,7 +280,7 @@ def _detect_structures_samgeo(
             image_b64 = base64.b64encode(f.read()).decode()
 
         resp = _req.post(
-            f"{modal_url}/detect-structures",
+            modal_url,
             json={"image_b64": image_b64},
             timeout=150,
         )
