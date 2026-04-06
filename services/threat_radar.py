@@ -39,6 +39,9 @@ class CheckRequest(BaseModel):
 
 
 def _get_conn():
+    dsn = os.environ.get("DATABASE_URL")
+    if dsn:
+        return psycopg2.connect(dsn)
     return psycopg2.connect(
         host=os.environ.get("DB_HOST","127.0.0.1"),
         database=os.environ.get("DB_NAME","nsw_planning"),
