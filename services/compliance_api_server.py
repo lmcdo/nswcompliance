@@ -10,17 +10,36 @@ from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import json
 from enhanced_compliance_api import EnhancedComplianceAPI
+try:
+    from services.solar_yield import router as solar_yield_router  # Docker (PYTHONPATH=/app)
+    from services.shadow_detector import router as shadow_router
+    from services.threat_radar import router as threat_radar_router
+    from services.flood_truth import router as flood_router
+    from services.granny_flat import router as granny_flat_router
+except ImportError:
+    from solar_yield import router as solar_yield_router  # Local (run from services/)
+    from shadow_detector import router as shadow_router
+    from threat_radar import router as threat_radar_router
+    from flood_truth import router as flood_router
+    from granny_flat import router as granny_flat_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
 # Enable CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3007", "http://localhost:3000"],
+    allow_origins=["http://localhost:3003", "http://localhost:3007", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Satellite pipeline routes
+app.include_router(solar_yield_router)
+app.include_router(shadow_router)
+app.include_router(threat_radar_router)
+app.include_router(flood_router)
+app.include_router(granny_flat_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()
@@ -94,6 +113,15 @@ async def root():
         "version": "1.0.0",
         "endpoints": {
             "POST /compliance": "Get compliance data for zone and development type",
+            "POST /pipeline/solar-yield": "Satellite: Solar Yield Underwriter pipeline",
+            "POST /pipeline/shadow": "Satellite: Shadow Detector pipeline",
+            "POST /pipeline/threat-radar/subscribe": "Satellite: Threat Radar — subscribe address",
+            "POST /pipeline/threat-radar/check": "Satellite: Threat Radar — run weekly check",
+            "GET /pipeline/threat-radar/subscriptions": "Satellite: Threat Radar — list active subscriptions",
+            "POST /pipeline/flood": "Satellite: Flood Truth — on-demand EPI + SAR check",
+            "POST /pipeline/flood/batch": "Satellite: Flood Truth — batch LGA processing (cron)",
+            "POST /pipeline/granny-flat/detect": "Satellite: Granny Flat — detect structures",
+            "POST /pipeline/granny-flat/confirm": "Satellite: Granny Flat — confirm and calculate yield",
             "GET /health": "Health check",
             "GET /docs": "API documentation"
         }
