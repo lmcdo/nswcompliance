@@ -45,8 +45,17 @@ export async function POST(request: NextRequest) {
     );
   }
   const propData = await propResp.json();
-  const lat: number = propData.property?.coordinates?.lat ?? propData.lat ?? propData.latitude;
-  const lng: number = propData.property?.coordinates?.lng ?? propData.lng ?? propData.longitude;
+  let lat: number | null = propData.property?.coordinates?.lat ?? null;
+  let lng: number | null = propData.property?.coordinates?.lng ?? null;
+
+  if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
+    const ring: [number, number][] = propData.lotGeometry.rings[0];
+    const cx = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
+    const cy = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
+    const R = 20037508.342789244;
+    lng = (cx / R) * 180.0;
+    lat = (Math.atan(Math.exp((cy * Math.PI) / R)) * 2 - Math.PI / 2) * (180.0 / Math.PI);
+  }
 
   if (!lat || !lng) {
     return NextResponse.json({ error: 'Could not geocode address' }, { status: 422 });
