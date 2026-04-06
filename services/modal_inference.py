@@ -34,9 +34,10 @@ inference_image = (
     .apt_install(["libgl1", "libglib2.0-0"])  # OpenCV deps
     .pip_install([
         "rasterio==1.3.11",                   # pin to avoid backtracking to source-only versions
+        "groundingdino-py",                   # pre-install so samgeo doesn't do it at runtime
         "segment-geospatial",
-        "torch==2.2.2",
-        "torchvision==0.17.2",
+        "torch==2.4.0",                       # 2.4+ supports numpy 2.x
+        "torchvision==0.19.0",
         "Pillow==10.4.0",
         "opencv-python-headless>=4.10.0",     # >=4.10 compiled against numpy 2.x
         "fastapi[standard]",
