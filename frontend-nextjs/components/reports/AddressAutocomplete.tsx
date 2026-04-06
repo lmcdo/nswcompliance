@@ -72,6 +72,7 @@ export function AddressAutocomplete({
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
       placeholder={placeholder}
       disabled={disabled}
       className={className}
