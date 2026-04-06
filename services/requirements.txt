@@ -8,7 +8,7 @@ requests==2.32.5
 
 # Shadow Detector + shadow_model.py
 geopandas==1.0.1
-pybdshadow==0.4.2
+pybdshadow==0.3.5
 shapely==2.1.1
 
 # sentinel2.py (Shadow, Threat Radar)
