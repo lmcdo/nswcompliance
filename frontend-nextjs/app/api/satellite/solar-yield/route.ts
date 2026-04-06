@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
     );
   }
   const propData = await propResp.json();
-  const lat: number = propData.lat ?? propData.latitude;
-  const lng: number = propData.lng ?? propData.longitude;
+  const lat: number = propData.property?.coordinates?.lat ?? propData.lat ?? propData.latitude;
+  const lng: number = propData.property?.coordinates?.lng ?? propData.lng ?? propData.longitude;
 
   if (!lat || !lng) {
     return NextResponse.json({ error: 'Could not geocode address' }, { status: 422 });
