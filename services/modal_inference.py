@@ -33,11 +33,13 @@ inference_image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install(["libgl1", "libglib2.0-0"])  # OpenCV deps
     .pip_install([
-        "samgeo==1.2.0",
+        "rasterio==1.3.11",                   # pin to avoid backtracking to source-only versions
+        "segment-geospatial",
         "torch==2.2.2",
         "torchvision==0.17.2",
         "Pillow==10.4.0",
-        "numpy==1.26.4",
+        "opencv-python-headless>=4.10.0",     # >=4.10 compiled against numpy 2.x
+        "fastapi[standard]",
     ])
 )
 
@@ -99,7 +101,7 @@ def _masks_to_structures(masks_with_prompts: list, w: int, h: int, iou_threshold
 # ---------------------------------------------------------------------------
 
 @app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=60)
-@modal.web_endpoint(method="POST")
+@modal.fastapi_endpoint(method="POST")
 def detect_panels(data: dict) -> dict:
     """
     Detect solar panels in an aerial image.
@@ -162,7 +164,7 @@ DETECTION_PROMPTS = [
 ]
 
 @app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=60)
-@modal.web_endpoint(method="POST")
+@modal.fastapi_endpoint(method="POST")
 def detect_structures(data: dict) -> dict:
     """
     Detect buildings/sheds/garages in an aerial image.
