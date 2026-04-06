@@ -46,6 +46,22 @@ Document IDs follow: {Council}_DCP_{Year}__{Part}_{Precinct}
 PDF URLs: https://pub-7f3b945f2f0045d6991a6b9d6db51cd8.r2.dev/pdf-pages/{sepp-name}/page-{N}.png
 v2_marker values: TOD, heritage, contamination, flood, bushfire
 
+## Satellite Product Tables (added 2026-04-06)
+
+property_reports - satellite pipeline outputs (all 5 products)
+  product, address, lat, lng, prop_id, run_date, inputs jsonb, outputs jsonb,
+  confidence ('high'|'medium'|'low'), data_sources text[]
+  Index: (product, address), (run_date DESC)
+
+threat_radar_subscriptions - weekly DA monitoring subscriptions
+  address, prop_id, lat, lng, email, active, last_checked, inputs jsonb
+  inputs stores: { council_name, seen_application_numbers: [] }
+  Unique constraint: (email, address)
+  Index: active=true only
+
+pipeline_idea_runs - GIS bot / pipeline discovery runs
+  run_id, run_date, repos_scanned, tier1/2/3_repos jsonb, pipeline_combinations jsonb
+
 ## Important: What's Missing
 
 dcp_precinct_metadata: 0 rows (don't use)

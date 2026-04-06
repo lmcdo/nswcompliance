@@ -1,0 +1,87 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
+
+/**
+ * POST /api/satellite/flood
+ * Body: { address: string }
+ *
+ * Resolves address → lat/lng/prop_id, then calls Python /pipeline/flood.
+ * Synchronous — returns EPI flood overlay immediately (<10s).
+ * SAR analysis is only available for pre-computed results.
+ */
+export async function POST(request: NextRequest) {
+  let body: { address?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const address = body.address?.trim();
+  if (!address) {
+    return NextResponse.json({ error: 'address is required' }, { status: 400 });
+  }
+
+  // Resolve address
+  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
+  const propResp = await fetch(propUrl).catch(() => null);
+  if (!propResp?.ok) {
+    return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
+  }
+
+  const propData = await propResp.json();
+  if (!propData.success || !propData.property) {
+    return NextResponse.json(
+      { error: propData.error ?? 'Could not resolve address' },
+      { status: 422 },
+    );
+  }
+
+  const prop_id = String(propData.property.prop_id);
+  let lat: number | null = propData.property.coordinates?.lat ?? null;
+  let lng: number | null = propData.property.coordinates?.lng ?? null;
+
+  if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
+    // Rings are EPSG:3857 (Web Mercator metres) — convert centroid to WGS84
+    const ring: [number, number][] = propData.lotGeometry.rings[0];
+    const cx = ring.reduce((s, p) => s + p[0], 0) / ring.length;
+    const cy = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+    const R = 20037508.342789244;
+    lng = (cx / R) * 180.0;
+    lat = (Math.atan(Math.exp((cy * Math.PI) / R)) * 2 - Math.PI / 2) * (180.0 / Math.PI);
+  }
+
+  if (!lat || !lng) {
+    return NextResponse.json(
+      { error: 'Could not determine coordinates for this address' },
+      { status: 422 },
+    );
+  }
+
+  const report_id = crypto.randomUUID();
+
+  let pythonResp: Response;
+  try {
+    pythonResp = await fetch(`${PYTHON_API}/pipeline/flood`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, prop_id, lat, lng, report_id }),
+      signal: AbortSignal.timeout(55_000),
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ error: `Flood pipeline failed: ${msg}` }, { status: 502 });
+  }
+
+  if (!pythonResp.ok) {
+    const text = await pythonResp.text().catch(() => '');
+    return NextResponse.json(
+      { error: `Flood pipeline error (${pythonResp.status}): ${text}` },
+      { status: 502 },
+    );
+  }
+
+  return NextResponse.json(await pythonResp.json());
+}
