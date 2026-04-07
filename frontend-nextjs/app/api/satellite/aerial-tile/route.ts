@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
 
   const res = await fetch(url);
   if (!res.ok) {
-    return new NextResponse(null, { status: res.status });
+    const text = await res.text();
+    return NextResponse.json({ error: text, status: res.status, url: url.replace(KEY, 'REDACTED') }, { status: 500 });
   }
 
   const buffer = await res.arrayBuffer();
