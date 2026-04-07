@@ -34,7 +34,11 @@ _SCENARIO_MAP = {s[0]: s for s in SHADOW_SCENARIOS}
 def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: str = "jun21_12pm") -> dict:
     """
     Compute shadow polygon for a max-permissible building on a lot.
-    Returns GeoJSON FeatureCollection.
+    Returns GeoJSON FeatureCollection in WGS84 (EPSG:4326).
+
+    pybdshadow requires metric coordinates — we reproject to UTM Zone 55S
+    (EPSG:32755, correct for Sydney) before passing to pybdshadow, then
+    reproject shadow output back to WGS84 for downstream use.
     """
     try:
         import geopandas as gpd
@@ -54,12 +58,21 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
         target_dt = datetime(target_year, month, day, hour_utc, 0, 0, tzinfo=timezone.utc)
 
     lot_polygon = shape(lot_geometry_geojson)
-    buildings = __import__('geopandas').GeoDataFrame(
+
+    # Reproject to UTM Zone 55S (metres) — pybdshadow treats coordinates as metres.
+    # Passing WGS84 degrees makes the lot ~0.05mm wide, producing zero shadows.
+    buildings = gpd.GeoDataFrame(
         {"building_id": [0], "height": [float(height_limit_m)]},
         geometry=[lot_polygon], crs="EPSG:4326",
-    )
+    ).to_crs("EPSG:32755")
+
     shadows = pybdshadow.bdshadow_sunlight(buildings, target_dt)
-    return shadows.__geo_interface__
+
+    if shadows.empty:
+        return {"type": "FeatureCollection", "features": []}
+
+    # Reproject back to WGS84 for GeoJSON output
+    return shadows.to_crs("EPSG:4326").__geo_interface__
 
 
 def model_all_scenarios(lot_geometry_geojson: dict, height_limit_m: float) -> dict:
