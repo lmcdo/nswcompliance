@@ -30,7 +30,7 @@ interface ReportData {
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 60_000;
+const POLL_TIMEOUT_MS = 180_000;
 
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
