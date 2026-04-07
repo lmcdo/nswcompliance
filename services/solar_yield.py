@@ -175,9 +175,20 @@ def _parse_solar_response(data: dict) -> SolarYieldOutput:
     # Roof area
     roof_area = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
 
-    # Best segment: largest by area
+    # Best segment: highest median sunshine hours (index 4 of sunshineQuantiles).
+    # This picks the sunniest face of the roof, not just the largest.
+    # Tiebreak: prefer segments closer to north-facing (azimuth near 0/360).
     segments = sp.get("roofSegmentStats", [])
-    best_seg = max(segments, key=lambda s: s.get("stats", {}).get("areaMeters2", 0.0)) if segments else {}
+
+    def _segment_score(seg: dict) -> float:
+        quantiles = seg.get("stats", {}).get("sunshineQuantiles", [])
+        median_sun = float(quantiles[4]) if len(quantiles) > 4 else 0.0
+        az = seg.get("azimuthDegrees", 180.0)
+        # Small bonus for north-facing (az near 0 or 360) in Southern Hemisphere
+        north_bonus = (1.0 - min(az, 360 - az) / 180.0) * 10
+        return median_sun + north_bonus
+
+    best_seg = max(segments, key=_segment_score) if segments else {}
     best_pitch = best_seg.get("pitchDegrees", 0.0)
     best_azimuth = best_seg.get("azimuthDegrees", 0.0)
 
