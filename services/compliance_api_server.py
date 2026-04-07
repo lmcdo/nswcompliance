@@ -4,12 +4,14 @@ FastAPI HTTP Server for Enhanced Compliance API
 Wraps the existing enhanced_compliance_api.py for reliable Node.js access
 """
 
+import json
+import os
+from typing import Any, Dict, List, Optional
+
+from enhanced_compliance_api import EnhancedComplianceAPI
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List, Dict, Any
-import json
-from enhanced_compliance_api import EnhancedComplianceAPI
 try:
     from services.solar_yield import router as solar_yield_router  # Docker (PYTHONPATH=/app)
     from services.shadow_detector import router as shadow_router
@@ -25,10 +27,18 @@ except ImportError:
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
-# Enable CORS for frontend access
+# CORS — allow localhost in dev, production Vercel origin in prod.
+# Set ALLOWED_ORIGINS on Railway as a comma-separated list, e.g.:
+#   https://your-app.vercel.app,https://verify.yourdomain.com
+_default_origins = "http://localhost:3000,http://localhost:3003,http://localhost:3007"
+_allowed_origins = [
+    o.strip()
+    for o in os.environ.get("ALLOWED_ORIGINS", _default_origins).split(",")
+    if o.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3003", "http://localhost:3007", "http://localhost:3000"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

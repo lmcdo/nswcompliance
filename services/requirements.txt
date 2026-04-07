@@ -16,8 +16,9 @@ numpy==2.1.3
 pystac-client==0.8.3
 rasterio==1.4.3
 
-# Flood Truth — Sentinel-1 via Planetary Computer
+# Flood Truth — Sentinel-1 via Planetary Computer + BOM XML parsing
 planetary-computer==1.0.0
+xmltodict==0.14.2
 
 # nsw_imagery.py (Granny Flat aerial tiles)
 Pillow==11.3.0
