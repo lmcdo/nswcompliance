@@ -8,6 +8,18 @@ const getSupabase = () => createClient(
 );
 
 const PYTHON_API = process.env.PYTHON_API_URL!;
+
+/** Convert Esri Web Mercator rings → GeoJSON Polygon (WGS84) */
+function esriRingsToGeoJSON(rings: number[][][]): { type: 'Polygon'; coordinates: number[][][] } {
+  const R = 20037508.342789244;
+  const coords = rings.map(ring =>
+    ring.map(([x, y]) => [
+      (x / R) * 180.0,
+      (Math.atan(Math.exp((y * Math.PI) / R)) * 2 - Math.PI / 2) * (180.0 / Math.PI),
+    ])
+  );
+  return { type: 'Polygon', coordinates: coords };
+}
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
@@ -101,6 +113,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const lotPolygon = lotGeometry?.rings
+    ? esriRingsToGeoJSON(lotGeometry.rings as number[][][])
+    : null;
+
   // Step 3: store in Supabase (Railway already wrote it, this is the read-back for the frontend)
   return NextResponse.json({
     jobId,
@@ -110,6 +126,7 @@ export async function POST(request: NextRequest) {
       address,
       lat,
       lng,
+      lot_polygon: lotPolygon,
       run_date: new Date().toISOString().slice(0, 10),
       outputs: pipelineResult.outputs,
       confidence: pipelineResult.confidence,

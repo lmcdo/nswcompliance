@@ -22,11 +22,17 @@ interface SolarYieldOutputs {
   coverage_available: boolean;
 }
 
+interface GeoJSONPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
 interface ReportData {
   product: string;
   address: string;
   lat: number;
   lng: number;
+  lot_polygon: GeoJSONPolygon | null;
   run_date: string;
   outputs: SolarYieldOutputs;
   confidence: string;
@@ -223,17 +229,23 @@ function ReportCard({ report }: { report: ReportData }) {
               </span>
             )}
             {/* Suitability grade badge */}
-            <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${grade.colour}`}>
-              {grade.grade}
-            </span>
+            <div className={`flex flex-col items-center px-3 py-2 rounded-lg ${grade.colour}`}>
+              <span className="text-[10px] font-semibold uppercase tracking-wide opacity-60 leading-none mb-1">Suitability</span>
+              <span className="text-xl font-bold leading-none">{grade.grade}</span>
+            </div>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-2">{grade.reason} · {roi.systemKw.toFixed(1)} kW system</p>
+        <p className="text-xs text-gray-500 mt-2">
+          {grade.reason} · {roi.systemKw.toFixed(1)} kW system
+        </p>
+        <p className="text-xs text-gray-400 mt-1">
+          Grade based on roof pitch ({o.best_pitch_deg}°), orientation ({azimuthLabel(o.best_azimuth_deg)}, {o.best_azimuth_deg}° from north), and annual sunshine hours ({o.sunshine_hours_per_year.toLocaleString()} hr/yr) per BOM NSW solar irradiance data. A = excellent · F = poor.
+        </p>
       </div>
 
       {/* Aerial tile */}
       <div style={{ height: 220 }}>
-        <AerialTile lat={report.lat} lng={report.lng} />
+        <AerialTile lat={report.lat} lng={report.lng} lotPolygon={o.coverage_available ? report.lot_polygon : null} />
       </div>
 
       {/* Financial ROI */}
