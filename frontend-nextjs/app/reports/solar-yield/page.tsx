@@ -29,12 +29,54 @@ interface ReportData {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence',
-  pending: 'Processing...',
-};
+// ── Financial assumptions ────────────────────────────────────────────────────
+const RETAIL_RATE        = 0.32;   // $/kWh — NSW mid-market, AER DMO 2025–26 reference
+const FEED_IN_RATE       = 0.06;   // $/kWh — AER voluntary FiT benchmark NSW 2024–25
+const SELF_CONSUME_RATIO = 0.30;   // 30% self-consumed — ARENA/CSIRO Solar Home study
+const COST_PER_WATT      = 1.00;   // $/W installed after STCs — SolarQuotes NSW Q1 2026
+const PANEL_WATTS        = 400;    // W — standard residential panel 2024–25
+const INVERTER_REPLACE   = 2000;   // $ at year 10
+
+function calcROI(kwh: number, maxPanels: number) {
+  const systemKw  = (maxPanels * PANEL_WATTS) / 1000;
+  const selfKwh   = kwh * SELF_CONSUME_RATIO;
+  const exportKwh = kwh * (1 - SELF_CONSUME_RATIO);
+  const annualSaving = selfKwh * RETAIL_RATE + exportKwh * FEED_IN_RATE;
+  const systemCost   = systemKw * 1000 * COST_PER_WATT;
+  const paybackYears = annualSaving > 0 ? systemCost / annualSaving : null;
+  const tenYearReturn = annualSaving * 10 - systemCost - INVERTER_REPLACE;
+  return { systemKw, annualSaving, systemCost, paybackYears, tenYearReturn };
+}
+
+// ── Solar suitability grade ──────────────────────────────────────────────────
+function solarGrade(pitch: number, azimuth: number, sunshineHours: number): { grade: string; colour: string; reason: string } {
+  // Pitch score: 15–30° is ideal for Sydney (~34°S latitude)
+  const pitchScore =
+    pitch >= 15 && pitch <= 30 ? 3 :
+    pitch >= 8  && pitch < 15  ? 2 :
+    pitch >= 30 && pitch <= 40 ? 2 : 1;
+
+  // Azimuth score: north (0/360°) is ideal in Southern Hemisphere
+  const northDev = Math.min(azimuth, 360 - azimuth); // deviation from north
+  const azScore =
+    northDev <= 30  ? 3 :
+    northDev <= 60  ? 2 :
+    northDev <= 90  ? 1 : 0;
+
+  // Sunshine score
+  const sunScore =
+    sunshineHours >= 1700 ? 3 :
+    sunshineHours >= 1500 ? 2 :
+    sunshineHours >= 1300 ? 1 : 0;
+
+  const total = pitchScore + azScore + sunScore;
+
+  if (total >= 8) return { grade: 'A', colour: 'text-emerald-700 bg-emerald-50', reason: 'Excellent solar potential' };
+  if (total >= 6) return { grade: 'B', colour: 'text-teal-700 bg-teal-50',       reason: 'Good solar potential' };
+  if (total >= 4) return { grade: 'C', colour: 'text-yellow-700 bg-yellow-50',   reason: 'Moderate solar potential' };
+  if (total >= 2) return { grade: 'D', colour: 'text-orange-700 bg-orange-50',   reason: 'Below-average solar potential' };
+  return           { grade: 'F', colour: 'text-red-700 bg-red-50',               reason: 'Poor solar potential' };
+}
 
 function azimuthLabel(deg: number): string {
   if (deg >= 337.5 || deg < 22.5) return 'N';
@@ -46,6 +88,18 @@ function azimuthLabel(deg: number): string {
   if (deg < 292.5) return 'W';
   return 'NW';
 }
+
+function fmt$(n: number) {
+  return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
+}
+
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+function aerialTileUrl(lat: number, lng: number) {
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x300&maptype=satellite&key=${GOOGLE_MAPS_KEY}`;
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SolarYieldPage() {
   const [address, setAddress] = useState('');
@@ -88,7 +142,7 @@ export default function SolarYieldPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Solar Potential Assessment</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          Roof area, orientation, maximum panel capacity, and estimated annual yield for any NSW address.
+          Roof geometry, system sizing, financial return, and suitability grade for any NSW address.
         </p>
       </div>
 
@@ -113,7 +167,7 @@ export default function SolarYieldPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
           <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-gray-700">Analysing roof geometry...</p>
-          <p className="text-xs text-gray-400 mt-1">Usually takes 5–10 seconds.</p>
+          <p className="text-xs text-gray-400 mt-1">Usually completes in 5–10 seconds.</p>
         </div>
       )}
 
@@ -130,6 +184,8 @@ export default function SolarYieldPage() {
   );
 }
 
+// ── Report card ───────────────────────────────────────────────────────────────
+
 function ReportCard({ report }: { report: ReportData }) {
   const o = report.outputs;
 
@@ -138,82 +194,131 @@ function ReportCard({ report }: { report: ReportData }) {
       <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
         <p className="font-medium text-gray-800 mb-1">No coverage available</p>
         <p className="text-sm text-gray-500">
-          Google Solar data is not yet available for this address. Try a nearby address or check back later.
+          Google Solar data is not yet available for this address. Try again later.
         </p>
       </div>
     );
   }
 
+  const roi   = calcROI(o.annual_kwh_estimate, o.max_panels);
+  const grade = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+
       {/* Header */}
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold text-gray-900">{report.address}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              Run {report.run_date} &middot; {CONFIDENCE_LABEL[report.confidence] ?? report.confidence}
+              Run {report.run_date}
               {o.imagery_date !== 'unknown' && ` · Imagery ${o.imagery_date}`}
             </p>
           </div>
-          {o.is_heritage && (
-            <span className="shrink-0 text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
-              Heritage area
+          <div className="flex items-center gap-2 shrink-0">
+            {o.is_heritage && (
+              <span className="text-xs font-medium px-2 py-1 bg-amber-100 text-amber-800 rounded-full">
+                Heritage area
+              </span>
+            )}
+            {/* Suitability grade badge */}
+            <span className={`text-2xl font-bold px-3 py-1 rounded-lg ${grade.colour}`}>
+              {grade.grade}
             </span>
-          )}
+          </div>
         </div>
+        <p className="text-xs text-gray-500 mt-2">{grade.reason} · {roi.systemKw.toFixed(1)} kW system</p>
       </div>
 
-      {/* Key metrics */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <Metric
-          label="Annual solar potential"
-          value={`${o.annual_kwh_estimate.toLocaleString()} kWh/yr`}
-          note="Maximum capacity, all usable roof area"
-        />
-        <Metric
-          label="Maximum panel capacity"
-          value={`${o.max_panels} panels`}
-          note={`${o.max_panel_area_m2} m² usable area`}
-        />
+      {/* Aerial tile */}
+      {GOOGLE_MAPS_KEY && (
+        <div className="overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={aerialTileUrl(report.lat, report.lng)}
+            alt={`Satellite view of ${report.address}`}
+            className="w-full object-cover"
+            style={{ maxHeight: 220 }}
+          />
+        </div>
+      )}
+
+      {/* Financial ROI */}
+      <div className="p-6">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Financial return</h3>
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Annual savings</p>
+            <p className="text-xl font-semibold text-gray-900">{fmt$(roi.annualSaving)}</p>
+            <p className="text-xs text-gray-400 mt-0.5">at current NSW rates</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Payback period</p>
+            <p className="text-xl font-semibold text-gray-900">
+              {roi.paybackYears ? `${roi.paybackYears.toFixed(1)} yrs` : '—'}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">system cost {fmt$(roi.systemCost)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">10-year return</p>
+            <p className={`text-xl font-semibold ${roi.tenYearReturn >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+              {fmt$(roi.tenYearReturn)}
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">after install + inverter</p>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
+          Assumes {fmt$(RETAIL_RATE * 100)}¢/kWh retail (AER DMO 2025–26 mid-market) · {fmt$(FEED_IN_RATE * 100)}¢/kWh
+          feed-in (AER benchmark) · 30% self-consumption (ARENA/CSIRO Solar Home study) ·{' '}
+          {fmt$(COST_PER_WATT * 1000)}/kW installed after STCs (SolarQuotes NSW 2026) · inverter
+          replacement {fmt$(INVERTER_REPLACE)} at year 10.
+        </p>
       </div>
 
-      {/* Roof details */}
-      <div className="p-6 grid grid-cols-4 gap-4 text-sm">
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5">Total roof area</p>
-          <p className="font-medium text-gray-800">{o.roof_area_m2} m²</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5">Best pitch</p>
-          <p className="font-medium text-gray-800">{o.best_pitch_deg}°</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
-          <p className="font-medium text-gray-800">
-            {azimuthLabel(o.best_azimuth_deg)} ({o.best_azimuth_deg}°)
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-400 mb-0.5">Sunshine hours</p>
-          <p className="font-medium text-gray-800">{o.sunshine_hours_per_year.toLocaleString()} hr/yr</p>
+      {/* Roof and system */}
+      <div className="p-6">
+        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Roof and system</h3>
+        <div className="grid grid-cols-4 gap-4 text-sm">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Max panels</p>
+            <p className="font-medium text-gray-800">{o.max_panels} panels</p>
+            <p className="text-xs text-gray-400">{roi.systemKw.toFixed(1)} kW</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Usable roof area</p>
+            <p className="font-medium text-gray-800">{o.max_panel_area_m2} m²</p>
+            <p className="text-xs text-gray-400">of {o.roof_area_m2} m² total</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
+            <p className="font-medium text-gray-800">{azimuthLabel(o.best_azimuth_deg)} · {o.best_pitch_deg}° pitch</p>
+            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString()} hr/yr sun</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Annual output</p>
+            <p className="font-medium text-gray-800">{o.annual_kwh_estimate.toLocaleString()} kWh</p>
+            <p className="text-xs text-gray-400">full roof potential</p>
+          </div>
         </div>
       </div>
 
       {/* Heritage warning */}
       {o.is_heritage && (
-        <div className="px-6 py-4 bg-amber-50 text-xs text-amber-800 rounded-b-xl">
-          This property is in a Heritage Conservation Area or has a heritage listing. Solar panel installations may require heritage approval. Confirm with your council before proceeding.
+        <div className="px-6 py-4 bg-amber-50 text-xs text-amber-800">
+          Heritage area — solar panel installations may require council heritage approval before proceeding.
         </div>
       )}
 
-      {/* Data sources */}
+      {/* Footer */}
       <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
-          Data sources: {report.data_sources.join(' · ')}
+          Data: {report.data_sources.join(' · ')} · Google Maps Static API
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          Solar potential only — does not indicate whether panels are currently installed. Not a substitute for a professional energy assessment.
+          Solar potential assessment only. Financial figures are indicative estimates, not financial advice.
+          Actual savings depend on household consumption, tariff structure, and system performance.
+          Not a substitute for a professional energy or financial assessment.
         </p>
       </div>
     </div>
