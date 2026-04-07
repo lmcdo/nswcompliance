@@ -46,6 +46,7 @@ import logging
 import math
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timezone
 from typing import Optional
 
@@ -277,7 +278,7 @@ def _fetch_bom_peak(station_id: str, major_flood_m: float) -> tuple[Optional[str
     Returns (peak_date_iso, peak_level_m) for the highest reading, or (None, None) on failure.
     Only returns if the peak exceeded the major_flood_m threshold.
     """
-    start = "2020-01-01T00:00:00+10:00"
+    start = "2021-01-01T00:00:00+10:00"
     end   = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
     params = {
         "service": "SOS",
@@ -524,10 +525,15 @@ def run_flood(req: FloodRequest):
     except Exception as e:
         logger.warning(f"Cache lookup: {e}")
 
-    epi = _query_epi_overlay(req.lat, req.lng)
-    ems = _query_copernicus_ems(req.lat, req.lng)
-    jrc = _query_jrc_surface_water(req.lat, req.lng)
-    bom = _query_bom_gauge(req.lat, req.lng)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
+        f_ems = pool.submit(_query_copernicus_ems, req.lat, req.lng)
+        f_jrc = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
+        f_bom = pool.submit(_query_bom_gauge, req.lat, req.lng)
+        epi = f_epi.result()
+        ems = f_ems.result()
+        jrc = f_jrc.result()
+        bom = f_bom.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
