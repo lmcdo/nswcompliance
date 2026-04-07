@@ -93,10 +93,8 @@ function fmt$(n: number) {
   return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
 }
 
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
-
 function aerialTileUrl(lat: number, lng: number) {
-  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x300&maptype=satellite&key=${GOOGLE_MAPS_KEY}`;
+  return `/api/satellite/aerial-tile?lat=${lat}&lng=${lng}`;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
