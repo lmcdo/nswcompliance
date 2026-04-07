@@ -35,7 +35,6 @@ export function AerialTile({ lat, lng, zoom = 19, height = 220 }: Props) {
       style={{ width: '100%', height }}
       mapStyle={ESRI_AERIAL}
       attributionControl={false}
-      interactive={false}
     />
   );
 }
