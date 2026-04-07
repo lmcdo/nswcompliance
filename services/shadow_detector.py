@@ -118,16 +118,58 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
         return None
 
 
-def _get_height_limit(lat: float, lng: float) -> float:
-    """Heuristic height limit from regulatory_provisions."""
+# former_council value → LEP instrument name
+_COUNCIL_TO_LEP = {
+    "marrickville": "Inner West LEP 2022",
+    "leichhardt":   "Inner West LEP 2022",
+    "ashfield":     "Inner West LEP 2022",
+    "inner west":   "Inner West LEP 2022",
+    "sydney":       "Sydney LEP 2012",
+    "city of sydney": "Sydney LEP 2012",
+    "ku-ring-gai":  "Ku-ring-gai LEP 2015",
+    "kuringgai":    "Ku-ring-gai LEP 2015",
+}
+
+
+def _get_height_limit(lat: float, lng: float) -> tuple:
+    """
+    Heuristic height limit from regulatory_provisions near lat/lng.
+    Returns (height_m: float, lep_name: str).
+    Uses dcp_precinct_boundaries spatial proximity to find the right council.
+    Falls back to closest precinct centroid if no spatial match.
+    """
     try:
         import re
         with _get_conn() as conn:
             with conn.cursor() as cur:
+                # Find the nearest precinct boundary centroid to identify the council
                 cur.execute(
-                    "SELECT provision_text FROM regulatory_provisions "
-                    "WHERE v2_topic ILIKE %s LIMIT 10",
-                    ("%height%",)
+                    """
+                    SELECT former_council
+                    FROM dcp_precinct_boundaries
+                    WHERE former_council IS NOT NULL
+                    ORDER BY ST_Distance(
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(boundary_geojson::text), 4326))::geography
+                    )
+                    LIMIT 1
+                    """,
+                    (lng, lat)
+                )
+                row = cur.fetchone()
+                former_council = (row[0] or "").strip() if row else ""
+
+                # Query height provisions filtered by council
+                query_args = ["%height%"]
+                council_filter = ""
+                if former_council:
+                    council_filter = "AND former_council = %s"
+                    query_args.append(former_council)
+
+                cur.execute(
+                    f"SELECT provision_text FROM regulatory_provisions "
+                    f"WHERE v2_topic ILIKE %s {council_filter} LIMIT 20",
+                    query_args
                 )
                 heights = []
                 for (text,) in cur.fetchall():
@@ -135,10 +177,13 @@ def _get_height_limit(lat: float, lng: float) -> float:
                         h = float(m)
                         if 4 <= h <= 30:
                             heights.append(h)
-                return float(max(heights)) if heights else DEFAULT_HEIGHT_M
+
+                height = float(max(heights)) if heights else DEFAULT_HEIGHT_M
+                lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
+                return height, lep_name
     except Exception as e:
         logger.warning(f"Height limit query: {e}")
-        return DEFAULT_HEIGHT_M
+        return DEFAULT_HEIGHT_M, "Local Environmental Plan"
 
 
 def _build_scenario_list(
@@ -217,7 +262,7 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
 
     lot_geojson = _arcgis_to_geojson(lot_geometry)
-    height_m = _get_height_limit(request.lat, request.lng)
+    height_m, lep_name = _get_height_limit(request.lat, request.lng)
 
     try:
         change = compute_change_score(request.lat, request.lng, radius_m=200)
@@ -236,6 +281,7 @@ def run_shadow(request: ShadowRequest):
 
     outputs = {
         "height_m": height_m,
+        "lep_name": lep_name,
         "lot_polygon": lot_geojson,
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
@@ -243,7 +289,7 @@ def run_shadow(request: ShadowRequest):
         "adg_compliant": _adg_compliant(scenarios),
         "worst_case_scenario": _worst_case(scenarios),
     }
-    confidence = "medium" if height_m != DEFAULT_HEIGHT_M else "low"
+    confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
 
     _write_report(
         request.report_id, request.address, request.lat, request.lng,

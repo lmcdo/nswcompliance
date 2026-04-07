@@ -32,6 +32,7 @@ interface ShadowScenario {
 
 interface ShadowOutputs {
   height_m: number;
+  lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
@@ -224,7 +225,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Max building height modelled</p>
           <p className="text-xl font-semibold text-gray-900">{o.height_m} m</p>
-          <p className="text-xs text-gray-400 mt-1">From LEP height limit for this lot</p>
+          <p className="text-xs text-gray-400 mt-1">{o.lep_name ?? 'Local Environmental Plan'}</p>
         </div>
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Recent construction activity</p>
@@ -233,8 +234,10 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           </p>
           <p className="text-xs text-gray-400 mt-1">
             {o.construction_change_score != null
-              ? `Sentinel-2 change score: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
-              : 'Sentinel-2 satellite imagery — last 90 days vs baseline'}
+              ? o.construction_change_detected
+                ? `Significant increase in bare soil detected — possible demolition or excavation nearby. Bare Soil Index change: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
+                : `No significant bare soil change — no demolition or construction excavation detected nearby. Bare Soil Index change: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
+              : 'Sentinel-2 satellite imagery analysed over the past 90 days vs 12-month baseline'}
           </p>
         </div>
       </div>
