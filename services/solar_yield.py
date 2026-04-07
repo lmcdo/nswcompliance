@@ -217,9 +217,22 @@ def _detect_panels_colour(
             (V >= 10) & (V <= 110)
         )
         # Near-black panels (older/premium panels, overcast lighting)
-        dark_panels = (S < 40) & (V >= 5) & (V <= 65)
+        # Tighter V range to avoid dark grout lines between terracotta tiles
+        dark_panels = (S < 35) & (V >= 5) & (V <= 50)
 
         raw_mask = (blue_panels | dark_panels).astype(np.uint8)
+
+        # Terracotta exclusion: dark areas adjacent to orange-red roof tiles are
+        # grout/shadow artifacts, not panels. Dilate the terracotta mask and
+        # subtract it from panel candidates.
+        terracotta = (
+            ((H <= 12) | (H >= 168)) &  # orange-red hue (wraps at 180)
+            (S >= 80) &
+            (V >= 60)
+        ).astype(np.uint8)
+        k_excl = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+        terracotta_zone = cv2.dilate(terracotta, k_excl)
+        raw_mask = cv2.bitwise_and(raw_mask, cv2.bitwise_not(terracotta_zone))
 
         # Morphological cleanup: remove speckle, close small gaps within panels
         k3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
