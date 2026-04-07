@@ -17,11 +17,12 @@ const NAV_ITEMS = [
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect('/login');
+  if (process.env.NEXT_PUBLIC_AUTH_ENABLED === 'true') {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      redirect('/login');
+    }
   }
 
   return (
