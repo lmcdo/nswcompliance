@@ -169,80 +169,101 @@ def _lot_polygon_to_pixel_mask(
         return None
 
 
-def _detect_panels_samgeo(
+def _detect_panels_colour(
     tile_path: str,
     bbox: Optional[dict] = None,
     lot_geometry: Optional[dict] = None,
 ) -> tuple[int, float]:
     """
-    Detect solar panels via Modal GPU inference (LangSAM).
+    Detect solar panels via HSV colour heuristic on the aerial tile.
 
-    Sends aerial tile as base64 to Modal endpoint, receives panel masks.
-    Falls back to (0, 0.0) if Modal URL not configured or request fails.
+    Solar panels from NSW SIX Maps 10cm aerial imagery have a distinctive
+    spectral signature: dark blue-grey to near-black, low reflectance,
+    high local uniformity. This is reliably distinct from terracotta (orange-red),
+    Colorbond light (high V), concrete tile (medium grey, larger uniform areas),
+    and vegetation (green).
+
+    Two colour ranges are combined:
+      - Blue-tinted panels:  H 90–135, S 15–130, V 10–110
+      - Near-black panels:   any H,    S < 40,   V 5–65
+
+    Connected components are filtered by:
+      - Min area: ~1 m² (eliminates noise and shadows)
+      - Max area: 35 m² (eliminates whole-roof false positives)
+      - Max aspect ratio: 8:1 (eliminates linear shadows/gutters)
 
     Returns:
         (panel_count, total_area_m2)
-        Area estimated from pixel count at zoom 20 (~0.098m/pixel).
     """
-    modal_url = os.environ.get("MODAL_PANELS_URL", "").strip()
-    if not modal_url:
-        logger.warning("MODAL_PANELS_URL not set — skipping panel detection.")
-        return 0, 0.0
-
     try:
-        import base64
-        import requests as _req
+        import cv2
+        import numpy as np
+        from PIL import Image
 
-        with open(tile_path, "rb") as f:
-            image_b64 = base64.b64encode(f.read()).decode()
+        img_bgr = cv2.imread(tile_path)
+        if img_bgr is None:
+            logger.warning("Colour detection: could not read tile")
+            return 0, 0.0
 
-        resp = _req.post(
-            modal_url,
-            json={"image_b64": image_b64},
-            timeout=150,
+        img_hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
+        H = img_hsv[:, :, 0]
+        S = img_hsv[:, :, 1]
+        V = img_hsv[:, :, 2]
+
+        # Blue-grey panels (most common NSW residential)
+        blue_panels = (
+            (H >= 90) & (H <= 135) &
+            (S >= 15) & (S <= 130) &
+            (V >= 10) & (V <= 110)
         )
-        resp.raise_for_status()
-        result = resp.json()
-    except Exception as e:
-        logger.error(f"Modal detect-panels failed: {e}")
-        return 0, 0.0
+        # Near-black panels (older/premium panels, overcast lighting)
+        dark_panels = (S < 40) & (V >= 5) & (V <= 65)
 
-    if result.get("debug_thumb"):
-        logger.info(f"TILE_THUMB_B64:{result['debug_thumb']}")
+        raw_mask = (blue_panels | dark_panels).astype(np.uint8)
 
-    masks = result.get("masks", [])
-    if not masks:
-        return 0, 0.0
+        # Morphological cleanup: remove speckle, close small gaps within panels
+        k3 = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        k5 = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        raw_mask = cv2.morphologyEx(raw_mask, cv2.MORPH_OPEN, k3)   # remove noise
+        raw_mask = cv2.morphologyEx(raw_mask, cv2.MORPH_CLOSE, k5)  # close panel gaps
 
-    # Apply lot clipping: keep only masks whose bbox centre is inside the lot pixel mask
-    lot_pixel_mask = None
-    if bbox and lot_geometry:
-        try:
-            from PIL import Image
-            import numpy as np
+        # Apply lot boundary clipping
+        if bbox and lot_geometry:
             img_size = Image.open(tile_path).size
-            lot_pixel_mask = _lot_polygon_to_pixel_mask(lot_geometry, bbox, img_size)
-        except Exception:
-            pass
+            lot_px_mask = _lot_polygon_to_pixel_mask(lot_geometry, bbox, img_size)
+            if lot_px_mask is not None:
+                raw_mask = raw_mask & lot_px_mask.astype(np.uint8)
 
-    pixel_size_m = 0.098
-    panel_count = 0
-    total_pixels = 0
+        # Connected components
+        n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(raw_mask, connectivity=8)
 
-    for m in masks:
-        area_px = m["area_px"]
-        if lot_pixel_mask is not None:
-            # Use bbox centre as a proxy for lot membership
-            x1, y1, x2, y2 = m["bbox_pixel"]
-            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-            import numpy as np
-            if not lot_pixel_mask[cy, cx]:
+        PIXEL_SIZE_M = 0.098
+        MIN_AREA_PX = int(1.0 / (PIXEL_SIZE_M ** 2))    # ~1 m²  ≈ 104 px
+        MAX_AREA_PX = int(35.0 / (PIXEL_SIZE_M ** 2))   # ~35 m² ≈ 3,644 px
+        MAX_ASPECT  = 8.0
+
+        panel_count = 0
+        total_pixels = 0
+
+        for i in range(1, n_labels):
+            area_px = int(stats[i, cv2.CC_STAT_AREA])
+            if area_px < MIN_AREA_PX or area_px > MAX_AREA_PX:
                 continue
-        panel_count += 1
-        total_pixels += area_px
+            w = int(stats[i, cv2.CC_STAT_WIDTH])
+            h = int(stats[i, cv2.CC_STAT_HEIGHT])
+            aspect = max(w, h) / max(min(w, h), 1)
+            if aspect > MAX_ASPECT:
+                continue
+            panel_count += 1
+            total_pixels += area_px
 
-    area_m2 = total_pixels * (pixel_size_m ** 2)
-    return panel_count, round(area_m2, 1)
+        area_m2 = round(total_pixels * (PIXEL_SIZE_M ** 2), 1)
+        logger.info(f"Colour detection: {panel_count} panel regions, {area_m2} m²")
+        return panel_count, area_m2
+
+    except Exception as e:
+        logger.error(f"Colour panel detection failed: {e}")
+        return 0, 0.0
 
 
 # ── Roof Material Heuristic ───────────────────────────────────────────────────
@@ -440,8 +461,8 @@ async def run_solar_yield(request: SolarYieldRequest):
         )
         data_sources[0] = f"NSW SIX Maps LPI Imagery (CC-BY 4.0) — bbox {bbox}"
 
-        # Step 2: Detect panels — clipped to lot boundary if geometry available
-        panel_count, panel_area_m2 = _detect_panels_samgeo(
+        # Step 2: Detect panels via colour heuristic (HSV) — clipped to lot boundary
+        panel_count, panel_area_m2 = _detect_panels_colour(
             tile_path,
             bbox=bbox,
             lot_geometry=request.lot_geometry,

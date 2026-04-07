@@ -24,6 +24,7 @@ pvlib==0.11.2
 
 # nsw_imagery.py (Solar Yield, Granny Flat aerial tiles)
 Pillow==11.3.0
+opencv-python-headless==4.10.0.84
 
 # samgeo + torch (Solar Yield panel detection, Granny Flat structure detection)
 # TOO LARGE for Railway free tier (~4GB). Deploy to Modal/RunPod/Lambda Labs GPU.
