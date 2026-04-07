@@ -237,15 +237,41 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         </div>
       )}
 
-      {/* Footer */}
-      <div className="px-6 py-4">
-        <p className="text-xs text-gray-400">
-          Data sources: {(result.data_sources ?? []).join(' · ')}
-        </p>
-        <p className="text-xs text-gray-400 mt-0.5">
-          Shadow direction verified for the Southern Hemisphere (Sydney). Indicative only — not a substitute for a formal shadow impact assessment.
-        </p>
-      </div>
+      {/* Methodology */}
+      <details className="group">
+        <summary className="px-6 py-4 cursor-pointer list-none flex items-center justify-between text-xs text-gray-400 hover:text-gray-600 transition-colors">
+          <span>How this is calculated</span>
+          <span className="group-open:rotate-180 transition-transform">▾</span>
+        </summary>
+        <div className="px-6 pb-5 space-y-2 text-xs text-gray-500 leading-relaxed border-t border-gray-50">
+          <p>
+            <span className="font-medium text-gray-600">Authority.</span>{' '}
+            Test dates and times follow the NSW Apartment Design Guide (Department of Planning, Housing and Infrastructure, 2015),
+            Part 3F — Solar and Daylight Access. The critical test is 21 June (winter solstice), when shadows are longest.
+          </p>
+          <p>
+            <span className="font-medium text-gray-600">Solar position.</span>{' '}
+            Sun azimuth and altitude are calculated using the NREL Solar Position Algorithm
+            (Reda &amp; Andreas, 2004) — the international standard used by solar engineers and
+            shadow consultants. Verified for Sydney&apos;s latitude (Southern Hemisphere).
+          </p>
+          <p>
+            <span className="font-medium text-gray-600">Building height.</span>{' '}
+            The model assumes the maximum permissible building height for this lot under the
+            applicable Local Environmental Plan (LEP). Actual development may be smaller,
+            which would produce shorter shadows.
+          </p>
+          <p>
+            <span className="font-medium text-gray-600">Limitation.</span>{' '}
+            This is a worst-case envelope model, not a design-specific assessment.
+            A formal shadow impact assessment prepared by a qualified town planner or
+            architect is required for Development Application (DA) submission.
+          </p>
+          <p className="text-gray-400">
+            Data sources: {(result.data_sources ?? []).join(' · ')}
+          </p>
+        </div>
+      </details>
     </div>
   );
 }
