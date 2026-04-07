@@ -235,9 +235,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           <p className="text-xs text-gray-400 mt-1">
             {o.construction_change_score != null
               ? o.construction_change_detected
-                ? `Significant increase in bare soil detected — possible demolition or excavation nearby. Bare Soil Index change: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
-                : `No significant bare soil change — no demolition or construction excavation detected nearby. Bare Soil Index change: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
-              : 'Sentinel-2 satellite imagery analysed over the past 90 days vs 12-month baseline'}
+                ? `Significant change detected — demolition or excavation visible in satellite imagery over the past 90 days. (BSI Δ ${o.construction_change_score.toFixed(3)}, threshold 0.120)`
+                : `No significant change detected — no demolition or excavation visible in satellite imagery over the past 90 days. (BSI Δ ${o.construction_change_score.toFixed(3)}, threshold 0.120)`
+              : 'Sentinel-2 satellite imagery analysed — past 90 days vs 12-month baseline'}
           </p>
         </div>
       </div>
@@ -318,6 +318,13 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             The model assumes the maximum permissible building height for this lot under the
             applicable Local Environmental Plan (LEP). Actual development may be smaller,
             which would produce shorter shadows.
+          </p>
+          <p>
+            <span className="font-medium text-gray-600">Construction activity.</span>{' '}
+            Detected using the Bare Soil Index (BSI) — a spectral formula applied to
+            Sentinel-2 satellite imagery that measures exposed bare earth. A change score
+            above 0.120 between recent scenes (&lt;90 days) and a 12-month baseline indicates
+            likely demolition, excavation, or site clearing.
           </p>
           <p>
             <span className="font-medium text-gray-600">Limitation.</span>{' '}
