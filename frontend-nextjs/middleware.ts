@@ -32,6 +32,7 @@ import {
 const PUBLIC_ROUTES = [
   '/api/health',
   '/api/public',
+  '/api/satellite/aerial-tile',
 ];
 
 // ============================================================================
