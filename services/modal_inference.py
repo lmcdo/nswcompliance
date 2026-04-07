@@ -138,8 +138,16 @@ def detect_panels(data: dict) -> dict:
         return_results=True,
     )
 
+    # Debug: return tile thumbnail so caller can verify correct image was analysed
+    import base64, io
+    thumb = img.copy()
+    thumb.thumbnail((256, 256))
+    buf = io.BytesIO()
+    thumb.save(buf, format="PNG")
+    thumb_b64 = base64.b64encode(buf.getvalue()).decode()
+
     if masks is None or len(masks) == 0:
-        return {"panel_count": 0, "masks": []}
+        return {"panel_count": 0, "masks": [], "debug_thumb": thumb_b64}
 
     results = []
     for mask in masks:

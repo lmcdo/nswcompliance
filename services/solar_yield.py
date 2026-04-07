@@ -207,6 +207,9 @@ def _detect_panels_samgeo(
         logger.error(f"Modal detect-panels failed: {e}")
         return 0, 0.0
 
+    if result.get("debug_thumb"):
+        logger.info(f"TILE_THUMB_B64:{result['debug_thumb']}")
+
     masks = result.get("masks", [])
     if not masks:
         return 0, 0.0
