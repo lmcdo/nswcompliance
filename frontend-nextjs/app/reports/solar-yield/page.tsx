@@ -4,15 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
 interface SolarYieldOutputs {
-  has_panels: boolean;
-  panel_area_m2: number;
-  roof_material: string;
-  tilt_deg: number;
-  azimuth_deg: number;
+  max_panels: number;
+  max_panel_area_m2: number;
   annual_kwh_estimate: number;
+  sunshine_hours_per_year: number;
+  best_pitch_deg: number;
+  best_azimuth_deg: number;
+  roof_area_m2: number;
   is_heritage: boolean;
-  tile_date: string;
-  panel_count: number;
+  imagery_date: string;
+  coverage_available: boolean;
 }
 
 interface ReportData {
@@ -29,23 +30,25 @@ interface ReportData {
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 300_000;
-
-const MATERIAL_LABELS: Record<string, string> = {
-  colorbond_dark: 'Colorbond (dark)',
-  colorbond_light: 'Colorbond (light)',
-  terracotta: 'Terracotta tile',
-  concrete_tile: 'Concrete tile',
-  flat: 'Flat membrane',
-  unknown: 'Unknown',
-};
+const POLL_TIMEOUT_MS = 60_000;
 
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
   medium: 'Medium confidence',
-  low: 'Low confidence (pre-validation)',
+  low: 'Low confidence',
   pending: 'Processing...',
 };
+
+function azimuthLabel(deg: number): string {
+  if (deg >= 337.5 || deg < 22.5) return 'N';
+  if (deg < 67.5) return 'NE';
+  if (deg < 112.5) return 'E';
+  if (deg < 157.5) return 'SE';
+  if (deg < 202.5) return 'S';
+  if (deg < 247.5) return 'SW';
+  if (deg < 292.5) return 'W';
+  return 'NW';
+}
 
 export default function SolarYieldPage() {
   const [address, setAddress] = useState('');
@@ -81,7 +84,7 @@ export default function SolarYieldPage() {
 
     timeoutRef.current = setTimeout(() => {
       stopPolling();
-      setErrorMsg('The report is taking longer than expected. Try again in a few minutes.');
+      setErrorMsg('The report timed out. Try again.');
       setState('error');
     }, POLL_TIMEOUT_MS);
   };
@@ -119,9 +122,9 @@ export default function SolarYieldPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Rooftop Solar Yield Underwriter</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Solar Potential Assessment</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          Detect existing panels, estimate usable roof area, and calculate annual kWh yield from NSW SIX Maps 10cm aerial imagery.
+          Roof area, orientation, maximum panel capacity, and estimated annual yield for any NSW address.
         </p>
       </div>
 
@@ -145,8 +148,8 @@ export default function SolarYieldPage() {
       {state === 'running' && (
         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
           <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Fetching aerial imagery and running analysis...</p>
-          <p className="text-xs text-gray-400 mt-1">First run of the day takes up to 2 minutes while the model loads. Subsequent runs are faster.</p>
+          <p className="text-sm font-medium text-gray-700">Analysing roof geometry...</p>
+          <p className="text-xs text-gray-400 mt-1">Usually takes 5–10 seconds.</p>
         </div>
       )}
 
@@ -166,6 +169,17 @@ export default function SolarYieldPage() {
 function ReportCard({ report }: { report: ReportData }) {
   const o = report.outputs;
 
+  if (!o.coverage_available) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+        <p className="font-medium text-gray-800 mb-1">No coverage available</p>
+        <p className="text-sm text-gray-500">
+          Google Solar data is not yet available for this address. Try a nearby address or check back later.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       {/* Header */}
@@ -175,6 +189,7 @@ function ReportCard({ report }: { report: ReportData }) {
             <h2 className="font-semibold text-gray-900">{report.address}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               Run {report.run_date} &middot; {CONFIDENCE_LABEL[report.confidence] ?? report.confidence}
+              {o.imagery_date !== 'unknown' && ` · Imagery ${o.imagery_date}`}
             </p>
           </div>
           {o.is_heritage && (
@@ -188,30 +203,36 @@ function ReportCard({ report }: { report: ReportData }) {
       {/* Key metrics */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <Metric
-          label="Annual yield estimate"
-          value={o.annual_kwh_estimate > 0 ? `${o.annual_kwh_estimate.toLocaleString()} kWh/yr` : 'N/A'}
-          note={o.annual_kwh_estimate > 0 ? 'Based on detected panel area and PVGIS irradiance data' : 'No panels detected'}
+          label="Annual solar potential"
+          value={`${o.annual_kwh_estimate.toLocaleString()} kWh/yr`}
+          note="Maximum capacity, all usable roof area"
         />
         <Metric
-          label="Existing solar panels"
-          value={o.has_panels ? `${o.panel_count} detected` : 'None detected'}
-          note={o.has_panels ? `~${o.panel_area_m2} m² total area` : 'Based on 10cm aerial imagery'}
+          label="Maximum panel capacity"
+          value={`${o.max_panels} panels`}
+          note={`${o.max_panel_area_m2} m² usable area`}
         />
       </div>
 
       {/* Roof details */}
-      <div className="p-6 grid grid-cols-3 gap-4 text-sm">
+      <div className="p-6 grid grid-cols-4 gap-4 text-sm">
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">Roof material</p>
-          <p className="font-medium text-gray-800">{MATERIAL_LABELS[o.roof_material] ?? o.roof_material}</p>
+          <p className="text-xs text-gray-400 mb-0.5">Total roof area</p>
+          <p className="font-medium text-gray-800">{o.roof_area_m2} m²</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">Est. tilt</p>
-          <p className="font-medium text-gray-800">{o.tilt_deg}°</p>
+          <p className="text-xs text-gray-400 mb-0.5">Best pitch</p>
+          <p className="font-medium text-gray-800">{o.best_pitch_deg}°</p>
         </div>
         <div>
-          <p className="text-xs text-gray-400 mb-0.5">Est. azimuth</p>
-          <p className="font-medium text-gray-800">{o.azimuth_deg}° {o.azimuth_deg === 0 ? '(N)' : ''}</p>
+          <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
+          <p className="font-medium text-gray-800">
+            {azimuthLabel(o.best_azimuth_deg)} ({o.best_azimuth_deg}°)
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Sunshine hours</p>
+          <p className="font-medium text-gray-800">{o.sunshine_hours_per_year.toLocaleString()} hr/yr</p>
         </div>
       </div>
 
@@ -228,7 +249,7 @@ function ReportCard({ report }: { report: ReportData }) {
           Data sources: {report.data_sources.join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          Indicative only. Not a substitute for a professional energy assessment.
+          Solar potential only — does not indicate whether panels are currently installed. Not a substitute for a professional energy assessment.
         </p>
       </div>
     </div>

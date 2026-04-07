@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = {
   title: 'Property Intelligence — PlotDetect',
@@ -14,7 +16,14 @@ const NAV_ITEMS = [
   { href: '/reports/granny-flat', label: 'Granny Flat' },
 ];
 
-export default function ReportsLayout({ children }: { children: React.ReactNode }) {
+export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect('/login');
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -33,6 +42,14 @@ export default function ReportsLayout({ children }: { children: React.ReactNode 
                 {label}
               </Link>
             ))}
+            <form action="/auth/signout" method="post">
+              <button
+                type="submit"
+                className="ml-3 px-3 py-1.5 text-sm text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Sign out
+              </button>
+            </form>
           </nav>
         </div>
       </header>

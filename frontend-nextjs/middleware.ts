@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import {
   globalRateLimiter,
   getClientIdentifier,
@@ -83,7 +84,40 @@ function isOriginAllowed(origin: string | null): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Only apply to API routes
+  // ============================================================================
+  // SUPABASE SESSION REFRESH — /reports/* and /auth/*
+  // ============================================================================
+  if (pathname.startsWith('/reports') || pathname.startsWith('/auth') || pathname === '/login') {
+    let response = NextResponse.next({ request });
+
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value }) =>
+              request.cookies.set(name, value),
+            );
+            response = NextResponse.next({ request });
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options),
+            );
+          },
+        },
+      },
+    );
+
+    // Refresh session — must call getUser() not getSession() to avoid stale JWTs
+    await supabase.auth.getUser();
+
+    return response;
+  }
+
+  // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {
     return NextResponse.next();
   }
@@ -222,5 +256,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: '/api/:path*',
+  matcher: ['/api/:path*', '/reports/:path*', '/auth/:path*', '/login'],
 };

@@ -87,9 +87,10 @@ def get_scenes(lat: float, lng: float, radius_m: float,
         datetime=f"{date_start}/{date_end}",
         query={"eo:cloud_cover": {"lt": max_cloud}},
         max_items=50,
-        sortby="-datetime",
     )
     items = list(search.items())
+    # Sort newest-first in Python — sentinel-2-c1-l2a doesn't support server-side datetime sort
+    items.sort(key=lambda i: i.datetime or datetime.min, reverse=True)
     logger.debug(f"get_scenes: {len(items)} items {date_start}/{date_end}")
     return items
 
