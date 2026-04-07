@@ -164,7 +164,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <div className="p-6">
         <p className="text-sm font-medium text-gray-700 mb-4">ADG Solar Access Scenarios</p>
         <div className="space-y-2">
-          {o.scenarios.map((s) => (
+          {(o.scenarios ?? []).map((s) => (
             <div
               key={s.scenario}
               className="flex items-center justify-between text-sm py-2 border-b border-gray-50 last:border-0"
@@ -189,7 +189,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
 
       <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
-          Data sources: {result.data_sources.join(' · ')}
+          Data sources: {(result.data_sources ?? []).join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
           Shadow direction verified for Southern Hemisphere (Sydney lat). Indicative only.

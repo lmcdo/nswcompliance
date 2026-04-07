@@ -105,7 +105,7 @@ def subscribe(req: SubscribeRequest):
             )
             row = cur.fetchone()
         conn.commit()
-    return {"subscription_id": str(row["id"]), "status": "active"}
+    return {"subscription_id": str(row["id"]), "address": req.address, "status": "active"}
 
 
 @router.post("/threat-radar/check")
