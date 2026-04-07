@@ -167,6 +167,7 @@ def _build_scenario_list(
             "shadow_length_m": length,
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps,
+            "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
         })
     return scenarios
 
@@ -235,6 +236,7 @@ def run_shadow(request: ShadowRequest):
 
     outputs = {
         "height_m": height_m,
+        "lot_polygon": lot_geojson,
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),

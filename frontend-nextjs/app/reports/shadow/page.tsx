@@ -1,7 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+
+const ShadowMap = dynamic(
+  () => import('@/components/reports/ShadowMap').then(m => m.ShadowMap),
+  { ssr: false, loading: () => <div className="w-full h-full bg-gray-100 animate-pulse rounded" /> }
+);
+
+interface GeoJSONGeometry {
+  type: string;
+  coordinates: unknown[];
+}
+
+interface GeoJSONCollection {
+  type: 'FeatureCollection';
+  features: { type: 'Feature'; geometry: GeoJSONGeometry; properties?: Record<string, unknown> }[];
+}
 
 interface ShadowScenario {
   scenario: string;
@@ -11,10 +27,12 @@ interface ShadowScenario {
   shadow_length_m: number;
   shadow_direction_deg: number;
   overlaps_subject_lot: boolean;
+  shadow_polygon: GeoJSONCollection | null;
 }
 
 interface ShadowOutputs {
   height_m: number;
+  lot_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
@@ -142,10 +160,18 @@ function ShadowCard({ result }: { result: ShadowResult }) {
   const o = result.outputs;
   const scenarios = o.scenarios ?? [];
 
+  const [activeScenario, setActiveScenario] = useState<string>(
+    o.worst_case_scenario ?? 'jun21_12pm'
+  );
+
+  const activeShadowPolygon = useMemo(() => {
+    const s = scenarios.find(s => s.scenario === activeScenario);
+    return s?.shadow_polygon ?? null;
+  }, [activeScenario, scenarios]);
+
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
   const adgColor = o.adg_compliant ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
 
-  // Plain-English summary
   const summaryText = o.adg_compliant
     ? overlapCount === 0
       ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements are met.`
@@ -169,6 +195,30 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         <p className="text-sm text-gray-600 mt-3 leading-relaxed">{summaryText}</p>
       </div>
 
+      {/* Map */}
+      <div className="relative" style={{ height: 280 }}>
+        <ShadowMap
+          center={[result.lng, result.lat]}
+          lotPolygon={o.lot_polygon ?? null}
+          shadowPolygon={activeShadowPolygon}
+        />
+        {/* Scenario label overlay */}
+        <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
+          {SCENARIO_LABELS[activeScenario] ?? activeScenario}
+        </div>
+        {/* Legend */}
+        <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-sm bg-teal-500 opacity-70 shrink-0" />
+            <span className="text-gray-700">Subject lot</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-sm bg-slate-800 opacity-60 shrink-0" />
+            <span className="text-gray-700">Shadow</span>
+          </div>
+        </div>
+      </div>
+
       {/* Stats row */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
@@ -189,11 +239,11 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         </div>
       </div>
 
-      {/* Scenarios table */}
+      {/* Scenarios table — clicking a row switches the map */}
       <div className="p-6">
         <p className="text-sm font-medium text-gray-700 mb-1">Shadow impact by scenario</p>
         <p className="text-xs text-gray-400 mb-4">
-          Does the shadow from a {o.height_m} m building reach this property?
+          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building reach this property?
         </p>
         <div className="space-y-0 divide-y divide-gray-50">
           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
@@ -203,9 +253,14 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             <span className="text-right">Reaches lot</span>
           </div>
           {scenarios.map((s) => (
-            <div
+            <button
               key={s.scenario}
-              className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center"
+              onClick={() => setActiveScenario(s.scenario)}
+              className={`w-full grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center text-left rounded transition-colors ${
+                activeScenario === s.scenario
+                  ? 'bg-teal-50 -mx-2 px-2'
+                  : 'hover:bg-gray-50 -mx-2 px-2'
+              }`}
             >
               <span className="text-gray-700">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
               <span className="text-gray-500 text-xs text-right tabular-nums">
@@ -223,7 +278,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
               >
                 {s.overlaps_subject_lot ? 'Yes' : 'No'}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </div>
