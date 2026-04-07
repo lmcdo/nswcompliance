@@ -359,14 +359,21 @@ def _estimate_annual_yield(lat: float, lng: float, panel_area_m2: float, tilt: f
         # azimuth 0 = north (Southern Hemisphere), pvlib uses 180 = south convention — convert
         pvlib_azimuth = (azimuth + 180) % 360  # 0°N → 180° in pvlib convention
 
+        # PVGIS column names vary by API version — try both conventions
+        cols = tmy_data.columns.tolist()
+        dni_col = next((c for c in ["Gb(n)", "Gbn", "DNI"] if c in cols), cols[0])
+        ghi_col = next((c for c in ["G(h)", "Gh", "GHI"] if c in cols), cols[1])
+        dhi_col = next((c for c in ["Gd(h)", "Gdh", "DHI"] if c in cols), cols[2])
+        logger.info(f"PVGIS columns: {cols[:6]} → using DNI={dni_col} GHI={ghi_col} DHI={dhi_col}")
+
         poa = pvlib.irradiance.get_total_irradiance(
             surface_tilt=tilt,
             surface_azimuth=pvlib_azimuth,
             solar_zenith=solar_pos["apparent_zenith"],
             solar_azimuth=solar_pos["azimuth"],
-            dni=tmy_data["Gb(n)"],
-            ghi=tmy_data["G(h)"],
-            dhi=tmy_data["Gd(h)"],
+            dni=tmy_data[dni_col],
+            ghi=tmy_data[ghi_col],
+            dhi=tmy_data[dhi_col],
         )
 
         # Simple DC energy (kWh/year)
