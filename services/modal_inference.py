@@ -131,9 +131,8 @@ class PanelDetector:
         import numpy as np
 
         image_b64 = data.get("image_b64", "")
-        # Lower thresholds needed for aerial imagery — GroundingDINO was trained on ground-level photos
-        box_thresh = float(data.get("box_threshold", 0.20))
-        text_thresh = float(data.get("text_threshold", 0.18))
+        box_thresh = float(data.get("box_threshold", 0.25))
+        text_thresh = float(data.get("text_threshold", 0.22))
 
         img = _decode_image(image_b64)
         tile_path = _save_temp(img)
@@ -156,11 +155,21 @@ class PanelDetector:
         if masks is None or len(masks) == 0:
             return {"panel_count": 0, "masks": [], "debug_thumb": thumb_b64}
 
+        # At zoom 20, pixel size ≈ 0.098m.
+        # Real solar panel: 1.7–2.0 m² ≈ 175–210 px
+        # Whole-roof false positive: typically >5,000 px (>48 m²) — reject these
+        # Residential max system: ~40 m² ≈ 4,200 px total
+        PIXEL_SIZE_M = 0.098
+        MAX_MASK_M2 = 40.0  # single mask larger than this is almost certainly a roof, not panels
+        MAX_MASK_PX = int(MAX_MASK_M2 / (PIXEL_SIZE_M ** 2))
+
         results = []
         for mask in masks:
             mask_np = np.array(mask, dtype=bool)
             area_px = int(mask_np.sum())
-            if area_px < 20:  # noise filter
+            if area_px < 50:           # noise filter (~0.5 m²)
+                continue
+            if area_px > MAX_MASK_PX:  # whole-roof false positive filter
                 continue
             ys, xs = np.where(mask_np)
             results.append({
