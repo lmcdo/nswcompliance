@@ -29,7 +29,7 @@ interface ReportData {
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
 const POLL_INTERVAL_MS = 2000;
-const POLL_TIMEOUT_MS = 180_000;
+const POLL_TIMEOUT_MS = 300_000;
 
 const MATERIAL_LABELS: Record<string, string> = {
   colorbond_dark: 'Colorbond (dark)',
@@ -146,7 +146,7 @@ export default function SolarYieldPage() {
         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
           <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-gray-700">Fetching aerial imagery and running analysis...</p>
-          <p className="text-xs text-gray-400 mt-1">This takes 30–60 seconds.</p>
+          <p className="text-xs text-gray-400 mt-1">First run of the day takes up to 2 minutes while the model loads. Subsequent runs are faster.</p>
         </div>
       )}
 

@@ -102,7 +102,7 @@ def _masks_to_structures(masks_with_prompts: list, w: int, h: int, iou_threshold
 # Endpoint 1: Solar panel detection
 # ---------------------------------------------------------------------------
 
-@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=60)
+@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
 @modal.fastapi_endpoint(method="POST")
 def detect_panels(data: dict) -> dict:
     """
@@ -165,7 +165,7 @@ DETECTION_PROMPTS = [
     ("garage",   0.20, 0.18),
 ]
 
-@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=60)
+@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
 @modal.fastapi_endpoint(method="POST")
 def detect_structures(data: dict) -> dict:
     """
