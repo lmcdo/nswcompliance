@@ -22,13 +22,17 @@ export function AddressAutocomplete({
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
 
+  // Stable refs so the autocomplete listener always calls the latest callbacks
+  // without needing to re-init on every render
+  const onChangeRef = useRef(onChange);
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onChangeRef.current = onChange; });
+  useEffect(() => { onSelectRef.current = onSelect; });
+
+  // Init once — no callback deps, refs handle freshness
   useEffect(() => {
     const init = () => {
       if (!window.google?.maps?.places || !inputRef.current) return false;
-
-      if (autocompleteRef.current) {
-        window.google.maps.event.clearInstanceListeners(autocompleteRef.current);
-      }
 
       autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
         types: ['address'],
@@ -42,8 +46,8 @@ export function AddressAutocomplete({
           const address = place.formatted_address;
           const lat = place.geometry.location.lat();
           const lng = place.geometry.location.lng();
-          onChange(address);
-          onSelect(address, lat, lng);
+          onChangeRef.current(address);
+          onSelectRef.current(address, lat, lng);
         }
       });
 
@@ -64,7 +68,7 @@ export function AddressAutocomplete({
         window.google?.maps.event.clearInstanceListeners(autocompleteRef.current);
       }
     };
-  }, [onChange, onSelect]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <input
