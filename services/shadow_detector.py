@@ -2,24 +2,63 @@
 Construction Shadow Detector -- FastAPI router.
 POST /pipeline/shadow
   Input:  { address, prop_id, lat, lng, report_id }
-  Output: 5 ADG shadow polygons + Sentinel-2 construction change score
+  Output: ShadowResult matching frontend ShadowResult interface
 
 VERIFIED 2026-04-06: shadows extend SOUTHWARD for Sydney (pvlib confirmed).
 pybdshadow computes Southern Hemisphere solar position correctly.
+
+Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
+{
+  "address": str,
+  "lat": float,
+  "lng": float,
+  "run_date": str,               # "YYYY-MM-DD"
+  "outputs": {
+    "height_m": float,
+    "scenarios": [               # list, one per ADG scenario
+      {
+        "scenario": str,         # "jun21_9am" etc.
+        "label": str,            # "ADG worst case 9am Jun 21"
+        "date": str,             # "2025-06-21"
+        "time_local": str,       # "09:00"
+        "shadow_length_m": float,
+        "shadow_direction_deg": float,
+        "overlaps_subject_lot": bool
+      }
+    ],
+    "construction_change_score": float | null,
+    "construction_change_detected": bool,
+    "adg_compliant": bool,       # True if ≥2 of 3 Jun 21 scenarios do NOT overlap subject lot
+    "worst_case_scenario": str   # scenario key with longest shadow
+  },
+  "confidence": str,
+  "data_sources": list[str]
+}
 """
-import logging, math, os, uuid
+import logging
+import math
+import os
+import uuid
 from datetime import date
 from typing import Optional
 
-import psycopg2, psycopg2.extras, requests
+import psycopg2
+import psycopg2.extras
+import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 try:
-    from services.shadow_model import model_all_scenarios, get_scenario_metadata
+    from services.shadow_model import (
+        model_all_scenarios, get_scenario_metadata,
+        shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+    )
     from services.sentinel2 import compute_change_score
 except ImportError:
-    from shadow_model import model_all_scenarios, get_scenario_metadata
+    from shadow_model import (
+        model_all_scenarios, get_scenario_metadata,
+        shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+    )
     from sentinel2 import compute_change_score
 
 logger = logging.getLogger(__name__)
@@ -27,6 +66,7 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 DEFAULT_HEIGHT_M = 9.0
 LOT_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
+DATA_SOURCES = ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybdshadow"]
 
 
 class ShadowRequest(BaseModel):
@@ -54,7 +94,6 @@ def _arcgis_to_geojson(geometry: dict) -> dict:
     """
     Convert ArcGIS JSON rings (EPSG:3857 Web Mercator) to GeoJSON Polygon (WGS84).
     NSW Planning Portal returns {"rings": [...], "spatialReference": {"wkid": 3857}}.
-    shapely.shape() requires {"type": "Polygon", "coordinates": [...]} in WGS84.
     """
     R = 20037508.342789244
     rings_wgs84 = []
@@ -80,10 +119,7 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
 
 
 def _get_height_limit(lat: float, lng: float) -> float:
-    """
-    Heuristic height limit from regulatory_provisions.
-    TODO: replace with a dedicated LEP heights table when available.
-    """
+    """Heuristic height limit from regulatory_provisions."""
     try:
         import re
         with _get_conn() as conn:
@@ -105,6 +141,54 @@ def _get_height_limit(lat: float, lng: float) -> float:
         return DEFAULT_HEIGHT_M
 
 
+def _build_scenario_list(
+    shadow_map: dict,
+    lot_geojson: dict,
+    lot_centroid_lng: float,
+    lot_centroid_lat: float,
+) -> list:
+    """Convert raw shadow GeoJSON dict → list of ShadowScenario objects."""
+    meta_by_key = {s[0]: s for s in SHADOW_SCENARIOS}
+    scenarios = []
+    for key, *_ in SHADOW_SCENARIOS:
+        _, month, day, hour_utc, description, date_str, time_local, direction_deg = meta_by_key[key]
+        shadow_geojson = shadow_map.get(key, {})
+        if "error" in shadow_geojson:
+            length = 0.0
+            overlaps = False
+        else:
+            length = shadow_length_m(shadow_geojson, lot_centroid_lng, lot_centroid_lat)
+            overlaps = overlaps_lot(shadow_geojson, lot_geojson)
+        scenarios.append({
+            "scenario": key,
+            "label": description,
+            "date": date_str,
+            "time_local": time_local,
+            "shadow_length_m": length,
+            "shadow_direction_deg": direction_deg,
+            "overlaps_subject_lot": overlaps,
+        })
+    return scenarios
+
+
+def _adg_compliant(scenarios: list) -> bool:
+    """
+    ADG requires 2 hours solar access 9am-3pm Jun 21 on principal private open space.
+    Proxy: at least 2 of the 3 Jun 21 snapshots must NOT overlap the subject lot.
+    """
+    jun21_keys = {"jun21_9am", "jun21_12pm", "jun21_3pm"}
+    jun21 = [s for s in scenarios if s["scenario"] in jun21_keys]
+    clear_count = sum(1 for s in jun21 if not s["overlaps_subject_lot"])
+    return clear_count >= 2
+
+
+def _worst_case(scenarios: list) -> str:
+    """Scenario with the longest shadow throw."""
+    if not scenarios:
+        return "jun21_9am"
+    return max(scenarios, key=lambda s: s["shadow_length_m"])["scenario"]
+
+
 def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confidence):
     sql = """
         INSERT INTO property_reports
@@ -116,9 +200,10 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id, date.today(),
-                psycopg2.extras.Json(inputs), psycopg2.extras.Json(outputs),
+                psycopg2.extras.Json(inputs),
+                psycopg2.extras.Json(outputs),
                 confidence,
-                ["NSW Planning Portal API", "Element84 Sentinel-2 (free)", "pybdshadow"],
+                DATA_SOURCES,
             ))
         conn.commit()
 
@@ -130,37 +215,47 @@ def run_shadow(request: ShadowRequest):
     if not lot_geometry:
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
 
+    lot_geojson = _arcgis_to_geojson(lot_geometry)
     height_m = _get_height_limit(request.lat, request.lng)
 
     try:
         change = compute_change_score(request.lat, request.lng, radius_m=200)
     except Exception as e:
         logger.warning(f"Change score: {e}")
-        change = {"change_score": 0.0, "construction_detected": False, "note": str(e)}
+        change = {"change_score": None, "construction_detected": False, "note": str(e)}
 
     try:
-        lot_geojson = _arcgis_to_geojson(lot_geometry)
-        shadows = model_all_scenarios(lot_geojson, height_m)
+        shadow_map = model_all_scenarios(lot_geojson, height_m)
     except Exception as e:
         raise HTTPException(500, str(e))
 
+    scenarios = _build_scenario_list(
+        shadow_map, lot_geojson, request.lng, request.lat
+    )
+
     outputs = {
-        "shadow_scenarios": shadows,
-        "scenario_metadata": get_scenario_metadata(),
-        "height_limit_m": height_m,
-        "height_source": "LEP provisions" if height_m != DEFAULT_HEIGHT_M else "default (9m residential)",
-        "lot_geometry": lot_geometry,
-        "sentinel2_change": change,
-        "adg_note": (
-            "ADG: 2hrs solar access 9am-3pm Jun 21 required. "
-            "VERIFY shadow extends NORTHWARD before production use."
-        ),
+        "height_m": height_m,
+        "scenarios": scenarios,
+        "construction_change_score": change.get("change_score"),
+        "construction_change_detected": bool(change.get("construction_detected", False)),
+        "adg_compliant": _adg_compliant(scenarios),
+        "worst_case_scenario": _worst_case(scenarios),
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M else "low"
-    _write_report(request.report_id, request.address, request.lat, request.lng,
-                  request.prop_id,
-                  {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
-                  outputs, confidence)
 
-    return {"status": "complete", "report_id": request.report_id,
-            "outputs": outputs, "confidence": confidence}
+    _write_report(
+        request.report_id, request.address, request.lat, request.lng,
+        request.prop_id,
+        {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+        outputs, confidence,
+    )
+
+    return {
+        "address": request.address,
+        "lat": request.lat,
+        "lng": request.lng,
+        "run_date": date.today().isoformat(),
+        "outputs": outputs,
+        "confidence": confidence,
+        "data_sources": DATA_SOURCES,
+    }

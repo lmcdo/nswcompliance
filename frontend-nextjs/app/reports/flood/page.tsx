@@ -168,7 +168,7 @@ function FloodCard({ result }: { result: FloodResult }) {
 
       <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
-          Data sources: {result.data_sources.join(' · ')}
+          Data sources: {(result.data_sources ?? []).join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
           Indicative only. Not a substitute for a formal Section 10.7 flood certificate.

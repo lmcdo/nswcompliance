@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'jobId is required' }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('granny_flat_reports')
     .select('confidence, outputs')
     .eq('id', jobId)
