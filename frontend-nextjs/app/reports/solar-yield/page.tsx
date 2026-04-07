@@ -1,7 +1,13 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+
+const AerialTile = dynamic(
+  () => import('@/components/reports/AerialTile').then(m => m.AerialTile),
+  { ssr: false, loading: () => <div className="w-full bg-gray-100 animate-pulse" style={{ height: 220 }} /> }
+);
 
 interface SolarYieldOutputs {
   max_panels: number;
@@ -91,10 +97,6 @@ function azimuthLabel(deg: number): string {
 
 function fmt$(n: number) {
   return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
-}
-
-function aerialTileUrl(lat: number, lng: number) {
-  return `/api/satellite/aerial-tile?lat=${lat}&lng=${lng}`;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -230,15 +232,8 @@ function ReportCard({ report }: { report: ReportData }) {
       </div>
 
       {/* Aerial tile */}
-      <div className="overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={aerialTileUrl(report.lat, report.lng)}
-          alt={`Satellite view of ${report.address}`}
-          className="w-full object-cover"
-          style={{ maxHeight: 220 }}
-          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-        />
+      <div style={{ height: 220 }}>
+        <AerialTile lat={report.lat} lng={report.lng} />
       </div>
 
       {/* Financial ROI */}
