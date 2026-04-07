@@ -71,7 +71,7 @@ S1B_GAP_START = date(2021, 12, 23)
 S1B_GAP_END   = date(2025, 3, 4)
 
 _DATA_SOURCES_BASE = ["NSW SEED EPI WFS", "Microsoft Planetary Computer S1 RTC"]
-_DATA_SOURCE_EMS   = "Copernicus EMS"
+_DATA_SOURCE_EMS   = "NSW Spatial Services / Copernicus EMS flood events"
 _DATA_SOURCE_JRC   = "JRC Global Surface Water (Landsat 1984–present)"
 _DATA_SOURCE_BOM   = "BOM Water Data Online"
 

@@ -222,7 +222,7 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* Copernicus EMS historical events */}
       {o.ems_flood_detected !== null && (
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-2">Recorded flood events (Copernicus EMS activations)</p>
+          <p className="text-xs text-gray-400 mb-2">Recorded flood events (NSW Spatial Services / Copernicus EMS)</p>
           {!o.ems_flood_detected || !o.ems_activations?.length ? (
             <p className="text-sm text-gray-600">No recorded EMS flood events at this location</p>
           ) : (
