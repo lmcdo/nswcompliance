@@ -55,7 +55,7 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
 
     lot_polygon = shape(lot_geometry_geojson)
     buildings = __import__('geopandas').GeoDataFrame(
-        {"height": [float(height_limit_m)]},
+        {"building_id": [0], "height": [float(height_limit_m)]},
         geometry=[lot_polygon], crs="EPSG:4326",
     )
     shadows = pybdshadow.bdshadow_sunlight(buildings, target_dt)
