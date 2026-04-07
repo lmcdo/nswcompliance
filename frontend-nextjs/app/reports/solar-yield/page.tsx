@@ -57,7 +57,6 @@ export default function SolarYieldPage() {
     e.preventDefault();
     if (!address.trim()) return;
 
-    stopPolling();
     setState('running');
     setReport(null);
     setErrorMsg('');
