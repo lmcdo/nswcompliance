@@ -121,8 +121,9 @@ def detect_panels(data: dict) -> dict:
     from samgeo.text_sam import LangSAM
 
     image_b64 = data.get("image_b64", "")
-    box_thresh = float(data.get("box_threshold", 0.30))
-    text_thresh = float(data.get("text_threshold", 0.25))
+    # Lower thresholds needed for aerial imagery — GroundingDINO was trained on ground-level photos
+    box_thresh = float(data.get("box_threshold", 0.20))
+    text_thresh = float(data.get("text_threshold", 0.18))
 
     img = _decode_image(image_b64)
     w, h = img.size
@@ -131,7 +132,7 @@ def detect_panels(data: dict) -> dict:
     model = LangSAM()
     masks, _, _, _ = model.predict(
         image=tile_path,
-        text_prompt="solar panel",
+        text_prompt="solar panel . photovoltaic panel . pv array . rooftop solar",
         box_threshold=box_thresh,
         text_threshold=text_thresh,
         return_results=True,
