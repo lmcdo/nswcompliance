@@ -43,6 +43,17 @@ const SCENARIO_LABELS: Record<string, string> = {
   dec21_12pm: '21 Dec — 12:00 pm',
 };
 
+function formatAustralianDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function bearingToCompass(deg: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
 export default function ShadowPage() {
   const [address, setAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
@@ -84,7 +95,10 @@ export default function ShadowPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Construction Shadow Detector</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          Model shadow cast by a maximum-permissible building on an adjacent lot across the five ADG solar access scenarios.
+          Models the shadow a maximum-height building on an adjacent lot could cast across
+          five key dates. Under the Apartment Design Guide (ADG), neighbouring properties
+          must receive at least 2 hours of direct sunlight between 9 am and 3 pm on
+          21 June (winter solstice).
         </p>
       </div>
 
@@ -126,73 +140,110 @@ export default function ShadowPage() {
 
 function ShadowCard({ result }: { result: ShadowResult }) {
   const o = result.outputs;
+  const scenarios = o.scenarios ?? [];
+
+  const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
   const adgColor = o.adg_compliant ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
+
+  // Plain-English summary
+  const summaryText = o.adg_compliant
+    ? overlapCount === 0
+      ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements are met.`
+      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
+    : `A maximum-height building on an adjacent lot would shadow this property across ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+
+      {/* Header */}
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Run {formatAustralianDate(result.run_date)}</p>
           </div>
           <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${adgColor}`}>
             {o.adg_compliant ? 'ADG compliant' : 'ADG concern'}
           </span>
         </div>
+        <p className="text-sm text-gray-600 mt-3 leading-relaxed">{summaryText}</p>
       </div>
 
+      {/* Stats row */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Max building height assumed</p>
+          <p className="text-xs text-gray-400 mb-1">Max building height modelled</p>
           <p className="text-xl font-semibold text-gray-900">{o.height_m} m</p>
-          <p className="text-xs text-gray-400 mt-1">From LEP height limit</p>
+          <p className="text-xs text-gray-400 mt-1">From LEP height limit for this lot</p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Construction activity</p>
+          <p className="text-xs text-gray-400 mb-1">Recent construction activity</p>
           <p className="text-xl font-semibold text-gray-900">
             {o.construction_change_detected ? 'Detected' : 'None detected'}
           </p>
-          {o.construction_change_score != null && (
-            <p className="text-xs text-gray-400 mt-1">
-              Change score: {o.construction_change_score.toFixed(3)}
-            </p>
-          )}
+          <p className="text-xs text-gray-400 mt-1">
+            {o.construction_change_score != null
+              ? `Sentinel-2 change score: ${o.construction_change_score.toFixed(3)} (threshold 0.120)`
+              : 'Sentinel-2 satellite imagery — last 90 days vs baseline'}
+          </p>
         </div>
       </div>
 
+      {/* Scenarios table */}
       <div className="p-6">
-        <p className="text-sm font-medium text-gray-700 mb-4">ADG Solar Access Scenarios</p>
-        <div className="space-y-2">
-          {(o.scenarios ?? []).map((s) => (
+        <p className="text-sm font-medium text-gray-700 mb-1">Shadow impact by scenario</p>
+        <p className="text-xs text-gray-400 mb-4">
+          Does the shadow from a {o.height_m} m building reach this property?
+        </p>
+        <div className="space-y-0 divide-y divide-gray-50">
+          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
+            <span>Date &amp; time</span>
+            <span className="text-right">Length</span>
+            <span className="text-right">Direction</span>
+            <span className="text-right">Reaches lot</span>
+          </div>
+          {scenarios.map((s) => (
             <div
               key={s.scenario}
-              className="flex items-center justify-between text-sm py-2 border-b border-gray-50 last:border-0"
+              className="grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center"
             >
-              <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
-              <div className="flex items-center gap-3 text-right">
-                <span className="text-gray-500 text-xs">{s.shadow_length_m.toFixed(1)} m</span>
-                <span
-                  className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.overlaps_subject_lot
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {s.overlaps_subject_lot ? 'Overlaps lot' : 'Clear'}
-                </span>
-              </div>
+              <span className="text-gray-700">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+              <span className="text-gray-500 text-xs text-right tabular-nums">
+                {s.shadow_length_m > 0 ? `${s.shadow_length_m.toFixed(0)} m` : '—'}
+              </span>
+              <span className="text-gray-400 text-xs text-right">
+                {s.shadow_direction_deg != null ? bearingToCompass(s.shadow_direction_deg) : '—'}
+              </span>
+              <span
+                className={`text-xs font-medium px-2 py-0.5 rounded-full text-right ${
+                  s.overlaps_subject_lot
+                    ? 'bg-red-100 text-red-700'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+              >
+                {s.overlaps_subject_lot ? 'Yes' : 'No'}
+              </span>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Warnings */}
+      {result.warnings && result.warnings.length > 0 && (
+        <div className="px-6 py-4 bg-amber-50 space-y-1">
+          {result.warnings.map((w, i) => (
+            <p key={i} className="text-xs text-amber-800">{w}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Footer */}
       <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
           Data sources: {(result.data_sources ?? []).join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          Shadow direction verified for Southern Hemisphere (Sydney lat). Indicative only.
+          Shadow direction verified for the Southern Hemisphere (Sydney). Indicative only — not a substitute for a formal shadow impact assessment.
         </p>
       </div>
     </div>
