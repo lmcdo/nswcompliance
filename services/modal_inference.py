@@ -8,10 +8,13 @@ Two web endpoints:
     POST /detect-panels    — Solar Yield: detect "solar panel"
     POST /detect-structures — Granny Flat: detect "building" / "shed" / "garage"
 
-Railway calls these via HTTP using MODAL_INFERENCE_URL env var.
+Railway calls these via HTTP using MODAL_PANELS_URL / MODAL_STRUCTURES_URL env vars.
 No Modal SDK needed on Railway — plain requests.post().
 
 Pricing: ~$0.03–0.05 per inference on T4 GPU (Modal free tier = $30/mo credit).
+
+Model loading: LangSAM is loaded ONCE at container startup via @modal.enter().
+Warm runs (within scaledown_window) skip model load entirely — just inference.
 """
 
 import base64
@@ -32,6 +35,7 @@ app = modal.App("plotdetect-inference")
 inference_image = (
     modal.Image.debian_slim(python_version="3.11")
     .apt_install(["libgl1", "libglib2.0-0"])  # OpenCV deps
+    .pip_install(["numpy==1.26.4"])           # pin numpy<2 before segment-geospatial can upgrade it
     .pip_install([
         "rasterio==1.3.11",                   # pin to avoid backtracking to source-only versions
         "groundingdino-py",                   # pre-install so samgeo doesn't do it at runtime
@@ -58,7 +62,7 @@ def _decode_image(image_b64: str):
 
 def _save_temp(img) -> str:
     """Save PIL Image to a temp file, return path. LangSAM needs a file path."""
-    import tempfile, os
+    import tempfile
     tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
     img.save(tmp.name)
     return tmp.name
@@ -75,7 +79,6 @@ def _masks_to_structures(masks_with_prompts: list, w: int, h: int, iou_threshold
     """IoU dedup + area filter + convert to serialisable dicts."""
     import numpy as np
 
-    # Sort largest first for greedy IoU dedup
     masks_with_prompts.sort(key=lambda x: x[0].sum(), reverse=True)
 
     kept = []
@@ -100,72 +103,77 @@ def _masks_to_structures(masks_with_prompts: list, w: int, h: int, iou_threshold
 
 # ---------------------------------------------------------------------------
 # Endpoint 1: Solar panel detection
+# Model loaded ONCE at container startup — warm runs skip this entirely
 # ---------------------------------------------------------------------------
 
-@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
-@modal.fastapi_endpoint(method="POST")
-def detect_panels(data: dict) -> dict:
-    """
-    Detect solar panels in an aerial image.
+@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
+class PanelDetector:
 
-    Request body:
-        image_b64: str          — base64 PNG aerial tile
-        box_threshold: float    — LangSAM box confidence (default 0.30)
-        text_threshold: float   — LangSAM text confidence (default 0.25)
+    @modal.enter()
+    def load_model(self):
+        from samgeo.text_sam import LangSAM
+        self.model = LangSAM()
 
-    Response:
-        panel_count: int
-        masks: list[dict]       — [{area_px, bbox_pixel}]
-    """
-    import numpy as np
-    from samgeo.text_sam import LangSAM
+    @modal.fastapi_endpoint(method="POST")
+    def detect(self, data: dict) -> dict:
+        """
+        Detect solar panels in an aerial image.
 
-    image_b64 = data.get("image_b64", "")
-    # Lower thresholds needed for aerial imagery — GroundingDINO was trained on ground-level photos
-    box_thresh = float(data.get("box_threshold", 0.20))
-    text_thresh = float(data.get("text_threshold", 0.18))
+        Request body:
+            image_b64: str          — base64 PNG aerial tile
+            box_threshold: float    — LangSAM box confidence (default 0.20)
+            text_threshold: float   — LangSAM text confidence (default 0.18)
 
-    img = _decode_image(image_b64)
-    w, h = img.size
-    tile_path = _save_temp(img)
+        Response:
+            panel_count: int
+            masks: list[dict]       — [{area_px, bbox_pixel}]
+        """
+        import numpy as np
 
-    model = LangSAM()
-    masks, _, _, _ = model.predict(
-        image=tile_path,
-        text_prompt="solar panel . photovoltaic panel . pv array . rooftop solar",
-        box_threshold=box_thresh,
-        text_threshold=text_thresh,
-        return_results=True,
-    )
+        image_b64 = data.get("image_b64", "")
+        # Lower thresholds needed for aerial imagery — GroundingDINO was trained on ground-level photos
+        box_thresh = float(data.get("box_threshold", 0.20))
+        text_thresh = float(data.get("text_threshold", 0.18))
 
-    # Debug: return tile thumbnail so caller can verify correct image was analysed
-    import base64, io
-    thumb = img.copy()
-    thumb.thumbnail((256, 256))
-    buf = io.BytesIO()
-    thumb.save(buf, format="PNG")
-    thumb_b64 = base64.b64encode(buf.getvalue()).decode()
+        img = _decode_image(image_b64)
+        tile_path = _save_temp(img)
 
-    if masks is None or len(masks) == 0:
-        return {"panel_count": 0, "masks": [], "debug_thumb": thumb_b64}
+        masks, _, _, _ = self.model.predict(
+            image=tile_path,
+            text_prompt="solar panel . photovoltaic panel . pv array . rooftop solar",
+            box_threshold=box_thresh,
+            text_threshold=text_thresh,
+            return_results=True,
+        )
 
-    results = []
-    for mask in masks:
-        mask_np = np.array(mask, dtype=bool)
-        area_px = int(mask_np.sum())
-        if area_px < 20:  # noise filter
-            continue
-        ys, xs = np.where(mask_np)
-        results.append({
-            "area_px": area_px,
-            "bbox_pixel": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())],
-        })
+        # Debug: return tile thumbnail so caller can verify correct image was analysed
+        thumb = img.copy()
+        thumb.thumbnail((256, 256))
+        buf = io.BytesIO()
+        thumb.save(buf, format="PNG")
+        thumb_b64 = base64.b64encode(buf.getvalue()).decode()
 
-    return {"panel_count": len(results), "masks": results}
+        if masks is None or len(masks) == 0:
+            return {"panel_count": 0, "masks": [], "debug_thumb": thumb_b64}
+
+        results = []
+        for mask in masks:
+            mask_np = np.array(mask, dtype=bool)
+            area_px = int(mask_np.sum())
+            if area_px < 20:  # noise filter
+                continue
+            ys, xs = np.where(mask_np)
+            results.append({
+                "area_px": area_px,
+                "bbox_pixel": [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())],
+            })
+
+        return {"panel_count": len(results), "masks": results}
 
 
 # ---------------------------------------------------------------------------
 # Endpoint 2: Structure detection (Granny Flat)
+# Model loaded ONCE at container startup — warm runs skip this entirely
 # ---------------------------------------------------------------------------
 
 DETECTION_PROMPTS = [
@@ -174,54 +182,57 @@ DETECTION_PROMPTS = [
     ("garage",   0.20, 0.18),
 ]
 
-@app.function(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
-@modal.fastapi_endpoint(method="POST")
-def detect_structures(data: dict) -> dict:
-    """
-    Detect buildings/sheds/garages in an aerial image.
+@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
+class StructureDetector:
 
-    Request body:
-        image_b64: str           — base64 PNG aerial tile
-        iou_threshold: float     — dedup threshold (default 0.5)
-        min_area_px: int         — minimum structure size in pixels (default 150)
+    @modal.enter()
+    def load_model(self):
+        from samgeo.text_sam import LangSAM
+        self.model = LangSAM()
 
-    Response:
-        structure_count: int
-        structures: list[dict]   — [{area_px, bbox_pixel, matched_prompt}]
-    """
-    import numpy as np
-    from samgeo.text_sam import LangSAM
+    @modal.fastapi_endpoint(method="POST")
+    def detect(self, data: dict) -> dict:
+        """
+        Detect buildings/sheds/garages in an aerial image.
 
-    image_b64 = data.get("image_b64", "")
-    iou_threshold = float(data.get("iou_threshold", 0.5))
-    min_area_px = int(data.get("min_area_px", 150))
+        Request body:
+            image_b64: str           — base64 PNG aerial tile
+            iou_threshold: float     — dedup threshold (default 0.5)
+            min_area_px: int         — minimum structure size in pixels (default 150)
 
-    img = _decode_image(image_b64)
-    w, h = img.size
-    tile_path = _save_temp(img)
+        Response:
+            structure_count: int
+            structures: list[dict]   — [{area_px, bbox_pixel, matched_prompt}]
+        """
+        import numpy as np
 
-    model = LangSAM()
-    all_masks = []
+        image_b64 = data.get("image_b64", "")
+        iou_threshold = float(data.get("iou_threshold", 0.5))
+        min_area_px = int(data.get("min_area_px", 150))
 
-    for prompt, box_thresh, text_thresh in DETECTION_PROMPTS:
-        try:
-            masks, _, _, _ = model.predict(
-                image=tile_path,
-                text_prompt=prompt,
-                box_threshold=box_thresh,
-                text_threshold=text_thresh,
-                return_results=True,
-            )
-            if masks is None:
-                continue
-            for m in masks:
-                all_masks.append((np.array(m, dtype=bool), prompt))
-        except Exception as e:
-            logger.warning(f"LangSAM prompt '{prompt}' failed: {e}")
+        img = _decode_image(image_b64)
+        w, h = img.size
+        tile_path = _save_temp(img)
 
-    if not all_masks:
-        return {"structure_count": 0, "structures": []}
+        all_masks = []
+        for prompt, box_thresh, text_thresh in DETECTION_PROMPTS:
+            try:
+                masks, _, _, _ = self.model.predict(
+                    image=tile_path,
+                    text_prompt=prompt,
+                    box_threshold=box_thresh,
+                    text_threshold=text_thresh,
+                    return_results=True,
+                )
+                if masks is None:
+                    continue
+                for m in masks:
+                    all_masks.append((np.array(m, dtype=bool), prompt))
+            except Exception as e:
+                logger.warning(f"LangSAM prompt '{prompt}' failed: {e}")
 
-    structures = _masks_to_structures(all_masks, w, h, iou_threshold, min_area_px)
+        if not all_masks:
+            return {"structure_count": 0, "structures": []}
 
-    return {"structure_count": len(structures), "structures": structures}
+        structures = _masks_to_structures(all_masks, w, h, iou_threshold, min_area_px)
+        return {"structure_count": len(structures), "structures": structures}
