@@ -93,10 +93,17 @@ function fmt$(n: number) {
   return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
 }
 
-const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 function aerialTileUrl(lat: number, lng: number) {
-  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x300&maptype=satellite&key=${GOOGLE_MAPS_KEY}`;
+  const params = new URLSearchParams({
+    center: `${lat},${lng}`,
+    zoom: '19',
+    size: '600x300',
+    maptype: 'satellite',
+    key: GOOGLE_MAPS_KEY,
+  });
+  return `https://maps.googleapis.com/maps/api/staticmap?${params}`;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -232,17 +239,16 @@ function ReportCard({ report }: { report: ReportData }) {
       </div>
 
       {/* Aerial tile */}
-      {GOOGLE_MAPS_KEY && (
-        <div className="overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={aerialTileUrl(report.lat, report.lng)}
-            alt={`Satellite view of ${report.address}`}
-            className="w-full object-cover"
-            style={{ maxHeight: 220 }}
-          />
-        </div>
-      )}
+      <div className="overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={aerialTileUrl(report.lat, report.lng)}
+          alt={`Satellite view of ${report.address}`}
+          className="w-full object-cover"
+          style={{ maxHeight: 220 }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+        />
+      </div>
 
       {/* Financial ROI */}
       <div className="p-6">
