@@ -7,6 +7,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     libpq-dev \
     curl \
+    # GDAL — required by rasterio and geopandas
+    libgdal-dev \
+    gdal-bin \
+    python3-gdal \
+    # proj — coordinate transforms
+    libproj-dev \
+    proj-data \
+    proj-bin \
+    # geo runtime libs
+    libgeos-dev \
+    libspatialindex-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
