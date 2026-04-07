@@ -19,10 +19,7 @@ rasterio==1.4.3
 # Flood Truth — Sentinel-1 via Planetary Computer
 planetary-computer==1.0.0
 
-# Solar Yield — pvlib yield estimation
-pvlib==0.11.2
-
-# nsw_imagery.py (Solar Yield, Granny Flat aerial tiles)
+# nsw_imagery.py (Granny Flat aerial tiles)
 Pillow==11.3.0
 opencv-python-headless==4.10.0.84
 
