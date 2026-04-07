@@ -96,14 +96,7 @@ function fmt$(n: number) {
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 function aerialTileUrl(lat: number, lng: number) {
-  const params = new URLSearchParams({
-    center: `${lat},${lng}`,
-    zoom: '19',
-    size: '600x300',
-    maptype: 'satellite',
-    key: GOOGLE_MAPS_KEY,
-  });
-  return `https://maps.googleapis.com/maps/api/staticmap?${params}`;
+  return `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x300&maptype=satellite&key=${GOOGLE_MAPS_KEY}`;
 }
 
 // ── Page ─────────────────────────────────────────────────────────────────────
