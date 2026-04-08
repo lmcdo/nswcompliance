@@ -106,7 +106,7 @@ def _masks_to_structures(masks_with_prompts: list, w: int, h: int, iou_threshold
 # Model loaded ONCE at container startup — warm runs skip this entirely
 # ---------------------------------------------------------------------------
 
-@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
+@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=1800)
 class PanelDetector:
 
     @modal.enter()
@@ -191,7 +191,7 @@ DETECTION_PROMPTS = [
     ("garage",   0.20, 0.18),
 ]
 
-@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=300)
+@app.cls(gpu="T4", image=inference_image, timeout=120, scaledown_window=1800)
 class StructureDetector:
 
     @modal.enter()

@@ -67,9 +67,13 @@ export async function POST(request: NextRequest) {
   let lng: number | null = propData.property.coordinates?.lng ?? null;
 
   if ((!lat || !lng) && lotGeometry?.rings?.[0]?.length) {
+    // Rings are EPSG:3857 (Mercator metres) — convert centroid to WGS84
     const ring: [number, number][] = lotGeometry.rings[0];
-    lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
-    lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
+    const xMerc = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
+    const yMerc = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
+    const R = 20037508.342789244;
+    lng = xMerc * 180.0 / R;
+    lat = (Math.atan(Math.exp(yMerc * Math.PI / R)) * 2 - Math.PI / 2) * (180 / Math.PI);
   }
 
   if (!lat || !lng) {
@@ -79,8 +83,24 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Convert EPSG:3857 lot geometry ring to WGS84 GeoJSON polygon + centroid
+  let lotPolygonWgs84: { type: 'Polygon'; coordinates: number[][][] } | null = null;
+  let centroidLat = lat as number;
+  let centroidLng = lng as number;
+  if (lotGeometry?.rings?.[0]?.length) {
+    const R = 20037508.342789244;
+    const ring: [number, number][] = lotGeometry.rings[0];
+    const wgs84Ring = ring.map(([x, y]: [number, number]): [number, number] => [
+      x * 180.0 / R,
+      (Math.atan(Math.exp(y * Math.PI / R)) * 2 - Math.PI / 2) * (180 / Math.PI),
+    ]);
+    lotPolygonWgs84 = { type: 'Polygon', coordinates: [wgs84Ring] };
+    centroidLng = wgs84Ring.reduce((s, p) => s + p[0], 0) / wgs84Ring.length;
+    centroidLat = wgs84Ring.reduce((s, p) => s + p[1], 0) / wgs84Ring.length;
+  }
+
   // -------------------------------------------------------------------------
-  // DETECT — async via Trigger.dev
+  // DETECT — async via Trigger.dev (production) / direct Python call (dev)
   // -------------------------------------------------------------------------
   if (action === 'detect') {
     // Pre-allocate report row so frontend can poll immediately
@@ -105,6 +125,27 @@ export async function POST(request: NextRequest) {
     }
 
     const jobId = reportRow.id as string;
+
+    // In local dev, call Python directly (Trigger.dev can't reach localhost).
+    if (process.env.NODE_ENV === 'development') {
+      let detectResp: Response;
+      try {
+        detectResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/detect`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, lat, lng, prop_id, report_id: jobId, lot_geometry: lotGeometry }),
+          signal: AbortSignal.timeout(180_000),
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return NextResponse.json({ error: `Detect failed: ${msg}` }, { status: 502 });
+      }
+      if (!detectResp.ok) {
+        const text = await detectResp.text().catch(() => '');
+        return NextResponse.json({ error: `Detect error (${detectResp.status}): ${text}` }, { status: 502 });
+      }
+      return NextResponse.json({ jobId, lotPolygonWgs84, centroidLat, centroidLng }, { status: 202 });
+    }
 
     const triggerResp = await fetch(TRIGGER_API, {
       method: 'POST',
@@ -135,7 +176,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ jobId }, { status: 202 });
+    return NextResponse.json({ jobId, lotPolygonWgs84, centroidLat, centroidLng }, { status: 202 });
   }
 
   // -------------------------------------------------------------------------
@@ -154,7 +195,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract lot_area_m2 from lot geometry rings using shoelace (metres, EPSG:3857)
+    // Shoelace on EPSG:3857 rings with Mercator cos²(lat) correction
     let lot_area_m2: number | null = null;
     if (lotGeometry?.rings?.[0]) {
       const ring: [number, number][] = lotGeometry.rings[0];
@@ -164,8 +205,11 @@ export async function POST(request: NextRequest) {
         const [x2, y2] = ring[(i + 1) % ring.length];
         area += x1 * y2 - x2 * y1;
       }
-      lot_area_m2 = Math.abs(area) / 2;
+      const scale = Math.cos((lat as number) * Math.PI / 180);
+      lot_area_m2 = (Math.abs(area) / 2) * scale * scale;
     }
+
+    const is_heritage = !!(propData.property?.heritage_status || propData.property?.heritage_overlays?.length);
 
     let pythonResp: Response;
     try {
@@ -183,6 +227,7 @@ export async function POST(request: NextRequest) {
           samgeo_structure_count: samgeo_structure_count ?? null,
           postcode: postcode ?? null,
           report_id: report_id ?? crypto.randomUUID(),
+          is_heritage,
         }),
         signal: AbortSignal.timeout(30_000),
       });

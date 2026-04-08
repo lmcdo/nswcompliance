@@ -135,6 +135,7 @@ class GrannyFlatDetectResponse(BaseModel):
     confirmation_required: bool
     tile_licence: str
     detect_id: str          # UUID for subsequent /confirm call
+    warnings: list[str] = []
 
 
 class GrannyFlatConfirmRequest(BaseModel):
@@ -148,6 +149,7 @@ class GrannyFlatConfirmRequest(BaseModel):
     samgeo_structure_count: Optional[int] = None  # echoed from detect response
     postcode: Optional[str] = None
     report_id: Optional[str] = None     # pre-allocated by Next.js
+    is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -210,31 +212,6 @@ def _build_lot_arr(lot_pixel_rings, w: int, h: int):
     return np.array(lot_img) > 0
 
 
-def _mask_passes_lot_check(mask_np, lot_arr) -> bool:
-    """
-    True if the mask's centroid is inside the lot OR >=5% of its pixels are inside.
-    Centroid check handles coarse masks that extend beyond the footprint boundary.
-    """
-    import numpy as np
-    h, w = mask_np.shape
-    ys, xs = np.where(mask_np > 0)
-    if len(xs) == 0:
-        return False
-    cx, cy = int(xs.mean()), int(ys.mean())
-    if 0 <= cy < h and 0 <= cx < w and lot_arr[cy, cx]:
-        return True
-    overlap = np.logical_and(mask_np > 0, lot_arr).sum()
-    return (overlap / mask_np.sum()) >= 0.05
-
-
-def _compute_iou(a, b) -> float:
-    """Intersection-over-union for two boolean numpy arrays."""
-    import numpy as np
-    inter = np.logical_and(a, b).sum()
-    union = np.logical_or(a, b).sum()
-    return float(inter / union) if union > 0 else 0.0
-
-
 def _pixel_area_to_m2(area_px: int, bbox: dict, image_w: int, image_h: int) -> float:
     """Convert pixel count to m² using tile bbox dimensions."""
     import math as _math
@@ -275,8 +252,7 @@ def _detect_structures_samgeo(
 
     modal_url = os.environ.get("MODAL_STRUCTURES_URL", "").strip()
     if not modal_url:
-        logger.warning("MODAL_STRUCTURES_URL not set — skipping structure detection.")
-        return []
+        raise RuntimeError("MODAL_STRUCTURES_URL not configured")
 
     try:
         with open(tile_path, "rb") as f:
@@ -311,8 +287,19 @@ def _detect_structures_samgeo(
     for s in raw_structures:
         x1, y1, x2, y2 = s["bbox_pixel"]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        if lot_arr is not None and not lot_arr[cy, cx]:
-            continue  # centre outside lot — skip
+        if lot_arr is not None:
+            h_arr, w_arr = lot_arr.shape
+            centre_in = (0 <= cy < h_arr and 0 <= cx < w_arr and lot_arr[cy, cx])
+            if not centre_in:
+                # Fallback: accept if ≥40% of bbox overlaps lot (handles small
+                # structures near boundary whose centroid may miss by a pixel).
+                bx1 = max(0, x1); by1 = max(0, y1)
+                bx2 = min(w_arr, x2); by2 = min(h_arr, y2)
+                if bx2 <= bx1 or by2 <= by1:
+                    continue
+                bbox_region = lot_arr[by1:by2, bx1:bx2]
+                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.40:
+                    continue
         area_m2 = _pixel_area_to_m2(s["area_px"], bbox, w, h)
         if area_m2 < MIN_STRUCTURE_AREA_M2:
             continue
@@ -331,6 +318,7 @@ def _detect_structures_samgeo(
 # ---------------------------------------------------------------------------
 
 def _compute_lot_area_m2(lot_geometry: dict) -> Optional[float]:
+    """Shoelace on EPSG:3857 rings, corrected for Mercator distortion (~1.45x at Sydney)."""
     if not lot_geometry or "rings" not in lot_geometry:
         return None
     ring = lot_geometry["rings"][0]
@@ -342,7 +330,11 @@ def _compute_lot_area_m2(lot_geometry: dict) -> Optional[float]:
         x1, y1 = ring[i][0], ring[i][1]
         x2, y2 = ring[(i + 1) % n][0], ring[(i + 1) % n][1]
         area += x1 * y2 - x2 * y1
-    return abs(area) / 2.0
+    projected = abs(area) / 2.0
+    y_centre = sum(r[1] for r in ring) / n
+    R = 20037508.342789244
+    lat_rad = 2.0 * math.atan(math.exp(y_centre * math.pi / R)) - math.pi / 2.0
+    return projected * (math.cos(lat_rad) ** 2)
 
 
 def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
@@ -375,30 +367,6 @@ def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
         return None
     entry = _load_rental_data().get(str(postcode))
     return entry.get("median_weekly_rent_1br_aud") if entry else None
-
-
-def _check_heritage(prop_id: str) -> bool:
-    try:
-        conn = _get_conn()
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT 1 FROM regulatory_provisions
-                WHERE prop_id = %s
-                  AND (v2_topic = 'heritage' OR v2_marker ILIKE '%%heritage%%')
-                LIMIT 1
-                """,
-                (prop_id,),
-            )
-            return cur.fetchone() is not None
-    except Exception as e:
-        logger.warning(f"Heritage check failed: {e}")
-        return False
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
 
 
 def _compute_confidence(
@@ -480,6 +448,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
 
+    detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
     if SAMGEO_VALIDATED:
         try:
@@ -491,8 +460,16 @@ def detect_structures(req: GrannyFlatDetectRequest):
                     area_m2=s["area_m2"],
                     bbox_pixel=s["bbox_pixel"],
                     matched_prompt=s["matched_prompt"],
-                    is_main_dwelling=(i == 0),
+                    is_main_dwelling=False,
                 ))
+            if detected_structures:
+                largest = max(range(len(detected_structures)), key=lambda i: detected_structures[i].area_m2 or 0)
+                detected_structures[largest].is_main_dwelling = True
+        except RuntimeError:
+            detect_warnings.append(
+                "Aerial structure detection unavailable (MODAL_STRUCTURES_URL not configured). "
+                "Enter structure count manually."
+            )
         except Exception as e:
             logger.error(f"samgeo detection failed: {e}")
 
@@ -511,6 +488,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
         confirmation_required=True,
         tile_licence=licence,
         detect_id=detect_id,
+        warnings=detect_warnings,
     )
 
     # When called via Trigger.dev (async path), write detect result to DB so
@@ -572,7 +550,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             f"of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
-    is_heritage = _check_heritage(req.prop_id)
+    is_heritage = bool(req.is_heritage)
     if is_heritage:
         warnings.append(
             "Property is in a Heritage Conservation Area or has a heritage listing. "
