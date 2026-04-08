@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       if (!result.new_application_count || result.new_application_count === 0) continue;
 
       const emailResult = await resend.emails.send({
-        from: 'PlotDetect Threat Radar <onboarding@resend.dev>',
+        from: 'PlotDetect Threat Radar <alerts@plotdetect.com.au>',
         to: sub.email,
         subject: `${result.new_application_count} new development application${result.new_application_count > 1 ? 's' : ''} near ${sub.address}`,
         html: buildAlertEmail(sub.address, result.new_applications),
