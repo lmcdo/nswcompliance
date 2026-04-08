@@ -59,12 +59,19 @@ def _haversine(lat1, lng1, lat2, lng2) -> float:
     return R*2*math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+# Some councils use non-obvious formal names in the NSW ePlanning API.
+_COUNCIL_NAME_MAP = {
+    "city of sydney":          "Council of the City of Sydney",
+    "sydney":                  "Council of the City of Sydney",
+    "sydney city council":     "Council of the City of Sydney",
+    "sydney city":             "Council of the City of Sydney",
+}
+
+
 def _normalise_council(council_name: str) -> str:
-    """NSW ePlanning API requires uppercase council name ending in COUNCIL."""
-    name = council_name.strip().upper()
-    if not name.endswith(" COUNCIL"):
-        name = f"{name} COUNCIL"
-    return name
+    """Return the exact council name string the NSW ePlanning API expects."""
+    key = council_name.strip().lower()
+    return _COUNCIL_NAME_MAP.get(key, council_name.strip())
 
 
 def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> list:
