@@ -8,7 +8,7 @@ GET  /pipeline/threat-radar/subscriptions -- list active (used by Trigger.dev ta
 Data: NSW ePlanning API (public, no auth).
 Dedup: seen application numbers stored in threat_radar_subscriptions.inputs JSONB.
 """
-import logging, math, os
+import json, logging, math, os
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -59,14 +59,29 @@ def _haversine(lat1, lng1, lat2, lng2) -> float:
     return R*2*math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
+def _normalise_council(council_name: str) -> str:
+    """NSW ePlanning API requires uppercase council name ending in COUNCIL."""
+    name = council_name.strip().upper()
+    if not name.endswith(" COUNCIL"):
+        name = f"{name} COUNCIL"
+    return name
+
+
 def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> list:
-    since = (datetime.utcnow()-timedelta(days=days_back)).strftime("%Y/%m/%d")
-    params = {"filters": f"[{{CouncilName,{council_name}}}]",
-              "pageSize": 200, "pageNumber": 1, "lodgementDateFrom": since}
+    since = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
+    council = _normalise_council(council_name)
+    # Filters passed as HTTP header (not query param) — confirmed from NSW ePlanning API
+    filters_header = json.dumps({"filters": {"CouncilName": [council], "LodgementDateFrom": since}})
+    headers = {
+        "filters": filters_header,
+        "PageSize": "200",
+        "PageNumber": "1",
+        "Cache-Control": "no-cache",
+    }
     apps = []
     for url in (DA_URL, CDC_URL):
         try:
-            r = requests.get(url, params=params, timeout=20)
+            r = requests.get(url, headers=headers, timeout=20)
             r.raise_for_status()
             data = r.json()
             apps.extend(data.get("Application") or data.get("ApplicationList") or [])
@@ -79,8 +94,10 @@ def _filter_nearby(apps: list, lat: float, lng: float) -> list:
     nearby = []
     for app in apps:
         try:
-            alat = float(app.get("Latitude") or app.get("Y") or 0)
-            alng = float(app.get("Longitude") or app.get("X") or 0)
+            # Coordinates are in Location[0].X / Location[0].Y (strings)
+            loc = (app.get("Location") or [{}])[0]
+            alat = float(app.get("Latitude") or loc.get("Y") or 0)
+            alng = float(app.get("Longitude") or loc.get("X") or 0)
             if alat == 0 and alng == 0:
                 continue
             d = _haversine(lat, lng, alat, alng)
