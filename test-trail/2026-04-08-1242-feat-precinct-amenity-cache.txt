@@ -1,0 +1,25 @@
+Date: 2026-04-08 12:42 AEST
+Branch: feat/precinct-amenity-cache
+PR scope: precinct amenity cache — migration + enrichment script + API route
+
+New files only. No changes to existing code. Existing test suite unaffected.
+
+Files added:
+  migrations/028_precinct_amenity_cache.sql
+    - New table: precinct_amenity_cache (precinct_id PK, former_council, amenity_jsonb, centroid_lat/lng, computed_at)
+    - No foreign keys, no cascade, no changes to existing tables
+
+  enrichment/precompute_amenity.py
+    - Reads dcp_precinct_boundaries, computes centroid, calls city2graph /amenity, upserts to cache
+    - CLI flags: --dry-run, --council, --precinct-id, --refresh-stale, --force
+    - Not executed in tests — batch script, run manually at LGA onboarding
+
+  frontend-nextjs/app/api/precinct/amenity/route.ts
+    - GET /api/precinct/amenity?precinctId=<id>
+    - Returns 200 + cached amenity_jsonb, or 404 if not cached (frontend falls back to live call)
+    - Same Supabase client pattern as existing /api/reports/status and /api/satellite/* routes
+
+Test rationale:
+  All three files are additive. No existing route, service, or DB table is modified.
+  The API route is a simple SELECT by PK — no logic to unit test beyond the DB query.
+  The enrichment script will be validated on first run against a single precinct (--precinct-id flag).
