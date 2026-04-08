@@ -197,11 +197,19 @@ function ReportCard({ report }: { report: ReportData }) {
 
   if (!o.coverage_available) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
-        <p className="font-medium text-gray-800 mb-1">No coverage available</p>
-        <p className="text-sm text-gray-500">
-          Google Solar data is not yet available for this address. Try again later.
-        </p>
+      <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+        <div className="p-6">
+          <h2 className="font-semibold text-gray-900">{report.address}</h2>
+          <p className="text-xs text-gray-400 mt-0.5">Run {report.run_date}</p>
+        </div>
+        <div className="p-6">
+          <p className="text-sm font-medium text-gray-700 mb-1">Building data not available for this address</p>
+          <p className="text-sm text-gray-500 leading-relaxed">
+            Google Solar building data covers Sydney metro and major NSW cities.
+            Precise roof area, panel count, and yield figures aren't available here yet.
+          </p>
+        </div>
+        <CoverageInterestForm address={report.address} lat={report.lat} lng={report.lng} />
       </div>
     );
   }
@@ -325,6 +333,74 @@ function ReportCard({ report }: { report: ReportData }) {
           Not a substitute for a professional energy or financial assessment.
         </p>
       </div>
+    </div>
+  );
+}
+
+function CoverageInterestForm({ address, lat, lng }: { address: string; lat: number; lng: number }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
+  const [suburb, setSuburb] = useState('your area');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setStatus('submitting');
+    try {
+      const res = await fetch('/api/satellite/solar-coverage-interest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, address, lat, lng }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      if (json.suburb) setSuburb(json.suburb);
+      setStatus('done');
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  if (status === 'done') {
+    return (
+      <div className="px-6 py-5 bg-teal-50">
+        <p className="text-sm font-medium text-teal-800">You&apos;re on the list.</p>
+        <p className="text-xs text-teal-700 mt-0.5">
+          We&apos;ll email you when full roof analysis reaches {suburb}.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-6 py-5 bg-gray-50">
+      <p className="text-sm font-medium text-gray-700 mb-0.5">
+        Get notified when we expand to {address.match(/,\s*([^,]+?)\s+NSW/i)?.[1] ?? 'your area'}
+      </p>
+      <p className="text-xs text-gray-500 mb-3">
+        We&apos;re rolling out building-level analysis across NSW. One email when it&apos;s ready — no spam.
+      </p>
+      <form onSubmit={handleSubmit} className="flex gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          placeholder="your@email.com"
+          disabled={status === 'submitting'}
+          className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:opacity-50"
+          required
+        />
+        <button
+          type="submit"
+          disabled={status === 'submitting' || !email.trim()}
+          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+        >
+          {status === 'submitting' ? 'Saving...' : 'Notify me'}
+        </button>
+      </form>
+      {status === 'error' && (
+        <p className="text-xs text-red-600 mt-1">Something went wrong. Please try again.</p>
+      )}
     </div>
   );
 }

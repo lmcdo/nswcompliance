@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
+
+const getSupabase = () =>
+  createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 /**
  * POST /api/satellite/threat-radar
@@ -59,17 +62,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
   }
 
-  // Subscribe
-  const subResp = await fetch(`${PYTHON_API}/pipeline/threat-radar/subscribe`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ address, prop_id, lat, lng, email, council_name }),
-  }).catch(() => null);
+  // Subscribe — write directly to Supabase (no Python backend required)
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('threat_radar_subscriptions')
+    .insert({
+      address,
+      prop_id,
+      lat,
+      lng,
+      email,
+      active: true,
+      inputs: { council_name, seen_application_numbers: [] },
+    })
+    .select('id')
+    .single();
 
-  if (!subResp?.ok) {
-    const text = await subResp?.text().catch(() => '');
-    return NextResponse.json({ error: `Subscribe failed: ${text}` }, { status: 502 });
+  if (error) {
+    return NextResponse.json({ error: `Subscribe failed: ${error.message}` }, { status: 502 });
   }
 
-  return NextResponse.json(await subResp.json());
+  return NextResponse.json({ subscription_id: String(data.id), address, status: 'active' });
 }

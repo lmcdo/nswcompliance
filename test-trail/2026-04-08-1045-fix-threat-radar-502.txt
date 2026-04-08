@@ -1,0 +1,23 @@
+=== TEST TRAIL ===
+Branch:  fix/flood-parallel-queries
+Date:    Wed Apr  8 10:45:00 AUSEST 2026
+Commit:  (pre-commit — threat-radar 502 fix)
+
+--- Change scope ---
+TypeScript-only change: frontend-nextjs/app/api/satellite/threat-radar/route.ts
+Removed dependency on PYTHON_API_URL (Python backend not deployed in production).
+Subscribe logic moved to direct Supabase insert — same pattern as solar-yield/route.ts.
+
+--- Python tests ---
+Not applicable — no Python files modified.
+
+--- TypeScript check ---
+npx tsc --noEmit: no errors in threat-radar/route.ts
+(Pre-existing TS errors in other files are unrelated to this change)
+
+--- Manual verification ---
+Route now uses createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+Inserts into threat_radar_subscriptions: address, prop_id, lat, lng, email, active=true,
+inputs: { council_name, seen_application_numbers: [] }
+Returns: { subscription_id, address, status: "active" }
+Matches behaviour of services/threat_radar.py:94-108 exactly.
