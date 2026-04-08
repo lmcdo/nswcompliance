@@ -6,6 +6,7 @@
 // No AI interpretation — only structured data extraction.
 
 import type { PathwayDetermination, SeppAssessableControl, LepAssessableStandard } from './types';
+import type { AmenityData, StreetContextData } from '@/hooks/useSpatialContext';
 
 // ---------------------------------------------------------------------------
 // Section 3 — Approval Pathway Determination
@@ -345,4 +346,62 @@ export function buildLepStandards(
   }
 
   return standards;
+}
+
+// ---------------------------------------------------------------------------
+// Section 2 — Site Context (spatial data supplement)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds deterministic prose for SEE Section 2 Site Context from spatial data.
+ * Returns null if insufficient data to produce a meaningful sentence.
+ *
+ * Output is intended to be appended to siteSuitabilityText in section-aggregation.ts
+ * once spatial data is wired into the SEE export flow.
+ *
+ * OSM attribution note is always appended when data is used.
+ */
+export function buildSiteContextSection(
+  amenity: AmenityData | null,
+  streetContext: StreetContextData | null,
+  suburb: string,
+): string | null {
+  const sentences: string[] = [];
+
+  if (streetContext && streetContext.data_confidence !== 'low') {
+    const hierarchy = streetContext.street_hierarchy;
+    const name = streetContext.street_name ?? 'the local street';
+    sentences.push(
+      `The site fronts ${name}, a ${hierarchy} road in ${suburb}.`
+    );
+    if (streetContext.solar_orientation?.solar_access === 'good') {
+      sentences.push('Street orientation is favourable for passive solar access.');
+    } else if (streetContext.solar_orientation?.solar_access === 'poor') {
+      sentences.push('Street orientation is unfavourable for passive solar access — this should be considered in the design response.');
+    }
+  }
+
+  if (amenity) {
+    const score = amenity.walkability_score;
+    const categories = (['schools', 'transport', 'parks', 'shops', 'medical'] as const)
+      .filter(k => amenity[k] && (amenity[k]!.walking_m) <= 800)
+      .map(k => k);
+
+    if (score >= 3 && categories.length > 0) {
+      sentences.push(
+        `The site has good access to local services, with ${categories.join(', ')} within 800m walking distance (walkability score ${score}/5).`
+      );
+    } else if (score <= 2) {
+      sentences.push(
+        `The site has limited walkable access to services (walkability score ${score}/5). Private vehicle access or public transport should be considered in the site analysis.`
+      );
+    } else {
+      sentences.push(`Local service walkability: ${score}/5.`);
+    }
+  }
+
+  if (sentences.length === 0) return null;
+
+  sentences.push('(Spatial data sourced from OpenStreetMap contributors via city2graph. Verify on site before including in a statutory document.)');
+  return sentences.join(' ');
 }
