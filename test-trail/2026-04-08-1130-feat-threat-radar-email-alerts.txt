@@ -1,0 +1,29 @@
+=== TEST TRAIL ===
+Branch:  feat/threat-radar-email-alerts
+Date:    Wed Apr  8 11:30:00 AUSEST 2026
+Commit:  (pre-commit)
+
+--- Change scope ---
+TypeScript-only: frontend-nextjs/app/api/satellite/threat-radar/run-checks/route.ts (new)
+Config: frontend-nextjs/vercel.json (cron entry + maxDuration override)
+
+No Python files modified.
+
+--- TypeScript check ---
+npx tsc --noEmit: no errors in run-checks/route.ts
+
+--- Pre-PR Python tests ---
+Exit code 0 (all passing — no Python changes)
+
+--- Manual verification ---
+GET /api/satellite/threat-radar/run-checks:
+  - Rejects requests without correct CRON_SECRET bearer token (401)
+  - Queries threat_radar_subscriptions WHERE active=true via Supabase
+  - For each sub: POSTs to Python /pipeline/threat-radar/check
+  - If new_application_count > 0: sends Resend email to sub.email
+  - Returns { checked, alerted, errors? }
+
+Vercel cron: 0 21 * * 0 = Sunday 21:00 UTC = Monday 7:00 AEST
+maxDuration: 60s for run-checks route (up from 30s default)
+
+Required env var (must add to Vercel manually): CRON_SECRET
