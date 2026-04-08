@@ -374,13 +374,19 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
 
-    elevated — multiple independent sources converge on flood exposure
-    moderate — one strong observed signal OR two weaker signals
-    low      — statutory overlay only (council flood study, no observed events)
-    none     — no indicators across any source
+    unavailable — EPI query failed; cannot determine signal (do not show green)
+    elevated    — multiple independent sources converge on flood exposure
+    moderate    — one strong observed signal OR two weaker signals
+    low         — statutory overlay only (council flood study, no observed events)
+    none        — no indicators across any source
 
     This is a data convergence indicator, not a flood risk determination.
     """
+    # EPI query failure: data_currency is set to "query_failed" on timeout/error.
+    # Treat as unavailable — never return "none" when EPI data is missing.
+    if internal_outputs.get("data_currency") == "query_failed":
+        return "unavailable"
+
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none")
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
@@ -550,11 +556,24 @@ def run_flood(req: FloodRequest):
     try:
         with _get_conn() as conn:
             with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT outputs, confidence, data_sources FROM property_reports "
-                    "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
-                    (req.address,)
-                )
+                # Cache by prop_id when available (stable NSW property ID); fallback to address string.
+                # TTL: 90 days — balances EMS/JRC update cadence vs live query cost.
+                if req.prop_id and req.prop_id not in ("null", "undefined", ""):
+                    cur.execute(
+                        "SELECT outputs, confidence, data_sources FROM property_reports "
+                        "WHERE product='flood' AND prop_id=%s "
+                        "AND run_date >= CURRENT_DATE - INTERVAL '90 days' "
+                        "ORDER BY run_date DESC LIMIT 1",
+                        (req.prop_id,)
+                    )
+                else:
+                    cur.execute(
+                        "SELECT outputs, confidence, data_sources FROM property_reports "
+                        "WHERE product='flood' AND address=%s "
+                        "AND run_date >= CURRENT_DATE - INTERVAL '90 days' "
+                        "ORDER BY run_date DESC LIMIT 1",
+                        (req.address,)
+                    )
                 cached = cur.fetchone()
         if cached:
             return {

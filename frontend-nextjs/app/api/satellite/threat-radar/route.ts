@@ -97,5 +97,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Subscribe failed: ${error.message}` }, { status: 502 });
   }
 
-  return NextResponse.json({ subscription_id: String(data.id), address, status: 'active' });
+  return NextResponse.json({ subscription_id: String(data.id), address, message: "Subscription active. You'll receive weekly alerts for new development applications near this address." });
 }
