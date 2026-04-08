@@ -404,13 +404,3 @@ function CoverageInterestForm({ address, lat, lng }: { address: string; lat: num
     </div>
   );
 }
-
-function Metric({ label, value, note }: { label: string; value: string; note: string }) {
-  return (
-    <div className="p-6">
-      <p className="text-xs text-gray-400 mb-1">{label}</p>
-      <p className="text-xl font-semibold text-gray-900">{value}</p>
-      <p className="text-xs text-gray-400 mt-1">{note}</p>
-    </div>
-  );
-}
