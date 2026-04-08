@@ -33,13 +33,12 @@ import time
 import psycopg2
 import requests
 from psycopg2.extras import RealDictCursor
-from shapely.geometry import shape
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
 SPATIAL_API_URL = os.getenv("SPATIAL_API_URL", "https://city2graph-production.up.railway.app")
-AMENITY_TIMEOUT_S = 30       # per-request timeout
+AMENITY_TIMEOUT_S = 90       # per-request timeout — Overpass API can be slow under load
 INTER_REQUEST_SLEEP_S = 3    # courtesy delay between Overpass calls
 STALE_DAYS = 90
 
@@ -49,15 +48,17 @@ def get_connection():
 
 
 def fetch_precincts(conn, council: str | None = None) -> list[dict]:
-    """Return all precinct boundaries, optionally filtered by former_council."""
+    """Return precincts with pre-computed centroids from PostGIS geometry column."""
     with conn.cursor(cursor_factory=RealDictCursor) as cur:
         if council:
             cur.execute(
                 """
-                SELECT precinct_id, former_council, boundary_geojson
+                SELECT precinct_id, former_council,
+                       ST_Y(centroid) AS centroid_lat,
+                       ST_X(centroid) AS centroid_lng
                 FROM dcp_precinct_boundaries
                 WHERE former_council = %s
-                  AND boundary_geojson IS NOT NULL
+                  AND centroid IS NOT NULL
                 ORDER BY former_council, precinct_id
                 """,
                 (council,),
@@ -65,9 +66,11 @@ def fetch_precincts(conn, council: str | None = None) -> list[dict]:
         else:
             cur.execute(
                 """
-                SELECT precinct_id, former_council, boundary_geojson
+                SELECT precinct_id, former_council,
+                       ST_Y(centroid) AS centroid_lat,
+                       ST_X(centroid) AS centroid_lng
                 FROM dcp_precinct_boundaries
-                WHERE boundary_geojson IS NOT NULL
+                WHERE centroid IS NOT NULL
                 ORDER BY former_council, precinct_id
                 """
             )
@@ -89,18 +92,6 @@ def fetch_stale_ids(conn) -> set[str]:
             f"WHERE computed_at < now() - interval '{STALE_DAYS} days'"
         )
         return {row[0] for row in cur.fetchall()}
-
-
-def centroid_from_geojson(geojson: dict | str) -> tuple[float, float]:
-    """Return (lat, lng) centroid of a GeoJSON geometry or feature."""
-    if isinstance(geojson, str):
-        geojson = json.loads(geojson)
-    # Handle both Feature and raw geometry
-    if geojson.get("type") == "Feature":
-        geojson = geojson["geometry"]
-    geom = shape(geojson)
-    c = geom.centroid
-    return c.y, c.x  # lat, lng
 
 
 def call_amenity(lat: float, lng: float) -> dict | None:
@@ -177,13 +168,8 @@ def run(args: argparse.Namespace) -> None:
         council = p["former_council"]
         logger.info(f"[{i}/{len(to_process)}] {pid} ({council})")
 
-        try:
-            lat, lng = centroid_from_geojson(p["boundary_geojson"])
-        except Exception as e:
-            logger.warning(f"  Could not compute centroid: {e} — skipping")
-            failed += 1
-            continue
-
+        lat = p["centroid_lat"]
+        lng = p["centroid_lng"]
         logger.info(f"  centroid: {lat:.4f}, {lng:.4f}")
         amenity = call_amenity(lat, lng)
 
