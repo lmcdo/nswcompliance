@@ -36,7 +36,8 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "bom_last_major_flood_date": str | null,
     "bom_last_major_flood_peak_m": float | null,
     "s1_gap_warning": str | null,
-    "data_currency": str
+    "data_currency": str,
+    "flood_signal": "none" | "low" | "moderate" | "elevated"  # multi-source convergence indicator
   },
   "confidence": str,
   "data_sources": list[str]
@@ -369,6 +370,45 @@ def _query_bom_gauge(lat: float, lng: float) -> dict:
 # Confidence + data source helpers
 # ---------------------------------------------------------------------------
 
+def _compute_flood_signal(internal_outputs: dict) -> str:
+    """
+    Multi-source convergence signal for B2B/UI consumption.
+
+    elevated — multiple independent sources converge on flood exposure
+    moderate — one strong observed signal OR two weaker signals
+    low      — statutory overlay only (council flood study, no observed events)
+    none     — no indicators across any source
+
+    This is a data convergence indicator, not a flood risk determination.
+    """
+    epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none")
+    ems_detected   = internal_outputs.get("ems_flood_detected") is True
+    jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
+    bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
+
+    jrc_low      = 0 < jrc_pct < 15
+    jrc_moderate = 15 <= jrc_pct < 40
+    jrc_high     = jrc_pct >= 40
+
+    # Elevated: multiple independent sources agree
+    if (epi_in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
+            or (ems_detected and jrc_high) or jrc_high \
+            or (epi_in_overlay and jrc_moderate and bom_flood):
+        return "elevated"
+
+    # Moderate: one strong observed signal or two weaker ones
+    if ems_detected or (epi_in_overlay and jrc_low) \
+            or (epi_in_overlay and bom_flood) or jrc_moderate \
+            or (jrc_low and bom_flood):
+        return "moderate"
+
+    # Low: statutory overlay only — council study flags risk but no observed events
+    if epi_in_overlay:
+        return "low"
+
+    return "none"
+
+
 def _compute_confidence(internal_outputs: dict) -> str:
     """
     high   — EPI + EMS + JRC + BOM gauge + ≥1 SAR season
@@ -432,7 +472,7 @@ def _normalise_outputs(raw: dict) -> dict:
     if sar_detected is None and raw.get("flood_event_count") is not None:
         sar_detected = bool(raw["flood_event_count"])
 
-    return {
+    normalised = {
         "epi_flood_class":            epi_class,
         "epi_flood_label":            epi_label,
         "sar_flood_detected":         sar_detected,
@@ -449,6 +489,8 @@ def _normalise_outputs(raw: dict) -> dict:
         "s1_gap_warning":             raw.get("s1_gap_warning"),
         "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency", "unknown"),
     }
+    normalised["flood_signal"] = _compute_flood_signal(normalised)
+    return normalised
 
 
 def _s1b_gap_affected(start: date, end: date) -> bool:
