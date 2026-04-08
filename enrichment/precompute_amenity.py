@@ -165,7 +165,7 @@ def run(args: argparse.Namespace) -> None:
     failed = 0
     for i, p in enumerate(to_process, 1):
         pid = p["precinct_id"]
-        council = p["former_council"]
+        council = p["former_council"] or "unknown"
         logger.info(f"[{i}/{len(to_process)}] {pid} ({council})")
 
         lat = p["centroid_lat"]
