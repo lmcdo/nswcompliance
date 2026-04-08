@@ -26,6 +26,7 @@ interface FloodOutputs {
   bom_last_major_flood_peak_m: number | null;
   s1_gap_warning: string | null;
   data_currency: string;
+  flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
 }
 
 interface FloodResult {
@@ -41,18 +42,41 @@ interface FloodResult {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
 
-const EPI_CLASS_META: Record<string, { label: string; color: string }> = {
-  high_flood_risk:    { label: 'High flood risk',    color: 'bg-red-100 text-red-800' },
-  medium_flood_risk:  { label: 'Medium flood risk',  color: 'bg-orange-100 text-orange-800' },
-  low_flood_risk:     { label: 'Low flood risk',     color: 'bg-yellow-100 text-yellow-800' },
-  flood_planning_area:{ label: 'Flood planning area',color: 'bg-blue-100 text-blue-800' },
-  none:               { label: 'No EPI flood overlay',color: 'bg-green-100 text-green-800' },
+// Flood signal — primary summary indicator (multi-source convergence, not a risk determination)
+const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge: string; bar: string }> = {
+  none:     {
+    label:    'No flood indicators detected',
+    sublabel: 'No signals across any data source',
+    badge:    'bg-green-100 text-green-800',
+    bar:      'bg-green-500',
+  },
+  low:      {
+    label:    'Low flood signal',
+    sublabel: 'Statutory overlay only — no observed events on record',
+    badge:    'bg-yellow-100 text-yellow-800',
+    bar:      'bg-yellow-400',
+  },
+  moderate: {
+    label:    'Moderate flood signal',
+    sublabel: 'One or more data sources indicate past or potential inundation',
+    badge:    'bg-orange-100 text-orange-800',
+    bar:      'bg-orange-500',
+  },
+  elevated: {
+    label:    'Elevated flood signal',
+    sublabel: 'Multiple independent sources converge on flood exposure',
+    badge:    'bg-red-100 text-red-800',
+    bar:      'bg-red-500',
+  },
 };
 
-const CONFIDENCE_META: Record<string, { label: string; color: string }> = {
-  high:   { label: 'High confidence',   color: 'text-green-700' },
-  medium: { label: 'Medium confidence', color: 'text-amber-700' },
-  low:    { label: 'Low confidence',    color: 'text-gray-400' },
+// EPI class labels — cite statutory source, avoid deterministic risk language
+const EPI_CLASS_META: Record<string, { label: string; color: string }> = {
+  high_flood_risk:     { label: 'High flood risk zone',   color: 'bg-red-50 text-red-700' },
+  medium_flood_risk:   { label: 'Medium flood risk zone', color: 'bg-orange-50 text-orange-700' },
+  low_flood_risk:      { label: 'Low flood risk zone',    color: 'bg-yellow-50 text-yellow-700' },
+  flood_planning_area: { label: 'Flood planning area',    color: 'bg-blue-50 text-blue-700' },
+  none:                { label: 'Not in statutory flood overlay', color: 'bg-green-50 text-green-700' },
 };
 
 export default function FloodPage() {
@@ -87,10 +111,11 @@ export default function FloodPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Wet Season Flood Truth Engine</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Flood Data Summary</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          Cross-reference Sentinel-1 SAR, Copernicus EMS, JRC 40-year water history, and BOM gauge
-          data with NSW EPI statutory flood overlays for any NSW parcel.
+          Cross-references NSW EPI statutory flood overlays, Copernicus EMS observed events,
+          40-year Landsat water history, and BOM river gauge data for any NSW address.
+          Indicative only — not a substitute for a formal Section 10.7 flood certificate.
         </p>
       </div>
 
@@ -107,7 +132,7 @@ export default function FloodPage() {
           disabled={state === 'running' || !address.trim()}
           className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {state === 'running' ? 'Checking...' : 'Check Flood Risk'}
+          {state === 'running' ? 'Checking...' : 'Run Flood Check'}
         </button>
       </form>
 
@@ -132,115 +157,124 @@ export default function FloodPage() {
 
 function FloodCard({ result }: { result: FloodResult }) {
   const o = result.outputs;
-  const epiClass = o.epi_flood_class ?? 'none';
-  const epiMeta  = EPI_CLASS_META[epiClass] ?? { label: epiClass, color: 'bg-gray-100 text-gray-700' };
-  const confMeta = CONFIDENCE_META[result.confidence] ?? { label: result.confidence, color: 'text-gray-400' };
+  const signal     = o.flood_signal ?? 'none';
+  const signalMeta = FLOOD_SIGNAL_META[signal] ?? FLOOD_SIGNAL_META.none;
+  const epiClass   = o.epi_flood_class ?? 'none';
+  const epiMeta    = EPI_CLASS_META[epiClass] ?? { label: epiClass, color: 'bg-gray-50 text-gray-700' };
+  const sourceCount = (result.data_sources ?? []).length;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
 
-      {/* Header */}
+      {/* Header — flood signal as primary indicator */}
       <div className="p-6">
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h2 className="font-semibold text-gray-900">{result.address}</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date}</p>
+            <p className="text-xs text-gray-400 mt-0.5">Run {result.run_date} · {sourceCount} data sources</p>
           </div>
-          <div className="flex flex-col items-end gap-1.5 shrink-0">
-            <span className={`text-xs font-medium px-2 py-1 rounded-full ${epiMeta.color}`}>
-              {epiMeta.label}
-            </span>
-            <span className={`text-xs ${confMeta.color}`}>{confMeta.label}</span>
-          </div>
+          <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full ${signalMeta.badge}`}>
+            {signalMeta.label}
+          </span>
+        </div>
+        <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
+        <p className="text-xs text-gray-400 mt-1">
+          Data convergence indicator across {sourceCount} independent sources.
+          A formal Section 10.7 certificate from council is required for legal flood status.
+        </p>
+      </div>
+
+      {/* Row 1: Council flood overlay + Copernicus observed events */}
+      <div className="grid grid-cols-2 divide-x divide-gray-100">
+        <div className="p-6">
+          <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
+          <p className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${epiMeta.color} mb-1`}>
+            {epiMeta.label}
+          </p>
+          <p className="text-xs text-gray-400">
+            NSW EPI Flood WFS · data as at {o.data_currency !== 'unknown' ? o.data_currency : 'date unavailable'}
+          </p>
+        </div>
+        <div className="p-6">
+          <p className="text-xs text-gray-400 mb-1">Observed flood events</p>
+          {o.ems_flood_detected === null ? (
+            <p className="text-sm text-gray-400">Data not available</p>
+          ) : o.ems_flood_detected && o.ems_activations?.length ? (
+            <ul className="space-y-1.5">
+              {o.ems_activations.map((act) => (
+                <li key={act.activation_id} className="flex items-start gap-2">
+                  <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
+                  <div>
+                    <p className="text-xs font-medium text-gray-900">{act.event_name}</p>
+                    <p className="text-xs text-gray-400">{act.activation_id} · {act.event_date}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-600">No recorded events at this location</p>
+          )}
+          <p className="text-xs text-gray-400 mt-2">Copernicus EMS · NSW Spatial Services</p>
         </div>
       </div>
 
-      {/* Row 1: EPI + SAR */}
+      {/* Row 2: JRC water history + BOM gauge */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">EPI statutory overlay</p>
-          <p className="text-lg font-semibold text-gray-900">
-            {o.epi_flood_label ?? (epiClass === 'none' ? 'Not in flood overlay' : epiClass)}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">NSW EPI Flood WFS</p>
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">SAR flood detection</p>
-          <p className="text-lg font-semibold text-gray-900">
-            {o.sar_flood_detected == null ? 'Pending' : o.sar_flood_detected ? 'Detected' : 'None detected'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {o.sar_flood_detected == null ? 'Batch analysis — check back later' : `Confidence: ${o.sar_confidence ?? 'n/a'}`}
-          </p>
-        </div>
-      </div>
-
-      {/* Row 2: JRC + BOM gauge */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Water history (Landsat 1984–{o.jrc_data_year ?? 2021})</p>
+          <p className="text-xs text-gray-400 mb-1">40-year surface water history</p>
           {o.jrc_water_occurrence_pct != null ? (
             <>
               <p className="text-lg font-semibold text-gray-900">
                 {o.jrc_water_occurrence_pct.toFixed(0)}
                 <span className="text-sm font-normal text-gray-500">% of months</span>
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-gray-500 mt-1">
                 {o.jrc_water_occurrence_pct === 0
-                  ? 'No surface water observed at this site since 1984'
+                  ? 'No surface water observed at this site 1984–present'
                   : o.jrc_water_occurrence_pct < 5
-                  ? 'Rare surface water — episodic flood events only'
-                  : o.jrc_water_occurrence_pct < 25
-                  ? 'Seasonal or periodic inundation'
-                  : 'Frequent or permanent surface water'}
+                  ? 'Rare — episodic inundation only'
+                  : o.jrc_water_occurrence_pct < 15
+                  ? 'Occasional — periodic inundation'
+                  : o.jrc_water_occurrence_pct < 40
+                  ? 'Frequent — seasonal or recurring inundation'
+                  : 'Persistent — regular or permanent surface water'}
               </p>
             </>
           ) : (
             <p className="text-sm text-gray-400">Not available</p>
           )}
+          <p className="text-xs text-gray-400 mt-2">JRC Global Surface Water · Landsat 1984–{o.jrc_data_year ?? 2021}</p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Nearest river gauge</p>
+          <p className="text-xs text-gray-400 mb-1">River gauge proximity</p>
           {o.bom_gauge_name ? (
             <>
               <p className="text-sm font-semibold text-gray-900 leading-snug">{o.bom_gauge_name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{o.bom_gauge_distance_km} km away</p>
+              <p className="text-xs text-gray-400 mt-0.5">{o.bom_gauge_distance_km} km from property</p>
               {o.bom_last_major_flood_date ? (
                 <p className="text-xs text-red-700 mt-2 font-medium">
-                  Last major flood: {o.bom_last_major_flood_date} — {o.bom_last_major_flood_peak_m}m peak
+                  Last major flood recorded: {o.bom_last_major_flood_date} — {o.bom_last_major_flood_peak_m}m peak
                 </p>
               ) : (
-                <p className="text-xs text-gray-400 mt-2">No major flood recorded since 2020</p>
+                <p className="text-xs text-gray-400 mt-2">No major flood recorded at this gauge since 2021</p>
               )}
             </>
           ) : (
-            <p className="text-sm text-gray-400">No gauge within {75} km</p>
+            <p className="text-sm text-gray-400">No BOM gauge within 75 km</p>
           )}
+          <p className="text-xs text-gray-400 mt-2">BOM WaterConnect · SOS2 API</p>
         </div>
       </div>
 
-      {/* Copernicus EMS historical events */}
-      {o.ems_flood_detected !== null && (
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-2">Recorded flood events (NSW Spatial Services / Copernicus EMS)</p>
-          {!o.ems_flood_detected || !o.ems_activations?.length ? (
-            <p className="text-sm text-gray-600">No recorded EMS flood events at this location</p>
-          ) : (
-            <ul className="space-y-2">
-              {o.ems_activations.map((act) => (
-                <li key={act.activation_id} className="flex items-start gap-3">
-                  <span className="mt-1.5 shrink-0 w-2 h-2 rounded-full bg-red-500" />
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{act.event_name}</p>
-                    <p className="text-xs text-gray-400">
-                      {act.activation_id} · {act.event_date}
-                      {act.flood_type === 'estimated' && ' · estimated extent'}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+      {/* SAR — shown only when data available */}
+      {o.sar_flood_detected !== null && (
+        <div className="px-6 py-4">
+          <p className="text-xs text-gray-400 mb-1">Satellite SAR flood detection</p>
+          <p className="text-sm font-medium text-gray-900">
+            {o.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
+            {o.sar_confidence && <span className="font-normal text-gray-500"> — {o.sar_confidence} confidence</span>}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">Sentinel-1 RTC · Microsoft Planetary Computer{o.sar_analysis_date ? ` · ${o.sar_analysis_date}` : ''}</p>
         </div>
       )}
 
@@ -257,10 +291,11 @@ function FloodCard({ result }: { result: FloodResult }) {
       {/* Footer */}
       <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
-          Data sources: {(result.data_sources ?? []).join(' · ')}
+          Sources: {(result.data_sources ?? []).join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
           Indicative only. Not a substitute for a formal Section 10.7 flood certificate.
+          Consult council or a qualified flood engineer for development or conveyancing decisions.
         </p>
       </div>
     </div>
