@@ -171,6 +171,7 @@ enrichment/
 # Whitelist enrichment config and extractor files (committed as part of core pipeline)
 !enrichment/__init__.py
 !enrichment/pipeline.py
+!enrichment/precompute_amenity.py
 !enrichment/config/
 !enrichment/config/__init__.py
 !enrichment/config/ashfield_config.py
