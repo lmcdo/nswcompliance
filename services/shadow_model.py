@@ -67,11 +67,21 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
     ).to_crs("EPSG:32755")
 
     shadows = pybdshadow.bdshadow_sunlight(buildings, target_dt)
+    logger.debug(
+        "pybdshadow: rows=%d crs=%s empty=%s",
+        len(shadows) if shadows is not None else -1,
+        getattr(shadows, "crs", "N/A"),
+        shadows.empty if shadows is not None else "None",
+    )
 
-    if shadows.empty:
+    if shadows is None or shadows.empty:
         return {"type": "FeatureCollection", "features": []}
 
-    # Reproject back to WGS84 for GeoJSON output
+    # pybdshadow does not always preserve CRS on its output GeoDataFrame.
+    # Set it explicitly before reprojecting back to WGS84.
+    if shadows.crs is None:
+        shadows = shadows.set_crs("EPSG:32755")
+
     return shadows.to_crs("EPSG:4326").__geo_interface__
 
 
