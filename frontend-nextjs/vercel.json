@@ -4,9 +4,18 @@
   "framework": "nextjs",
   "outputDirectory": ".next",
   "ignoreCommand": "bash -c 'if [ \"$VERCEL_ENV\" = \"production\" ] && [ \"$VERCEL_GIT_COMMIT_REF\" != \"main\" ]; then exit 0; else exit 1; fi'",
+  "crons": [
+    {
+      "path": "/api/satellite/threat-radar/run-checks",
+      "schedule": "0 21 * * 0"
+    }
+  ],
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
+    },
+    "app/api/satellite/threat-radar/run-checks/route.ts": {
+      "maxDuration": 60
     }
   },
   "env": {
