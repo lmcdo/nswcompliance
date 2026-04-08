@@ -40,8 +40,23 @@ export async function POST(request: NextRequest) {
 
   const prop_id = String(propData.property.prop_id);
 
-  // council_name: caller may override; otherwise use lga_name from NSW Planning Portal response
-  const council_name = body.council_name?.trim() || propData.property.lga_name || null;
+  // council_name: caller may override → else derive from lat/lng via NSW Spatial Services
+  let council_name: string | null = body.council_name?.trim() || propData.property.lga_name || null;
+  if (!council_name && lat && lng) {
+    try {
+      const spatialUrl =
+        `https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Administrative_Boundaries/MapServer/1/query` +
+        `?geometry=${lng},${lat}&geometryType=esriGeometryPoint&inSR=4326` +
+        `&spatialRel=esriSpatialRelIntersects&outFields=lganame&f=json`;
+      const spatialResp = await fetch(spatialUrl, { signal: AbortSignal.timeout(8_000) }).catch(() => null);
+      if (spatialResp?.ok) {
+        const spatialData = await spatialResp.json();
+        council_name = spatialData?.features?.[0]?.attributes?.lganame ?? null;
+      }
+    } catch {
+      // non-fatal — will fail at subscribe step if still null
+    }
+  }
   if (!council_name) {
     return NextResponse.json(
       { error: 'Could not determine council name for this address. Please provide council_name.' },
