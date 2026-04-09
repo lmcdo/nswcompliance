@@ -201,7 +201,7 @@ function FloodCard({ result }: { result: FloodResult }) {
             <p className="text-sm text-gray-400">Data not available</p>
           ) : o.ems_flood_detected && o.ems_activations?.length ? (
             <ul className="space-y-1.5">
-              {o.ems_activations.map((act) => (
+              {o.ems_activations?.map((act) => (
                 <li key={act.activation_id} className="flex items-start gap-2">
                   <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
                   <div>
