@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
@@ -25,6 +31,16 @@ const getSupabase = () => createClient(
  *   User confirmed structure count. Calls /pipeline/granny-flat/confirm directly.
  */
 export async function POST(request: NextRequest) {
+  // Per-product rate limit — LangSAM inference is expensive
+  const clientIP = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientIP, satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   let body: {
     address?: string;
     action?: 'detect' | 'confirm';
@@ -47,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   // Resolve address for both actions
   const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl).catch(() => null);
+  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }
@@ -191,6 +207,16 @@ export async function POST(request: NextRequest) {
     if (confirmed_structure_count == null) {
       return NextResponse.json(
         { error: 'confirmed_structure_count is required for confirm action' },
+        { status: 400 },
+      );
+    }
+    if (
+      !Number.isInteger(confirmed_structure_count) ||
+      confirmed_structure_count < 0 ||
+      confirmed_structure_count > 20
+    ) {
+      return NextResponse.json(
+        { error: 'confirmed_structure_count must be an integer between 0 and 20' },
         { status: 400 },
       );
     }

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { randomUUID } from 'crypto';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -33,6 +39,16 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
  * 4. Return { jobId } — frontend polls /api/satellite/solar-yield?jobId=X
  */
 export async function POST(request: NextRequest) {
+  // Per-product rate limit — calls Google Solar API (paid) and Railway compute
+  const clientIP = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientIP, satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   let body: { address?: string };
   try {
     body = await request.json();
@@ -41,14 +57,16 @@ export async function POST(request: NextRequest) {
   }
 
   const address = body.address?.trim();
-  if (!address) {
+  if (!address || address.length < 5) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
   // Step 1: resolve address
   let propData: Record<string, unknown>;
   try {
-    const propResp = await fetch(`${SITE_URL}/api/property/${encodeURIComponent(address)}`);
+    const propResp = await fetch(`${SITE_URL}/api/property/${encodeURIComponent(address)}`, {
+      signal: AbortSignal.timeout(10_000),
+    });
     if (!propResp.ok) {
       return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
     }
@@ -97,6 +115,7 @@ export async function POST(request: NextRequest) {
         report_id: jobId,
         lot_geometry: lotGeometry,
       }),
+      signal: AbortSignal.timeout(55_000),
     });
 
     if (!railwayResp.ok) {

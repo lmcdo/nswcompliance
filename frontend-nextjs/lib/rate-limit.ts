@@ -168,6 +168,34 @@ export const dataRateLimiter = redis
     })
   : null;
 
+/**
+ * Satellite pipeline rate limiter: 10 requests per minute per IP
+ * Applied to expensive endpoints that call Railway/Google Solar/paid APIs.
+ * Tighter than the global 100/min to limit per-user cost exposure.
+ */
+export const satelliteRateLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(10, '1 m'),
+      analytics: true,
+      prefix: 'rl:satellite',
+    })
+  : null;
+
+/**
+ * Aerial tile rate limiter: 30 requests per minute per IP
+ * aerial-tile is a PUBLIC_ROUTE (bypasses global middleware limiter),
+ * so it applies its own limit to protect Google Maps Static API budget.
+ */
+export const aerialTileRateLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(30, '1 m'),
+      analytics: true,
+      prefix: 'rl:aerial-tile',
+    })
+  : null;
+
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================

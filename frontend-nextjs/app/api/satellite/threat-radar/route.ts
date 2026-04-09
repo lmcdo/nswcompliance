@@ -1,34 +1,61 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 const getSupabase = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
+const schema = z.object({
+  address: z.string().min(5).max(300),
+  email: z.string().email(),
+  council_name: z.string().max(100).optional(),
+});
+
 /**
  * POST /api/satellite/threat-radar
- * Body: { address: string, email: string, council_name: string }
+ * Body: { address: string, email: string, council_name?: string }
  *
  * Resolves address → lat/lng/prop_id, then subscribes to weekly Threat Radar monitoring.
  */
 export async function POST(request: NextRequest) {
-  let body: { address?: string; email?: string; council_name?: string };
+  // Per-product rate limit — writes to DB + emails
+  const clientIP = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientIP, satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
+  let rawBody: unknown;
   try {
-    body = await request.json();
+    rawBody = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const address = body.address?.trim();
-  const email = body.email?.trim();
+  const parsed = schema.safeParse(rawBody);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: 'Invalid input', details: parsed.error.flatten().fieldErrors },
+      { status: 422 },
+    );
+  }
 
-  if (!address) return NextResponse.json({ error: 'address is required' }, { status: 400 });
-  if (!email) return NextResponse.json({ error: 'email is required' }, { status: 400 });
+  const { address, email, council_name: councilNameOverride } = parsed.data;
 
   // Resolve address
   const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl).catch(() => null);
+  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }
@@ -40,9 +67,23 @@ export async function POST(request: NextRequest) {
 
   const prop_id = String(propData.property.prop_id);
 
-  // council_name: caller may override → else derive from lat/lng via NSW Spatial Services
-  let council_name: string | null = body.council_name?.trim() || propData.property.lga_name || null;
-  if (!council_name && lat && lng) {
+  // Resolve lat/lng before using them in the council_name spatial fallback below
+  let lat: number | null = propData.property.coordinates?.lat ?? null;
+  let lng: number | null = propData.property.coordinates?.lng ?? null;
+
+  if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
+    const ring: [number, number][] = propData.lotGeometry.rings[0];
+    lng = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
+    lat = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
+  }
+
+  if (!lat || !lng) {
+    return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
+  }
+
+  // council_name: caller may override → else derive from lga_name or NSW Spatial Services
+  let council_name: string | null = councilNameOverride || propData.property.lga_name || null;
+  if (!council_name) {
     try {
       const spatialUrl =
         `https://maps.six.nsw.gov.au/arcgis/rest/services/public/NSW_Administrative_Boundaries/MapServer/1/query` +
@@ -62,19 +103,6 @@ export async function POST(request: NextRequest) {
       { error: 'Could not determine council name for this address. Please provide council_name.' },
       { status: 422 },
     );
-  }
-
-  let lat: number | null = propData.property.coordinates?.lat ?? null;
-  let lng: number | null = propData.property.coordinates?.lng ?? null;
-
-  if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
-    const ring: [number, number][] = propData.lotGeometry.rings[0];
-    lng = ring.reduce((s, p) => s + p[0], 0) / ring.length;
-    lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
-  }
-
-  if (!lat || !lng) {
-    return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
   }
 
   // Subscribe — write directly to Supabase (no Python backend required)
@@ -97,5 +125,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Subscribe failed: ${error.message}` }, { status: 502 });
   }
 
-  return NextResponse.json({ subscription_id: String(data.id), address, message: "Subscription active. You'll receive weekly alerts for new development applications near this address." });
+  return NextResponse.json({
+    subscription_id: String(data.id),
+    address,
+    message: "Subscription active. You'll receive weekly alerts for new development applications near this address.",
+  });
 }

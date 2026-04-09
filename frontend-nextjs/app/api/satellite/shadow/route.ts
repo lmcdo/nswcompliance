@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
@@ -14,6 +20,16 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
  * 3. Return pipeline result immediately
  */
 export async function POST(request: NextRequest) {
+  // Per-product rate limit — Railway compute is not free
+  const clientIP = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientIP, satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   let body: { address?: string };
   try {
     body = await request.json();
@@ -22,7 +38,7 @@ export async function POST(request: NextRequest) {
   }
 
   const address = body.address?.trim();
-  if (!address) {
+  if (!address || address.length < 5) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
@@ -30,7 +46,7 @@ export async function POST(request: NextRequest) {
   const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
   let propResp: Response;
   try {
-    propResp = await fetch(propUrl);
+    propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) });
   } catch (err) {
     return NextResponse.json({ error: 'Property lookup network error' }, { status: 502 });
   }

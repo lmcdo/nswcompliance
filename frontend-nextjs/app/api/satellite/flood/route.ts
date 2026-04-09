@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  satelliteRateLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
@@ -12,6 +18,16 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
  * SAR analysis is only available for pre-computed results.
  */
 export async function POST(request: NextRequest) {
+  // Per-product rate limit — Railway compute
+  const clientIP = getClientIdentifier(request);
+  const rl = await checkRateLimit(clientIP, satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please try again later.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   let body: { address?: string };
   try {
     body = await request.json();
@@ -20,13 +36,13 @@ export async function POST(request: NextRequest) {
   }
 
   const address = body.address?.trim();
-  if (!address) {
+  if (!address || address.length < 5) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
   // Resolve address
   const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl).catch(() => null);
+  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }
