@@ -36,9 +36,12 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
     Compute shadow polygon for a max-permissible building on a lot.
     Returns GeoJSON FeatureCollection in WGS84 (EPSG:4326).
 
-    pybdshadow requires metric coordinates — we reproject to UTM Zone 55S
-    (EPSG:32755, correct for Sydney) before passing to pybdshadow, then
-    reproject shadow output back to WGS84 for downstream use.
+    pybdshadow requires WGS84 (lat/lon degrees) input — it creates an internal
+    azimuthal equidistant (aeqd) projection centred on the building centroid to
+    perform metric shadow calculations, then returns results in the input CRS.
+    DO NOT reproject to UTM before calling: pybdshadow treats coordinates as
+    lat/lon for its internal solar position and aeqd setup; passing UTM easting/
+    northing (~884,000 / ~6,241,000) as degrees makes lat_0 >> 90° → PROJ error.
     """
     try:
         import geopandas as gpd
@@ -59,12 +62,11 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
 
     lot_polygon = shape(lot_geometry_geojson)
 
-    # Reproject to UTM Zone 55S (metres) — pybdshadow treats coordinates as metres.
-    # Passing WGS84 degrees makes the lot ~0.05mm wide, producing zero shadows.
+    # Pass WGS84 directly — pybdshadow handles metric conversion internally.
     buildings = gpd.GeoDataFrame(
         {"building_id": [0], "height": [float(height_limit_m)]},
         geometry=[lot_polygon], crs="EPSG:4326",
-    ).to_crs("EPSG:32755")
+    )
 
     shadows = pybdshadow.bdshadow_sunlight(buildings, target_dt)
     logger.debug(
@@ -78,11 +80,11 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
         return {"type": "FeatureCollection", "features": []}
 
     # pybdshadow does not always preserve CRS on its output GeoDataFrame.
-    # Set it explicitly before reprojecting back to WGS84.
+    # Input was WGS84 so output is also WGS84 — set explicitly if missing.
     if shadows.crs is None:
-        shadows = shadows.set_crs("EPSG:32755")
+        shadows = shadows.set_crs("EPSG:4326")
 
-    return shadows.to_crs("EPSG:4326").__geo_interface__
+    return shadows.__geo_interface__
 
 
 def model_all_scenarios(lot_geometry_geojson: dict, height_limit_m: float) -> dict:
