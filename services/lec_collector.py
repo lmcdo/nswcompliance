@@ -320,6 +320,18 @@ def update_last_checked(last_checked: str):
     return {"ok": True, "last_checked": last_checked}
 
 
+@router.get("/test-austlii")
+def test_austlii():
+    """Debug: make a single HEAD request to AustLII and return the result."""
+    url = "https://www.austlii.edu.au/au/cases/nsw/NSWLEC1/2024/1.html"
+    try:
+        with httpx.Client(headers=AUSTLII_HEADERS, timeout=15, follow_redirects=True) as client:
+            resp = client.head(url)
+            return {"url": url, "status": resp.status_code, "headers": dict(resp.headers)}
+    except Exception as exc:
+        return {"url": url, "error": str(exc)}
+
+
 @router.get("/state")
 def get_state():
     """Return current state (seen_ids count + last_checked). For debugging."""
