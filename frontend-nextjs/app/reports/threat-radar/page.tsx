@@ -21,7 +21,7 @@ export default function ThreatRadarPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!address.trim() || !email.trim() || !councilName.trim()) return;
+    if (!address.trim() || !email.trim()) return;
 
     setState('running');
     setResult(null);
@@ -92,7 +92,7 @@ export default function ThreatRadarPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Council name
+              Council name <span className="text-gray-400 font-normal">(optional — auto-detected)</span>
             </label>
             <input
               type="text"
@@ -101,7 +101,6 @@ export default function ThreatRadarPage() {
               placeholder="e.g. Inner West Council"
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               disabled={state === 'running'}
-              required
             />
           </div>
           <div>
@@ -130,8 +129,7 @@ export default function ThreatRadarPage() {
             disabled={
               state === 'running' ||
               !address.trim() ||
-              !email.trim() ||
-              !councilName.trim()
+              !email.trim()
             }
             className="w-full py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >

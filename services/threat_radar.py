@@ -59,12 +59,76 @@ def _haversine(lat1, lng1, lat2, lng2) -> float:
     return R*2*math.atan2(math.sqrt(a), math.sqrt(1-a))
 
 
-# Some councils use non-obvious formal names in the NSW ePlanning API.
+# Maps any user-submitted or NSW-Spatial-Services-derived LGA name →
+# exact council name string the NSW ePlanning API expects.
+# Keys are lowercase. NSW Spatial Services returns uppercase LGA names (e.g. "INNER WEST"),
+# user input is variable — both are normalised to lowercase before lookup.
 _COUNCIL_NAME_MAP = {
-    "city of sydney":          "Council of the City of Sydney",
-    "sydney":                  "Council of the City of Sydney",
-    "sydney city council":     "Council of the City of Sydney",
-    "sydney city":             "Council of the City of Sydney",
+    # Sydney — only council with non-standard API name
+    "sydney":                           "Council of the City of Sydney",
+    "city of sydney":                   "Council of the City of Sydney",
+    "sydney city":                      "Council of the City of Sydney",
+    "sydney city council":              "Council of the City of Sydney",
+    "council of the city of sydney":    "Council of the City of Sydney",
+    # Inner west
+    "inner west":                       "Inner West Council",
+    # Parramatta
+    "parramatta":                       "City of Parramatta Council",
+    "city of parramatta":               "City of Parramatta Council",
+    # Northern beaches
+    "northern beaches":                 "Northern Beaches Council",
+    # Amalgamated councils no longer on API
+    "gosford":                          "Central Coast Council",
+    "wyong":                            "Central Coast Council",
+    # Common user shorthands
+    "randwick":                         "Randwick City Council",
+    "waverley":                         "Waverley Council",
+    "woollahra":                        "Woollahra Municipal Council",
+    "mosman":                           "Mosman Municipal Council",
+    "north sydney":                     "North Sydney Council",
+    "willoughby":                       "Willoughby City Council",
+    "lane cove":                        "Lane Cove Municipal Council",
+    "hunters hill":                     "Hunters Hill Council",
+    "ryde":                             "Ryde City Council",
+    "ku-ring-gai":                      "Ku-ring-gai Council",
+    "hornsby":                          "Hornsby Shire Council",
+    "the hills":                        "The Hills Shire Council",
+    "hills shire":                      "The Hills Shire Council",
+    "blacktown":                        "Blacktown City Council",
+    "penrith":                          "Penrith City Council",
+    "blue mountains":                   "Blue Mountains City Council",
+    "hawkesbury":                       "Hawkesbury City Council",
+    "camden":                           "Camden Council",
+    "campbelltown":                     "Campbelltown City Council",
+    "wollondilly":                      "Wollondilly Shire Council",
+    "liverpool":                        "Liverpool City Council",
+    "fairfield":                        "Fairfield City Council",
+    "canterbury-bankstown":             "Canterbury-Bankstown Council",
+    "canterbury bankstown":             "Canterbury-Bankstown Council",
+    "georges river":                    "Georges River Council",
+    "sutherland":                       "Sutherland Shire Council",
+    "sutherland shire":                 "Sutherland Shire Council",
+    "bayside":                          "Bayside Council",
+    "strathfield":                      "Strathfield Municipal Council",
+    "burwood":                          "Burwood Council",
+    "cumberland":                       "Cumberland Council",
+    "wollongong":                       "Wollongong City Council",
+    "shellharbour":                     "Shellharbour City Council",
+    "kiama":                            "Kiama Municipal Council",
+    "shoalhaven":                       "Shoalhaven City Council",
+    "newcastle":                        "Newcastle City Council",
+    "lake macquarie":                   "Lake Macquarie City Council",
+    "cessnock":                         "Cessnock City Council",
+    "maitland":                         "Maitland City Council",
+    "port stephens":                    "Port Stephens Council",
+    "central coast":                    "Central Coast Council",
+    "bathurst":                         "Bathurst Regional Council",
+    "orange":                           "Orange City Council",
+    "dubbo":                            "Dubbo Regional Council",
+    "tamworth":                         "Tamworth Regional Council",
+    "wagga wagga":                      "Wagga Wagga City Council",
+    "wagga":                            "Wagga Wagga City Council",
+    "albury":                           "Albury City Council",
 }
 
 
