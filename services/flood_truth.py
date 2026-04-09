@@ -212,17 +212,17 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
 def _jrc_tile_url(lat: float, lng: float) -> str:
     """
     Return the GCS URL for the JRC occurrence tile containing this point.
-    Tiles are 10°×10°, named by SW corner, e.g. occurrence_150E_30S_v1_4_2021.tif
+    Tiles are 10°×10°, named by NW corner, e.g. occurrence_150E_30Sv1_4_2021.tif
     """
     lon_base = math.floor(lng / 10) * 10
-    lat_base = math.floor(lat / 10) * 10   # e.g. -30 for lat=-28.3
+    lat_base = math.ceil(lat / 10) * 10    # ceil: NW corner lat, e.g. -33.6 -> -30 -> 30S tile
 
     lon_dir = "E" if lon_base >= 0 else "W"
     lat_dir = "S" if lat_base < 0 else "N"
 
     return (
         f"{JRC_TILE_BASE}/occurrence_{abs(lon_base)}{lon_dir}"
-        f"_{abs(lat_base)}{lat_dir}_v1_4_2021.tif"
+        f"_{abs(lat_base)}{lat_dir}v1_4_2021.tif"  # no underscore before v1_4
     )
 
 
@@ -374,13 +374,18 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     """
     Multi-source convergence signal for B2B/UI consumption.
 
-    elevated — multiple independent sources converge on flood exposure
-    moderate — one strong observed signal OR two weaker signals
-    low      — statutory overlay only (council flood study, no observed events)
-    none     — no indicators across any source
+    unavailable — EPI query failed; cannot determine signal (do not show green)
+    elevated    — multiple independent sources converge on flood exposure
+    moderate    — one strong observed signal OR two weaker signals
+    low         — statutory overlay only (council flood study, no observed events)
+    none        — no indicators across any source
 
     This is a data convergence indicator, not a flood risk determination.
     """
+    # EPI query failure -> unavailable; never show green when EPI data is missing.
+    if internal_outputs.get("data_currency") == "query_failed":
+        return "unavailable"
+
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none")
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
