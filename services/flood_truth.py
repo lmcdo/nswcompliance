@@ -62,8 +62,10 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
 S1_COLLECTION = "sentinel-1-rtc"
-EPI_WFS = ("https://mapprod3.environment.nsw.gov.au/arcgis/services/"
-           "Planning/Hazard/MapServer/WFSServer")
+# ArcGIS REST API — more reliable than WFS for ArcGIS Server (CQL_FILTER not supported).
+# Layer 0 = Flood Planning Hazard overlay.
+EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
+            "Planning/Hazard/MapServer/0/query")
 BOM_SOS2 = "http://www.bom.gov.au/waterdata/services/sos2/getObservation"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
@@ -101,15 +103,23 @@ _EPI_CLASS_LABELS = {
 # Station IDs and major flood levels from BOM Water Data Online flood classifications.
 # Verify at: http://www.bom.gov.au/waterdata/
 _NSW_GAUGES = [
-    ("203014", "Tweed River at Murwillumbah",   -28.3314, 153.3972, 8.0),
+    # Northern Rivers (most flood-prone region in NSW)
+    ("201001", "Wilsons River at Lismore",       -28.8097, 153.2797, 10.8),
+    ("201002", "Richmond River at Casino",       -28.8701, 153.0452, 11.0),
+    ("203014", "Tweed River at Murwillumbah",    -28.3314, 153.3972, 8.0),
     ("204040", "Clarence River at Grafton",      -29.6886, 152.9322, 7.2),
+    # Mid-North Coast
     ("205007", "Bellinger River at Thora",       -30.4667, 152.4667, 5.5),
     ("207003", "Macleay River at Kempsey",       -31.0835, 152.8380, 5.4),
     ("208001", "Manning River at Wingham",       -31.8645, 152.3591, 4.2),
+    # Hunter / Central Coast
     ("210040", "Hunter River at Singleton",      -32.5613, 151.1742, 7.0),
+    # Sydney Basin
     ("212040", "Hawkesbury River at Windsor",    -33.6183, 150.8175, 7.3),
     ("213006", "Georges River at Liverpool",     -33.9189, 150.9215, 3.5),
+    # South Coast
     ("215004", "Shoalhaven River at Nowra",      -34.8696, 150.5982, 5.0),
+    # Inland
     ("225014", "Murray River at Albury",         -36.0773, 146.9252, 9.0),
     ("401009", "Murrumbidgee River at Wagga",    -35.1100, 147.3696, 9.4),
 ]
@@ -134,33 +144,42 @@ def _get_conn():
 # ---------------------------------------------------------------------------
 
 def _query_epi_overlay(lat: float, lng: float) -> dict:
-    """Query NSW SEED EPI Flood WFS. Returns epi_flood_class, epi_flood_label, data_currency."""
+    """Query NSW SEED EPI Flood via ArcGIS REST API (CQL_FILTER unsupported on ArcGIS Server WFS).
+    Returns epi_flood_class, epi_flood_label, data_currency."""
     try:
         params = {
-            "SERVICE": "WFS", "VERSION": "2.0.0", "REQUEST": "GetFeature",
-            "TYPENAMES": "Planning_Hazard:Flood", "SRSNAME": "EPSG:4326",
-            "CQL_FILTER": f"INTERSECTS(Shape,POINT({lng} {lat}))",
-            "outputFormat": "application/json",
+            "geometry": f"{lng},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "*",
+            "returnGeometry": "false",
+            "f": "json",
         }
-        r = requests.get(EPI_WFS, params=params, timeout=20)
+        r = requests.get(EPI_REST, params=params, timeout=20)
         r.raise_for_status()
-        feats = r.json().get("features") or []
+        body = r.json()
+        # ArcGIS REST returns {"features": [{"attributes": {...}}]}
+        # An "error" key means the request was rejected (bad layer, auth, etc.)
+        if "error" in body:
+            raise ValueError(f"ArcGIS error: {body['error']}")
+        feats = body.get("features") or []
         if not feats:
             return {"epi_flood_class": "none", "epi_flood_label": "No EPI Flood Overlay",
                     "data_currency": "unknown"}
 
-        props = feats[0].get("properties", {})
-        currency = props.get("DataDate", "unknown")
+        attrs = feats[0].get("attributes", {})
+        currency = attrs.get("DataDate") or attrs.get("DATADATE") or "unknown"
         raw_class = (
-            props.get("FloodClass") or props.get("Category")
-            or props.get("FldClass") or props.get("Flood_Class") or ""
+            attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
+            or attrs.get("FldClass") or attrs.get("Flood_Class") or ""
         ).strip().lower()
         epi_class = _EPI_CLASS_MAP.get(raw_class, "flood_planning_area")
         return {"epi_flood_class": epi_class,
                 "epi_flood_label": _EPI_CLASS_LABELS.get(epi_class, "Flood Planning Area"),
                 "data_currency": currency}
     except Exception as e:
-        logger.warning(f"EPI WFS: {e}")
+        logger.warning(f"EPI REST: {e}")
         return {"epi_flood_class": None, "epi_flood_label": None, "data_currency": "query_failed"}
 
 
@@ -231,10 +250,16 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
     Sample JRC Global Surface Water occurrence at the given point via rasterio windowed read.
     Returns jrc_water_occurrence_pct (0–100) and jrc_data_year.
     None on failure — non-critical, does not block response.
+
+    Runs in a thread with a hard 25s wall-clock timeout because GDAL_HTTP_TIMEOUT
+    controls individual HTTP ops but not the full vsicurl open sequence.
     """
-    try:
-        import rasterio
-        from rasterio.transform import rowcol
+    def _sample() -> dict:
+        try:
+            import rasterio
+            from rasterio.transform import rowcol
+        except ImportError:
+            raise RuntimeError("rasterio not installed — JRC sampling unavailable")
 
         url = _jrc_tile_url(lat, lng)
         # Use GDAL vsicurl for partial HTTP reads (range requests).
@@ -256,6 +281,10 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
             return {"jrc_water_occurrence_pct": None, "jrc_data_year": JRC_DATA_YEAR}
         return {"jrc_water_occurrence_pct": float(occurrence), "jrc_data_year": JRC_DATA_YEAR}
 
+    try:
+        with ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(_sample)
+            return fut.result(timeout=25)
     except Exception as e:
         logger.warning(f"JRC GSW query: {e}")
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
