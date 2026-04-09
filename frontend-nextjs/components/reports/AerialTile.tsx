@@ -3,7 +3,7 @@
 import dynamic from 'next/dynamic';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+// maplibre-gl.css imported in app/reports/layout.tsx (must be in a server component to avoid dynamic chunk 404)
 
 const ESRI_AERIAL: StyleSpecification = {
   version: 8,

@@ -26,7 +26,8 @@ import { RegulatoryCurrencyBanner } from '@/components/compliance/RegulatoryCurr
 import { InstrumentCurrency } from '@/components/compliance/InstrumentCurrency';
 import FeedbackWidget from '@/components/feedback/FeedbackWidget';
 import { StatusColors } from '@/lib/design-tokens';
-import { usePropertyAssessment, useAssessmentUI } from '@/hooks';
+import { usePropertyAssessment, useAssessmentUI, useSpatialContext } from '@/hooks';
+import { SpatialContextCard } from '@/components/property/SpatialContextCard';
 import { classifyHeritageType } from '@/lib/see/heritageType';
 import { SkeletonSeppContent, SkeletonDcpContent, SkeletonPropertyDetails } from '@/components/compliance/AssessmentSkeleton';
 
@@ -82,6 +83,13 @@ export default function AssessmentPage() {
     [selectedProperty?.heritage?.heritageType]
   );
 
+  // Spatial context (amenity + street) — user-initiated fetch
+  const spatialContext = useSpatialContext(
+    selectedCoordinates?.lat ?? null,
+    selectedCoordinates?.lng ?? null,
+    selectedProperty?.constraints?.precinctId ?? null,
+  );
+
   // Lazy mount: ProvisionsByTocStructure only mounts after the user first activates the DCP tab.
   // Prevents the SWR fetch and DA session initialisation from firing on every property search
   // when the planner is working on SEPP/LEP tabs.
@@ -93,6 +101,8 @@ export default function AssessmentPage() {
   // we want the new address's provisions to load immediately without requiring another tab click).
   useEffect(() => {
     if (viewModeRef.current !== 'dcp') setDcpEverActivated(false);
+    spatialContext.reset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAddress]);
 
   // Navigation handler for Pattern Book -> DCP cross-references
@@ -337,6 +347,16 @@ export default function AssessmentPage() {
               <PropertyDetailsComprehensive
                 propertyData={selectedProperty}
                 lepClauseData={lepClauseData}
+              />
+            )}
+
+            {/* Spatial context — amenity walkability + street type */}
+            {selectedCoordinates && (
+              <SpatialContextCard
+                state={spatialContext.state}
+                onFetch={spatialContext.fetch}
+                lat={selectedCoordinates.lat}
+                lng={selectedCoordinates.lng}
               />
             )}
 

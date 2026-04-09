@@ -44,12 +44,6 @@ type PageState = 'idle' | 'running' | 'complete' | 'error';
 
 // Flood signal — primary summary indicator (multi-source convergence, not a risk determination)
 const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge: string; bar: string }> = {
-  unavailable: {
-    label:    'Flood data unavailable',
-    sublabel: 'One or more data sources could not be reached — try again',
-    badge:    'bg-gray-100 text-gray-600',
-    bar:      'bg-gray-400',
-  },
   none:     {
     label:    'No flood indicators detected',
     sublabel: 'No signals across any data source',
@@ -116,19 +110,12 @@ export default function FloodPage() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-6">
+      <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Flood Data Summary</h1>
         <p className="mt-1.5 text-sm text-gray-500">
           Cross-references NSW EPI statutory flood overlays, Copernicus EMS observed events,
           40-year Landsat water history, and BOM river gauge data for any NSW address.
-        </p>
-      </div>
-
-      <div className="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
-        <p className="text-xs text-amber-800">
-          <span className="font-semibold">Indicative only.</span> This summary is not a substitute
-          for a formal Section 10.7 flood certificate from council. Do not rely on it for
-          conveyancing, development, or insurance decisions.
+          Indicative only — not a substitute for a formal Section 10.7 flood certificate.
         </p>
       </div>
 
@@ -214,7 +201,7 @@ function FloodCard({ result }: { result: FloodResult }) {
             <p className="text-sm text-gray-400">Data not available</p>
           ) : o.ems_flood_detected && o.ems_activations?.length ? (
             <ul className="space-y-1.5">
-              {o.ems_activations?.map((act) => (
+              {o.ems_activations.map((act) => (
                 <li key={act.activation_id} className="flex items-start gap-2">
                   <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
                   <div>
