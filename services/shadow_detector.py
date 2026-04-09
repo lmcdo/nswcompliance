@@ -213,6 +213,7 @@ def _build_scenario_list(
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps,
             "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
+            "shadow_error": shadow_geojson.get("error") if "error" in shadow_geojson else None,
         })
     return scenarios
 
