@@ -3,7 +3,7 @@
 import { useEffect, useRef, useMemo } from 'react';
 import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import type { StyleSpecification, LngLatBoundsLike } from 'maplibre-gl';
-import 'maplibre-gl/dist/maplibre-gl.css';
+// maplibre-gl.css imported in app/reports/layout.tsx (must be in a server component to avoid dynamic chunk 404)
 
 interface GeoJSONGeometry {
   type: string;

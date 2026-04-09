@@ -1,24 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const getSupabase = () => createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-
 const SPATIAL_API_URL = process.env.SPATIAL_API_URL ?? '';
 const STREET_CONTEXT_TIMEOUT_MS = 8000;
+const LIVE_AMENITY_TIMEOUT_MS = 20000;
 
 /**
  * POST /api/spatial/brief
  * Body: { lat: number; lng: number; precinct_id?: string }
  *
- * Returns amenity walkability + street context for a property location.
- * - Amenity: served from precinct_amenity_cache if precinct_id is provided; skipped if no cache hit.
- * - Street context: live from city2graph /street-context (graph-only, fast ~2s, no Overpass).
+ * Amenity resolution order:
+ *   1. precinct_id from caller → cache lookup
+ *   2. No precinct_id → spatial lookup via get_precinct_for_point() → cache
+ *   3. Cache miss → live city2graph /amenity (up to 20s)
  *
- * 200 — at least one data source returned
- * 503 — both sources failed
+ * Street context always runs in parallel (graph-only, ~2s, no Overpass).
  */
 export async function POST(request: NextRequest) {
   let body: { lat?: number; lng?: number; precinct_id?: string };
@@ -33,37 +29,82 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'lat and lng are required numbers' }, { status: 400 });
   }
 
-  // Run amenity cache lookup and street-context call in parallel.
-  const [amenityResult, streetResult] = await Promise.allSettled([
-    fetchAmenityFromCache(precinct_id),
-    fetchStreetContext(lat, lng),
-  ]);
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
-  const amenity = amenityResult.status === 'fulfilled' ? amenityResult.value : null;
-  const streetContext = streetResult.status === 'fulfilled' ? streetResult.value : null;
+  // Street-context fires immediately and runs fully in parallel.
+  const streetContextPromise = fetchStreetContext(lat, lng);
 
-  if (!amenity && !streetContext) {
+  // Resolve precinct_id from caller or spatial lookup.
+  let resolvedPrecinctId: string | null = precinct_id ?? null;
+  if (!resolvedPrecinctId) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any).rpc('get_precinct_for_point', { p_lat: lat, p_lng: lng });
+      resolvedPrecinctId = (data as string) ?? null;
+    } catch {
+      // spatial lookup failed — proceed without
+    }
+  }
+
+  // Try cache.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let amenityRow: { amenity_jsonb: any; computed_at: string | null } | null = null;
+  if (resolvedPrecinctId) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data } = await (supabase as any)
+      .from('precinct_amenity_cache')
+      .select('amenity_jsonb, computed_at')
+      .eq('precinct_id', resolvedPrecinctId)
+      .single();
+    if (data) amenityRow = data;
+  }
+
+  let amenitySource: 'cache' | 'live' | null = amenityRow ? 'cache' : null;
+
+  // Cache miss → live city2graph /amenity.
+  if (!amenityRow) {
+    const live = await fetchLiveAmenity(lat, lng);
+    if (live) {
+      amenityRow = { amenity_jsonb: live, computed_at: null };
+      amenitySource = 'live';
+    }
+  }
+
+  const streetContext = await streetContextPromise;
+
+  if (!amenityRow && !streetContext) {
     return NextResponse.json({ error: 'spatial_unavailable' }, { status: 503 });
   }
 
   return NextResponse.json({
-    amenity: amenity?.amenity_jsonb ?? null,
+    amenity: amenityRow?.amenity_jsonb ?? null,
     street_context: streetContext,
-    amenity_source: amenity ? 'cache' : null,
-    amenity_computed_at: amenity?.computed_at ?? null,
+    amenity_source: amenitySource,
+    amenity_computed_at: amenityRow?.computed_at ?? null,
   });
 }
 
-async function fetchAmenityFromCache(precinctId: string | undefined) {
-  if (!precinctId) return null;
-  const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('precinct_amenity_cache')
-    .select('amenity_jsonb, computed_at')
-    .eq('precinct_id', precinctId)
-    .single();
-  if (error || !data) return null;
-  return data;
+async function fetchLiveAmenity(lat: number, lng: number) {
+  if (!SPATIAL_API_URL) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LIVE_AMENITY_TIMEOUT_MS);
+  try {
+    const resp = await fetch(`${SPATIAL_API_URL}/amenity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng, radius_m: 1000 }),
+      signal: controller.signal,
+    });
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function fetchStreetContext(lat: number, lng: number) {

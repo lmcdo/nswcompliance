@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 export interface AmenityCategory {
   name: string;
@@ -38,7 +38,7 @@ export interface StreetContextData {
 export interface SpatialBriefData {
   amenity: AmenityData | null;
   street_context: StreetContextData | null;
-  amenity_source: 'cache' | null;
+  amenity_source: 'cache' | 'live' | null;
   amenity_computed_at: string | null;
 }
 
@@ -54,25 +54,20 @@ export interface UseSpatialContext {
   reset: () => void;
 }
 
-/**
- * Page-level hook for spatial context data (amenity walkability + street context).
- *
- * User-initiated: call fetch() to trigger. Does NOT auto-fetch on mount.
- * Exception: DA mode Section 2 auto-triggers fetch() on enter.
- *
- * reset() returns to idle — call on address change alongside other resets.
- */
 export function useSpatialContext(
   lat: number | null,
   lng: number | null,
   precinctId: string | null,
 ): UseSpatialContext {
   const [state, setState] = useState<SpatialContextState>({ status: 'idle' });
+  // Ref-based loading guard — avoids stale closure when reading state inside callback.
+  const loadingRef = useRef(false);
 
   const fetch = useCallback(async () => {
     if (!lat || !lng) return;
-    if (state.status === 'loading') return;
+    if (loadingRef.current) return;
 
+    loadingRef.current = true;
     setState({ status: 'loading' });
     try {
       const resp = await window.fetch('/api/spatial/brief', {
@@ -88,11 +83,13 @@ export function useSpatialContext(
       setState({ status: 'success', data });
     } catch {
       setState({ status: 'error' });
+    } finally {
+      loadingRef.current = false;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lat, lng, precinctId]);
 
   const reset = useCallback(() => {
+    loadingRef.current = false;
     setState({ status: 'idle' });
   }, []);
 

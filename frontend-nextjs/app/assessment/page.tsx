@@ -355,6 +355,8 @@ export default function AssessmentPage() {
               <SpatialContextCard
                 state={spatialContext.state}
                 onFetch={spatialContext.fetch}
+                lat={selectedCoordinates.lat}
+                lng={selectedCoordinates.lng}
               />
             )}
 

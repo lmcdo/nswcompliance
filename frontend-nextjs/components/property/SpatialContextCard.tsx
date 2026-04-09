@@ -7,6 +7,8 @@ import { useFeatureFlag } from '@/hooks/useFeatureFlag';
 interface SpatialContextCardProps {
   state: SpatialContextState;
   onFetch: () => void;
+  lat?: number | null;
+  lng?: number | null;
 }
 
 const AMENITY_LABELS: Record<string, string> = {
@@ -68,9 +70,7 @@ function StreetRow({ ctx }: { ctx: StreetContextData }) {
         <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${badgeCls}`}>
           {ctx.street_hierarchy}
         </span>
-        {solar && (
-          <span className="text-stone-400">{solar}</span>
-        )}
+        {solar && <span className="text-stone-400">{solar}</span>}
       </span>
     </div>
   );
@@ -103,11 +103,7 @@ function LoadedCard({ amenity, streetContext }: { amenity: AmenityData | null; s
           </div>
           <div>
             {AMENITY_ORDER.map(key => (
-              <AmenityRow
-                key={key}
-                label={AMENITY_LABELS[key]}
-                item={amenity[key]}
-              />
+              <AmenityRow key={key} label={AMENITY_LABELS[key]} item={amenity[key]} />
             ))}
           </div>
         </>
@@ -120,29 +116,31 @@ function LoadedCard({ amenity, streetContext }: { amenity: AmenityData | null; s
   );
 }
 
-export function SpatialContextCard({ state, onFetch }: SpatialContextCardProps) {
+export function SpatialContextCard({ state, onFetch, lat, lng }: SpatialContextCardProps) {
   const cardEnabled = useFeatureFlag('spatial_context_card');
   if (!cardEnabled) return null;
 
+  const osmUrl = lat && lng
+    ? `https://www.openstreetmap.org/#map=17/${lat.toFixed(5)}/${lng.toFixed(5)}`
+    : 'https://www.openstreetmap.org';
+
   return (
     <div className="bg-stone-50 border border-stone-200 rounded-lg p-4">
-      {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-medium text-stone-500 uppercase tracking-wide">Site Context</p>
         {state.status === 'success' && (
           <a
-            href="https://www.openstreetmap.org"
+            href={osmUrl}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1 text-xs text-stone-400 hover:text-stone-600"
-            title="Data from OpenStreetMap"
+            title="Verify on OpenStreetMap"
           >
             OSM <ExternalLink className="w-3 h-3" />
           </a>
         )}
       </div>
 
-      {/* Fixed-height content area — all states same height to prevent CLS */}
       <div className="min-h-[196px]">
         {(state.status === 'idle' || state.status === 'error') && (
           <div className="flex flex-col justify-between h-full">
@@ -157,14 +155,9 @@ export function SpatialContextCard({ state, onFetch }: SpatialContextCardProps) 
             </button>
           </div>
         )}
-
         {state.status === 'loading' && <SkeletonCard />}
-
         {state.status === 'success' && (
-          <LoadedCard
-            amenity={state.data.amenity}
-            streetContext={state.data.street_context}
-          />
+          <LoadedCard amenity={state.data.amenity} streetContext={state.data.street_context} />
         )}
       </div>
     </div>
