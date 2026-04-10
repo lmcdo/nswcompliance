@@ -1916,6 +1916,7 @@ export function ProvisionsByTocStructure({
               lepProhibitedDevTypes={lepProhibitedDevTypes}
               lepPermCovered={lepPermData?.covered ?? false}
               seppExemptWorks={seppExemptWorks}
+              lotArea={propertyData?.lotDimensions?.area ?? null}
             />
           </div>
         </div>

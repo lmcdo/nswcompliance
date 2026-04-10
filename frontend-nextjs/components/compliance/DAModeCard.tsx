@@ -12,6 +12,7 @@ import { ANCILLARY_WORKS } from '@/lib/see/ancillaryWorks';
 import type { IntakeAnswers } from '@/lib/see/intake';
 import type { Provision } from './PageGroupedProvisions';
 import { HERITAGE_ELEMENTS, SCOPE_TOPIC_MAP, type WorksScopeAnswers } from '@/lib/see/worksScope';
+import { DABundleChecklist } from './DABundleChecklist';
 
 interface DAModeCardProps {
   devType: string;
@@ -68,6 +69,8 @@ interface DAModeCardProps {
   lepPermCovered?: boolean;
   /** Ancillary work values that have SEPP exempt development provisions for this zone */
   seppExemptWorks?: Set<string>;
+  /** Lot area in m² — used for stormwater trigger in DA bundle checklist */
+  lotArea?: number | null;
 }
 
 export function DAModeCard({
@@ -106,6 +109,7 @@ export function DAModeCard({
   lepProhibitedDevTypes,
   lepPermCovered,
   seppExemptWorks,
+  lotArea,
 }: DAModeCardProps) {
   const [pendingDismiss, setPendingDismiss] = useState<string | null>(null);
   const [customReason, setCustomReason] = useState('');
@@ -620,6 +624,23 @@ export function DAModeCard({
               </div>
             </>
           )}
+        </div>
+      )}
+
+      {/* DA Bundle Checklist — shown when dev type is selected */}
+      {devType && (
+        <div className="px-4 pb-4 pt-2">
+          <DABundleChecklist
+            inputs={{
+              devType,
+              isHeritage: heritage,
+              hcaName: hcaName ?? null,
+              lotArea: lotArea ?? null,
+              floodProne: intakeAnswers?.flood_prone,
+              bushfireProne: intakeAnswers?.bushfire_prone,
+              contaminatedLand: intakeAnswers?.contaminated_land,
+            }}
+          />
         </div>
       )}
     </div>
