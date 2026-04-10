@@ -1,6 +1,6 @@
 # PlotDetect — Grants, Partners, Users & Support Avenues
 
-*Last updated: 2026-03-26*
+*Last updated: 2026-04-09*
 
 ---
 
@@ -40,10 +40,10 @@ Requires incorporated company. Also requires matched co-funding. Timeline too ti
 ### R&D Tax Incentive — 43.5% refundable offset ❌ REQUIRES INCORPORATION
 Companies only. Once incorporated: Claude API costs, software dev costs, and contractor costs tied to R&D are potentially eligible. File with tax return, no separate application. One of the strongest financial reasons to incorporate before June 30.
 
-### Lander & Rogers LawTech Hub ✅ SOLE TRADER ELIGIBLE | Closes 1 April 2026, starts 14 May 2026
+### Lander & Rogers LawTech Hub ~~CLOSED — April 2026~~ | Watch for 2027 cohort
 https://www.landers.com.au/legal-innovation/lawtech-hub
 
-Equity-free, 6-month accelerator run by law firm Lander & Rogers. Now in its 9th cohort. Open to AI-driven and general legal technology startups and scaleups from Australia and worldwide. No stated incorporation requirement — they accept "individuals, teams and businesses." Offers: direct collaboration with lawyers and technologists, masterclasses (pricing, scaling, branding, financial modelling), access to funding networks, mentors and partners. Product that automates regulatory compliance for DAs is a strong fit for the LegalTech framing. Application deadline is URGENT — closes 1 April 2026. Apply immediately.
+Equity-free, 6-month accelerator run by law firm Lander & Rogers. 9th cohort closed 1 April 2026. Strong fit for the LegalTech framing — AI-driven regulatory compliance for DAs. Watch for next cohort announcement (typically late Q1). Apply in 2027 if not yet at scale-up stage.
 
 ### NSW Boosting Business Innovation Program / TechVouchers ⚠️ LIKELY REQUIRES ACN | Ongoing (closed intake, contact delivery partners)
 https://www.nsw.gov.au/business-and-economy/innovation/grants-and-programs/boosting-business-innovation-program
@@ -152,9 +152,13 @@ Profiles and outreach templates in `memory/scout-validate-outreach.md`.
 
 **For Verify:** one town planning consultant is the right first user. They write SEE documents and do pre-DA compliance checks manually. Find via Planning Institute of Australia NSW chapter (planning.org.au/nsw) or LinkedIn "town planner consultant inner west sydney".
 
-**REINSW WIRE 2026** — Real Estate Institute of NSW annual industry conference, 28 April 2026, Shangri-La Sydney. ~500+ real estate industry attendees including proptech speakers. Attending or sponsoring would put the product in front of property professionals. Not a grant or accelerator — a user acquisition and credibility play. https://events.reinsw.com.au/wire/
+**REINSW WIRE 2026** — Real Estate Institute of NSW annual industry conference, 28 April 2026, Shangri-La Sydney. ~500+ real estate industry attendees including proptech speakers. Attending or sponsoring puts the product in front of property professionals. Not a grant or accelerator — a user acquisition and credibility play. Register now. https://events.reinsw.com.au/wire/
 
-**PIA NSW 2026 State Conference** — Planning Institute of Australia NSW chapter annual conference. Town planning consultants and council planners are the target user for Verify. Speaking slot or exhibiting puts the product directly in front of the right people. Watch planning.org.au/nswcontent/state-conference for 2026 dates.
+**PIA NSW 2026 State Conference** — Planning Institute of Australia NSW chapter annual conference. Town planning consultants and council planners are the target user for Verify. Speaking slot or exhibiting puts the product directly in front of the right people. Watch planning.org.au/nsw/content/state-conference for 2026 dates. Apply for a speaking slot proactively — conference committees accept pitches months in advance.
+
+**Leigh Caprile / DocuBuild warm path** — Caprile (DocuBuild) reviewed Verify independently and was "very impressed." He offered introductions. This is a warm path into the construction compliance and certifier network — the same buyer profile that funds DocuBuild. Follow up directly: ask specifically who he would introduce you to and in what context. A warm intro from a peer operator carries more weight than cold outreach to the same person.
+
+**buy.nsw supplier panel** — Register PlotDetect as an approved NSW government supplier. This is how vendors like DocuBuild build institutional credibility and get onto council procurement shortlists. Register under "software / data services / planning tools." No incorporation required to register; ACN preferred but ABN accepted at initial registration stage. Once on the panel, government agencies (councils, DPE) can procure directly without a full tender. https://buy.nsw.gov.au/supplier
 
 Every grant application and partnership conversation is 10x stronger with documented user feedback.
 
@@ -162,7 +166,9 @@ Every grant application and partnership conversation is 10x stronger with docume
 
 ## 6. Mentors
 
-**Planning Institute of Australia NSW** — member directory and events. A retired senior planner or council assessment officer as an advisor costs nothing at early stage. https://www.planning.org.au/pia/divisions/nsw-home.aspx
+**Planning Institute of Australia NSW** — member directory and events. A retired senior planner or council assessment officer as an advisor costs nothing at early stage. PIA NSW is also the primary channel to reach Verify's target user (town planning consultants). Speak at or exhibit at the 2026 State Conference. https://www.planning.org.au/pia/divisions/nsw-home.aspx
+
+**WSU Launch Pad** — Western Sydney University's startup hub. Premium Membership for startups (<3 years, <$500K raised) includes mentoring, introductions, co-working, and access to the WSU network. Structured programs include Ignition Accelerator and Pre-Flight. Previously participated in a ~$500/6-month mentoring program here — confirm exact program name and contact. Alumni connection still accessible. https://launchpadlive.com.au/launch-pad-membership/ — ⚠️ confirm program name and contact before re-engaging.
 
 **NSW DPE digital planning team** — cold email with demo link to the right person is viable. Contact via daai@planning.nsw.gov.au or the Planning Portal roadmap team.
 
@@ -176,21 +182,40 @@ Incorporate as Pty Ltd before MVP Ventures Round 3 (est. June/July 2026). Cost: 
 
 ---
 
-## Priority order (from 2026-03-26)
+## Priority order (updated 2026-04-09)
 
-1. **URGENT — by 1 April** — Apply to Lander & Rogers LawTech Hub (equity-free, 6 months, closes 1 April 2026)
-2. **This week** — Assess NEIS eligibility if burning savings with no income
-3. **This week** — 2 LinkedIn DMs (buyers agents) + 1 email (town planning consultant) — 30 min
-4. **This week** — Apply to Stone & Chalk membership + Tech Central co-working
-5. **This week** — Check Founder Institute ANZ application status/deadline
-6. **This week** — Email daai@planning.nsw.gov.au asking about next AI Solutions Panel tender timeline
-7. **April** — Attend or register for REINSW WIRE 2026 (28 April, Shangri-La Sydney)
-8. **April** — Join PropTech Association, enter PropTech Awards
-9. **April** — Check REACH ANZ eligibility and apply if stage requirements are met
-10. **Mid-year** — Google for Startups AI First application
-11. **Before June/July** — Incorporate Pty Ltd ahead of MVP Ventures Round 3
-12. **Post-incorporation** — Apply to CSIRO Kick-Start for matched R&D funding
-13. **Post-incorporation** — Target Industry Growth Program ($50K–$250K) alongside MVP Ventures
+**This week**
+1. Register for REINSW WIRE 2026 — 28 April, Shangri-La Sydney. 19 days away. Register now.
+2. Follow up with Leigh Caprile — ask specifically who he would introduce you to and in what context. Warm path, don't let it go cold.
+3. Assess NEIS eligibility — if burning savings with no income, this is immediate income (~$760/fortnight for 39 weeks).
+4. Apply to Stone & Chalk membership + Tech Central co-working — ongoing, no deadline.
+5. Check Founder Institute ANZ current cohort dates — fi.co/apply/sydney.
+
+**This month (April)**
+6. Email daai@planning.nsw.gov.au — ask about next AI Solutions Panel tender timeline.
+7. Find PIA NSW 2026 State Conference date — apply for speaking slot proactively.
+8. Register on buy.nsw supplier panel — institutional credibility, no incorporation required at ABN stage.
+9. Join PropTech Association + enter PropTech Awards.
+10. Check REACH ANZ eligibility — re-assess if they've opened applications.
+11. ULI Young Leaders — join for low-cost entry into the developer/planner network.
+
+**Mid-year**
+12. Apply to Google for Startups Accelerator: AI First — September cycle, apply now to get ahead.
+13. Confirm which Macquarie/WSU startup program you were previously part of — re-engage alumni network.
+14. SXSW Sydney Pitch — 2026 event ~October, watch for application dates.
+
+**Before June/July**
+15. Incorporate Pty Ltd — unlocks MVP Ventures, R&D Tax Incentive, ETCF future rounds, investor conversations.
+
+**Post-incorporation**
+16. Apply to MVP Ventures Round 3 ($20K–$75K, est. June/July 2026).
+17. Apply to CSIRO Kick-Start for matched R&D funding.
+18. Target Industry Growth Program ($50K–$250K) alongside MVP Ventures.
+19. Sydney Angels — after first paying user.
+
+**Expired / Skip this cycle**
+- ~~Lander & Rogers LawTech Hub~~ — closed 1 April 2026. Watch for 2027 cohort.
+- ~~ETCF 2026~~ — closes April 29, requires incorporation. Skip. Target if it runs in 2027.
 
 ---
 
