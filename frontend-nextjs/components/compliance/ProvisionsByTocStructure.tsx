@@ -1714,7 +1714,8 @@ export function ProvisionsByTocStructure({
             const texts = provisionsBySectionKey.get(key)!;
             if (texts.length < 1 && p.provision_text) {
               const firstLine = p.provision_text.split('\n')[0].trim().substring(0, 150);
-              if (firstLine) texts.push(firstLine);
+              const clausePrefix = (p as any).clause_label ? `[${(p as any).clause_label}] ` : '';
+              if (firstLine) texts.push(`${clausePrefix}${firstLine}`);
             }
           }
 
