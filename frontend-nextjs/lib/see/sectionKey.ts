@@ -78,3 +78,41 @@ export function parseSectionKey(key: string): { part: string; sectionNumber: str
     ? { part: key, sectionNumber: '' }
     : { part: key.substring(0, idx), sectionNumber: key.substring(idx + 2) };
 }
+
+const ARTICLES = new Set(['and', 'or', 'of', 'the', 'in', 'to', 'a', 'an', 'for', 'at', 'by']);
+
+/**
+ * Derive a human-readable section title from a provision's toc_section_number and
+ * section_header fields. Used as a fallback when the TOC structure does not carry a
+ * section_title that matches the provision's section key (e.g. Leichhardt where
+ * complete_toc indexes by slug "part-c-s1-general" but provisions group by "C1.2").
+ *
+ * Returns e.g. "C1.2 Demolition" from toc_section_number="C1.2", section_header="DEMOLITION".
+ * Returns just the section number when the header looks like objective/control text rather
+ * than a DCP section heading. Returns null when neither field is useful.
+ */
+export function deriveSectionTitleFromProvision(p: ProvisionForSectionKey): string | null {
+  const secNum = p.toc_section_number?.trim();
+  const header = p.section_header?.trim();
+  if (!secNum) return null;
+
+  if (header) {
+    // A DCP section heading is all-uppercase (no lowercase letters) and has no trailing full stop.
+    const isHeading = /^[A-Z][A-Z\s\d\-–()\/&,]+$/.test(header);
+    if (isHeading) {
+      const titleCase = header
+        .split(' ')
+        .map((word, i) => {
+          const lower = word.toLowerCase();
+          return i === 0 || !ARTICLES.has(lower)
+            ? lower.charAt(0).toUpperCase() + lower.slice(1)
+            : lower;
+        })
+        .join(' ');
+      return `${secNum} ${titleCase}`;
+    }
+  }
+
+  // Header is objective/control text or absent — just use the section number as the label.
+  return secNum;
+}

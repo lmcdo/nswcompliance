@@ -19,7 +19,7 @@ import { pdf } from '@react-pdf/renderer';
 import { ProvisionReport, SEEDocument } from '@/components/pdf';
 import { PropertyContext, ProvisionForPDF } from '@/lib/pdf/types';
 import { SEEDocumentData, SectionAssessment } from '@/lib/see/types';
-import { deriveProvisionPartKey, inferSectionNumberFromHeader, buildSectionKey } from '@/lib/see/sectionKey';
+import { deriveProvisionPartKey, inferSectionNumberFromHeader, buildSectionKey, deriveSectionTitleFromProvision } from '@/lib/see/sectionKey';
 import { matchesSearchWithSynonyms, scoreProvision, getSearchSuggestions } from '@/lib/search-utils';
 import { SearchAutocomplete } from '@/components/ui/SearchAutocomplete';
 import { useDASession } from '@/hooks/useDASession';
@@ -805,23 +805,40 @@ export function ProvisionsByTocStructure({
   // Pass 1: complete_toc (structural data from API). Reliable when the API normalises
   // part keys to the same format as deriveProvisionPartKey ("Part N", "Appendix X").
   //
-  // Pass 2: allProvisions via buildSectionKey. Fills gaps where complete_toc part keys
-  // don't match deriveProvisionPartKey output (e.g. raw slugs vs "Part 3"). Uses the
-  // first non-null toc_section_title encountered per section key. Because it uses the
-  // same buildSectionKey as everything else, it is self-consistently correct.
+  // Canonical section titles indexed by section key (partKey::sectionNumber).
+  // Pass 1: from complete_toc structural data (section_title on TOC entries).
+  //   Also builds slugTitleMap (slug → section_title) for the Pass 2 fallback.
+  // Pass 2: from provisions — fills gaps where TOC slug keys don't match provision
+  //   section keys (e.g. Leichhardt: slug "part-c-s1-general" vs. "Part C::C1.2").
+  //   Strategy: try deriveSectionTitleFromProvision (all-caps section_header → "C1.2 Demolition").
+  //   If that only returns the bare section number (content text headers), fall back to
+  //   the TOC slug title: "C2" + "Urban Character" → "C2 Urban Character".
   const canonicalSectionTitles = useMemo(() => {
     const map = new Map<string, string | null>();
+    const slugTitleMap = new Map<string, string>(); // TOC section slug → human title
+
     // Pass 1: complete_toc structural data
     for (const [partId, part] of Object.entries(completeTocStructure as Record<string, any>)) {
       for (const [sectionId, section] of Object.entries((part.sections || {}) as Record<string, any>)) {
-        map.set(`${partId}::${sectionId}`, section.section_title || null);
+        const title = section.section_title || null;
+        map.set(`${partId}::${sectionId}`, title);
+        if (title) slugTitleMap.set(sectionId, title);
       }
     }
-    // Pass 2: provision-derived titles for any keys not covered by Pass 1
+
+    // Pass 2: provision-derived titles for any keys not covered by Pass 1.
     for (const p of allProvisions) {
       const key = buildSectionKey(p);
-      if (!map.has(key) && p.toc_section_title) {
-        map.set(key, p.toc_section_title);
+      if (!map.has(key)) {
+        let title: string | null = (p as any).toc_section_title ?? deriveSectionTitleFromProvision(p);
+        // If derivation returned only the bare section number (non-heading content text),
+        // try the slug title as a suffix: "C2 Urban Character", "C3 Residential", "C1.10 General".
+        const secNum = p.toc_section_number?.trim() ?? null;
+        if (title === secNum) {
+          const slugTitle = p.source_chapter_key ? slugTitleMap.get(p.source_chapter_key) : null;
+          if (slugTitle) title = secNum ? `${secNum} ${slugTitle}` : slugTitle;
+        }
+        if (title) map.set(key, title);
       }
     }
     return map;
@@ -1697,7 +1714,8 @@ export function ProvisionsByTocStructure({
             const texts = provisionsBySectionKey.get(key)!;
             if (texts.length < 1 && p.provision_text) {
               const firstLine = p.provision_text.split('\n')[0].trim().substring(0, 150);
-              if (firstLine) texts.push(firstLine);
+              const clausePrefix = (p as any).clause_label ? `[${(p as any).clause_label}] ` : '';
+              if (firstLine) texts.push(`${clausePrefix}${firstLine}`);
             }
           }
 
@@ -1898,6 +1916,7 @@ export function ProvisionsByTocStructure({
               lepProhibitedDevTypes={lepProhibitedDevTypes}
               lepPermCovered={lepPermData?.covered ?? false}
               seppExemptWorks={seppExemptWorks}
+              lotArea={propertyData?.lotDimensions?.area ?? null}
             />
           </div>
         </div>

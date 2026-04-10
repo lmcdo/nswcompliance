@@ -29,6 +29,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPool } from '@/lib/db';
 import { expandDevTypeHierarchy, expandDevTypeHierarchyMulti } from '@/lib/see/devTypeHierarchy';
 import { inferSectionNumberFromHeader } from '@/lib/see/sectionKey';
+import { parseRefNumber } from '@/lib/see/refNumber';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';
 import { captureServerException } from '@/lib/posthog-server';
 
@@ -521,7 +522,9 @@ const PROVISION_BASE_SELECT = `
   rp.v2_heritage_hca,
   rp.v2_applicable_dev_types,
   rp.source_chapter_key,
-  rp.section_header
+  rp.section_header,
+  rp.ref_number,
+  rp.source_council
 `;
 
 /**
@@ -648,6 +651,7 @@ async function enrichWithTocSections(
       ...p,
       toc_section_number: inferSectionNumberFromHeader(p.section_header) || null,
       toc_section_title: null,
+      clause_label: parseRefNumber(p.ref_number, p.source_council),
     }));
   }
 
@@ -713,7 +717,8 @@ async function enrichWithTocSections(
     return {
       ...p,
       toc_section_number: tocInfo?.section_number || inferSectionNumberFromHeader(p.section_header) || null,
-      toc_section_title: tocInfo?.section_title || null
+      toc_section_title: tocInfo?.section_title || null,
+      clause_label: parseRefNumber(p.ref_number, p.source_council)
     };
   });
 }

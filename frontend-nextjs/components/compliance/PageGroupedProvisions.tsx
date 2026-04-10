@@ -186,6 +186,8 @@ export interface Provision {
   relevance_reason?: string;
   v2_applicable_dev_types?: string[];
   source_chapter_key?: string;
+  // Clause reference parsed from ref_number (e.g. "2.6 C3", "C2.2.1.1")
+  clause_label?: string | null;
 }
 
 interface PageGroup {
@@ -860,6 +862,15 @@ export function PageGroupedProvisions({
                                 {provision.v2_marker}
                               </Badge>
                             )}
+                            {/* Clause Label */}
+                            {provision.clause_label && (
+                              <span
+                                className="text-xs font-mono px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-300 rounded shrink-0"
+                                title={`DCP clause reference: ${provision.clause_label}`}
+                              >
+                                {provision.clause_label}
+                              </span>
+                            )}
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Badge className={`text-sm font-medium shrink-0 ${getLayerColor(layer)}`}>
@@ -1137,6 +1148,16 @@ export function PageGroupedProvisions({
                           >
                             {provision.v2_marker}
                           </Badge>
+                        )}
+
+                        {/* Clause Label - DCP clause reference (e.g. "2.6 C3", "C2.2.1.1") */}
+                        {provision.clause_label && (
+                          <span
+                            className="text-xs font-mono px-1.5 py-0.5 bg-slate-100 text-slate-600 border border-slate-300 rounded shrink-0"
+                            title={`DCP clause reference: ${provision.clause_label}`}
+                          >
+                            {provision.clause_label}
+                          </span>
                         )}
 
                         {/* Layer Badge - council-specific label with larger font */}

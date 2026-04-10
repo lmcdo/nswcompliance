@@ -97,12 +97,13 @@ AUSTLII_HEADERS = {
     "Accept": "text/html,application/xhtml+xml",
 }
 
-CONSECUTIVE_404_LIMIT = 30
+AUSTLII_BASE = "https://www.austlii.edu.au"
+TOC_LETTERS = list("0ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
 def case_id_from_url(url: str) -> str:
-    m = re.search(r"NSWLEC1/(\d+)/(\d+)\.html", url, re.IGNORECASE)
-    return f"NSWLEC1-{m.group(1)}-{m.group(2)}" if m else url
+    m = re.search(r"NSWLEC/(\d+)/(\d+)\.html", url, re.IGNORECASE)
+    return f"NSWLEC-{m.group(1)}-{m.group(2)}" if m else url
 
 
 def html_to_text(html: str) -> str:
@@ -117,35 +118,37 @@ def html_to_text(html: str) -> str:
 
 
 def probe_year(year: int) -> list[str]:
-    """Return all valid decision URLs for a given year via sequential HEAD probes."""
-    links = []
-    consecutive_404 = 0
-    n = 1
+    """Return all decision URLs for a given year via AustLII TOC pages.
+
+    Enumerates all 27 TOC pages (toc-0 through toc-Z), collects every
+    viewdoc link that matches the target year. One pass covers the full
+    database — much faster and more reliable than sequential HEAD probing.
+    """
+    year_str = str(year)
+    found: list[str] = []
 
     with httpx.Client(headers=AUSTLII_HEADERS, timeout=15, follow_redirects=True) as client:
-        while consecutive_404 < CONSECUTIVE_404_LIMIT:
-            url = f"https://www.austlii.edu.au/au/cases/nsw/NSWLEC1/{year}/{n}.html"
+        for letter in TOC_LETTERS:
+            toc_url = f"{AUSTLII_BASE}/cgi-bin/viewtoc/au/cases/nsw/NSWLEC/toc-{letter}.html"
             try:
-                resp = client.head(url)
-                status = resp.status_code
+                resp = client.get(toc_url)
+                if resp.status_code != 200:
+                    logger.warning("TOC %s returned %s", toc_url, resp.status_code)
+                    continue
             except Exception as exc:
-                logger.warning("Network error probing %s: %s", url, exc)
-                status = 404
+                logger.warning("TOC fetch error %s: %s", toc_url, exc)
+                continue
 
-            if status == 200:
-                links.append(url)
-                consecutive_404 = 0
-            elif status == 404:
-                consecutive_404 += 1
-            else:
-                logger.warning("HTTP %s probing %s", status, url)
-                consecutive_404 += 1
+            # Extract decision links matching this year
+            for href in re.findall(r'href="(/cgi-bin/viewdoc/au/cases/nsw/NSWLEC/\d+/\d+\.html)"', resp.text):
+                if f"/NSWLEC/{year_str}/" in href:
+                    found.append(f"{AUSTLII_BASE}{href}")
 
-            n += 1
-            time.sleep(0.5)  # ≤ 2 req/sec
+            time.sleep(0.6)  # ≤ 2 req/sec
 
-    logger.info("Year %s: probed %s candidates, found %s decisions", year, n - 1, len(links))
-    return links
+    found = list(dict.fromkeys(found))  # deduplicate, preserve order
+    logger.info("Year %s: found %s decisions via TOC", year, len(found))
+    return found
 
 
 def fetch_decision_html(url: str) -> str:
@@ -323,7 +326,7 @@ def update_last_checked(last_checked: str):
 @router.get("/test-austlii")
 def test_austlii():
     """Debug: make a single HEAD request to AustLII and return the result."""
-    url = "https://www.austlii.edu.au/au/cases/nsw/NSWLEC1/2024/1.html"
+    url = f"{AUSTLII_BASE}/cgi-bin/viewdoc/au/cases/nsw/NSWLEC/2024/100.html"
     try:
         with httpx.Client(headers=AUSTLII_HEADERS, timeout=15, follow_redirects=True) as client:
             resp = client.head(url)
