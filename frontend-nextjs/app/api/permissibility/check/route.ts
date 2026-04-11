@@ -194,16 +194,22 @@ export async function POST(request: NextRequest) {
       max_fsr: constraints.maxFsr
     };
 
-    // 6. Get DCP section info
+    // 6. Get DCP section info from regulatory_provisions (authoritative table)
+    // Uses former_council + v2_topic grouping. dcp_general_requirements is legacy (false positives).
     const dcpSections = await query(`
-      SELECT category, subcategory, COUNT(*) as requirement_count
-      FROM dcp_general_requirements
-      WHERE lga = $1
-        AND ($2 = ANY(development_types) OR development_types IS NULL)
-      GROUP BY category, subcategory
+      SELECT v2_topic AS category,
+             NULL AS subcategory,
+             COUNT(*) AS requirement_count
+      FROM regulatory_provisions
+      WHERE former_council = $1
+        AND v2_is_actionable = true
+        AND (v2_applicable_dev_types IS NULL
+             OR array_length(v2_applicable_dev_types, 1) IS NULL
+             OR $2 = ANY(v2_applicable_dev_types))
+      GROUP BY v2_topic
       ORDER BY requirement_count DESC
       LIMIT 10
-    `, [lga, developmentType]);
+    `, [formerCouncil, developmentType]);
 
     const summary = generateSummary(
       permissibility,
