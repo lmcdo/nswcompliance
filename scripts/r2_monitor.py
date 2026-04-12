@@ -233,7 +233,8 @@ def run_monitor(
                council_page_url, hub_expected_count,
                r2_current_path, r2_version_label,
                content_hash, url_content_length, url_etag, check_failures,
-               COALESCE(is_spatial, FALSE) AS is_spatial
+               COALESCE(is_spatial, FALSE) AS is_spatial,
+               COALESCE(is_inert, FALSE) AS is_inert
         FROM dcp_chapter_registry
         WHERE is_active = TRUE
           AND council_url IS NOT NULL
@@ -369,6 +370,7 @@ def run_monitor(
             stored_len  = chapter["url_content_length"]
             failures    = chapter["check_failures"] or 0
             is_spatial  = chapter.get("is_spatial", False)
+            is_inert    = chapter.get("is_inert", False)
 
             print(f"\n  {ch_council}/{key}")
 
@@ -456,7 +458,7 @@ def run_monitor(
                     )
                     print(f"    Uploaded → r2://{R2_BUCKET_NAME}/{new_r2_path}")
                     new_public_url = R2_PUBLIC_BASE + new_r2_path
-                    # Spatial chapters: hash-tracked but not extracted — never set needs_extraction
+                    # Spatial/inert chapters: hash-tracked but never trigger extraction
                     cur.execute(
                         """
                         UPDATE dcp_chapter_registry
@@ -474,7 +476,7 @@ def run_monitor(
                             new_hash, new_len,
                             new_etag, new_lm,
                             now, now,
-                            not is_spatial,  # spatial chapters never need extraction
+                            not is_spatial and not is_inert,
                             chapter_id,
                         ),
                     )
@@ -487,19 +489,22 @@ def run_monitor(
                             f"{url}"
                         )
                         print(f"    [SPATIAL] Telegram alert sent — manual review required")
+                    elif is_inert:
+                        print(f"    [INERT] Hash updated silently — cover/ToC, no alert")
                 else:
                     print(f"    [dry-run] would upload to r2://{R2_BUCKET_NAME}/{new_r2_path}")
 
-                results["changed"].append({
-                    "council": ch_council,
-                    "chapter_key": key,
-                    "chapter_label": label,
-                    "old_hash": stored_hash,
-                    "new_hash": new_hash,
-                    "new_version": new_version,
-                    "r2_path": new_r2_path,
-                })
-                council_changed += 1
+                if not is_inert:
+                    results["changed"].append({
+                        "council": ch_council,
+                        "chapter_key": key,
+                        "chapter_label": label,
+                        "old_hash": stored_hash,
+                        "new_hash": new_hash,
+                        "new_version": new_version,
+                        "r2_path": new_r2_path,
+                    })
+                    council_changed += 1
                 results["checked"] += 1
 
             except Exception as exc:
