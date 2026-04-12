@@ -120,6 +120,14 @@ export interface PlanningConstraints {
  additionalPermittedUses?: { hasAPU: boolean; schedules: string[] } | null;
  foreshoreBuildingLine?: { hasLine: boolean; layClass?: string } | null;
  landReservation?: { hasReservation: boolean; purpose?: string } | null;
+ riparianLand?: { inRiparianArea: boolean; category?: string } | null;
+ wetlands?: { inWetlandsArea: boolean } | null;
+ keySite?: { isKeySite: boolean; clause?: string } | null;
+ activeStreetFrontage?: { required: boolean; clause?: string } | null;
+ dcpFloodMap?: { inFloodArea: boolean; classification?: string } | null;
+
+ // Planning instruments that apply to this property (from Land Application Map layer)
+ landApplicationInstruments?: Array<{ type: string; name: string }> | null;
 }
 
 /**
@@ -654,9 +662,19 @@ export class NSWPlanningPortalService {
  break;
 
  case 'Land Application Map':
- // Extract LGA from Land Application Map
  if (result['LGA Name']) {
  constraints.lga = result['LGA Name'];
+ }
+ // Collect all instruments/maps that apply to this property
+ {
+ const instrName = result['EPI Name'] || result['Name'] || result['name'];
+ const instrType = result['Type'] || result['EPI Type'] || 'Instrument';
+ if (instrName) {
+   if (!constraints.landApplicationInstruments) constraints.landApplicationInstruments = [];
+   if (!constraints.landApplicationInstruments.some(i => i.name === instrName)) {
+     constraints.landApplicationInstruments.push({ type: instrType, name: instrName });
+   }
+ }
  }
  break;
  

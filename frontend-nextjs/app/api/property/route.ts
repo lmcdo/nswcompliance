@@ -59,13 +59,21 @@ export async function GET(req: NextRequest) {
      `SELECT layer_type, value
       FROM spatial_overlays
       WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
-      AND layer_type IN ('additional_permitted_uses', 'foreshore_building_line', 'land_reservation')`,
+      AND layer_type IN (
+        'additional_permitted_uses', 'foreshore_building_line', 'land_reservation',
+        'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood'
+      )`,
      [lon, lat]
    );
    const rows = spatialResult.rows;
    const apuRows = rows.filter(r => r.layer_type === 'additional_permitted_uses');
    const foreshorRows = rows.filter(r => r.layer_type === 'foreshore_building_line');
    const reservRows = rows.filter(r => r.layer_type === 'land_reservation');
+   const riparianRows = rows.filter(r => r.layer_type === 'riparian');
+   const wetlandsRows = rows.filter(r => r.layer_type === 'wetlands');
+   const keySiteRows = rows.filter(r => r.layer_type === 'key_sites');
+   const asfRows = rows.filter(r => r.layer_type === 'active_street_frontages');
+   const dcpFloodRows = rows.filter(r => r.layer_type === 'flood');
 
    if (apuRows.length > 0) {
      propertyData.constraints.additionalPermittedUses = {
@@ -83,6 +91,35 @@ export async function GET(req: NextRequest) {
      propertyData.constraints.landReservation = {
        hasReservation: true,
        purpose: reservRows[0].value,
+     };
+   }
+   if (riparianRows.length > 0) {
+     const val = riparianRows[0].value as string;
+     // Shorten verbose values: "Protected-Riparian Land" → "Protected", "10m" → "10m"
+     const category = val?.startsWith('Protected') ? 'Protected' : val;
+     propertyData.constraints.riparianLand = { inRiparianArea: true, category };
+   }
+   if (wetlandsRows.length > 0) {
+     propertyData.constraints.wetlands = { inWetlandsArea: true };
+   }
+   if (keySiteRows.length > 0) {
+     const clauseRow = keySiteRows.find(r => (r.value as string)?.startsWith('Clause'));
+     propertyData.constraints.keySite = {
+       isKeySite: true,
+       clause: clauseRow?.value ?? undefined,
+     };
+   }
+   if (asfRows.length > 0) {
+     const clauseRow = asfRows.find(r => (r.value as string)?.includes('Clause'));
+     propertyData.constraints.activeStreetFrontage = {
+       required: true,
+       clause: clauseRow?.value ?? undefined,
+     };
+   }
+   if (dcpFloodRows.length > 0) {
+     propertyData.constraints.dcpFloodMap = {
+       inFloodArea: true,
+       classification: dcpFloodRows[0].value,
      };
    }
  } catch (spatialErr) {

@@ -6,7 +6,7 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, floodBlockTypeAnnotation, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
 
 interface LepControlsProps {
@@ -347,6 +347,71 @@ export function LepControls({
                   : 'No'}
               </span>
             </div>
+
+            {/* Riparian Land */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.riparianLand?.inRiparianArea ? 'bg-teal-50 border-teal-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Waves className={`h-3 w-3 flex-shrink-0 ${constraints?.riparianLand?.inRiparianArea ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Riparian Land</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.riparianLand?.inRiparianArea ? 'text-teal-800' : 'text-gray-400'}`}>
+                {constraints?.riparianLand?.inRiparianArea ? (constraints.riparianLand.category || 'Yes') : 'No'}
+              </span>
+            </div>
+
+            {/* Wetlands */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.wetlands?.inWetlandsArea ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.wetlands?.inWetlandsArea ? 'text-emerald-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Wetlands</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.wetlands?.inWetlandsArea ? 'text-emerald-800' : 'text-gray-400'}`}>
+                {constraints?.wetlands?.inWetlandsArea ? 'Yes' : 'No'}
+              </span>
+            </div>
+
+            {/* Key Site */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.keySite?.isKeySite ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <MapPin className={`h-3 w-3 flex-shrink-0 ${constraints?.keySite?.isKeySite ? 'text-yellow-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Key Site</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.keySite?.isKeySite ? 'text-yellow-800' : 'text-gray-400'}`}>
+                {constraints?.keySite?.isKeySite ? (constraints.keySite.clause || 'Yes') : 'No'}
+              </span>
+            </div>
+
+            {/* Active Street Frontage */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.activeStreetFrontage?.required ? 'bg-slate-50 border-slate-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Building2 className={`h-3 w-3 flex-shrink-0 ${constraints?.activeStreetFrontage?.required ? 'text-slate-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Active Frontage</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.activeStreetFrontage?.required ? 'text-slate-800' : 'text-gray-400'}`}>
+                {constraints?.activeStreetFrontage?.required ? 'Required' : 'No'}
+              </span>
+            </div>
+
+            {/* DCP Flood Map (council classification, distinct from state-level Flood Prone) */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.dcpFloodMap?.inFloodArea ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-orange-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">DCP Flood Map</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-orange-800' : 'text-gray-400'}`}>
+                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : 'No'}
+              </span>
+            </div>
           </div>
 
           {/* Flood detail */}
@@ -537,6 +602,30 @@ export function LepControls({
           reason="This property is not in a Heritage Conservation Area and is not listed as a heritage item."
           color="blue"
         />
+      )}
+
+      {/* Planning Instruments Card (Land Application Map) */}
+      {constraints?.landApplicationInstruments && constraints.landApplicationInstruments.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50/30">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="h-4 w-4 text-blue-700" />
+              <span className="text-sm font-semibold text-blue-900">Planning Instruments</span>
+              <Badge className="bg-blue-100 text-blue-800 text-xs ml-auto">Land Application Map</Badge>
+            </div>
+            <p className="text-xs text-blue-700 mb-2">
+              All instruments whose maps apply to this property.
+            </p>
+            <div className="space-y-1">
+              {constraints.landApplicationInstruments.map((instr, i) => (
+                <div key={i} className="flex items-center justify-between rounded px-2 py-1 bg-white border border-blue-100">
+                  <span className="text-xs text-gray-800">{instr.name}</span>
+                  <span className="text-xs text-gray-400 ml-2 flex-shrink-0">{instr.type}</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
