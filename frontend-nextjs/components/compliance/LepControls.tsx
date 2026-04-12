@@ -6,7 +6,7 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, floodBlockTypeAnnotation, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
 
 interface LepControlsProps {
@@ -301,6 +301,49 @@ export function LepControls({
               <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length ? 'text-cyan-800' : 'text-gray-400'}`}>
                 {constraints?.coastalEnvironment?.inCoastalArea && constraints.coastalEnvironment.zones?.length
                   ? `${constraints.coastalEnvironment.zones.length} zone${constraints.coastalEnvironment.zones.length > 1 ? 's' : ''}`
+                  : 'No'}
+              </span>
+            </div>
+
+            {/* Additional Permitted Uses */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.additionalPermittedUses?.hasAPU ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <BookOpen className={`h-3 w-3 flex-shrink-0 ${constraints?.additionalPermittedUses?.hasAPU ? 'text-violet-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Additional Uses</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.additionalPermittedUses?.hasAPU ? 'text-violet-800' : 'text-gray-400'}`}>
+                {constraints?.additionalPermittedUses?.hasAPU
+                  ? `Sch ${constraints.additionalPermittedUses.schedules.join(', ')}`
+                  : 'No'}
+              </span>
+            </div>
+
+            {/* Foreshore Building Line */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.foreshoreBuildingLine?.hasLine ? 'bg-teal-50 border-teal-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Anchor className={`h-3 w-3 flex-shrink-0 ${constraints?.foreshoreBuildingLine?.hasLine ? 'text-teal-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Foreshore Line</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.foreshoreBuildingLine?.hasLine ? 'text-teal-800' : 'text-gray-400'}`}>
+                {constraints?.foreshoreBuildingLine?.hasLine ? 'Yes' : 'No'}
+              </span>
+            </div>
+
+            {/* Land Reservation (Compulsory Acquisition) */}
+            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
+              constraints?.landReservation?.hasReservation ? 'bg-red-50 border-red-200' : 'bg-white border-gray-100'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <LandPlot className={`h-3 w-3 flex-shrink-0 ${constraints?.landReservation?.hasReservation ? 'text-red-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Land Reservation</span>
+              </div>
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.landReservation?.hasReservation ? 'text-red-800' : 'text-gray-400'}`}>
+                {constraints?.landReservation?.hasReservation
+                  ? (constraints.landReservation.purpose || 'Yes')
                   : 'No'}
               </span>
             </div>

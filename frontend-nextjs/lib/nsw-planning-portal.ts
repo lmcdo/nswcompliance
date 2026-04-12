@@ -115,6 +115,11 @@ export interface PlanningConstraints {
 
  // Phase 6: Local Provisions (LEP Schedule 7)
  localProvisions?: LocalProvision[];
+
+ // Spatial overlay constraints (PostGIS spatial_overlays table)
+ additionalPermittedUses?: { hasAPU: boolean; schedules: string[] } | null;
+ foreshoreBuildingLine?: { hasLine: boolean; layClass?: string } | null;
+ landReservation?: { hasReservation: boolean; purpose?: string } | null;
 }
 
 /**

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PropertyDataService } from '../../../lib/property-data';
 import { PropertySearchSchema, validateRequest, formatValidationErrors } from '@/lib/schemas';
+import { query } from '@/lib/db';
 
 /**
  * General NSW Property Data API Endpoint
@@ -51,6 +52,42 @@ export async function GET(req: NextRequest) {
  propertyData.coordinates = { lat, lon };
 
  console.log(`[Property API] Transformed coordinates: Web Mercator (${x.toFixed(2)}, ${y.toFixed(2)}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+
+ // Enrich constraints with spatial overlay data from PostGIS
+ try {
+   const spatialResult = await query(
+     `SELECT layer_type, value
+      FROM spatial_overlays
+      WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
+      AND layer_type IN ('additional_permitted_uses', 'foreshore_building_line', 'land_reservation')`,
+     [lon, lat]
+   );
+   const rows = spatialResult.rows;
+   const apuRows = rows.filter(r => r.layer_type === 'additional_permitted_uses');
+   const foreshorRows = rows.filter(r => r.layer_type === 'foreshore_building_line');
+   const reservRows = rows.filter(r => r.layer_type === 'land_reservation');
+
+   if (apuRows.length > 0) {
+     propertyData.constraints.additionalPermittedUses = {
+       hasAPU: true,
+       schedules: [...new Set(apuRows.map(r => r.value).filter(Boolean))],
+     };
+   }
+   if (foreshorRows.length > 0) {
+     propertyData.constraints.foreshoreBuildingLine = {
+       hasLine: true,
+       layClass: foreshorRows[0].value,
+     };
+   }
+   if (reservRows.length > 0) {
+     propertyData.constraints.landReservation = {
+       hasReservation: true,
+       purpose: reservRows[0].value,
+     };
+   }
+ } catch (spatialErr) {
+   console.warn('[Property API] Spatial overlay query failed (non-fatal):', spatialErr);
+ }
  }
 
  return NextResponse.json({
