@@ -310,8 +310,7 @@ def main() -> int:
         print(f"ERROR: Unknown council '{council}'. Known: {', '.join(KNOWN_COUNCILS)}")
         return 1
 
-    mode_flags = sum([args.extract, args.spatial, args.inert])
-    if mode_flags > 1:
+    if sum([args.extract, args.spatial, args.inert]) > 1:
         print("ERROR: --extract, --spatial, and --inert are mutually exclusive.")
         print("  --extract = substantive chapter with development controls")
         print("  --spatial = map or boundary document, never extracted, Telegram alert on change")
@@ -527,9 +526,9 @@ def main() -> int:
 
     if not dry_run:
         mode = (
-            "spatial document — no extraction"  if args.spatial else
+            "spatial document — no extraction"    if args.spatial else
             "inert (cover/ToC) — silent tracking" if args.inert else
-            "queued for extraction"              if args.extract else
+            "queued for extraction"               if args.extract else
             "monitoring only"
         )
         send_telegram(

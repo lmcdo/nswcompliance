@@ -5,9 +5,9 @@
 -- extractable development controls.
 --
 -- Behaviour in r2_monitor.py:
---   is_inert=FALSE (default) — normal: hash-checked, extraction triggered on change
---   is_spatial=TRUE          — map/boundary: hash-checked, no extraction, Telegram alert
---   is_inert=TRUE            — cover/ToC: hash-checked, no extraction, NO alert (silent)
+--   is_inert=FALSE (default) -- normal: hash-checked, extraction triggered on change
+--   is_spatial=TRUE          -- map/boundary: hash-checked, no extraction, Telegram alert
+--   is_inert=TRUE            -- cover/ToC: hash-checked, no extraction, NO alert (silent)
 --
 -- is_spatial and is_inert are mutually exclusive.
 --
