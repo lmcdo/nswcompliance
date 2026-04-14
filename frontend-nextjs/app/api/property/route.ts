@@ -52,8 +52,14 @@ export async function GET(req: NextRequest) {
  propertyData.coordinates = { lat, lon };
 
  console.log(`[Property API] Transformed coordinates: Web Mercator (${x.toFixed(2)}, ${y.toFixed(2)}) → WGS84 (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+ }
 
- // Enrich constraints with spatial overlay data from PostGIS
+ // Enrich constraints with spatial overlay data from PostGIS.
+ // Runs whenever coordinates are available — decoupled from the geometry
+ // transformation block so properties with pre-existing coordinates are also covered.
+ const spatialCoords = propertyData.coordinates;
+ if (spatialCoords) {
+ const { lon: spatialLon, lat: spatialLat } = spatialCoords;
  try {
    const spatialResult = await query(
      `SELECT layer_type, value
@@ -61,9 +67,10 @@ export async function GET(req: NextRequest) {
       WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
       AND layer_type IN (
         'additional_permitted_uses', 'foreshore_building_line', 'land_reservation',
-        'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood'
+        'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood',
+        'sep', 'tod_precinct', 'tod_accelerated', 'tod_deferred'
       )`,
-     [lon, lat]
+     [spatialLon, spatialLat]
    );
    const rows = spatialResult.rows;
    const apuRows = rows.filter(r => r.layer_type === 'additional_permitted_uses');
@@ -120,6 +127,46 @@ export async function GET(req: NextRequest) {
      propertyData.constraints.dcpFloodMap = {
        inFloodArea: true,
        classification: dcpFloodRows[0].value,
+     };
+   }
+
+   const sepRows = rows.filter(r => r.layer_type === 'sep');
+   if (sepRows.length > 0) {
+     const isDraft = (sepRows[0].value as string)?.toLowerCase().includes('draft');
+     propertyData.constraints.specialEntertainmentPrecinct = {
+       inSEP: true,
+       name: sepRows[0].value,
+       isDraft,
+     };
+   }
+
+   const todRows = rows.filter(r => r.layer_type === 'tod_precinct');
+   const todAccRows = rows.filter(r => r.layer_type === 'tod_accelerated');
+   const todDefRows = rows.filter(r => r.layer_type === 'tod_deferred');
+   if (todRows.length > 0) {
+     propertyData.constraints.todPrecinctSpatial = {
+       inTODPrecinct: true,
+       classification: todRows[0].value,
+       isAccelerated: false,
+       isDeferred: false,
+     };
+   }
+   if (todAccRows.length > 0) {
+     const existing = propertyData.constraints.todPrecinctSpatial;
+     propertyData.constraints.todPrecinctSpatial = {
+       inTODPrecinct: true,
+       classification: todAccRows[0].value,
+       isAccelerated: true,
+       isDeferred: false,
+       ...(existing || {}),
+     };
+   }
+   if (todDefRows.length > 0) {
+     propertyData.constraints.todPrecinctSpatial = {
+       inTODPrecinct: true,
+       classification: todDefRows[0].value,
+       isAccelerated: false,
+       isDeferred: true,
      };
    }
  } catch (spatialErr) {
