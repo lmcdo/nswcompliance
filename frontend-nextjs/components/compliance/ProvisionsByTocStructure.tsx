@@ -383,6 +383,10 @@ export function ProvisionsByTocStructure({
     meta?: {
       chapter_pdf_urls?: Record<string, string> | null;
       precinct_warning?: boolean;
+      dcp_currency?: {
+        verified_at: string | null;
+        amendment_pending: boolean;
+      } | null;
     };
   }>(apiUrl, fetcher, {
     dedupingInterval: 2000,   // Reduced from 60s to 2s - allow fresh data
@@ -472,12 +476,28 @@ export function ProvisionsByTocStructure({
     marrickville: 'Marrickville DCP 2011',
   };
 
-  // Last-verified dates from weekly PDF hash monitor (dcp_chapter_registry)
-  const councilVerifiedDates: Record<string, string> = {
-    leichhardt: '31 Mar 2026',
-    ashfield: '31 Mar 2026',
-    marrickville: '31 Mar 2026',
-  };
+  // Currency data from API (instrument_currency table, updated by weekly PDF hash monitor)
+  const dcpCurrency = data?.meta?.dcp_currency ?? null;
+  const verifiedAtRaw = dcpCurrency?.verified_at ?? null;
+  const amendmentPending = dcpCurrency?.amendment_pending ?? false;
+
+  // Format verified_at ISO string → human-readable "14 Apr 2026"
+  const verifiedDateLabel = verifiedAtRaw
+    ? new Date(verifiedAtRaw).toLocaleDateString('en-AU', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null;
+
+  // Staleness: warn if verified_at is null or >35 days ago.
+  // Guard on data !== undefined — during SWR loading, data is undefined and verifiedAtRaw is null,
+  // which would incorrectly trigger the stale warning before the API responds.
+  const isStale = data !== undefined && (
+    !verifiedAtRaw
+      ? true
+      : (Date.now() - new Date(verifiedAtRaw).getTime()) > 35 * 24 * 60 * 60 * 1000
+  );
 
   // Extract heritage provisions from condition layer (Layer 3)
   const councilLower = formerCouncil?.toLowerCase() || '';
@@ -1821,19 +1841,40 @@ export function ProvisionsByTocStructure({
 
   return (
     <div className="space-y-0">
-      {/* Amendment monitoring status — shows source document + last verification date */}
+      {/* DCP currency status — source document, last verified date, amendment/staleness states */}
       {councilDcpNames[councilLower] && (
-        <div className="flex items-center gap-2 mb-4 text-xs text-gray-500">
-          <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-          <span className="font-medium text-gray-700">{councilDcpNames[councilLower]}</span>
-          <span>·</span>
-          <span>Monitored weekly</span>
-          {councilVerifiedDates[councilLower] && (
-            <>
-              <span>·</span>
-              <span>Last verified {councilVerifiedDates[councilLower]}</span>
-            </>
+        <div className="mb-4 space-y-1">
+          <div className="flex items-center gap-2 text-xs text-gray-500">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isStale ? 'bg-amber-400' : amendmentPending ? 'bg-amber-400' : 'bg-green-500'}`} />
+            <span className="font-medium text-gray-700">{councilDcpNames[councilLower]}</span>
+            <span>·</span>
+            <span>Monitored weekly</span>
+            {verifiedDateLabel && (
+              <>
+                <span>·</span>
+                <span>Last verified {verifiedDateLabel}</span>
+              </>
+            )}
+            {!verifiedDateLabel && data !== undefined && (
+              <>
+                <span>·</span>
+                <span className="text-amber-600">Verification date unavailable</span>
+              </>
+            )}
+          </div>
+          {amendmentPending && !isStale && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+              Amendment detected — updated provisions pending review. Check council website for the latest version.
+            </div>
           )}
+          {isStale && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+              Currency data overdue — weekly check has not run recently. Provisions shown are from the last verified version.
+            </div>
+          )}
+          <p className="text-xs text-gray-400">
+            Provisions sourced from the council&apos;s published DCP. Currency checked via weekly PDF hash monitor. This is planning intelligence for due diligence review — not a substitute for a Section 10.7 planning certificate.
+          </p>
         </div>
       )}
 

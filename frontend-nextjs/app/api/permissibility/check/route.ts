@@ -203,6 +203,7 @@ export async function POST(request: NextRequest) {
       FROM regulatory_provisions
       WHERE former_council = $1
         AND v2_is_actionable = true
+        AND is_current = TRUE
         AND (v2_applicable_dev_types IS NULL
              OR array_length(v2_applicable_dev_types, 1) IS NULL
              OR $2 = ANY(v2_applicable_dev_types))

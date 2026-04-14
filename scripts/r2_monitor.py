@@ -370,6 +370,7 @@ def run_monitor(
 
         # ── Per-chapter hash check ─────────────────────────────────────────────
         council_changed = 0
+        council_failed = 0  # failures for THIS council only — used for currency update
         cur = conn.cursor()
         for chapter in council_chapters:
             chapter_id  = chapter["id"]
@@ -537,12 +538,16 @@ def run_monitor(
                 )
                 if not dry_run:
                     conn.commit()
+                council_failed += 1
                 results["failed"] += 1
 
             time.sleep(2)  # polite delay — reduced request volume vs old approach
 
-        # Update instrument_currency for this council after clean run
-        if council_changed == 0 and results["failed"] == 0:
+        # Update instrument_currency for this council if all its chapters passed.
+        # Use council_failed (not results["failed"]) — the global counter is cumulative
+        # across all councils, so a failure in council A would otherwise block verified_at
+        # updates for all subsequently-processed councils even if they had zero failures.
+        if council_changed == 0 and council_failed == 0:
             _update_instrument_currency(conn, council, dry_run)
             print(f"\n  [{council}] instrument_currency updated — verified_at=NOW()")
 

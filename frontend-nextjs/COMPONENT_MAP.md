@@ -148,8 +148,9 @@ grep -r "from.*HeritageProvisions" app/ components/
 | PDF button tooltip | `/assessment` DCP tab | PageGroupedProvisions.tsx | 562 |
 | Topic filter chips | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | TBD |
 | Heritage layer toggle | `/assessment` filters | TBD | TBD |
+| DCP currency status bar (dot + verified date + staleness/amendment badges + disclaimer) | `/assessment` DCP tab | ProvisionsByTocStructure.tsx | ~1825 |
 
 ---
 
-**Last updated:** 2026-02-13
+**Last updated:** 2026-04-14
 **Update trigger:** Any time a new component is added to `/assessment` or provision rendering changes

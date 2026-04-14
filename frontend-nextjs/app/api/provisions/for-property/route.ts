@@ -352,17 +352,35 @@ export async function GET(request: NextRequest) {
       // Done before TOC grouping so buildPartNameMap can drive part titles automatically.
       const chapterPdfUrls: Record<string, string> = {};
       const chapterLabels: Record<string, string> = {};
+      let dcpCurrency: { verified_at: string | null; amendment_pending: boolean } | null = null;
+
       if (filters.former_council) {
+        const councilSlug = filters.former_council.toLowerCase();
         const registryResult = await client.query(
-          `SELECT chapter_key, r2_public_pdf_url, chapter_label
+          `SELECT chapter_key, r2_public_pdf_url, chapter_label, needs_extraction
            FROM dcp_chapter_registry
-           WHERE council = $1`,
-          [filters.former_council.toLowerCase()]
+           WHERE council = $1 AND is_active = TRUE`,
+          [councilSlug]
         );
+        let amendmentPending = false;
         for (const row of registryResult.rows) {
           if (row.r2_public_pdf_url) chapterPdfUrls[row.chapter_key] = row.r2_public_pdf_url;
           if (row.chapter_label) chapterLabels[row.chapter_key] = row.chapter_label;
+          if (row.needs_extraction) amendmentPending = true;
         }
+
+        // Last verified date from instrument_currency (set by weekly monitor after clean run)
+        const currencyResult = await client.query(
+          `SELECT verified_at FROM instrument_currency
+           WHERE council = $1 AND instrument_key = 'dcp'
+           LIMIT 1`,
+          [councilSlug]
+        );
+        const verifiedAt = currencyResult.rows[0]?.verified_at ?? null;
+        dcpCurrency = {
+          verified_at: verifiedAt ? verifiedAt.toISOString() : null,
+          amendment_pending: amendmentPending,
+        };
       }
       const partNameMap = buildPartNameMap(chapterLabels);
 
@@ -442,6 +460,7 @@ export async function GET(request: NextRequest) {
           api_version: 'v3_relevance_scoring',
           chapter_pdf_urls: chapterPdfUrls,
           precinct_warning: precinctWarning,
+          dcp_currency: dcpCurrency,
         }
       });
       // Temporarily disabled cache for debugging duplicates issue
