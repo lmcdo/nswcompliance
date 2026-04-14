@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
       FROM regulatory_provisions rp
       LEFT JOIN documents d ON rp.document_id = d.id
       WHERE rp.id IN (${placeholders})
+        AND rp.is_current = TRUE
       ORDER BY rp.id
     `;
 
