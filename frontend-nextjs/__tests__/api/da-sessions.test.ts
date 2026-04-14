@@ -76,7 +76,8 @@ describe('GET /api/da-sessions', () => {
       .mockResolvedValueOnce({ rows: [
         { provision_id: 42, response_text: 'Complies', compliance_status: 'complies', updated_at: new Date() },
         { provision_id: 99, response_text: null, compliance_status: 'varies', updated_at: new Date() },
-      ]} as any);
+      ]} as any)
+      .mockResolvedValueOnce({ rows: [] } as any);
     const req = makeRequest('GET', `http://localhost/api/da-sessions?token=${VALID_UUID}`);
     const res = await GET(req);
     const data = await res.json();
@@ -116,6 +117,7 @@ describe('GET /api/da-sessions', () => {
     const session = { id: 5, address: '5 Test St', dev_type: null, former_council: 'leichhardt', zone: 'R2', created_at: new Date() };
     mockQuery
       .mockResolvedValueOnce({ rows: [session] } as any)
+      .mockResolvedValueOnce({ rows: [] } as any)
       .mockResolvedValueOnce({ rows: [] } as any);
     const req = makeRequest('GET', `http://localhost/api/da-sessions?token=${VALID_UUID}`);
     const res = await GET(req);

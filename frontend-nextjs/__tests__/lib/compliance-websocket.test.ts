@@ -55,7 +55,7 @@ describe('ComplianceWebSocketManager', () => {
  type: 'status_change',
  checkId: 'test-check',
  status: 'compliant',
- timestamp: new Date(),
+ timestamp: new Date().toISOString(),
  };
 
  ws.onmessage?.({ data: JSON.stringify(mockUpdate) });
