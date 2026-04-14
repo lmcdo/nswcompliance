@@ -7,7 +7,7 @@ import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
 import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText } from 'lucide-react';
-import { calculateGFA, anefStatusConfig, floodBlockTypeAnnotation, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
+import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
@@ -170,16 +170,16 @@ export function LepControls({
           </div>
 
           <div className="grid grid-cols-2 gap-1">
-            {/* Flood Prone Land */}
+            {/* Flood Mapping — PostGIS spatial overlay */}
             <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
-              constraints?.floodProne ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'
+              constraints?.dcpFloodMap?.inFloodArea ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'
             }`}>
               <div className="flex items-center gap-1.5 min-w-0">
-                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.floodProne ? 'text-amber-600' : 'text-gray-400'}`} />
-                <span className="text-xs text-gray-700 truncate">Flood Prone</span>
+                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-amber-600' : 'text-gray-400'}`} />
+                <span className="text-xs text-gray-700 truncate">Flood Mapping</span>
               </div>
-              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.floodProne ? 'text-amber-800' : 'text-gray-400'}`}>
-                {constraints?.floodProne ? (constraints.floodInfo?.blockType || 'Yes') : 'No'}
+              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-amber-800' : 'text-gray-400'}`}>
+                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : 'No'}
               </span>
             </div>
 
@@ -400,37 +400,7 @@ export function LepControls({
               </span>
             </div>
 
-            {/* DCP Flood Map (council classification, distinct from state-level Flood Prone) */}
-            <div className={`flex items-center justify-between rounded px-2 py-1.5 border ${
-              constraints?.dcpFloodMap?.inFloodArea ? 'bg-orange-50 border-orange-200' : 'bg-white border-gray-100'
-            }`}>
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Droplets className={`h-3 w-3 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-orange-600' : 'text-gray-400'}`} />
-                <span className="text-xs text-gray-700 truncate">DCP Flood Map</span>
-              </div>
-              <span className={`text-xs font-semibold ml-1 flex-shrink-0 ${constraints?.dcpFloodMap?.inFloodArea ? 'text-orange-800' : 'text-gray-400'}`}>
-                {constraints?.dcpFloodMap?.inFloodArea ? (constraints.dcpFloodMap.classification || 'Yes') : 'No'}
-              </span>
-            </div>
           </div>
-
-          {/* Flood detail */}
-          {constraints?.floodProne && (
-            <div className="mt-2 bg-amber-50 border border-amber-200 rounded p-2">
-              <div className="flex items-start gap-1.5">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <span className="text-xs font-semibold text-amber-800">
-                    {constraints.floodInfo?.blockType || 'Flood Prone Land'}
-                    {constraints.floodInfo?.name ? ` — ${constraints.floodInfo.name}` : ''}
-                  </span>
-                  <p className="text-xs text-amber-700 mt-0.5">
-                    {floodBlockTypeAnnotation(constraints.floodInfo?.blockType || '')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Bushfire detail */}
           {constraints?.bushfireProne && constraints.bushfireCategory && (() => {
