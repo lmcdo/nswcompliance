@@ -131,7 +131,11 @@ def _match_by_label(hub_label: str, expected_labels: dict[str, str]) -> str | No
             return key
 
         if norm_stored in norm_hub or norm_hub in norm_stored:
-            score = len(norm_stored) / max(len(norm_hub), 1)
+            # Prefer the stored label whose length is closest to the hub label
+            # (length-ratio, always ≤ 1.0).  The old formula (len_stored/len_hub)
+            # rewarded longer stored labels, causing e.g. "Heritage" to match
+            # "heritage-conservation-areas-map" over the shorter "part-8-heritage".
+            score = min(len(norm_stored), len(norm_hub)) / max(len(norm_stored), len(norm_hub))
             if score > best_score:
                 best_score = score
                 best_key = key

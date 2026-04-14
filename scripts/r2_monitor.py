@@ -319,6 +319,16 @@ def run_monitor(
 
                 # Removed chapters
                 for key in diff.removed:
+                    # Inert chapters (cover/ToC) can't always be matched by label alone
+                    # (hub uses generic "Cover page" for all part covers).  Suppress the
+                    # alert — they have no extractable provisions and we don't need to act.
+                    chapter_is_inert = next(
+                        (ch.get("is_inert", False) for ch in council_chapters if ch["chapter_key"] == key),
+                        False,
+                    )
+                    if chapter_is_inert:
+                        print(f"  [INERT-REMOVED] {key} — not matched on hub, inert chapter, no alert")
+                        continue
                     msg = f"DCP chapter removed from hub [{council}/{key}] — verify before disabling"
                     print(f"  [REMOVED] {key}")
                     send_telegram(msg)
