@@ -126,6 +126,7 @@ export async function POST(request: NextRequest) {
           ))
           FROM regulatory_provisions rp
           WHERE rp.id = ANY(pr.source_provision_ids)
+            AND rp.is_current = TRUE
         ) as all_source_provisions
       FROM dcp_precinct_requirements pr
       LEFT JOIN requirement_categories rc ON pr.category = rc.category
