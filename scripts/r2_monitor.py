@@ -115,12 +115,15 @@ def head_request(url: str) -> dict:
         return {"error": str(exc), "status": None}
 
 
-def download_pdf(url: str, retries: int = 3) -> tuple[bytes, dict]:
+def download_pdf(url: str, retries: int = 3) -> tuple[bytes, requests.structures.CaseInsensitiveDict]:
     for attempt in range(1, retries + 1):
         try:
             resp = requests.get(url, headers=HEADERS, timeout=60, allow_redirects=True)
             resp.raise_for_status()
-            return resp.content, dict(resp.headers)
+            # Return resp.headers directly (CaseInsensitiveDict) — do NOT convert to dict().
+            # dict() loses case-insensitivity; servers/CDNs may send 'etag' (lowercase)
+            # while the code looks up 'ETag', causing None to be stored every run.
+            return resp.content, resp.headers
         except Exception as exc:
             print(f"    [attempt {attempt}/{retries}] {exc}")
             if attempt < retries:
@@ -394,23 +397,25 @@ def run_monitor(
                 if remote_len:
                     remote_len = int(remote_len)
 
-                # Skip full download only if BOTH Content-Length AND ETag match stored values.
+                # Fast-path: skip full download if ETag matches stored value.
+                # ETag alone is sufficient — it is designed for this purpose and is
+                # served reliably by Drupal and Squiz Matrix (98% of registered chapters).
+                #
+                # We do NOT require Content-Length to also match because servers may
+                # serve Content-Length as the compressed size (gzip) while the monitor
+                # stores len(content) = decompressed size — these will never match for
+                # gzip responses even when the file is unchanged.
                 stored_etag = chapter.get("url_etag")
                 new_etag_head = head.get("etag")
-                content_length_match = (
+                etag_match = (
                     not force
                     and stored_hash
-                    and remote_len
-                    and stored_len
-                    and remote_len == stored_len
-                )
-                etag_match = (
-                    stored_etag
+                    and stored_etag
                     and new_etag_head
                     and stored_etag == new_etag_head
                 )
-                if content_length_match and etag_match:
-                    print(f"    [unchanged] Content-Length + ETag both match stored")
+                if etag_match:
+                    print(f"    [unchanged] ETag match — skipping download")
                     cur.execute(
                         "UPDATE dcp_chapter_registry SET url_last_checked=%s, check_failures=0 WHERE id=%s",
                         (now, chapter_id),
@@ -420,14 +425,20 @@ def run_monitor(
                     results["unchanged"] += 1
                     results["checked"] += 1
                     continue
-                elif content_length_match and not etag_match:
-                    print(f"    Content-Length unchanged but ETag mismatch/absent — downloading for hash check")
+                elif stored_etag and not new_etag_head:
+                    print(f"    Stored ETag but server no longer serving one — downloading for hash check")
+                elif not stored_etag:
+                    # No stored ETag yet (first run, or server didn't serve one previously)
+                    pass
 
                 # Step 2: Full download + hash comparison
                 print(f"    Downloading for hash check...")
                 content, resp_headers = download_pdf(url)
                 new_hash = sha256(content)
-                new_len = len(content)
+                # Store the HEAD Content-Length (not len(content)) so future HEAD
+                # fast-path comparisons use the same value the server reports.
+                # Servers may gzip responses, making len(content) != Content-Length.
+                new_len = remote_len if remote_len else len(content)
                 new_etag = resp_headers.get("ETag")
                 new_lm = resp_headers.get("Last-Modified")
 
