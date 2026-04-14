@@ -219,7 +219,7 @@ def _check_heritage(prop_id: Optional[str]) -> bool:
             with conn.cursor() as cur:
                 cur.execute(
                     "SELECT COUNT(*) FROM regulatory_provisions "
-                    "WHERE v2_topic = 'Heritage' AND v2_structural_category != 'structural' LIMIT 1"
+                    "WHERE is_current = TRUE AND v2_topic = 'Heritage' AND v2_structural_category != 'structural' LIMIT 1"
                 )
                 return cur.fetchone()[0] > 0
     except Exception as e:

@@ -168,7 +168,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
 
                 cur.execute(
                     f"SELECT provision_text FROM regulatory_provisions "
-                    f"WHERE v2_topic ILIKE %s {council_filter} LIMIT 20",
+                    f"WHERE is_current = TRUE AND v2_topic ILIKE %s {council_filter} LIMIT 20",
                     query_args
                 )
                 heights = []
