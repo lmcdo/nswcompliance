@@ -269,6 +269,7 @@ export interface SelectedProvision {
       mapType?: string;
       keywords?: string[];
     };
+    provision_id?: number;
   };
   provisions: ProvisionContent[];
   // Phase 2 additions

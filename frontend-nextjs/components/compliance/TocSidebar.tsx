@@ -253,6 +253,7 @@ export function TocSidebar({
             setCustomReason={setCustomReason}
             childParts={childParts}
             depth={0}
+            daDevTypeRole={daDevTypeRole}
           />
         ))}
       </nav>
@@ -270,7 +271,7 @@ function PartTree({
   onToggle, onSelectPart, onSelectSection,
   isDaMode, chapterAssertions, autoDismissedChapters, onAssertChapter, chapterProgress,
   suggestedDismissals, pendingDismiss, setPendingDismiss, customReason, setCustomReason,
-  childParts, depth,
+  childParts, depth, daDevTypeRole,
 }: {
   partId: string; part: TocPart;
   tocStructure: Record<string, TocPart>;
@@ -288,6 +289,7 @@ function PartTree({
   customReason: string; setCustomReason: (v: string) => void;
   childParts: (parentId: string) => [string, TocPart][];
   depth: number;
+  daDevTypeRole?: 'chapter_selector' | 'subpart_selector' | 'sort_only';
 }) {
   const filteredPart = filteredTocStructure[partId];
   const hasProvisions = !!(filteredPartCounts?.[partId] ?? filteredPart?.provision_count);
@@ -320,6 +322,7 @@ function PartTree({
         onUndo={isManuallyAsserted ? () => onAssertChapter?.(partId, null) : undefined}
         chapterProgress={chapterProgress}
         isSuggestedForDismissal={suggestedDismissals.includes(partId)}
+        daDevTypeRole={daDevTypeRole}
       />
       {pendingDismiss === partId && (
         <div className="ml-5 mt-1 mb-2 bg-white border border-gray-200 rounded p-2 space-y-1 shadow-sm">
@@ -352,6 +355,7 @@ function PartTree({
           suggestedDismissals={suggestedDismissals} pendingDismiss={pendingDismiss}
           setPendingDismiss={setPendingDismiss} customReason={customReason}
           setCustomReason={setCustomReason} childParts={childParts} depth={depth + 1}
+          daDevTypeRole={daDevTypeRole}
         />
       ))}
     </div>
@@ -377,6 +381,7 @@ interface PartNodeProps {
   onUndo?: () => void;
   chapterProgress?: Record<string, { assessed: number; total: number }>;
   isSuggestedForDismissal?: boolean;
+  daDevTypeRole?: 'chapter_selector' | 'subpart_selector' | 'sort_only';
 }
 
 function PartNode({
@@ -398,6 +403,7 @@ function PartNode({
   onUndo,
   chapterProgress,
   isSuggestedForDismissal,
+  daDevTypeRole,
 }: PartNodeProps) {
   const filteredCount = filteredPartCounts?.[part.part_id] ?? filteredPart?.provision_count ?? 0;
   const sections = part?.sections || {};

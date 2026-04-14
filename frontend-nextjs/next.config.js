@@ -27,12 +27,11 @@ const nextConfig = {
      },
    }),
  },
- // Temporarily disable TypeScript checking in build to unblock deployment
  typescript: {
- ignoreBuildErrors: true
+ ignoreBuildErrors: false
  },
  eslint: {
- ignoreDuringBuilds: true
+ ignoreDuringBuilds: false
  },
  webpack: (config, { dev, isServer }) => {
  // Disable file watching that causes zombie processes

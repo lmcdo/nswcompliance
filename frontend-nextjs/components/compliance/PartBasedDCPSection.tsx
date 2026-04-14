@@ -230,7 +230,7 @@ const PartBasedDCPSection: React.FC<PartBasedDCPSectionProps> = ({
       {/* DA Requirements Section (if any) */}
       {hasDaRequirements && (
         <DARequirementsSection
-          requirements={daRequirements.requirements}
+          requirements={daRequirements.requirements as any[]}
           defaultExpanded={true}
           zone={zone}
           developmentType={developmentType}

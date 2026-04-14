@@ -37,6 +37,7 @@ export interface SetbackResult {
  override_authority?: string; // SEPP override if applicable
  };
  zone_applicability?: string; // The specific zone this applies to (R2, R3, etc.)
+ provision_id?: number;
 }
 
 export interface BuildableAreaAnalysis {

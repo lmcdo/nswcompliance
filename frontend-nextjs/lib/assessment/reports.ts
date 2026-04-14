@@ -65,7 +65,7 @@ export interface ReportConfig {
  assessment_data: any;
  compliance_data: any;
  custom_sections?: CustomSection[];
- export_format: 'pdf' | 'docx' | 'html';
+ export_format: 'pdf' | 'docx' | 'html' | 'json';
  include_attachments: boolean;
  watermark?: string;
  digital_signature?: boolean;

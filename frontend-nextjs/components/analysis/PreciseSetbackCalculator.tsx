@@ -339,7 +339,7 @@ function SetbackCard({ result }: { result: SetbackResult }) {
  </div>
  <div className="text-right">
  <span className="text-sm font-semibold text-green-600">
- {Math.round((parseFloat(result.confidence) * 100))}% Confidence
+ {Math.round(result.confidence * 100)}% Confidence
  </span>
  </div>
  </div>
