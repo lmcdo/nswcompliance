@@ -394,6 +394,7 @@ scripts/
 !scripts/pre-pr-tests.sh
 !scripts/validate_toc_join.py
 !scripts/install_hooks.sh
+!scripts/hooks/
 !scripts/README.md
 !scripts/templates/
 !scripts/templates/sepp_requirement_template.json

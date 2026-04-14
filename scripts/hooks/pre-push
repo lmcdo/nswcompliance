@@ -1,32 +1,46 @@
 #!/usr/bin/env bash
 # pre-push hook — runs automatically on every git push.
-# Blocks push if TypeScript errors increased OR smoke tests fail.
-# To bypass in an emergency: git push --no-verify (use sparingly, document why)
+# Blocks push if:
+#   - Python enrichment tests fail
+#   - TypeScript error count exceeds baseline
+#   - Smoke tests fail (skipped gracefully if dev server not running)
+# To bypass in an emergency: git push --no-verify (document why in the commit message)
 
 set -uo pipefail
 
-BASELINE=177
+TSC_BASELINE=26
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 FRONTEND_DIR="$REPO_ROOT/frontend-nextjs"
 
-# ── TypeScript gate ──────────────────────────────────────────────────────────
+# ── Python: enrichment tests ─────────────────────────────────────────────────
+echo "pytest: running enrichment tests..."
+if python -m pytest "$REPO_ROOT/tests/enrichment/" -q --tb=short 2>&1; then
+  echo "✅ pytest passed"
+else
+  echo ""
+  echo "❌ pytest FAILED — fix failing tests before pushing"
+  exit 1
+fi
+
+# ── TypeScript gate ───────────────────────────────────────────────────────────
 if [ ! -d "$FRONTEND_DIR" ]; then
   echo "tsc-gate: frontend-nextjs not found, skipping"
 else
   echo "tsc-gate: counting TypeScript errors..."
   COUNT=$(cd "$FRONTEND_DIR" && npx tsc --noEmit --skipLibCheck 2>&1 | grep -c "error TS" || true)
 
-  if [ "$COUNT" -gt "$BASELINE" ]; then
+  if [ "$COUNT" -gt "$TSC_BASELINE" ]; then
     echo ""
-    echo "❌ tsc-gate FAILED: $COUNT errors (baseline $BASELINE, +$((COUNT - BASELINE)) new)"
+    echo "❌ tsc-gate FAILED: $COUNT errors (baseline $TSC_BASELINE, +$((COUNT - TSC_BASELINE)) new)"
     echo "   Fix new TypeScript errors before pushing."
     echo "   Run: cd frontend-nextjs && npx tsc --noEmit --skipLibCheck 2>&1 | grep 'error TS'"
     exit 1
   fi
 
-  echo "✅ tsc-gate passed: $COUNT errors (baseline $BASELINE)"
+  echo "✅ tsc-gate passed: $COUNT errors (baseline $TSC_BASELINE)"
 fi
 
-# ── Smoke tests ──────────────────────────────────────────────────────────────
+# ── Smoke tests ───────────────────────────────────────────────────────────────
+# Skips gracefully if dev server not running on :3003
 bash "$REPO_ROOT/scripts/smoke_test.sh"
 exit $?

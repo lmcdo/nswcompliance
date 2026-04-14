@@ -59,6 +59,17 @@
 - Never delete/overwrite code unless explicitly instructed
 - Never interpret regulations — only extract exact clauses
 
+## Pre-PR Code Review (NON-NEGOTIABLE)
+
+Before creating any PR, apply these four checks to every file changed in the branch:
+
+1. **DB query filters** — every `SELECT` that reads scoped data must have correct `WHERE` clauses. Check: `is_active = TRUE`, correct council/instrument scope, no missing filters that would include inactive/wrong rows.
+2. **Unguarded nulls** — every value that comes from a DB row, API response, or optional field must be null-checked before use. Check: `.rows[0]?.field ?? null`, optional chaining, loading states in React components.
+3. **Type assumptions** — check that types match at every boundary: DB → API (psycopg2/pg date parsing), API → component (ISO string vs Date object), component state (undefined vs null vs false).
+4. **Silent failure modes** — ask: if this fails, does it fail visibly (error thrown, banner shown) or silently (wrong data served, stale state displayed)? Silent failures are always worse.
+
+Run this review mentally on each changed file before `gh pr create`. If uncertain, read the file again.
+
 ## Deployment & Branching (NON-NEGOTIABLE)
 **NEVER push directly to main.** Always branch and open a PR.
 
@@ -67,13 +78,12 @@ Branch naming: `fix/` | `feat/` | `chore/`
 Workflow:
 1. `git checkout -b fix/description`
 2. Do the work, commit normally
-3. `bash scripts/pre-pr-tests.sh` — run tests, save trail
-4. `git add test-trail/ && git commit -m "chore: test trail for PR"`
-5. `gh pr create --title "..." --body "..."`
-6. Share Vercel preview URL for QA
-7. User says "merge" → `gh pr merge --squash`
+3. Apply the four-question code review above to all changed files
+4. `gh pr create --title "..." --body "..."`
+5. Share Vercel preview URL for QA
+6. User says "merge" → `gh pr merge --squash`
 
-Test trail is mandatory for every merged PR.
+The pre-push hook enforces automatically: pytest (enrichment suite) + TSC error count gate + smoke tests (if dev server running). Fix any failures before pushing.
 
 PR body format:
 ```
