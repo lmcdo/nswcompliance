@@ -65,7 +65,8 @@ export function PropertyCard() {
  const [isLoading, setIsLoading] = useState(false)
 
  // CDC eligibility check
- const { checkEligibility, result: cdcResult, isLoading: cdcLoading } = useCdcEligibility as any as () => any
+ // eslint-disable-next-line @typescript-eslint/no-explicit-any
+ const { checkEligibility, result: cdcResult, isLoading: cdcLoading } = useCdcEligibility as any
 
  const fetchPropertyData = async (addr: string) => {
    if (!addr) return
@@ -83,7 +84,7 @@ export function PropertyCard() {
        console.log('🔍 Constraints:', data.constraints)
 
        // Extract SEPP overlays from Special Provisions layer
-       const specialProvisions = data.planningLayers?.find(layer =>
+       const specialProvisions = data.planningLayers?.find((layer: any) =>
          layer.layerName === 'Special Provisions'
        )
        const seppOverlays = specialProvisions?.results?.map((result: any) => ({
@@ -94,7 +95,7 @@ export function PropertyCard() {
        })) || []
 
        // Check for heritage in layers
-       const heritageLayer = data.planningLayers?.find(layer =>
+       const heritageLayer = data.planningLayers?.find((layer: any) =>
          layer.layerName === 'Heritage Map' || layer.layerName.includes('Heritage')
        )
        const hasHeritage = !!heritageLayer?.results?.length || data.constraints?.heritage || data.heritage?.isHeritage

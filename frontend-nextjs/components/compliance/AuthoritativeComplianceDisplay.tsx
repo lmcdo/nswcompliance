@@ -116,6 +116,7 @@ interface AuthoritativeComplianceData {
  processing_time: string;
  cache_hit: boolean;
  };
+ basix_provisions?: any[];
 }
 
 interface Props {

@@ -478,7 +478,7 @@ export function ContextSection({
             {planning_portal_layers.regional_plan_boundary !== undefined && (
               <View style={styles.contextTableRow}>
                 <Text style={styles.tableCellLabel}>Regional Plan Boundary:</Text>
-                <Text style={styles.tableCellValue}>{decodeHtmlEntities(planning_portal_layers.regional_plan_boundary)}</Text>
+                <Text style={styles.tableCellValue}>{decodeHtmlEntities(String(planning_portal_layers.regional_plan_boundary))}</Text>
               </View>
             )}
 

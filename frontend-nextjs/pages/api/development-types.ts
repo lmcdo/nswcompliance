@@ -106,7 +106,7 @@ async function getDevelopmentTypes(params: {
  category?: string;
 }): Promise<DevelopmentType[]> {
  // In a real implementation, this would query a database
- let filtered = [...mockDevelopmentTypes];
+ let filtered = [...fallbackDevelopmentTypes];
 
  // Filter by zoning if provided
  if (params.zoning) {
@@ -199,7 +199,7 @@ export default async function handler(
  console.error('Development types API error:', error);
  res.status(500).json({
  error: 'Internal server error',
- message: process.env.NODE_ENV === 'development' ? error.message : 'Failed to load development types'
+ message: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : 'Failed to load development types'
  });
  }
 }
