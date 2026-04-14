@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
           SELECT COUNT(*)
           FROM regulatory_provisions p
           WHERE p.document_id = t.document_id
+            AND p.is_current = TRUE
             AND p.pdf_page >= t.page_start
             AND (p.pdf_page <= t.page_end OR t.page_end IS NULL)
         ) as provision_count

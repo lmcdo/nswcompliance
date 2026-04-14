@@ -104,6 +104,7 @@ export async function POST(request: NextRequest) {
           p.development_type
         FROM regulatory_provisions p
         WHERE p.document_id = $1
+          AND p.is_current = TRUE
           AND p.pdf_page >= $2
         ORDER BY p.pdf_page, p.id
       `;
@@ -122,6 +123,7 @@ export async function POST(request: NextRequest) {
           p.development_type
         FROM regulatory_provisions p
         WHERE p.document_id = $1
+          AND p.is_current = TRUE
           AND p.pdf_page >= $2
           AND p.pdf_page <= $3
         ORDER BY p.pdf_page, p.id

@@ -44,9 +44,10 @@ export async function GET(request: NextRequest) {
         ) as has_toc,
         COUNT(p.id) as provision_count
       FROM regulatory_provisions p
-      WHERE p.document_id LIKE '%Marrickville_DCP%'
-        OR p.document_id LIKE '%Ashfield_DCP%'
-        OR p.document_id LIKE '%Leichhardt_DCP%'
+      WHERE p.is_current = TRUE
+        AND (p.document_id LIKE '%Marrickville_DCP%'
+          OR p.document_id LIKE '%Ashfield_DCP%'
+          OR p.document_id LIKE '%Leichhardt_DCP%')
       GROUP BY p.document_id
       ORDER BY p.document_id
     `);
