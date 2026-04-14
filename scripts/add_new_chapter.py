@@ -220,7 +220,7 @@ def preflight_schema_check(conn) -> list[str]:
         "r2_current_path", "r2_version_label", "r2_public_pdf_url",
         "content_hash", "url_content_length", "url_etag", "url_last_modified",
         "url_last_checked", "url_last_changed",
-        "is_active", "needs_extraction", "is_spatial",
+        "is_active", "needs_extraction", "is_spatial", "is_inert",
         "created_at", "updated_at",
     }
     cur = conn.cursor()
@@ -286,6 +286,8 @@ def main() -> int:
                         help="Substantive chapter — set needs_extraction=TRUE to queue for provision extraction")
     parser.add_argument("--spatial", action="store_true",
                         help="Map or spatial document — track for changes but never extract provisions")
+    parser.add_argument("--inert", action="store_true",
+                        help="Cover page, ToC, or other non-provision PDF — track hash silently, no extraction, no alert")
     parser.add_argument("--dry-run", action="store_true",
                         help="Show what would happen without writing anything")
     args = parser.parse_args()
@@ -308,10 +310,11 @@ def main() -> int:
         print(f"ERROR: Unknown council '{council}'. Known: {', '.join(KNOWN_COUNCILS)}")
         return 1
 
-    if args.extract and args.spatial:
-        print("ERROR: --extract and --spatial are mutually exclusive.")
+    if sum([args.extract, args.spatial, args.inert]) > 1:
+        print("ERROR: --extract, --spatial, and --inert are mutually exclusive.")
         print("  --extract = substantive chapter with development controls")
-        print("  --spatial = map or boundary document, never extracted")
+        print("  --spatial = map or boundary document, never extracted, Telegram alert on change")
+        print("  --inert   = cover page / ToC, never extracted, fully silent on change")
         return 1
 
     council_info = KNOWN_COUNCILS[council]
@@ -422,7 +425,7 @@ def main() -> int:
     # ── Insert into registry ──────────────────────────────────────────────────
     print("\n[7/7] Inserting into dcp_chapter_registry...")
     sort_order = next_sort_order(conn, council)
-    needs_extraction = args.extract and not args.spatial
+    needs_extraction = args.extract and not args.spatial and not args.inert
 
     if dry_run:
         print(f"  [dry-run] would INSERT:")
@@ -438,6 +441,7 @@ def main() -> int:
         print(f"    url_content_length = {content_len}")
         print(f"    needs_extraction   = {needs_extraction}")
         print(f"    is_spatial         = {args.spatial}")
+        print(f"    is_inert           = {args.inert}")
         print(f"    sort_order         = {sort_order}")
         print(f"  [dry-run] would increment hub_expected_count for {council}")
     else:
@@ -451,7 +455,7 @@ def main() -> int:
                     r2_current_path, r2_version_label, r2_public_pdf_url,
                     content_hash, url_content_length, url_etag, url_last_modified,
                     url_last_checked, url_last_changed,
-                    is_active, needs_extraction, is_spatial,
+                    is_active, needs_extraction, is_spatial, is_inert,
                     created_at, updated_at
                 ) VALUES (
                     %s, %s, 'dcp', %s, %s, %s,
@@ -459,7 +463,7 @@ def main() -> int:
                     %s, 'v1.0-baseline', %s,
                     %s, %s, %s, %s,
                     %s, %s,
-                    TRUE, %s, %s,
+                    TRUE, %s, %s, %s,
                     NOW(), NOW()
                 )
                 RETURNING id
@@ -470,7 +474,7 @@ def main() -> int:
                     r2_path, r2_public,
                     content_hash, content_len, etag, last_mod,
                     now, now,
-                    needs_extraction, args.spatial,
+                    needs_extraction, args.spatial, args.inert,
                 ),
             )
             new_id = cur.fetchone()[0]
@@ -501,7 +505,9 @@ def main() -> int:
     print(f"  {args.label}")
     print(f"  Hash: {content_hash}")
     if args.spatial:
-        print("  Spatial document — will be hash-tracked, not extracted.")
+        print("  Spatial document — will be hash-tracked, not extracted. Telegram alert on change.")
+    elif args.inert:
+        print("  Inert document (cover/ToC) — hash-tracked, no extraction, fully silent on change.")
     elif args.extract:
         print("  needs_extraction=TRUE — queued for provision extraction.")
         print()
@@ -519,8 +525,11 @@ def main() -> int:
     print("=" * 60)
 
     if not dry_run:
-        mode = "spatial document — no extraction" if args.spatial else (
-            "queued for extraction" if args.extract else "monitoring only"
+        mode = (
+            "spatial document — no extraction"    if args.spatial else
+            "inert (cover/ToC) — silent tracking" if args.inert else
+            "queued for extraction"               if args.extract else
+            "monitoring only"
         )
         send_telegram(
             f"New DCP chapter registered [{council}]\n"
