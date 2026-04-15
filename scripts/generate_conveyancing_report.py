@@ -1150,25 +1150,32 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
 # PDF generation
 # ---------------------------------------------------------------------------
 
-def get_shadow_risk(address: str, prop_id: int, lat: float, lng: float) -> Optional[dict]:
+def get_shadow_risk(
+    address: str,
+    prop_id: int,
+    lat: float,
+    lng: float,
+    height_m: Optional[float] = None,
+) -> Optional[dict]:
     """
     Call the Railway shadow pipeline.
+    height_m: pass the LEP height already fetched from Planning Portal so
+    Railway doesn't need to re-query (avoids spatial_overlays coverage gaps).
     Returns the `outputs` dict on success, None if Railway unreachable or call fails.
     Graceful degradation — shadow section is omitted rather than crashing the report.
     """
     api_url = os.environ.get("PYTHON_API_URL", "http://localhost:8000")
+    payload = {
+        "address": address,
+        "prop_id": str(prop_id),
+        "lat": lat,
+        "lng": lng,
+        "report_id": str(uuid.uuid4()),
+    }
+    if height_m:
+        payload["height_m"] = height_m
     try:
-        r = requests.post(
-            f"{api_url}/pipeline/shadow",
-            json={
-                "address": address,
-                "prop_id": str(prop_id),
-                "lat": lat,
-                "lng": lng,
-                "report_id": str(uuid.uuid4()),
-            },
-            timeout=60,
-        )
+        r = requests.post(f"{api_url}/pipeline/shadow", json=payload, timeout=60)
         r.raise_for_status()
         return r.json().get("outputs")
     except Exception as e:
@@ -2385,7 +2392,15 @@ def main():
     shadow_result = None
     if prop_id and lat and lng:
         print("\nRunning shadow risk model ...")
-        shadow_result = get_shadow_risk(args.address, prop_id, lat, lng)
+        # Parse LEP height from controls (e.g. "9.5" or "9.5m") and pass to pipeline
+        lep_height: Optional[float] = None
+        raw_h = controls.get("height")
+        if raw_h:
+            import re as _re
+            m = _re.search(r"(\d+(?:\.\d+)?)", str(raw_h))
+            if m:
+                lep_height = float(m.group(1))
+        shadow_result = get_shadow_risk(args.address, prop_id, lat, lng, height_m=lep_height)
         if shadow_result:
             adg = "ADG concern" if not shadow_result.get("adg_compliant") else "ADG compliant"
             print(f"  {adg}  height: {shadow_result.get('height_m')} m")

@@ -77,6 +77,7 @@ class ShadowRequest(BaseModel):
     lat: float
     lng: float
     report_id: str
+    height_m: Optional[float] = None  # LEP height override — skips DB query when provided
 
 
 def _get_conn():
@@ -303,7 +304,26 @@ def run_shadow(request: ShadowRequest):
         raise HTTPException(422, f"Cannot fetch lot geometry for {request.prop_id}")
 
     lot_geojson = _arcgis_to_geojson(lot_geometry)
-    height_m, lep_name = _get_height_limit(request.lat, request.lng)
+    if request.height_m:
+        height_m = request.height_m
+        lep_name = _COUNCIL_TO_LEP.get("", "Local Environmental Plan")
+        # Re-derive lep_name from DB without height query
+        try:
+            with _get_conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT lga_name FROM spatial_overlays WHERE layer_type = 'height' "
+                        "AND ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON(geom::text),4326), "
+                        "ST_SetSRID(ST_MakePoint(%s,%s),4326)) LIMIT 1",
+                        (request.lng, request.lat),
+                    )
+                    row = cur.fetchone()
+                    if row and row[0]:
+                        lep_name = _COUNCIL_TO_LEP.get(row[0].lower(), f"{row[0]} LEP")
+        except Exception:
+            pass
+    else:
+        height_m, lep_name = _get_height_limit(request.lat, request.lng)
 
     try:
         change = compute_change_score(request.lat, request.lng, radius_m=200)
