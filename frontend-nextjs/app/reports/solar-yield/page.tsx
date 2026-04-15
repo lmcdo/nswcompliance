@@ -62,19 +62,31 @@ function calcROI(kwh: number, maxPanels: number) {
 }
 
 // ── Solar suitability grade ──────────────────────────────────────────────────
-function solarGrade(pitch: number, azimuth: number, sunshineHours: number): { grade: string; colour: string; reason: string } {
+function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
+  grade: string; colour: string; reason: string;
+  pitchLabel: string; azLabel: string; sunLabel: string;
+} {
   // Pitch score: 15–30° is ideal for Sydney (~34°S latitude)
   const pitchScore =
     pitch >= 15 && pitch <= 30 ? 3 :
     pitch >= 8  && pitch < 15  ? 2 :
     pitch >= 30 && pitch <= 40 ? 2 : 1;
 
+  const pitchLabel =
+    pitchScore === 3 ? 'ideal' :
+    pitchScore === 2 ? 'acceptable' : 'flat/steep';
+
   // Azimuth score: north (0/360°) is ideal in Southern Hemisphere
-  const northDev = Math.min(azimuth, 360 - azimuth); // deviation from north
+  const northDev = Math.min(azimuth, 360 - azimuth);
   const azScore =
     northDev <= 30  ? 3 :
     northDev <= 60  ? 2 :
     northDev <= 90  ? 1 : 0;
+
+  const azLabel =
+    azScore === 3 ? 'north-facing' :
+    azScore === 2 ? 'partial north' :
+    azScore === 1 ? 'east/west'    : 'south-facing';
 
   // Sunshine score
   const sunScore =
@@ -82,13 +94,18 @@ function solarGrade(pitch: number, azimuth: number, sunshineHours: number): { gr
     sunshineHours >= 1500 ? 2 :
     sunshineHours >= 1300 ? 1 : 0;
 
+  const sunLabel =
+    sunScore === 3 ? 'high' :
+    sunScore === 2 ? 'good' :
+    sunScore === 1 ? 'moderate' : 'low';
+
   const total = pitchScore + azScore + sunScore;
 
-  if (total >= 8) return { grade: 'A', colour: 'text-emerald-700 bg-emerald-50', reason: 'Excellent solar potential' };
-  if (total >= 6) return { grade: 'B', colour: 'text-teal-700 bg-teal-50',       reason: 'Good solar potential' };
-  if (total >= 4) return { grade: 'C', colour: 'text-yellow-700 bg-yellow-50',   reason: 'Moderate solar potential' };
-  if (total >= 2) return { grade: 'D', colour: 'text-orange-700 bg-orange-50',   reason: 'Below-average solar potential' };
-  return           { grade: 'F', colour: 'text-red-700 bg-red-50',               reason: 'Poor solar potential' };
+  if (total >= 8) return { grade: 'A', colour: 'text-emerald-700 bg-emerald-50', reason: 'Excellent solar potential', pitchLabel, azLabel, sunLabel };
+  if (total >= 6) return { grade: 'B', colour: 'text-teal-700 bg-teal-50',       reason: 'Good solar potential',      pitchLabel, azLabel, sunLabel };
+  if (total >= 4) return { grade: 'C', colour: 'text-yellow-700 bg-yellow-50',   reason: 'Moderate solar potential',  pitchLabel, azLabel, sunLabel };
+  if (total >= 2) return { grade: 'D', colour: 'text-orange-700 bg-orange-50',   reason: 'Below-average solar potential', pitchLabel, azLabel, sunLabel };
+  return           { grade: 'F', colour: 'text-red-700 bg-red-50',               reason: 'Poor solar potential',      pitchLabel, azLabel, sunLabel };
 }
 
 function azimuthLabel(deg: number): string {
@@ -248,7 +265,7 @@ function ReportCard({ report }: { report: ReportData }) {
           {grade.reason} · {roi.systemKw.toFixed(1)} kW system
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          Grade based on roof pitch ({o.best_pitch_deg}°), orientation ({azimuthLabel(o.best_azimuth_deg)}, {o.best_azimuth_deg}° from north), and annual sunshine hours ({o.sunshine_hours_per_year.toLocaleString()} hr/yr) per BOM NSW solar irradiance data. A = excellent · F = poor.
+          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString()} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
         </p>
       </div>
 
