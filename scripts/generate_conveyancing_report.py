@@ -1559,25 +1559,31 @@ def generate_pdf(
             round(s.get("shadow_overlap_fraction", 0) * 100)
             for s in jun21
         ]
-        worst_pct = max(jun21_fractions) if jun21_fractions else 0
-        pct_note = f" ({worst_pct}% peak coverage)" if worst_pct else ""
+        noon = next((s for s in jun21 if s["scenario"] == "jun21_12pm"), None)
+        noon_pct = round((noon.get("shadow_overlap_fraction", 0) or 0) * 100) if noon else 0
 
         if adg_ok and overlap_count == 0:
-            shadow_flag = Paragraph("Clear — no significant shadow risk from max-height northern development", ss["ok"])
+            shadow_flag = Paragraph(
+                f"Clear — a {height_m} m building on the northern adjacent lot would not "
+                f"significantly shadow this property on any Jun 21 scenario.",
+                ss["ok"])
         elif adg_ok:
             shadow_flag = Paragraph(
-                f"Minor — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
-                f"ADG requirement met.", ss["warn"])
+                f"Low risk — a {height_m} m building on the northern adjacent lot would shadow "
+                f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.",
+                ss["warn"])
         else:
             shadow_flag = Paragraph(
-                f"ADG concern — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
-                f"A {height_m} m building on the northern lot could shadow this property.", ss["alert"])
-        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "Verify Shadow Model"])
+                f"ADG concern — a {height_m} m building on the northern adjacent lot would shadow "
+                f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
+                f"2-hour ADG requirement.",
+                ss["alert"])
+        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP · pybdshadow"])
     else:
         risk_rows.append([
             "Northern Development Shadow Risk",
-            Paragraph("Not assessed — pipeline unavailable", ss["note"]),
-            "—",
+            Paragraph("Not assessed", ss["note"]),
+            "NSW LEP · pybdshadow",
         ])
 
     c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
