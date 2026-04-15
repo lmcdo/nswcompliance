@@ -104,6 +104,12 @@ export async function POST(request: NextRequest) {
 
   const jobId = randomUUID();
 
+  // Convert Esri rings → WGS84 GeoJSON once.
+  // Sent to Railway for shapely lot-clipping AND used for the frontend map overlay.
+  const lotPolygon = lotGeometry?.rings
+    ? esriRingsToGeoJSON(lotGeometry.rings as number[][][])
+    : null;
+
   // Step 2: call Railway directly
   let pipelineResult: Record<string, unknown>;
   try {
@@ -113,7 +119,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         address, lat, lng, prop_id,
         report_id: jobId,
-        lot_geometry: lotGeometry,
+        lot_polygon_wgs84: lotPolygon,
       }),
       signal: AbortSignal.timeout(55_000),
     });
@@ -131,10 +137,6 @@ export async function POST(request: NextRequest) {
       { status: 502 },
     );
   }
-
-  const lotPolygon = lotGeometry?.rings
-    ? esriRingsToGeoJSON(lotGeometry.rings as number[][][])
-    : null;
 
   // Step 3: store in Supabase (Railway already wrote it, this is the read-back for the frontend)
   return NextResponse.json({

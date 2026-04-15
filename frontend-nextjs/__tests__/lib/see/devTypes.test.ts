@@ -3,8 +3,8 @@ import { assembleDescription, DEV_TYPE_OPTIONS } from '@/lib/see/devTypes';
 describe('assembleDescription', () => {
   describe('expected use', () => {
     it('assembles type + works into a readable string', () => {
-      const result = assembleDescription('pergola', 'open-sided timber, 4.2m x 3.6m, within the front setback');
-      expect(result).toBe('Pergola / shade structure — open-sided timber, 4.2m x 3.6m, within the front setback');
+      const result = assembleDescription('new_dwelling', 'single-storey, brick veneer, 4.2m x 3.6m');
+      expect(result).toBe('New dwelling — single-storey, brick veneer, 4.2m x 3.6m');
     });
 
     it('uses the label from DEV_TYPE_OPTIONS not the key', () => {
@@ -13,14 +13,14 @@ describe('assembleDescription', () => {
     });
 
     it('trims works text whitespace', () => {
-      const result = assembleDescription('deck', '  timber deck, 3m x 4m  ');
-      expect(result).toBe('Deck / terrace — timber deck, 3m x 4m');
+      const result = assembleDescription('alterations', '  rear ground floor addition  ');
+      expect(result).toBe('Alterations and additions — rear ground floor addition');
     });
   });
 
   describe('edge cases', () => {
     it('returns just the type label when works is empty', () => {
-      expect(assembleDescription('pool', '')).toBe('Swimming pool or spa');
+      expect(assembleDescription('dual_occupancy', '')).toBe('Dual occupancy');
     });
 
     it('returns just works text when type is empty', () => {

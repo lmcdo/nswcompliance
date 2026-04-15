@@ -40,6 +40,37 @@ else
   echo "✅ tsc-gate passed: $COUNT errors (baseline $TSC_BASELINE)"
 fi
 
+# ── ESLint gate ──────────────────────────────────────────────────────────────
+if [ -d "$FRONTEND_DIR" ]; then
+  echo "eslint: running next lint..."
+  LINT_ERRORS=$(cd "$FRONTEND_DIR" && npx next lint 2>&1 | grep -c "^.*  Error:" || true)
+
+  if [ "${LINT_ERRORS:-0}" -gt 0 ]; then
+    echo ""
+    echo "❌ eslint FAILED: $LINT_ERRORS error(s)"
+    echo "   Run: cd frontend-nextjs && npx next lint"
+    exit 1
+  fi
+
+  echo "✅ eslint passed (warnings allowed)"
+fi
+
+# ── Jest: frontend unit tests ─────────────────────────────────────────────────
+if [ -d "$FRONTEND_DIR" ]; then
+  echo "jest: running frontend unit tests..."
+  JEST_COUNT=$(cd "$FRONTEND_DIR" && npx jest --no-coverage --forceExit --passWithNoTests 2>&1 | grep -E "^Tests:" | tail -1)
+  FAILED=$(echo "$JEST_COUNT" | grep -o '[0-9]* failed' | grep -o '[0-9]*' || echo "0")
+
+  if [ "${FAILED:-0}" -gt 0 ]; then
+    echo ""
+    echo "❌ jest FAILED: $FAILED test(s) failing"
+    echo "   Run: cd frontend-nextjs && npx jest --no-coverage to see failures"
+    exit 1
+  fi
+
+  echo "✅ jest passed: $JEST_COUNT"
+fi
+
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 # Skips gracefully if dev server not running on :3003
 bash "$REPO_ROOT/scripts/smoke_test.sh"

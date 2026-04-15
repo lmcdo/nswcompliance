@@ -26,6 +26,17 @@ export type { TODPrecinctInfo, AcceleratedTODInfo, HIAInfo };
 
 export interface PropertyConstraints extends PlanningConstraints {
  applicableSepps?: string[];
+ specialEntertainmentPrecinct?: {
+   inSEP: boolean;
+   name: string | null;
+   isDraft: boolean;
+ };
+ todPrecinctSpatial?: {
+   inTODPrecinct: boolean;
+   classification: string | null;
+   isAccelerated: boolean;
+   isDeferred: boolean;
+ };
 }
 
 export interface SourceInfo {

@@ -301,15 +301,11 @@ export function LegalTextPanel({
   const [loadingFigures, setLoadingFigures] = useState<Set<string>>(new Set());
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
-  if (!selectedProvision) {
-    return null;
-  }
-
-  const { constraint, provisions } = selectedProvision;
-
   // Auto-detect figures AND expand short provisions from provision text
   // DISABLED: API endpoint not working for all documents, provisions already have full text with embedded images
+  // Hook must be declared before any conditional return to satisfy rules-of-hooks.
   useEffect(() => {
+    const provisions = selectedProvision?.provisions;
     const detectFiguresAndExpandShortProvisions = async () => {
       if (!provisions || provisions.length === 0) return;
 
@@ -366,7 +362,13 @@ export function LegalTextPanel({
     };
 
     detectFiguresAndExpandShortProvisions();
-  }, [provisions]);
+  }, [selectedProvision]);
+
+  if (!selectedProvision) {
+    return null;
+  }
+
+  const { constraint, provisions } = selectedProvision;
 
   // Toggle figure expansion
   const toggleFigure = async (figureRef: string) => {
