@@ -1578,12 +1578,12 @@ def generate_pdf(
                 f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
                 f"2-hour ADG requirement.",
                 ss["alert"])
-        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP · pybdshadow"])
+        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP · shadow model"])
     else:
         risk_rows.append([
             "Northern Development Shadow Risk",
             Paragraph("Not assessed", ss["note"]),
-            "NSW LEP · pybdshadow",
+            "NSW LEP · shadow model",
         ])
 
     c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
