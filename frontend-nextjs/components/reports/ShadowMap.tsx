@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useMemo } from 'react';
-import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
+import Map, { Source, Layer } from 'react-map-gl/maplibre';
 import type { StyleSpecification, LngLatBoundsLike } from 'maplibre-gl';
 // maplibre-gl.css imported in app/reports/layout.tsx (must be in a server component to avoid dynamic chunk 404)
 
@@ -119,6 +119,8 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
       style={{ width: '100%', height: '100%' }}
       mapStyle={AERIAL_STYLE}
       attributionControl={false}
+      dragRotate={false}
+      touchZoomRotate={false}
     >
       {/* Layer 1: Northern proxy building — dashed grey outline, no fill */}
       {northProxyGeoJSON && (
@@ -148,8 +150,6 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
           />
         </Source>
       )}
-
-      <NavigationControl position="bottom-right" showCompass={true} showZoom={false} visualizePitch={false} />
 
       {/* Layer 3: Subject lot — teal fill + outline, rendered on top */}
       {lotGeoJSON && (
