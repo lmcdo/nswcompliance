@@ -248,7 +248,7 @@ function ReportCard({ report }: { report: ReportData }) {
           {grade.reason} · {roi.systemKw.toFixed(1)} kW system
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          Grade based on roof pitch ({o.best_pitch_deg}°), orientation ({azimuthLabel(o.best_azimuth_deg)}, {o.best_azimuth_deg}° from north), and annual sunshine hours ({o.sunshine_hours_per_year.toLocaleString()} hr/yr) per BOM NSW solar irradiance data. A = excellent · F = poor.
+          Grade based on roof pitch ({o.best_pitch_deg}°), orientation ({azimuthLabel(o.best_azimuth_deg)}, {o.best_azimuth_deg}° from north), and annual sunshine hours ({o.sunshine_hours_per_year.toLocaleString()} hr/yr) per BOM NSW solar irradiance data. A = excellent · B = good · C = moderate · D = below average · F = poor.
         </p>
       </div>
 
