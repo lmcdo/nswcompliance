@@ -18,6 +18,7 @@ interface SolarYieldOutputs {
   best_azimuth_deg: number;
   roof_area_m2: number;
   is_heritage: boolean;
+  is_commercial_scale: boolean;
   imagery_date: string;
   coverage_available: boolean;
 }
@@ -314,6 +315,15 @@ function ReportCard({ report }: { report: ReportData }) {
           </div>
         </div>
       </div>
+
+      {/* Commercial scale notice */}
+      {o.is_commercial_scale && (
+        <div className="px-6 py-4 bg-sky-50 text-xs text-sky-800">
+          Large-scale roof detected ({o.roof_area_m2.toLocaleString()} m²). Results reflect
+          the panels within this lot boundary only. Financial figures assume a single-occupant
+          system — a commercial energy assessment is recommended for multi-tenancy or strata sites.
+        </div>
+      )}
 
       {/* Heritage warning */}
       {o.is_heritage && (

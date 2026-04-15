@@ -2,13 +2,21 @@
 Solar Yield Underwriter — FastAPI router.
 
 POST /pipeline/solar-yield
-  Input:  { address, prop_id, lat, lng, report_id }
+  Input:  { address, prop_id, lat, lng, report_id, lot_polygon_wgs84 }
   Output: writes to property_reports, returns full output JSON
 
 Pipeline:
-  1. Google Solar API buildingInsights — roof segments, max panels, annual kWh
-  2. Heritage flag from regulatory_provisions
-  3. Write to property_reports, return result
+  1. Google Solar API buildingInsights — roof segments, panels, annual kWh
+  2. Clip solarPanels[] to lot boundary (shapely point-in-polygon)
+  3. Recompute totals from lot-clipped panels
+  4. Heritage flag from regulatory_provisions
+  5. Write to property_reports, return result
+
+Clipping:
+  Google Solar findClosest returns the nearest building — not the lot.
+  For commercial/industrial sites this is wrong. solarPanels[] has per-panel
+  lat/lng, so we filter to panels inside the cadastral lot boundary and
+  recompute counts, area, yield, and roof area from those panels only.
 
 Data sources:
   Google Solar API (requires GOOGLE_MAPS_API_KEY with Solar API enabled)
@@ -23,7 +31,8 @@ Response contract (must match frontend-nextjs/app/reports/solar-yield/page.tsx):
   "best_azimuth_deg": float,   # compass bearing: 0=N, 90=E, 180=S, 270=W
   "roof_area_m2": float,
   "is_heritage": bool,
-  "imagery_date": str,         # "YYYY-MM" or "unknown"
+  "is_commercial_scale": bool,  # roof_area_m2 > 500 after clipping
+  "imagery_date": str,          # "YYYY-MM" or "unknown"
   "coverage_available": bool
 }
 """
@@ -51,7 +60,7 @@ class SolarYieldRequest(BaseModel):
     lat: float
     lng: float
     report_id: str
-    lot_geometry: Optional[dict] = None  # unused now, kept for API compat
+    lot_polygon_wgs84: Optional[dict] = None  # GeoJSON Polygon in WGS84
 
 
 class SolarYieldOutput(BaseModel):
@@ -63,6 +72,7 @@ class SolarYieldOutput(BaseModel):
     best_azimuth_deg: float
     roof_area_m2: float
     is_heritage: bool
+    is_commercial_scale: bool  # roof_area_m2 > 500 after clipping
     imagery_date: str
     coverage_available: bool
 
@@ -112,6 +122,87 @@ def _write_report(
         conn.commit()
 
 
+def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
+    """
+    Filter solarPanels[] to those whose centre falls within the lot polygon.
+
+    Recomputes:
+      - maxArrayPanelsCount, maxArrayAreaMeters2 — from lot panels only
+      - wholeRoofStats.areaMeters2 — from segments that contain lot panels
+      - roofSegmentStats — filtered to lot-referenced segments only
+        (used downstream for best pitch/azimuth scoring)
+      - _lot_annual_kwh — sum of yearlyEnergyDcKwh for lot panels
+      - _lot_clipped — True (signals to _parse_solar_response to use _lot_annual_kwh)
+
+    Returns sp unchanged if solarPanels[] absent, lot polygon invalid, or
+    shapely unavailable (with a warning log in each case).
+    """
+    try:
+        from shapely.geometry import shape, Point
+    except ImportError:
+        logger.warning("shapely unavailable — lot clipping skipped")
+        return sp
+
+    panels = sp.get("solarPanels", [])
+    if not panels:
+        logger.info("solarPanels[] absent in Google response — lot clipping skipped")
+        return sp
+
+    try:
+        lot_shape = shape(lot_polygon_wgs84)
+    except Exception as exc:
+        logger.warning(f"Invalid lot polygon, clipping skipped: {exc}")
+        return sp
+
+    lot_panels = [
+        p for p in panels
+        if lot_shape.contains(Point(
+            p["center"]["longitude"],
+            p["center"]["latitude"],
+        ))
+    ]
+
+    total_count = sp.get("maxArrayPanelsCount", len(panels))
+    total_area = float(sp.get("maxArrayAreaMeters2", 0.0))
+    per_panel_area = total_area / total_count if total_count > 0 else 2.0  # ~2 m² per 400 W panel
+
+    lot_count = len(lot_panels)
+    lot_area = round(lot_count * per_panel_area, 1)
+    lot_kwh = round(sum(p.get("yearlyEnergyDcKwh", 0.0) for p in lot_panels), 0)
+
+    # Roof area: sum segment areas referenced by lot panels
+    segment_indices = {p["segmentIndex"] for p in lot_panels if "segmentIndex" in p}
+    segments = sp.get("roofSegmentStats", [])
+    lot_roof_area = sum(
+        s.get("stats", {}).get("areaMeters2", 0.0)
+        for i, s in enumerate(segments)
+        if i in segment_indices
+    )
+    if not lot_roof_area and total_count > 0:
+        # Proportional fallback when segmentIndex mapping yields nothing
+        whole = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
+        lot_roof_area = round(whole * lot_count / total_count, 1)
+
+    lot_segments = [s for i, s in enumerate(segments) if i in segment_indices]
+
+    logger.info(
+        f"Lot clipping: {lot_count}/{total_count} panels within boundary "
+        f"({lot_kwh:.0f} kWh/yr, {lot_area:.1f} m² panel area, {lot_roof_area:.1f} m² roof)"
+    )
+
+    modified = dict(sp)
+    modified["maxArrayPanelsCount"] = lot_count
+    modified["maxArrayAreaMeters2"] = lot_area
+    modified["wholeRoofStats"] = {
+        **sp.get("wholeRoofStats", {}),
+        "areaMeters2": round(lot_roof_area, 1),
+    }
+    modified["roofSegmentStats"] = lot_segments
+    modified["_lot_annual_kwh"] = lot_kwh
+    modified["_lot_clipped"] = True
+    return modified
+
+
 def _query_google_solar(lat: float, lng: float) -> dict:
     """
     Call Google Solar API buildingInsights endpoint.
@@ -141,13 +232,24 @@ def _query_google_solar(lat: float, lng: float) -> dict:
     return r.json()
 
 
-def _parse_solar_response(data: dict) -> SolarYieldOutput:
+def _parse_solar_response(
+    data: dict,
+    lot_polygon_wgs84: Optional[dict] = None,
+) -> SolarYieldOutput:
     """
     Extract the fields we need from the Google Solar API buildingInsights response.
 
-    Best segment: the roof segment with the largest area (most solar-viable).
-    Annual yield: taken from the max-panel solarPanelConfigs entry.
-    Azimuth convention: Google uses standard compass bearing (0=N, 90=E, 180=S, 270=W).
+    If lot_polygon_wgs84 is provided, clips solarPanels[] to the lot boundary
+    before computing counts, area, and yield.  This prevents the analysis from
+    including panels on neighbouring buildings that Google's findClosest may
+    have selected.
+
+    Best segment: highest median sunshine hours (index 4 of sunshineQuantiles),
+    tiebroken toward north-facing.  After lot clipping, only segments referenced
+    by lot panels are considered — so orientation reflects this lot's roof, not
+    the whole complex.
+
+    Azimuth convention: Google compass bearing (0=N, 90=E, 180=S, 270=W).
     """
     if not data.get("coverage_available", True):
         return SolarYieldOutput(
@@ -159,11 +261,16 @@ def _parse_solar_response(data: dict) -> SolarYieldOutput:
             best_azimuth_deg=0.0,
             roof_area_m2=0.0,
             is_heritage=False,
+            is_commercial_scale=False,
             imagery_date="unknown",
             coverage_available=False,
         )
 
     sp = data.get("solarPotential", {})
+
+    # Apply lot clipping if a polygon is available
+    if lot_polygon_wgs84:
+        sp = _clip_panels_to_lot(sp, lot_polygon_wgs84)
 
     # Imagery date
     img_date = data.get("imageryDate", {})
@@ -172,11 +279,10 @@ def _parse_solar_response(data: dict) -> SolarYieldOutput:
     else:
         imagery_date = "unknown"
 
-    # Roof area
+    # Roof area (from wholeRoofStats, already updated by clipping if applied)
     roof_area = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
 
-    # Best segment: highest median sunshine hours (index 4 of sunshineQuantiles).
-    # This picks the sunniest face of the roof, not just the largest.
+    # Best segment: highest median sunshine hours among (lot-filtered) segments.
     # Tiebreak: prefer segments closer to north-facing (azimuth near 0/360).
     segments = sp.get("roofSegmentStats", [])
 
@@ -184,7 +290,6 @@ def _parse_solar_response(data: dict) -> SolarYieldOutput:
         quantiles = seg.get("stats", {}).get("sunshineQuantiles", [])
         median_sun = float(quantiles[4]) if len(quantiles) > 4 else 0.0
         az = seg.get("azimuthDegrees", 180.0)
-        # Small bonus for north-facing (az near 0 or 360) in Southern Hemisphere
         north_bonus = (1.0 - min(az, 360 - az) / 180.0) * 10
         return median_sun + north_bonus
 
@@ -192,20 +297,29 @@ def _parse_solar_response(data: dict) -> SolarYieldOutput:
     best_pitch = best_seg.get("pitchDegrees", 0.0)
     best_azimuth = best_seg.get("azimuthDegrees", 0.0)
 
-    # Max panel config (last entry = maximum panels)
-    configs = sp.get("solarPanelConfigs", [])
-    max_config = configs[-1] if configs else {}
-    annual_kwh = max_config.get("yearlyEnergyDcKwh", 0.0)
+    # Annual kWh: use per-panel sum when lot-clipped (more accurate), otherwise
+    # take the max solarPanelConfigs entry (Google's aggregate for the whole building).
+    if sp.get("_lot_clipped"):
+        annual_kwh = float(sp.get("_lot_annual_kwh", 0.0))
+    else:
+        configs = sp.get("solarPanelConfigs", [])
+        max_config = configs[-1] if configs else {}
+        annual_kwh = float(max_config.get("yearlyEnergyDcKwh", 0.0))
+
+    max_panels = int(sp.get("maxArrayPanelsCount", 0))
+    max_panel_area = round(float(sp.get("maxArrayAreaMeters2", 0.0)), 1)
+    roof_area_rounded = round(float(roof_area), 1)
 
     return SolarYieldOutput(
-        max_panels=int(sp.get("maxArrayPanelsCount", 0)),
-        max_panel_area_m2=round(float(sp.get("maxArrayAreaMeters2", 0.0)), 1),
-        annual_kwh_estimate=round(float(annual_kwh), 0),
+        max_panels=max_panels,
+        max_panel_area_m2=max_panel_area,
+        annual_kwh_estimate=round(annual_kwh, 0),
         sunshine_hours_per_year=round(float(sp.get("maxSunshineHoursPerYear", 0.0)), 0),
         best_pitch_deg=round(float(best_pitch), 1),
         best_azimuth_deg=round(float(best_azimuth), 1),
-        roof_area_m2=round(float(roof_area), 1),
+        roof_area_m2=roof_area_rounded,
         is_heritage=False,  # populated below
+        is_commercial_scale=roof_area_rounded > 500,
         imagery_date=imagery_date,
         coverage_available=True,
     )
@@ -237,10 +351,17 @@ async def run_solar_yield(request: SolarYieldRequest):
         logger.exception(f"Google Solar API failed: {e}")
         raise HTTPException(status_code=502, detail=f"Google Solar API error: {e}")
 
-    outputs = _parse_solar_response(raw)
+    outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
     outputs.is_heritage = _check_heritage(request.prop_id)
 
-    confidence = "high" if outputs.coverage_available else "low"
+    if not outputs.coverage_available:
+        confidence = "low"
+    elif request.lot_polygon_wgs84 and outputs.max_panels > 0:
+        confidence = "high"   # clipped to lot, panels found
+    elif request.lot_polygon_wgs84:
+        confidence = "medium"  # clipped but no panels in lot boundary
+    else:
+        confidence = "medium"  # no lot polygon — raw Google result, building may not match lot
 
     _write_report(
         report_id=request.report_id,
