@@ -127,7 +127,12 @@ export function ShadowMap({ center, lotPolygon, shadowPolygon }: Props) {
           <Layer
             id="shadow-fill"
             type="fill"
-            paint={{ 'fill-color': '#1e293b', 'fill-opacity': 0.45 }}
+            paint={{ 'fill-color': '#f97316', 'fill-opacity': 0.55 }}
+          />
+          <Layer
+            id="shadow-outline"
+            type="line"
+            paint={{ 'line-color': '#ea580c', 'line-width': 1.5, 'line-opacity': 0.8 }}
           />
         </Source>
       )}
