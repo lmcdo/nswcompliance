@@ -242,7 +242,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             <span className="text-gray-700">Subject lot</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-sm border-2 border-dashed border-slate-500 bg-slate-200/40 shrink-0" />
+            <svg width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
+              <rect x="1" y="1" width="10" height="10" fill="rgba(148,163,184,0.2)" stroke="#64748b" strokeWidth="1.5" strokeDasharray="3 2" />
+            </svg>
             <span className="text-gray-700">Max height building (north)</span>
           </div>
           <div className="flex items-center gap-2">
