@@ -28,6 +28,7 @@ interface ShadowScenario {
   shadow_overlap_fraction: number;
   shadow_direction_deg: number;
   overlaps_subject_lot: boolean;
+  shadow_on_lot: GeoJSONCollection | null;
   shadow_polygon: GeoJSONCollection | null;
 }
 
@@ -35,6 +36,7 @@ interface ShadowOutputs {
   height_m: number;
   lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
+  north_proxy_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
@@ -167,9 +169,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
     o.worst_case_scenario ?? 'jun21_12pm'
   );
 
-  const activeShadowPolygon = useMemo(() => {
+  const activeShadowOnLot = useMemo(() => {
     const s = scenarios.find(s => s.scenario === activeScenario);
-    return s?.shadow_polygon ?? null;
+    return s?.shadow_on_lot ?? null;
   }, [activeScenario, scenarios]);
 
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
@@ -226,21 +228,26 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         <ShadowMap
           center={[result.lng, result.lat]}
           lotPolygon={o.lot_polygon ?? null}
-          shadowPolygon={activeShadowPolygon}
+          shadowOnLot={activeShadowOnLot}
+          northProxy={o.north_proxy_polygon ?? null}
         />
         {/* Scenario label overlay */}
         <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
           {SCENARIO_LABELS[activeScenario] ?? activeScenario}
         </div>
         {/* Legend */}
-        <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1 shadow-sm">
+        <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1.5 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-teal-500 opacity-70 shrink-0" />
             <span className="text-gray-700">Subject lot</span>
           </div>
           <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-sm border-2 border-dashed border-slate-500 bg-slate-200/40 shrink-0" />
+            <span className="text-gray-700">Max height building (north)</span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-orange-400 opacity-80 shrink-0" />
-            <span className="text-gray-700">Shadow</span>
+            <span className="text-gray-700">Shadow on lot</span>
           </div>
         </div>
       </div>
