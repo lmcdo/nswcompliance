@@ -25,6 +25,7 @@ interface ShadowScenario {
   date: string;
   time_local: string;
   shadow_length_m: number;
+  shadow_overlap_fraction: number;
   shadow_direction_deg: number;
   overlaps_subject_lot: boolean;
   shadow_polygon: GeoJSONCollection | null;
@@ -246,43 +247,47 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <div className="p-6">
         <p className="text-sm font-medium text-gray-700 mb-1">Shadow impact by scenario</p>
         <p className="text-xs text-gray-400 mb-4">
-          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building reach this property?
+          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building on the northern neighbouring lot reach this property?
         </p>
         <div className="space-y-0 divide-y divide-gray-50">
           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
             <span>Date &amp; time</span>
-            <span className="text-right">Length</span>
+            <span className="text-right">Reach</span>
             <span className="text-right">Direction</span>
-            <span className="text-right">Reaches lot</span>
+            <span className="text-right">Coverage</span>
           </div>
-          {scenarios.map((s) => (
-            <button
-              key={s.scenario}
-              onClick={() => setActiveScenario(s.scenario)}
-              className={`w-full grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center text-left rounded transition-colors ${
-                activeScenario === s.scenario
-                  ? 'bg-teal-50 -mx-2 px-2'
-                  : 'hover:bg-gray-50 -mx-2 px-2'
-              }`}
-            >
-              <span className="text-gray-700">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
-              <span className="text-gray-500 text-xs text-right tabular-nums">
-                {s.shadow_length_m > 0 ? `${s.shadow_length_m.toFixed(0)} m` : '—'}
-              </span>
-              <span className="text-gray-400 text-xs text-right">
-                {s.shadow_direction_deg != null ? bearingToCompass(s.shadow_direction_deg) : '—'}
-              </span>
-              <span
-                className={`text-xs font-medium px-2 py-0.5 rounded-full text-right ${
-                  s.overlaps_subject_lot
-                    ? 'bg-red-100 text-red-700'
-                    : 'bg-gray-100 text-gray-500'
+          {scenarios.map((s) => {
+            const pct = s.shadow_overlap_fraction != null
+              ? Math.round(s.shadow_overlap_fraction * 100)
+              : null;
+            const coverageColor = pct == null ? 'bg-gray-100 text-gray-400'
+              : pct >= 70 ? 'bg-red-100 text-red-700'
+              : pct >= 40 ? 'bg-amber-100 text-amber-700'
+              : pct > 0   ? 'bg-yellow-50 text-yellow-700'
+              : 'bg-gray-100 text-gray-500';
+            return (
+              <button
+                key={s.scenario}
+                onClick={() => setActiveScenario(s.scenario)}
+                className={`w-full grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center text-left rounded transition-colors ${
+                  activeScenario === s.scenario
+                    ? 'bg-teal-50 -mx-2 px-2'
+                    : 'hover:bg-gray-50 -mx-2 px-2'
                 }`}
               >
-                {s.overlaps_subject_lot ? 'Yes' : 'No'}
-              </span>
-            </button>
-          ))}
+                <span className="text-gray-700">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                <span className="text-gray-500 text-xs text-right tabular-nums">
+                  {s.shadow_length_m > 0 ? `${s.shadow_length_m.toFixed(0)} m` : '—'}
+                </span>
+                <span className="text-gray-400 text-xs text-right">
+                  {s.shadow_direction_deg != null ? bearingToCompass(s.shadow_direction_deg) : '—'}
+                </span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full text-right ${coverageColor}`}>
+                  {pct != null ? `${pct}%` : '—'}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -314,10 +319,12 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             shadow consultants. Verified for Sydney&apos;s latitude (Southern Hemisphere).
           </p>
           <p>
-            <span className="font-medium text-gray-600">Building height.</span>{' '}
-            The model assumes the maximum permissible building height for this lot under the
-            applicable Local Environmental Plan (LEP). Actual development may be smaller,
-            which would produce shorter shadows.
+            <span className="font-medium text-gray-600">Building height and footprint.</span>{' '}
+            The model assumes the maximum permissible building height under the applicable
+            Local Environmental Plan (LEP). The northern neighbour&apos;s footprint is
+            approximated using the subject lot&apos;s own cadastral boundary, offset one
+            lot-depth northward — a conservative symmetric proxy for suburban and terrace
+            lots. Actual development may be smaller or differently positioned.
           </p>
           <p>
             <span className="font-medium text-gray-600">Construction activity.</span>{' '}

@@ -1,0 +1,2401 @@
+#!/usr/bin/env python3
+"""
+Generate a conveyancing planning disclosure report.
+
+Data sources:
+  1. NSW Planning Portal layerintersect — zone, height, FSR, lot size, acid sulfate,
+     heritage, key sites, special provisions (SEPP), legislative clauses.
+  2. PostGIS spatial_overlays — biodiversity, riparian, wetlands, landslide, flood.
+     These are NOT in the portal layerintersect. They come from NSW ePlanning's
+     Protection and Hazard ArcGIS services. Standard title/s10.7 searches return
+     "contact council" or nothing for these layers.
+  3. NSW ePlanning DA API — nearby development applications.
+
+Usage:
+    python scripts/generate_conveyancing_report.py \\
+        --address "3 Flood St, Leichhardt NSW 2040" \\
+        --output report.pdf
+
+    # --lat / --lng are optional overrides; address geocoding is automatic.
+
+Requires (local venv, NOT services/requirements.txt):
+    pip install reportlab psycopg2-binary requests python-dotenv
+"""
+
+import argparse
+import json
+import math
+import os
+import re
+import sys
+import uuid
+from datetime import date, datetime, timedelta
+from pathlib import Path
+from typing import Optional
+
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+import psycopg2
+import requests
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path=project_root / ".env")
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+PORTAL_BASE = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi"
+PORTAL_HEADERS = {
+    "Origin": "https://www.planningportal.nsw.gov.au",
+    "Referer": "https://www.planningportal.nsw.gov.au/",
+    "User-Agent": "Mozilla/5.0",
+}
+DA_URL = "https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineDA"
+
+# Acid sulfate class descriptions (Class 1 = highest risk, Class 5 = subaqueous)
+ASS_DESCRIPTIONS = {
+    "Class 1": "High risk — works within 500m of CLASS 1 land require acid sulfate soils management plan.",
+    "Class 2": "Moderate risk — works within 1km require acid sulfate soils management plan.",
+    "Class 3": "Lower risk — relevant if works drain or disturb below 5m AHD.",
+    "Class 4": "Low risk — relevant if works drain below 1m AHD.",
+    "Class 5": "Subaqueous — applies to tidal wetlands/waterways. Works may still require management plan.",
+}
+
+# Biodiversity significance note
+BIO_NOTE = (
+    "Biodiversity Sensitivity — any development application on this property will likely "
+    "require a Biodiversity Development Assessment Report (BDAR) under the Biodiversity "
+    "Conservation Act 2016. Cost: $15,000–$50,000+. Timeline impact: 4–12 months."
+)
+
+RIPARIAN_NOTE = (
+    "Riparian Land — property adjoins or includes a waterway corridor. Development setbacks "
+    "apply under the LEP and Water Management Act 2000. Check council's riparian mapping."
+)
+
+WETLANDS_NOTE = (
+    "Wetlands — identified wetland area. Development highly restricted. "
+    "State Environmental Planning Policy (Resilience and Hazards) 2021 applies."
+)
+
+LANDSLIDE_NOTE = (
+    "Landslide Risk — earthworks, excavation and building work subject to geotechnical "
+    "investigation requirements. Confirm with council's hazard mapping."
+)
+
+FLOOD_NOTE = (
+    "Flood Planning Area — this property is within council's flood planning area. "
+    "The flood planning level (minimum floor height for development) is set by council and confirmed "
+    "via a Section 733 Certificate (order from council, ~$50–150). "
+    "Flood insurance cost should be confirmed with a broker before exchange. "
+    "Source: council flood mapping."
+)
+
+FORESHORE_NOTE = (
+    "Foreshore Building Line — property is within a foreshore area subject to a mapped "
+    "building line under the LEP. Development between the building line and the water is "
+    "prohibited or severely restricted. Confirm exact building line position with Council "
+    "before any development or purchase decision."
+)
+
+CLASSIFIED_ROAD_NOTE = (
+    "Classified Road Frontage — a statutory minimum setback of 9 metres applies to any "
+    "dwelling house or attached development on a boundary with a classified road "
+    "(SEPP Housing 2021). This is a hard LEP/SEPP number, independent of the DCP. "
+    "Applies to Parramatta Road, Pacific Highway, Victoria Road and other state roads."
+)
+
+# Land tax thresholds — NSW, update annually (Revenue NSW publishes June each year)
+# Source: revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/land-tax-thresholds
+LT_YEAR = 2025
+LT_THRESHOLD = 1_075_000
+LT_RATE = 0.016
+LT_BASE = 100
+
+# Permitted uses by zone (simplified — primary residential uses only)
+ZONE_PERMITTED = {
+    "R1": ["Dwelling house", "Secondary dwelling (granny flat)", "Home business", "Community facilities", "Child care centres"],
+    "R2": ["Dwelling house", "Secondary dwelling (granny flat)", "Home business", "Dual occupancy (subject to controls)"],
+    "R3": ["Dwelling house", "Multi dwelling housing", "Residential flat building (subject to controls)", "Secondary dwelling"],
+    "R4": ["Residential flat building", "Multi dwelling housing", "Secondary dwelling", "Shop top housing"],
+    "E1": ["Light industry", "Business premises (subject to controls)", "Warehouse or distribution centre"],
+    "E2": ["Light industry", "Business premises", "Warehouse or distribution centre"],
+    "MU1": ["Residential flat building", "Shop top housing", "Retail premises", "Business premises"],
+    "SP2": ["Infrastructure", "Special purpose (as specified in LEP)"],
+}
+
+KEY_SITES_PLAIN = {
+    "4.3C": "Height of buildings — Key Sites Area: site-specific height controls apply, may differ from zone-wide height limit.",
+    "4.4":  "Floor Space Ratio — Key Sites Area: site-specific FSR controls apply via Clause 4.4 2B(c).",
+    "6.14": "Affordable housing contribution may be required for residential development.",
+    "6.15": "Design excellence process required for certain development types.",
+}
+
+SEPP_PLAIN = {
+    "sustainable buildings": "BASIX certificate required for new dwellings and renovations exceeding $50,000.",
+    "transport and infrastructure": "Check for infrastructure corridors or classified road setback requirements.",
+    "housing": "NSW Housing SEPP — may enable additional dwelling types or density above LEP controls.",
+    "resilience and hazards": "Coastal/hazard provisions may apply — confirm with council.",
+    "biodiversity and conservation": "Biodiversity provisions apply — consult biodiversity assessment requirements.",
+}
+
+# ---------------------------------------------------------------------------
+# DCP setback controls — Inner West (Marrickville, Leichhardt, Ashfield)
+#
+# IMPORTANT LIMITATIONS:
+#   1. Zone-gated: controls shown only when zone matches zones_applicable.
+#      R2/R1 → low density chapter. R3/R4 → not extracted yet.
+#   2. control_type:
+#      "prescribed"   — a number exists in the DCP text regardless of site context.
+#                       Can be cited as a minimum.
+#      "site_derived" — no fixed number. The DCP specifies the METHOD for calculating
+#                       the setback (BLZ, prevailing character, graph). The actual number
+#                       is derived by a planner from a site visit. Cannot be cited without
+#                       site-specific assessment.
+#   3. Leichhardt caveat: Part C3.2 is the GENERAL residential chapter. Area-specific
+#      "Distinctive Neighbourhood" / Building Typology Statements (DCP Appendix) may
+#      impose additional or different controls for specific streets. Not mapped in DB.
+#   4. These controls are for dwelling houses as the representative residential dev type.
+#      Different development types (dual occupancy, multi-dwelling, residential flat
+#      buildings) trigger different DCP chapters with different setbacks.
+# ---------------------------------------------------------------------------
+
+# fmt: off
+DCP_SETBACKS: dict = {
+    "marrickville": {
+        "dcp_name": "Marrickville DCP 2011",
+        "section": "Part 4.1 — Low Density Residential",
+        "clause_ref": "O14, C10–C11",
+        "zones_applicable": ["R1", "R2"],
+        "dev_type_scope": "Dwelling houses, attached dwellings, semi-detached dwellings",
+        "caveat": None,
+        "setbacks": [
+            {"type": "Front",                                     "control_type": "site_derived",  "requirement": "Match prevailing setback",  "clause": "C10(i)",      "notes": "Consistent with adjoining development or the dominant setback found along the street. No fixed number — determined by site context."},
+            {"type": "Side — 1 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "900 mm minimum",            "clause": "C10(ii)",     "notes": "Lots less than 8 m wide: at Council's discretion — visual impact and solar access determine setback."},
+            {"type": "Side — 2 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "1.5 m minimum",             "clause": "C10(ii)",     "notes": ""},
+            {"type": "Side — 3 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "2.5 m minimum",             "clause": "C10(ii)",     "notes": ""},
+            {"type": "Rear",                                      "control_type": "site_derived",  "requirement": "Merit-based",               "clause": "C10(iii)",    "notes": "Assessed on merit — adverse amenity impacts and adequate open space are primary considerations. No fixed number."},
+            {"type": "Secondary dwelling — side (detached, rear)", "control_type": "prescribed",   "requirement": "1.5 m minimum",             "clause": "C11(iii)(b)", "notes": "Detached secondary dwellings at rear of lot."},
+            {"type": "Secondary dwelling — separation",           "control_type": "prescribed",    "requirement": "4.0 m minimum",             "clause": "C11",         "notes": "Minimum separation between principal and detached secondary dwelling."},
+        ],
+    },
+    "leichhardt": {
+        "dcp_name": "Leichhardt DCP 2013",
+        "section": "Part C3.2 — Site Layout and Building Design",
+        "clause_ref": "C4, C7",
+        "zones_applicable": ["R1", "R2"],
+        "dev_type_scope": "Dwelling houses and residential development generally",
+        "caveat": (
+            "Area-specific controls may apply: Leichhardt DCP includes 'Distinctive Neighbourhood' "
+            "Building Typology Statements (Appendix) for individual streets and precincts. These can "
+            "impose additional or different controls not reflected here. Confirm with Council for the "
+            "specific street."
+        ),
+        "setbacks": [
+            {"type": "Front",  "control_type": "site_derived", "requirement": "Building Location Zone — prevailing character", "clause": "C4", "notes": "BLZ is determined by where buildings sit on adjoining properties. No fixed number — derived by planner from site visit."},
+            {"type": "Side",   "control_type": "site_derived", "requirement": "Height-dependent graph (60° angle from wall)",  "clause": "C7", "notes": "Setback scales continuously with wall height per Figure C129. Approx 1.0 m at 4 m wall height, 1.5 m at 5.5 m. Not a fixed minimum — derived from the graph."},
+            {"type": "Rear",   "control_type": "site_derived", "requirement": "Building Location Zone — prevailing character", "clause": "C4", "notes": "Consistent with rear building line of adjoining properties. No fixed number."},
+        ],
+    },
+    "ashfield": {
+        "dcp_name": "Inner West DCP 2016 (Ashfield precinct)",
+        "section": "Chapter F — Dwelling Houses and Dual Occupancies",
+        "clause_ref": "Chapter F DS",
+        "zones_applicable": ["R1", "R2", "R3"],
+        "dev_type_scope": "Dwelling houses and dual occupancies",
+        "caveat": None,
+        "setbacks": [
+            {"type": "Front",                               "control_type": "site_derived", "requirement": "On merits — no fixed minimum",  "clause": "DS1.1",        "notes": "Performance criteria based. Site analysis and streetscape character required. No pre-determined number."},
+            {"type": "Side",                                "control_type": "prescribed",   "requirement": "0.9 m minimum",                 "clause": "Chapter F DS", "notes": "Minimum side setback for dwelling houses. Council may require greater setback under performance criteria."},
+            {"type": "Rear",                                "control_type": "site_derived", "requirement": "On merits",                     "clause": "DS13.3",       "notes": "Must include adequate green space between adjoining properties. Assessed on merit — no fixed number."},
+            {"type": "Garage / carport (rear lane access)", "control_type": "prescribed",   "requirement": "1.0 m from rear boundary",      "clause": "DS6.5",        "notes": "Minimum to allow sight lines for manoeuvring."},
+        ],
+    },
+}
+# fmt: on
+
+# Suburb → former council (Inner West LGA post-2016 amalgamation)
+SUBURB_TO_FORMER_COUNCIL: dict[str, str] = {
+    # Marrickville precincts
+    "marrickville": "marrickville", "sydenham": "marrickville", "tempe": "marrickville",
+    "dulwich hill": "marrickville", "st peters": "marrickville", "newtown": "marrickville",
+    "erskineville": "marrickville", "alexandria": "marrickville", "enmore": "marrickville",
+    "stanmore": "marrickville", "petersham": "marrickville", "lewisham": "marrickville",
+    "camperdown": "marrickville", "glebe": "marrickville", "st peters": "marrickville",
+    # Leichhardt precincts
+    "leichhardt": "leichhardt", "annandale": "leichhardt", "balmain": "leichhardt",
+    "rozelle": "leichhardt", "lilyfield": "leichhardt", "forest lodge": "leichhardt",
+    "birchgrove": "leichhardt", "balmain east": "leichhardt",
+    # Ashfield precincts
+    "ashfield": "ashfield", "summer hill": "ashfield", "haberfield": "ashfield",
+    "croydon": "ashfield", "croydon park": "ashfield",
+}
+
+
+CADASTRE_URL = (
+    "https://maps.six.nsw.gov.au/arcgis/rest/services/public/"
+    "NSW_Cadastre/MapServer/9/query"
+)
+STRATA_HUB_URL = "https://www.fairtrading.nsw.gov.au/housing-and-property/strata-living/strata-schemes-register"
+
+
+def get_cadastral_info(lat: float, lng: float) -> dict:
+    """
+    Query NSW Cadastre (maps.six.nsw.gov.au) for the lot at lat/lng.
+
+    Returns:
+        is_strata        bool   — True if classsubtype=3 (SP lot) found within buffer
+        strata_plan      str    — "SP56913" if strata confirmed, else None
+        parent_has_strata bool  — True if any lot within buffer has hasstratum=2
+        plan_label       str    — planlabel of primary lot (e.g. "DP605756")
+        lot_number       str    — lotnumber of primary lot
+    """
+    try:
+        import json as _json
+        r = requests.get(
+            CADASTRE_URL,
+            params={
+                "geometry": _json.dumps({"x": lng, "y": lat, "spatialReference": {"wkid": 4283}}),
+                "geometryType": "esriGeometryPoint",
+                "inSR": "4283",
+                "distance": 20,
+                "units": "esriSRUnit_Meter",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "plannumber,planlabel,lotnumber,classsubtype,hasstratum",
+                "returnGeometry": "false",
+                "f": "json",
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        features = r.json().get("features", [])
+        attrs_list = [f["attributes"] for f in features]
+
+        # classsubtype=3 = strata lot (SP plan)
+        # classsubtype=4 = community title lot (CP plan) — treated same as strata
+        # Also catch by planlabel prefix in case classsubtype differs across datasets
+        sp_lots = [
+            a for a in attrs_list
+            if a.get("classsubtype") in (3, 4)
+            or str(a.get("planlabel", "")).startswith(("SP", "CP"))
+        ]
+        parent_strata = any(a.get("hasstratum") == 2 for a in attrs_list)
+
+        if sp_lots:
+            plan = sp_lots[0].get("planlabel", "")
+            plan_type = "community" if str(plan).startswith("CP") else "strata"
+            return {
+                "is_strata": True,
+                "strata_plan": plan,
+                "plan_type": plan_type,       # "strata" | "community"
+                "parent_has_strata": True,
+                "plan_label": plan,
+                "lot_number": sp_lots[0].get("lotnumber"),
+            }
+
+        # No SP/CP lot, but parent DP has strata built on it — ambiguous
+        if attrs_list:
+            primary = attrs_list[0]
+            return {
+                "is_strata": False,
+                "strata_plan": None,
+                "plan_type": None,
+                "parent_has_strata": parent_strata,
+                "plan_label": primary.get("planlabel"),
+                "lot_number": primary.get("lotnumber"),
+            }
+    except Exception as e:
+        print(f"  [warn] cadastral query: {e}")
+
+    return {
+        "is_strata": False,
+        "strata_plan": None,
+        "plan_type": None,
+        "parent_has_strata": False,
+        "plan_label": None,
+        "lot_number": None,
+    }
+
+
+def _addr_has_unit_prefix(address: str) -> bool:
+    a = address.strip()
+    return bool(
+        re.match(r"^\d+\s*/\s*\d+", a)
+        or re.match(r"^(Unit|U|Apt|Apartment|Flat|F|Suite|Level|Shop|Studio)\s+\w+", a, re.IGNORECASE)
+    )
+
+
+def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float] = None) -> dict:
+    """
+    Detect strata title using a two-signal approach:
+
+    Signal A — NSW Cadastre (free, public):
+      classsubtype=3 in buffer → strata lot confirmed, SP number returned.
+      hasstratum=2 on parent DP → strata scheme exists on this parcel.
+
+    Signal B — address format:
+      "5/3 ...", "Unit N ...", "Apt N ..." → likely strata.
+
+    Decision logic:
+      classsubtype=3 found              → strata confirmed (cadastre)
+      parent_has_strata=True + addr A   → strata confirmed (combined)
+      parent_has_strata=True alone      → ambiguous — note in report
+      addr A alone (no cadastre result) → strata likely (heuristic fallback)
+    """
+    addr_unit = _addr_has_unit_prefix(address)
+
+    if lat is not None and lng is not None:
+        cad = get_cadastral_info(lat, lng)
+
+        # Definitive: SP/CP lot found in cadastre
+        if cad["is_strata"]:
+            return {
+                "is_strata": True,
+                "strata_plan": cad["strata_plan"],
+                "plan_type": cad.get("plan_type", "strata"),
+                "source": "cadastre",
+                "parent_has_strata": True,
+                "plan_label": cad["plan_label"],
+            }
+
+        # Combined: parent has strata AND address looks like a unit
+        if cad["parent_has_strata"] and addr_unit:
+            return {
+                "is_strata": True,
+                "strata_plan": None,
+                "plan_type": "strata",
+                "source": "cadastre+address",
+                "parent_has_strata": True,
+                "plan_label": cad["plan_label"],
+            }
+
+        # Parent has strata but no unit prefix — whole-building query by planner
+        if cad["parent_has_strata"]:
+            return {
+                "is_strata": False,
+                "strata_plan": None,
+                "plan_type": None,
+                "source": "cadastre",
+                "parent_has_strata": True,
+                "plan_label": cad["plan_label"],
+            }
+
+        # Torrens cadastre result + unit prefix — portal stripped the unit, address wins
+        if cad["plan_label"] and addr_unit:
+            return {
+                "is_strata": True,
+                "strata_plan": None,
+                "plan_type": "strata_or_company",   # can't confirm SP vs company title
+                "source": "cadastre+address",
+                "parent_has_strata": False,
+                "plan_label": cad["plan_label"],
+            }
+
+        # Torrens, no unit prefix — confirmed Torrens title
+        if cad["plan_label"]:
+            return {
+                "is_strata": False,
+                "strata_plan": None,
+                "plan_type": None,
+                "source": "cadastre",
+                "parent_has_strata": False,
+                "plan_label": cad["plan_label"],
+            }
+
+    # Fallback: address heuristic only — could be strata or company title
+    return {
+        "is_strata": addr_unit,
+        "strata_plan": None,
+        "plan_type": "strata_or_company" if addr_unit else None,
+        "source": "address_heuristic",
+        "parent_has_strata": False,
+        "plan_label": None,
+    }
+
+
+def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
+    """Return former_council slug (marrickville/leichhardt/ashfield) for Inner West addresses."""
+    if "INNER WEST" not in zone_epi.upper():
+        return None
+    addr_lower = address.lower()
+    # Check multi-word suburbs first (e.g. "summer hill" before "hill")
+    for suburb in sorted(SUBURB_TO_FORMER_COUNCIL, key=len, reverse=True):
+        if suburb in addr_lower:
+            return SUBURB_TO_FORMER_COUNCIL[suburb]
+    return None
+
+
+def interpret_sepp(name: str, type_: str) -> str:
+    n = name.lower()
+    for key, plain in SEPP_PLAIN.items():
+        if key in n:
+            return plain
+    return ""
+
+
+def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict],
+                     is_strata: bool = False) -> list[dict]:
+    """
+    Answer the questions buyers actually ask their conveyancer.
+    Returns list of {question, answer, flag (ok/warn/alert), basis}.
+    """
+    results = []
+    lot_area = valuation.get("lot_area_m2")
+    zone = (controls.get("zone") or "").split()[0].upper()
+    has_heritage = bool(controls.get("heritage_items"))
+    has_biodiversity = any(o["layer_type"] == "biodiversity" for o in unique_overlays)
+    has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
+
+    # 1. Secondary dwelling (granny flat)
+    # NSW: lot ≥ 450m² for most LGAs; zone R1/R2/R3/R4; not strata
+    if is_strata:
+        results.append({
+            "question": "Secondary dwelling (granny flat)",
+            "answer": "Not applicable — strata lot",
+            "flag": "warn",
+            "basis": (
+                "Secondary dwellings cannot be erected on strata lots. Any works to common property "
+                "require a unanimous special resolution of the owners corporation. Strata Plan "
+                "and by-laws govern permissible alterations."
+            )
+        })
+    elif lot_area is not None:
+        if zone in ("R1", "R2", "R3", "R4"):
+            if lot_area >= 450:
+                results.append({
+                    "question": "Secondary dwelling (granny flat)",
+                    "answer": "Likely permissible",
+                    "flag": "ok",
+                    "basis": f"Zone {zone} + lot area {round(lot_area):,} m² ≥ 450 m² minimum. Subject to DCP setback and height controls."
+                })
+            else:
+                results.append({
+                    "question": "Secondary dwelling (granny flat)",
+                    "answer": "Unlikely — lot too small",
+                    "flag": "warn",
+                    "basis": f"Lot area {round(lot_area):,} m² is below the 450 m² minimum required for a secondary dwelling."
+                })
+        else:
+            results.append({
+                "question": "Secondary dwelling (granny flat)",
+                "answer": "Zone does not permit",
+                "flag": "alert",
+                "basis": f"Zone {zone} — secondary dwellings not permitted as of right."
+            })
+
+    # 2. Subdivision
+    min_lot_str = controls.get("lot_size")
+    if is_strata:
+        results.append({
+            "question": "Torrens title subdivision",
+            "answer": "Not applicable — strata lot",
+            "flag": "warn",
+            "basis": (
+                "Strata lots cannot be Torrens-title subdivided. Strata plan consolidation or "
+                "stratum lot creation requires owners corporation resolution and Council approval."
+            )
+        })
+    elif lot_area is not None and min_lot_str:
+        try:
+            min_lot = float(re.sub(r"[^\d.]", "", min_lot_str.split("m")[0]))
+            if lot_area >= min_lot * 2:
+                results.append({
+                    "question": "Torrens title subdivision",
+                    "answer": "Potentially feasible",
+                    "flag": "ok",
+                    "basis": f"Lot area {round(lot_area):,} m² ≥ 2 × {round(min_lot):,} m² minimum. Subject to DA, DCP controls and Council assessment."
+                })
+            else:
+                results.append({
+                    "question": "Torrens title subdivision",
+                    "answer": "Not feasible — lot too small",
+                    "flag": "warn",
+                    "basis": f"Lot area {round(lot_area):,} m² < 2 × {round(min_lot):,} m² LEP minimum."
+                })
+        except (ValueError, AttributeError):
+            results.append({
+                "question": "Torrens title subdivision",
+                "answer": "Check with council",
+                "flag": "warn",
+                "basis": f"Minimum lot size value could not be parsed ({min_lot_str!r}). Confirm subdivision feasibility directly with council.",
+            })
+
+    # 3. CDC eligibility (exempt/complying — no DA required)
+    if is_strata:
+        results.append({
+            "question": "Complying Development Certificate (CDC)",
+            "answer": "Unit alterations only — strata by-laws apply",
+            "flag": "warn",
+            "basis": (
+                "CDC for whole-dwelling works is not applicable to individual strata units. "
+                "Internal alterations may proceed under SEPP (Housing) 2021 exempt development provisions, "
+                "subject to the strata by-laws and owners corporation consent for any works affecting "
+                "common property."
+            )
+        })
+    elif zone in ("R1", "R2", "R3", "R4"):
+        blockers = []
+        if has_heritage:
+            blockers.append("heritage listing")
+        if has_biodiversity:
+            blockers.append("biodiversity sensitivity overlay")
+        if has_flood:
+            blockers.append("flood planning area")
+        if not blockers:
+            results.append({
+                "question": "Complying Development Certificate (CDC)",
+                "answer": "Potentially eligible",
+                "flag": "ok",
+                "basis": "No heritage, biodiversity or flood constraints identified. CDC may be available for dwelling alterations and additions subject to SEPP (Housing) 2021 controls."
+            })
+        else:
+            results.append({
+                "question": "Complying Development Certificate (CDC)",
+                "answer": f"Restricted — {', '.join(blockers)}",
+                "flag": "alert",
+                "basis": f"CDC eligibility affected by: {', '.join(blockers)}. Development will likely require a full DA."
+            })
+    else:
+        results.append({
+            "question": "Complying Development Certificate (CDC)",
+            "answer": "Not applicable to this zone",
+            "flag": "warn",
+            "basis": f"Zone {zone} — CDC pathway applies to residential zones R1–R4."
+        })
+
+    # 4. Development potential (suppress for strata — whole-lot area × FSR is meaningless for a unit)
+    headroom = calc_development_headroom(controls, valuation)
+    if headroom.get("max_gfa_m2") and not is_strata:
+        results.append({
+            "question": "Development potential (max permissible GFA)",
+            "answer": headroom["max_gfa_display"],
+            "flag": "ok",
+            "basis": f"Lot {headroom['lot_area_display']} × FSR {headroom['fsr_numeric']}:1. Existing improvements reduce available headroom — compare against current dwelling footprint."
+        })
+
+    # 5. Land tax (investment property, NSW 2025)
+    # Suppress for strata: VG returns whole-lot land value (building site), not unit value
+    lv = valuation.get("land_value")
+    if lv and not is_strata:
+        lv_int = int(lv)
+        if lv_int > LT_THRESHOLD:
+            annual_lt = LT_BASE + (lv_int - LT_THRESHOLD) * LT_RATE
+            results.append({
+                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "answer": f"${round(annual_lt):,}/year",
+                "flag": "warn",
+                "basis": (
+                    f"Land value ${lv_int:,} exceeds {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
+                    f"${LT_BASE} + 1.6% × ${lv_int - LT_THRESHOLD:,} = ${round(annual_lt):,}/year. "
+                    f"PPOR exempt. Investment property, trust, and company holdings are taxable. "
+                    f"Verify current thresholds at revenue.nsw.gov.au."
+                )
+            })
+        else:
+            results.append({
+                "question": f"Land tax (investment, {LT_YEAR} thresholds)",
+                "answer": "Below threshold — nil",
+                "flag": "ok",
+                "basis": (
+                    f"Land value ${lv_int:,} is below {LT_YEAR} threshold ${LT_THRESHOLD:,}. "
+                    "No land tax payable on investment property. PPOR always exempt. "
+                    "Verify current thresholds at revenue.nsw.gov.au."
+                )
+            })
+
+    return results
+
+
+def calc_development_headroom(controls: dict, valuation: dict) -> dict:
+    """
+    Calculate development potential from known data points.
+    Returns a dict of calculated metrics with plain-English interpretations.
+    """
+    out = {}
+    lot_area = valuation.get("lot_area_m2")
+    fsr_str = controls.get("fsr")
+    height_str = controls.get("height")
+    min_lot_str = controls.get("lot_size")
+
+    if lot_area:
+        out["lot_area_m2"] = round(lot_area)
+        out["lot_area_display"] = f"{round(lot_area):,} m²"
+
+    if lot_area and fsr_str:
+        try:
+            # FSR may be "0.5:1" or "0.5" or "84" (sqm — rare)
+            fsr_val = float(fsr_str.split(":")[0]) if ":" in fsr_str else float(fsr_str)
+            if fsr_val < 10:  # ratio, not sqm
+                max_gfa = lot_area * fsr_val
+                out["max_gfa_m2"] = round(max_gfa)
+                out["max_gfa_display"] = f"{round(max_gfa):,} m²"
+                out["fsr_numeric"] = fsr_val
+        except ValueError:
+            pass
+
+    if lot_area and min_lot_str:
+        try:
+            min_lot = float(min_lot_str.replace(",", "").replace(" ", "").split("m")[0])
+            if min_lot > 0 and lot_area >= min_lot * 2:
+                out["subdivision_feasible"] = True
+                out["subdivision_note"] = (
+                    f"Lot area ({round(lot_area):,} m²) is ≥ 2× minimum lot size ({round(min_lot):,} m²). "
+                    "Subdivision may be feasible subject to DA and detailed assessment."
+                )
+            else:
+                out["subdivision_feasible"] = False
+                out["subdivision_note"] = (
+                    f"Lot area ({round(lot_area):,} m²) is less than 2× minimum lot size ({round(min_lot):,} m²). "
+                    "Subdivision unlikely without variation."
+                )
+        except (ValueError, AttributeError):
+            pass
+
+    if valuation.get("land_value"):
+        out["land_value"] = valuation["land_value"]
+        base_date = valuation.get("val_base_date")
+        out["land_value_display"] = (
+            f"${valuation['land_value']:,} (as at {base_date})" if base_date
+            else f"${valuation['land_value']:,}"
+        )
+        if lot_area and lot_area > 0:
+            lv_per_m2 = valuation["land_value"] / lot_area
+            out["land_value_per_m2"] = round(lv_per_m2)
+            out["land_value_per_m2_display"] = f"${round(lv_per_m2):,}/m²"
+
+    return out
+
+
+# ---------------------------------------------------------------------------
+# NSW Planning Portal — sync helpers
+# ---------------------------------------------------------------------------
+
+def _portal_get(endpoint: str, params: dict) -> dict | list | None:
+    try:
+        r = requests.get(
+            f"{PORTAL_BASE}/{endpoint}",
+            params=params,
+            headers=PORTAL_HEADERS,
+            timeout=20,
+        )
+        r.raise_for_status()
+        return r.json()
+    except Exception as e:
+        print(f"  [warn] portal {endpoint}: {e}")
+        return None
+
+
+def _epsg3857_to_wgs84(x: float, y: float) -> tuple[float, float]:
+    """Convert Web Mercator (EPSG:3857) metres to WGS84 lat/lng."""
+    import math
+    R = 6378137.0
+    lng = x / R * (180.0 / math.pi)
+    lat = (2.0 * math.atan(math.exp(y / R)) - math.pi / 2.0) * (180.0 / math.pi)
+    return lat, lng
+
+
+def resolve_address(address: str) -> tuple[Optional[int], Optional[float], Optional[float], Optional[str]]:
+    """
+    Single call that returns (prop_id, lat, lng, lot_wkt).
+
+    Strategy:
+      1. /address  → propId
+      2. /lot      → EPSG:3857 rings → centroid (lat/lng) + WGS84 polygon WKT
+    lot_wkt is a POLYGON WKT in EPSG:4326 for use in ST_Intersects queries.
+    """
+    data = _portal_get("address", {"a": address, "noOfRecords": 1})
+    if not data or not isinstance(data, list):
+        return None, None, None, None
+
+    prop_id = data[0].get("propId")
+    if not prop_id:
+        return None, None, None, None
+
+    lat, lng, lot_wkt = None, None, None
+    try:
+        lot_data = _portal_get("lot", {"propId": prop_id})
+        if lot_data and isinstance(lot_data, list) and lot_data[0].get("geometry"):
+            rings = lot_data[0]["geometry"].get("rings", [])
+            if rings and rings[0]:
+                ring = rings[0]
+                cx = sum(p[0] for p in ring) / len(ring)
+                cy = sum(p[1] for p in ring) / len(ring)
+                lat, lng = _epsg3857_to_wgs84(cx, cy)
+                # Convert outer ring to WGS84 for PostGIS polygon query
+                wgs84_pts = [_epsg3857_to_wgs84(p[0], p[1]) for p in ring]
+                coords_str = ", ".join(f"{pt[1]} {pt[0]}" for pt in wgs84_pts)
+                lot_wkt = f"POLYGON(({coords_str}))"
+    except Exception as e:
+        print(f"  [warn] lot geometry: {e}")
+
+    return prop_id, lat, lng, lot_wkt
+
+
+# Keep these thin wrappers for any callers that use them directly
+def geocode_address(address: str) -> Optional[tuple[float, float]]:
+    _, lat, lng, _ = resolve_address(address)
+    return (lat, lng) if lat and lng else None
+
+
+def get_prop_id(address: str) -> Optional[int]:
+    prop_id, _, _, _ = resolve_address(address)
+    return prop_id
+
+
+def get_raw_controls(prop_id: int) -> list[dict]:
+    data = _portal_get("layerintersect", {"type": "property", "id": prop_id, "layers": "epi"})
+    return data if isinstance(data, list) else []
+
+
+def get_valuation(prop_id: int) -> dict:
+    """
+    NSW Valuation service — returns actual lot area (m²) and land value ($).
+    Source: maps.six.nsw.gov.au (public, no auth).
+    """
+    try:
+        r = requests.get(
+            "https://maps.six.nsw.gov.au/arcgis/rest/services/public/Valuation/MapServer/5/query",
+            params={
+                "where": f"propid={prop_id}",
+                "outFields": (
+                    "propid,prop_area,address,"
+                    "val1_lv,val1_bd,val2_lv,val2_bd,val3_lv,val3_bd,"
+                    "val4_lv,val4_bd,val5_lv,val5_bd"
+                ),
+                "f": "json",
+            },
+            timeout=15,
+        )
+        r.raise_for_status()
+        data = r.json()
+        features = data.get("features", [])
+        if features:
+            attrs = features[0].get("attributes", {})
+            area = attrs.get("prop_area")
+
+            def _num(v):
+                if v is None:
+                    return None
+                if isinstance(v, (int, float)):
+                    return float(v)
+                import re
+                m = re.search(r"[\d,]+\.?\d*", str(v).replace(",", ""))
+                return float(m.group().replace(",", "")) if m else None
+
+            # Build 5-year history: val5 = oldest, val1 = most recent
+            history = []
+            for i in range(5, 0, -1):
+                lv_i = _num(attrs.get(f"val{i}_lv"))
+                bd_i = (attrs.get(f"val{i}_bd") or "").strip() or None
+                if lv_i:
+                    history.append({"year": bd_i or f"val{i}", "value": lv_i})
+
+            lv = _num(attrs.get("val1_lv"))
+            return {
+                "lot_area_m2": _num(area),
+                "land_value": lv,
+                "val_base_date": (attrs.get("val1_bd") or "").strip() or None,
+                "val_history": history,
+            }
+    except Exception as e:
+        print(f"  [warn] valuation API: {e}")
+    return {"lot_area_m2": None, "land_value": None, "val_base_date": None, "val_history": []}
+
+
+def parse_controls(raw: list[dict]) -> dict:
+    """
+    Extract the fields a conveyancer cares about from layerintersect response.
+    Searches all results per block, not just the first.
+    """
+
+    def find(results, *keys):
+        for res in results:
+            for k in keys:
+                v = res.get(k)
+                if v is not None and str(v).strip() not in ("", "None"):
+                    return str(v)
+        return None
+
+    def find_all(results, *keys):
+        vals = []
+        for res in results:
+            for k in keys:
+                v = res.get(k)
+                if v and str(v).strip() not in ("None", ""):
+                    vals.append(str(v))
+                    break
+        return list(dict.fromkeys(vals))  # dedup preserving order
+
+    out = {
+        "zone": None, "zone_full": None, "zone_epi": None, "legislation_url": None,
+        "height": None, "height_units": "m", "height_clause": None,
+        "fsr": None, "fsr_clause": None,
+        "lot_size": None, "lot_size_units": "m\u00b2", "lot_size_clause": None,
+        "ass_class": None,
+        "key_sites_clause": None,
+        "heritage_items": [],
+        "sepp_overlays": [],   # list of {"name": ..., "type": ...}
+        "housing_sepp": False,
+        "tod_area": False,
+        "basix_zone": None,
+        "riparian_epi": False,
+        "flood_epi": False,
+    }
+
+    for block in raw:
+        layer = block.get("layerName", "").lower()
+        results = block.get("results", [])
+        if not results:
+            continue
+
+        if "zoning" in layer or ("zone" in layer and "canopy" not in layer and "timezone" not in layer):
+            out["zone"] = find(results, "Zone") or find(results, "title", "Value")
+            out["zone_full"] = find(results, "Land Use")
+            out["zone_epi"] = results[0].get("EPI Name", "")
+            out["legislation_url"] = results[0].get("legislationUrl", "")
+
+        elif "height of buildings" in layer or ("height" in layer and "canopy" not in layer):
+            out["height"] = find(results, "Maximum Building Height", "Height", "title")
+            out["height_units"] = results[0].get("Units", "m")
+            out["height_clause"] = find(results, "Legislative Clause")
+
+        elif "floor space" in layer or "fsr" in layer:
+            out["fsr"] = find(results, "Floor Space Ratio", "FSR", "title")
+            out["fsr_clause"] = find(results, "Legislative Clause")
+
+        elif "lot size" in layer:
+            out["lot_size"] = find(results, "Lot Size", "Minimum Lot Size", "title")
+            out["lot_size_units"] = results[0].get("Units", "m\u00b2")
+            out["lot_size_clause"] = find(results, "Legislative Clause")
+
+        elif "acid sulfate" in layer:
+            out["ass_class"] = find(results, "Class", "title")
+
+        elif "key sites" in layer:
+            out["key_sites_clause"] = find(results, "Legislative Clause", "Class", "Label")
+
+        elif "heritage" in layer:
+            items = find_all(results, "Heritage Item", "Heritage Significance", "title")
+            out["heritage_items"].extend(items)
+
+        elif "riparian" in layer:
+            out["riparian_epi"] = True
+
+        elif "flood" in layer and "plain" not in layer:
+            out["flood_epi"] = True
+
+        elif "special provisions" in layer:
+            for res in results:
+                epi = res.get("EPI Name", "")
+                type_ = res.get("Type") or res.get("Class") or res.get("title", "")
+                label = res.get("Label", "")
+                if epi or type_:
+                    out["sepp_overlays"].append({"name": epi, "type": type_, "label": label})
+                if "housing" in epi.lower() or "housing" in type_.lower():
+                    out["housing_sepp"] = True
+                if "transport" in epi.lower() and "tod" in str(type_).lower():
+                    out["tod_area"] = True
+                if "basix" in epi.lower() or "climate" in str(type_).lower():
+                    out["basix_zone"] = label or type_
+
+    out["heritage_items"] = list(dict.fromkeys(out["heritage_items"]))
+    return out
+
+
+# ---------------------------------------------------------------------------
+# PostGIS — unique overlays (NOT in portal layerintersect)
+# ---------------------------------------------------------------------------
+
+POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood"}
+POSTGIS_NOTES = {
+    "biodiversity": BIO_NOTE,
+    "riparian": RIPARIAN_NOTE,
+    "wetlands": WETLANDS_NOTE,
+    "landslide": LANDSLIDE_NOTE,
+    "flood": FLOOD_NOTE,
+    "foreshore_building_line": FORESHORE_NOTE,
+    "classified_road": CLASSIFIED_ROAD_NOTE,
+}
+
+
+def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str]]:
+    """
+    Query PostGIS for overlays not (or unreliably) returned by the portal:
+      - Environmental: biodiversity, riparian, wetlands, landslide, flood
+      - LEP constraints: foreshore_building_line (point-in-polygon)
+      - Statutory setback trigger: classified road within 30m of the property point
+
+    When lot_wkt is provided (WGS84 POLYGON WKT), uses ST_Intersects against the full
+    lot polygon so overlays covering only part of the lot are not missed. Falls back to
+    ST_Contains on the centroid point when lot_wkt is unavailable.
+    """
+    db_url = os.getenv("DATABASE_URL") or (
+        f"host={os.getenv('DB_HOST','localhost')} "
+        f"dbname={os.getenv('DB_NAME','postgres')} "
+        f"user={os.getenv('DB_USER','postgres')} "
+        f"password={os.getenv('DB_PASSWORD','')} "
+        f"port={os.getenv('DB_PORT','5432')}"
+    )
+    try:
+        conn = psycopg2.connect(db_url)
+        cur = conn.cursor()
+
+        # Environmental + foreshore: lot polygon intersection (preferred) or centroid fallback
+        env_layers = POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line"}
+        placeholders = ", ".join(f"'{l}'" for l in env_layers)
+        if lot_wkt:
+            cur.execute(
+                f"""
+                SELECT layer_type, value, instrument_key, lga_name
+                FROM spatial_overlays
+                WHERE layer_type IN ({placeholders})
+                  AND ST_Intersects(geom, ST_SetSRID(ST_GeomFromText(%s), 4326))
+                ORDER BY layer_type
+                """,
+                (lot_wkt,),
+            )
+        else:
+            cur.execute(
+                f"""
+                SELECT layer_type, value, instrument_key, lga_name
+                FROM spatial_overlays
+                WHERE layer_type IN ({placeholders})
+                  AND ST_Contains(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+                ORDER BY layer_type
+                """,
+                (lng, lat),
+            )
+        rows = cur.fetchall()
+        results = [{"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]} for r in rows]
+
+        # Classified road: any land_reservation with "Classified Road" value within 30m
+        # (property point may sit just inside the lot, road reservation is adjacent)
+        cur.execute(
+            """
+            SELECT layer_type, value, instrument_key, lga_name
+            FROM spatial_overlays
+            WHERE layer_type = 'land_reservation'
+              AND value ILIKE '%%Classified Road%%'
+              AND ST_DWithin(
+                    geom::geography,
+                    ST_SetSRID(ST_Point(%s, %s), 4326)::geography,
+                    30
+              )
+            LIMIT 1
+            """,
+            (lng, lat),
+        )
+        road_row = cur.fetchone()
+        if road_row:
+            results.append({
+                "layer_type": "classified_road",
+                "value": road_row[1],
+                "instrument": road_row[2],
+                "lga": road_row[3],
+            })
+
+        # Which of the unique layers have ANY data for this LGA?
+        # Used by callers to distinguish "clear" from "not mapped".
+        if rows:
+            lga_name = rows[0][3]  # lga_name from first result
+        else:
+            # Derive LGA from any overlay at this point
+            cur.execute(
+                "SELECT lga_name FROM spatial_overlays WHERE ST_Contains(geom, ST_SetSRID(ST_Point(%s, %s), 4326)) LIMIT 1",
+                (lng, lat),
+            )
+            lga_row = cur.fetchone()
+            lga_name = lga_row[0] if lga_row else None
+
+        covered_layers: set[str] = set()
+        if lga_name:
+            all_checked = POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "land_reservation"}
+            env_placeholders = ", ".join(f"'{l}'" for l in all_checked)
+            cur.execute(
+                f"""
+                SELECT DISTINCT layer_type FROM spatial_overlays
+                WHERE layer_type IN ({env_placeholders})
+                  AND lga_name = %s
+                LIMIT 20
+                """,
+                (lga_name,),
+            )
+            covered_layers = {r[0] for r in cur.fetchall()}
+            # classified_road results are built from land_reservation rows; alias so flag() finds it
+            if "land_reservation" in covered_layers:
+                covered_layers.add("classified_road")
+
+        cur.close()
+        conn.close()
+        return results, covered_layers
+    except Exception as e:
+        print(f"  [warn] PostGIS query: {e}")
+        return [], set()
+
+
+# ---------------------------------------------------------------------------
+# NSW ePlanning DA search
+# ---------------------------------------------------------------------------
+
+def _haversine_m(lat1, lng1, lat2, lng2) -> float:
+    R = 6_371_000
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lng2 - lng1)
+    a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _normalise_council(lga_name: str) -> Optional[str]:
+    # Keys match the LGA prefix as it appears in zone_epi (after stripping "Local Environmental Plan YYYY")
+    MAP = {
+        "inner west": "Inner West Council",
+        "sydney": "Council of the City of Sydney",
+        "waverley": "Waverley Council",
+        "woollahra": "Woollahra Municipal Council",
+        "randwick": "Randwick City Council",
+        "ku-ring-gai": "Ku-ring-gai Council",
+        "northern beaches": "Northern Beaches Council",
+        "bayside": "Bayside Council",
+        "georges river": "Georges River Council",
+        "canterbury-bankstown": "Canterbury-Bankstown Council",
+        "north sydney": "North Sydney Council",
+        "lane cove": "Lane Cove Municipal Council",
+        "mosman": "Mosman Municipal Council",
+        "hunters hill": "Hunters Hill Council",
+        "ryde": "City of Ryde Council",
+        "canada bay": "Canada Bay Council",
+        "strathfield": "Strathfield Municipal Council",
+        "burwood": "Burwood Council",
+        "cumberland": "Cumberland Council",
+        "parramatta": "City of Parramatta Council",
+        "city of parramatta": "City of Parramatta Council",
+        "blacktown": "Blacktown City Council",
+        "hornsby": "Hornsby Shire Council",
+        "the hills": "The Hills Shire Council",
+        "hawkesbury": "Hawkesbury City Council",
+        "penrith": "Penrith City Council",
+        "blue mountains": "Blue Mountains City Council",
+        "liverpool": "Liverpool City Council",
+        "fairfield": "Fairfield City Council",
+        "camden": "Camden Council",
+        "campbelltown": "Campbelltown City Council",
+        "sutherland": "Sutherland Shire Council",
+        "wollondilly": "Wollondilly Shire Council",
+    }
+    key = lga_name.lower()
+    if key in MAP:
+        return MAP[key]
+    print(f"  [warn] council name not mapped: {lga_name!r} — DA search skipped")
+    return None
+
+
+def _council_from_zone_epi(zone_epi: str) -> Optional[str]:
+    """Derive council name from LEP EPI name, e.g. 'Ku-ring-gai Local Environmental Plan 2015' → 'Ku-ring-gai Council'."""
+    if not zone_epi:
+        return None
+    # Strip the " Local Environmental Plan YYYY" suffix
+    lga = re.sub(r"\s+Local Environmental Plan\s+\d{4}.*", "", zone_epi, flags=re.IGNORECASE).strip()
+    if not lga:
+        return None
+    return _normalise_council(lga)
+
+
+def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
+                   radius_m: int = 200, days: int = 365) -> list[dict]:
+    """Fetch nearby DAs. council_name must already be normalised (use _normalise_council before calling)."""
+    since = (date.today() - timedelta(days=days)).strftime("%Y-%m-%d")
+    filters_header = json.dumps({
+        "filters": {"CouncilName": [council_name], "LodgementDateFrom": since}
+    })
+    try:
+        r = requests.get(
+            DA_URL,
+            headers={
+                "filters": filters_header,
+                "PageSize": "200",
+                "PageNumber": "1",
+                "Cache-Control": "no-cache",
+            },
+            timeout=25,
+        )
+        r.raise_for_status()
+        apps = r.json().get("Application", [])
+    except Exception as e:
+        print(f"  [warn] DA API: {e}")
+        return []
+
+    nearby = []
+    for app in apps:
+        app_lat = app.get("CoordinatesY")
+        app_lng = app.get("CoordinatesX")
+        if app_lat and app_lng:
+            dist = _haversine_m(lat, lng, float(app_lat), float(app_lng))
+            if dist <= radius_m:
+                nearby.append({
+                    "number": app.get("PlanningPortalApplicationNumber", ""),
+                    "address": app.get("Location", ""),
+                    "description": (app.get("DevelopmentDescription", "") or "")[:100],
+                    "status": app.get("ApplicationStatus", ""),
+                    "lodged": (app.get("LodgementDate", "") or "")[:10],
+                    "distance_m": round(dist),
+                })
+    nearby.sort(key=lambda x: x["distance_m"])
+    return nearby[:10]
+
+
+# ---------------------------------------------------------------------------
+# PDF generation
+# ---------------------------------------------------------------------------
+
+def get_shadow_risk(address: str, prop_id: int, lat: float, lng: float) -> Optional[dict]:
+    """
+    Call the Railway shadow pipeline.
+    Returns the `outputs` dict on success, None if Railway unreachable or call fails.
+    Graceful degradation — shadow section is omitted rather than crashing the report.
+    """
+    api_url = os.environ.get("PYTHON_API_URL", "http://localhost:8000")
+    try:
+        r = requests.post(
+            f"{api_url}/pipeline/shadow",
+            json={
+                "address": address,
+                "prop_id": str(prop_id),
+                "lat": lat,
+                "lng": lng,
+                "report_id": str(uuid.uuid4()),
+            },
+            timeout=60,
+        )
+        r.raise_for_status()
+        return r.json().get("outputs")
+    except Exception as e:
+        print(f"  [warn] Shadow pipeline unavailable — section will be omitted: {e}")
+        return None
+
+
+def _check_reportlab():
+    try:
+        import reportlab  # noqa
+    except ImportError:
+        print("ERROR: reportlab not installed — run: pip install reportlab")
+        sys.exit(1)
+
+
+def _flag_cell(text: str, style_name: str, styles_map: dict):
+    from reportlab.platypus import Paragraph
+    return Paragraph(text, styles_map[style_name])
+
+
+def generate_pdf(
+    output_path: str,
+    address: str,
+    lat: float,
+    lng: float,
+    controls: dict,
+    valuation: dict,
+    headroom: dict,
+    feasibility: list[dict],
+    unique_overlays: list[dict],
+    das: list[dict],
+    dcp_former_council: Optional[str] = None,
+    strata_info: Optional[dict] = None,
+    covered_layers: Optional[set] = None,
+    shadow_result: Optional[dict] = None,
+):
+    _check_reportlab()
+
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import mm
+    from reportlab.platypus import (
+        HRFlowable, Paragraph, SimpleDocTemplate,
+        Spacer, Table, TableStyle,
+    )
+
+    W, _H = A4
+    MARGIN = 18 * mm
+
+    NAVY   = colors.HexColor("#1B2A4A")
+    TEAL   = colors.HexColor("#0F7B6C")
+    AMBER  = colors.HexColor("#D97706")
+    RED    = colors.HexColor("#B91C1C")
+    GREEN  = colors.HexColor("#166534")
+    LGREY  = colors.HexColor("#F3F4F6")
+    MGREY  = colors.HexColor("#9CA3AF")
+    WHITE  = colors.white
+
+    doc = SimpleDocTemplate(
+        output_path, pagesize=A4,
+        leftMargin=MARGIN, rightMargin=MARGIN,
+        topMargin=MARGIN, bottomMargin=MARGIN,
+    )
+    styles = getSampleStyleSheet()
+
+    def S(name, **kw):
+        return ParagraphStyle(name, parent=styles["Normal"], **kw)
+
+    ss = {
+        "title":    S("t",  fontSize=20, textColor=WHITE, leading=26, fontName="Helvetica-Bold"),
+        "addr":     S("a",  fontSize=10, textColor=colors.HexColor("#CBD5E1"), leading=15),
+        "meta":     S("m",  fontSize=8,  textColor=MGREY, leading=12),
+        "h2":       S("h2", fontSize=12, textColor=NAVY, leading=17, fontName="Helvetica-Bold", spaceBefore=6),
+        "body":     S("bd", fontSize=9,  textColor=colors.HexColor("#374151"), leading=13),
+        "note":     S("nt", fontSize=8,  textColor=colors.HexColor("#6B7280"), leading=12, leftIndent=4),
+        "ok":       S("ok", fontSize=9,  textColor=GREEN, fontName="Helvetica-Bold", leading=13),
+        "warn":     S("wn", fontSize=9,  textColor=AMBER, fontName="Helvetica-Bold", leading=13),
+        "alert":    S("al", fontSize=9,  textColor=RED,   fontName="Helvetica-Bold", leading=13),
+        "caveat":   S("cv", fontSize=8,  textColor=MGREY, leading=12),
+    }
+
+    story = []
+    CW = W - 2 * MARGIN  # content width
+
+    def hr():
+        story.append(HRFlowable(width="100%", thickness=0.8, color=TEAL))
+
+    def h2(text):
+        story.append(Spacer(1, 3 * mm))
+        story.append(Paragraph(text, ss["h2"]))
+        hr()
+        story.append(Spacer(1, 2 * mm))
+
+    def table(rows, col_widths, header_bg=NAVY):
+        t = Table(rows, colWidths=col_widths)
+        t.setStyle(TableStyle([
+            ("BACKGROUND",   (0, 0), (-1, 0),  header_bg),
+            ("TEXTCOLOR",    (0, 0), (-1, 0),  WHITE),
+            ("FONTNAME",     (0, 0), (-1, 0),  "Helvetica-Bold"),
+            ("FONTSIZE",     (0, 0), (-1, -1), 9),
+            ("ROWBACKGROUNDS",(0, 1),(-1, -1), [WHITE, LGREY]),
+            ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#E5E7EB")),
+            ("TOPPADDING",   (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
+            ("LEFTPADDING",  (0, 0), (-1, -1), 6),
+            ("VALIGN",       (0, 0), (-1, -1), "TOP"),
+        ]))
+        return t
+
+    # ------------------------------------------------------------------
+    # COVER
+    # ------------------------------------------------------------------
+    cover_rows = [
+        [Paragraph("PLANNING DISCLOSURE REPORT", ss["title"])],
+        [Paragraph(address, ss["addr"])],
+        [Spacer(1, 3 * mm)],
+        [Paragraph(
+            f"Prepared: {date.today().strftime('%d %B %Y')}  &nbsp; "
+            f"Lat/Lng: {lat:.6f}, {lng:.6f}",
+            ss["meta"]
+        )],
+        [Paragraph("Prepared by <b>Verify</b> — NSW Property Intelligence", ss["meta"])],
+    ]
+    cov = Table(cover_rows, colWidths=[CW])
+    cov.setStyle(TableStyle([
+        ("BACKGROUND",   (0, 0), (-1, -1), NAVY),
+        ("TOPPADDING",   (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 12),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    ]))
+    story.append(cov)
+    story.append(Spacer(1, 4 * mm))
+
+    # ------------------------------------------------------------------
+    # s10.7 DELTA CALLOUT — what this report surfaces that standard
+    # searches do NOT disclose
+    # ------------------------------------------------------------------
+    unique_by_type = {o["layer_type"]: o for o in unique_overlays}
+
+    # Flood: collect ALL scenarios (multiple rows per property), build range label.
+    # Scenario key format: "20AEP" where the number is ARI in years (not AEP%).
+    def _parse_ari(scenario_key: str) -> int:
+        import re as _re
+        m = _re.match(r"^(\d+)AEP$", scenario_key, _re.IGNORECASE)
+        if m:
+            return int(m.group(1))
+        return 999999  # PMF sentinel
+
+    _flood_rows = sorted(
+        [o for o in unique_overlays if o["layer_type"] == "flood"],
+        key=lambda o: _parse_ari(o["value"]),
+    )
+    _flood_note_dynamic: str | None = None
+    if _flood_rows:
+        _min_ari = _parse_ari(_flood_rows[0]["value"])
+        _has_pmf = any(o["value"].upper() == "PMF" for o in _flood_rows)
+        _n = len(_flood_rows)
+        if _has_pmf:
+            _flood_display = f"1-in-{_min_ari}-year flood extent through to PMF ({_n} scenarios)"
+        else:
+            _max_ari = _parse_ari(_flood_rows[-1]["value"])
+            _flood_display = f"1-in-{_min_ari}-year through to 1-in-{_max_ari}-year flood extent ({_n} scenarios)"
+        unique_by_type["flood"]["value"] = _flood_display
+
+        _instrument = _flood_rows[0].get("instrument", "")
+        _is_hnrfs = "HNRFS_2024" in _instrument
+        _source_citation = (
+            "2024 Hawkesbury-Nepean River Flood Study, NSW SES/INSW (May 2024) — data.nsw.gov.au"
+            if _is_hnrfs
+            else "council flood mapping"
+        )
+        _pmf_suffix = " through to PMF" if _has_pmf else f" through to the 1-in-{_parse_ari(_flood_rows[-1]['value'])}-year extent"
+        _pmf_explanation = (
+            " PMF (Probable Maximum Flood) is the theoretical upper physical limit of flooding — "
+            "the result of the most extreme meteorological conditions possible. "
+            "It carries no return period; it is used for emergency management and represents "
+            "the absolute worst-case inundation extent."
+            if _has_pmf else ""
+        )
+        _flood_note_dynamic = (
+            f"Flood Planning Area — this property is within the 1-in-{_min_ari}-year flood extent"
+            f"{_pmf_suffix}."
+            f"{_pmf_explanation} "
+            f"Source: {_source_citation}. "
+            "The flood planning level (minimum floor height for any future development or renovation) "
+            "is set by council — it is NOT stated in this report. "
+            "Order a Section 733 Certificate from council (~$50–150) to confirm the applicable "
+            "flood planning level. Check flood insurance cost with a broker before exchange — "
+            "premiums in flood-affected areas can be substantial."
+        )
+
+    DELTA_CHECKS = [
+        ("Biodiversity Values Map (BDAR trigger)", "biodiversity"),
+        ("Riparian Land",            "riparian"),
+        ("Wetlands",                 "wetlands"),
+        ("Landslide Risk",           "landslide"),
+        ("Flood Planning Area",      "flood"),
+        ("DCP Setbacks (with clause citations)", None),
+    ]
+    flagged = [label for label, lt in DELTA_CHECKS if lt and lt in unique_by_type]
+    delta_lines = []
+    for label, lt in DELTA_CHECKS:
+        if lt and lt in unique_by_type:
+            delta_lines.append(f"<b>▲ {label}</b>")
+        else:
+            delta_lines.append(label)
+    delta_body_text = "  ·  ".join(delta_lines)
+
+    callout_header = Paragraph(
+        "The following are NOT disclosed in a standard s10.7(2) certificate or title search "
+        "— this report checks all of them:",
+        S("ch", fontSize=9, textColor=WHITE, fontName="Helvetica-Bold", leading=13),
+    )
+    alert_suffix = (
+        f"  <b>{len(flagged)} constraint(s) identified at this property — see Risk Summary.</b>"
+        if flagged else "  No constraints identified for this property."
+    )
+    callout_body = Paragraph(
+        delta_body_text + alert_suffix,
+        S("cb", fontSize=8, textColor=colors.HexColor("#134E4A"), leading=12),
+    )
+    callout_tbl = Table([[callout_header], [callout_body]], colWidths=[CW])
+    callout_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0),  TEAL),
+        ("BACKGROUND",    (0, 1), (-1, -1), colors.HexColor("#F0FDF9")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
+        ("BOX",           (0, 0), (-1, -1), 0.5, TEAL),
+    ]))
+    story.append(callout_tbl)
+    story.append(Spacer(1, 5 * mm))
+
+    # ------------------------------------------------------------------
+    # COVERAGE PANEL
+    # ------------------------------------------------------------------
+    if dcp_former_council:
+        dcp_name = DCP_SETBACKS[dcp_former_council]["dcp_name"]
+        dcp_note = dcp_name
+    else:
+        zone_epi = controls.get("zone_epi") or ""
+        dcp_note = "Currently Inner West LGA only — email info@plotdetect.com.au to add your LGA"
+
+    included_items = [
+        "Zone, height limit, FSR, minimum lot size",
+        "Heritage items and conservation areas",
+        "Acid sulfate soils classification",
+        "SEPP overlays (spatial + statewide)",
+        "Environmental constraints: biodiversity, riparian, wetlands, landslide, flood",
+        "Development feasibility: granny flat, subdivision, CDC, GFA headroom, land tax",
+        "Strata and company title detection",
+        f"DCP setback controls with clause citations — {dcp_note}",
+        "Nearby DA activity (200m, 12 months)",
+        "VG land value and 5-year trend",
+    ]
+    not_included = [
+        "Section 10.7 Planning Certificate (order from council)",
+        "Title search (order via InfoTrack or equivalent)",
+        "Strata inspection report (order via strata inspector)",
+        "Survey or identification report",
+    ]
+
+    inc_text = "<br/>".join(f"✓  {i}" for i in included_items)
+    not_text = "<br/>".join(f"–  {i}" for i in not_included)
+
+    inc_style = S("ci", fontSize=7.5, textColor=colors.HexColor("#166534"), leading=11)
+    not_style = S("cn", fontSize=7.5, textColor=colors.HexColor("#6B7280"), leading=11)
+    hdr_style = S("ch2", fontSize=8, textColor=NAVY, fontName="Helvetica-Bold", leading=11)
+
+    cov_tbl = Table(
+        [
+            [Paragraph("This report covers", hdr_style), Paragraph("Not included — order separately", hdr_style)],
+            [Paragraph(inc_text, inc_style),              Paragraph(not_text, not_style)],
+        ],
+        colWidths=[CW * 0.58, CW * 0.42],
+    )
+    cov_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor("#F8FAFC")),
+        ("BACKGROUND",    (0, 1), (-1, -1), colors.white),
+        ("BOX",           (0, 0), (-1, -1), 0.5, colors.HexColor("#CBD5E1")),
+        ("LINEAFTER",     (0, 0), (0, -1),  0.5, colors.HexColor("#CBD5E1")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 5),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(cov_tbl)
+    story.append(Spacer(1, 5 * mm))
+
+    # ------------------------------------------------------------------
+    # SECTION 1 — Risk Summary (traffic lights)
+    # ------------------------------------------------------------------
+    h2("1. Risk Summary")
+
+    _HIT_LABELS: dict[str, str] = {
+        "biodiversity":            "Trigger risk — BDAR may apply",
+        "riparian":                "Riparian corridor present",
+        "wetlands":                "Wetland area present",
+        "landslide":               "Landslide risk area",
+        "flood":                   "Flood planning area",
+        "foreshore_building_line": "Foreshore building line applies",
+        "classified_road":         "Classified road frontage — 9 m setback",
+    }
+    # EPI-confirmed layers: absence from layerintersect = confirmed clear (not just missing data)
+    _EPI_CONFIRMED: dict[str, str] = {
+        "riparian": "riparian_epi",
+        "flood":    "flood_epi",
+    }
+    # When PostGIS has no data and no EPI check, show a specific directive
+    _NO_DATA_LABELS: dict[str, str] = {
+        "wetlands":  "None in this LGA",
+        "landslide": "None in this LGA",
+    }
+
+    def flag(layer_type: str, label: str, present_style: str = "alert"):
+        # 1. PostGIS hit (detailed spatial data)
+        if layer_type in unique_by_type:
+            hit_label = _HIT_LABELS.get(layer_type) or unique_by_type[layer_type].get("value") or "Present"
+            return [label, Paragraph(hit_label, ss[present_style]), "PostGIS"]
+        # 2. EPI hit (Planning Portal confirms constraint via layerintersect)
+        epi_key = _EPI_CONFIRMED.get(layer_type)
+        if epi_key and controls.get(epi_key):
+            hit_label = _HIT_LABELS.get(layer_type, "Present")
+            return [label, Paragraph(hit_label, ss[present_style]), "NSW Planning Portal"]
+        # 3. EPI confirmed absence (layerintersect ran, nothing found)
+        if epi_key:
+            return [label, Paragraph("Clear", ss["ok"]), "NSW Planning Portal"]
+        # 4. PostGIS layer not mapped for this LGA
+        if covered_layers is not None and layer_type not in covered_layers:
+            fallback = _NO_DATA_LABELS.get(layer_type, "Not assessed")
+            return [label, Paragraph(fallback, ss["ok"]), "PostGIS"]
+        return [label, Paragraph("Clear", ss["ok"]), "PostGIS"]
+
+    # Portal-derived flags
+    heritage_flag = (
+        Paragraph("; ".join(controls["heritage_items"][:2]) or "Present", ss["warn"])
+        if controls["heritage_items"]
+        else Paragraph("Clear", ss["ok"])
+    )
+    ass_flag = (
+        Paragraph(controls["ass_class"], ss["warn"])
+        if controls["ass_class"]
+        else Paragraph("Clear", ss["ok"])
+    )
+    key_sites_flag = (
+        Paragraph(f"Yes — {controls['key_sites_clause']}", ss["warn"])
+        if controls["key_sites_clause"]
+        else Paragraph("Clear", ss["ok"])
+    )
+
+    risk_rows = [
+        ["Constraint", "Finding", "Source"],
+        # Portal-sourced planning designations
+        ["Heritage Listing",                          heritage_flag,   "NSW Planning Portal"],
+        ["Acid Sulfate Soils",                        ass_flag,        "NSW Planning Portal"],
+        ["LEP Key Site or Special Provision",         key_sites_flag,  "NSW Planning Portal"],
+        # PostGIS-sourced environmental overlays (not in s10.7 or title search)
+        flag("biodiversity", "Biodiversity Values Map (BDAR trigger)"),
+        flag("riparian",     "Riparian Land"),
+        flag("wetlands",     "Wetlands"),
+        flag("landslide",    "Landslide Risk"),
+        flag("flood",        "Flood Planning Area"),
+        # PostGIS-sourced LEP constraints
+        flag("foreshore_building_line", "Foreshore Building Line", "warn"),
+        flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
+    ]
+
+    # Shadow risk row — derived from shadow pipeline
+    if shadow_result is not None:
+        jun21 = [s for s in shadow_result.get("scenarios", [])
+                 if s["scenario"] in {"jun21_9am", "jun21_12pm", "jun21_3pm"}]
+        overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
+        height_m = shadow_result.get("height_m", "?")
+        adg_ok = shadow_result.get("adg_compliant", True)
+        # Worst Jun 21 overlap fraction for context (noon is usually most readable)
+        jun21_fractions = [
+            round(s.get("shadow_overlap_fraction", 0) * 100)
+            for s in jun21
+        ]
+        worst_pct = max(jun21_fractions) if jun21_fractions else 0
+        pct_note = f" ({worst_pct}% peak coverage)" if worst_pct else ""
+
+        if adg_ok and overlap_count == 0:
+            shadow_flag = Paragraph("Clear — no significant shadow risk from max-height northern development", ss["ok"])
+        elif adg_ok:
+            shadow_flag = Paragraph(
+                f"Minor — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
+                f"ADG requirement met.", ss["warn"])
+        else:
+            shadow_flag = Paragraph(
+                f"ADG concern — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
+                f"A {height_m} m building on the northern lot could shadow this property.", ss["alert"])
+        risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "Verify Shadow Model"])
+    else:
+        risk_rows.append([
+            "Northern Development Shadow Risk",
+            Paragraph("Not assessed — pipeline unavailable", ss["note"]),
+            "—",
+        ])
+
+    c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
+    story.append(table(risk_rows, [c1, c2, c3]))
+
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        "<i>Not assessed</i> — flood, riparian, wetlands and landslide mapping is not yet available for this LGA. "
+        "This data is held at council level and is being added LGA by LGA. "
+        "Email <b>info@plotdetect.com.au</b> to request priority coverage for your area.",
+        ss["note"],
+    ))
+
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(
+        "<b>LEP Key Site or Special Provision</b> — a planning designation under the Local Environmental Plan "
+        "identifying the parcel for strategic development or applying special development controls. "
+        "Unrelated to environmental sensitivity. "
+        "<b>Biodiversity Values Map (BDAR trigger)</b> — whether the land is mapped under the Biodiversity "
+        "Conservation Act 2016. A positive result triggers a Biodiversity Development Assessment Report (BDAR), "
+        "typically $15,000–$50,000 and 4–12 months. Not disclosed in a s10.7 certificate.",
+        ss["note"]
+    ))
+    story.append(Spacer(1, 1 * mm))
+    story.append(Paragraph(
+        "Sources: planning designations (Heritage, ASS, Key Site) — NSW Planning Portal. "
+        "Environmental overlays (Biodiversity–Flood) — PostGIS spatial database, "
+        "not returned by standard title searches or s10.7 certificates. Coverage: 33 Greater Sydney LGAs.",
+        ss["note"]
+    ))
+    if shadow_result is not None and not shadow_result.get("adg_compliant", True):
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            "<b>Northern Development Shadow Risk</b> — modelled using the NSW Apartment Design Guide (ADG) "
+            "standard: 5 key dates/times including the three Jun 21 (winter solstice) snapshots that determine "
+            "ADG compliance. The model assumes a max-height building (per LEP) on the lot immediately to the "
+            "north, using the subject lot's own cadastral footprint as a symmetric proxy. "
+            "This risk is not disclosed in a standard s10.7 certificate, title search, or conveyancing "
+            "inspection. A formal shadow impact assessment prepared by a qualified town planner is required "
+            "for Development Application submission.",
+            ss["note"]
+        ))
+
+    # ------------------------------------------------------------------
+    # SECTION 2 — Development Feasibility Snapshot
+    # ------------------------------------------------------------------
+    h2("2. Development Feasibility Snapshot")
+    story.append(Paragraph(
+        "Answers to the questions buyers most frequently ask. Based on LEP controls, "
+        "valuation data and environmental overlays. Each finding requires professional "
+        "planning advice before acting.",
+        ss["note"]
+    ))
+    story.append(Spacer(1, 3 * mm))
+
+    if feasibility:
+        feas_rows = [["Question", "Finding", "Basis"]]
+        for item in feasibility:
+            flag = item["flag"]
+            ans_style = "ok" if flag == "ok" else ("warn" if flag == "warn" else "alert")
+            feas_rows.append([
+                Paragraph(item["question"], ss["body"]),
+                Paragraph(item["answer"], ss[ans_style]),
+                Paragraph(item["basis"], ss["note"]),
+            ])
+        story.append(table(feas_rows, [55 * mm, 40 * mm, CW - 95 * mm]))
+    else:
+        story.append(Paragraph("Feasibility assessment unavailable — lot area data not returned.", ss["note"]))
+
+    story.append(Spacer(1, 4 * mm))
+
+    # ------------------------------------------------------------------
+    # STRATA PANEL (shown when strata lot detected)
+    # ------------------------------------------------------------------
+    _si = strata_info or {}
+    if _si.get("is_strata"):
+        sp_num = _si.get("strata_plan") or ""
+        sp_src = _si.get("source", "address_heuristic")
+        plan_type = _si.get("plan_type", "strata")
+
+        # Title line only — source attribution goes in footnote below section
+        if sp_num:
+            title_label = f"Community Title — {sp_num}" if plan_type == "community" else f"Strata Title — {sp_num}"
+        elif plan_type == "strata_or_company":
+            title_label = "Strata or Company Title"
+        else:
+            title_label = "Strata Title"
+
+        strata_hdr = Paragraph(
+            title_label,
+            S("sh", fontSize=9, textColor=WHITE, fontName="Helvetica-Bold", leading=13),
+        )
+
+        # Source note for below the section
+        if plan_type == "strata_or_company":
+            strata_src_note = (
+                "Title classification: Detected from address format. "
+                "Company title properties return as Torrens in the land register — confirm title type via title search."
+            )
+        elif sp_src in ("cadastre", "cadastre+address"):
+            strata_src_note = "Title classification: NSW Planning Portal."
+        else:
+            strata_src_note = "Title classification: Detected from address format — confirm via title search."
+
+        company_note = (
+            "<b>Note — company title possible:</b> Company title is most common in older apartment "
+            "buildings in inner Sydney (Potts Point, Elizabeth Bay, Kirribilli, Darlinghurst, Paddington) "
+            "that predate or were never converted to strata. In company title, the building is owned by "
+            "a company — buyers acquire shares, not land. Company title returns as Torrens in the land "
+            "register (the company holds the DP lot), so standard title searches do not flag it. "
+            "Obtain a company title inspection report if in doubt.<br/><br/>"
+            if plan_type == "strata_or_company" else ""
+        )
+
+        strata_body_lines = [
+            "<b>Development feasibility:</b> Secondary dwelling and Torrens title subdivision are not available "
+            "on strata lots. Any works to common property require a unanimous special resolution of the owners "
+            "corporation. Unit-specific alterations are subject to by-laws.",
+            "",
+            "<b>Valuation data:</b> NSW Valuation Service records land value and lot area for the whole building "
+            "parcel, not the individual unit. These figures are not shown — they reflect the building site, "
+            "not what the purchaser is acquiring.",
+            "",
+            "<b>Planning constraints remain fully applicable:</b> Environmental overlays (biodiversity, riparian, "
+            "flood), heritage, LEP controls, and SEPP instruments apply to the land and building regardless of "
+            "title type. The s10.7(2) disclosure gap in this report is equally relevant for strata purchasers.",
+            "",
+            company_note + "<b>Strata-specific due diligence — obtain separately:</b>",
+            f"· NSW Strata Hub — scheme registration, managing agent, lot entitlement: {STRATA_HUB_URL}",
+            "· Strata inspection report — by-laws, financial statements, 10-year capital works fund forecast",
+            "· Active strata renewal applications — NCAT register (ncat.nsw.gov.au)",
+            "· Owners corporation levy schedule — confirm sinking fund health and any special levies outstanding",
+        ]
+        strata_body = Paragraph(
+            "<br/>".join(strata_body_lines),
+            S("sb", fontSize=8, textColor=colors.HexColor("#1E3A5F"), leading=12),
+        )
+        strata_tbl = Table([[strata_hdr], [strata_body]], colWidths=[CW])
+        strata_tbl.setStyle(TableStyle([
+            ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+            ("BACKGROUND",    (0, 1), (-1, -1), colors.HexColor("#EFF6FF")),
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 9),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 9),
+            ("BOX",           (0, 0), (-1, -1), 0.5, NAVY),
+        ]))
+        story.append(strata_tbl)
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(strata_src_note, ss["note"]))
+        story.append(Spacer(1, 4 * mm))
+    elif _si.get("parent_has_strata"):
+        story.append(Paragraph(
+            f"<b>Note — Strata scheme on this parcel ({_si.get('plan_label', '')}):</b> "
+            "The title search for this property should confirm whether the subject lot is Torrens title "
+            "or forms part of a strata scheme. Environmental constraints and LEP controls in this report "
+            "apply regardless of title type.",
+            ss["warn"]
+        ))
+        story.append(Spacer(1, 4 * mm))
+
+    # ------------------------------------------------------------------
+    # SECTION 3 — Property & Development Rights
+    # ------------------------------------------------------------------
+    h2("3. Property & Development Rights")
+
+    zone_str = controls["zone"] or "—"
+    if controls["zone_full"]:
+        zone_str += f" — {controls['zone_full']}"
+
+    lep_rows = [
+        ["Control", "Value", "Reference"],
+        ["Zone",
+         Paragraph(zone_str, ss["body"]),
+         controls["zone_epi"] or "—"],
+        ["Max Building Height",
+         f"{controls['height']} {controls['height_units']}".strip() if controls["height"] else "No LEP height limit",
+         controls["height_clause"] or ""],
+        ["Floor Space Ratio",
+         controls["fsr"] or "Not specified",
+         controls["fsr_clause"] or ""],
+        ["Min Lot Size (LEP)",
+         f"{controls['lot_size']} {controls['lot_size_units']}".strip() if controls["lot_size"] else "Not specified",
+         controls["lot_size_clause"] or ""],
+    ]
+
+    # Valuation data rows — whole-parcel figures not shown for strata (see strata panel above)
+    _is_strata = (_si or {}).get("is_strata", False)
+    if not _is_strata:
+        if headroom.get("lot_area_m2"):
+            lep_rows.append(["Actual Lot Area", headroom["lot_area_display"], "NSW Valuation Service"])
+        if headroom.get("land_value"):
+            lv_line = headroom["land_value_display"]
+            if headroom.get("land_value_per_m2"):
+                lv_line += f"  ({headroom['land_value_per_m2_display']})"
+            lep_rows.append(["Land Value (excl. buildings)", lv_line, "NSW Valuation Service"])
+    else:
+        lep_rows.append(["Land Value", Paragraph("See Strata Title note above", ss["note"]), "NSW Valuation Service"])
+
+    story.append(table(lep_rows, [58 * mm, 80 * mm, CW - 138 * mm]))
+    story.append(Spacer(1, 3 * mm))
+
+    # Development headroom + subdivision — suppressed for strata
+    if not _is_strata:
+        if headroom.get("max_gfa_m2"):
+            story.append(Paragraph(
+                f"<b>Maximum permissible GFA: {headroom['max_gfa_display']}</b> "
+                f"(lot area {headroom['lot_area_display']} × FSR {headroom['fsr_numeric']}:1). "
+                "Actual achievable GFA subject to setbacks, height plane, and DCP controls.",
+                ss["body"]
+            ))
+            story.append(Spacer(1, 2 * mm))
+
+        if "subdivision_note" in headroom:
+            style_key = "warn" if headroom.get("subdivision_feasible") else "note"
+            story.append(Paragraph(f"<b>Subdivision:</b> {headroom['subdivision_note']}", ss[style_key]))
+            story.append(Spacer(1, 2 * mm))
+
+    # VG 5-year land value trend — suppressed for strata (whole-lot value, not unit)
+    val_history = [] if _is_strata else valuation.get("val_history", [])
+    if len(val_history) >= 2:
+        story.append(Paragraph("<b>Land Value Trend (excl. buildings — NSW Valuation Service):</b>", ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+        trend_rows = [["Valuation Date", "Land Value", "Change"]]
+        for i, entry in enumerate(val_history):
+            if i == 0:
+                trend_rows.append([entry["year"] or "—", f"${entry['value']:,.0f}", "—"])
+            else:
+                prev_val = val_history[i - 1]["value"]
+                delta = entry["value"] - prev_val
+                pct = (delta / prev_val * 100) if prev_val else 0
+                sign = "+" if delta >= 0 else ""
+                delta_str = f"{sign}${abs(delta):,.0f} ({sign}{pct:.1f}%)"
+                trend_rows.append([
+                    entry["year"] or "—",
+                    f"${entry['value']:,.0f}",
+                    Paragraph(delta_str, ss["ok"] if delta >= 0 else ss["warn"]),
+                ])
+        story.append(table(trend_rows, [48 * mm, 45 * mm, CW - 93 * mm]))
+        story.append(Spacer(1, 2 * mm))
+
+    # Permitted uses
+    zone_code = (controls.get("zone") or "").split()[0].upper()
+    permitted = ZONE_PERMITTED.get(zone_code, [])
+    if permitted:
+        story.append(Paragraph(
+            f"<b>Permitted uses ({zone_code}):</b> " + " · ".join(permitted),
+            ss["body"]
+        ))
+        story.append(Spacer(1, 2 * mm))
+
+    # Key Sites clause plain English
+    if controls.get("key_sites_clause"):
+        clauses = [c.strip() for c in controls["key_sites_clause"].replace("Clauses", "").replace("Clause", "").split(",")]
+        explained = []
+        for c in clauses:
+            c = c.strip()
+            if c in KEY_SITES_PLAIN:
+                explained.append(f"<b>Cl {c}:</b> {KEY_SITES_PLAIN[c]}")
+        if explained:
+            story.append(Paragraph("<b>Key Sites provisions:</b>", ss["body"]))
+            for ex in explained:
+                story.append(Paragraph(f"• {ex}", ss["note"]))
+            story.append(Spacer(1, 2 * mm))
+
+    # ------------------------------------------------------------------
+    # SECTION 4 — DCP Development Controls (setbacks)
+    # ------------------------------------------------------------------
+    h2("4. DCP Development Controls — Setbacks")
+
+    if _is_strata:
+        story.append(Paragraph(
+            "DCP setback controls are not applicable to individual strata units. "
+            "Setback requirements govern building works on the land parcel and apply to the "
+            "building as a whole — any alterations or additions to common property require "
+            "owners corporation approval. Unit-specific works (internal alterations) are "
+            "governed by the strata by-laws, not DCP setbacks.",
+            ss["note"]
+        ))
+        story.append(Spacer(1, 4 * mm))
+
+    if not _is_strata:
+        prop_zone = (controls.get("zone") or "").split()[0].upper()
+        dcp_data = DCP_SETBACKS.get(dcp_former_council) if dcp_former_council else None
+        zone_mismatch = bool(
+            dcp_data and prop_zone and prop_zone not in dcp_data.get("zones_applicable", [])
+        )
+    else:
+        dcp_data = None
+        zone_mismatch = False
+        prop_zone = ""
+
+    if dcp_data and not zone_mismatch:
+        story.append(Paragraph(
+            f"<b>{dcp_data['dcp_name']}</b> — {dcp_data['section']} (ref: {dcp_data['clause_ref']})",
+            ss["body"]
+        ))
+        story.append(Paragraph(
+            f"Scope: {dcp_data['dev_type_scope']}. "
+            f"Zone: {prop_zone}. "
+            "Controls shown for dwelling house as representative residential development type.",
+            ss["note"]
+        ))
+        story.append(Spacer(1, 3 * mm))
+
+        # Split into two tables: prescribed (hard numbers) and site-derived (method only)
+        prescribed = [sb for sb in dcp_data["setbacks"] if sb["control_type"] == "prescribed"]
+        site_derived = [sb for sb in dcp_data["setbacks"] if sb["control_type"] == "site_derived"]
+
+        c1b, c2b, c3b, c4b = 52 * mm, 40 * mm, 22 * mm, CW - 114 * mm
+
+        if prescribed:
+            story.append(Paragraph(
+                "Prescribed minimums — fixed numbers in the DCP text, applicable regardless of site context:",
+                ss["body"]
+            ))
+            story.append(Spacer(1, 1 * mm))
+            rows = [["Setback", "Minimum", "Clause", "Notes"]]
+            for sb in prescribed:
+                rows.append([
+                    Paragraph(sb["type"], ss["body"]),
+                    Paragraph(sb["requirement"], ss["ok"]),
+                    Paragraph(sb["clause"], ss["note"]),
+                    Paragraph(sb["notes"], ss["note"]),
+                ])
+            story.append(table(rows, [c1b, c2b, c3b, c4b]))
+            story.append(Spacer(1, 3 * mm))
+
+        if site_derived:
+            story.append(Paragraph(
+                "Site-derived controls — no fixed number exists in the DCP. The DCP specifies "
+                "the method; the actual setback is determined by a planner from a site visit:",
+                ss["body"]
+            ))
+            story.append(Spacer(1, 1 * mm))
+            rows2 = [["Setback", "Method / Basis", "Clause", "What this means"]]
+            for sb in site_derived:
+                rows2.append([
+                    Paragraph(sb["type"], ss["body"]),
+                    Paragraph(sb["requirement"], ss["warn"]),
+                    Paragraph(sb["clause"], ss["note"]),
+                    Paragraph(sb["notes"], ss["note"]),
+                ])
+            story.append(table(rows2, [c1b, c2b, c3b, c4b]))
+            story.append(Spacer(1, 2 * mm))
+
+        # Area-specific caveat (Leichhardt Distinctive Neighbourhoods)
+        if dcp_data.get("caveat"):
+            story.append(Paragraph(
+                f"<b>Important:</b> {dcp_data['caveat']}",
+                ss["warn"]
+            ))
+            story.append(Spacer(1, 2 * mm))
+
+        story.append(Paragraph(
+            "These controls apply to dwelling house development in the identified zone. "
+            "Different development types (dual occupancy, multi-dwelling, residential flat buildings) "
+            "trigger different DCP chapters. Heritage listings or HCA status add further controls. "
+            "A town planner is required to determine applicable setbacks for any specific proposal.",
+            ss["note"]
+        ))
+        if site_derived:
+            story.append(Spacer(1, 1 * mm))
+            story.append(Paragraph(
+                "<b>Site-derived controls require site visit:</b> Where setbacks are determined by "
+                "prevailing character, building location zones, or height-dependent graphs, the actual "
+                "number cannot be established without a site analysis. Development on character-based "
+                "sites requires a pre-DA assessment and in most cases a pre-lodgement meeting with "
+                "Council before applicable setbacks can be established.",
+                ss["note"]
+            ))
+
+    elif dcp_data and zone_mismatch:
+        story.append(Paragraph(
+            f"Zone {prop_zone} — DCP setback data extracted for low density residential zones (R1/R2) only. "
+            f"Controls for {prop_zone} zones in {dcp_data['dcp_name']} have not been extracted. "
+            "Obtain the applicable DCP chapter from Council or Inner West Council website.",
+            ss["note"]
+        ))
+
+    else:
+        story.append(Paragraph(
+            "DCP setback data extracted for Inner West LGA (Marrickville, Leichhardt, Ashfield precincts). "
+            "For other LGAs, obtain DCP controls directly from Council.",
+            ss["note"]
+        ))
+
+    story.append(Spacer(1, 4 * mm))
+
+    # ------------------------------------------------------------------
+    # SECTION 5 — Environmental Constraints (detail)
+    # ------------------------------------------------------------------
+    h2("5. Environmental Constraints")
+
+    # 3a — Acid sulfate (from portal)
+    if controls["ass_class"]:
+        story.append(Paragraph(f"<b>Acid Sulfate Soils: {controls['ass_class']}</b>", ss["body"]))
+        story.append(Paragraph(
+            ASS_DESCRIPTIONS.get(controls["ass_class"], "Acid sulfate soils management plan may be required."),
+            ss["note"]
+        ))
+        story.append(Spacer(1, 2 * mm))
+
+    # 3b — PostGIS unique overlays
+    for layer_type, note_text in POSTGIS_NOTES.items():
+        if layer_type in unique_by_type:
+            ov = unique_by_type[layer_type]
+            label = layer_type.replace("_", " ").title()
+            val = ov.get("value") or "Present"
+            story.append(Paragraph(f"<b>{label}: {val}</b>", ss["warn"]))
+            # Use dynamic flood note if available; fall back to static for other layers
+            display_note = _flood_note_dynamic if (layer_type == "flood" and _flood_note_dynamic) else note_text
+            story.append(Paragraph(display_note, ss["note"]))
+            story.append(Spacer(1, 2 * mm))
+
+            # Flood: add a "Next Steps" action callout
+            if layer_type == "flood" and _flood_rows:
+                _lga_display = (_flood_rows[0].get("lga") or "council").title()
+                _steps = [
+                    f"<b>1. Order a Section 733 Certificate</b> from {_lga_display} Council — this is the official "
+                    "confirmation of flood affectation, any recorded flood history, and the applicable flood "
+                    "planning level. Cost ~$50–150, turnaround 5–10 business days. Ask your client to allow for "
+                    "this before exchange.",
+                    "<b>2. Check flood insurance cost</b> before exchange — obtain a quote from the buyer's insurer "
+                    "or via the Insurance Council of Australia's flood tool (understandinsurance.com.au). "
+                    "Premiums in flood-affected areas can be $10,000–$30,000+/year. This is a material "
+                    "transaction consideration.",
+                    "<b>3. Ask the vendor</b>: Has a flood report been commissioned? Has the property flooded "
+                    "before? Any prior flood damage claims? These are legitimate pre-exchange requisitions.",
+                    "<b>4. Check council's flood planning maps</b> if the Section 733 does not state a floor level — "
+                    f"{_lga_display} Council's website may publish online flood check tools or DCP flood mapping.",
+                ]
+                ns_header = Paragraph(
+                    "Next Steps — Flood Affected Property",
+                    S("nsh", fontSize=8, textColor=WHITE, fontName="Helvetica-Bold", leading=11),
+                )
+                ns_body = Paragraph(
+                    "<br/><br/>".join(_steps),
+                    S("nsb", fontSize=7.5, textColor=colors.HexColor("#1E3A5F"), leading=11),
+                )
+                ns_tbl = Table([[ns_header], [ns_body]], colWidths=[CW])
+                ns_tbl.setStyle(TableStyle([
+                    ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+                    ("BACKGROUND",    (0, 1), (-1, -1), colors.HexColor("#EFF6FF")),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 5),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+                    ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
+                    ("BOX",           (0, 0), (-1, -1), 0.5, NAVY),
+                ]))
+                story.append(ns_tbl)
+                story.append(Spacer(1, 2 * mm))
+
+    no_constraints = not controls["ass_class"] and not any(
+        lt in unique_by_type for lt in POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "classified_road"}
+    )
+    if no_constraints:
+        story.append(Paragraph(
+            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, or flood overlays "
+            "identified at this location.",
+            ss["body"]
+        ))
+
+    # ------------------------------------------------------------------
+    # SECTION 4 — Heritage
+    # ------------------------------------------------------------------
+    h2("6. Heritage")
+
+    if controls["heritage_items"]:
+        for item in controls["heritage_items"]:
+            story.append(Paragraph(f"• {item}", ss["body"]))
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            "Heritage-listed properties require Heritage Impact Statement for any works. "
+            "Substantial alterations require Council heritage advisor approval.",
+            ss["note"]
+        ))
+    else:
+        story.append(Paragraph("No heritage listing identified via NSW Planning Portal.", ss["body"]))
+        story.append(Paragraph(
+            "Note: Heritage Conservation Area (HCA) status is not assessed here. "
+            "Check Council's heritage maps separately.",
+            ss["note"]
+        ))
+
+    # ------------------------------------------------------------------
+    # SECTION 5 — SEPP and Special Provisions
+    # ------------------------------------------------------------------
+    h2("7. State Environmental Planning Policy (SEPP) Overlays")
+
+    if controls["sepp_overlays"]:
+        sepp_rows = [["SEPP / Instrument", "Practical Implication"]]
+        seen = set()
+        for ov in controls["sepp_overlays"]:
+            name = ov["name"] or ""
+            if name in seen:
+                continue
+            seen.add(name)
+            plain = interpret_sepp(name, ov.get("type", ""))
+            if not plain:
+                plain = f"Type: {ov.get('type', '—')}  Label: {ov.get('label', '—')}"
+            sepp_rows.append([
+                Paragraph(name or "—", ss["body"]),
+                Paragraph(plain, ss["note"]),
+            ])
+        story.append(table(sepp_rows, [85 * mm, CW - 85 * mm]))
+    else:
+        story.append(Paragraph("No SEPP special provisions identified at this location.", ss["body"]))
+
+    if controls["housing_sepp"]:
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            "Housing SEPP applies — may permit additional residential development types "
+            "or increased density above LEP controls. Verify current Housing SEPP provisions.",
+            ss["warn"]
+        ))
+    if controls["tod_area"]:
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            "Transport-Oriented Development (TOD) area — significantly increased FSR and height "
+            "limits may apply within 400m of eligible station.",
+            ss["warn"]
+        ))
+
+    # Statewide SEPPs — always applicable, no spatial footprint
+    story.append(Spacer(1, 4 * mm))
+    story.append(Paragraph(
+        "<b>Statewide SEPP applicability</b> — the following instruments apply across NSW "
+        "regardless of property location and do not appear as spatial overlays:",
+        ss["body"]
+    ))
+    story.append(Spacer(1, 2 * mm))
+
+    zone_code_sepp = (controls.get("zone") or "").split()[0].upper()
+    has_classified_road = "classified_road" in unique_by_type
+
+    statewide_rows = [["Instrument", "When it applies", "Key implication"]]
+    statewide_rows.extend([
+        [
+            "SEPP (Sustainable Buildings) 2022",
+            "All residential development",
+            "BASIX certificate required for new dwellings and alterations/additions "
+            "exceeding $50,000. Must demonstrate energy, water and thermal comfort targets.",
+        ],
+        [
+            "SEPP (Housing) 2021",
+            "Residential zones — dual occ, secondary dwellings, complying dev",
+            "Enables secondary dwellings (450 m² lot min), dual occupancy, and "
+            "low-rise medium density housing as complying development in eligible zones. "
+            "Sets minimum site standards that override some LEP controls.",
+        ],
+        [
+            "SEPP (Transport and Infrastructure) 2021",
+            "Land adjoining classified roads and rail corridors",
+            (
+                "9 m minimum setback from classified road boundary for new dwellings. "
+                "Noise and vibration assessment required for development near rail. "
+                + ("Classified road frontage identified at this property — applies." if has_classified_road
+                   else "No classified road frontage identified at this property.")
+            ),
+        ],
+        [
+            "SEPP (Resilience and Hazards) 2021",
+            "All land — flood, coastal hazard, contaminated land",
+            "Overrides local controls for land affected by natural hazards. "
+            "Flood provisions apply statewide — council must have regard to flood planning levels. "
+            "Contaminated land requires remediation before sensitive uses.",
+        ],
+    ])
+
+    statewide_col_w = [58 * mm, 45 * mm, CW - 103 * mm]
+    hdr_s = S("sw_h", fontSize=8, textColor=WHITE, fontName="Helvetica-Bold", leading=11)
+    body_s = S("sw_b", fontSize=8, textColor=colors.HexColor("#374151"), leading=11)
+    note_s = S("sw_n", fontSize=7, textColor=colors.HexColor("#6B7280"), leading=11)
+
+    def _sw_row(row, is_header=False):
+        style = hdr_s if is_header else body_s
+        return [Paragraph(cell, style) for cell in row]
+
+    def _sw_data_row(instrument, when, impl):
+        return [
+            Paragraph(instrument, body_s),
+            Paragraph(when, note_s),
+            Paragraph(impl, note_s),
+        ]
+
+    sw_pdf_rows = [_sw_row(statewide_rows[0], is_header=True)]
+    for row in statewide_rows[1:]:
+        sw_pdf_rows.append(_sw_data_row(*row))
+
+    statewide_tbl = Table(sw_pdf_rows, colWidths=statewide_col_w)
+    statewide_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, colors.HexColor("#F3F4F6")]),
+        ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#E5E7EB")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(statewide_tbl)
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        "PropCode and standard s10.7 certificates list some statewide instruments but do not "
+        "assess applicability to the specific property. The spatial SEPP overlays above (Section 7 table) "
+        "identify instruments with a geographic footprint at this location.",
+        ss["note"]
+    ))
+
+    # ------------------------------------------------------------------
+    # SECTION 6 — Nearby Development Activity
+    # ------------------------------------------------------------------
+    h2("8. Nearby Development Activity (200m, 12 months)")
+
+    if das:
+        da_rows = [["DA Number", "Dist.", "Lodged", "Status", "Description"]]
+        for da in das:
+            da_rows.append([
+                da["number"],
+                f"{da['distance_m']}m",
+                da["lodged"],
+                da["status"],
+                Paragraph(da["description"], ss["body"]),
+            ])
+        story.append(table(da_rows, [38 * mm, 16 * mm, 22 * mm, 28 * mm, CW - 104 * mm]))
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            f"{len(das)} development application(s) lodged within 200m in the past 12 months. "
+            "Review descriptions above for potential amenity, overshadowing or construction impacts.",
+            ss["note"]
+        ))
+    else:
+        story.append(Paragraph(
+            "No development applications lodged within 200m in the past 12 months. "
+            "Low immediate construction disruption risk from neighbouring properties.",
+            ss["ok"]
+        ))
+
+    # ------------------------------------------------------------------
+    # SECTION 7 — Disclosure Notes
+    # ------------------------------------------------------------------
+    h2("9. Disclosure Notes")
+
+    notes = [
+        ("s10.7 Certificate",
+         "This report is NOT a substitute for a Section 10.7 Planning Certificate. "
+         "A s10.7(5) certificate from Council is the authoritative disclosure document for "
+         "conveyancing under Section 149 of the Environmental Planning and Assessment Act 1979."),
+        ("Environmental overlays",
+         "Biodiversity, riparian, wetlands, landslide and flood data sourced from NSW Planning Portal. "
+         "These layers are not included in s10.7(2) certificates and may not appear on standard title "
+         "searches. Data accuracy is subject to NSW Government mapping precision — verify with council "
+         "for site-specific advice."),
+        ("Title classification",
+         "Strata and community title identification sourced from NSW Planning Portal. "
+         "Company title properties return as Torrens in the land register and may not be identified "
+         "automatically — confirm title type via title search for older inner Sydney apartment buildings."),
+        ("DCP provisions",
+         "Development Control Plan (DCP) setback and built form controls are available for Inner West LGA "
+         "properties (Marrickville, Leichhardt, Ashfield precincts). Coverage varies by precinct — "
+         "confirm with council for site-specific controls."),
+        ("Data sources and currency",
+         f"NSW Planning Portal layerintersect data current as at report date ({date.today().isoformat()}). "
+         "NSW Valuation Service land values reflect the most recently published base date shown in the report. "
+         "PostGIS spatial overlays (biodiversity, riparian, wetlands, landslide, flood) reflect the last "
+         "ingestion from NSW Government ArcGIS services. Data is sourced from NSW Government public databases. "
+         "No representation is made as to its completeness or accuracy."),
+        ("Liability",
+         "This report provides planning intelligence for due diligence review only. "
+         "It does not constitute planning, legal, environmental or conveyancing advice, "
+         "and is not a substitute for a Section 10.7 Planning Certificate or title search. "
+         "Recipients should not rely on this report as the sole basis for any decision to enter "
+         "into a contract or proceed with a transaction. "
+         "Independent planning, legal and environmental advice should be obtained as appropriate. "
+         "To the maximum extent permitted by law, the report provider accepts no liability for "
+         "any loss or damage arising from reliance on this report."),
+    ]
+    for heading, body in notes:
+        story.append(Paragraph(f"<b>{heading}:</b> {body}", ss["body"]))
+        story.append(Spacer(1, 2 * mm))
+
+    story.append(Spacer(1, 4 * mm))
+
+    # Bulk teaser callout
+    bulk_tbl = Table(
+        [[Paragraph(
+            "<b>Running a settlement pipeline?</b>  These reports can be generated in bulk for your current "
+            "matters — one request covers your entire pipeline. Contact "
+            "<font color='#1E5FAD'>info@plotdetect.com.au</font> to discuss.",
+            S("bt", fontSize=8, textColor=colors.HexColor("#1E3A5F"), leading=12)
+        )]],
+        colWidths=[CW]
+    )
+    bulk_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#EFF6FF")),
+        ("BOX",           (0, 0), (-1, -1), 0.5, NAVY),
+        ("TOPPADDING",    (0, 0), (-1, -1), 7),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 7),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 10),
+    ]))
+    story.append(bulk_tbl)
+
+    story.append(Spacer(1, 3 * mm))
+    hr()
+    story.append(Spacer(1, 2 * mm))
+    story.append(Paragraph(
+        f"Verify — NSW Property Intelligence  |  "
+        f"Report generated {datetime.now().strftime('%Y-%m-%d %H:%M')} AEST",
+        ss["caveat"]
+    ))
+
+    doc.build(story)
+    print(f"\n  PDF written: {output_path}")
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Verify conveyancing planning report")
+    parser.add_argument("--address", required=True, help="Full property address")
+    parser.add_argument("--lat", type=float, help="Latitude (geocoded if omitted)")
+    parser.add_argument("--lng", type=float, help="Longitude (geocoded if omitted)")
+    parser.add_argument("--council", default="",
+                        help="Council name for DA search (auto-derived from LEP if omitted)")
+    parser.add_argument("--output", default=str(project_root / "reports" / "conveyancing" / "verify_report.pdf"), help="Output PDF path")
+    parser.add_argument("--no-pdf", action="store_true", help="Print data only")
+    args = parser.parse_args()
+
+    print(f"\n=== Verify Conveyancing Report ===")
+    print(f"Address: {args.address}")
+
+    print("\nResolving address ...")
+    prop_id, resolved_lat, resolved_lng, lot_wkt = resolve_address(args.address)
+
+    lat = args.lat if args.lat else resolved_lat
+    lng = args.lng if args.lng else resolved_lng
+    if args.lat or args.lng:
+        lot_wkt = None  # manual coords — lot polygon unknown
+
+    if not lat or not lng:
+        print("  ERROR: could not derive coordinates — check the address or provide --lat and --lng")
+        sys.exit(1)
+
+    print(f"  {lat:.6f}, {lng:.6f}")
+
+    print("\nFetching LEP controls from NSW Planning Portal ...")
+    controls = {}
+    valuation = {"lot_area_m2": None, "land_value": None}
+    if prop_id:
+        print(f"  propId: {prop_id}")
+        raw = get_raw_controls(prop_id)
+        controls = parse_controls(raw)
+        print(f"  Zone: {controls.get('zone')}  Height: {controls.get('height')}  FSR: {controls.get('fsr')}")
+        print(f"  ASS: {controls.get('ass_class')}  Heritage items: {len(controls.get('heritage_items', []))}")
+        print(f"  SEPP overlays: {len(controls.get('sepp_overlays', []))}")
+        print(f"  Key sites: {controls.get('key_sites_clause')}")
+        print("\nFetching valuation data ...")
+        valuation = get_valuation(prop_id)
+        print(f"  Lot area: {valuation.get('lot_area_m2')} m²  Land value: {valuation.get('land_value')}")
+    else:
+        print("  WARN: no propId — controls will be empty")
+        controls = parse_controls([])
+
+    headroom = calc_development_headroom(controls, valuation)
+
+    print("\nQuerying PostGIS for unique overlays (biodiversity, riparian, wetlands, landslide, flood) ...")
+    unique_overlays, covered_layers = get_unique_overlays(lat, lng, lot_wkt=lot_wkt)
+    if lot_wkt:
+        print("  (using lot polygon — partial overlays detected)")
+    else:
+        print("  (using centroid point — lot polygon unavailable)")
+    if unique_overlays:
+        for ov in unique_overlays:
+            print(f"  {ov['layer_type']:15s} {ov['value'] or 'present'}")
+    else:
+        print("  None found at this location")
+
+    print("\nDetecting title type ...")
+    strata_info = detect_strata(args.address, lat, lng)
+    strata = strata_info["is_strata"]
+    if strata:
+        sp = strata_info.get("strata_plan") or "detected"
+        src = strata_info["source"]
+        print(f"  Strata lot: {sp} (source: {src}) — feasibility gated")
+    elif strata_info.get("parent_has_strata"):
+        print(f"  Torrens title — but strata scheme exists on this parcel ({strata_info.get('plan_label')})")
+    else:
+        print(f"  Torrens title — {strata_info.get('plan_label', 'plan unknown')}")
+    feasibility = calc_feasibility(controls, valuation, unique_overlays, is_strata=strata)
+
+    raw_council = args.council or _council_from_zone_epi(controls.get("zone_epi", ""))
+    council_name = _normalise_council(raw_council) if args.council else raw_council
+    if council_name:
+        print(f"\nFetching nearby DAs (council: {council_name}) ...")
+        das = get_nearby_das(lat, lng, council_name=council_name)
+    else:
+        print("\nSkipping DA search — council could not be derived from LEP")
+        das = []
+    print(f"  {len(das)} DAs within 200m")
+
+    # Detect Inner West former council for DCP setback lookup
+    zone_epi = controls.get("zone_epi", "") if controls else ""
+    dcp_former_council = detect_former_council(args.address, zone_epi)
+    if dcp_former_council:
+        print(f"  DCP controls: {dcp_former_council} ({DCP_SETBACKS[dcp_former_council]['dcp_name']})")
+    else:
+        print("  DCP controls: not available for this LGA")
+
+    shadow_result = None
+    if prop_id and lat and lng:
+        print("\nRunning shadow risk model ...")
+        shadow_result = get_shadow_risk(args.address, prop_id, lat, lng)
+        if shadow_result:
+            adg = "ADG concern" if not shadow_result.get("adg_compliant") else "ADG compliant"
+            print(f"  {adg}  height: {shadow_result.get('height_m')} m")
+        else:
+            print("  Shadow model unavailable — section omitted from PDF")
+
+    if not args.no_pdf:
+        print(f"\nGenerating PDF -> {args.output}")
+        generate_pdf(args.output, args.address, lat, lng, controls, valuation, headroom, feasibility, unique_overlays, das, dcp_former_council=dcp_former_council, strata_info=strata_info, covered_layers=covered_layers, shadow_result=shadow_result)
+
+
+if __name__ == "__main__":
+    main()

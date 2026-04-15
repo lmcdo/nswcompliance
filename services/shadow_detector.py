@@ -51,13 +51,15 @@ from pydantic import BaseModel
 try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
-        shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+        shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
+        SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from services.sentinel2 import compute_change_score
 except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
-        shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+        shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
+        SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from sentinel2 import compute_change_score
 
@@ -133,16 +135,46 @@ _COUNCIL_TO_LEP = {
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
     """
-    Heuristic height limit from regulatory_provisions near lat/lng.
-    Returns (height_m: float, lep_name: str).
-    Uses dcp_precinct_boundaries spatial proximity to find the right council.
-    Falls back to closest precinct centroid if no spatial match.
+    Returns (height_m: float, lep_name: str) for the lot at (lat, lng).
+
+    Priority:
+      1. spatial_overlays table, layer_type='height' — point-in-polygon, covers 33 LGAs.
+      2. regulatory_provisions text extraction — Inner West only, kept as fallback.
+      3. DEFAULT_HEIGHT_M (9.0 m) if both fail.
     """
+    import re
     try:
-        import re
         with _get_conn() as conn:
             with conn.cursor() as cur:
-                # Find the nearest precinct boundary centroid to identify the council
+
+                # 1. spatial_overlays — authoritative LEP height limit for 33 LGAs
+                cur.execute(
+                    """
+                    SELECT value, lga_name
+                    FROM spatial_overlays
+                    WHERE layer_type = 'height'
+                      AND ST_Contains(
+                            ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                            ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                          )
+                    LIMIT 1
+                    """,
+                    (lng, lat),
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    raw_val = str(row[0])
+                    lga_name = (row[1] or "").strip()
+                    # value is typically "9" or "9m" or "9.0"
+                    nums = re.findall(r"(\d+(?:\.\d+)?)", raw_val)
+                    if nums:
+                        height = float(nums[0])
+                        lep_name = _COUNCIL_TO_LEP.get(lga_name.lower(),
+                                                        f"{lga_name} LEP" if lga_name else "Local Environmental Plan")
+                        logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
+                        return height, lep_name
+
+                # 2. regulatory_provisions fallback (Inner West only)
                 cur.execute(
                     """
                     SELECT former_council
@@ -154,36 +186,33 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                     )
                     LIMIT 1
                     """,
-                    (lng, lat)
+                    (lng, lat),
                 )
                 row = cur.fetchone()
                 former_council = (row[0] or "").strip() if row else ""
 
-                # Query height provisions filtered by council
-                query_args = ["%height%"]
-                council_filter = ""
                 if former_council:
-                    council_filter = "AND former_council = %s"
-                    query_args.append(former_council)
+                    cur.execute(
+                        "SELECT provision_text FROM regulatory_provisions "
+                        "WHERE is_current = TRUE AND v2_topic ILIKE %s AND former_council = %s LIMIT 20",
+                        ("%height%", former_council),
+                    )
+                    heights = []
+                    for (text,) in cur.fetchall():
+                        for m in re.findall(r"(\d+(?:\.\d+)?)\s*m", text or ""):
+                            h = float(m)
+                            if 4 <= h <= 30:
+                                heights.append(h)
+                    if heights:
+                        height = float(max(heights))
+                        lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
+                        logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
+                        return height, lep_name
 
-                cur.execute(
-                    f"SELECT provision_text FROM regulatory_provisions "
-                    f"WHERE is_current = TRUE AND v2_topic ILIKE %s {council_filter} LIMIT 20",
-                    query_args
-                )
-                heights = []
-                for (text,) in cur.fetchall():
-                    for m in re.findall(r"(\d+(?:\.\d+)?)\s*m", text or ""):
-                        h = float(m)
-                        if 4 <= h <= 30:
-                            heights.append(h)
-
-                height = float(max(heights)) if heights else DEFAULT_HEIGHT_M
-                lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
-                return height, lep_name
     except Exception as e:
         logger.warning(f"Height limit query: {e}")
-        return DEFAULT_HEIGHT_M, "Local Environmental Plan"
+
+    return DEFAULT_HEIGHT_M, "Local Environmental Plan"
 
 
 def _build_scenario_list(
@@ -202,7 +231,8 @@ def _build_scenario_list(
             length = 0.0
             overlaps = False
         else:
-            length = shadow_length_m(shadow_geojson, lot_centroid_lng, lot_centroid_lat)
+            length = shadow_reach_m(shadow_geojson, lot_geojson)
+            fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
             overlaps = overlaps_lot(shadow_geojson, lot_geojson)
         scenarios.append({
             "scenario": key,
@@ -210,6 +240,7 @@ def _build_scenario_list(
             "date": date_str,
             "time_local": time_local,
             "shadow_length_m": length,
+            "shadow_overlap_fraction": fraction,
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps,
             "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
@@ -270,8 +301,14 @@ def run_shadow(request: ShadowRequest):
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
 
+    # Model the shadow from a hypothetical building on the lot immediately to the
+    # north (symmetric proxy: same footprint, same LEP height limit).  The subject
+    # lot is kept as the overlap target.  This answers the buyer's question:
+    # "Could a northern neighbour building to max height shadow my property?"
+    north_proxy = northern_neighbour_proxy(lot_geojson)
+
     try:
-        shadow_map = model_all_scenarios(lot_geojson, height_m)
+        shadow_map = model_all_scenarios(north_proxy, height_m)
     except Exception as e:
         raise HTTPException(500, str(e))
 
