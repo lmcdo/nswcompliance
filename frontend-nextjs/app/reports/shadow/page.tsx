@@ -361,7 +361,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             Local Environmental Plan (LEP). The northern neighbour&apos;s footprint is
             approximated using the subject lot&apos;s own cadastral boundary, offset one
             lot-depth northward — a conservative symmetric proxy for suburban and terrace
-            lots. Actual development may be smaller or differently positioned.
+            lots. Where a road lies to the north, the actual nearest building would be
+            further away, meaning real shadow impact would be less than modelled.
+            Actual development may be smaller or differently positioned.
           </p>
           <p>
             <span className="font-medium text-gray-600">Construction activity.</span>{' '}
