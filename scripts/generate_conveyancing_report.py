@@ -1547,15 +1547,23 @@ def generate_pdf(
         overlap_count = sum(1 for s in jun21 if s.get("overlaps_subject_lot"))
         height_m = shadow_result.get("height_m", "?")
         adg_ok = shadow_result.get("adg_compliant", True)
+        # Worst Jun 21 overlap fraction for context (noon is usually most readable)
+        jun21_fractions = [
+            round(s.get("shadow_overlap_fraction", 0) * 100)
+            for s in jun21
+        ]
+        worst_pct = max(jun21_fractions) if jun21_fractions else 0
+        pct_note = f" ({worst_pct}% peak coverage)" if worst_pct else ""
+
         if adg_ok and overlap_count == 0:
-            shadow_flag = Paragraph("Clear — no shadow risk from max-height northern development", ss["ok"])
+            shadow_flag = Paragraph("Clear — no significant shadow risk from max-height northern development", ss["ok"])
         elif adg_ok:
             shadow_flag = Paragraph(
-                f"Minor — {overlap_count} of 3 winter solstice scenarios impacted "
-                f"({height_m} m LEP height limit). ADG requirement met.", ss["warn"])
+                f"Minor — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
+                f"ADG requirement met.", ss["warn"])
         else:
             shadow_flag = Paragraph(
-                f"ADG concern — {overlap_count} of 3 winter solstice scenarios impacted. "
+                f"ADG concern — {overlap_count} of 3 winter solstice scenarios impacted{pct_note}. "
                 f"A {height_m} m building on the northern lot could shadow this property.", ss["alert"])
         risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "Verify Shadow Model"])
     else:

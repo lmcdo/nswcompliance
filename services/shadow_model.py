@@ -143,35 +143,97 @@ def get_scenario_metadata() -> list:
     ]
 
 
-def shadow_length_m(shadow_geojson: dict, lot_centroid_lng: float, lot_centroid_lat: float) -> float:
-    """Max distance from lot centroid to any vertex of the shadow polygon, in metres."""
-    max_dist = 0.0
-    clat = math.radians(lot_centroid_lat)
-    for feature in shadow_geojson.get("features", []):
-        geom = feature.get("geometry", {})
-        coords = _extract_coords(geom)
-        for lng, lat in coords:
-            dlat = math.radians(lat - lot_centroid_lat)
-            dlng = math.radians(lng - lot_centroid_lng)
-            a = (math.sin(dlat / 2) ** 2
-                 + math.cos(clat) * math.cos(math.radians(lat)) * math.sin(dlng / 2) ** 2)
-            dist = 6_371_000 * 2 * math.asin(math.sqrt(max(0.0, a)))
-            if dist > max_dist:
-                max_dist = dist
-    return round(max_dist, 1)
+# Fraction of subject lot area that must be shadowed to count as "overlapping".
+# <40% → rear yard still gets meaningful sun; ≥40% → shadow materially covers the lot.
+OVERLAP_THRESHOLD = 0.40
+
+
+def _shadow_intersection(shadow_geojson: dict, lot_geojson: dict):
+    """
+    Return the shapely geometry of the shadow's intersection with the subject lot.
+    Returns None on error or if shapely unavailable.
+    """
+    try:
+        from shapely.geometry import shape
+        from shapely.ops import unary_union
+        lot = shape(lot_geojson)
+        shadow_shapes = [
+            shape(f["geometry"])
+            for f in shadow_geojson.get("features", [])
+            if f.get("geometry")
+        ]
+        if not shadow_shapes:
+            return None
+        intersection = unary_union(shadow_shapes).intersection(lot)
+        return intersection if not intersection.is_empty else None
+    except Exception as e:
+        logger.warning(f"Shadow intersection failed: {e}")
+        return None
+
+
+def shadow_overlap_fraction(shadow_geojson: dict, lot_geojson: dict) -> float:
+    """
+    Fraction (0–1) of the subject lot area covered by the shadow polygon.
+    0.0 = no overlap; 1.0 = entire lot in shadow.
+    """
+    try:
+        from shapely.geometry import shape
+        lot = shape(lot_geojson)
+        lot_area = lot.area
+        if lot_area == 0:
+            return 0.0
+        intersection = _shadow_intersection(shadow_geojson, lot_geojson)
+        if intersection is None:
+            return 0.0
+        return round(min(1.0, intersection.area / lot_area), 3)
+    except Exception as e:
+        logger.warning(f"Overlap fraction failed: {e}")
+        return 0.0
+
+
+def shadow_reach_m(shadow_geojson: dict, lot_geojson: dict) -> float:
+    """
+    How far (metres) the shadow penetrates into the subject lot, measured
+    from the lot's northern boundary southward.
+
+    0   = shadow doesn't enter the lot.
+    lot_depth_m = shadow covers the entire lot.
+
+    This replaces the old shadow_length_m (which measured from lot centroid
+    to all shadow vertices including the proxy building, making it useless).
+    """
+    try:
+        from shapely.geometry import shape
+        lot = shape(lot_geojson)
+        lot_north_lat = lot.bounds[3]   # maxy
+        intersection = _shadow_intersection(shadow_geojson, lot_geojson)
+        if intersection is None:
+            return 0.0
+        # Southernmost point of the intersection = deepest shadow penetration
+        south_lat = intersection.bounds[1]  # miny
+        reach_lat = lot_north_lat - south_lat
+        return round(max(0.0, reach_lat * 111_000), 1)
+    except Exception as e:
+        logger.warning(f"shadow_reach_m failed: {e}")
+        return 0.0
+
+
+def shadow_length_m(shadow_geojson: dict, lot_geojson: dict, **_kwargs) -> float:
+    """
+    Backwards-compatible wrapper — now returns shadow_reach_m.
+    Old signature accepted (lot_centroid_lng, lot_centroid_lat); new callers
+    should use shadow_reach_m directly.
+    """
+    return shadow_reach_m(shadow_geojson, lot_geojson)
 
 
 def overlaps_lot(shadow_geojson: dict, lot_geojson: dict) -> bool:
-    """True if any shadow feature intersects the lot polygon."""
-    try:
-        from shapely.geometry import shape
-        lot_shape = shape(lot_geojson)
-        for feature in shadow_geojson.get("features", []):
-            if lot_shape.intersects(shape(feature["geometry"])):
-                return True
-    except Exception as e:
-        logger.warning(f"Overlap check failed: {e}")
-    return False
+    """
+    True if the shadow covers ≥OVERLAP_THRESHOLD of the subject lot area.
+    A 40% threshold means the rear yard (principal private open space) is
+    materially impacted; minor edge shadows at 9am/3pm don't trigger this.
+    """
+    return shadow_overlap_fraction(shadow_geojson, lot_geojson) >= OVERLAP_THRESHOLD
 
 
 def _extract_coords(geom: dict) -> list:
