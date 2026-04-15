@@ -52,12 +52,14 @@ try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+        northern_neighbour_proxy,
     )
     from services.sentinel2 import compute_change_score
 except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_length_m, overlaps_lot, SHADOW_SCENARIOS,
+        northern_neighbour_proxy,
     )
     from sentinel2 import compute_change_score
 
@@ -270,8 +272,14 @@ def run_shadow(request: ShadowRequest):
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
 
+    # Model the shadow from a hypothetical building on the lot immediately to the
+    # north (symmetric proxy: same footprint, same LEP height limit).  The subject
+    # lot is kept as the overlap target.  This answers the buyer's question:
+    # "Could a northern neighbour building to max height shadow my property?"
+    north_proxy = northern_neighbour_proxy(lot_geojson)
+
     try:
-        shadow_map = model_all_scenarios(lot_geojson, height_m)
+        shadow_map = model_all_scenarios(north_proxy, height_m)
     except Exception as e:
         raise HTTPException(500, str(e))
 

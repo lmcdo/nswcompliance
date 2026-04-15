@@ -246,7 +246,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <div className="p-6">
         <p className="text-sm font-medium text-gray-700 mb-1">Shadow impact by scenario</p>
         <p className="text-xs text-gray-400 mb-4">
-          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building reach this property?
+          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building on the northern neighbouring lot reach this property?
         </p>
         <div className="space-y-0 divide-y divide-gray-50">
           <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
@@ -314,10 +314,12 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             shadow consultants. Verified for Sydney&apos;s latitude (Southern Hemisphere).
           </p>
           <p>
-            <span className="font-medium text-gray-600">Building height.</span>{' '}
-            The model assumes the maximum permissible building height for this lot under the
-            applicable Local Environmental Plan (LEP). Actual development may be smaller,
-            which would produce shorter shadows.
+            <span className="font-medium text-gray-600">Building height and footprint.</span>{' '}
+            The model assumes the maximum permissible building height under the applicable
+            Local Environmental Plan (LEP). The northern neighbour&apos;s footprint is
+            approximated using the subject lot&apos;s own cadastral boundary, offset one
+            lot-depth northward — a conservative symmetric proxy for suburban and terrace
+            lots. Actual development may be smaller or differently positioned.
           </p>
           <p>
             <span className="font-medium text-gray-600">Construction activity.</span>{' '}

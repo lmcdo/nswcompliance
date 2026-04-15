@@ -14,8 +14,44 @@ No special Southern Hemisphere handling needed.
 import logging
 import math
 from datetime import datetime, timezone
+from typing import Optional
 
 logger = logging.getLogger(__name__)
+
+
+def lot_depth_m(lot_geojson: dict) -> float:
+    """North-south extent of the lot polygon in metres."""
+    try:
+        from shapely.geometry import shape
+        bounds = shape(lot_geojson).bounds  # (minx, miny, maxx, maxy)
+        return abs(bounds[3] - bounds[1]) * 111_000
+    except Exception:
+        return 20.0  # sensible suburban default
+
+
+def northern_neighbour_proxy(lot_geojson: dict, offset_m: Optional[float] = None) -> dict:
+    """
+    Return a GeoJSON Polygon representing a hypothetical building on the
+    lot immediately to the north of the subject lot.
+
+    Strategy: translate the subject lot's footprint northward by one
+    lot-depth (its own north-south extent).  This is a symmetric proxy —
+    it assumes the northern neighbour has a similar lot size and would
+    build over a similar footprint, which is reasonable for terraces and
+    suburban residential.
+
+    offset_m: override the auto-calculated offset (default = lot depth).
+    """
+    try:
+        from shapely.geometry import shape, mapping
+        from shapely.affinity import translate
+        depth = offset_m if offset_m is not None else lot_depth_m(lot_geojson)
+        delta_lat = depth / 111_000
+        shifted = translate(shape(lot_geojson), xoff=0.0, yoff=delta_lat)
+        return mapping(shifted)
+    except Exception as e:
+        logger.warning(f"northern_neighbour_proxy failed, using original lot: {e}")
+        return lot_geojson
 
 # (key, month, day, hour_utc, description, date_str, time_local, direction_deg)
 # direction_deg = direction shadow points (opposite of sun azimuth)
