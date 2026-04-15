@@ -23,8 +23,9 @@ interface GeoJSONCollection {
 
 interface Props {
   center: [number, number]; // [lng, lat]
-  lotPolygon: GeoJSONGeometry | null;
-  shadowPolygon: GeoJSONCollection | null;
+  lotPolygon: GeoJSONGeometry | null;       // subject lot boundary
+  shadowOnLot: GeoJSONCollection | null;    // shadow clipped to subject lot
+  northProxy: GeoJSONGeometry | null;       // hypothetical northern building footprint
 }
 
 // ESRI World Imagery — free, no token required, widely used
@@ -46,7 +47,7 @@ const AERIAL_STYLE: StyleSpecification = {
 
 function getBBox(
   lot: GeoJSONGeometry | null,
-  shadow: GeoJSONCollection | null
+  northProxy: GeoJSONGeometry | null,
 ): LngLatBoundsLike | null {
   const coords: [number, number][] = [];
 
@@ -62,20 +63,11 @@ function getBBox(
     }
   }
 
-  if (lot) {
-    if (lot.type === 'Polygon') collectPolygon(lot.coordinates);
-    if (lot.type === 'MultiPolygon') {
-      for (const poly of lot.coordinates as unknown[][]) collectPolygon(poly);
-    }
-  }
-
-  if (shadow) {
-    for (const f of shadow.features) {
-      const g = f.geometry;
-      if (g.type === 'Polygon') collectPolygon(g.coordinates);
-      if (g.type === 'MultiPolygon') {
-        for (const poly of g.coordinates as unknown[][]) collectPolygon(poly);
-      }
+  for (const geom of [lot, northProxy]) {
+    if (!geom) continue;
+    if (geom.type === 'Polygon') collectPolygon(geom.coordinates);
+    if (geom.type === 'MultiPolygon') {
+      for (const poly of geom.coordinates as unknown[][]) collectPolygon(poly);
     }
   }
 
@@ -89,7 +81,7 @@ function getBBox(
   ];
 }
 
-export function ShadowMap({ center, lotPolygon, shadowPolygon }: Props) {
+export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props) {
   const mapRef = useRef<{ fitBounds: (bounds: LngLatBoundsLike, opts?: object) => void } | null>(null);
 
   const lotGeoJSON = useMemo((): GeoJSONCollection | null => {
@@ -100,7 +92,15 @@ export function ShadowMap({ center, lotPolygon, shadowPolygon }: Props) {
     };
   }, [lotPolygon]);
 
-  const bbox = useMemo(() => getBBox(lotPolygon, shadowPolygon), [lotPolygon, shadowPolygon]);
+  const northProxyGeoJSON = useMemo((): GeoJSONCollection | null => {
+    if (!northProxy) return null;
+    return {
+      type: 'FeatureCollection',
+      features: [{ type: 'Feature', geometry: northProxy, properties: {} }],
+    };
+  }, [northProxy]);
+
+  const bbox = useMemo(() => getBBox(lotPolygon, northProxy), [lotPolygon, northProxy]);
 
   useEffect(() => {
     if (mapRef.current && bbox) {
@@ -120,26 +120,43 @@ export function ShadowMap({ center, lotPolygon, shadowPolygon }: Props) {
       mapStyle={AERIAL_STYLE}
       attributionControl={false}
     >
-      {/* Shadow polygon — rendered first so lot outline sits on top */}
-      {shadowPolygon && (
+      {/* Layer 1: Northern proxy building — dashed grey outline, no fill */}
+      {northProxyGeoJSON && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <Source id="shadow" type="geojson" data={shadowPolygon as any}>
+        <Source id="north-proxy" type="geojson" data={northProxyGeoJSON as any}>
           <Layer
-            id="shadow-fill"
+            id="north-proxy-fill"
             type="fill"
-            paint={{ 'fill-color': '#1e293b', 'fill-opacity': 0.45 }}
+            paint={{ 'fill-color': '#94a3b8', 'fill-opacity': 0.15 }}
+          />
+          <Layer
+            id="north-proxy-outline"
+            type="line"
+            paint={{ 'line-color': '#64748b', 'line-width': 2, 'line-dasharray': [4, 3] }}
           />
         </Source>
       )}
 
-      {/* Lot boundary */}
+      {/* Layer 2: Shadow clipped to subject lot — orange fill */}
+      {shadowOnLot && (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <Source id="shadow-on-lot" type="geojson" data={shadowOnLot as any}>
+          <Layer
+            id="shadow-on-lot-fill"
+            type="fill"
+            paint={{ 'fill-color': '#f97316', 'fill-opacity': 0.65 }}
+          />
+        </Source>
+      )}
+
+      {/* Layer 3: Subject lot — teal fill + outline, rendered on top */}
       {lotGeoJSON && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <Source id="lot" type="geojson" data={lotGeoJSON as any}>
           <Layer
             id="lot-fill"
             type="fill"
-            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.15 }}
+            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.12 }}
           />
           <Layer
             id="lot-outline"

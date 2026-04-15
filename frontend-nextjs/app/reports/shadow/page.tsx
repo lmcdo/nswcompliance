@@ -28,6 +28,7 @@ interface ShadowScenario {
   shadow_overlap_fraction: number;
   shadow_direction_deg: number;
   overlaps_subject_lot: boolean;
+  shadow_on_lot: GeoJSONCollection | null;
   shadow_polygon: GeoJSONCollection | null;
 }
 
@@ -35,6 +36,7 @@ interface ShadowOutputs {
   height_m: number;
   lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
+  north_proxy_polygon: GeoJSONGeometry | null;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
@@ -50,6 +52,7 @@ interface ShadowResult {
   outputs: ShadowOutputs;
   confidence: string;
   data_sources: string[];
+  zone: string | null;
   warnings?: string[];
 }
 
@@ -166,19 +169,42 @@ function ShadowCard({ result }: { result: ShadowResult }) {
     o.worst_case_scenario ?? 'jun21_12pm'
   );
 
-  const activeShadowPolygon = useMemo(() => {
+  const activeShadowOnLot = useMemo(() => {
     const s = scenarios.find(s => s.scenario === activeScenario);
-    return s?.shadow_polygon ?? null;
+    return s?.shadow_on_lot ?? null;
   }, [activeScenario, scenarios]);
 
   const overlapCount = scenarios.filter(s => s.overlaps_subject_lot).length;
-  const adgColor = o.adg_compliant ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100';
 
-  const summaryText = o.adg_compliant
+  // ADG applies to residential apartment buildings only. For commercial/business/industrial
+  // zones show a neutral "indicative" badge rather than a green/red compliance verdict.
+  const NON_RESIDENTIAL = ['B', 'E', 'IN', 'SP', 'W'];
+  const isNonResidential =
+    result.zone != null &&
+    NON_RESIDENTIAL.some(p => result.zone!.toUpperCase().startsWith(p));
+
+  const adgColor = isNonResidential
+    ? 'text-gray-600 bg-gray-100'
+    : o.adg_compliant
+    ? 'text-green-700 bg-green-100'
+    : 'text-red-700 bg-red-100';
+
+  const adgLabel = isNonResidential
+    ? 'ADG — indicative only'
+    : o.adg_compliant
+    ? 'ADG compliant'
+    : 'ADG concern';
+
+  const shadowReach = overlapCount === 0 ? 'none of the 5 test scenarios' : `${overlapCount} of 5 scenarios`;
+  const summaryText = isNonResidential
+    ? overlapCount === 0
+      ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
+      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${shadowReach}. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
+    : o.adg_compliant
     ? overlapCount === 0
       ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements are met.`
-      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
-    : `A maximum-height building on an adjacent lot would shadow this property across ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
+      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${shadowReach}, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
+    : `A maximum-height building on an adjacent lot would shadow this property across ${shadowReach} and may not meet the ADG 2-hour solar access requirement on 21 June.`;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -191,7 +217,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             <p className="text-xs text-gray-400 mt-0.5">Run {formatAustralianDate(result.run_date)}</p>
           </div>
           <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${adgColor}`}>
-            {o.adg_compliant ? 'ADG compliant' : 'ADG concern'}
+            {adgLabel}
           </span>
         </div>
         <p className="text-sm text-gray-600 mt-3 leading-relaxed">{summaryText}</p>
@@ -202,24 +228,35 @@ function ShadowCard({ result }: { result: ShadowResult }) {
         <ShadowMap
           center={[result.lng, result.lat]}
           lotPolygon={o.lot_polygon ?? null}
-          shadowPolygon={activeShadowPolygon}
+          shadowOnLot={activeShadowOnLot}
+          northProxy={o.north_proxy_polygon ?? null}
         />
         {/* Scenario label overlay */}
         <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
           {SCENARIO_LABELS[activeScenario] ?? activeScenario}
         </div>
         {/* Legend */}
-        <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1 shadow-sm">
+        <div className="absolute top-3 right-3 bg-white/90 text-xs rounded-lg px-3 py-2 space-y-1.5 shadow-sm">
           <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-teal-500 opacity-70 shrink-0" />
             <span className="text-gray-700">Subject lot</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-sm bg-slate-800 opacity-60 shrink-0" />
-            <span className="text-gray-700">Shadow</span>
+            <svg width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
+              <rect x="1" y="1" width="10" height="10" fill="rgba(148,163,184,0.2)" stroke="#64748b" strokeWidth="1.5" strokeDasharray="3 2" />
+            </svg>
+            <span className="text-gray-700">Max height building (north)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="w-3 h-3 rounded-sm bg-orange-400 opacity-80 shrink-0" />
+            <span className="text-gray-700">Shadow on lot</span>
           </div>
         </div>
       </div>
+      <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
+        Shadow overlay is a geometric model — not derived from satellite imagery.
+        Aerial imagery © Esri.
+      </p>
 
       {/* Stats row */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">

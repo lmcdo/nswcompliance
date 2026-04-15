@@ -236,6 +236,27 @@ def overlaps_lot(shadow_geojson: dict, lot_geojson: dict) -> bool:
     return shadow_overlap_fraction(shadow_geojson, lot_geojson) >= OVERLAP_THRESHOLD
 
 
+def shadow_on_lot_geojson(shadow_geojson: dict, lot_geojson: dict) -> Optional[dict]:
+    """
+    Return a GeoJSON FeatureCollection of the shadow clipped to the subject lot.
+    Used to render exactly which part of the lot is in shadow — not the full
+    pybdshadow polygon (which includes the proxy building footprint).
+    Returns None if no intersection.
+    """
+    intersection = _shadow_intersection(shadow_geojson, lot_geojson)
+    if intersection is None:
+        return None
+    try:
+        from shapely.geometry import mapping
+        return {
+            "type": "FeatureCollection",
+            "features": [{"type": "Feature", "geometry": mapping(intersection), "properties": {}}],
+        }
+    except Exception as e:
+        logger.warning(f"shadow_on_lot_geojson failed: {e}")
+        return None
+
+
 def _extract_coords(geom: dict) -> list:
     gtype = geom.get("type", "")
     coords = geom.get("coordinates", [])

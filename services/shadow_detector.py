@@ -52,6 +52,7 @@ try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
+        shadow_on_lot_geojson,
         SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from services.sentinel2 import compute_change_score
@@ -59,6 +60,7 @@ except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
+        shadow_on_lot_geojson,
         SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from sentinel2 import compute_change_score
@@ -230,11 +232,14 @@ def _build_scenario_list(
         shadow_geojson = shadow_map.get(key, {})
         if "error" in shadow_geojson:
             length = 0.0
+            fraction = 0.0
             overlaps = False
+            on_lot = None
         else:
             length = shadow_reach_m(shadow_geojson, lot_geojson)
             fraction = shadow_overlap_fraction(shadow_geojson, lot_geojson)
             overlaps = overlaps_lot(shadow_geojson, lot_geojson)
+            on_lot = shadow_on_lot_geojson(shadow_geojson, lot_geojson)
         scenarios.append({
             "scenario": key,
             "label": description,
@@ -244,6 +249,7 @@ def _build_scenario_list(
             "shadow_overlap_fraction": fraction,
             "shadow_direction_deg": direction_deg,
             "overlaps_subject_lot": overlaps,
+            "shadow_on_lot": on_lot,          # shadow clipped to subject lot
             "shadow_polygon": shadow_geojson if "error" not in shadow_geojson else None,
         })
     return scenarios
@@ -350,6 +356,7 @@ def run_shadow(request: ShadowRequest):
         "height_m": height_m,
         "lep_name": lep_name,
         "lot_polygon": lot_geojson,
+        "north_proxy_polygon": north_proxy,   # footprint of hypothetical northern building
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),

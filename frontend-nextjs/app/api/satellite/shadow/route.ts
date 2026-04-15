@@ -67,6 +67,15 @@ export async function POST(request: NextRequest) {
   }
 
   const prop_id: string = String(propData.property.prop_id);
+  const zone: string | null = propData.property.zone ?? null;
+
+  // Pass LEP height from Planning Portal — same approach as conveyancing script.
+  // Avoids the shadow pipeline re-querying spatial_overlays, which has coverage gaps.
+  const heightLimitRaw = propData.property.height_limit;
+  const height_m: number | undefined =
+    heightLimitRaw != null && !isNaN(parseFloat(String(heightLimitRaw)))
+      ? parseFloat(String(heightLimitRaw))
+      : undefined;
 
   // Extract centroid from lot geometry rings (rings contain [lng, lat] pairs in EPSG:4326)
   let lat: number | null = propData.property.coordinates?.lat ?? null;
@@ -98,7 +107,10 @@ export async function POST(request: NextRequest) {
     pythonResp = await fetch(`${PYTHON_API}/pipeline/shadow`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ address, prop_id, lat, lng, report_id }),
+      body: JSON.stringify({
+        address, prop_id, lat, lng, report_id,
+        ...(height_m !== undefined ? { height_m } : {}),
+      }),
       // 55s to stay under Vercel's 60s timeout
       signal: AbortSignal.timeout(55_000),
     });
@@ -119,5 +131,25 @@ export async function POST(request: NextRequest) {
   }
 
   const result = await pythonResp.json();
-  return NextResponse.json(result);
+
+  // Inject zone so the frontend can gate the ADG badge correctly.
+  // NSW commercial/business/industrial zones: B*, E*, IN*, SP* (not residential R*/RU*).
+  const NON_RESIDENTIAL_PREFIXES = ['B', 'E', 'IN', 'SP', 'W'];
+  const isNonResidential =
+    zone != null &&
+    NON_RESIDENTIAL_PREFIXES.some(p => zone.toUpperCase().startsWith(p));
+
+  const warnings: string[] = Array.isArray(result.warnings) ? [...result.warnings] : [];
+  if (isNonResidential) {
+    warnings.push(
+      `ADG solar access requirements apply to residential apartment buildings only. ` +
+      `This property is zoned ${zone} — the ADG result is indicative only.`
+    );
+  }
+
+  return NextResponse.json({
+    ...result,
+    zone,
+    ...(warnings.length ? { warnings } : {}),
+  });
 }
