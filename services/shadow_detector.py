@@ -234,12 +234,11 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
             is_road = ratio < 0.35
             method = f"geometric(ratio={ratio:.2f})"
 
-        debug = {"method": method, "api_results": api_results, "road_north": is_road}
-        logger.info(f"Road detection: {debug} apex=({apex_lng:.5f},{apex_lat:.5f})")
-        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0, debug
+        logger.info(f"Road detection ({method}): apex=({apex_lng:.5f},{apex_lat:.5f}) api={api_results} road={is_road}")
+        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
     except Exception as e:
         logger.warning(f"Road detection: {e}")
-        return False, 0.0, {"method": "error", "error": str(e)}
+        return False, 0.0
 
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
@@ -446,7 +445,7 @@ def run_shadow(request: ShadowRequest):
     # Detect whether a road lies immediately north of the subject lot.
     # If so, shift the proxy one road-width further so it sits on the next lot,
     # not in the middle of the street.
-    road_north, road_extra_m, road_debug = _detect_road_north(lot_geojson)
+    road_north, road_extra_m = _detect_road_north(lot_geojson)
     proxy_offset_m = lot_depth_m(lot_geojson) + road_extra_m
     north_proxy = northern_neighbour_proxy(lot_geojson, offset_m=proxy_offset_m)
 
@@ -465,7 +464,6 @@ def run_shadow(request: ShadowRequest):
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
         "road_north": road_north,             # True when a road lies between lot and proxy
-        "road_debug": road_debug,             # TEMP — remove after confirming Railway API reachability
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
