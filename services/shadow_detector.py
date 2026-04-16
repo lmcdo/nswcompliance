@@ -138,28 +138,41 @@ _COUNCIL_TO_LEP = {
 
 DEFAULT_ROAD_WIDTH_M = 18.0  # typical suburban road reserve in NSW
 
-# NSW Planning Portal cadastral lot lookup by coordinate.
-# Roads have no Torrens title → returns [] → detected as road.
-LOT_COORD_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
+# NSW Spatial Services — cadastral lot polygon layer (layer 8).
+# ArcGIS FeatureServer point query: returns lot polygon if the point is inside a
+# registered lot; returns [] for roads (no lot polygon for road reserves).
+# Verified: road coords → 0 features; residential lot coords → 1 feature.
+LOT_SPATIAL_API = (
+    "https://portal.spatial.nsw.gov.au/server/rest/services"
+    "/NSW_Land_Parcel_Property_Theme/FeatureServer/8/query"
+)
 
 
 def _has_cadastral_lot_at(lng: float, lat: float) -> bool:
     """
-    True if the NSW Planning Portal returns a cadastral lot at (lng, lat).
-    Roads and public reserves have no title → return False.
+    True if a cadastral lot polygon covers (lng, lat) in WGS84.
+    Uses NSW Spatial Services FeatureServer — no auth required.
+    Roads return no features → False.
     On API error returns True (conservative: no road offset applied).
     """
     try:
         r = requests.get(
-            LOT_COORD_API,
-            params={"x": lng, "y": lat, "sr": 4326},
+            LOT_SPATIAL_API,
+            params={
+                "geometry": f"{lng},{lat}",
+                "geometryType": "esriGeometryPoint",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "lotnumber",
+                "f": "json",
+                "inSR": 4326,
+            },
             timeout=6,
         )
         r.raise_for_status()
         data = r.json()
-        return bool(data and len(data) > 0)
+        return bool(data.get("features"))
     except Exception as e:
-        logger.warning(f"Lot coord lookup ({lng:.5f},{lat:.5f}): {e}")
+        logger.warning(f"Lot spatial lookup ({lng:.5f},{lat:.5f}): {e}")
         return True  # conservative: assume lot, no road offset
 
 

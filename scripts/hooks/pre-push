@@ -55,6 +55,7 @@ if [ -d "$FRONTEND_DIR" ]; then
   echo "✅ eslint passed (warnings allowed)"
 fi
 
+
 # ── Jest: frontend unit tests ─────────────────────────────────────────────────
 if [ -d "$FRONTEND_DIR" ]; then
   echo "jest: running frontend unit tests..."
