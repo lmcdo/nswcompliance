@@ -122,19 +122,19 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
       dragRotate={false}
       touchZoomRotate={false}
     >
-      {/* Layer 1: Northern proxy building — dashed grey outline, no fill */}
+      {/* Layer 1: Northern proxy building — dashed white/yellow outline */}
       {northProxyGeoJSON && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <Source id="north-proxy" type="geojson" data={northProxyGeoJSON as any}>
           <Layer
             id="north-proxy-fill"
             type="fill"
-            paint={{ 'fill-color': '#94a3b8', 'fill-opacity': 0.15 }}
+            paint={{ 'fill-color': '#fef08a', 'fill-opacity': 0.25 }}
           />
           <Layer
             id="north-proxy-outline"
             type="line"
-            paint={{ 'line-color': '#64748b', 'line-width': 2, 'line-dasharray': [4, 3] }}
+            paint={{ 'line-color': '#eab308', 'line-width': 2.5, 'line-dasharray': [5, 3] }}
           />
         </Source>
       )}
@@ -158,7 +158,13 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
           <Layer
             id="lot-fill"
             type="fill"
-            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.12 }}
+            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.18 }}
+          />
+          {/* White halo beneath teal — ensures visibility on dark roofs and green canopy */}
+          <Layer
+            id="lot-outline-halo"
+            type="line"
+            paint={{ 'line-color': '#ffffff', 'line-width': 4, 'line-opacity': 0.6 }}
           />
           <Layer
             id="lot-outline"
