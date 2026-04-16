@@ -105,8 +105,6 @@ export default function ShadowPage() {
         throw new Error(json.error || 'Shadow analysis failed');
       }
 
-      console.log('[shadow] north_proxy_polygon:', JSON.stringify(json?.outputs?.north_proxy_polygon)?.slice(0, 300));
-      console.log('[shadow] lot_polygon type:', json?.outputs?.lot_polygon?.type);
       setResult(json);
       setState('complete');
     } catch (err: unknown) {

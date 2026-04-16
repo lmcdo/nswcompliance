@@ -94,7 +94,6 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
 
   const northProxyGeoJSON = useMemo((): GeoJSONCollection | null => {
     if (!northProxy) return null;
-    console.log('[ShadowMap] northProxy received:', JSON.stringify(northProxy).slice(0, 200));
     return {
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: northProxy, properties: {} }],
@@ -159,7 +158,13 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
           <Layer
             id="lot-fill"
             type="fill"
-            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.12 }}
+            paint={{ 'fill-color': '#0d9488', 'fill-opacity': 0.18 }}
+          />
+          {/* White halo beneath teal — ensures visibility on dark roofs and green canopy */}
+          <Layer
+            id="lot-outline-halo"
+            type="line"
+            paint={{ 'line-color': '#ffffff', 'line-width': 4, 'line-opacity': 0.6 }}
           />
           <Layer
             id="lot-outline"
