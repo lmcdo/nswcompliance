@@ -1313,7 +1313,7 @@ def generate_pdf(
             f"Lat/Lng: {lat:.6f}, {lng:.6f}",
             ss["meta"]
         )],
-        [Paragraph("Prepared by <b>Verify</b> — NSW Property Intelligence", ss["meta"])],
+        [Paragraph("Prepared by <b>PlotDetect</b> — NSW Property Intelligence", ss["meta"])],
     ]
     cov = Table(cover_rows, colWidths=[CW])
     cov.setStyle(TableStyle([
@@ -1451,7 +1451,11 @@ def generate_pdf(
     ]
     not_included = [
         "Section 10.7 Planning Certificate (order from council)",
+        "Section 73 Sydney Water Certificate (allow 1–4 weeks; physical inspection possible if built over pressure main)",
         "Title search (order via InfoTrack or equivalent)",
+        "Land tax clearance certificate (order via Revenue NSW)",
+        "Building certificate / OC gap check (order from council)",
+        "BYDA utility search (Before You Dig Australia — free, site-specific)",
         "Strata inspection report (order via strata inspector)",
         "Survey or identification report",
     ]
@@ -1641,9 +1645,9 @@ def generate_pdf(
     # ------------------------------------------------------------------
     # SECTION 2 — Development Feasibility Snapshot
     # ------------------------------------------------------------------
-    h2("2. Development Feasibility Snapshot")
+    h2("2. Settlement Risk Flags")
     story.append(Paragraph(
-        "Answers to the questions buyers most frequently ask. Based on LEP controls, "
+        "Planning constraints relevant to pre-settlement due diligence. Based on LEP controls, "
         "valuation data and environmental overlays. Each finding requires professional "
         "planning advice before acting.",
         ss["note"]
@@ -2302,7 +2306,7 @@ def generate_pdf(
     hr()
     story.append(Spacer(1, 2 * mm))
     story.append(Paragraph(
-        f"Verify — NSW Property Intelligence  |  "
+        f"PlotDetect — NSW Property Intelligence  |  "
         f"Report generated {datetime.now().strftime('%Y-%m-%d %H:%M')} AEST",
         ss["caveat"]
     ))
@@ -2316,7 +2320,7 @@ def generate_pdf(
 # ---------------------------------------------------------------------------
 
 def main():
-    parser = argparse.ArgumentParser(description="Verify conveyancing planning report")
+    parser = argparse.ArgumentParser(description="PlotDetect conveyancing planning report")
     parser.add_argument("--address", required=True, help="Full property address")
     parser.add_argument("--lat", type=float, help="Latitude (geocoded if omitted)")
     parser.add_argument("--lng", type=float, help="Longitude (geocoded if omitted)")
@@ -2326,7 +2330,7 @@ def main():
     parser.add_argument("--no-pdf", action="store_true", help="Print data only")
     args = parser.parse_args()
 
-    print(f"\n=== Verify Conveyancing Report ===")
+    print(f"\n=== PlotDetect Conveyancing Report ===")
     print(f"Address: {args.address}")
 
     print("\nResolving address ...")

@@ -38,7 +38,6 @@ interface ShadowOutputs {
   lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
   north_proxy_polygon: GeoJSONGeometry | null;
-  road_north: boolean;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
@@ -230,7 +229,6 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           center={[result.lng, result.lat]}
           lotPolygon={o.lot_polygon ?? null}
           shadowOnLot={activeShadowOnLot}
-          northProxy={o.north_proxy_polygon ?? null}
         />
         {/* North arrow */}
         <div className="absolute bottom-3 left-3 bg-black/60 text-white rounded-full w-8 h-8 flex flex-col items-center justify-center gap-0 select-none">
@@ -252,26 +250,13 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             <span className="text-gray-700">Subject lot</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
-              <rect x="1" y="1" width="10" height="10" fill="rgba(254,240,138,0.4)" stroke="#eab308" strokeWidth="1.5" strokeDasharray="3 2" />
-            </svg>
-            <span className="text-gray-700">Max height building (north)</span>
-          </div>
-          <div className="flex items-center gap-2">
             <span className="w-3 h-3 rounded-sm bg-orange-400 opacity-80 shrink-0" />
             <span className="text-gray-700">Shadow on lot</span>
           </div>
         </div>
       </div>
       <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
-        Shadow overlay is a geometric model — not derived from satellite imagery.
-        Aerial imagery © Esri.
-        {o.road_north && (
-          <span className="ml-1 text-amber-600">
-            Road detected to north — proxy building placed on the far side of the street.
-            Actual shadow impact would be less than shown.
-          </span>
-        )}
+        Shadow modelled from the north lot boundary at max permitted height. Geometric model — not derived from satellite imagery. Aerial imagery © Esri.
       </p>
 
       {/* Stats row */}

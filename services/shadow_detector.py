@@ -136,109 +136,6 @@ _COUNCIL_TO_LEP = {
 }
 
 
-DEFAULT_ROAD_WIDTH_M = 18.0  # typical suburban road reserve in NSW
-
-# NSW Spatial Services — cadastral lot polygon layer.
-# Verified locally: road coordinates → 0 features; lot coordinates → 1 feature.
-# Railway reachability unknown — this is used with a fallback.
-_LOT_FS_URL = (
-    "https://portal.spatial.nsw.gov.au/server/rest/services"
-    "/NSW_Land_Parcel_Property_Theme/FeatureServer/8/query"
-)
-
-
-def _probe_has_lot(lng: float, lat: float) -> Optional[bool]:
-    """
-    Query NSW Spatial Services for a cadastral lot at (lng, lat).
-    Returns True (lot found), False (road/no lot), or None (API unreachable).
-    """
-    try:
-        r = requests.get(
-            _LOT_FS_URL,
-            params={
-                "geometry": f"{lng},{lat}",
-                "geometryType": "esriGeometryPoint",
-                "spatialRel": "esriSpatialRelIntersects",
-                "outFields": "lotnumber",
-                "f": "json",
-                "inSR": 4326,
-            },
-            timeout=8,
-        )
-        r.raise_for_status()
-        return bool(r.json().get("features"))
-    except Exception as e:
-        logger.warning(f"Lot probe ({lng:.5f},{lat:.5f}): {e}")
-        return None  # API unreachable from Railway
-
-
-def _lot_north_width_ratio(lot_geojson: dict) -> float:
-    """
-    Width of the lot's northernmost 15% relative to its full E-W width.
-    Rectangular lot → ~1.0.  Triangular (apex north) or corner lot → ~0.
-    """
-    try:
-        from shapely.geometry import shape
-        lot = shape(lot_geojson)
-        bounds = lot.bounds
-        full_width = bounds[2] - bounds[0]
-        if full_width == 0:
-            return 1.0
-        depth = bounds[3] - bounds[1]
-        cutoff = bounds[3] - depth * 0.15
-        north_coords = [(x, y) for (x, y) in lot.exterior.coords if y >= cutoff]
-        if not north_coords:
-            return 0.0
-        nw = max(c[0] for c in north_coords) - min(c[0] for c in north_coords)
-        return nw / full_width
-    except Exception:
-        return 1.0
-
-
-def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
-    """
-    Returns (road_north: bool, extra_offset_m: float).
-
-    Strategy: probe three points 10 m north of the lot's northernmost vertex
-    (not the bounding box centre — bounding box probes land in residential lots
-    for corner/triangular lots whose apex doesn't align with the centre).
-
-    Primary: NSW Spatial Services cadastral API. Road if ANY probe returns no lot.
-    Fallback (API unreachable): geometric — lot north-width ratio < 0.35.
-    """
-    try:
-        from shapely.geometry import shape
-        lot = shape(lot_geojson)
-
-        # Find the actual northernmost vertex — the apex that touches the road.
-        apex = max(lot.exterior.coords, key=lambda c: c[1])
-        apex_lng, apex_lat = apex[0], apex[1]
-
-        # 10 m north of apex; spread probes ±10 m E/W of apex longitude.
-        offset_deg = 10 / 111_000
-        probe_lat = apex_lat + offset_deg
-        probe_lngs = [
-            apex_lng - offset_deg,
-            apex_lng,
-            apex_lng + offset_deg,
-        ]
-
-        api_results = [_probe_has_lot(lng, probe_lat) for lng in probe_lngs]
-        valid = [r for r in api_results if r is not None]
-
-        if valid:
-            is_road = any(not r for r in valid)
-            method = "api"
-        else:
-            ratio = _lot_north_width_ratio(lot_geojson)
-            is_road = ratio < 0.35
-            method = f"geometric(ratio={ratio:.2f})"
-
-        logger.info(f"Road detection ({method}): apex=({apex_lng:.5f},{apex_lat:.5f}) api={api_results} road={is_road}")
-        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
-    except Exception as e:
-        logger.warning(f"Road detection: {e}")
-        return False, 0.0
 
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
@@ -445,19 +342,11 @@ def run_shadow(request: ShadowRequest):
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
 
-    # Detect whether a road lies immediately north of the subject lot.
-    # If so, shift the proxy one road-width further so it sits on the next lot,
-    # not in the middle of the street.
-    # Only run for shallow lots (<60 m deep) — for large industrial/rural lots
-    # the road offset is irrelevant (proxy is already 100-200 m away) and the
-    # cadastral probe produces false positives on open/unregistered land.
-    _lot_depth = lot_depth_m(lot_geojson)
-    if _lot_depth < 60.0:
-        road_north, road_extra_m = _detect_road_north(lot_geojson)
-    else:
-        road_north, road_extra_m = False, 0.0
-    proxy_offset_m = _lot_depth + road_extra_m
-    north_proxy = northern_neighbour_proxy(lot_geojson, offset_m=proxy_offset_m)
+    # Proxy building: max-height structure at the north lot boundary.
+    # Models worst-case shadow — the closest a neighbour could build.
+    # Road width is not accounted for: roads reduce real-world impact but
+    # are not reflected here, keeping the model conservative.
+    north_proxy = northern_neighbour_proxy(lot_geojson)
 
     try:
         shadow_map = model_all_scenarios(north_proxy, height_m)
@@ -474,7 +363,6 @@ def run_shadow(request: ShadowRequest):
         "lep_name": lep_name,
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
-        "road_north": road_north,             # True when a road lies between lot and proxy
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
