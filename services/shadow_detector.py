@@ -138,58 +138,102 @@ _COUNCIL_TO_LEP = {
 
 DEFAULT_ROAD_WIDTH_M = 18.0  # typical suburban road reserve in NSW
 
+# NSW Spatial Services — cadastral lot polygon layer.
+# Verified locally: road coordinates → 0 features; lot coordinates → 1 feature.
+# Railway reachability unknown — this is used with a fallback.
+_LOT_FS_URL = (
+    "https://portal.spatial.nsw.gov.au/server/rest/services"
+    "/NSW_Land_Parcel_Property_Theme/FeatureServer/8/query"
+)
+
+
+def _probe_has_lot(lng: float, lat: float) -> Optional[bool]:
+    """
+    Query NSW Spatial Services for a cadastral lot at (lng, lat).
+    Returns True (lot found), False (road/no lot), or None (API unreachable).
+    """
+    try:
+        r = requests.get(
+            _LOT_FS_URL,
+            params={
+                "geometry": f"{lng},{lat}",
+                "geometryType": "esriGeometryPoint",
+                "spatialRel": "esriSpatialRelIntersects",
+                "outFields": "lotnumber",
+                "f": "json",
+                "inSR": 4326,
+            },
+            timeout=8,
+        )
+        r.raise_for_status()
+        return bool(r.json().get("features"))
+    except Exception as e:
+        logger.warning(f"Lot probe ({lng:.5f},{lat:.5f}): {e}")
+        return None  # API unreachable from Railway
+
 
 def _lot_north_width_ratio(lot_geojson: dict) -> float:
     """
-    Ratio of the lot's width at the northernmost 15% of its depth vs its full width.
-    A rectangular lot → ratio ~1.0.
-    A triangular lot (apex north) or corner lot → ratio near 0.
+    Width of the lot's northernmost 15% relative to its full E-W width.
+    Rectangular lot → ~1.0.  Triangular (apex north) or corner lot → ~0.
     """
     try:
         from shapely.geometry import shape
         lot = shape(lot_geojson)
-        bounds = lot.bounds  # (minx, miny, maxx, maxy)
+        bounds = lot.bounds
         full_width = bounds[2] - bounds[0]
         if full_width == 0:
             return 1.0
         depth = bounds[3] - bounds[1]
-        north_cutoff = bounds[3] - depth * 0.15  # top 15% of lot by latitude
-
-        north_coords = [
-            (x, y) for (x, y) in lot.exterior.coords if y >= north_cutoff
-        ]
+        cutoff = bounds[3] - depth * 0.15
+        north_coords = [(x, y) for (x, y) in lot.exterior.coords if y >= cutoff]
         if not north_coords:
             return 0.0
-        north_width = max(c[0] for c in north_coords) - min(c[0] for c in north_coords)
-        return north_width / full_width
+        nw = max(c[0] for c in north_coords) - min(c[0] for c in north_coords)
+        return nw / full_width
     except Exception:
-        return 1.0  # assume rectangular on error
+        return 1.0
 
 
 def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
     """
     Returns (road_north: bool, extra_offset_m: float).
 
-    Geometric approach — no external API required:
+    Primary: NSW Spatial Services cadastral lot API — three probes 10 m north of
+    the lot's northern boundary, run sequentially (parallel adds import overhead).
+    Roads have no Torrens title → API returns 0 features → road detected.
 
-    When a lot narrows sharply to the north (triangular, corner, battleaxe),
-    it typically fronts a road at its northern apex.  We measure how much of
-    the lot's full E-W width is present in the northernmost 15% of its depth.
-    If that fraction is < 0.35, the lot clearly tapers to the north → road.
-
-    Why not use spatial_overlays or external cadastral APIs:
-    - NSW LEP zone polygons extend over road pavements (zone returns R2 in roads).
-    - NSW Spatial Services FeatureServer may not be reachable from Railway infra.
-
-    Limitation: rectangular lots that face a road to the north are not detected
-    by this heuristic (the lot is full-width all the way to the road edge).
-    For those cases the proxy sits one lot-depth north — conservative direction
-    (overstates shadow impact).
+    Fallback (if API is unreachable): geometric heuristic — if the lot's northern
+    width ratio < 0.35 the lot narrows sharply to the north (triangular, corner
+    lot) → road detected.  This catches irregular lots but misses rectangular lots
+    that face a road on the north side — for those the proxy is one lot-depth north,
+    which overstates shadow impact (conservative, acceptable for a screening tool).
     """
     try:
-        ratio = _lot_north_width_ratio(lot_geojson)
-        is_road = ratio < 0.35
-        logger.info(f"Road detection (geometric): north_width_ratio={ratio:.2f} road_north={is_road}")
+        from shapely.geometry import shape
+        lot = shape(lot_geojson)
+        bounds = lot.bounds
+        width = bounds[2] - bounds[0]
+        probe_lat = bounds[3] + 10 / 111_000
+        probe_lngs = [
+            bounds[0] + width * 0.25,
+            bounds[0] + width * 0.50,
+            bounds[0] + width * 0.75,
+        ]
+
+        api_results = [_probe_has_lot(lng, probe_lat) for lng in probe_lngs]
+        valid = [r for r in api_results if r is not None]
+
+        if valid:
+            # API reachable — road if ALL valid probes found no lot
+            is_road = not any(valid)
+            logger.info(f"Road detection (API): results={api_results} road_north={is_road}")
+        else:
+            # API unreachable — geometric fallback
+            ratio = _lot_north_width_ratio(lot_geojson)
+            is_road = ratio < 0.35
+            logger.info(f"Road detection (geometric fallback): ratio={ratio:.2f} road_north={is_road}")
+
         return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
     except Exception as e:
         logger.warning(f"Road detection: {e}")
