@@ -196,16 +196,15 @@ function ShadowCard({ result }: { result: ShadowResult }) {
     ? 'ADG compliant'
     : 'ADG concern';
 
-  const shadowReach = overlapCount === 0 ? 'none of the 5 test scenarios' : `${overlapCount} of 5 scenarios`;
   const summaryText = isNonResidential
     ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
-      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${shadowReach}. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
+      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
+      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios. ADG solar access requirements apply to residential apartment buildings only — this result is indicative.`
     : o.adg_compliant
     ? overlapCount === 0
-      ? `A maximum-height building on an adjacent lot would not cast shadows onto this property on any of the 5 test scenarios. ADG solar access requirements are met.`
-      : `A maximum-height building on an adjacent lot would cast shadows onto this property on ${shadowReach}, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
-    : `A maximum-height building on an adjacent lot would shadow this property across ${shadowReach} and may not meet the ADG 2-hour solar access requirement on 21 June.`;
+      ? `A maximum-height building on an adjacent lot would not significantly shadow this property across any of the 5 test scenarios. ADG solar access requirements are met.`
+      : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios, but still meets ADG solar access requirements (2 hours between 9 am–3 pm on 21 June).`
+    : `A maximum-height building on an adjacent lot would significantly shadow this property on ${overlapCount} of 5 scenarios and may not meet the ADG 2-hour solar access requirement on 21 June.`;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -253,7 +252,7 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           </div>
           <div className="flex items-center gap-2">
             <svg width="12" height="12" viewBox="0 0 12 12" className="shrink-0">
-              <rect x="1" y="1" width="10" height="10" fill="rgba(148,163,184,0.2)" stroke="#64748b" strokeWidth="1.5" strokeDasharray="3 2" />
+              <rect x="1" y="1" width="10" height="10" fill="rgba(254,240,138,0.4)" stroke="#eab308" strokeWidth="1.5" strokeDasharray="3 2" />
             </svg>
             <span className="text-gray-700">Max height building (north)</span>
           </div>
