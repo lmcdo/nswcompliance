@@ -68,7 +68,8 @@ export async function GET(req: NextRequest) {
       AND layer_type IN (
         'additional_permitted_uses', 'foreshore_building_line', 'land_reservation',
         'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood',
-        'sep', 'tod_precinct', 'tod_accelerated', 'tod_deferred'
+        'sep', 'tod_precinct', 'tod_accelerated', 'tod_deferred',
+        'biodiversity', 'landslide'
       )`,
      [spatialLon, spatialLat]
    );
@@ -127,6 +128,19 @@ export async function GET(req: NextRequest) {
      propertyData.constraints.dcpFloodMap = {
        inFloodArea: true,
        classification: dcpFloodRows[0].value,
+     };
+   }
+
+   const biodiversityRows = rows.filter(r => r.layer_type === 'biodiversity');
+   if (biodiversityRows.length > 0) {
+     propertyData.constraints.terrestrialBiodiversity = { inBiodiversityArea: true };
+   }
+
+   const landslideRows = rows.filter(r => r.layer_type === 'landslide');
+   if (landslideRows.length > 0) {
+     propertyData.constraints.landslideRisk = {
+       hasRisk: true,
+       layClass: landslideRows[0].value ?? undefined,
      };
    }
 

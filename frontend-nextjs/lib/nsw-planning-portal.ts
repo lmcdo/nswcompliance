@@ -126,6 +126,21 @@ export interface PlanningConstraints {
  activeStreetFrontage?: { required: boolean; clause?: string } | null;
  dcpFloodMap?: { inFloodArea: boolean; classification?: string } | null;
 
+ // Special Entertainment Precinct (Inner West LEP 2022, from council FeatureServer)
+ specialEntertainmentPrecinct?: {
+   inSEP: boolean;
+   name?: string;   // "Inner West Special Entertainment Precinct" | "Draft Special Entertainment Precinct"
+   isDraft?: boolean;
+ } | null;
+
+ // TOD precinct — polygon intersection (replaces walking-distance approximation for SEPP eligibility)
+ todPrecinctSpatial?: {
+   inTODPrecinct: boolean;
+   classification?: string;  // "Transport Oriented Development Area" | "Accelerated TOD Precinct"
+   isAccelerated?: boolean;  // Crows Nest, Bankstown, Hornsby, Kellyville etc.
+   isDeferred?: boolean;
+ } | null;
+
  // Planning instruments that apply to this property (from Land Application Map layer)
  landApplicationInstruments?: Array<{ type: string; name: string }> | null;
 }
@@ -1024,20 +1039,17 @@ export class NSWPlanningPortalService {
  let todLayers: PlanningLayer[] = [];
  let roadClassifications: any[] = [];
  let anefData: AnefInfo | null = null;
- let floodData: any = null;
  let bushfireData: any = null;
  let mineSubsidenceData: any = null;
- let landslideData: any = null;
  let contaminatedLandData: any = null;
  let drinkingWaterData: any = null;
- let biodiversityData: any = null;
  let coastalData: any = null;
 
  if (propertyData) {
    const lon = (propertyData.geometry.x / 20037508.34) * 180;
    const lat = (Math.atan(Math.exp((propertyData.geometry.y / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
 
-   [todLayers, roadClassifications, anefData, floodData, bushfireData, mineSubsidenceData, landslideData, contaminatedLandData, drinkingWaterData, biodiversityData, coastalData] = await Promise.all([
+   [todLayers, roadClassifications, anefData, bushfireData, mineSubsidenceData, contaminatedLandData, drinkingWaterData, coastalData] = await Promise.all([
      this.getTODLayers(propertyData.geometry).catch(() => []),
      getRoadClassifications(lat, lon).catch(() => []),
      // ANEF (Aircraft Noise) - Using NSW Planning Portal Protection Layer 2
@@ -1069,11 +1081,6 @@ export class NSWPlanningPortalService {
          } as any;
        })
        .catch(() => null),
-     // Flood data
-     fetch(`https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/Flood/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=Name,BlockType,BlockStartDate&returnGeometry=false&f=json`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
      // Bushfire data
      fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Fire/BFPL/MapServer/0/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`)
        .then(res => res.json())
@@ -1081,11 +1088,6 @@ export class NSWPlanningPortalService {
        .catch(() => null),
      // Mine subsidence data
      fetch(`https://portal.spatial.nsw.gov.au/server/rest/services/NSW_Administrative_Boundaries_Theme/FeatureServer/7/query?f=json&geometry=${JSON.stringify({x: lon, y: lat, spatialReference: {wkid: 4326}})}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=districtname,lastupdate&returnGeometry=false`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
-     // Landslide risk data
-     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Hazard/MapServer/2/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME,LAY_CLASS,EPI_TYPE&returnGeometry=false&f=json&inSR=4283`)
        .then(res => res.json())
        .then(data => data.features?.[0]?.attributes || null)
        .catch(() => null),
@@ -1108,11 +1110,6 @@ export class NSWPlanningPortalService {
        .then(res => res.json())
        .then(data => data.features?.[0]?.attributes || null)
        .catch(() => null),
-     // Terrestrial biodiversity
-     fetch(`https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/Planning/Protection/MapServer/10/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=EPI_NAME,LGA_NAME&returnGeometry=false&f=json&inSR=4283`)
-       .then(res => res.json())
-       .then(data => data.features?.[0]?.attributes || null)
-       .catch(() => null),
      // Coastal environment (check multiple coastal layers)
      Promise.all([
        fetch(`https://mapprod1.environment.nsw.gov.au/arcgis/rest/services/CoastalManagementSEPP/CoastalManagementSEPP/MapServer/1/query?geometry=${lon},${lat}&geometryType=esriGeometryPoint&spatialRel=esriSpatialRelIntersects&outFields=*&returnGeometry=false&f=json&inSR=4283`).then(r => r.json()).then(d => d.features?.[0] ? 'Coastal Wetlands' : null).catch(() => null),
@@ -1131,14 +1128,6 @@ export class NSWPlanningPortalService {
  const constraints = this.extractPlanningConstraints(allLayers, address);
 
  // Add environmental constraint data
- if (floodData) {
-   constraints.floodProne = true;
-   constraints.floodInfo = {
-     name: floodData.Name,
-     blockType: floodData.BlockType,
-     blockStartDate: floodData.BlockStartDate
-   };
- }
  if (bushfireData) {
    constraints.bushfireProne = true;
    constraints.bushfireCategory = bushfireData.Category || bushfireData.TYPE || null;
@@ -1148,15 +1137,6 @@ export class NSWPlanningPortalService {
      inDistrict: true,
      districtName: mineSubsidenceData.districtname,
      lastUpdate: mineSubsidenceData.lastupdate
-   };
- }
- if (landslideData) {
-   constraints.landslideRisk = {
-     hasRisk: true,
-     epiName: landslideData.EPI_NAME,
-     lgaName: landslideData.LGA_NAME,
-     layClass: landslideData.LAY_CLASS,
-     epiType: landslideData.EPI_TYPE
    };
  }
  if (contaminatedLandData) {
@@ -1176,13 +1156,6 @@ export class NSWPlanningPortalService {
      inCatchment: true,
      epiName: drinkingWaterData.EPI_NAME,
      lgaName: drinkingWaterData.LGA_NAME
-   };
- }
- if (biodiversityData) {
-   constraints.terrestrialBiodiversity = {
-     inBiodiversityArea: true,
-     epiName: biodiversityData.EPI_NAME,
-     lgaName: biodiversityData.LGA_NAME
    };
  }
  if (coastalData && coastalData.length > 0) {

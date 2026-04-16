@@ -46,8 +46,10 @@ LGA_NAME_MAP = {
     "woollahra":     "WOOLLAHRA",
 }
 
-# All Greater Sydney LGAs (33 total, deduplicated)
+# All NSW LGAs (129 total) — verified from ArcGIS zone layer 2026-04-13
+# Greater Sydney (33) + Regional NSW (96) — excludes LORD HOWE ISLAND (no planning data)
 ALL_LGA_NAMES = sorted([
+    # Greater Sydney
     "INNER WEST", "SYDNEY", "KU-RING-GAI", "WAVERLEY", "WOOLLAHRA",
     "BAYSIDE", "BLACKTOWN", "BLUE MOUNTAINS", "BURWOOD", "CAMDEN",
     "CAMPBELLTOWN", "CANADA BAY", "CANTERBURY-BANKSTOWN", "CITY OF PARRAMATTA",
@@ -55,6 +57,28 @@ ALL_LGA_NAMES = sorted([
     "HUNTERS HILL", "LANE COVE", "LIVERPOOL", "MOSMAN", "NORTH SYDNEY",
     "NORTHERN BEACHES", "PENRITH", "RANDWICK", "RYDE", "STRATHFIELD",
     "SUTHERLAND SHIRE", "THE HILLS SHIRE", "WILLOUGHBY", "WOLLONDILLY",
+    # Regional NSW
+    "ALBURY CITY", "ARMIDALE REGIONAL", "BALLINA", "BALRANALD",
+    "BATHURST REGIONAL", "BEGA VALLEY", "BELLINGEN", "BERRIGAN",
+    "BLAND", "BLAYNEY", "BOGAN", "BOURKE", "BREWARRINA", "BROKEN HILL",
+    "BYRON", "CABONNE", "CARRATHOOL", "CENTRAL COAST", "CENTRAL DARLING",
+    "CESSNOCK", "CLARENCE VALLEY", "COBAR", "COFFS HARBOUR", "COOLAMON",
+    "COONAMBLE", "COOTAMUNDRA-GUNDAGAI REGIONAL", "COWRA", "DUBBO REGIONAL",
+    "DUNGOG", "EDWARD RIVER", "EUROBODALLA", "FEDERATION", "FORBES",
+    "GILGANDRA", "GLEN INNES SEVERN", "GOULBURN MULWAREE", "GREATER HUME SHIRE",
+    "GRIFFITH", "GUNNEDAH", "GWYDIR", "HAY", "HILLTOPS", "INVERELL",
+    "JUNEE", "KEMPSEY", "KIAMA", "KYOGLE", "LACHLAN", "LAKE MACQUARIE",
+    "LEETON", "LISMORE", "LITHGOW CITY", "LIVERPOOL PLAINS", "LOCKHART",
+    "MAITLAND", "MID-COAST", "MID-WESTERN REGIONAL", "MOREE PLAINS",
+    "MURRAY RIVER", "MURRUMBIDGEE", "MUSWELLBROOK", "NAMBUCCA VALLEY",
+    "NARRABRI", "NARRANDERA", "NARROMINE", "NEWCASTLE", "OBERON",
+    "ORANGE", "PARKES", "PORT MACQUARIE-HASTINGS", "PORT STEPHENS",
+    "QUEANBEYAN-PALERANG REGIONAL", "RICHMOND VALLEY", "SHELLHARBOUR",
+    "SHOALHAVEN", "SINGLETON", "SNOWY MONARO REGIONAL", "SNOWY VALLEYS",
+    "TAMWORTH REGIONAL", "TEMORA", "TENTERFIELD", "TWEED", "UPPER HUNTER",
+    "UPPER LACHLAN SHIRE", "URALLA", "WAGGA WAGGA", "WALCHA", "WALGETT",
+    "WARREN", "WARRUMBUNGLE", "WEDDIN", "WENTWORTH", "WINGECARRIBEE",
+    "WOLLONGONG", "YASS VALLEY",
 ])
 
 # ArcGIS layer config — verified field names
@@ -96,10 +120,48 @@ LAYER_CONFIG = {
         "value_field": "ANEF_CODE",
         "filter_mode": "all",
     },
+    # TOD (Transport Oriented Development) — SEPP Housing 2021 statewide maps
+    # Replaces walking-distance approximation with actual precinct polygon intersection
+    "tod_precinct": {
+        "service": "SEPP_Housing_2021", "layer_id": 3,
+        "value_field": "LAY_CLASS",
+        "filter_mode": "all",
+    },
+    "tod_accelerated": {
+        "service": "SEPP_Housing_2021", "layer_id": 4,
+        "value_field": "LAY_CLASS",
+        "filter_mode": "all",
+    },
+    "tod_deferred": {
+        "service": "SEPP_Housing_2021", "layer_id": 5,
+        "value_field": "LAY_CLASS",
+        "filter_mode": "all",
+    },
+}
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Council-published FeatureServer layers
+# These are hosted on council ArcGIS Online organisations, not mapprod3.
+# Coordinates are returned in WGS84 (outSR=4326 requested) so no reprojection needed.
+# ──────────────────────────────────────────────────────────────────────────────
+COUNCIL_FEATURESERVER_CONFIG: dict[str, dict] = {
+    # Inner West Council — Special Entertainment Precincts
+    # Source: services-ap1.arcgis.com/dp2UIID5MUpTUFVA (public, 10,950 views confirmed)
+    # Layer 19 of Adopted_Planning_Layers FeatureServer
+    # 159 polygon features — adopted + draft SEPs across Inner West LGA
+    "sep": {
+        "base_url": "https://services-ap1.arcgis.com/dp2UIID5MUpTUFVA/arcgis/rest/services/Adopted_Planning_Layers/FeatureServer",
+        "layer_id": 19,
+        "value_field": "LAY_CLASS",       # "Inner West Special Entertainment Precinct" | "Draft Special Entertainment Precinct"
+        "instrument_field": "EPI_NAME",   # "Inner West Local Environmental Plan 2022"
+        "lga_name": "INNER WEST",
+        "description": "Inner West Special Entertainment Precincts (LEP 2022)",
+    },
 }
 
 
 def fetch_page(service: str, layer_id: int, where: str, offset: int, base: str = "Planning", bbox: str | None = None) -> dict:
+    import time
     base_url = BASE_URLS.get(base, BASE_URLS["Planning"])
     url = f"{base_url}/{service}/MapServer/{layer_id}/query"
     params: dict = {
@@ -117,9 +179,18 @@ def fetch_page(service: str, layer_id: int, where: str, offset: int, base: str =
         params["where"] = "1=1"
     else:
         params["where"] = where
-    r = requests.get(url, params=params, timeout=60)
-    r.raise_for_status()
-    return r.json()
+    for attempt in range(3):
+        r = requests.get(url, params=params, timeout=60)
+        if r.status_code == 500:
+            wait = 10 * (attempt + 1)
+            print(f"    [warn] 500 from ArcGIS (attempt {attempt+1}/3) — retrying in {wait}s ...")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()
+    # All retries exhausted — return empty to skip this LGA/layer
+    print(f"    [skip] 500 after 3 retries — skipping offset={offset}")
+    return {"features": []}
 
 
 def fetch_page_by_oids(service: str, layer_id: int, oids: list[int], base: str = "Planning") -> dict:
@@ -164,6 +235,112 @@ def geom_to_multipolygon_wkt(geojson_geom: dict) -> str | None:
         return geom.wkt
     except Exception:
         return None
+
+
+def fetch_page_featureserver(base_url: str, layer_id: int, offset: int) -> dict:
+    """Fetch a page of features from a council ArcGIS FeatureServer.
+
+    Requests outSR=4326 so the server reprojects from the council's native CRS
+    (typically WKID 28356 — GDA94 MGA Zone 56) to WGS84 before returning.
+    """
+    import time
+    url = f"{base_url}/{layer_id}/query"
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "resultOffset": offset,
+        "resultRecordCount": 1000,
+        "f": "geojson",
+    }
+    for attempt in range(3):
+        r = requests.get(url, params=params, timeout=60)
+        if r.status_code == 500:
+            wait = 10 * (attempt + 1)
+            print(f"    [warn] 500 from council FeatureServer (attempt {attempt+1}/3) — retrying in {wait}s ...")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()
+    print(f"    [skip] 500 after 3 retries — skipping offset={offset}")
+    return {"features": []}
+
+
+def ingest_council_layer(cur, layer_type: str, dry_run: bool = False) -> int:
+    """Ingest a layer from a council-published ArcGIS FeatureServer."""
+    config = COUNCIL_FEATURESERVER_CONFIG[layer_type]
+    base_url = config["base_url"]
+    layer_id = config["layer_id"]
+    value_field = config["value_field"]
+    instrument_field = config.get("instrument_field", "EPI_NAME")
+    lga_name = config["lga_name"]
+
+    offset = 0
+    total = 0
+    print(f"  Fetching council layer '{layer_type}' ({config['description']}) ...")
+
+    while True:
+        data = fetch_page_featureserver(base_url, layer_id, offset)
+        features = data.get("features", [])
+        if not features:
+            break
+
+        rows = []
+        for f in features:
+            props = f.get("properties") or f.get("attributes") or {}
+            geojson_geom = f.get("geometry")
+            if not geojson_geom:
+                continue
+
+            wkt = geom_to_multipolygon_wkt(geojson_geom)
+            if not wkt:
+                continue
+
+            value_str = str(props[value_field]) if props.get(value_field) is not None else None
+            instrument_key = props.get(instrument_field) or "unknown"
+            source_oid = props.get("OBJECTID")
+            currency_date = parse_currency_date(
+                props.get("CURRENCY_DATE") or props.get("COMMENCED_DATE")
+            )
+
+            rows.append((
+                instrument_key,
+                lga_name,
+                layer_type,
+                value_str,
+                None,   # value_numeric — not applicable for SEP
+                currency_date,
+                source_oid,
+                wkt,
+            ))
+
+        if rows and not dry_run:
+            execute_values(
+                cur,
+                """
+                INSERT INTO spatial_overlays
+                    (instrument_key, lga_name, layer_type, value, value_numeric, currency_date, source_oid, geom, synced_at)
+                VALUES %s
+                ON CONFLICT (instrument_key, layer_type, source_oid) DO UPDATE
+                    SET value = EXCLUDED.value,
+                        value_numeric = EXCLUDED.value_numeric,
+                        currency_date = EXCLUDED.currency_date,
+                        geom = EXCLUDED.geom,
+                        synced_at = now()
+                """,
+                rows,
+                template="(%s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4326)), now())",
+            )
+
+        total += len(rows)
+        print(f"    offset={offset} -> {len(rows)} features (total: {total})")
+
+        if not data.get("exceededTransferLimit", False):
+            break
+        offset += 1000
+
+    return total
 
 
 def ingest_layer(
@@ -294,15 +471,19 @@ def ingest_layer(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--lga", help="Single ArcGIS LGA_NAME (e.g. 'WAVERLEY'). Omit for all onboarded LGAs.")
-    parser.add_argument("--layer", choices=list(LAYER_CONFIG.keys()), help="Single layer to ingest")
-    parser.add_argument("--all-layers", action="store_true", help="Ingest all configured layers")
+    parser.add_argument("--layer", choices=list(LAYER_CONFIG.keys()), help="Single mapprod3 layer to ingest")
+    parser.add_argument("--all-layers", action="store_true", help="Ingest all configured mapprod3 layers")
+    parser.add_argument("--council-layer", choices=list(COUNCIL_FEATURESERVER_CONFIG.keys()),
+                        help="Single council FeatureServer layer to ingest (e.g. 'sep')")
+    parser.add_argument("--all-council-layers", action="store_true", help="Ingest all council FeatureServer layers")
     parser.add_argument("--dry-run", action="store_true", help="Fetch but do not write to DB")
     args = parser.parse_args()
 
-    if not args.layer and not args.all_layers:
-        parser.error("Specify --layer <name> or --all-layers")
+    if not args.layer and not args.all_layers and not args.council_layer and not args.all_council_layers:
+        parser.error("Specify --layer <name>, --all-layers, --council-layer <name>, or --all-council-layers")
 
-    layers = list(LAYER_CONFIG.keys()) if args.all_layers else [args.layer]
+    mapprod3_layers = list(LAYER_CONFIG.keys()) if args.all_layers else ([args.layer] if args.layer else [])
+    council_layers = list(COUNCIL_FEATURESERVER_CONFIG.keys()) if args.all_council_layers else ([args.council_layer] if args.council_layer else [])
     lgas = [args.lga] if args.lga else ALL_LGA_NAMES
 
     database_url = os.getenv("DATABASE_URL")
@@ -314,7 +495,19 @@ def main():
     cur = conn.cursor()
 
     try:
-        for layer_type in layers:
+        # Council FeatureServer layers (SEP etc.)
+        for layer_type in council_layers:
+            print(f"\n[COUNCIL / {layer_type.upper()}]")
+            try:
+                count = ingest_council_layer(cur, layer_type, dry_run=args.dry_run)
+                if not args.dry_run:
+                    conn.commit()
+                print(f"  Done: {count} features {'(dry run)' if args.dry_run else 'upserted'}")
+            except Exception as e:
+                conn.rollback()
+                print(f"  [ERROR] council/{layer_type}: {e} — skipping")
+
+        for layer_type in mapprod3_layers:
             config = LAYER_CONFIG[layer_type]
             filter_mode = config.get("filter_mode", "lga")
             if filter_mode in ("bbox", "all"):
@@ -327,10 +520,14 @@ def main():
             else:
                 for lga in lgas:
                     print(f"\n[{lga} / {layer_type.upper()}]")
-                    count = ingest_layer(cur, layer_type, lga_name=lga, dry_run=args.dry_run)
-                    if not args.dry_run:
-                        conn.commit()
-                    print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
+                    try:
+                        count = ingest_layer(cur, layer_type, lga_name=lga, dry_run=args.dry_run)
+                        if not args.dry_run:
+                            conn.commit()
+                        print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
+                    except Exception as e:
+                        conn.rollback()
+                        print(f"  [ERROR] {lga}/{layer_type}: {e} — skipping")
 
         # Verify
         if not args.dry_run:
