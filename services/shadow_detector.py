@@ -280,7 +280,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                         lep_name = _COUNCIL_TO_LEP.get(lga_name.lower(),
                                                         f"{lga_name} LEP" if lga_name else "Local Environmental Plan")
                         logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
-                        return height, lep_name
+                        return height, lep_name, "spatial_overlays"
 
                 # 2. regulatory_provisions fallback (Inner West only)
                 cur.execute(
@@ -315,12 +315,12 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                         height = float(max(heights))
                         lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
                         logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
-                        return height, lep_name
+                        return height, lep_name, "regulatory_provisions"
 
     except Exception as e:
         logger.warning(f"Height limit query: {e}")
 
-    return DEFAULT_HEIGHT_M, "Local Environmental Plan"
+    return DEFAULT_HEIGHT_M, "Local Environmental Plan", "default"
 
 
 def _build_scenario_list(
@@ -417,6 +417,7 @@ def run_shadow(request: ShadowRequest):
     lot_geojson = _arcgis_to_geojson(lot_geometry)
     if request.height_m:
         height_m = request.height_m
+        height_source = "planning_portal"
         lep_name = _COUNCIL_TO_LEP.get("", "Local Environmental Plan")
         # Re-derive lep_name from DB without height query
         try:
@@ -434,7 +435,7 @@ def run_shadow(request: ShadowRequest):
         except Exception:
             pass
     else:
-        height_m, lep_name = _get_height_limit(request.lat, request.lng)
+        height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
     try:
         change = compute_change_score(request.lat, request.lng, radius_m=200)
@@ -467,6 +468,7 @@ def run_shadow(request: ShadowRequest):
 
     outputs = {
         "height_m": height_m,
+        "height_source": height_source,
         "lep_name": lep_name,
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,

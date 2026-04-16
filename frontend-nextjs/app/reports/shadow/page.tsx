@@ -34,6 +34,7 @@ interface ShadowScenario {
 
 interface ShadowOutputs {
   height_m: number;
+  height_source: 'planning_portal' | 'spatial_overlays' | 'regulatory_provisions' | 'default' | null;
   lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
   north_proxy_polygon: GeoJSONGeometry | null;
@@ -279,6 +280,11 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           <p className="text-xs text-gray-400 mb-1">Max building height modelled</p>
           <p className="text-xl font-semibold text-gray-900">{o.height_m} m</p>
           <p className="text-xs text-gray-400 mt-1">{o.lep_name ?? 'Local Environmental Plan'}</p>
+          {o.height_source === 'default' && (
+            <p className="text-xs text-amber-600 mt-1">
+              No Height of Buildings control found in LEP — 9 m default used. Actual height limit may differ.
+            </p>
+          )}
         </div>
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Recent construction activity</p>
