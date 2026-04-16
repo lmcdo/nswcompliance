@@ -445,12 +445,15 @@ def run_shadow(request: ShadowRequest):
     # Detect whether a road lies immediately north of the subject lot.
     # If so, shift the proxy one road-width further so it sits on the next lot,
     # not in the middle of the street.
-    road_north, road_extra_m = _detect_road_north(lot_geojson)
-    # Cap depth at 30 m — for large industrial/rural lots the "one lot-depth" offset
-    # places the proxy 60-100 m north where shadows never reach the subject lot.
-    # 30 m matches a typical suburban lot depth and keeps the model meaningful.
-    _depth = min(lot_depth_m(lot_geojson), 30.0)
-    proxy_offset_m = _depth + road_extra_m
+    # Only run for shallow lots (<60 m deep) — for large industrial/rural lots
+    # the road offset is irrelevant (proxy is already 100-200 m away) and the
+    # cadastral probe produces false positives on open/unregistered land.
+    _lot_depth = lot_depth_m(lot_geojson)
+    if _lot_depth < 60.0:
+        road_north, road_extra_m = _detect_road_north(lot_geojson)
+    else:
+        road_north, road_extra_m = False, 0.0
+    proxy_offset_m = _lot_depth + road_extra_m
     north_proxy = northern_neighbour_proxy(lot_geojson, offset_m=proxy_offset_m)
 
     try:
