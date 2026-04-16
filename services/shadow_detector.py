@@ -227,19 +227,19 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
         valid = [r for r in api_results if r is not None]
 
         if valid:
-            # Road if ANY probe found no lot (one probe in road is enough).
             is_road = any(not r for r in valid)
-            logger.info(f"Road detection (API): apex=({apex_lng:.5f},{apex_lat:.5f}) results={api_results} road_north={is_road}")
+            method = "api"
         else:
-            # API unreachable — geometric fallback.
             ratio = _lot_north_width_ratio(lot_geojson)
             is_road = ratio < 0.35
-            logger.info(f"Road detection (geometric fallback): ratio={ratio:.2f} road_north={is_road}")
+            method = f"geometric(ratio={ratio:.2f})"
 
-        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
+        debug = {"method": method, "api_results": api_results, "road_north": is_road}
+        logger.info(f"Road detection: {debug} apex=({apex_lng:.5f},{apex_lat:.5f})")
+        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0, debug
     except Exception as e:
         logger.warning(f"Road detection: {e}")
-        return False, 0.0
+        return False, 0.0, {"method": "error", "error": str(e)}
 
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
@@ -446,7 +446,7 @@ def run_shadow(request: ShadowRequest):
     # Detect whether a road lies immediately north of the subject lot.
     # If so, shift the proxy one road-width further so it sits on the next lot,
     # not in the middle of the street.
-    road_north, road_extra_m = _detect_road_north(lot_geojson)
+    road_north, road_extra_m, road_debug = _detect_road_north(lot_geojson)
     proxy_offset_m = lot_depth_m(lot_geojson) + road_extra_m
     north_proxy = northern_neighbour_proxy(lot_geojson, offset_m=proxy_offset_m)
 
@@ -465,6 +465,7 @@ def run_shadow(request: ShadowRequest):
         "lot_polygon": lot_geojson,
         "north_proxy_polygon": north_proxy,
         "road_north": road_north,             # True when a road lies between lot and proxy
+        "road_debug": road_debug,             # TEMP — remove after confirming Railway API reachability
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),
