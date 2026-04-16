@@ -94,6 +94,7 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
 
   const northProxyGeoJSON = useMemo((): GeoJSONCollection | null => {
     if (!northProxy) return null;
+    console.log('[ShadowMap] northProxy received:', JSON.stringify(northProxy).slice(0, 200));
     return {
       type: 'FeatureCollection',
       features: [{ type: 'Feature', geometry: northProxy, properties: {} }],
