@@ -243,12 +243,14 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
     """
-    Returns (height_m: float, lep_name: str) for the lot at (lat, lng).
+    Returns (height_m: float, lep_name: str, height_source: str) for the lot at (lat, lng).
 
     Priority:
       1. spatial_overlays table, layer_type='height' — point-in-polygon, covers 33 LGAs.
       2. regulatory_provisions text extraction — Inner West only, kept as fallback.
       3. DEFAULT_HEIGHT_M (9.0 m) if both fail.
+
+    height_source values: "spatial_overlays" | "regulatory_provisions" | "default"
     """
     import re
     try:
@@ -280,7 +282,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                         lep_name = _COUNCIL_TO_LEP.get(lga_name.lower(),
                                                         f"{lga_name} LEP" if lga_name else "Local Environmental Plan")
                         logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
-                        return height, lep_name
+                        return height, lep_name, "spatial_overlays"
 
                 # 2. regulatory_provisions fallback (Inner West only)
                 cur.execute(
@@ -315,12 +317,12 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                         height = float(max(heights))
                         lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
                         logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
-                        return height, lep_name
+                        return height, lep_name, "regulatory_provisions"
 
     except Exception as e:
         logger.warning(f"Height limit query: {e}")
 
-    return DEFAULT_HEIGHT_M, "Local Environmental Plan"
+    return DEFAULT_HEIGHT_M, "Local Environmental Plan", "default"
 
 
 def _build_scenario_list(

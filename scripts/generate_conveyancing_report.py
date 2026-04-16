@@ -1012,17 +1012,32 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
         covered_layers: set[str] = set()
         if lga_name:
             all_checked = POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "land_reservation"}
-            env_placeholders = ", ".join(f"'{l}'" for l in all_checked)
+            # Primary: use coverage audit table — definitive record of what was ingested
             cur.execute(
-                f"""
-                SELECT DISTINCT layer_type FROM spatial_overlays
-                WHERE layer_type IN ({env_placeholders})
-                  AND lga_name = %s
-                LIMIT 20
+                """
+                SELECT layer_type FROM spatial_overlays_coverage
+                WHERE lga_name = %s
                 """,
                 (lga_name,),
             )
-            covered_layers = {r[0] for r in cur.fetchall()}
+            coverage_rows = cur.fetchall()
+            if coverage_rows:
+                # Coverage table exists and has data — use it as the authoritative source
+                covered_layers = {r[0] for r in coverage_rows}
+            else:
+                # Coverage table not yet populated (pre-migration data) — fall back to inferring
+                # from spatial_overlays presence (original behaviour)
+                env_placeholders = ", ".join(f"'{l}'" for l in all_checked)
+                cur.execute(
+                    f"""
+                    SELECT DISTINCT layer_type FROM spatial_overlays
+                    WHERE layer_type IN ({env_placeholders})
+                      AND lga_name = %s
+                    LIMIT 20
+                    """,
+                    (lga_name,),
+                )
+                covered_layers = {r[0] for r in cur.fetchall()}
             # classified_road results are built from land_reservation rows; alias so flag() finds it
             if "land_reservation" in covered_layers:
                 covered_layers.add("classified_road")
@@ -1489,11 +1504,6 @@ def generate_pdf(
         "flood":    "flood_epi",
     }
     # When PostGIS has no data and no EPI check, show a specific directive
-    _NO_DATA_LABELS: dict[str, str] = {
-        "wetlands":  "None in this LGA",
-        "landslide": "None in this LGA",
-    }
-
     def flag(layer_type: str, label: str, present_style: str = "alert"):
         # 1. PostGIS hit (detailed spatial data)
         if layer_type in unique_by_type:
@@ -1507,10 +1517,9 @@ def generate_pdf(
         # 3. EPI confirmed absence (layerintersect ran, nothing found)
         if epi_key:
             return [label, Paragraph("Clear", ss["ok"]), "NSW Planning Portal"]
-        # 4. PostGIS layer not mapped for this LGA
+        # 4. PostGIS layer not mapped for this LGA — omit row entirely
         if covered_layers is not None and layer_type not in covered_layers:
-            fallback = _NO_DATA_LABELS.get(layer_type, "Not assessed")
-            return [label, Paragraph(fallback, ss["ok"]), "PostGIS"]
+            return None
         return [label, Paragraph("Clear", ss["ok"]), "PostGIS"]
 
     # Portal-derived flags
@@ -1537,6 +1546,7 @@ def generate_pdf(
         ["Acid Sulfate Soils",                        ass_flag,        "NSW Planning Portal"],
         ["LEP Key Site or Special Provision",         key_sites_flag,  "NSW Planning Portal"],
         # PostGIS-sourced environmental overlays (not in s10.7 or title search)
+        # flag() returns None when the layer is not mapped for this LGA — omit those rows
         flag("biodiversity", "Biodiversity Values Map (BDAR trigger)"),
         flag("riparian",     "Riparian Land"),
         flag("wetlands",     "Wetlands"),
@@ -1546,6 +1556,7 @@ def generate_pdf(
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
     ]
+    risk_rows = [r for r in risk_rows if r is not None]
 
     # Shadow risk row — derived from shadow pipeline
     if shadow_result is not None:
@@ -1783,7 +1794,7 @@ def generate_pdf(
     else:
         lep_rows.append(["Land Value", Paragraph("See Strata Title note above", ss["note"]), "NSW Valuation Service"])
 
-    story.append(table(lep_rows, [58 * mm, 80 * mm, CW - 138 * mm]))
+    story.append(table(lep_rows, [50 * mm, 68 * mm, CW - 118 * mm]))
     story.append(Spacer(1, 3 * mm))
 
     # Development headroom + subdivision — suppressed for strata

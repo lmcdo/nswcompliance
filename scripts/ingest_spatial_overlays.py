@@ -494,6 +494,18 @@ def main():
     conn = psycopg2.connect(database_url)
     cur = conn.cursor()
 
+    # Ensure coverage audit table exists
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS spatial_overlays_coverage (
+            lga_name    TEXT        NOT NULL,
+            layer_type  TEXT        NOT NULL,
+            ingested_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            feature_count INTEGER   NOT NULL DEFAULT 0,
+            PRIMARY KEY (lga_name, layer_type)
+        )
+    """)
+    conn.commit()
+
     try:
         # Council FeatureServer layers (SEP etc.)
         for layer_type in council_layers:
@@ -515,6 +527,12 @@ def main():
                 print(f"\n[GLOBAL / {layer_type.upper()}]")
                 count = ingest_layer(cur, layer_type, lga_name=None, dry_run=args.dry_run)
                 if not args.dry_run:
+                    cur.execute("""
+                        INSERT INTO spatial_overlays_coverage (lga_name, layer_type, ingested_at, feature_count)
+                        VALUES ('ALL', %s, now(), %s)
+                        ON CONFLICT (lga_name, layer_type) DO UPDATE
+                            SET ingested_at = now(), feature_count = EXCLUDED.feature_count
+                    """, (layer_type, count))
                     conn.commit()
                 print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
             else:
@@ -523,6 +541,12 @@ def main():
                     try:
                         count = ingest_layer(cur, layer_type, lga_name=lga, dry_run=args.dry_run)
                         if not args.dry_run:
+                            cur.execute("""
+                                INSERT INTO spatial_overlays_coverage (lga_name, layer_type, ingested_at, feature_count)
+                                VALUES (%s, %s, now(), %s)
+                                ON CONFLICT (lga_name, layer_type) DO UPDATE
+                                    SET ingested_at = now(), feature_count = EXCLUDED.feature_count
+                            """, (lga, layer_type, count))
                             conn.commit()
                         print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
                     except Exception as e:
