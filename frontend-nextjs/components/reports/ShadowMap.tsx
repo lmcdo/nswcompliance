@@ -25,7 +25,7 @@ interface Props {
   center: [number, number]; // [lng, lat]
   lotPolygon: GeoJSONGeometry | null;       // subject lot boundary
   shadowOnLot: GeoJSONCollection | null;    // shadow clipped to subject lot
-  northProxy: GeoJSONGeometry | null;       // hypothetical northern building footprint
+  northProxy?: GeoJSONGeometry | null;      // northern neighbour proxy polygon (optional)
 }
 
 // ESRI World Imagery — free, no token required, widely used
@@ -45,10 +45,7 @@ const AERIAL_STYLE: StyleSpecification = {
   layers: [{ id: 'esri-tiles', type: 'raster', source: 'esri' }],
 };
 
-function getBBox(
-  lot: GeoJSONGeometry | null,
-  northProxy: GeoJSONGeometry | null,
-): LngLatBoundsLike | null {
+function getBBox(lot: GeoJSONGeometry | null): LngLatBoundsLike | null {
   const coords: [number, number][] = [];
 
   function collectPolygon(rings: unknown[]) {
@@ -63,12 +60,10 @@ function getBBox(
     }
   }
 
-  for (const geom of [lot, northProxy]) {
-    if (!geom) continue;
-    if (geom.type === 'Polygon') collectPolygon(geom.coordinates);
-    if (geom.type === 'MultiPolygon') {
-      for (const poly of geom.coordinates as unknown[][]) collectPolygon(poly);
-    }
+  if (!lot) return null;
+  if (lot.type === 'Polygon') collectPolygon(lot.coordinates);
+  if (lot.type === 'MultiPolygon') {
+    for (const poly of lot.coordinates as unknown[][]) collectPolygon(poly);
   }
 
   if (coords.length === 0) return null;
@@ -82,7 +77,7 @@ function getBBox(
 }
 
 export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props) {
-  const mapRef = useRef<{ fitBounds: (bounds: LngLatBoundsLike, opts?: object) => void } | null>(null);
+  const mapRef = useRef<{ fitBounds: (bounds: LngLatBoundsLike) => void } | null>(null);
 
   const lotGeoJSON = useMemo((): GeoJSONCollection | null => {
     if (!lotPolygon) return null;
@@ -92,19 +87,11 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
     };
   }, [lotPolygon]);
 
-  const northProxyGeoJSON = useMemo((): GeoJSONCollection | null => {
-    if (!northProxy) return null;
-    return {
-      type: 'FeatureCollection',
-      features: [{ type: 'Feature', geometry: northProxy, properties: {} }],
-    };
-  }, [northProxy]);
-
-  const bbox = useMemo(() => getBBox(lotPolygon, northProxy), [lotPolygon, northProxy]);
+  const bbox = useMemo(() => getBBox(lotPolygon), [lotPolygon]);
 
   useEffect(() => {
     if (mapRef.current && bbox) {
-      mapRef.current.fitBounds(bbox, { padding: 60, duration: 600, maxZoom: 19 });
+      mapRef.current.fitBounds(bbox);
     }
   }, [bbox]);
 
@@ -122,24 +109,7 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
       dragRotate={false}
       touchZoomRotate={false}
     >
-      {/* Layer 1: Northern proxy building — dashed white/yellow outline */}
-      {northProxyGeoJSON && (
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <Source id="north-proxy" type="geojson" data={northProxyGeoJSON as any}>
-          <Layer
-            id="north-proxy-fill"
-            type="fill"
-            paint={{ 'fill-color': '#fef08a', 'fill-opacity': 0.25 }}
-          />
-          <Layer
-            id="north-proxy-outline"
-            type="line"
-            paint={{ 'line-color': '#eab308', 'line-width': 2.5, 'line-dasharray': [5, 3] }}
-          />
-        </Source>
-      )}
-
-      {/* Layer 2: Shadow clipped to subject lot — orange fill */}
+      {/* Layer 1: Shadow clipped to subject lot — orange fill */}
       {shadowOnLot && (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         <Source id="shadow-on-lot" type="geojson" data={shadowOnLot as any}>
@@ -147,6 +117,18 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
             id="shadow-on-lot-fill"
             type="fill"
             paint={{ 'fill-color': '#f97316', 'fill-opacity': 0.65 }}
+          />
+        </Source>
+      )}
+
+      {/* Layer 2: North proxy polygon — dashed outline only */}
+      {northProxy && (
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        <Source id="north-proxy" type="geojson" data={{ type: 'FeatureCollection', features: [{ type: 'Feature', geometry: northProxy, properties: {} }] } as any}>
+          <Layer
+            id="north-proxy-outline"
+            type="line"
+            paint={{ 'line-color': '#6366f1', 'line-width': 1.5, 'line-dasharray': [3, 2] }}
           />
         </Source>
       )}
