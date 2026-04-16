@@ -168,20 +168,35 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
     """
     Returns (road_north: bool, extra_offset_m: float).
 
-    Probes spatial_overlays 5 m north of the lot's northern boundary centre.
-    If no zone is found (unregistered road reserve) or zone is SP2 (Infrastructure),
-    the road_north flag is set and extra_offset_m = DEFAULT_ROAD_WIDTH_M so the
-    northern proxy building is placed on the far side of the road rather than
-    in the middle of it.
+    spatial_overlays covers 33 Greater Sydney LGAs only (~128 LGAs in NSW total).
+    Before probing north of the boundary, we confirm the subject lot itself has
+    zone coverage. If the lot centroid has no zone data we are outside our
+    coverage area — return (False, 0.0) so the proxy uses the standard
+    one-lot-depth offset rather than incorrectly assuming a road.
+
+    When coverage is confirmed, probe 5 m north of the northern boundary.
+    If no zone is found there (unregistered road reserve) or zone is SP2
+    (Infrastructure), set road_north=True and shift proxy by DEFAULT_ROAD_WIDTH_M.
     """
     try:
         from shapely.geometry import shape
-        bounds = shape(lot_geojson).bounds   # (minx, miny, maxx, maxy)
-        north_lat = bounds[3]
+        lot = shape(lot_geojson)
+        bounds = lot.bounds   # (minx, miny, maxx, maxy)
         center_lng = (bounds[0] + bounds[2]) / 2
-        probe_lat = north_lat + 5 / 111_000  # 5 m north of boundary
-        zone = _get_zone_at(center_lng, probe_lat)
-        is_road = zone is None or any(zone.upper().startswith(z) for z in ROAD_ZONES)
+        center_lat = (bounds[1] + bounds[3]) / 2
+
+        # Gate: confirm this LGA is within spatial_overlays coverage.
+        # Outside Greater Sydney, any probe returns None — don't misread as road.
+        lot_zone = _get_zone_at(center_lng, center_lat)
+        if lot_zone is None:
+            logger.info("Road detection skipped — lot outside spatial_overlays coverage")
+            return False, 0.0
+
+        # Probe 5 m north of northern boundary
+        probe_lat = bounds[3] + 5 / 111_000
+        north_zone = _get_zone_at(center_lng, probe_lat)
+        is_road = north_zone is None or any(north_zone.upper().startswith(z) for z in ROAD_ZONES)
+        logger.info(f"Road detection: lot_zone={lot_zone} north_zone={north_zone} road_north={is_road}")
         return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
     except Exception as e:
         logger.warning(f"Road detection: {e}")
