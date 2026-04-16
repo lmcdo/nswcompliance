@@ -34,20 +34,23 @@ def northern_neighbour_proxy(lot_geojson: dict, offset_m: Optional[float] = None
     Return a GeoJSON Polygon representing a hypothetical building on the
     lot immediately to the north of the subject lot.
 
-    Strategy: translate the subject lot's footprint northward by one
-    lot-depth (its own north-south extent).  This is a symmetric proxy —
-    it assumes the northern neighbour has a similar lot size and would
-    build over a similar footprint, which is reasonable for terraces and
-    suburban residential.
+    Uses the lot's BOUNDING BOX (not its exact shape) as the proxy footprint.
+    Irregular lots (triangular, battleaxe, L-shaped) would produce unrealistic
+    proxy shapes if the exact outline were copied — a rectangle is a better
+    proxy for what a neighbouring building actually looks like.
 
     offset_m: override the auto-calculated offset (default = lot depth).
     """
     try:
-        from shapely.geometry import shape, mapping
+        from shapely.geometry import shape, mapping, box
         from shapely.affinity import translate
+        lot = shape(lot_geojson)
+        bounds = lot.bounds  # (minx, miny, maxx, maxy)
         depth = offset_m if offset_m is not None else lot_depth_m(lot_geojson)
         delta_lat = depth / 111_000
-        shifted = translate(shape(lot_geojson), xoff=0.0, yoff=delta_lat)
+        # Rectangular bounding-box footprint — realistic, shape-independent
+        lot_bbox = box(bounds[0], bounds[1], bounds[2], bounds[3])
+        shifted = translate(lot_bbox, xoff=0.0, yoff=delta_lat)
         return mapping(shifted)
     except Exception as e:
         logger.warning(f"northern_neighbour_proxy failed, using original lot: {e}")

@@ -192,11 +192,22 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
             logger.info("Road detection skipped — lot outside spatial_overlays coverage")
             return False, 0.0
 
-        # Probe 5 m north of northern boundary
+        # Probe 5 m north of northern boundary at three x positions (west, centre, east).
+        # Single-point probing misses roads on corner/triangular lots where the apex
+        # doesn't align with the lot centroid.
         probe_lat = bounds[3] + 5 / 111_000
-        north_zone = _get_zone_at(center_lng, probe_lat)
-        is_road = north_zone is None or any(north_zone.upper().startswith(z) for z in ROAD_ZONES)
-        logger.info(f"Road detection: lot_zone={lot_zone} north_zone={north_zone} road_north={is_road}")
+        probe_lngs = [
+            bounds[0] + (bounds[2] - bounds[0]) * 0.25,  # west quarter
+            center_lng,                                    # centre
+            bounds[0] + (bounds[2] - bounds[0]) * 0.75,  # east quarter
+        ]
+        north_zones = [_get_zone_at(lng, probe_lat) for lng in probe_lngs]
+        # Road if ANY probe point returns no zone (unregistered road reserve) or SP2
+        is_road = any(
+            z is None or any(z.upper().startswith(r) for r in ROAD_ZONES)
+            for z in north_zones
+        )
+        logger.info(f"Road detection: lot_zone={lot_zone} north_zones={north_zones} road_north={is_road}")
         return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
     except Exception as e:
         logger.warning(f"Road detection: {e}")
