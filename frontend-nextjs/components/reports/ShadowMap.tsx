@@ -119,6 +119,8 @@ export function ShadowMap({ center, lotPolygon, shadowOnLot, northProxy }: Props
       style={{ width: '100%', height: '100%' }}
       mapStyle={AERIAL_STYLE}
       attributionControl={false}
+      dragRotate={false}
+      touchZoomRotate={false}
     >
       {/* Layer 1: Northern proxy building — dashed grey outline, no fill */}
       {northProxyGeoJSON && (

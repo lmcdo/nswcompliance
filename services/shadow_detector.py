@@ -52,7 +52,7 @@ try:
     from services.shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
-        shadow_on_lot_geojson,
+        shadow_on_lot_geojson, lot_depth_m,
         SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from services.sentinel2 import compute_change_score
@@ -60,7 +60,7 @@ except ImportError:
     from shadow_model import (
         model_all_scenarios, get_scenario_metadata,
         shadow_reach_m, shadow_overlap_fraction, overlaps_lot,
-        shadow_on_lot_geojson,
+        shadow_on_lot_geojson, lot_depth_m,
         SHADOW_SCENARIOS, northern_neighbour_proxy,
     )
     from sentinel2 import compute_change_score
@@ -134,6 +134,73 @@ _COUNCIL_TO_LEP = {
     "ku-ring-gai":  "Ku-ring-gai LEP 2015",
     "kuringgai":    "Ku-ring-gai LEP 2015",
 }
+
+
+DEFAULT_ROAD_WIDTH_M = 18.0  # typical suburban road reserve in NSW
+ROAD_ZONES = {"SP2"}  # NSW Planning: SP2 Infrastructure = roads, rail, utilities
+
+
+def _get_zone_at(lng: float, lat: float) -> Optional[str]:
+    """Return zone code from spatial_overlays at (lng, lat), or None if not found."""
+    try:
+        with _get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT value FROM spatial_overlays
+                    WHERE layer_type = 'zone'
+                      AND ST_Contains(
+                            ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                            ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                          )
+                    LIMIT 1
+                    """,
+                    (lng, lat),
+                )
+                row = cur.fetchone()
+                return str(row[0]) if row and row[0] else None
+    except Exception as e:
+        logger.warning(f"Zone lookup at ({lng},{lat}): {e}")
+        return None
+
+
+def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
+    """
+    Returns (road_north: bool, extra_offset_m: float).
+
+    spatial_overlays covers 33 Greater Sydney LGAs only (~128 LGAs in NSW total).
+    Before probing north of the boundary, we confirm the subject lot itself has
+    zone coverage. If the lot centroid has no zone data we are outside our
+    coverage area — return (False, 0.0) so the proxy uses the standard
+    one-lot-depth offset rather than incorrectly assuming a road.
+
+    When coverage is confirmed, probe 5 m north of the northern boundary.
+    If no zone is found there (unregistered road reserve) or zone is SP2
+    (Infrastructure), set road_north=True and shift proxy by DEFAULT_ROAD_WIDTH_M.
+    """
+    try:
+        from shapely.geometry import shape
+        lot = shape(lot_geojson)
+        bounds = lot.bounds   # (minx, miny, maxx, maxy)
+        center_lng = (bounds[0] + bounds[2]) / 2
+        center_lat = (bounds[1] + bounds[3]) / 2
+
+        # Gate: confirm this LGA is within spatial_overlays coverage.
+        # Outside Greater Sydney, any probe returns None — don't misread as road.
+        lot_zone = _get_zone_at(center_lng, center_lat)
+        if lot_zone is None:
+            logger.info("Road detection skipped — lot outside spatial_overlays coverage")
+            return False, 0.0
+
+        # Probe 5 m north of northern boundary
+        probe_lat = bounds[3] + 5 / 111_000
+        north_zone = _get_zone_at(center_lng, probe_lat)
+        is_road = north_zone is None or any(north_zone.upper().startswith(z) for z in ROAD_ZONES)
+        logger.info(f"Road detection: lot_zone={lot_zone} north_zone={north_zone} road_north={is_road}")
+        return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
+    except Exception as e:
+        logger.warning(f"Road detection: {e}")
+        return False, 0.0
 
 
 def _get_height_limit(lat: float, lng: float) -> tuple:
@@ -337,11 +404,12 @@ def run_shadow(request: ShadowRequest):
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
 
-    # Model the shadow from a hypothetical building on the lot immediately to the
-    # north (symmetric proxy: same footprint, same LEP height limit).  The subject
-    # lot is kept as the overlap target.  This answers the buyer's question:
-    # "Could a northern neighbour building to max height shadow my property?"
-    north_proxy = northern_neighbour_proxy(lot_geojson)
+    # Detect whether a road lies immediately north of the subject lot.
+    # If so, shift the proxy one road-width further so it sits on the next lot,
+    # not in the middle of the street.
+    road_north, road_extra_m = _detect_road_north(lot_geojson)
+    proxy_offset_m = lot_depth_m(lot_geojson) + road_extra_m
+    north_proxy = northern_neighbour_proxy(lot_geojson, offset_m=proxy_offset_m)
 
     try:
         shadow_map = model_all_scenarios(north_proxy, height_m)
@@ -356,7 +424,8 @@ def run_shadow(request: ShadowRequest):
         "height_m": height_m,
         "lep_name": lep_name,
         "lot_polygon": lot_geojson,
-        "north_proxy_polygon": north_proxy,   # footprint of hypothetical northern building
+        "north_proxy_polygon": north_proxy,
+        "road_north": road_north,             # True when a road lies between lot and proxy
         "scenarios": scenarios,
         "construction_change_score": change.get("change_score"),
         "construction_change_detected": bool(change.get("construction_detected", False)),

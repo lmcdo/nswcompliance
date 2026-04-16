@@ -37,6 +37,7 @@ interface ShadowOutputs {
   lep_name: string | null;
   lot_polygon: GeoJSONGeometry | null;
   north_proxy_polygon: GeoJSONGeometry | null;
+  road_north: boolean;
   scenarios: ShadowScenario[];
   construction_change_score: number | null;
   construction_change_detected: boolean;
@@ -231,8 +232,17 @@ function ShadowCard({ result }: { result: ShadowResult }) {
           shadowOnLot={activeShadowOnLot}
           northProxy={o.north_proxy_polygon ?? null}
         />
+        {/* North arrow */}
+        <div className="absolute bottom-3 left-3 bg-black/60 text-white rounded-full w-8 h-8 flex flex-col items-center justify-center gap-0 select-none">
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+            <path d="M5 1 L5 11" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+            <path d="M5 1 L2 5 M5 1 L8 5" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+          <span className="text-[9px] font-bold leading-none">N</span>
+        </div>
+
         {/* Scenario label overlay */}
-        <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
+        <div className="absolute bottom-3 left-12 bg-black/60 text-white text-xs px-2.5 py-1 rounded-full">
           {SCENARIO_LABELS[activeScenario] ?? activeScenario}
         </div>
         {/* Legend */}
@@ -256,6 +266,12 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
         Shadow overlay is a geometric model — not derived from satellite imagery.
         Aerial imagery © Esri.
+        {o.road_north && (
+          <span className="ml-1 text-amber-600">
+            Road detected to north — proxy building placed on the far side of the street.
+            Actual shadow impact would be less than shown.
+          </span>
+        )}
       </p>
 
       {/* Stats row */}
@@ -361,7 +377,9 @@ function ShadowCard({ result }: { result: ShadowResult }) {
             Local Environmental Plan (LEP). The northern neighbour&apos;s footprint is
             approximated using the subject lot&apos;s own cadastral boundary, offset one
             lot-depth northward — a conservative symmetric proxy for suburban and terrace
-            lots. Actual development may be smaller or differently positioned.
+            lots. Where a road lies to the north, the actual nearest building would be
+            further away, meaning real shadow impact would be less than modelled.
+            Actual development may be smaller or differently positioned.
           </p>
           <p>
             <span className="font-medium text-gray-600">Construction activity.</span>{' '}

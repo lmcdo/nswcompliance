@@ -445,3 +445,6 @@ city-of-sydney/
 downloads/
 reviews/
 .env.prod.tmp
+
+# Large GIS data files — ingested into PostGIS, not stored in repo
+data/hawkesbury_flood/
