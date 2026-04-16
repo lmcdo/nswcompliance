@@ -137,77 +137,69 @@ _COUNCIL_TO_LEP = {
 
 
 DEFAULT_ROAD_WIDTH_M = 18.0  # typical suburban road reserve in NSW
-ROAD_ZONES = {"SP2"}  # NSW Planning: SP2 Infrastructure = roads, rail, utilities
+
+# NSW Planning Portal cadastral lot lookup by coordinate.
+# Roads have no Torrens title → returns [] → detected as road.
+LOT_COORD_API = "https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi/lot"
 
 
-def _get_zone_at(lng: float, lat: float) -> Optional[str]:
-    """Return zone code from spatial_overlays at (lng, lat), or None if not found."""
+def _has_cadastral_lot_at(lng: float, lat: float) -> bool:
+    """
+    True if the NSW Planning Portal returns a cadastral lot at (lng, lat).
+    Roads and public reserves have no title → return False.
+    On API error returns True (conservative: no road offset applied).
+    """
     try:
-        with _get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    """
-                    SELECT value FROM spatial_overlays
-                    WHERE layer_type = 'zone'
-                      AND ST_Contains(
-                            ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
-                            ST_SetSRID(ST_MakePoint(%s, %s), 4326)
-                          )
-                    LIMIT 1
-                    """,
-                    (lng, lat),
-                )
-                row = cur.fetchone()
-                return str(row[0]) if row and row[0] else None
+        r = requests.get(
+            LOT_COORD_API,
+            params={"x": lng, "y": lat, "sr": 4326},
+            timeout=6,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return bool(data and len(data) > 0)
     except Exception as e:
-        logger.warning(f"Zone lookup at ({lng},{lat}): {e}")
-        return None
+        logger.warning(f"Lot coord lookup ({lng:.5f},{lat:.5f}): {e}")
+        return True  # conservative: assume lot, no road offset
 
 
 def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
     """
     Returns (road_north: bool, extra_offset_m: float).
 
-    spatial_overlays covers 33 Greater Sydney LGAs only (~128 LGAs in NSW total).
-    Before probing north of the boundary, we confirm the subject lot itself has
-    zone coverage. If the lot centroid has no zone data we are outside our
-    coverage area — return (False, 0.0) so the proxy uses the standard
-    one-lot-depth offset rather than incorrectly assuming a road.
+    Probes the NSW cadastral lot API at three points 10 m north of the lot's
+    northern boundary. Roads have no Torrens title → API returns [] → road.
 
-    When coverage is confirmed, probe 5 m north of the northern boundary.
-    If no zone is found there (unregistered road reserve) or zone is SP2
-    (Infrastructure), set road_north=True and shift proxy by DEFAULT_ROAD_WIDTH_M.
+    Zone-based detection (spatial_overlays) was abandoned: NSW LEP zone polygons
+    extend across road pavements, so zone queries return the adjacent residential
+    zone even when standing in the road — unreliable for road detection.
+
+    Probe distance 10 m: clears footpath and kerb for standard lots where the
+    cadastral boundary runs at or near the road edge.
+
+    Road only declared if ALL THREE probes find no lot — a single miss could be
+    a narrow unmapped sliver or a probe at a lot boundary gap.
     """
     try:
         from shapely.geometry import shape
         lot = shape(lot_geojson)
         bounds = lot.bounds   # (minx, miny, maxx, maxy)
-        center_lng = (bounds[0] + bounds[2]) / 2
-        center_lat = (bounds[1] + bounds[3]) / 2
+        width = bounds[2] - bounds[0]
 
-        # Gate: confirm this LGA is within spatial_overlays coverage.
-        # Outside Greater Sydney, any probe returns None — don't misread as road.
-        lot_zone = _get_zone_at(center_lng, center_lat)
-        if lot_zone is None:
-            logger.info("Road detection skipped — lot outside spatial_overlays coverage")
-            return False, 0.0
-
-        # Probe 5 m north of northern boundary at three x positions (west, centre, east).
-        # Single-point probing misses roads on corner/triangular lots where the apex
-        # doesn't align with the lot centroid.
-        probe_lat = bounds[3] + 5 / 111_000
+        probe_lat = bounds[3] + 10 / 111_000
         probe_lngs = [
-            bounds[0] + (bounds[2] - bounds[0]) * 0.25,  # west quarter
-            center_lng,                                    # centre
-            bounds[0] + (bounds[2] - bounds[0]) * 0.75,  # east quarter
+            bounds[0] + width * 0.25,
+            bounds[0] + width * 0.50,
+            bounds[0] + width * 0.75,
         ]
-        north_zones = [_get_zone_at(lng, probe_lat) for lng in probe_lngs]
-        # Road if ANY probe point returns no zone (unregistered road reserve) or SP2
-        is_road = any(
-            z is None or any(z.upper().startswith(r) for r in ROAD_ZONES)
-            for z in north_zones
+
+        found_lots = [_has_cadastral_lot_at(lng, probe_lat) for lng in probe_lngs]
+        is_road = not any(found_lots)
+
+        logger.info(
+            f"Road detection (cadastral): probe_lat={probe_lat:.5f} "
+            f"found={found_lots} road_north={is_road}"
         )
-        logger.info(f"Road detection: lot_zone={lot_zone} north_zones={north_zones} road_north={is_road}")
         return is_road, DEFAULT_ROAD_WIDTH_M if is_road else 0.0
     except Exception as e:
         logger.warning(f"Road detection: {e}")
