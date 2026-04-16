@@ -72,9 +72,12 @@ export async function POST(request: NextRequest) {
   let lng: number | null = propData.property.coordinates?.lng ?? null;
 
   if ((!lat || !lng) && propData.lotGeometry?.rings?.[0]?.length) {
+    // NSW Planning Portal returns lot geometry in EPSG:3857 (Web Mercator) — convert to WGS84
     const ring: [number, number][] = propData.lotGeometry.rings[0];
-    lng = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
-    lat = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
+    const xMerc = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
+    const yMerc = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
+    lng = (xMerc / 20037508.34) * 180;
+    lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
   }
 
   if (!lat || !lng) {
