@@ -199,37 +199,39 @@ def _detect_road_north(lot_geojson: dict) -> tuple[bool, float]:
     """
     Returns (road_north: bool, extra_offset_m: float).
 
-    Primary: NSW Spatial Services cadastral lot API — three probes 10 m north of
-    the lot's northern boundary, run sequentially (parallel adds import overhead).
-    Roads have no Torrens title → API returns 0 features → road detected.
+    Strategy: probe three points 10 m north of the lot's northernmost vertex
+    (not the bounding box centre — bounding box probes land in residential lots
+    for corner/triangular lots whose apex doesn't align with the centre).
 
-    Fallback (if API is unreachable): geometric heuristic — if the lot's northern
-    width ratio < 0.35 the lot narrows sharply to the north (triangular, corner
-    lot) → road detected.  This catches irregular lots but misses rectangular lots
-    that face a road on the north side — for those the proxy is one lot-depth north,
-    which overstates shadow impact (conservative, acceptable for a screening tool).
+    Primary: NSW Spatial Services cadastral API. Road if ANY probe returns no lot.
+    Fallback (API unreachable): geometric — lot north-width ratio < 0.35.
     """
     try:
         from shapely.geometry import shape
         lot = shape(lot_geojson)
-        bounds = lot.bounds
-        width = bounds[2] - bounds[0]
-        probe_lat = bounds[3] + 10 / 111_000
+
+        # Find the actual northernmost vertex — the apex that touches the road.
+        apex = max(lot.exterior.coords, key=lambda c: c[1])
+        apex_lng, apex_lat = apex[0], apex[1]
+
+        # 10 m north of apex; spread probes ±10 m E/W of apex longitude.
+        offset_deg = 10 / 111_000
+        probe_lat = apex_lat + offset_deg
         probe_lngs = [
-            bounds[0] + width * 0.25,
-            bounds[0] + width * 0.50,
-            bounds[0] + width * 0.75,
+            apex_lng - offset_deg,
+            apex_lng,
+            apex_lng + offset_deg,
         ]
 
         api_results = [_probe_has_lot(lng, probe_lat) for lng in probe_lngs]
         valid = [r for r in api_results if r is not None]
 
         if valid:
-            # API reachable — road if ALL valid probes found no lot
-            is_road = not any(valid)
-            logger.info(f"Road detection (API): results={api_results} road_north={is_road}")
+            # Road if ANY probe found no lot (one probe in road is enough).
+            is_road = any(not r for r in valid)
+            logger.info(f"Road detection (API): apex=({apex_lng:.5f},{apex_lat:.5f}) results={api_results} road_north={is_road}")
         else:
-            # API unreachable — geometric fallback
+            # API unreachable — geometric fallback.
             ratio = _lot_north_width_ratio(lot_geojson)
             is_road = ratio < 0.35
             logger.info(f"Road detection (geometric fallback): ratio={ratio:.2f} road_north={is_road}")
