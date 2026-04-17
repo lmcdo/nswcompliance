@@ -1333,13 +1333,27 @@ def generate_pdf(
     unique_by_type = {o["layer_type"]: o for o in unique_overlays}
 
     # Flood: collect ALL scenarios (multiple rows per property), build range label.
-    # Scenario key format: "20AEP" where the number is ARI in years (not AEP%).
-    def _parse_ari(scenario_key: str) -> int:
+    # Value formats in spatial_overlays:
+    #   "100AEP"   -- Hawkesbury ARI-based: number is ARI in years
+    #   "1.0%AEP"  -- Campbelltown AEP%-based: number is annual exceedance probability %
+    #   "PMF"      -- Probable Maximum Flood
+    def _parse_ari(scenario_key: str) -> float:
         import re as _re
-        m = _re.match(r"^(\d+)AEP$", scenario_key, _re.IGNORECASE)
+        if "pmf" in str(scenario_key).lower():
+            return 999999.0
+        # AEP%-based: "1.0%AEP", "0.2%AEP" -- ARI = 100 / AEP%
+        m = _re.match(r"^(\d+(?:\.\d+)?)%AEP$", str(scenario_key), _re.IGNORECASE)
         if m:
-            return int(m.group(1))
-        return 999999  # PMF sentinel
+            pct = float(m.group(1))
+            return round(100.0 / pct, 1) if pct > 0 else 999999.0
+        # ARI-based: "100AEP" -- number is already ARI in years
+        m = _re.match(r"^(\d+(?:\.\d+)?)AEP$", str(scenario_key), _re.IGNORECASE)
+        if m:
+            return float(m.group(1))
+        return 999999.0
+
+    def _ari_str(ari: float) -> str:
+        return str(int(ari)) if ari == int(ari) else f"{ari:.1f}"
 
     _flood_rows = sorted(
         [o for o in unique_overlays if o["layer_type"] == "flood"],
@@ -1348,23 +1362,26 @@ def generate_pdf(
     _flood_note_dynamic: str | None = None
     if _flood_rows:
         _min_ari = _parse_ari(_flood_rows[0]["value"])
-        _has_pmf = any(o["value"].upper() == "PMF" for o in _flood_rows)
+        _has_pmf = any("pmf" in str(o["value"]).lower() for o in _flood_rows)
         _n = len(_flood_rows)
         if _has_pmf:
-            _flood_display = f"1-in-{_min_ari}-year flood extent through to PMF ({_n} scenarios)"
+            _flood_display = f"1-in-{_ari_str(_min_ari)}-year flood extent through to PMF ({_n} scenarios)"
         else:
             _max_ari = _parse_ari(_flood_rows[-1]["value"])
-            _flood_display = f"1-in-{_min_ari}-year through to 1-in-{_max_ari}-year flood extent ({_n} scenarios)"
+            _flood_display = f"1-in-{_ari_str(_min_ari)}-year through to 1-in-{_ari_str(_max_ari)}-year flood extent ({_n} scenarios)"
         unique_by_type["flood"]["value"] = _flood_display
 
         _instrument = _flood_rows[0].get("instrument", "")
         _is_hnrfs = "HNRFS_2024" in _instrument
+        _is_ctfs = "CTFS_2023" in _instrument
         _source_citation = (
             "2024 Hawkesbury-Nepean River Flood Study, NSW SES/INSW (May 2024) — data.nsw.gov.au"
             if _is_hnrfs
+            else "Campbelltown Flood Study 2023, NSW SES — flooddata.ses.nsw.gov.au"
+            if _is_ctfs
             else "council flood mapping"
         )
-        _pmf_suffix = " through to PMF" if _has_pmf else f" through to the 1-in-{_parse_ari(_flood_rows[-1]['value'])}-year extent"
+        _pmf_suffix = " through to PMF" if _has_pmf else f" through to the 1-in-{_ari_str(_parse_ari(_flood_rows[-1]['value']))}-year extent"
         _pmf_explanation = (
             " PMF (Probable Maximum Flood) is the theoretical upper physical limit of flooding — "
             "the result of the most extreme meteorological conditions possible. "
@@ -1373,7 +1390,7 @@ def generate_pdf(
             if _has_pmf else ""
         )
         _flood_note_dynamic = (
-            f"Flood Planning Area — this property is within the 1-in-{_min_ari}-year flood extent"
+            f"Flood Planning Area — this property is within the 1-in-{_ari_str(_min_ari)}-year flood extent"
             f"{_pmf_suffix}."
             f"{_pmf_explanation} "
             f"Source: {_source_citation}. "
