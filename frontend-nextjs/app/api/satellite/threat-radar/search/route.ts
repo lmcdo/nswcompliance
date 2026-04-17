@@ -86,7 +86,13 @@ interface Application {
   DevelopmentType?: string;
   ApplicationDescription?: string;
   LodgementDate?: string;
+  DeterminationDate?: string;
   Status?: string;
+  PropertyAddress?: string;
+  LotDescription?: string;
+  CostOfDevelopment?: number | string;
+  NumberOfNewDwellings?: number | string;
+  CouncilName?: string;
   Latitude?: string | number;
   Longitude?: string | number;
   Location?: { X?: string; Y?: string }[];
