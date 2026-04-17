@@ -120,6 +120,7 @@ export default function CanIBuildItPage() {
           <AddressAutocomplete
             value={address}
             onChange={setAddress}
+            onSelect={(addr) => setAddress(addr)}
             placeholder="Enter a NSW property address"
             className="w-full text-base"
           />
