@@ -96,7 +96,7 @@ interface Application {
   Latitude?: string | number;
   Longitude?: string | number;
   Location?: { X?: string; Y?: string }[];
-  _distance_m?: number;
+  _distance_m?: number | null;
 }
 
 async function fetchApplications(councilName: string): Promise<Application[]> {
@@ -130,22 +130,43 @@ async function fetchApplications(councilName: string): Promise<Application[]> {
   return apps;
 }
 
-function filterNearby(apps: Application[], lat: number, lng: number): Application[] {
-  return apps
-    .flatMap((app) => {
-      try {
-        const loc = (app.Location ?? [{}])[0] ?? {};
-        const alat = parseFloat(String(app.Latitude ?? loc.Y ?? '0'));
-        const alng = parseFloat(String(app.Longitude ?? loc.X ?? '0'));
-        if (!alat || !alng) return [];
-        const d = haversine(lat, lng, alat, alng);
-        if (d > RADIUS_M) return [];
-        return [{ ...app, _distance_m: Math.round(d) }];
-      } catch {
-        return [];
+// Extract the street component from an address (strip leading number, take first segment before comma).
+// "78 Tennyson Road, Mortlake NSW" → "tennyson road"
+function extractStreet(addr: string): string {
+  return addr
+    .replace(/^\d+[-\d]*[A-Za-z]?\s+/i, '')
+    .split(',')[0]
+    .trim()
+    .toLowerCase();
+}
+
+function filterNearby(apps: Application[], lat: number, lng: number, queriedAddress: string): Application[] {
+  const queriedStreet = extractStreet(queriedAddress);
+  const result: Application[] = [];
+
+  for (const app of apps) {
+    try {
+      const loc = (app.Location ?? [{}])[0] ?? {};
+      const alat = parseFloat(String(app.Latitude ?? loc.Y ?? '0'));
+      const alng = parseFloat(String(app.Longitude ?? loc.X ?? '0'));
+
+      if (!alat || !alng) {
+        // No coordinates — include if PropertyAddress is on the same street
+        const daStreet = app.PropertyAddress ? extractStreet(app.PropertyAddress) : '';
+        if (queriedStreet && daStreet && daStreet === queriedStreet) {
+          result.push({ ...app, _distance_m: null });
+        }
+        continue;
       }
-    })
-    .sort((a, b) => (a._distance_m ?? 999) - (b._distance_m ?? 999));
+
+      const d = haversine(lat, lng, alat, alng);
+      if (d <= RADIUS_M) result.push({ ...app, _distance_m: Math.round(d) });
+    } catch {
+      // skip malformed entry
+    }
+  }
+
+  return result.sort((a, b) => (a._distance_m ?? 999) - (b._distance_m ?? 999));
 }
 
 /**
@@ -236,7 +257,7 @@ export async function POST(request: NextRequest) {
   }
 
   const apps = await fetchApplications(council_name);
-  const nearby = filterNearby(apps, lat, lng);
+  const nearby = filterNearby(apps, lat, lng, address);
 
   return NextResponse.json({
     address,

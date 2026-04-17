@@ -17,7 +17,7 @@ interface Application {
   CostOfDevelopment?: number | string;
   NumberOfNewDwellings?: number | string;
   CouncilName?: string;
-  _distance_m?: number;
+  _distance_m?: number | null;
 }
 
 interface SearchResult {
