@@ -36,35 +36,15 @@ export default function CanIBuildItPage() {
     setErrorMsg('');
 
     try {
-      // Step 1: enqueue detect job
-      const res = await fetch('/api/satellite/granny-flat', {
+      const res = await fetch('/api/canibuildit/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, action: 'detect' }),
+        body: JSON.stringify({ address }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Detection failed');
-
-      const jobId: string = json.jobId;
-
-      // Step 2: poll for result
-      let attempts = 0;
-      while (attempts < 40) {
-        await new Promise((r) => setTimeout(r, 4000));
-        const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
-        const pollJson = await pollRes.json();
-
-        if (pollJson.status === 'complete') {
-          setResult(pollJson.result as DetectResult);
-          setPageState('result');
-          return;
-        }
-        if (pollJson.status === 'failed') {
-          throw new Error(pollJson.error || 'Check failed — try again');
-        }
-        attempts++;
-      }
-      throw new Error('Timed out — please try again');
+      if (!res.ok) throw new Error(json.error || 'Check failed');
+      setResult(json as DetectResult);
+      setPageState('result');
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setPageState('error');
@@ -120,6 +100,7 @@ export default function CanIBuildItPage() {
           <AddressAutocomplete
             value={address}
             onChange={setAddress}
+            onSelect={(addr) => setAddress(addr)}
             placeholder="Enter a NSW property address"
             className="w-full text-base"
           />
