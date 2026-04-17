@@ -17,7 +17,7 @@ interface Application {
   CostOfDevelopment?: number | string;
   NumberOfNewDwellings?: number | string;
   CouncilName?: string;
-  _distance_m?: number;
+  _distance_m?: number | null;
 }
 
 interface SearchResult {
@@ -28,7 +28,6 @@ interface SearchResult {
   council_name: string;
   applications: Application[];
   window_days: number;
-  radius_m: number;
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
@@ -116,7 +115,7 @@ export default function ThreatRadarPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900">Neighbour Development Threat Radar</h1>
         <p className="mt-1.5 text-sm text-gray-500">
-          See current DA and CDC activity within 200 metres of any NSW property. Subscribe for weekly email alerts when new applications are lodged.
+          See current DA and CDC activity across your council area. Subscribe for weekly email alerts when new applications are lodged.
         </p>
       </div>
 
@@ -151,7 +150,7 @@ export default function ThreatRadarPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-500">
-                {searchResult.council_name} · {searchResult.radius_m}m radius · last {searchResult.window_days} days
+                {searchResult.council_name} · last {searchResult.window_days} days
               </p>
               <button onClick={reset} className="text-xs text-teal-600 hover:text-teal-700 underline">New search</button>
             </div>
@@ -160,7 +159,7 @@ export default function ThreatRadarPage() {
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
                 <p className="text-sm font-medium text-gray-700">No applications found</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  No DA or CDC applications lodged within {searchResult.radius_m}m in the last {searchResult.window_days} days.
+                  No DA or CDC applications lodged in {searchResult.council_name} in the last {searchResult.window_days} days.
                 </p>
               </div>
             ) : (
@@ -223,6 +222,14 @@ export default function ThreatRadarPage() {
                     </div>
                   );
                 })}
+                <a
+                  href="https://map.plotdetect.com.au"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 mt-1"
+                >
+                  Find other current DAs in your LGA on map.plotdetect.com.au →
+                </a>
               </>
             )}
           </div>

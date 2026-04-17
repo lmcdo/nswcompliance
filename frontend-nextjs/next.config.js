@@ -4,6 +4,24 @@ const nextConfig = {
  serverComponentsExternalPackages: ['better-sqlite3', 'isomorphic-dompurify']
  },
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
+ async redirects() {
+   return [
+     // whatcanibuildhere.com.au → canibuildit.com.au
+     {
+       source: '/:path*',
+       has: [{ type: 'host', value: 'whatcanibuildhere.com.au' }],
+       destination: 'https://canibuildit.com.au/:path*',
+       permanent: false,
+     },
+     // plotdetect.com.au root → canibuildit.com.au
+     {
+       source: '/',
+       has: [{ type: 'host', value: 'plotdetect.com.au' }],
+       destination: 'https://canibuildit.com.au',
+       permanent: false,
+     },
+   ];
+ },
  async rewrites() {
    // Only rewrite to R2 in production (Vercel sets VERCEL=1)
    if (process.env.VERCEL === '1') {
