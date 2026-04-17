@@ -228,7 +228,7 @@ export default function ThreatRadarPage() {
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 mt-1"
                 >
-                  View on map.plotdetect.com.au →
+                  Find other current DAs in your LGA on map.plotdetect.com.au →
                 </a>
               </>
             )}
