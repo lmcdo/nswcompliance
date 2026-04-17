@@ -10,7 +10,6 @@ import {
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 const DA_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineDA';
 const CDC_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineCDC';
-const RADIUS_M = 200;
 const WINDOW_DAYS = 90;
 
 const schema = z.object({
@@ -96,7 +95,7 @@ interface Application {
   Latitude?: string | number;
   Longitude?: string | number;
   Location?: { X?: string; Y?: string }[];
-  _distance_m?: number;
+  _distance_m?: number | null;
 }
 
 async function fetchApplications(councilName: string): Promise<Application[]> {
@@ -130,30 +129,36 @@ async function fetchApplications(councilName: string): Promise<Application[]> {
   return apps;
 }
 
-function filterNearby(apps: Application[], lat: number, lng: number): Application[] {
+// Annotate each app with distance (metres) where coordinates are available.
+// No radius filtering — return everything from the council window.
+function annotateWithDistance(apps: Application[], lat: number, lng: number): Application[] {
   return apps
-    .flatMap((app) => {
+    .map((app): Application => {
       try {
         const loc = (app.Location ?? [{}])[0] ?? {};
         const alat = parseFloat(String(app.Latitude ?? loc.Y ?? '0'));
         const alng = parseFloat(String(app.Longitude ?? loc.X ?? '0'));
-        if (!alat || !alng) return [];
-        const d = haversine(lat, lng, alat, alng);
-        if (d > RADIUS_M) return [];
-        return [{ ...app, _distance_m: Math.round(d) }];
+        if (!alat || !alng) return app;
+        return { ...app, _distance_m: Math.round(haversine(lat, lng, alat, alng)) };
       } catch {
-        return [];
+        return app;
       }
     })
-    .sort((a, b) => (a._distance_m ?? 999) - (b._distance_m ?? 999));
+    .sort((a, b) => {
+      // DAs with distance sort first, ascending. No-coordinate DAs sort by lodgement date.
+      if (a._distance_m != null && b._distance_m != null) return a._distance_m - b._distance_m;
+      if (a._distance_m != null) return -1;
+      if (b._distance_m != null) return 1;
+      return (b.LodgementDate ?? '').localeCompare(a.LodgementDate ?? '');
+    });
 }
 
 /**
  * POST /api/satellite/threat-radar/search
  * Body: { address: string }
  *
- * Returns current DA/CDC applications within 200m of the address (last 90 days).
- * Also returns resolved lat/lng/prop_id/council_name so the subscribe step can reuse them.
+ * Returns all DA/CDC applications in the same council LGA (last 90 days), annotated with
+ * distance where coordinates are available. Sorted: closest first, then by lodgement date.
  */
 export async function POST(request: NextRequest) {
   const clientIP = getClientIdentifier(request);
@@ -236,7 +241,7 @@ export async function POST(request: NextRequest) {
   }
 
   const apps = await fetchApplications(council_name);
-  const nearby = filterNearby(apps, lat, lng);
+  const applications = annotateWithDistance(apps, lat, lng);
 
   return NextResponse.json({
     address,
@@ -244,8 +249,7 @@ export async function POST(request: NextRequest) {
     lat,
     lng,
     council_name,
-    applications: nearby,
+    applications,
     window_days: WINDOW_DAYS,
-    radius_m: RADIUS_M,
   });
 }
