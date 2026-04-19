@@ -2624,10 +2624,12 @@ def generate_pdf(
             story.append(Spacer(1, 2 * mm))
 
             # Flood: multi-AEP scenario table — one row per ingested flood extent
-            if layer_type == "flood" and len(_flood_rows) > 1:
+            # Only render when at least one ARI-quantified row exists; generic-only floods
+            # show the note text instead (no table to build).
+            if layer_type == "flood" and len(_ari_rows) > 1:
                 _aep_hdr_style = S("fth", fontSize=7.5, textColor=WHITE, fontName="Helvetica-Bold", leading=11)
                 _aep_rows = [[Paragraph(h, _aep_hdr_style) for h in ["Flood Scenario", "AEP", "Return Period", "Source"]]]
-                for fr in _flood_rows:
+                for fr in _ari_rows:
                     val = fr.get("value") or ""
                     ari = _parse_ari(val)
                     if "pmf" in val.lower():
