@@ -7,7 +7,7 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
+const FALLBACK_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 const DA_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineDA';
 const CDC_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineCDC';
 const WINDOW_DAYS = 90;
@@ -188,7 +188,8 @@ export async function POST(request: NextRequest) {
   const { address } = parsed.data;
 
   // Resolve address
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
+  const siteUrl = new URL(request.url).origin;
+  const propUrl = `${siteUrl}/api/property/${encodeURIComponent(address)}`;
   const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
