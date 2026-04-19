@@ -1731,9 +1731,10 @@ def generate_pdf(
 
     # Flood: collect ALL scenarios (multiple rows per property), build range label.
     # Value formats in spatial_overlays:
-    #   "100AEP"   -- Hawkesbury ARI-based: number is ARI in years
-    #   "1.0%AEP"  -- Campbelltown AEP%-based: number is annual exceedance probability %
-    #   "PMF"      -- Probable Maximum Flood
+    #   "100AEP"            -- Hawkesbury ARI-based: number is ARI in years
+    #   "1.0%AEP"           -- Campbelltown AEP%-based: number is annual exceedance probability %
+    #   "PMF"               -- Probable Maximum Flood
+    #   "Flood Planning Area" -- binary designation (no return period); treat as generic
     def _parse_ari(scenario_key: str) -> float:
         import re as _re
         if "pmf" in str(scenario_key).lower():
@@ -1747,27 +1748,21 @@ def generate_pdf(
         m = _re.match(r"^(\d+(?:\.\d+)?)AEP$", str(scenario_key), _re.IGNORECASE)
         if m:
             return float(m.group(1))
-        return 999999.0
+        # Non-numeric designation (e.g. "Flood Planning Area") — return None to signal generic
+        return None  # type: ignore[return-value]
 
     def _ari_str(ari: float) -> str:
         return str(int(ari)) if ari == int(ari) else f"{ari:.1f}"
 
-    _flood_rows = sorted(
-        [o for o in unique_overlays if o["layer_type"] == "flood"],
+    _flood_rows = [o for o in unique_overlays if o["layer_type"] == "flood"]
+    # Separate ARI-quantified rows from generic binary designations
+    _ari_rows = sorted(
+        [o for o in _flood_rows if _parse_ari(o["value"]) is not None],
         key=lambda o: _parse_ari(o["value"]),
     )
+    _generic_flood_rows = [o for o in _flood_rows if _parse_ari(o["value"]) is None]
     _flood_note_dynamic: str | None = None
     if _flood_rows:
-        _min_ari = _parse_ari(_flood_rows[0]["value"])
-        _has_pmf = any("pmf" in str(o["value"]).lower() for o in _flood_rows)
-        _n = len(_flood_rows)
-        if _has_pmf:
-            _flood_display = f"1-in-{_ari_str(_min_ari)}-year flood extent through to PMF ({_n} scenarios)"
-        else:
-            _max_ari = _parse_ari(_flood_rows[-1]["value"])
-            _flood_display = f"1-in-{_ari_str(_min_ari)}-year through to 1-in-{_ari_str(_max_ari)}-year flood extent ({_n} scenarios)"
-        unique_by_type["flood"]["value"] = _flood_display
-
         _instrument = _flood_rows[0].get("instrument", "")
         _is_hnrfs = "HNRFS_2024" in _instrument
         _is_ctfs = "CTFS_2023" in _instrument
@@ -1778,25 +1773,48 @@ def generate_pdf(
             if _is_ctfs
             else "council flood mapping"
         )
-        _pmf_suffix = " through to PMF" if _has_pmf else f" through to the 1-in-{_ari_str(_parse_ari(_flood_rows[-1]['value']))}-year extent"
-        _pmf_explanation = (
-            " PMF (Probable Maximum Flood) is the theoretical upper physical limit of flooding — "
-            "the result of the most extreme meteorological conditions possible. "
-            "It carries no return period; it is used for emergency management and represents "
-            "the absolute worst-case inundation extent."
-            if _has_pmf else ""
-        )
-        _flood_note_dynamic = (
-            f"Flood Planning Area — this property is within the 1-in-{_ari_str(_min_ari)}-year flood extent"
-            f"{_pmf_suffix}."
-            f"{_pmf_explanation} "
-            f"Source: {_source_citation}. "
+        _base_action = (
             "The flood planning level (minimum floor height for any future development or renovation) "
             "is set by council — it is NOT stated in this report. "
             "Order a Section 733 Certificate from council (~$50–150) to confirm the applicable "
             "flood planning level. Check flood insurance cost with a broker before exchange — "
             "premiums in flood-affected areas can be substantial."
         )
+
+        if _ari_rows:
+            # High-precision path: ARI/AEP scenarios available
+            _has_pmf = any("pmf" in str(o["value"]).lower() for o in _ari_rows)
+            _n = len(_ari_rows) + len(_generic_flood_rows)
+            _min_ari = _parse_ari(_ari_rows[0]["value"])
+            if _has_pmf:
+                _flood_display = f"1-in-{_ari_str(_min_ari)}-year flood extent through to PMF ({_n} scenarios)"
+            else:
+                _max_ari = _parse_ari(_ari_rows[-1]["value"])
+                _flood_display = f"1-in-{_ari_str(_min_ari)}-year through to 1-in-{_ari_str(_max_ari)}-year flood extent ({_n} scenarios)"
+            unique_by_type["flood"]["value"] = _flood_display
+
+            _pmf_suffix = " through to PMF" if _has_pmf else f" through to the 1-in-{_ari_str(_parse_ari(_ari_rows[-1]['value']))}-year extent"
+            _pmf_explanation = (
+                " PMF (Probable Maximum Flood) is the theoretical upper physical limit of flooding — "
+                "the result of the most extreme meteorological conditions possible. "
+                "It carries no return period; it is used for emergency management and represents "
+                "the absolute worst-case inundation extent."
+                if _has_pmf else ""
+            )
+            _flood_note_dynamic = (
+                f"Flood Planning Area — this property is within the 1-in-{_ari_str(_min_ari)}-year flood extent"
+                f"{_pmf_suffix}.{_pmf_explanation} "
+                f"Source: {_source_citation}. {_base_action}"
+            )
+        else:
+            # Generic path: council designates flood affectation without return period detail
+            _flood_display = "Flood Planning Area"
+            unique_by_type["flood"]["value"] = _flood_display
+            _flood_note_dynamic = (
+                f"Flood Planning Area — this property is within the council's flood planning area. "
+                f"The specific return period (1-in-X-year extent) is not published in the state mapping layer for this council. "
+                f"Source: {_source_citation}. {_base_action}"
+            )
 
     # Bushfire — use category-specific note if category value is available
     _bushfire_note_dynamic: str | None = None
@@ -2037,6 +2055,9 @@ def generate_pdf(
         if controls["ass_class"]
         else Paragraph("Clear", ss["ok"])
     )
+    # Key sites: PostGIS is preferred (clause ref + hyperlink). Portal row only shown when
+    # PostGIS has no hit — avoids duplicating a "Clear" row when both sources agree.
+    _postgis_key_site_hit = "key_sites" in unique_by_type
     key_sites_flag = (
         Paragraph(f"Yes — {controls['key_sites_clause']}", ss["warn"])
         if controls["key_sites_clause"]
@@ -2054,7 +2075,9 @@ def generate_pdf(
         # Portal-sourced planning designations
         ["Heritage Listing",                          heritage_flag,   "NSW Planning Portal"],
         ["Acid Sulfate Soils",                        ass_flag,        "NSW Planning Portal"],
-        ["LEP Key Site or Special Provision",         key_sites_flag,  "NSW Planning Portal"],
+        # Portal key site row suppressed when PostGIS already shows a hit (avoids duplicate rows)
+        *([["LEP Key Site or Special Provision",      key_sites_flag,  "NSW Planning Portal"]]
+          if not _postgis_key_site_hit else []),
         ["Additional Permitted Uses (LEP Sch. 1)",    apu_flag,        "PostGIS"],
         # PostGIS-sourced environmental overlays (not in s10.7 or title search)
         # flag() returns None when the layer is not mapped for this LGA — omit those rows
