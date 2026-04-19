@@ -42,6 +42,10 @@ from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=project_root / ".env")
 
+# DB helpers — pre-fetched before generate_pdf (no DB connection inside renderer)
+sys.path.insert(0, str(Path(__file__).parent))
+from conveyancing_db import fetch_dcp_setbacks, fetch_heritage_postgis, fetch_lep_clauses, interpret_sepp  # noqa: E402
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -171,21 +175,6 @@ LT_BASE = 100
 # and legislation_url fields returned by the portal layerintersect call.
 # Do NOT re-add a hardcoded lookup here — it will be wrong within months of any LEP amendment.
 
-KEY_SITES_PLAIN = {
-    "4.3C": "Height of buildings — Key Sites Area: site-specific height controls apply, may differ from zone-wide height limit.",
-    "4.4":  "Floor Space Ratio — Key Sites Area: site-specific FSR controls apply via Clause 4.4 2B(c).",
-    "6.14": "Affordable housing contribution may be required for residential development.",
-    "6.15": "Design excellence process required for certain development types.",
-}
-
-SEPP_PLAIN = {
-    "sustainable buildings": "BASIX certificate required for new dwellings and renovations exceeding $50,000.",
-    "transport and infrastructure": "Check for infrastructure corridors or classified road setback requirements.",
-    "housing": "NSW Housing SEPP — may enable additional dwelling types or density above LEP controls.",
-    "resilience and hazards": "Coastal/hazard provisions may apply — confirm with council.",
-    "biodiversity and conservation": "Biodiversity provisions apply — consult biodiversity assessment requirements.",
-}
-
 # ---------------------------------------------------------------------------
 # DCP setback controls — Inner West (Marrickville, Leichhardt, Ashfield)
 #
@@ -261,6 +250,18 @@ DCP_SETBACKS: dict = {
 }
 # fmt: on
 
+# EPI name (uppercase) → list of former councils with DCP setback data in DB.
+# Single-council entry → returned directly (no suburb disambiguation needed).
+# Multi-council entry (post-amalgamation LGAs like Inner West) → suburb lookup required.
+# Add new LGAs here as DCP setback data is onboarded.
+ZONE_EPI_TO_COUNCILS: dict[str, list[str]] = {
+    "INNER WEST LOCAL ENVIRONMENTAL PLAN 2022": ["marrickville", "leichhardt", "ashfield"],
+    # Future LGAs — uncomment as DCP setback rows are migrated to dcp_general_requirements:
+    # "CANTERBURY-BANKSTOWN LOCAL ENVIRONMENTAL PLAN 2023": ["canterbury", "bankstown"],
+    # "PARRAMATTA LOCAL ENVIRONMENTAL PLAN 2011": ["parramatta"],
+    # "CUMBERLAND LOCAL ENVIRONMENTAL PLAN 2021": ["auburn", "holroyd", "guilford"],
+}
+
 # Suburb → former council (Inner West LGA post-2016 amalgamation)
 SUBURB_TO_FORMER_COUNCIL: dict[str, str] = {
     # Marrickville precincts
@@ -268,7 +269,7 @@ SUBURB_TO_FORMER_COUNCIL: dict[str, str] = {
     "dulwich hill": "marrickville", "st peters": "marrickville", "newtown": "marrickville",
     "erskineville": "marrickville", "alexandria": "marrickville", "enmore": "marrickville",
     "stanmore": "marrickville", "petersham": "marrickville", "lewisham": "marrickville",
-    "camperdown": "marrickville", "glebe": "marrickville", "st peters": "marrickville",
+    "camperdown": "marrickville", "glebe": "marrickville",
     # Leichhardt precincts
     "leichhardt": "leichhardt", "annandale": "leichhardt", "balmain": "leichhardt",
     "rozelle": "leichhardt", "lilyfield": "leichhardt", "forest lodge": "leichhardt",
@@ -461,23 +462,32 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
 
 
 def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
-    """Return former_council slug (marrickville/leichhardt/ashfield) for Inner West addresses."""
-    if "INNER WEST" not in zone_epi.upper():
+    """Return former_council slug for the address, or None if no DCP setback data exists.
+
+    Looks up ZONE_EPI_TO_COUNCILS using the EPI name from the planning portal.
+    - No match → None (LGA not yet onboarded for DCP setbacks)
+    - Single council in list → returned directly (single-council LGA)
+    - Multiple councils (post-merger LGA like Inner West) → suburb disambiguation
+
+    Extend ZONE_EPI_TO_COUNCILS (not this function) when onboarding new LGAs.
+    """
+    epi_upper = zone_epi.upper()
+    councils = None
+    for epi_key, council_list in ZONE_EPI_TO_COUNCILS.items():
+        if epi_key in epi_upper or epi_upper in epi_key:
+            councils = council_list
+            break
+    if not councils:
         return None
+    if len(councils) == 1:
+        return councils[0]
+    # Multi-council: disambiguate by suburb in address
     addr_lower = address.lower()
-    # Check multi-word suburbs first (e.g. "summer hill" before "hill")
     for suburb in sorted(SUBURB_TO_FORMER_COUNCIL, key=len, reverse=True):
         if suburb in addr_lower:
             return SUBURB_TO_FORMER_COUNCIL[suburb]
     return None
 
-
-def interpret_sepp(name: str, type_: str) -> str:
-    n = name.lower()
-    for key, plain in SEPP_PLAIN.items():
-        if key in n:
-            return plain
-    return ""
 
 
 def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict],
@@ -976,6 +986,10 @@ def parse_controls(raw: list[dict]) -> dict:
 # ---------------------------------------------------------------------------
 
 POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "bushfire", "anef"}
+
+# Layers ingested globally (bbox or filter_mode='all') — one 'ALL' coverage row, no per-LGA rows.
+# covered_layers for these is determined by the 'ALL' row, not per-LGA rows.
+GLOBAL_INGEST_LAYERS = frozenset({"bushfire", "anef"})
 POSTGIS_NOTES = {
     "biodiversity": BIO_NOTE,
     "riparian": RIPARIAN_NOTE,
@@ -990,7 +1004,7 @@ POSTGIS_NOTES = {
 }
 
 
-def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str]]:
+def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -> tuple[list[dict], set[str], dict[str, float]]:
     """
     Query PostGIS for overlays not (or unreliably) returned by the portal:
       - Environmental: biodiversity, riparian, wetlands, landslide, flood
@@ -1000,6 +1014,9 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
     When lot_wkt is provided (WGS84 POLYGON WKT), uses ST_Intersects against the full
     lot polygon so overlays covering only part of the lot are not missed. Falls back to
     ST_Contains on the centroid point when lot_wkt is unavailable.
+
+    Returns (results, covered_layers, proximity_m) where proximity_m maps layer_type →
+    nearest-feature distance in metres for layers that are covered but not intersecting.
     """
     db_url = os.getenv("DATABASE_URL") or (
         f"host={os.getenv('DB_HOST','localhost')} "
@@ -1097,6 +1114,22 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
         for r in apu_rows:
             results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
 
+        # Key Sites — LEP Schedule 1 / site-specific clause designations
+        # value = LAY_CLASS field, e.g. "Schedule 1, Clause 1 (1)" or "Clause 4.2A (a) Area 1"
+        # instrument_key = LEP name, e.g. "Blacktown Local Environmental Plan 2015"
+        cur.execute(
+            """
+            SELECT layer_type, value, instrument_key, lga_name
+            FROM spatial_overlays
+            WHERE layer_type = 'key_sites'
+              AND ST_Contains(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+            ORDER BY value
+            """,
+            (lng, lat),
+        )
+        for r in cur.fetchall():
+            results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
+
         # Which of the unique layers have ANY data for this LGA?
         # Used by callers to distinguish "clear" from "not mapped".
         if rows:
@@ -1112,22 +1145,33 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
 
         covered_layers: set[str] = set()
         if lga_name:
-            all_checked = POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "land_reservation"}
-            # Primary: use coverage audit table — definitive record of what was ingested
+            # Per-LGA layers: only "covered" when the ingest actually produced rows (feature_count > 0).
+            # feature_count=0 means the ingest ran but the LGA genuinely has no features for that
+            # layer — or the layer doesn't have data for that council in the state ArcGIS service.
+            # Either way, showing "Clear" would be misleading; we omit the row and show an unmapped note.
             cur.execute(
                 """
                 SELECT layer_type FROM spatial_overlays_coverage
-                WHERE lga_name = %s
+                WHERE lga_name = %s AND feature_count > 0
                 """,
                 (lga_name,),
             )
-            coverage_rows = cur.fetchall()
-            if coverage_rows:
-                # Coverage table exists and has data — use it as the authoritative source
-                covered_layers = {r[0] for r in coverage_rows}
-            else:
+            covered_layers = {r[0] for r in cur.fetchall()}
+
+            # Global layers (bushfire, anef) are ingested statewide via bbox/all — a single 'ALL'
+            # coverage row is written, not per-LGA rows. Include them if the global ingest ran.
+            cur.execute(
+                """
+                SELECT layer_type FROM spatial_overlays_coverage
+                WHERE lga_name = 'ALL' AND feature_count > 0
+                """,
+            )
+            covered_layers |= {r[0] for r in cur.fetchall()}
+
+            if not covered_layers:
                 # Coverage table not yet populated (pre-migration data) — fall back to inferring
                 # from spatial_overlays presence (original behaviour)
+                all_checked = POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "land_reservation", "key_sites", "additional_permitted_uses"}
                 env_placeholders = ", ".join(f"'{l}'" for l in all_checked)
                 cur.execute(
                     f"""
@@ -1139,16 +1183,41 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
                     (lga_name,),
                 )
                 covered_layers = {r[0] for r in cur.fetchall()}
+
             # classified_road results are built from land_reservation rows; alias so flag() finds it
             if "land_reservation" in covered_layers:
                 covered_layers.add("classified_road")
 
+        # Proximity distances — for layers that are covered but not intersecting at this property,
+        # find the nearest feature distance (metres). Helps distinguish "1.5km away" from "50m away".
+        # Only queried for ecologically sensitive layers where proximity is actionable.
+        PROXIMITY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide"})
+        hit_types = {r["layer_type"] for r in results}
+        proximity_m: dict[str, float] = {}
+        prox_candidates = PROXIMITY_LAYERS & covered_layers - hit_types
+        if prox_candidates and lga_name:
+            ph = ", ".join(f"'{lt}'" for lt in prox_candidates)
+            cur.execute(
+                f"""
+                SELECT layer_type,
+                       MIN(ST_Distance(geom::geography,
+                                       ST_SetSRID(ST_Point(%s, %s), 4326)::geography)) AS dist_m
+                FROM spatial_overlays
+                WHERE layer_type IN ({ph})
+                  AND lga_name = %s
+                GROUP BY layer_type
+                """,
+                (lng, lat, lga_name),
+            )
+            for row in cur.fetchall():
+                proximity_m[row[0]] = round(row[1])
+
         cur.close()
         conn.close()
-        return results, covered_layers
+        return results, covered_layers, proximity_m
     except Exception as e:
         print(f"  [warn] PostGIS query: {e}")
-        return [], set()
+        return [], set(), {}
 
 
 # ---------------------------------------------------------------------------
@@ -1167,16 +1236,27 @@ def _haversine_m(lat1, lng1, lat2, lng2) -> float:
 def _normalise_council(lga_name: str) -> Optional[str]:
     # Keys match the LGA prefix as it appears in zone_epi (after stripping "Local Environmental Plan YYYY")
     MAP = {
+        # Greater Sydney — amalgamated councils
         "inner west": "Inner West Council",
         "sydney": "Council of the City of Sydney",
+        "city of sydney": "Council of the City of Sydney",
         "waverley": "Waverley Council",
         "woollahra": "Woollahra Municipal Council",
         "randwick": "Randwick City Council",
         "ku-ring-gai": "Ku-ring-gai Council",
         "northern beaches": "Northern Beaches Council",
+        "warringah": "Northern Beaches Council",  # pre-amalgamation LEP prefix still used
+        "manly": "Northern Beaches Council",
+        "pittwater": "Northern Beaches Council",
         "bayside": "Bayside Council",
+        "botany bay": "Bayside Council",
+        "rockdale": "Bayside Council",
         "georges river": "Georges River Council",
+        "hurstville": "Georges River Council",
+        "kogarah": "Georges River Council",
         "canterbury-bankstown": "Canterbury-Bankstown Council",
+        "canterbury": "Canterbury-Bankstown Council",
+        "bankstown": "Canterbury-Bankstown Council",
         "north sydney": "North Sydney Council",
         "lane cove": "Lane Cove Municipal Council",
         "mosman": "Mosman Municipal Council",
@@ -1186,11 +1266,14 @@ def _normalise_council(lga_name: str) -> Optional[str]:
         "strathfield": "Strathfield Municipal Council",
         "burwood": "Burwood Council",
         "cumberland": "Cumberland Council",
+        "auburn": "Cumberland Council",
+        "holroyd": "Cumberland Council",
         "parramatta": "City of Parramatta Council",
         "city of parramatta": "City of Parramatta Council",
         "blacktown": "Blacktown City Council",
         "hornsby": "Hornsby Shire Council",
         "the hills": "The Hills Shire Council",
+        "baulkham hills": "The Hills Shire Council",
         "hawkesbury": "Hawkesbury City Council",
         "penrith": "Penrith City Council",
         "blue mountains": "Blue Mountains City Council",
@@ -1200,6 +1283,132 @@ def _normalise_council(lga_name: str) -> Optional[str]:
         "campbelltown": "Campbelltown City Council",
         "sutherland": "Sutherland Shire Council",
         "wollondilly": "Wollondilly Shire Council",
+        # Greater Sydney fringe
+        "wingecarribee": "Wingecarribee Shire Council",
+        # Hunter / Newcastle
+        "newcastle": "Newcastle City Council",
+        "city of newcastle": "Newcastle City Council",
+        "lake macquarie": "Lake Macquarie City Council",
+        "maitland": "Maitland City Council",
+        "port stephens": "Port Stephens Council",
+        "cessnock": "Cessnock City Council",
+        "singleton": "Singleton Council",
+        "muswellbrook": "Muswellbrook Shire Council",
+        "upper hunter": "Upper Hunter Shire Council",
+        "dungog": "Dungog Shire Council",
+        # Illawarra / South Coast
+        "wollongong": "Wollongong City Council",
+        "city of wollongong": "Wollongong City Council",
+        "shellharbour": "Shellharbour City Council",
+        "kiama": "Kiama Municipal Council",
+        "shoalhaven": "Shoalhaven City Council",
+        "eurobodalla": "Eurobodalla Shire Council",
+        "bega valley": "Bega Valley Shire Council",
+        # Central Coast / Mid North Coast
+        "central coast": "Central Coast Council",
+        "wyong": "Central Coast Council",  # pre-amalgamation
+        "gosford": "Central Coast Council",  # pre-amalgamation
+        "port macquarie-hastings": "Port Macquarie-Hastings Council",
+        "mid-coast": "MidCoast Council",
+        "great lakes": "MidCoast Council",
+        "gloucester": "MidCoast Council",
+        "nambucca valley": "Nambucca Valley Council",
+        "nambucca": "Nambucca Valley Council",
+        "kempsey": "Kempsey Shire Council",
+        "bellingen": "Bellingen Shire Council",
+        # Northern NSW
+        "coffs harbour": "Coffs Harbour City Council",
+        "clarence valley": "Clarence Valley Council",
+        "richmond valley": "Richmond Valley Council",
+        "lismore": "Lismore City Council",
+        "ballina": "Ballina Shire Council",
+        "byron": "Byron Shire Council",
+        "kyogle": "Kyogle Council",
+        "tweed": "Tweed Shire Council",
+        "glen innes severn": "Glen Innes Severn Council",
+        "inverell": "Inverell Shire Council",
+        "moree plains": "Moree Plains Shire Council",
+        "narrabri": "Narrabri Shire Council",
+        "gwydir": "Gwydir Shire Council",
+        # New England / Northwest
+        "tamworth regional": "Tamworth Regional Council",
+        "tamworth": "Tamworth Regional Council",
+        "armidale": "Armidale Regional Council",
+        "armidale regional": "Armidale Regional Council",
+        "uralla": "Uralla Shire Council",
+        "walcha": "Walcha Council",
+        "tenterfield": "Tenterfield Shire Council",
+        # Western / Far West
+        "dubbo regional": "Dubbo Regional Council",
+        "dubbo": "Dubbo Regional Council",
+        "orange": "Orange City Council",
+        "bathurst regional": "Bathurst Regional Council",
+        "bathurst": "Bathurst Regional Council",
+        "lithgow": "Lithgow City Council",
+        "cabonne": "Cabonne Shire Council",
+        "blayney": "Blayney Shire Council",
+        "oberon": "Oberon Council",
+        "mid-western regional": "Mid-Western Regional Council",
+        "mid-western": "Mid-Western Regional Council",
+        "cowra": "Cowra Shire Council",
+        "forbes": "Forbes Shire Council",
+        "lachlan": "Lachlan Shire Council",
+        "parkes": "Parkes Shire Council",
+        "narromine": "Narromine Shire Council",
+        "gilgandra": "Gilgandra Shire Council",
+        "warren": "Warren Shire Council",
+        "coonamble": "Coonamble Shire Council",
+        "walgett": "Walgett Shire Council",
+        "brewarrina": "Brewarrina Shire Council",
+        "bourke": "Bourke Shire Council",
+        "bogan": "Bogan Shire Council",
+        "cobar": "Cobar Shire Council",
+        "broken hill": "City of Broken Hill",
+        "central darling": "Central Darling Shire Council",
+        "unincorporated far west": None,  # no council
+        # Riverina / Murray
+        "wagga wagga": "Wagga Wagga City Council",
+        "griffith": "Griffith City Council",
+        "murrumbidgee": "Murrumbidgee Council",
+        "narrandera": "Narrandera Shire Council",
+        "leeton": "Leeton Shire Council",
+        "coolamon": "Coolamon Shire Council",
+        "junee": "Junee Shire Council",
+        "temora": "Temora Shire Council",
+        "cootamundra-gundagai regional": "Cootamundra-Gundagai Regional Council",
+        "cootamundra-gundagai": "Cootamundra-Gundagai Regional Council",
+        "snowy valleys": "Snowy Valleys Council",
+        "tumut": "Snowy Valleys Council",
+        "tumbarumba": "Snowy Valleys Council",
+        "hilltops": "Hilltops Council",
+        "young": "Hilltops Council",
+        "harden": "Hilltops Council",
+        "boorowa": "Hilltops Council",
+        "hay": "Hay Shire Council",
+        "edward river": "Edward River Council",
+        "deniliquin": "Edward River Council",
+        "murray river": "Murray River Council",
+        "murray": "Murray River Council",
+        "berrigan": "Berrigan Shire Council",
+        "federation": "Federation Council",
+        "corowa": "Federation Council",
+        "urana": "Federation Council",
+        "greater hume": "Greater Hume Shire Council",
+        "greater hume shire": "Greater Hume Shire Council",
+        "albury": "Albury City Council",
+        "snowy monaro regional": "Snowy Monaro Regional Council",
+        "snowy monaro": "Snowy Monaro Regional Council",
+        "cooma-monaro": "Snowy Monaro Regional Council",
+        "bombala": "Snowy Monaro Regional Council",
+        "queanbeyan-palerang regional": "Queanbeyan-Palerang Regional Council",
+        "queanbeyan-palerang": "Queanbeyan-Palerang Regional Council",
+        "queanbeyan": "Queanbeyan-Palerang Regional Council",
+        "palerang": "Queanbeyan-Palerang Regional Council",
+        "yass valley": "Yass Valley Council",
+        "upper lachlan": "Upper Lachlan Shire Council",
+        "goulburn mulwaree": "Goulburn Mulwaree Council",
+        # ACT border / South
+        "capital region": None,  # not a NSW council
     }
     key = lga_name.lower()
     if key in MAP:
@@ -1327,6 +1536,9 @@ def generate_pdf(
     strata_info: Optional[dict] = None,
     covered_layers: Optional[set] = None,
     shadow_result: Optional[dict] = None,
+    lep_clauses: Optional[list] = None,
+    dcp_setbacks_db: Optional[dict] = None,
+    proximity_m: Optional[dict] = None,
 ):
     _check_reportlab()
 
@@ -1605,6 +1817,7 @@ def generate_pdf(
         ("Flood Planning Area",      "flood"),
         ("Bushfire Prone Land",      "bushfire"),
         ("Aircraft Noise (ANEF)",    "anef"),
+        ("Key Site (LEP clause)",    "key_sites"),
         ("TOD Development Uplift",   "tod_accelerated"),  # catches accelerated first; tod_precinct/tod_deferred checked separately
         ("Additional Permitted Uses","additional_permitted_uses"),
         ("DCP Setbacks (with clause citations)", None),
@@ -1659,12 +1872,13 @@ def generate_pdf(
     # ------------------------------------------------------------------
     # COVERAGE PANEL
     # ------------------------------------------------------------------
-    if dcp_former_council:
-        dcp_name = DCP_SETBACKS[dcp_former_council]["dcp_name"]
-        dcp_note = dcp_name
+    if dcp_setbacks_db:
+        dcp_note = dcp_setbacks_db["dcp_name"]
+    elif dcp_former_council:
+        # DB fetch succeeded during main() but was not passed in — fallback
+        dcp_note = DCP_SETBACKS.get(dcp_former_council, {}).get("dcp_name", "DCP controls")
     else:
-        zone_epi = controls.get("zone_epi") or ""
-        dcp_note = "Currently Inner West LGA only — email info@plotdetect.com.au to add your LGA"
+        dcp_note = "DCP setback controls: contact council for your LGA"
 
     included_items = [
         "Zone, height limit, FSR, minimum lot size — all 128 NSW councils",
@@ -1740,17 +1954,46 @@ def generate_pdf(
         "tod_precinct":            "TOD precinct — density uplift available",
         "tod_accelerated":         "TOD accelerated precinct — increased FSR/height",
         "tod_deferred":            "TOD deferred precinct — future uplift likely",
+        "key_sites":               "Key site — site-specific LEP clause applies",
     }
     # EPI-confirmed layers: absence from layerintersect = confirmed clear (not just missing data)
     _EPI_CONFIRMED: dict[str, str] = {
         "riparian": "riparian_epi",
         "flood":    "flood_epi",
     }
-    # When PostGIS has no data and no EPI check, show a specific directive
+    # Layers where the PostGIS value field contains meaningful category text
+    _VALUE_DISPLAY_LAYERS = frozenset({"biodiversity", "riparian", "wetlands", "landslide"})
+    _prox = proximity_m or {}
+
+    _leg_url = controls.get("legislation_url") or ""
+
     def flag(layer_type: str, label: str, present_style: str = "alert"):
         # 1. PostGIS hit (detailed spatial data)
         if layer_type in unique_by_type:
-            hit_label = _HIT_LABELS.get(layer_type) or unique_by_type[layer_type].get("value") or "Present"
+            base_label = _HIT_LABELS.get(layer_type, "Present")
+            if layer_type == "key_sites":
+                # value = clause reference from LAY_CLASS (e.g. "Schedule 1, Clause 1 (1)")
+                clause_ref = unique_by_type[layer_type].get("value") or ""
+                instrument = unique_by_type[layer_type].get("instrument") or ""
+                if clause_ref and _leg_url:
+                    hit_label = (
+                        f'Key site — <a href="{_leg_url}" color="#1D4ED8">'
+                        f"{clause_ref}</a> ({instrument or 'LEP'})"
+                    )
+                elif clause_ref:
+                    hit_label = f"Key site — {clause_ref} ({instrument or 'LEP'})"
+                else:
+                    hit_label = base_label
+                return [label, Paragraph(hit_label, ss[present_style]), "PostGIS"]
+            if layer_type in _VALUE_DISPLAY_LAYERS:
+                val = unique_by_type[layer_type].get("value") or ""
+                # Append value as category qualifier when it adds info beyond the base label
+                if val and val.lower() not in base_label.lower():
+                    hit_label = f"{base_label} — {val}"
+                else:
+                    hit_label = base_label
+            else:
+                hit_label = base_label
             return [label, Paragraph(hit_label, ss[present_style]), "PostGIS"]
         # 2. EPI hit (Planning Portal confirms constraint via layerintersect)
         epi_key = _EPI_CONFIRMED.get(layer_type)
@@ -1763,6 +2006,12 @@ def generate_pdf(
         # 4. PostGIS layer not mapped for this LGA — omit row entirely
         if covered_layers is not None and layer_type not in covered_layers:
             return None
+        # 5. Covered but not intersecting — show "Clear" with proximity note if close
+        if layer_type in _VALUE_DISPLAY_LAYERS and layer_type in _prox:
+            dist = _prox[layer_type]
+            if dist <= 500:
+                prox_label = f"Clear — nearest {layer_type} buffer {dist:,}m"
+                return [label, Paragraph(prox_label, ss["warn"]), "PostGIS"]
         return [label, Paragraph("Clear", ss["ok"]), "PostGIS"]
 
     # Portal-derived flags
@@ -1815,6 +2064,7 @@ def generate_pdf(
         flag("landslide",    "Landslide Risk"),
         flag("flood",        "Flood Planning Area"),
         # PostGIS-sourced LEP constraints
+        flag("key_sites",               "Key Site (site-specific LEP clause)", "alert"),
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
         flag("bushfire",                "Bushfire Prone Land (BAL assessment)", "alert"),
@@ -1887,9 +2137,11 @@ def generate_pdf(
     if _unmapped:
         story.append(Spacer(1, 2 * mm))
         story.append(Paragraph(
-            f"<i>Not yet mapped for this LGA:</i> {', '.join(_unmapped)}. "
-            "Spatial data is ingested council by council from NSW Government ArcGIS services. "
-            "Email <b>info@plotdetect.com.au</b> to request priority coverage.",
+            f"<i>Not mapped in NSW state layer for this LGA:</i> {', '.join(_unmapped)}. "
+            "These overlays are sourced from NSW Government ArcGIS services. Where a layer is absent, "
+            "the council may not have uploaded data to the state layer, or the hazard may genuinely not "
+            "apply to this LGA. Confirm with council or obtain a Section 10.7 planning certificate "
+            "for authoritative disclosure.",
             ss["note"],
         ))
 
@@ -2144,19 +2396,32 @@ def generate_pdf(
         story.append(Paragraph(ref_text, ss["note"]))
         story.append(Spacer(1, 2 * mm))
 
-    # Key Sites clause plain English
-    if controls.get("key_sites_clause"):
-        clauses = [c.strip() for c in controls["key_sites_clause"].replace("Clauses", "").replace("Clause", "").split(",")]
-        explained = []
-        for c in clauses:
-            c = c.strip()
-            if c in KEY_SITES_PLAIN:
-                explained.append(f"<b>Cl {c}:</b> {KEY_SITES_PLAIN[c]}")
-        if explained:
-            story.append(Paragraph("<b>Key Sites provisions:</b>", ss["body"]))
-            for ex in explained:
-                story.append(Paragraph(f"• {ex}", ss["note"]))
-            story.append(Spacer(1, 2 * mm))
+    # Key Sites clause plain English — sourced from lep_clauses DB table
+    _ks_clause = controls.get("key_sites_clause")
+    _ks_items = lep_clauses or []
+    if _ks_clause and _ks_items:
+        story.append(Paragraph("<b>Key Sites provisions:</b>", ss["body"]))
+        for cl in _ks_items:
+            if cl["summary"]:
+                story.append(Paragraph(
+                    f"• <b>Cl {cl['number']}:</b> {cl['summary']}",
+                    ss["note"],
+                ))
+            else:
+                # No DB row — show raw ref + legislation link so nothing is lost
+                story.append(Paragraph(
+                    f"• <b>Cl {cl['number']}:</b> {_ks_clause} — refer to {legislation_url or 'the applicable LEP'}.",
+                    ss["note"],
+                ))
+        story.append(Spacer(1, 2 * mm))
+    elif _ks_clause:
+        # lep_clauses not pre-fetched (e.g., non-Inner West council) — show raw ref
+        story.append(Paragraph("<b>Key Sites provisions:</b>", ss["body"]))
+        story.append(Paragraph(
+            f"• {_ks_clause} — refer to {legislation_url or 'the applicable LEP'}.",
+            ss["note"],
+        ))
+        story.append(Spacer(1, 2 * mm))
 
     # Additional Permitted Uses — LEP Schedule 1 site-specific permissions
     # Data: PostGIS spatial_overlays, layer_type = 'additional_permitted_uses'
@@ -2198,7 +2463,7 @@ def generate_pdf(
 
     if not _is_strata:
         prop_zone = (controls.get("zone") or "").split()[0].upper()
-        dcp_data = DCP_SETBACKS.get(dcp_former_council) if dcp_former_council else None
+        dcp_data = dcp_setbacks_db
         zone_mismatch = bool(
             dcp_data and prop_zone and prop_zone not in dcp_data.get("zones_applicable", [])
         )
@@ -2487,15 +2752,17 @@ def generate_pdf(
 
     if controls["sepp_overlays"]:
         sepp_rows = [["SEPP / Instrument", "Practical Implication"]]
-        seen = set()
+        seen: set[tuple] = set()
         for ov in controls["sepp_overlays"]:
             name = ov["name"] or ""
-            if name in seen:
+            type_ = ov.get("type") or ""
+            key = (name, type_)
+            if key in seen:
                 continue
-            seen.add(name)
-            plain = interpret_sepp(name, ov.get("type", ""))
-            if not plain:
-                plain = f"Type: {ov.get('type', '—')}  Label: {ov.get('label', '—')}"
+            seen.add(key)
+            plain = interpret_sepp(name, type_, ov.get("label") or "", "")
+            if plain is None:
+                continue  # dedicated report section covers this overlay type
             sepp_rows.append([
                 Paragraph(name or "—", ss["body"]),
                 Paragraph(plain, ss["note"]),
@@ -2944,7 +3211,7 @@ def main():
     headroom = calc_development_headroom(controls, valuation)
 
     print("\nQuerying PostGIS for unique overlays (biodiversity, riparian, wetlands, landslide, flood) ...")
-    unique_overlays, covered_layers = get_unique_overlays(lat, lng, lot_wkt=lot_wkt)
+    unique_overlays, covered_layers, proximity_m = get_unique_overlays(lat, lng, lot_wkt=lot_wkt)
     if lot_wkt:
         print("  (using lot polygon — partial overlays detected)")
     else:
@@ -2982,9 +3249,58 @@ def main():
     zone_epi = controls.get("zone_epi", "") if controls else ""
     dcp_former_council = detect_former_council(args.address, zone_epi)
     if dcp_former_council:
-        print(f"  DCP controls: {dcp_former_council} ({DCP_SETBACKS[dcp_former_council]['dcp_name']})")
+        _dcp_name_log = DCP_SETBACKS.get(dcp_former_council, {}).get("dcp_name", dcp_former_council)
+        print(f"  DCP controls: {dcp_former_council} ({_dcp_name_log})")
     else:
         print("  DCP controls: not available for this LGA")
+
+    # Pre-fetch DB data (single connection, closed before PDF render)
+    lep_clauses: list = []
+    dcp_setbacks_db: Optional[dict] = None
+    postgis_heritage: dict = {"hca": [], "items": [], "has_heritage": False, "raw": []}
+    _db_url = os.getenv("DATABASE_URL")
+    if _db_url and lat and lng:
+        try:
+            _db_conn = psycopg2.connect(_db_url)
+            key_sites_clause = (controls or {}).get("key_sites_clause")
+            epi_name = (controls or {}).get("zone_epi") or ""
+            prop_zone_for_fetch = (controls or {}).get("zone") or ""
+            # Only fetch LEP clauses and DCP setbacks when there's something to look up
+            if key_sites_clause:
+                lep_clauses = fetch_lep_clauses(_db_conn, key_sites_clause, epi_name)
+            if dcp_former_council:
+                dcp_setbacks_db = fetch_dcp_setbacks(_db_conn, dcp_former_council, prop_zone_for_fetch)
+            # Heritage: always fetch (applies to all LGAs, data now populated)
+            postgis_heritage = fetch_heritage_postgis(_db_conn, lat, lng, lot_wkt=lot_wkt)
+            _db_conn.close()
+            if dcp_setbacks_db:
+                print(f"  DCP setbacks: {len(dcp_setbacks_db['setbacks'])} rows from DB")
+            if lep_clauses:
+                print(f"  LEP clauses: {len(lep_clauses)} rows")
+            if postgis_heritage["has_heritage"]:
+                hca_n = len(postgis_heritage["hca"])
+                item_n = len(postgis_heritage["items"])
+                print(f"  Heritage (PostGIS): {hca_n} HCA, {item_n} item(s)")
+            else:
+                print("  Heritage (PostGIS): clear")
+        except Exception as _e:
+            print(f"  [warn] DB pre-fetch failed: {_e}")
+    elif not _db_url:
+        print("  [warn] DATABASE_URL not set — DB lookups skipped")
+
+    # Merge PostGIS heritage into controls (reliable spatial classification)
+    # Portal Heritage Significance field is fragile; PostGIS value field is authoritative
+    if postgis_heritage["hca"]:
+        if controls.get("heritage_items") and not controls.get("heritage_hca"):
+            # Portal found items but didn't classify as HCA — PostGIS corrects this
+            controls["heritage_hca"] = controls["heritage_items"][:]
+        elif not controls.get("heritage_hca"):
+            # Portal found nothing — use PostGIS description as display text
+            controls.setdefault("heritage_items", []).extend(postgis_heritage["hca"])
+            controls["heritage_hca"] = postgis_heritage["hca"][:]
+    elif postgis_heritage["items"] and not controls.get("heritage_items"):
+        # PostGIS found individual items portal missed
+        controls["heritage_items"] = postgis_heritage["items"][:]
 
     shadow_result = None
     if prop_id and lat and lng:
@@ -3006,7 +3322,17 @@ def main():
 
     if not args.no_pdf:
         print(f"\nGenerating PDF -> {args.output}")
-        generate_pdf(args.output, args.address, lat, lng, controls, valuation, headroom, feasibility, unique_overlays, das, dcp_former_council=dcp_former_council, strata_info=strata_info, covered_layers=covered_layers, shadow_result=shadow_result)
+        generate_pdf(
+            args.output, args.address, lat, lng, controls, valuation,
+            headroom, feasibility, unique_overlays, das,
+            dcp_former_council=dcp_former_council,
+            strata_info=strata_info,
+            covered_layers=covered_layers,
+            shadow_result=shadow_result,
+            lep_clauses=lep_clauses,
+            dcp_setbacks_db=dcp_setbacks_db,
+            proximity_m=proximity_m,
+        )
 
 
 if __name__ == "__main__":
