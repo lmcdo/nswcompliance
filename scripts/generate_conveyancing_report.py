@@ -100,6 +100,56 @@ FORESHORE_NOTE = (
     "before any development or purchase decision."
 )
 
+# Bushfire: BFPL category labels and construction implications
+BUSHFIRE_CATEGORIES = {
+    "Flame Zone": (
+        "Flame Zone (most severe) — development other than minor alterations is generally "
+        "prohibited. Any works require a Bushfire Attack Level (BAL) assessment. CDC is not "
+        "available — all development requires a DA with bushfire assessment report. "
+        "Asset Protection Zone (APZ) of up to 100 m required."
+    ),
+    "1": (
+        "Bushfire Protection Level Category 1 — significant construction requirements under "
+        "AS 3959. CDC may be restricted. BAL assessment and bushfire-compliant construction "
+        "specification required for any DA. APZ setback requirements apply."
+    ),
+    "2": (
+        "Bushfire Protection Level Category 2 — construction requirements under AS 3959. "
+        "BAL assessment required for development applications. APZ setback may apply."
+    ),
+    "3": (
+        "Bushfire Protection Level Category 3 — moderate risk. BAL assessment required. "
+        "Construction standard determined by BAL rating from site assessment."
+    ),
+    "4": (
+        "Bushfire Protection Level Category 4 — lowest mapped risk. BAL assessment "
+        "advisable. Construction standard determined by site-specific BAL rating."
+    ),
+}
+BUSHFIRE_NOTE_DEFAULT = (
+    "Bushfire Prone Land — this property is mapped as bushfire prone. A Bushfire Attack "
+    "Level (BAL) assessment is required before any development application. Construction "
+    "must meet AS 3959 standards for the applicable BAL rating. CDC eligibility may be "
+    "restricted. Source: NSW Rural Fire Service BFPL mapping."
+)
+
+ANEF_NOTE = (
+    "Aircraft Noise Contour — this property falls within an Australian Noise Exposure "
+    "Forecast (ANEF) contour. Under SEPP (Transport and Infrastructure) 2021 and AS 2021, "
+    "residential development within ANEF contours may require acoustic attenuation design "
+    "and an acoustic report from an accredited acoustic consultant. The specific restrictions "
+    "depend on the contour value — obtain the ANEF value from the relevant airport authority "
+    "and confirm development requirements with council or a qualified acoustic consultant. "
+    "Source: NSW Government ArcGIS spatial overlay (ANEF mapping)."
+)
+
+TOD_NOTE = (
+    "Transport Oriented Development (TOD) Precinct — this property is within a TOD "
+    "precinct under SEPP (Housing) 2021. In accelerated precincts, height and density "
+    "uplift above the base LEP controls is available for residential development. "
+    "Confirm applicable uplift and precinct type with the current SEPP Housing maps."
+)
+
 CLASSIFIED_ROAD_NOTE = (
     "Classified Road Frontage — a statutory minimum setback of 9 metres applies to any "
     "dwelling house or attached development on a boundary with a classified road "
@@ -109,22 +159,17 @@ CLASSIFIED_ROAD_NOTE = (
 
 # Land tax thresholds — NSW, update annually (Revenue NSW publishes June each year)
 # Source: revenue.nsw.gov.au/taxes-duties-levies-royalties/land-tax/land-tax-thresholds
+# ⚠ UPDATE REQUIRED: verify 2026 threshold at revenue.nsw.gov.au before using in production.
+# Values below are 2025 thresholds — pending confirmation of 2026 figure.
 LT_YEAR = 2025
-LT_THRESHOLD = 1_075_000
+LT_THRESHOLD = 1_075_000   # 2025 general threshold — UPDATE annually
 LT_RATE = 0.016
 LT_BASE = 100
 
-# Permitted uses by zone (simplified — primary residential uses only)
-ZONE_PERMITTED = {
-    "R1": ["Dwelling house", "Secondary dwelling (granny flat)", "Home business", "Community facilities", "Child care centres"],
-    "R2": ["Dwelling house", "Secondary dwelling (granny flat)", "Home business", "Dual occupancy (subject to controls)"],
-    "R3": ["Dwelling house", "Multi dwelling housing", "Residential flat building (subject to controls)", "Secondary dwelling"],
-    "R4": ["Residential flat building", "Multi dwelling housing", "Secondary dwelling", "Shop top housing"],
-    "E1": ["Light industry", "Business premises (subject to controls)", "Warehouse or distribution centre"],
-    "E2": ["Light industry", "Business premises", "Warehouse or distribution centre"],
-    "MU1": ["Residential flat building", "Shop top housing", "Retail premises", "Business premises"],
-    "SP2": ["Infrastructure", "Special purpose (as specified in LEP)"],
-}
+# ZONE_PERMITTED lookup table intentionally removed.
+# Permitted uses are LEP-specific and vary per council. Use the zone_full (objectives text)
+# and legislation_url fields returned by the portal layerintersect call.
+# Do NOT re-add a hardcoded lookup here — it will be wrong within months of any LEP amendment.
 
 KEY_SITES_PLAIN = {
     "4.3C": "Height of buildings — Key Sites Area: site-specific height controls apply, may differ from zone-wide height limit.",
@@ -449,7 +494,11 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     has_flood = any(o["layer_type"] == "flood" for o in unique_overlays)
 
     # 1. Secondary dwelling (granny flat)
-    # NSW: lot ≥ 450m² for most LGAs; zone R1/R2/R3/R4; not strata
+    # SEPP (Housing) 2021, Division 2 — minimum lot area 450m² (Cl 53(1)(b)), zones R1/R2/R3/R4.
+    # These are SEPP standards — check current instrument if SEPP has been amended.
+    # Source: legislation.nsw.gov.au — SEPP (Housing) 2021
+    _SD_MIN_LOT = 450   # Cl 53(1)(b) SEPP (Housing) 2021 — update if SEPP amended
+    _SD_ZONES = {"R1", "R2", "R3", "R4"}  # Cl 53(1)(a)
     if is_strata:
         results.append({
             "question": "Secondary dwelling (granny flat)",
@@ -462,27 +511,37 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
             )
         })
     elif lot_area is not None:
-        if zone in ("R1", "R2", "R3", "R4"):
-            if lot_area >= 450:
+        if zone in _SD_ZONES:
+            if lot_area >= _SD_MIN_LOT:
                 results.append({
                     "question": "Secondary dwelling (granny flat)",
                     "answer": "Likely permissible",
                     "flag": "ok",
-                    "basis": f"Zone {zone} + lot area {round(lot_area):,} m² ≥ 450 m² minimum. Subject to DCP setback and height controls."
+                    "basis": (
+                        f"Zone {zone} + lot area {round(lot_area):,} m² ≥ {_SD_MIN_LOT} m² minimum "
+                        f"(SEPP Housing 2021, Cl 53). Subject to DCP setback and height controls. "
+                        f"Some councils have excluded dual occupancy CDC — confirm DA vs CDC pathway."
+                    )
                 })
             else:
                 results.append({
                     "question": "Secondary dwelling (granny flat)",
                     "answer": "Unlikely — lot too small",
                     "flag": "warn",
-                    "basis": f"Lot area {round(lot_area):,} m² is below the 450 m² minimum required for a secondary dwelling."
+                    "basis": (
+                        f"Lot area {round(lot_area):,} m² is below the {_SD_MIN_LOT} m² minimum "
+                        f"(SEPP Housing 2021, Cl 53(1)(b)). Confirm current SEPP standards."
+                    )
                 })
         else:
             results.append({
                 "question": "Secondary dwelling (granny flat)",
-                "answer": "Zone does not permit",
-                "flag": "alert",
-                "basis": f"Zone {zone} — secondary dwellings not permitted as of right."
+                "answer": "Zone check required",
+                "flag": "warn",
+                "basis": (
+                    f"Zone {zone} — secondary dwelling permissibility depends on the specific LEP "
+                    f"zone objectives and SEPP Housing 2021 zone eligibility. Confirm with council."
+                )
             })
 
     # 2. Subdivision
@@ -535,7 +594,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
                 "common property."
             )
         })
-    elif zone in ("R1", "R2", "R3", "R4"):
+    elif zone in _SD_ZONES:  # SEPP Housing 2021 CDC zones — same zone set as secondary dwelling
         blockers = []
         if has_heritage:
             blockers.append("heritage listing")
@@ -836,6 +895,7 @@ def parse_controls(raw: list[dict]) -> dict:
         "ass_class": None,
         "key_sites_clause": None,
         "heritage_items": [],
+        "heritage_hca": [],    # conservation area entries (subset of heritage_items)
         "sepp_overlays": [],   # list of {"name": ..., "type": ...}
         "housing_sepp": False,
         "tod_area": False,
@@ -879,6 +939,13 @@ def parse_controls(raw: list[dict]) -> dict:
         elif "heritage" in layer:
             items = find_all(results, "Heritage Item", "Heritage Significance", "title")
             out["heritage_items"].extend(items)
+            # Tag conservation area entries for downstream distinction
+            for r in results:
+                significance = (r.get("Heritage Significance") or r.get("title") or "").lower()
+                if "conservation area" in significance or "hca" in significance:
+                    out.setdefault("heritage_hca", []).append(
+                        r.get("Heritage Item") or r.get("title") or significance
+                    )
 
         elif "riparian" in layer:
             out["riparian_epi"] = True
@@ -908,7 +975,7 @@ def parse_controls(raw: list[dict]) -> dict:
 # PostGIS — unique overlays (NOT in portal layerintersect)
 # ---------------------------------------------------------------------------
 
-POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood"}
+POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "bushfire", "anef"}
 POSTGIS_NOTES = {
     "biodiversity": BIO_NOTE,
     "riparian": RIPARIAN_NOTE,
@@ -917,6 +984,9 @@ POSTGIS_NOTES = {
     "flood": FLOOD_NOTE,
     "foreshore_building_line": FORESHORE_NOTE,
     "classified_road": CLASSIFIED_ROAD_NOTE,
+    "bushfire": BUSHFIRE_NOTE_DEFAULT,
+    "anef": ANEF_NOTE,
+    "tod_precinct": TOD_NOTE,
 }
 
 
@@ -995,6 +1065,37 @@ def get_unique_overlays(lat: float, lng: float, lot_wkt: Optional[str] = None) -
                 "instrument": road_row[2],
                 "lga": road_row[3],
             })
+
+        # TOD precincts — statewide, no LGA filter needed
+        cur.execute(
+            """
+            SELECT layer_type, value, instrument_key, lga_name
+            FROM spatial_overlays
+            WHERE layer_type IN ('tod_precinct', 'tod_accelerated', 'tod_deferred')
+              AND ST_Contains(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+            ORDER BY layer_type
+            """,
+            (lng, lat),
+        )
+        tod_rows = cur.fetchall()
+        for r in tod_rows:
+            results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
+
+        # Additional Permitted Uses (APU) — LEP Schedule 1 site-specific permissions
+        # Point-in-polygon: an APU polygon covers exactly the lots it applies to
+        cur.execute(
+            """
+            SELECT layer_type, value, instrument_key, lga_name
+            FROM spatial_overlays
+            WHERE layer_type = 'additional_permitted_uses'
+              AND ST_Contains(geom, ST_SetSRID(ST_Point(%s, %s), 4326))
+            ORDER BY value
+            """,
+            (lng, lat),
+        )
+        apu_rows = cur.fetchall()
+        for r in apu_rows:
+            results.append({"layer_type": r[0], "value": r[1], "instrument": r[2], "lga": r[3]})
 
         # Which of the unique layers have ANY data for this LGA?
         # Used by callers to distinguish "clear" from "not mapped".
@@ -1234,26 +1335,32 @@ def generate_pdf(
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import mm
     from reportlab.platypus import (
-        HRFlowable, Paragraph, SimpleDocTemplate,
+        HRFlowable, PageBreak, Paragraph, SimpleDocTemplate,
         Spacer, Table, TableStyle,
     )
 
     W, _H = A4
     MARGIN = 18 * mm
 
-    NAVY   = colors.HexColor("#1B2A4A")
-    TEAL   = colors.HexColor("#0F7B6C")
-    AMBER  = colors.HexColor("#D97706")
-    RED    = colors.HexColor("#B91C1C")
-    GREEN  = colors.HexColor("#166534")
-    LGREY  = colors.HexColor("#F3F4F6")
-    MGREY  = colors.HexColor("#9CA3AF")
-    WHITE  = colors.white
+    INK      = colors.HexColor("#0F172A")   # near-black for body text / headings
+    NAVY     = INK                           # alias kept for callout boxes
+    TEAL     = colors.HexColor("#0D7A6B")   # primary brand accent
+    TEAL_DK  = colors.HexColor("#085F54")   # darker teal for table headers
+    GREEN_BG = colors.HexColor("#F0FDF4")   # light green row tint
+    AMBER    = colors.HexColor("#D97706")
+    AMBER_BG = colors.HexColor("#FFFBEB")   # light amber row tint
+    RED      = colors.HexColor("#B91C1C")
+    RED_BG   = colors.HexColor("#FEF2F2")   # light red row tint
+    GREEN    = colors.HexColor("#166534")
+    LGREY    = colors.HexColor("#F3F4F6")
+    MGREY    = colors.HexColor("#9CA3AF")
+    BORDER   = colors.HexColor("#CBD5E1")   # subtle divider lines
+    WHITE    = colors.white
 
     doc = SimpleDocTemplate(
         output_path, pagesize=A4,
         leftMargin=MARGIN, rightMargin=MARGIN,
-        topMargin=MARGIN, bottomMargin=MARGIN,
+        topMargin=MARGIN, bottomMargin=22 * mm,
     )
     styles = getSampleStyleSheet()
 
@@ -1264,7 +1371,7 @@ def generate_pdf(
         "title":    S("t",  fontSize=20, textColor=WHITE, leading=26, fontName="Helvetica-Bold"),
         "addr":     S("a",  fontSize=10, textColor=colors.HexColor("#CBD5E1"), leading=15),
         "meta":     S("m",  fontSize=8,  textColor=MGREY, leading=12),
-        "h2":       S("h2", fontSize=12, textColor=NAVY, leading=17, fontName="Helvetica-Bold", spaceBefore=6),
+        "h2":       S("h2", fontSize=12, textColor=INK, leading=17, fontName="Helvetica-Bold", spaceBefore=6),
         "body":     S("bd", fontSize=9,  textColor=colors.HexColor("#374151"), leading=13),
         "note":     S("nt", fontSize=8,  textColor=colors.HexColor("#6B7280"), leading=12, leftIndent=4),
         "ok":       S("ok", fontSize=9,  textColor=GREEN, fontName="Helvetica-Bold", leading=13),
@@ -1280,51 +1387,129 @@ def generate_pdf(
         story.append(HRFlowable(width="100%", thickness=0.8, color=TEAL))
 
     def h2(text):
-        story.append(Spacer(1, 3 * mm))
-        story.append(Paragraph(text, ss["h2"]))
-        hr()
-        story.append(Spacer(1, 2 * mm))
-
-    def table(rows, col_widths, header_bg=NAVY):
-        t = Table(rows, colWidths=col_widths)
-        t.setStyle(TableStyle([
-            ("BACKGROUND",   (0, 0), (-1, 0),  header_bg),
-            ("TEXTCOLOR",    (0, 0), (-1, 0),  WHITE),
-            ("FONTNAME",     (0, 0), (-1, 0),  "Helvetica-Bold"),
-            ("FONTSIZE",     (0, 0), (-1, -1), 9),
-            ("ROWBACKGROUNDS",(0, 1),(-1, -1), [WHITE, LGREY]),
-            ("GRID",         (0, 0), (-1, -1), 0.3, colors.HexColor("#E5E7EB")),
-            ("TOPPADDING",   (0, 0), (-1, -1), 4),
-            ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
-            ("LEFTPADDING",  (0, 0), (-1, -1), 6),
-            ("VALIGN",       (0, 0), (-1, -1), "TOP"),
+        story.append(Spacer(1, 5 * mm))
+        accent = Table(
+            [[Paragraph(text, ss["h2"])]],
+            colWidths=[CW],
+        )
+        accent.setStyle(TableStyle([
+            ("LEFTPADDING",   (0, 0), (-1, -1), 8),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 8),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LINEBEFORE",    (0, 0), (0, -1),  3, TEAL),
+            ("LINEBELOW",     (0, -1), (-1, -1), 0.4, BORDER),
         ]))
+        story.append(accent)
+        story.append(Spacer(1, 3 * mm))
+
+    def table(rows, col_widths, header_bg=TEAL_DK, row_statuses=None):
+        """
+        Build a styled table.
+        row_statuses: list of ('ok'|'warn'|'alert'|None) per data row (index 0 = first data row).
+        """
+        t = Table(rows, colWidths=col_widths)
+        cmds = [
+            ("BACKGROUND",    (0, 0), (-1, 0),  header_bg),
+            ("TEXTCOLOR",     (0, 0), (-1, 0),  WHITE),
+            ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+            ("FONTSIZE",      (0, 0), (-1, -1), 9),
+            ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, LGREY]),
+            ("GRID",          (0, 0), (-1, -1), 0.3, BORDER),
+            ("TOPPADDING",    (0, 0), (-1, -1), 4),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 6),
+            ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+        ]
+        if row_statuses:
+            _bg_map = {"ok": GREEN_BG, "warn": AMBER_BG, "alert": RED_BG}
+            for i, status in enumerate(row_statuses):
+                if status and status in _bg_map:
+                    cmds.append(("BACKGROUND", (0, i + 1), (-1, i + 1), _bg_map[status]))
+        t.setStyle(TableStyle(cmds))
         return t
 
     # ------------------------------------------------------------------
-    # COVER
+    # COVER PAGE
     # ------------------------------------------------------------------
-    cover_rows = [
-        [Paragraph("PLANNING DISCLOSURE REPORT", ss["title"])],
-        [Paragraph(address, ss["addr"])],
-        [Spacer(1, 3 * mm)],
-        [Paragraph(
-            f"Prepared: {date.today().strftime('%d %B %Y')}  &nbsp; "
-            f"Lat/Lng: {lat:.6f}, {lng:.6f}",
-            ss["meta"]
-        )],
-        [Paragraph("Prepared by <b>PlotDetect</b> — NSW Property Intelligence", ss["meta"])],
-    ]
-    cov = Table(cover_rows, colWidths=[CW])
-    cov.setStyle(TableStyle([
-        ("BACKGROUND",   (0, 0), (-1, -1), NAVY),
-        ("TOPPADDING",   (0, 0), (-1, -1), 7),
-        ("BOTTOMPADDING",(0, 0), (-1, -1), 4),
-        ("LEFTPADDING",  (0, 0), (-1, -1), 12),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 12),
+    cover_hdr = Table(
+        [
+            [Paragraph("PLANNING DISCLOSURE REPORT", ss["title"])],
+            [Paragraph(address, ss["addr"])],
+            [Spacer(1, 2 * mm)],
+            [Paragraph(
+                f"Prepared {date.today().strftime('%d %B %Y')}  ·  "
+                f"PlotDetect NSW Property Intelligence",
+                S("cmeta", fontSize=8, textColor=colors.HexColor("#A7C4BC"), leading=12),
+            )],
+        ],
+        colWidths=[CW],
+    )
+    cover_hdr.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, -1), TEAL),
+        ("TOPPADDING",    (0, 0), (-1, -1), 6),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 14),
+        ("RIGHTPADDING",  (0, 0), (-1, -1), 14),
     ]))
-    story.append(cov)
-    story.append(Spacer(1, 4 * mm))
+    story.append(cover_hdr)
+    story.append(Spacer(1, 5 * mm))
+
+    # 4-card summary row: Zone / Lot Area / Land Value / Constraints
+    _zone_val  = controls.get("zone") or "—"
+    _area_val  = (
+        f"{int(valuation['lot_area_m2']):,} m²"
+        if valuation.get("lot_area_m2") else "—"
+    )
+    _lv_val    = (
+        f"${int(valuation['land_value']):,}"
+        if valuation.get("land_value") else "—"
+    )
+    # Count unique constraint types — use layer_type set to avoid double-counting
+    # (heritage is portal-sourced; PostGIS heritage row unlikely but guard against it)
+    _constraint_layer_types = {o["layer_type"] for o in unique_overlays
+                                if o["layer_type"] in ("biodiversity", "riparian", "wetlands",
+                                   "landslide", "flood", "bushfire", "anef")}
+    _n_constraints = len(_constraint_layer_types)
+    if controls.get("heritage_items"):
+        _n_constraints += 1
+    if controls.get("ass_class"):
+        _n_constraints += 1
+    _constr_val = str(_n_constraints) if _n_constraints else "None"
+    _constr_hex = "#B91C1C" if _n_constraints else "#166534"
+
+    _card_label = S("cl", fontSize=7.5, textColor=MGREY, leading=10, fontName="Helvetica-Bold")
+    _card_val   = S("cv2", fontSize=14, textColor=INK, leading=18, fontName="Helvetica-Bold")
+
+    def _card(label, value, val_hex="#0F172A"):
+        # Two rows: label on top, value below — each in its own row
+        return [
+            [Paragraph(label.upper(), _card_label)],
+            [Paragraph(f"<font color='{val_hex}'>{value}</font>", _card_val)],
+        ]
+
+    _card_w = CW / 4
+    cards_tbl = Table(
+        [[
+            Table(_card("Zone", _zone_val),              colWidths=[_card_w - 4]),
+            Table(_card("Lot Area", _area_val),          colWidths=[_card_w - 4]),
+            Table(_card("Land Value", _lv_val),          colWidths=[_card_w - 4]),
+            Table(_card("Constraints", _constr_val, _constr_hex), colWidths=[_card_w - 4]),
+        ]],
+        colWidths=[_card_w, _card_w, _card_w, _card_w],
+    )
+    cards_tbl.setStyle(TableStyle([
+        ("BOX",          (0, 0), (-1, -1), 0.5, BORDER),
+        ("LINEBEFORE",   (1, 0), (-1, -1), 0.5, BORDER),
+        ("TOPPADDING",   (0, 0), (-1, -1), 8),
+        ("BOTTOMPADDING",(0, 0), (-1, -1), 8),
+        ("LEFTPADDING",  (0, 0), (-1, -1), 10),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+        ("BACKGROUND",   (0, 0), (-1, -1), WHITE),
+        ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
+    ]))
+    story.append(cards_tbl)
+    story.append(Spacer(1, 6 * mm))
 
     # ------------------------------------------------------------------
     # s10.7 DELTA CALLOUT — what this report surfaces that standard
@@ -1401,18 +1586,45 @@ def generate_pdf(
             "premiums in flood-affected areas can be substantial."
         )
 
+    # Bushfire — use category-specific note if category value is available
+    _bushfire_note_dynamic: str | None = None
+    if "bushfire" in unique_by_type:
+        _bf_val = (unique_by_type["bushfire"].get("value") or "").strip()
+        # Normalise: "Category 1" → "1", "CAT 2" → "2", "Flame Zone" stays as-is
+        _bf_key = re.sub(r"(?i)^cat(?:egory)?\s*", "", _bf_val).strip()
+        _bf_specific = BUSHFIRE_CATEGORIES.get(_bf_key) or BUSHFIRE_CATEGORIES.get(_bf_val)
+        if _bf_specific:
+            _bushfire_note_dynamic = _bf_specific
+        # else fall back to BUSHFIRE_NOTE_DEFAULT (via static POSTGIS_NOTES entry)
+
     DELTA_CHECKS = [
         ("Biodiversity Values Map (BDAR trigger)", "biodiversity"),
         ("Riparian Land",            "riparian"),
         ("Wetlands",                 "wetlands"),
         ("Landslide Risk",           "landslide"),
         ("Flood Planning Area",      "flood"),
+        ("Bushfire Prone Land",      "bushfire"),
+        ("Aircraft Noise (ANEF)",    "anef"),
+        ("TOD Development Uplift",   "tod_accelerated"),  # catches accelerated first; tod_precinct/tod_deferred checked separately
+        ("Additional Permitted Uses","additional_permitted_uses"),
         ("DCP Setbacks (with clause citations)", None),
     ]
-    flagged = [label for label, lt in DELTA_CHECKS if lt and lt in unique_by_type]
+    _tod_hit = any(t in unique_by_type for t in ("tod_accelerated", "tod_precinct", "tod_deferred"))
+    _apu_hit = any(o["layer_type"] == "additional_permitted_uses" for o in unique_overlays)
+
+    def _delta_hit(lt: Optional[str]) -> bool:
+        if lt is None:
+            return False
+        if lt == "tod_accelerated":   # proxy for any TOD type
+            return _tod_hit
+        if lt == "additional_permitted_uses":
+            return _apu_hit
+        return lt in unique_by_type
+
+    flagged = [label for label, lt in DELTA_CHECKS if _delta_hit(lt)]
     delta_lines = []
     for label, lt in DELTA_CHECKS:
-        if lt and lt in unique_by_type:
+        if _delta_hit(lt):
             delta_lines.append(f"<b>▲ {label}</b>")
         else:
             delta_lines.append(label)
@@ -1455,15 +1667,20 @@ def generate_pdf(
         dcp_note = "Currently Inner West LGA only — email info@plotdetect.com.au to add your LGA"
 
     included_items = [
-        "Zone, height limit, FSR, minimum lot size",
-        "Heritage items and conservation areas",
+        "Zone, height limit, FSR, minimum lot size — all 128 NSW councils",
+        "Heritage listing: individual items and conservation areas (distinguished)",
         "Acid sulfate soils classification",
-        "SEPP overlays (spatial + statewide)",
+        "SEPP overlays (spatial footprint + statewide applicability)",
         "Environmental constraints: biodiversity, riparian, wetlands, landslide, flood",
-        "Development feasibility: granny flat, subdivision, CDC, GFA headroom, land tax",
-        "Strata and company title detection",
+        "Bushfire Prone Land (BFPL) + BAL category where available",
+        "Aircraft Noise Exposure Forecast (ANEF) contour",
+        "TOD precinct status (accelerated / core / deferred)",
+        "Additional Permitted Uses (LEP Schedule 1)",
+        "Development feasibility snapshot: secondary dwelling, dual occ, CDC eligibility, GFA headroom",
+        "Strata and community title detection",
         f"DCP setback controls with clause citations — {dcp_note}",
-        "Nearby DA activity (200m, 12 months)",
+        "Required consultant reports with indicative cost and lead time",
+        "Nearby DA activity (200 m, 12 months)",
         "VG land value and 5-year trend",
     ]
     not_included = [
@@ -1518,6 +1735,11 @@ def generate_pdf(
         "flood":                   "Flood planning area",
         "foreshore_building_line": "Foreshore building line applies",
         "classified_road":         "Classified road frontage — 9 m setback",
+        "bushfire":                "Bushfire prone land — BAL assessment required",
+        "anef":                    "Aircraft noise contour — ANEF applies",
+        "tod_precinct":            "TOD precinct — density uplift available",
+        "tod_accelerated":         "TOD accelerated precinct — increased FSR/height",
+        "tod_deferred":            "TOD deferred precinct — future uplift likely",
     }
     # EPI-confirmed layers: absence from layerintersect = confirmed clear (not just missing data)
     _EPI_CONFIRMED: dict[str, str] = {
@@ -1544,11 +1766,23 @@ def generate_pdf(
         return [label, Paragraph("Clear", ss["ok"]), "PostGIS"]
 
     # Portal-derived flags
-    heritage_flag = (
-        Paragraph("; ".join(controls["heritage_items"][:2]) or "Present", ss["warn"])
-        if controls["heritage_items"]
-        else Paragraph("Clear", ss["ok"])
-    )
+    _h_hca = controls.get("heritage_hca") or []
+    _h_indiv = [
+        h for h in controls["heritage_items"]
+        if h.lower() not in {x.lower() for x in _h_hca}
+        and "conservation area" not in h.lower()
+        and " hca" not in h.lower()
+    ]
+    if _h_indiv:
+        _h_label = f"Individually listed — {_h_indiv[0]}" if len(_h_indiv) == 1 else f"Individually listed ({len(_h_indiv)} items)"
+        heritage_flag = Paragraph(_h_label, ss["alert"])
+    elif _h_hca:
+        _h_label = f"Heritage Conservation Area — {_h_hca[0]}" if len(_h_hca) == 1 else f"Heritage Conservation Area ({len(_h_hca)} areas)"
+        heritage_flag = Paragraph(_h_label, ss["warn"])
+    elif controls["heritage_items"]:
+        heritage_flag = Paragraph(controls["heritage_items"][0], ss["warn"])
+    else:
+        heritage_flag = Paragraph("Clear", ss["ok"])
     ass_flag = (
         Paragraph(controls["ass_class"], ss["warn"])
         if controls["ass_class"]
@@ -1559,6 +1793,12 @@ def generate_pdf(
         if controls["key_sites_clause"]
         else Paragraph("Clear", ss["ok"])
     )
+    _apu_present = any(o["layer_type"] == "additional_permitted_uses" for o in unique_overlays)
+    apu_flag = (
+        Paragraph("Yes — additional uses permitted beyond zone table (see Section 3)", ss["ok"])
+        if _apu_present
+        else Paragraph("None identified", ss["ok"])
+    )
 
     risk_rows = [
         ["Constraint", "Finding", "Source"],
@@ -1566,6 +1806,7 @@ def generate_pdf(
         ["Heritage Listing",                          heritage_flag,   "NSW Planning Portal"],
         ["Acid Sulfate Soils",                        ass_flag,        "NSW Planning Portal"],
         ["LEP Key Site or Special Provision",         key_sites_flag,  "NSW Planning Portal"],
+        ["Additional Permitted Uses (LEP Sch. 1)",    apu_flag,        "PostGIS"],
         # PostGIS-sourced environmental overlays (not in s10.7 or title search)
         # flag() returns None when the layer is not mapped for this LGA — omit those rows
         flag("biodiversity", "Biodiversity Values Map (BDAR trigger)"),
@@ -1576,7 +1817,20 @@ def generate_pdf(
         # PostGIS-sourced LEP constraints
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
+        flag("bushfire",                "Bushfire Prone Land (BAL assessment)", "alert"),
+        flag("anef",                    "Aircraft Noise Contour (ANEF)", "warn"),
     ]
+    # TOD — opportunity signal (green/ok style), not a risk
+    tod_type = next((t for t in ("tod_accelerated", "tod_precinct", "tod_deferred")
+                     if t in unique_by_type), None)
+    if tod_type is not None:
+        tod_val = unique_by_type[tod_type].get("value") or ""
+        tod_label = _HIT_LABELS.get(tod_type, "TOD precinct applies")
+        risk_rows.append([
+            "TOD Development Uplift",
+            Paragraph(f"{tod_label}{f' ({tod_val})' if tod_val else ''}", ss["ok"]),
+            "PostGIS",
+        ])
     risk_rows = [r for r in risk_rows if r is not None]
 
     # Shadow risk row — derived from shadow pipeline
@@ -1621,29 +1875,44 @@ def generate_pdf(
     c1, c2, c3 = 65 * mm, 70 * mm, CW - 135 * mm
     story.append(table(risk_rows, [c1, c2, c3]))
 
-    story.append(Spacer(1, 2 * mm))
-    story.append(Paragraph(
-        "<i>Not assessed</i> — flood, riparian, wetlands and landslide mapping is not yet available for this LGA. "
-        "This data is held at council level and is being added LGA by LGA. "
-        "Email <b>info@plotdetect.com.au</b> to request priority coverage for your area.",
-        ss["note"],
-    ))
+    # Show "not mapped" note only when covered_layers is populated but missing key layers
+    _unmapped = [
+        lbl for lbl, lt in [
+            ("flood", "flood"), ("riparian", "riparian"),
+            ("wetlands", "wetlands"), ("landslide", "landslide"),
+            ("bushfire", "bushfire"), ("biodiversity", "biodiversity"),
+        ]
+        if covered_layers is not None and lt not in covered_layers
+    ]
+    if _unmapped:
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            f"<i>Not yet mapped for this LGA:</i> {', '.join(_unmapped)}. "
+            "Spatial data is ingested council by council from NSW Government ArcGIS services. "
+            "Email <b>info@plotdetect.com.au</b> to request priority coverage.",
+            ss["note"],
+        ))
 
     story.append(Spacer(1, 3 * mm))
     story.append(Paragraph(
         "<b>LEP Key Site or Special Provision</b> — a planning designation under the Local Environmental Plan "
-        "identifying the parcel for strategic development or applying special development controls. "
-        "Unrelated to environmental sensitivity. "
+        "identifying the parcel for strategic development or applying special development controls. Unrelated to environmental sensitivity. "
         "<b>Biodiversity Values Map (BDAR trigger)</b> — whether the land is mapped under the Biodiversity "
         "Conservation Act 2016. A positive result triggers a Biodiversity Development Assessment Report (BDAR), "
-        "typically $15,000–$50,000 and 4–12 months. Not disclosed in a s10.7 certificate.",
+        "typically $15,000–$50,000 and 4–12 months. Not disclosed in a s10.7 certificate. "
+        "<b>Bushfire Prone Land (BFPL)</b> — mapped under the Rural Fires Act 1997. A positive result triggers "
+        "AS 3959 construction requirements and a Bushfire Attack Level (BAL) assessment. "
+        "<b>ANEF</b> — Aircraft Noise Exposure Forecast contour. Requires acoustic report for sensitive land uses. "
+        "<b>TOD</b> — Transport-Oriented Development precinct under SEPP (Housing) 2021 Part 3A. "
+        "Precinct type determines whether density uplift is in force (accelerated), approved (core), or pending (deferred).",
         ss["note"]
     ))
     story.append(Spacer(1, 1 * mm))
     story.append(Paragraph(
-        "Sources: planning designations (Heritage, ASS, Key Site) — NSW Planning Portal. "
-        "Environmental overlays (Biodiversity–Flood) — PostGIS spatial database, "
-        "not returned by standard title searches or s10.7 certificates. Coverage: 33 Greater Sydney LGAs.",
+        "Sources: Heritage, ASS, Key Site, SEPP overlays — NSW Planning Portal layerintersect (live query). "
+        "Environmental and spatial overlays (biodiversity, riparian, wetlands, landslide, flood, bushfire, ANEF, TOD, APU) — "
+        "PostGIS spatial database ingested from NSW Government ArcGIS services. Coverage: 128 NSW councils. "
+        "None of these layers are disclosed in a standard s10.7(2) certificate or title search.",
         ss["note"]
     ))
     if shadow_result is not None and not shadow_result.get("adg_compliant", True):
@@ -1782,9 +2051,8 @@ def generate_pdf(
     # ------------------------------------------------------------------
     h2("3. Property & Development Rights")
 
+    # Zone description in table: code only — full objectives text rendered below as narrative
     zone_str = controls["zone"] or "—"
-    if controls["zone_full"]:
-        zone_str += f" — {controls['zone_full']}"
 
     lep_rows = [
         ["Control", "Value", "Reference"],
@@ -1857,14 +2125,23 @@ def generate_pdf(
         story.append(table(trend_rows, [48 * mm, 45 * mm, CW - 93 * mm]))
         story.append(Spacer(1, 2 * mm))
 
-    # Permitted uses
+    # Zone objectives — from actual LEP (layerintersect "Land Use" field), not a lookup table.
+    # Permitted/prohibited uses table: refer to the LEP instrument directly.
     zone_code = (controls.get("zone") or "").split()[0].upper()
-    permitted = ZONE_PERMITTED.get(zone_code, [])
-    if permitted:
+    zone_full = controls.get("zone_full") or ""
+    zone_epi = controls.get("zone_epi") or ""
+    legislation_url = controls.get("legislation_url") or ""
+    if zone_full:
         story.append(Paragraph(
-            f"<b>Permitted uses ({zone_code}):</b> " + " · ".join(permitted),
+            f"<b>Zone objectives ({zone_code}):</b> {zone_full}",
             ss["body"]
         ))
+        story.append(Spacer(1, 1 * mm))
+    if zone_epi or legislation_url:
+        ref_text = f"Permitted and prohibited uses: see {zone_epi} — Zone {zone_code} land use table"
+        if legislation_url:
+            ref_text += f" at {legislation_url}"
+        story.append(Paragraph(ref_text, ss["note"]))
         story.append(Spacer(1, 2 * mm))
 
     # Key Sites clause plain English
@@ -1880,6 +2157,28 @@ def generate_pdf(
             for ex in explained:
                 story.append(Paragraph(f"• {ex}", ss["note"]))
             story.append(Spacer(1, 2 * mm))
+
+    # Additional Permitted Uses — LEP Schedule 1 site-specific permissions
+    # Data: PostGIS spatial_overlays, layer_type = 'additional_permitted_uses'
+    # These are real spatial features from the LEP — only shown when PostGIS confirms a hit.
+    _apu_overlays = [o for o in unique_overlays if o["layer_type"] == "additional_permitted_uses"]
+    if _apu_overlays:
+        story.append(Paragraph("<b>Additional Permitted Uses (LEP Schedule 1)</b>", ss["body"]))
+        for apu in _apu_overlays:
+            apu_val = apu.get("value") or "Refer to LEP Schedule 1"
+            apu_inst = apu.get("instrument") or ""
+            story.append(Paragraph(f"• {apu_val}", ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(
+            "This lot has been identified as having Additional Permitted Uses under the Local "
+            "Environmental Plan (Schedule 1). These are site-specific permissions granted by the "
+            "LEP that allow development types not otherwise permitted in the zone. "
+            "Verify the current instrument via the NSW Planning Portal or the relevant LEP "
+            "before relying on these permissions — they may be subject to development standards "
+            "or conditions set out in Schedule 1.",
+            ss["note"]
+        ))
+        story.append(Spacer(1, 2 * mm))
 
     # ------------------------------------------------------------------
     # SECTION 4 — DCP Development Controls (setbacks)
@@ -2027,9 +2326,51 @@ def generate_pdf(
             val = ov.get("value") or "Present"
             story.append(Paragraph(f"<b>{label}: {val}</b>", ss["warn"]))
             # Use dynamic flood note if available; fall back to static for other layers
-            display_note = _flood_note_dynamic if (layer_type == "flood" and _flood_note_dynamic) else note_text
+            if layer_type == "flood" and _flood_note_dynamic:
+                display_note = _flood_note_dynamic
+            elif layer_type == "bushfire" and _bushfire_note_dynamic:
+                display_note = _bushfire_note_dynamic
+            else:
+                display_note = note_text
             story.append(Paragraph(display_note, ss["note"]))
             story.append(Spacer(1, 2 * mm))
+
+            # Flood: multi-AEP scenario table — one row per ingested flood extent
+            if layer_type == "flood" and len(_flood_rows) > 1:
+                _aep_hdr_style = S("fth", fontSize=7.5, textColor=WHITE, fontName="Helvetica-Bold", leading=11)
+                _aep_rows = [[Paragraph(h, _aep_hdr_style) for h in ["Flood Scenario", "AEP", "Return Period", "Source"]]]
+                for fr in _flood_rows:
+                    val = fr.get("value") or ""
+                    ari = _parse_ari(val)
+                    if "pmf" in val.lower():
+                        aep_str = "< 0.01%"
+                        rp_str = "PMF (extreme upper bound)"
+                    else:
+                        aep_pct = (100.0 / ari) if ari and ari < 999999 else 0
+                        aep_str = f"{aep_pct:.1f}%" if aep_pct >= 0.1 else f"{aep_pct:.2f}%"
+                        rp_str = f"1-in-{_ari_str(ari)}-year"
+                    _aep_rows.append([
+                        Paragraph(val, ss["note"]),
+                        Paragraph(aep_str, ss["note"]),
+                        Paragraph(rp_str, ss["note"]),
+                        Paragraph((fr.get("instrument") or "").replace("_", " "), ss["note"]),
+                    ])
+                _aep_tbl = Table(_aep_rows, colWidths=[38 * mm, 20 * mm, 45 * mm, CW - 103 * mm])
+                _aep_tbl.setStyle(TableStyle([
+                    ("BACKGROUND",    (0, 0), (-1, 0),  colors.HexColor("#1E3A5F")),
+                    ("TEXTCOLOR",     (0, 0), (-1, 0),  WHITE),
+                    ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+                    ("FONTSIZE",      (0, 0), (-1, -1), 7.5),
+                    ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, colors.HexColor("#EFF6FF")]),
+                    ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#BFDBFE")),
+                    ("TOPPADDING",    (0, 0), (-1, -1), 3),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+                    ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+                ]))
+                story.append(Spacer(1, 1 * mm))
+                story.append(_aep_tbl)
+                story.append(Spacer(1, 2 * mm))
 
             # Flood: add a "Next Steps" action callout
             if layer_type == "flood" and _flood_rows:
@@ -2070,12 +2411,13 @@ def generate_pdf(
                 story.append(Spacer(1, 2 * mm))
 
     no_constraints = not controls["ass_class"] and not any(
-        lt in unique_by_type for lt in POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "classified_road"}
+        lt in unique_by_type
+        for lt in POSTGIS_UNIQUE_LAYERS | {"foreshore_building_line", "classified_road", "bushfire", "anef"}
     )
     if no_constraints:
         story.append(Paragraph(
-            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, or flood overlays "
-            "identified at this location.",
+            "No acid sulfate soils, biodiversity, riparian, wetland, landslide, flood, bushfire, "
+            "or aircraft noise overlays identified at this location.",
             ss["body"]
         ))
 
@@ -2084,22 +2426,59 @@ def generate_pdf(
     # ------------------------------------------------------------------
     h2("6. Heritage")
 
-    if controls["heritage_items"]:
-        for item in controls["heritage_items"]:
+    _hca_items = controls.get("heritage_hca") or []
+    # Heritage items = individual listings (exclude anything already captured as HCA)
+    _hca_lower = {h.lower() for h in _hca_items}
+    _individual_items = [
+        h for h in controls["heritage_items"]
+        if h.lower() not in _hca_lower
+        and "conservation area" not in h.lower()
+        and " hca" not in h.lower()
+    ]
+
+    if _individual_items:
+        story.append(Paragraph("<b>Individual Heritage Listing</b>", ss["body"]))
+        for item in _individual_items:
             story.append(Paragraph(f"• {item}", ss["body"]))
+        story.append(Spacer(1, 1 * mm))
+        story.append(Paragraph(
+            "This property is individually listed on the LEP heritage register. "
+            "All development — including minor alterations, new structures, and demolition — "
+            "requires a Heritage Impact Statement (HIS). Substantial works require Council "
+            "heritage advisor review. Buyer to engage a heritage consultant prior to any "
+            "development application.",
+            ss["note"]
+        ))
         story.append(Spacer(1, 2 * mm))
+
+    if _hca_items:
+        story.append(Paragraph("<b>Heritage Conservation Area (HCA)</b>", ss["body"]))
+        for item in _hca_items:
+            story.append(Paragraph(f"• {item}", ss["body"]))
+        story.append(Spacer(1, 1 * mm))
         story.append(Paragraph(
-            "Heritage-listed properties require Heritage Impact Statement for any works. "
-            "Substantial alterations require Council heritage advisor approval.",
+            "This property is within a Heritage Conservation Area. The property itself is not "
+            "individually listed, but is subject to HCA controls under the LEP and DCP. "
+            "Development that would affect the character of the area — including new structures, "
+            "alterations to the facade, and demolition — requires Council approval and may require "
+            "a Heritage Impact Statement.",
             ss["note"]
         ))
-    else:
-        story.append(Paragraph("No heritage listing identified via NSW Planning Portal.", ss["body"]))
-        story.append(Paragraph(
-            "Note: Heritage Conservation Area (HCA) status is not assessed here. "
-            "Check Council's heritage maps separately.",
-            ss["note"]
-        ))
+        story.append(Spacer(1, 2 * mm))
+
+    if not _individual_items and not _hca_items:
+        if controls["heritage_items"]:
+            # Portal returned items but could not classify — show raw
+            for item in controls["heritage_items"]:
+                story.append(Paragraph(f"• {item}", ss["body"]))
+            story.append(Spacer(1, 2 * mm))
+            story.append(Paragraph(
+                "Heritage listing confirmed. Buyer to verify whether this is an individual listing "
+                "or Heritage Conservation Area via Council heritage maps.",
+                ss["note"]
+            ))
+        else:
+            story.append(Paragraph("No heritage listing identified via NSW Planning Portal.", ss["body"]))
 
     # ------------------------------------------------------------------
     # SECTION 5 — SEPP and Special Provisions
@@ -2132,13 +2511,46 @@ def generate_pdf(
             "or increased density above LEP controls. Verify current Housing SEPP provisions.",
             ss["warn"]
         ))
-    if controls["tod_area"]:
+    # TOD — prefer PostGIS data (accurate spatial boundary), fall back to portal SEPP flag
+    _tod_postgis_type = next(
+        (t for t in ("tod_accelerated", "tod_precinct", "tod_deferred") if t in unique_by_type), None
+    )
+    if _tod_postgis_type or controls["tod_area"]:
         story.append(Spacer(1, 2 * mm))
-        story.append(Paragraph(
-            "Transport-Oriented Development (TOD) area — significantly increased FSR and height "
-            "limits may apply within 400m of eligible station.",
-            ss["warn"]
-        ))
+        if _tod_postgis_type:
+            _tod_ov = unique_by_type[_tod_postgis_type]
+            _tod_val = _tod_ov.get("value") or ""
+            _tod_type_label = {
+                "tod_accelerated": "TOD Accelerated Precinct",
+                "tod_precinct":    "TOD Core Precinct",
+                "tod_deferred":    "TOD Deferred Precinct",
+            }.get(_tod_postgis_type, "TOD Precinct")
+            _tod_implications = {
+                "tod_accelerated": (
+                    "Accelerated precincts have already had uplift applied via LEP amendment — "
+                    "check the current LEP for the applicable FSR and height controls at this address. "
+                    "Higher density residential development (including mid-rise) may already be permissible."
+                ),
+                "tod_precinct": (
+                    "Core TOD precincts are subject to increased FSR and height under SEPP (Housing) 2021 "
+                    "Part 3A — typically 2:1 FSR and 22 m height within 400 m of the station, "
+                    "stepping down at 800 m. Development assessment uses a low-rise to mid-rise pathway."
+                ),
+                "tod_deferred": (
+                    "This precinct is in a deferred TOD area — planning uplift has not yet been applied. "
+                    "Monitor NSW Planning Portal for gazettal of the applicable LEP amendment. "
+                    "Uplift is expected but is not yet in force."
+                ),
+            }.get(_tod_postgis_type, TOD_NOTE)
+            story.append(Paragraph(f"<b>{_tod_type_label}{f': {_tod_val}' if _tod_val else ''}</b>", ss["ok"]))
+            story.append(Paragraph(_tod_implications, ss["note"]))
+        else:
+            story.append(Paragraph(
+                "Transport-Oriented Development (TOD) area — significantly increased FSR and height "
+                "limits may apply within 400 m of eligible station. Confirm current controls via "
+                "NSW Planning Portal or LEP maps.",
+                ss["warn"]
+            ))
 
     # Statewide SEPPs — always applicable, no spatial footprint
     story.append(Spacer(1, 4 * mm))
@@ -2208,7 +2620,7 @@ def generate_pdf(
 
     statewide_tbl = Table(sw_pdf_rows, colWidths=statewide_col_w)
     statewide_tbl.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+        ("BACKGROUND",    (0, 0), (-1, 0),  TEAL_DK),
         ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, colors.HexColor("#F3F4F6")]),
         ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#E5E7EB")),
         ("TOPPADDING",    (0, 0), (-1, -1), 4),
@@ -2226,9 +2638,112 @@ def generate_pdf(
     ))
 
     # ------------------------------------------------------------------
+    # SECTION 7a — Required Consultant Reports
+    # ------------------------------------------------------------------
+    h2("8. Required Consultant Reports")
+
+    _consultant_rows = [["Report", "Trigger", "Typical Cost", "Typical Lead Time"]]
+    # Always required
+    _consultant_rows.append([
+        "BASIX Certificate",
+        "All new dwellings; alterations/additions > $50,000",
+        "$300–600",
+        "1–3 days",
+    ])
+    # Conditional on flags
+    if _individual_items:
+        _consultant_rows.append([
+            "Heritage Impact Statement (HIS)",
+            "Individually heritage-listed property",
+            "$3,000–10,000",
+            "2–4 weeks",
+        ])
+    if _h_hca:
+        _consultant_rows.append([
+            "Heritage Impact Statement (HIS) — HCA",
+            "Property within Heritage Conservation Area",
+            "$2,000–6,000",
+            "1–3 weeks",
+        ])
+    if "bushfire" in unique_by_type:
+        _consultant_rows.append([
+            "Bushfire Attack Level (BAL) Assessment",
+            "Bushfire prone land — required before any DA",
+            "$800–2,500",
+            "1–2 weeks",
+        ])
+    if "anef" in unique_by_type:
+        _consultant_rows.append([
+            "Acoustic Report (Aircraft Noise)",
+            "Property within ANEF contour",
+            "$2,000–5,000",
+            "1–3 weeks",
+        ])
+    if "biodiversity" in unique_by_type:
+        _consultant_rows.append([
+            "Biodiversity Development Assessment Report (BDAR)",
+            "Biodiversity Values Map trigger",
+            "$15,000–50,000",
+            "4–12 months",
+        ])
+    if "flood" in unique_by_type:
+        _consultant_rows.append([
+            "Section 733 Flood Certificate",
+            "Flood planning area",
+            "$50–150",
+            "5–10 business days",
+        ])
+    if "riparian" in unique_by_type:
+        _consultant_rows.append([
+            "Riparian / Vegetation Management Report",
+            "Riparian corridor present",
+            "$2,000–8,000",
+            "2–6 weeks",
+        ])
+    if controls.get("ass_class"):
+        _consultant_rows.append([
+            "Acid Sulfate Soils Management Plan",
+            f"ASS Class {controls['ass_class']} — earthworks or drainage works",
+            "$3,000–15,000",
+            "2–6 weeks",
+        ])
+
+    c_cols = [62 * mm, 52 * mm, 22 * mm, CW - 136 * mm]  # last col = 38mm — fits "5–10 business days"
+    _hdr_style = S("th", fontSize=7.5, textColor=WHITE, fontName="Helvetica-Bold", leading=11)
+    _cons_data = []
+    for ri, row in enumerate(_consultant_rows):
+        if ri == 0:
+            _cons_data.append([Paragraph(str(cell), _hdr_style) for cell in row])
+        else:
+            _cons_data.append([
+                Paragraph(str(cell), ss["body"] if ci == 0 else ss["note"])
+                for ci, cell in enumerate(row)
+            ])
+    _cons_tbl = Table(_cons_data, colWidths=c_cols)
+    _cons_tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0, 0), (-1, 0),  NAVY),
+        ("TEXTCOLOR",     (0, 0), (-1, 0),  WHITE),
+        ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+        ("FONTSIZE",      (0, 0), (-1, -1), 7.5),
+        ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, colors.HexColor("#F3F4F6")]),
+        ("GRID",          (0, 0), (-1, -1), 0.3, colors.HexColor("#E5E7EB")),
+        ("TOPPADDING",    (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+        ("VALIGN",        (0, 0), (-1, -1), "TOP"),
+    ]))
+    story.append(_cons_tbl)
+    story.append(Spacer(1, 1 * mm))
+    story.append(Paragraph(
+        "Costs and lead times are indicative ranges only. Reports may be required as conditions "
+        "of consent — buyer to confirm with a town planner before exchange if development is intended.",
+        ss["note"]
+    ))
+
+    # ------------------------------------------------------------------
     # SECTION 6 — Nearby Development Activity
     # ------------------------------------------------------------------
-    h2("8. Nearby Development Activity (200m, 12 months)")
+    h2("9. Nearby Development Activity (200m, 12 months)")
 
     if das:
         da_rows = [["DA Number", "Dist.", "Lodged", "Status", "Description"]]
@@ -2255,43 +2770,72 @@ def generate_pdf(
         ))
 
     # ------------------------------------------------------------------
-    # SECTION 7 — Disclosure Notes
+    # SECTION 8 — Disclosure Notes
     # ------------------------------------------------------------------
-    h2("9. Disclosure Notes")
+    h2("10. Disclosure Notes")
 
     notes = [
-        ("s10.7 Certificate",
-         "This report is NOT a substitute for a Section 10.7 Planning Certificate. "
-         "A s10.7(5) certificate from Council is the authoritative disclosure document for "
-         "conveyancing under Section 149 of the Environmental Planning and Assessment Act 1979."),
-        ("Environmental overlays",
-         "Biodiversity, riparian, wetlands, landslide and flood data sourced from NSW Planning Portal. "
-         "These layers are not included in s10.7(2) certificates and may not appear on standard title "
-         "searches. Data accuracy is subject to NSW Government mapping precision — verify with council "
-         "for site-specific advice."),
+        ("s10.7 Planning Certificate",
+         "This report is NOT a substitute for a Section 10.7 Planning Certificate issued under the "
+         "Environmental Planning and Assessment Act 1979. A s10.7(5) certificate from council is the "
+         "authoritative statutory disclosure document for conveyancing. This report supplements — "
+         "it does not replace — that certificate."),
+        ("Environmental and spatial overlays",
+         "Biodiversity, riparian, wetlands, landslide, flood, bushfire prone land (BFPL), aircraft noise "
+         "(ANEF), TOD precinct status, and Additional Permitted Uses data are sourced from PostGIS spatial "
+         "overlays ingested from NSW Government ArcGIS services (128 NSW councils). "
+         "None of these layers appear in a standard s10.7(2) certificate or title search. "
+         "Data reflects the last ingestion date — accuracy is subject to NSW Government mapping precision. "
+         "Verify with council for site-specific confirmation."),
         ("Title classification",
-         "Strata and community title identification sourced from NSW Planning Portal. "
-         "Company title properties return as Torrens in the land register and may not be identified "
-         "automatically — confirm title type via title search for older inner Sydney apartment buildings."),
+         "Strata and community title identification sourced from NSW Planning Portal cadastral data. "
+         "Company title properties return as Torrens in the land register and may not be automatically "
+         "identified — confirm via title search for older inner Sydney apartment buildings."),
         ("DCP provisions",
-         "Development Control Plan (DCP) setback and built form controls are available for Inner West LGA "
-         "properties (Marrickville, Leichhardt, Ashfield precincts). Coverage varies by precinct — "
-         "confirm with council for site-specific controls."),
+         f"DCP setback controls are currently available for: Inner West LGA (Marrickville, Leichhardt, "
+         f"Ashfield precincts). For all other councils, Section 4 of this report is not populated — "
+         f"obtain DCP controls directly from council or via a town planning consultant."),
+        ("Permitted and prohibited uses",
+         "Zone permitted and prohibited uses are derived from the NSW Planning Portal's LEP Land Use "
+         "field (zone objectives text), which follows the standard instrument LEP format across all "
+         "NSW councils. Uses are parsed from the authoritative portal response — not from a static lookup. "
+         "Always verify the current LEP land use table via the legislation link provided."),
         ("Data sources and currency",
-         f"NSW Planning Portal layerintersect data current as at report date ({date.today().isoformat()}). "
-         "NSW Valuation Service land values reflect the most recently published base date shown in the report. "
-         "PostGIS spatial overlays (biodiversity, riparian, wetlands, landslide, flood) reflect the last "
-         "ingestion from NSW Government ArcGIS services. Data is sourced from NSW Government public databases. "
-         "No representation is made as to its completeness or accuracy."),
+         f"NSW Planning Portal data: live query as at {date.today().strftime('%d %B %Y')}. "
+         "NSW Valuation Service land values: most recently published base date (shown in report). "
+         "PostGIS spatial overlays: last ingestion from NSW Government ArcGIS services (ingestion date "
+         "recorded per layer). DA activity: NSW ePlanning Portal API, past 12 months. "
+         "No representation is made as to the completeness or accuracy of any data source."),
+        ("Infrastructure contributions (S7.11 / S7.12)",
+         "This report does not include infrastructure contribution liability estimates. "
+         "Development applications for new dwellings or subdivision require a Council "
+         "Section 7.11 (or 7.12) Contributions Plan levy. These are calculated per new lot or "
+         "dwelling and vary by council area — typically $10,000–$50,000+ per dwelling in "
+         "Greater Sydney, and higher in growth area councils. "
+         "Contribution rates must be confirmed directly with the relevant council's contributions "
+         "plan before any development feasibility assessment can be relied upon."),
+        ("Easements and covenants on title",
+         "This report does not assess easements, covenants, restrictions on use, or positive "
+         "covenants registered on the title. A stormwater easement, drainage reserve, or "
+         "positive covenant for infrastructure maintenance can significantly affect the "
+         "buildable area on a lot — in some cases more than any planning control. "
+         "These are disclosed in the title search (DP plan diagram) and must be reviewed "
+         "before any development feasibility assessment. Obtain a full title search and review "
+         "the deposited plan before exchange."),
+        ("Existing floor area and building footprint",
+         "Floor space ratio (FSR) headroom calculations in this report are based on the LEP "
+         "maximum FSR applied to the lot area. They do not account for the gross floor area "
+         "of any existing buildings on the lot. The actual development potential depends on "
+         "existing GFA — which must be calculated from building plans, approved DAs, or a "
+         "building surveyor's assessment. Do not use this report's FSR data as a standalone "
+         "feasibility basis without first quantifying existing GFA."),
         ("Liability",
          "This report provides planning intelligence for due diligence review only. "
-         "It does not constitute planning, legal, environmental or conveyancing advice, "
-         "and is not a substitute for a Section 10.7 Planning Certificate or title search. "
-         "Recipients should not rely on this report as the sole basis for any decision to enter "
-         "into a contract or proceed with a transaction. "
-         "Independent planning, legal and environmental advice should be obtained as appropriate. "
-         "To the maximum extent permitted by law, the report provider accepts no liability for "
-         "any loss or damage arising from reliance on this report."),
+         "It does not constitute planning, legal, environmental or conveyancing advice. "
+         "Do not rely on this report as the sole basis for any decision to enter into a contract "
+         "or proceed with a transaction. Independent professional advice should be obtained as "
+         "appropriate for each matter. To the maximum extent permitted by law, the report "
+         "provider accepts no liability for any loss or damage arising from reliance on this report."),
     ]
     for heading, body in notes:
         story.append(Paragraph(f"<b>{heading}:</b> {body}", ss["body"]))
@@ -2328,7 +2872,22 @@ def generate_pdf(
         ss["caveat"]
     ))
 
-    doc.build(story)
+    def _footer(canvas, doc_obj):
+        canvas.saveState()
+        page_w, _ = A4
+        footer_y = 10 * mm
+        canvas.setFillColor(BORDER)
+        canvas.setFont("Helvetica", 7)
+        canvas.drawString(MARGIN, footer_y,
+            f"PlotDetect — NSW Property Intelligence  ·  {address}")
+        canvas.drawRightString(page_w - MARGIN, footer_y,
+            f"Page {doc_obj.page}")
+        canvas.setStrokeColor(BORDER)
+        canvas.setLineWidth(0.4)
+        canvas.line(MARGIN, footer_y + 3.5 * mm, page_w - MARGIN, footer_y + 3.5 * mm)
+        canvas.restoreState()
+
+    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     print(f"\n  PDF written: {output_path}")
 
 
