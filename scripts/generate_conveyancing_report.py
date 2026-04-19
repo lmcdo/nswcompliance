@@ -1436,32 +1436,48 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
         "filters": {"CouncilName": [council_name], "LodgementDateFrom": since}
     })
     try:
-        r = requests.get(
-            DA_URL,
-            headers={
-                "filters": filters_header,
-                "PageSize": "200",
-                "PageNumber": "1",
-                "Cache-Control": "no-cache",
-            },
-            timeout=25,
-        )
-        r.raise_for_status()
-        apps = r.json().get("Application", [])
+        apps: list[dict] = []
+        page = 1
+        page_size = 200
+        while True:
+            r = requests.get(
+                DA_URL,
+                headers={
+                    "filters": filters_header,
+                    "PageSize": str(page_size),
+                    "PageNumber": str(page),
+                    "Cache-Control": "no-cache",
+                },
+                timeout=25,
+            )
+            r.raise_for_status()
+            body = r.json()
+            batch = body.get("Application", [])
+            apps.extend(batch)
+            total = int(body.get("TotalCount", 0) or r.headers.get("TotalCount", 0) or 0)
+            if len(apps) >= total or len(batch) < page_size:
+                break
+            page += 1
+            if page > 10:   # safety cap — 2,000 DAs max per council per year
+                break
     except Exception as e:
         print(f"  [warn] DA API: {e}")
         return []
 
     nearby = []
     for app in apps:
-        app_lat = app.get("CoordinatesY")
-        app_lng = app.get("CoordinatesX")
+        # Coordinates are inside Location[0].X / Location[0].Y, not top-level fields
+        location = app.get("Location")
+        loc0 = (location[0] if isinstance(location, list) and location else {})
+        app_lat = loc0.get("Y") or app.get("CoordinatesY")
+        app_lng = loc0.get("X") or app.get("CoordinatesX")
+        address = loc0.get("FullAddress") or (str(location) if location else "")
         if app_lat and app_lng:
             dist = _haversine_m(lat, lng, float(app_lat), float(app_lng))
             if dist <= radius_m:
                 nearby.append({
                     "number": app.get("PlanningPortalApplicationNumber", ""),
-                    "address": app.get("Location", ""),
+                    "address": address,
                     "description": (app.get("DevelopmentDescription", "") or "")[:100],
                     "status": app.get("ApplicationStatus", ""),
                     "lodged": (app.get("LodgementDate", "") or "")[:10],
