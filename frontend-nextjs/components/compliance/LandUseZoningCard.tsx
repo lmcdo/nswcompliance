@@ -10,6 +10,7 @@ const INITIAL_DISPLAY_COUNT = 5;
 interface LandUseZoningCardProps {
   zone: string;
   zoneDescription?: string;
+  zoneFull?: string;
   legislationUrl?: string;
   epiName?: string;
   amendment?: string;
@@ -19,6 +20,7 @@ interface LandUseZoningCardProps {
 export function LandUseZoningCard({
   zone,
   zoneDescription,
+  zoneFull,
   legislationUrl,
   epiName,
   amendment,
@@ -27,99 +29,28 @@ export function LandUseZoningCard({
   // Extract zone name from description (removes zone code prefix)
   const zoneName = zoneDescription?.replace(`${zone}:`, '').trim() || zone;
 
-  // Common permitted uses by zone (based on standard NSW LEP templates)
-  // TODO: Replace with actual API data when available
-  const getPermittedUses = (zoneCode: string): { permitted: string[], prohibited: string[] } => {
-    const permittedByZone: Record<string, { permitted: string[], prohibited: string[] }> = {
-      'R1': {
-        permitted: ['Dwelling houses', 'Environmental protection works', 'Home-based child care', 'Home businesses', 'Home occupations'],
-        prohibited: ['Industries', 'Heavy industrial storage', 'Warehouse or distribution centres', 'Commercial premises']
-      },
-      'R2': {
-        permitted: ['Dwelling houses', 'Dual occupancies', 'Secondary dwellings', 'Multi dwelling housing', 'Home-based child care', 'Home businesses', 'Places of public worship', 'Neighbourhood shops'],
-        prohibited: ['Industries', 'Heavy industrial storage', 'Warehouse or distribution centres', 'Service stations']
-      },
-      'R3': {
-        permitted: ['Dwelling houses', 'Dual occupancies', 'Multi dwelling housing', 'Residential flat buildings', 'Shop top housing', 'Boarding houses', 'Child care centres', 'Community facilities', 'Mixed use development'],
-        prohibited: ['Industries', 'Heavy industrial storage', 'Warehouse or distribution centres']
-      },
-      'R4': {
-        permitted: ['Dwelling houses', 'Dual occupancies', 'Multi dwelling housing', 'Residential flat buildings', 'Boarding houses', 'Group homes', 'Hostels', 'Respite day care centres', 'Seniors housing'],
-        prohibited: ['Industries', 'Heavy industrial storage', 'Commercial premises', 'Retail premises']
-      },
-      'B1': {
-        permitted: ['Neighbourhood shops', 'Office premises', 'Business premises', 'Medical centres', 'Restaurants or cafes', 'Shop top housing', 'Community facilities'],
-        prohibited: ['Industries', 'Heavy industrial storage', 'Warehouse or distribution centres']
-      },
-      'B2': {
-        permitted: ['Office premises', 'Retail premises', 'Commercial premises', 'Shop top housing', 'Entertainment facilities', 'Food and drink premises', 'Hotel or motel accommodation', 'Mixed use development'],
-        prohibited: ['Agriculture', 'Heavy industries', 'Rural industries']
-      },
-      'B4': {
-        permitted: ['Commercial premises', 'Hotel or motel accommodation', 'Recreation facilities (outdoor)', 'Registered clubs', 'Restaurants or cafes', 'Shop top housing'],
-        prohibited: ['Heavy industries', 'Warehouse or distribution centres']
-      },
-      'B5': {
-        permitted: ['Business premises', 'Office premises', 'Retail premises', 'Industrial retail outlets', 'Garden centres', 'Hardware and building supplies', 'Landscaping material supplies', 'Neighbourhood shops', 'Self-storage units', 'Timber yards', 'Vehicle sales or hire premises', 'Warehouse or distribution centres'],
-        prohibited: ['Agriculture', 'Heavy industries', 'Offensive industries', 'Prohibited industries']
-      },
-      'B6': {
-        permitted: ['Boat launching ramps', 'Boat sheds', 'Charter and tourism boating facilities', 'Kiosks', 'Markets', 'Passenger transport facilities', 'Recreation facilities (outdoor)', 'Restaurants or cafes', 'Retail premises', 'Water recreation structures'],
-        prohibited: ['Industries', 'Warehouse or distribution centres', 'Extractive industries', 'Heavy industries']
-      },
-      'E1': {
-        permitted: ['Centre-based child care facilities', 'Community facilities', 'Educational establishments', 'Medical centres', 'Neighbourhood shops', 'Office premises', 'Passenger transport facilities', 'Places of public worship', 'Recreation facilities (indoor)', 'Respite day care centres', 'Restricted premises', 'Retail premises', 'Shop top housing'],
-        prohibited: ['Agriculture', 'Heavy industries', 'Rural industries', 'Extractive industries', 'Warehouse or distribution centres']
-      },
-      'E2': {
-        permitted: ['Environmental protection works', 'Extensive agriculture', 'Home-based child care', 'Home businesses', 'Home occupations'],
-        prohibited: ['Industries', 'Commercial premises', 'Retail premises', 'Warehouse or distribution centres', 'Service stations', 'Vehicle sales or hire premises']
-      },
-      'E3': {
-        permitted: ['Building identification signs', 'Business identification signs', 'Environmental protection works', 'Extensive agriculture', 'Home-based child care', 'Home businesses', 'Home occupations'],
-        prohibited: ['Industries', 'Commercial premises', 'Retail premises', 'Warehouse or distribution centres', 'Service stations', 'Multi dwelling housing', 'Residential flat buildings']
-      },
-      'E4': {
-        permitted: ['Environmental facilities', 'Environmental protection works', 'Recreation areas'],
-        prohibited: ['Industries', 'Commercial premises', 'Retail premises', 'Residential accommodation', 'Warehouse or distribution centres']
-      },
-      'IN1': {
-        permitted: ['Industries', 'Warehouse or distribution centres', 'Freight transport facilities', 'Self-storage units', 'Truck depots'],
-        prohibited: ['Residential accommodation', 'Retail premises', 'Sensitive uses']
-      },
-      'IN2': {
-        permitted: ['Light industries', 'Warehouse or distribution centres', 'Neighbourhood shops', 'Hardware and building supplies', 'Landscaping material supplies'],
-        prohibited: ['Residential accommodation', 'Hazardous industries', 'Heavy industries']
-      },
-      'RE1': {
-        permitted: ['Aquaculture', 'Boat launching ramps', 'Boat sheds', 'Community facilities', 'Environmental facilities', 'Environmental protection works', 'Kiosks', 'Recreation areas', 'Recreation facilities (indoor)', 'Recreation facilities (outdoor)', 'Respite day care centres'],
-        prohibited: ['Industries', 'Commercial premises', 'Retail premises', 'Residential accommodation (except with consent)', 'Warehouse or distribution centres']
-      },
-      'RE2': {
-        permitted: ['Boat launching ramps', 'Boat sheds', 'Environmental facilities', 'Environmental protection works', 'Extensive agriculture', 'Kiosks', 'Recreation areas'],
-        prohibited: ['Industries', 'Commercial premises', 'Retail premises', 'Residential accommodation', 'Warehouse or distribution centres', 'Service stations']
-      },
-      'SP1': {
-        permitted: ['Depends on purpose shown on Land Zoning Map'],
-        prohibited: ['Varies based on special purpose designation']
-      },
-      'SP2': {
-        permitted: ['Health services facilities', 'Educational establishments', 'Emergency services facilities', 'Public administration buildings', 'Sewerage systems', 'Waste or resource management facilities', 'Water supply systems'],
-        prohibited: ['Residential accommodation (except with consent)', 'Retail premises', 'Commercial premises']
-      },
-      'SP3': {
-        permitted: ['Business premises', 'Community facilities', 'Educational establishments', 'Entertainment facilities', 'Function centres', 'Health services facilities', 'Medical centres', 'Recreation facilities (indoor)', 'Recreation facilities (outdoor)', 'Registered clubs', 'Restricted premises', 'Retail premises', 'Shop top housing'],
-        prohibited: ['Agriculture', 'Heavy industries', 'Extractive industries', 'Hazardous industries']
-      }
-    };
+  // Parse permitted/prohibited uses from the portal's "Land Use" field (zone objectives text).
+  // The NSW standard instrument LEP format is consistent across all councils:
+  //   "Permitted without consent: A, B, C  Permitted with consent: D, E, F  Prohibited: G, H"
+  // Falls back to legislation link only if zoneFull is not available.
+  function parseZoneUses(text: string): { permitted: string[]; prohibited: string[]; fromLEP: true } {
+    const splitItems = (raw: string) =>
+      raw.split(/[,;]/).map(s => s.trim()).filter(s => s.length > 0 && s !== 'Nil');
 
-    return permittedByZone[zoneCode] || {
-      permitted: ['See LEP Land Use Table'],
-      prohibited: ['See LEP Land Use Table']
-    };
-  };
+    const withoutConsent = text.match(/Permitted without consent[:\s]+([^.]+?)(?=Permitted with consent|Prohibited|$)/i)?.[1] ?? '';
+    const withConsent    = text.match(/Permitted with consent[:\s]+([^.]+?)(?=Permitted without|Prohibited|$)/i)?.[1] ?? '';
+    const prohibitedRaw  = text.match(/Prohibited[:\s]+([^.]+?)(?=Permitted|$)/i)?.[1] ?? '';
 
-  const { permitted, prohibited } = getPermittedUses(zone);
+    return {
+      permitted: [...splitItems(withoutConsent), ...splitItems(withConsent)],
+      prohibited: splitItems(prohibitedRaw),
+      fromLEP: true,
+    };
+  }
+
+  const { permitted, prohibited, fromLEP } = zoneFull
+    ? parseZoneUses(zoneFull)
+    : { permitted: [] as string[], prohibited: [] as string[], fromLEP: false as const };
 
   const [permittedExpanded, setPermittedExpanded] = useState(false);
   const [prohibitedExpanded, setProhibitedExpanded] = useState(false);
@@ -169,7 +100,7 @@ export function LandUseZoningCard({
           {/* Right: Blue and Green pills stacked */}
           <div className="flex flex-col gap-1 items-end">
             <Badge className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800">
-              {epiName || 'Inner West Local Environmental Plan 2022'} - {legislativeClause}
+              {epiName || 'Local Environmental Plan'} — {legislativeClause}
             </Badge>
             {amendment && (
               <Badge className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700">
@@ -181,11 +112,16 @@ export function LandUseZoningCard({
 
         {/* Permitted & Prohibited Uses Table */}
         <div className="bg-white rounded-lg p-3 border border-amber-200">
+          {!fromLEP && (
+            <p className="text-xs text-amber-700 mb-2">
+              Uses not available — see full land use table via the link below.
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {/* Left: Permitted Uses */}
             <div>
               <div className="text-xs font-semibold text-green-700 mb-2 flex items-center gap-1">
-                ✓ Permitted Uses ({permitted.length})
+                ✓ Permitted Uses {fromLEP && `(${permitted.length})`}
               </div>
               <ul className="text-sm text-gray-700 space-y-1">
                 {displayedPermitted.map((use, idx) => (
@@ -218,7 +154,7 @@ export function LandUseZoningCard({
             {/* Right: Prohibited Uses */}
             <div>
               <div className="text-xs font-semibold text-red-700 mb-2 flex items-center gap-1">
-                ✗ Prohibited Uses ({prohibited.length})
+                ✗ Prohibited Uses {fromLEP && `(${prohibited.length})`}
               </div>
               <ul className="text-sm text-gray-700 space-y-1">
                 {displayedProhibited.map((use, idx) => (

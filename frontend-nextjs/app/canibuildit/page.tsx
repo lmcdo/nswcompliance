@@ -19,6 +19,18 @@ function formatLotArea(m2: number | null): string {
   return `${Math.round(m2).toLocaleString()} m²`;
 }
 
+function deriveIneligibleReason(reason: string | null, lotArea: number | null): string {
+  if (reason) return reason;
+  if (lotArea != null && lotArea < 450) {
+    const shortfall = Math.round(450 - lotArea);
+    return `Lot area ${Math.round(lotArea).toLocaleString()} m² — ${shortfall} m² short of the 450 m² minimum under SEPP Housing 2021`;
+  }
+  if (lotArea != null && lotArea >= 450) {
+    return `Lot area ${Math.round(lotArea).toLocaleString()} m² meets the size threshold, but the property does not qualify — likely due to zoning, heritage, flood, or biodiversity exclusions`;
+  }
+  return 'This property does not meet SEPP Housing 2021 eligibility requirements';
+}
+
 export default function CanIBuildItPage() {
   const [address, setAddress] = useState('');
   const [pageState, setPageState] = useState<PageState>('idle');
@@ -164,8 +176,16 @@ export default function CanIBuildItPage() {
             <p className={`text-base ${result.sepp_eligible ? 'text-teal-700' : 'text-amber-700'}`}>
               {result.sepp_eligible
                 ? `${formatLotArea(result.lot_area_m2)} — meets the SEPP Housing 2021 minimum lot area for a secondary dwelling`
-                : result.sepp_ineligible_reason ?? 'Does not meet SEPP Housing 2021 requirements'}
+                : deriveIneligibleReason(result.sepp_ineligible_reason, result.lot_area_m2)}
             </p>
+            {result.lot_area_m2 != null && (
+              <p className="mt-2 text-sm font-medium text-gray-500">
+                Lot area: {formatLotArea(result.lot_area_m2)}
+                {!result.sepp_eligible && result.lot_area_m2 < 450 && (
+                  <span className="ml-2 text-amber-600">(min. 450 m² required)</span>
+                )}
+              </p>
+            )}
             <p className="mt-3 text-xs text-gray-400">{result.address}</p>
           </div>
 
@@ -203,6 +223,51 @@ export default function CanIBuildItPage() {
               </p>
             )}
           </div>
+
+          {/* What else to check — ineligible only */}
+          {!result.sepp_eligible && (
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+              <h3 className="font-semibold text-gray-900 mb-4">Other things to check on this property</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <a
+                  href="/reports/threat-radar"
+                  className="group flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">Nearby development activity</p>
+                    <p className="text-xs text-gray-400 mt-0.5">See DAs and CDCs lodged within 200m</p>
+                  </div>
+                </a>
+                <a
+                  href="/reports/shadow"
+                  className="group flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">Shadow risk from neighbours</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Model future shadow from a max-height northern build</p>
+                  </div>
+                </a>
+                <a
+                  href="/reports/solar-yield"
+                  className="group flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">Rooftop solar potential</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Estimate annual kWh yield from aerial imagery</p>
+                  </div>
+                </a>
+                <a
+                  href="/reports/flood"
+                  className="group flex items-start gap-3 rounded-lg border border-gray-100 p-4 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900 group-hover:text-teal-700 transition-colors">Flood history</p>
+                    <p className="text-xs text-gray-400 mt-0.5">SAR satellite flood detection + NSW statutory overlays</p>
+                  </div>
+                </a>
+              </div>
+            </div>
+          )}
 
           {/* Disclaimer */}
           <p className="text-xs text-gray-400 text-center px-4">

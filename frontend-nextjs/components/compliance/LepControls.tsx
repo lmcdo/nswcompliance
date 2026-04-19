@@ -65,6 +65,7 @@ export function LepControls({
         <LandUseZoningCard
           zone={constraints.zone}
           zoneDescription={constraints.zoneDescription ?? undefined}
+          zoneFull={zoneResult?.['Land Use']}
           legislationUrl={zoneResult?.['legislationUrl']}
           epiName={zoneResult?.['EPI Name']}
           amendment={zoneResult?.['Amendment']}

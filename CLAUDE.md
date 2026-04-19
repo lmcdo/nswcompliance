@@ -16,6 +16,13 @@
 - `enrichment/CLAUDE.md` — DCP structure model, LGA extraction, onboarding sequence
 - `services/CLAUDE.md` — satellite product pipelines, GEE client, report storage
 
+## Regulatory Data — NEVER Hardcode (NON-NEGOTIABLE)
+- **NEVER hardcode NSW planning regulatory data** in any source file — no zone permitted uses, no SEPP standards, no DCP controls, no infrastructure contribution rates, no parking rates, no setbacks
+- All planning control values must come from an authoritative live source: NSW Planning Portal API (`layerintersect`, `zone_full`, `legislation_url` fields), PostGIS `spatial_overlays`, or extracted provision data with `source_ref` + `effective_date`
+- **Why:** LEPs are amended regularly. A hardcoded table is wrong within months. Inner West `ZONE_PERMITTED` dict was removed 2026-04-19 for this reason.
+- **If the authoritative API doesn't return what you need:** surface the `legislation_url` and direct the user to the source. Do not substitute an approximation.
+- **If you see a hardcoded regulatory lookup table anywhere in the codebase:** flag it and replace it before shipping.
+
 ## Investigation Before Action (NON-NEGOTIABLE)
 - Always investigate thoroughly before making changes or proposing solutions
 - Never assume — check actual tables, columns, and data first
