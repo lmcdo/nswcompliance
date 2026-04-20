@@ -26,7 +26,13 @@ interface EligibilityResult {
   lga_name: string | null;
   epi_name: string | null;
   lot_area_m2: number | null;
+  lot_width_m: number | null;
+  lot_depth_m: number | null;
   zone?: string | null;
+  height_of_buildings: string | null;
+  fsr: string | null;
+  min_lot_size_m2: number | null;
+  nearby_secondary_dwelling_count: number | null;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
   confirmation_required: boolean;
@@ -189,12 +195,40 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
+  // Yield calculator
+  const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
+  const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
+  // Share
+  const [copied, setCopied] = useState(false);
+  const autoSubmittedRef = useRef(false);
 
-  // Step 1 — quick eligibility check
-  const handleCheck = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!address.trim()) return;
+  // Auto-submit from ?address= query param (share URL)
+  useEffect(() => {
+    if (autoSubmittedRef.current || typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const addrParam = params.get('address');
+    if (addrParam?.trim()) {
+      autoSubmittedRef.current = true;
+      setAddress(addrParam.trim());
+      runCheck(addrParam.trim());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  const handleShare = () => {
+    if (!eligibility || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('address', eligibility.address ?? address);
+    url.hash = '';
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // Step 1 — quick eligibility check (extracted so auto-submit can call it directly)
+  const runCheck = async (addr: string) => {
+    if (!addr.trim()) return;
     setPageState('loading');
     setEligibility(null);
     setFullDetect(null);
@@ -205,13 +239,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
       const res = await fetch('/api/canibuildit/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address: addr }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Check failed');
       const result = json as EligibilityResult;
       setEligibility(result);
       setPageState('result');
+
+      // Update URL so result can be shared from the address bar
+      const url = new URL(window.location.href);
+      url.searchParams.set('address', result.address ?? addr);
+      window.history.replaceState({}, '', url.toString());
 
       posthog.capture('tool_run', {
         tool: 'granny-flat',
@@ -220,14 +259,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
         result: result.sepp_eligible ? 'eligible' : 'ineligible',
       });
 
-      // If eligible, immediately kick off full detect pipeline
       if (result.sepp_eligible) {
-        runDetect(address);
+        runDetect(addr);
       }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setPageState('error');
     }
+  };
+
+  const handleCheck = (e: React.FormEvent) => {
+    e.preventDefault();
+    runCheck(address);
   };
 
   // Step 2 — full ML detect (Railway via satellite API)
@@ -332,6 +375,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
     setErrorMsg('');
     setEmail('');
     setEmailSubmitted(false);
+    autoSubmittedRef.current = false;
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('address');
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   return (
@@ -620,27 +669,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
             </div>
           </div>
 
-          {/* What you'd get — shown for ineligible lots so user understands the value */}
-          {!eligibility.sepp_eligible && (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">If this lot qualified, you&apos;d be entitled to</p>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-base font-semibold text-gray-900">60 m²</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Max granny flat size under SEPP Housing 2021</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-base font-semibold text-gray-900">~$150k</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Estimated build cost at $2,500/m²</p>
-                </div>
-                <div className="bg-white rounded-lg p-3 border border-gray-100">
-                  <p className="text-base font-semibold text-gray-900">$350–550/wk</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Typical NSW rental range for a 1-bed secondary dwelling</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Check breakdown */}
           {eligibility.checks && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -653,7 +681,13 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
               <div className="space-y-2.5">
                 {(
                   [
-                    { key: 'lot_area', label: 'Lot area', detail: eligibility.lot_area_m2 != null ? `${Math.round(eligibility.lot_area_m2).toLocaleString()} m² (min. 450 m²)` : 'Could not determine' },
+                    {
+                      key: 'lot_area',
+                      label: 'Lot area',
+                      detail: eligibility.lot_area_m2 != null
+                        ? `${Math.round(eligibility.lot_area_m2).toLocaleString()} m² (min. 450 m²)${eligibility.lot_width_m != null && eligibility.lot_depth_m != null ? ` · approx. ${eligibility.lot_width_m}m × ${eligibility.lot_depth_m}m` : ''}`
+                        : 'Could not determine',
+                    },
                     { key: 'zone', label: 'Zoning', detail: eligibility.zone ? `Zone ${eligibility.zone}` : 'Could not determine' },
                     { key: 'heritage', label: 'Heritage exclusion', detail: 'Heritage item or conservation area' },
                     { key: 'flood', label: 'Flood control lot', detail: 'Statutory flood overlay' },
@@ -676,9 +710,117 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
                     </div>
                   );
                 })}
+
+                {/* Nearby secondary dwelling approvals — social proof */}
+                {eligibility.nearby_secondary_dwelling_count != null && eligibility.nearby_secondary_dwelling_count > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2">
+                    <span className="text-teal-600 text-sm">✓</span>
+                    <p className="text-xs text-teal-700">
+                      {eligibility.nearby_secondary_dwelling_count} secondary {eligibility.nearby_secondary_dwelling_count === 1 ? 'dwelling' : 'dwellings'} approved within 500m in the last 2 years
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}
+
+          {/* LEP planning controls — HOB, FSR, min lot size */}
+          {(eligibility.height_of_buildings || eligibility.fsr || eligibility.min_lot_size_m2) && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">LEP planning controls</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {eligibility.height_of_buildings && (
+                  <div>
+                    <p className="text-xs text-gray-400">Height of buildings</p>
+                    <p className="text-sm font-medium text-gray-900">{eligibility.height_of_buildings}</p>
+                  </div>
+                )}
+                {eligibility.fsr && (
+                  <div>
+                    <p className="text-xs text-gray-400">Floor space ratio</p>
+                    <p className="text-sm font-medium text-gray-900">{eligibility.fsr}</p>
+                  </div>
+                )}
+                {eligibility.min_lot_size_m2 && (
+                  <div>
+                    <p className="text-xs text-gray-400">Min. lot size (LEP)</p>
+                    <p className="text-sm font-medium text-gray-900">{eligibility.min_lot_size_m2.toLocaleString()} m²</p>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-3">DCP setbacks and additional controls not shown. Verify with council before lodging.</p>
+            </div>
+          )}
+
+          {/* Interactive yield calculator */}
+          {(() => {
+            const totalCost = calcBuildCost * 60;
+            const annualRent = calcWeeklyRent * 52;
+            const grossYield = (annualRent / totalCost * 100).toFixed(1);
+            const payback = (totalCost / annualRent).toFixed(1);
+            return (
+              <div className="rounded-xl border border-gray-200 bg-white p-5">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                  {eligibility.sepp_eligible ? 'Estimated return' : 'If this lot qualified'}
+                </p>
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">Build cost per m²</label>
+                    <input
+                      type="range" min={1800} max={4500} step={100}
+                      value={calcBuildCost}
+                      onChange={(e) => setCalcBuildCost(Number(e.target.value))}
+                      className="w-full accent-teal-600"
+                    />
+                    <span className="text-sm font-medium text-gray-700">${calcBuildCost.toLocaleString()}/m²</span>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-500 mb-2">Weekly rent</label>
+                    <input
+                      type="range" min={250} max={750} step={25}
+                      value={calcWeeklyRent}
+                      onChange={(e) => setCalcWeeklyRent(Number(e.target.value))}
+                      className="w-full accent-teal-600"
+                    />
+                    <span className="text-sm font-medium text-gray-700">${calcWeeklyRent}/wk</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-3 bg-gray-50 rounded-lg p-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Build cost</p>
+                    <p className="text-base font-semibold text-gray-900">${(totalCost / 1000).toFixed(0)}k</p>
+                    <p className="text-xs text-gray-400">60 m² CDC max</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Annual rent</p>
+                    <p className="text-base font-semibold text-gray-900">${annualRent.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">gross</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Gross yield</p>
+                    <p className="text-base font-semibold text-teal-700">{grossYield}%</p>
+                    <p className="text-xs text-gray-400">p.a.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-0.5">Payback</p>
+                    <p className="text-base font-semibold text-gray-900">{payback} yrs</p>
+                    <p className="text-xs text-gray-400">undiscounted</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-3">Illustrative only. Excludes DA/CDC fees, finance, vacancy, maintenance. Verify rent against NSW Fair Trading bond data.</p>
+              </div>
+            );
+          })()}
+
+          {/* Share this result */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleShare}
+              className="text-xs text-gray-400 hover:text-teal-600 transition-colors px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200"
+            >
+              {copied ? 'Link copied ✓' : 'Copy shareable link'}
+            </button>
+          </div>
 
           {/* If eligible — note that full analysis is running / lead capture if ineligible */}
           {eligibility.sepp_eligible ? (

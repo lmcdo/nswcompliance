@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
+const NSW_EPLANNING_BASE = 'https://api.apps1.nsw.gov.au/eplanning/data/v0';
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
 const NSW_HEADERS = {
@@ -65,6 +66,8 @@ export async function POST(req: NextRequest) {
   let centroidLat: number | null = null;
   let centroidLng: number | null = null;
   let lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null = null;
+  let lotWidthM: number | null = null;
+  let lotDepthM: number | null = null;
 
   if (lotRes.ok) {
     try {
@@ -86,7 +89,16 @@ export async function POST(req: NextRequest) {
 
         // Apply Mercator cos²(lat) correction — EPSG:3857 overestimates by ~45% at Sydney latitudes
         const latRad = centroidLat * Math.PI / 180;
-        lotArea = Math.abs(area) / 2 * Math.cos(latRad) * Math.cos(latRad);
+        const cosLat = Math.cos(latRad);
+        lotArea = Math.abs(area) / 2 * cosLat * cosLat;
+
+        // Lot bounding-box dimensions — same Mercator cos(lat) correction on both axes
+        const xCoords = ring.map((p) => p[0]);
+        const yCoords = ring.map((p) => p[1]);
+        const ewM = (Math.max(...xCoords) - Math.min(...xCoords)) * cosLat;
+        const nsM = (Math.max(...yCoords) - Math.min(...yCoords)) * cosLat;
+        lotWidthM = Math.round(Math.min(ewM, nsM));   // shorter side — typically frontage
+        lotDepthM = Math.round(Math.max(ewM, nsM));   // longer side — typically depth
 
         // Convert ring to WGS84 GeoJSON for lot boundary overlay
         lotPolygon = {
@@ -129,6 +141,24 @@ export async function POST(req: NextRequest) {
     c.layerName?.toLowerCase().includes('heritage')
   );
   const hasHeritage = (heritageLayer?.results?.length ?? 0) > 0;
+
+  // Extract height of buildings, FSR, minimum lot size from LEP layers
+  const hobLayer = planningControls.find((c: any) => /height.*building/i.test(c.layerName ?? ''));
+  const hobVal = hobLayer?.results?.[0]?.MAX_B_H ?? hobLayer?.results?.[0]?.B_H ?? hobLayer?.results?.[0]?.HEIGHT ?? null;
+  const heightOfBuildings: string | null = hobVal != null ? `${hobVal}m` : null;
+
+  const fsrLayer = planningControls.find((c: any) => /floor.*space.*ratio/i.test(c.layerName ?? ''));
+  const fsrVal = fsrLayer?.results?.[0]?.FSR ?? fsrLayer?.results?.[0]?.MAX_FSR ?? null;
+  const fsr: string | null = fsrVal != null ? String(fsrVal) : null;
+
+  const minLotLayer = planningControls.find((c: any) =>
+    /minimum.*lot.*size|lot.*size.*map/i.test(c.layerName ?? '')
+  );
+  const minLotVal = minLotLayer?.results?.[0]?.MIN_LOT_SIZE
+    ?? minLotLayer?.results?.[0]?.LOT_SIZE
+    ?? minLotLayer?.results?.[0]?.MINLOTSIZE
+    ?? null;
+  const minLotSizeM2: number | null = minLotVal != null ? (parseFloat(String(minLotVal)) || null) : null;
 
   // 5. Spatial overlays — independent try/catch
   // flood: Hazard MapServer, 12 LGAs only — no rows always = unknown (partial coverage)
@@ -185,10 +215,14 @@ export async function POST(req: NextRequest) {
   const sepp_eligible = firstFail === undefined;
   const sepp_ineligible_reason = firstFail ? CHECK_LABELS[firstFail] : null;
 
-  // 7. Trigger Railway detect if eligible (non-blocking)
+  // 7. Fire detect (if eligible) + nearby secondary dwelling DA lookup — both non-blocking, 5s cap
   let detectId: string | null = null;
-  if (sepp_eligible) {
-    try {
+  let nearbySecondaryDwellingCount: number | null = null;
+
+  await Promise.allSettled([
+    // 7a. Trigger Railway detect
+    (async () => {
+      if (!sepp_eligible) return;
       const detectRes = await fetch(`${PYTHON_API_URL}/pipeline/granny-flat/detect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -200,10 +234,66 @@ export async function POST(req: NextRequest) {
         detectId = d.detect_id ?? null;
         if (d.lot_area_m2) lotArea = d.lot_area_m2;
       }
-    } catch {
-      // Non-blocking — eligibility result still valid
-    }
-  }
+    })(),
+
+    // 7b. Nearby secondary dwelling DAs + CDCs from NSW ePlanning API
+    (async () => {
+      if (!lgaName || centroidLat === null || centroidLng === null) return;
+      const since = new Date();
+      since.setFullYear(since.getFullYear() - 2);
+      const filtersHeader = JSON.stringify({
+        filters: { CouncilName: [lgaName], LodgementDateFrom: since.toISOString().split('T')[0] },
+      });
+      const ePlanHdr = {
+        ...NSW_HEADERS,
+        'filters': filtersHeader,
+        'PageSize': '200',
+        'PageNumber': '1',
+      };
+
+      const daResults = await Promise.allSettled([
+        fetch(`${NSW_EPLANNING_BASE}/OnlineDA`, { headers: ePlanHdr, signal: AbortSignal.timeout(4000) }),
+        fetch(`${NSW_EPLANNING_BASE}/OnlineCDC`, { headers: ePlanHdr, signal: AbortSignal.timeout(4000) }),
+      ]);
+
+      const apps: any[] = [];
+      for (const r of daResults) {
+        if (r.status === 'fulfilled' && r.value.ok) {
+          const d = await r.value.json();
+          apps.push(...(d?.Application ?? d?.ApplicationList ?? []));
+        }
+      }
+
+      const clat = centroidLat;
+      const clng = centroidLng;
+      let count = 0;
+      for (const app of apps) {
+        const loc = (app?.Location ?? [])[0];
+        const alat = parseFloat(app?.Latitude ?? loc?.Y ?? '0');
+        const alng = parseFloat(app?.Longitude ?? loc?.X ?? '0');
+        if (!alat || !alng) continue;
+        // Haversine distance
+        const R = 6371000;
+        const φ1 = clat * Math.PI / 180;
+        const φ2 = alat * Math.PI / 180;
+        const Δφ = (alat - clat) * Math.PI / 180;
+        const Δλ = (alng - clng) * Math.PI / 180;
+        const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
+        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        if (dist > 500) continue;
+        const desc = (app?.DevelopmentDescription ?? app?.ApplicationDescription ?? '').toLowerCase();
+        const devType = (app?.DevelopmentType ?? '').toLowerCase();
+        if (
+          desc.includes('secondary dwelling') ||
+          desc.includes('granny flat') ||
+          devType.includes('secondary dwelling')
+        ) {
+          count++;
+        }
+      }
+      if (count > 0) nearbySecondaryDwellingCount = count;
+    })(),
+  ]);
 
   return NextResponse.json({
     detect_id: detectId,
@@ -214,7 +304,13 @@ export async function POST(req: NextRequest) {
     lga_name: lgaName,
     epi_name: epiName,
     lot_area_m2: lotArea ? Math.round(lotArea * 10) / 10 : null,
+    lot_width_m: lotWidthM,
+    lot_depth_m: lotDepthM,
     zone,
+    height_of_buildings: heightOfBuildings,
+    fsr,
+    min_lot_size_m2: minLotSizeM2,
+    nearby_secondary_dwelling_count: nearbySecondaryDwellingCount,
     sepp_eligible,
     sepp_ineligible_reason,
     checks,

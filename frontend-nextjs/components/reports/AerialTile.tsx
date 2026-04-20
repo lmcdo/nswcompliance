@@ -11,11 +11,11 @@ const ESRI_AERIAL: StyleSpecification = {
     esri: {
       type: 'raster',
       tiles: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/LPI_Imagery_Best/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
-      attribution: 'Tiles &copy; Esri',
-      maxzoom: 19,
+      attribution: '&copy; NSW Government — Six Maps LPI Imagery (CC BY 4.0)',
+      maxzoom: 20,
     },
   },
   layers: [{ id: 'esri-tiles', type: 'raster', source: 'esri' }],
