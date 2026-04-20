@@ -3,13 +3,24 @@
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
+type CheckResult = 'pass' | 'fail' | 'unknown';
+
 interface DetectResult {
   detect_id: string;
   address: string;
   lot_area_m2: number | null;
+  zone?: string | null;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
   confirmation_required: boolean;
+  checks?: {
+    lot_area: CheckResult;
+    zone: CheckResult;
+    heritage: CheckResult;
+    flood: CheckResult;
+    biodiversity: CheckResult;
+    acid_sulfate: CheckResult;
+  };
 }
 
 type PageState = 'idle' | 'loading' | 'result' | 'error';
@@ -189,6 +200,40 @@ export default function CanIBuildItPage() {
             <p className="mt-3 text-xs text-gray-400">{result.address}</p>
           </div>
 
+          {/* Check breakdown */}
+          {result.checks && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <h3 className="text-sm font-semibold text-gray-700 mb-3">Eligibility checks</h3>
+              <div className="space-y-2">
+                {(
+                  [
+                    { key: 'lot_area', label: 'Lot area', detail: result.lot_area_m2 != null ? `${Math.round(result.lot_area_m2).toLocaleString()} m² (min. 450 m²)` : 'Could not determine' },
+                    { key: 'zone', label: 'Zoning', detail: result.zone ? `Zone ${result.zone}` : 'Could not determine' },
+                    { key: 'heritage', label: 'Heritage exclusion', detail: 'Heritage item or conservation area' },
+                    { key: 'flood', label: 'Flood control lot', detail: 'Statutory flood overlay' },
+                    { key: 'biodiversity', label: 'Biodiversity values', detail: 'Biodiversity values map' },
+                    { key: 'acid_sulfate', label: 'Acid sulfate soils', detail: 'Class 1 & 2 soils' },
+                  ] as { key: keyof NonNullable<DetectResult['checks']>; label: string; detail: string }[]
+                ).map(({ key, label, detail }) => {
+                  const status = result.checks![key];
+                  return (
+                    <div key={key} className="flex items-center gap-3">
+                      <div className="w-5 flex-shrink-0 text-center">
+                        {status === 'pass' && <span className="text-teal-600 font-bold text-sm">✓</span>}
+                        {status === 'fail' && <span className="text-red-500 font-bold text-sm">✗</span>}
+                        {status === 'unknown' && <span className="text-gray-400 text-sm">—</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className={`text-sm font-medium ${status === 'fail' ? 'text-red-700' : status === 'pass' ? 'text-gray-800' : 'text-gray-400'}`}>{label}</span>
+                        <span className="text-xs text-gray-400 ml-2">{detail}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* What next */}
           <div className="rounded-xl border border-gray-200 bg-white p-6">
             <h3 className="font-semibold text-gray-900 mb-1">
@@ -271,8 +316,10 @@ export default function CanIBuildItPage() {
 
           {/* Disclaimer */}
           <p className="text-xs text-gray-400 text-center px-4">
-            This check covers SEPP Housing 2021 lot area eligibility only. Additional DCP setback,
-            heritage, and flood controls may apply. Not legal advice.
+            Checks lot area, zoning, heritage items and conservation areas, flood control lots,
+            biodiversity values, and acid sulfate soils against SEPP Housing 2021. Flood check covers
+            12 LGAs only — shown as unknown outside coverage. DCP setback and height controls not
+            included. Not legal advice.
           </p>
 
           <button onClick={handleReset} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">

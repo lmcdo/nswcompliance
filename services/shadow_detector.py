@@ -123,17 +123,33 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
         return None
 
 
-# former_council value → LEP instrument name
-_COUNCIL_TO_LEP = {
-    "marrickville": "Inner West LEP 2022",
-    "leichhardt":   "Inner West LEP 2022",
-    "ashfield":     "Inner West LEP 2022",
-    "inner west":   "Inner West LEP 2022",
-    "sydney":       "Sydney LEP 2012",
-    "city of sydney": "Sydney LEP 2012",
-    "ku-ring-gai":  "Ku-ring-gai LEP 2015",
-    "kuringgai":    "Ku-ring-gai LEP 2015",
-}
+def _get_lep_label(lga_name: str) -> str:
+    """Return the LEP instrument label for a given LGA name.
+
+    Query instrument_registry first (populated as legislation_monitor runs).
+    Fall back to a title-cased display name so any NSW LGA gets a reasonable label.
+    """
+    if not lga_name:
+        return "Local Environmental Plan"
+    try:
+        with _get_conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT instrument_label FROM instrument_registry
+                    WHERE instrument_type = 'lep'
+                      AND council ILIKE %s
+                      AND is_active = TRUE
+                    LIMIT 1
+                    """,
+                    (lga_name.strip(),),
+                )
+                row = cur.fetchone()
+                if row:
+                    return row[0]
+    except Exception:
+        pass
+    return f"{lga_name.title()} Local Environmental Plan"
 
 
 
@@ -176,8 +192,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                     nums = re.findall(r"(\d+(?:\.\d+)?)", raw_val)
                     if nums:
                         height = float(nums[0])
-                        lep_name = _COUNCIL_TO_LEP.get(lga_name.lower(),
-                                                        f"{lga_name} LEP" if lga_name else "Local Environmental Plan")
+                        lep_name = _get_lep_label(lga_name)
                         logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
                         return height, lep_name, "spatial_overlays"
 
@@ -212,7 +227,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
                                 heights.append(h)
                     if heights:
                         height = float(max(heights))
-                        lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
+                        lep_name = _get_lep_label(former_council)
                         logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
                         return height, lep_name, "regulatory_provisions"
 

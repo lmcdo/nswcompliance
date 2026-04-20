@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 
 interface DetectedStructure {
@@ -25,6 +25,9 @@ interface DetectResult {
   samgeo_validated: boolean;
   confirmation_required: boolean;
   tile_licence: string;
+  tile_b64?: string;
+  tile_width?: number;
+  tile_height?: number;
 }
 
 interface ConfirmResult {
@@ -224,6 +227,71 @@ export default function GrannyFlatPage() {
   );
 }
 
+function StructureCanvas({
+  tile_b64,
+  tile_width,
+  tile_height,
+  structures,
+  licence,
+}: {
+  tile_b64: string;
+  tile_width: number;
+  tile_height: number;
+  structures: DetectedStructure[];
+  licence: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || imgError) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new window.Image();
+    img.onload = () => {
+      const cw = canvas.width;
+      const ch = canvas.height;
+      if (cw <= 0 || ch <= 0) return;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, 0, 0, cw, ch);
+
+      // Scale factor from original tile size to canvas display size
+      const scaleX = tile_width > 0 ? cw / tile_width : 1;
+      const scaleY = tile_height > 0 ? ch / tile_height : 1;
+
+      structures.forEach((s) => {
+        const [x0, y0, x1, y1] = s.bbox_pixel;
+        const rx = Math.max(0, Math.min(x0 * scaleX, cw - 1));
+        const ry = Math.max(0, Math.min(y0 * scaleY, ch - 1));
+        const rw = Math.max(1, Math.min((x1 - x0) * scaleX, cw - rx));
+        const rh = Math.max(1, Math.min((y1 - y0) * scaleY, ch - ry));
+        ctx.strokeStyle = s.is_main_dwelling ? '#ef4444' : '#facc15';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(rx, ry, rw, rh);
+      });
+    };
+    img.onerror = () => setImgError(true);
+    img.src = `data:image/png;base64,${tile_b64}`;
+  }, [tile_b64, tile_width, tile_height, structures, imgError]);
+
+  if (imgError) return null;
+
+  return (
+    <div className="mb-4">
+      <canvas
+        ref={canvasRef}
+        width={512}
+        height={512}
+        className="w-full rounded-lg border border-gray-200"
+        style={{ aspectRatio: '1 / 1' }}
+      />
+      <p className="text-xs text-gray-400 mt-1">{licence}</p>
+    </div>
+  );
+}
+
 function ConfirmationPanel({
   detectResult,
   confirmedCount,
@@ -254,6 +322,16 @@ function ConfirmationPanel({
       </div>
 
       <div className="p-6">
+        {detectResult.tile_b64 && detectResult.tile_width != null && detectResult.tile_height != null && (
+          <StructureCanvas
+            tile_b64={detectResult.tile_b64}
+            tile_width={detectResult.tile_width}
+            tile_height={detectResult.tile_height}
+            structures={detectResult.detected_structures}
+            licence={detectResult.tile_licence}
+          />
+        )}
+
         {!detectResult.samgeo_validated ? (
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4">
             Aerial detection is in pre-validation mode. Please verify the structure count manually using the SIX Maps viewer before proceeding.

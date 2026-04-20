@@ -28,6 +28,7 @@ SEPP Housing 2021 rules applied:
   - Setbacks: SEPP Housing defaults (rear 3m, side 0.9m)
 """
 
+import base64
 import json
 import logging
 import math
@@ -134,6 +135,9 @@ class GrannyFlatDetectResponse(BaseModel):
     samgeo_validated: bool
     confirmation_required: bool
     tile_licence: str
+    tile_b64: Optional[str] = None      # base64-encoded PNG aerial tile for frontend canvas
+    tile_width: Optional[int] = None    # tile pixel dimensions for bbox_pixel scaling
+    tile_height: Optional[int] = None
     detect_id: str          # UUID for subsequent /confirm call
     warnings: list[str] = []
 
@@ -448,6 +452,19 @@ def detect_structures(req: GrannyFlatDetectRequest):
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
 
+    # Encode tile as base64 for frontend canvas rendering
+    tile_b64: Optional[str] = None
+    tile_width: Optional[int] = None
+    tile_height: Optional[int] = None
+    try:
+        from PIL import Image as _PILImage
+        with _PILImage.open(tile_path) as _img:
+            tile_width, tile_height = _img.size
+        with open(tile_path, "rb") as _f:
+            tile_b64 = base64.b64encode(_f.read()).decode()
+    except Exception as e:
+        logger.warning(f"Tile encode failed: {e}")
+
     detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
     if SAMGEO_VALIDATED:
@@ -487,6 +504,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
         samgeo_validated=SAMGEO_VALIDATED,
         confirmation_required=True,
         tile_licence=licence,
+        tile_b64=tile_b64,
+        tile_width=tile_width,
+        tile_height=tile_height,
         detect_id=detect_id,
         warnings=detect_warnings,
     )
