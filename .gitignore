@@ -462,3 +462,6 @@ reviews/
 
 # Large GIS data files — ingested into PostGIS, not stored in repo
 data/hawkesbury_flood/
+
+# Leigh presentation deck (binary)
+leigh-verify.pdf
