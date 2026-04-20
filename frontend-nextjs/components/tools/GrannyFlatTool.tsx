@@ -182,6 +182,24 @@ function StructureCanvas({
 }
 
 // ---------------------------------------------------------------------------
+// SEPP Housing 2021 — secondary dwelling CDC design standards
+// Source: SEPP Housing 2021 Part 4 + Schedule 3 Subdivision 4
+// These are state-wide minimums; council DCP may impose stricter controls.
+// ---------------------------------------------------------------------------
+
+const SEPP_CDC_STANDARDS = [
+  { label: 'Min. lot area',    value: '450 m²',          clause: 'cl. 4.17' },
+  { label: 'Max. floor area',  value: '60 m²',           clause: 'cl. 4.18' },
+  { label: 'Rear setback',     value: '3 m minimum',     clause: 'Sch. 3 Subdiv. 4' },
+  { label: 'Side setback',     value: '0.9 m – 1.5 m',  clause: 'Sch. 3 Subdiv. 4' },
+  { label: 'Max. height',      value: '8.5 m',           clause: 'Sch. 3 Subdiv. 4' },
+  { label: 'From principal dwelling', value: '3 m',      clause: 'Sch. 3 Subdiv. 4' },
+] as const;
+
+const SEPP_LEGISLATION_URL =
+  'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649';
+
+// ---------------------------------------------------------------------------
 // Main component
 // ---------------------------------------------------------------------------
 
@@ -751,6 +769,35 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
             </div>
           )}
 
+          {/* SEPP Housing 2021 — CDC design standards */}
+          {eligibility.sepp_eligible && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">SEPP Housing 2021 — CDC standards</h3>
+                <a
+                  href={SEPP_LEGISLATION_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-teal-600 hover:underline"
+                >
+                  View legislation ↗
+                </a>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                {SEPP_CDC_STANDARDS.map(({ label, value, clause }) => (
+                  <div key={label}>
+                    <p className="text-xs text-gray-400">{label}</p>
+                    <p className="text-sm font-medium text-gray-900">{value}</p>
+                    <p className="text-xs text-gray-400">{clause}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-3">
+                State-wide CDC minimums. Your council&apos;s DCP may impose stricter setback or height controls.
+              </p>
+            </div>
+          )}
+
           {/* LEP planning controls — HOB, FSR, min lot size */}
           {(eligibility.height_of_buildings || eligibility.fsr || eligibility.min_lot_size_m2) && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -775,7 +822,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-3">DCP setbacks and additional controls not shown. Verify with council before lodging.</p>
             </div>
           )}
 
