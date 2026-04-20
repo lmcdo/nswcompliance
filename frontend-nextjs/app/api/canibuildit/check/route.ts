@@ -10,7 +10,9 @@ const NSW_HEADERS = {
 };
 
 const SEPP_MIN_M2 = 450;
-const PERMITTED_ZONES = ['R1', 'R2', 'R3', 'RU5'];
+// SEPP (Housing) 2021 cl 49 "residential zone" definition: R1, R2, R3, R4, R5 (Large Lot Residential).
+// R5 and RU5 are the same zone under different LEP generations — include both.
+const PERMITTED_ZONES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
 type CheckResult = 'pass' | 'fail' | 'unknown';
 
@@ -62,10 +64,13 @@ export async function POST(req: NextRequest) {
   let lotArea: number | null = null;
   let centroidLat: number | null = null;
   let centroidLng: number | null = null;
+  let lotPolygon: { type: 'Polygon'; coordinates: number[][][] } | null = null;
 
   if (lotRes.ok) {
     try {
-      const lotData = await lotRes.json();
+      const lotRaw = await lotRes.json();
+      // NSW lot API returns an array of lot objects
+      const lotData = Array.isArray(lotRaw) ? lotRaw[0] : lotRaw;
       const rings = lotData?.geometry?.rings;
       if (rings?.[0]?.length >= 3) {
         const ring: [number, number][] = rings[0];
@@ -82,6 +87,15 @@ export async function POST(req: NextRequest) {
         // Apply Mercator cos²(lat) correction — EPSG:3857 overestimates by ~45% at Sydney latitudes
         const latRad = centroidLat * Math.PI / 180;
         lotArea = Math.abs(area) / 2 * Math.cos(latRad) * Math.cos(latRad);
+
+        // Convert ring to WGS84 GeoJSON for lot boundary overlay
+        lotPolygon = {
+          type: 'Polygon',
+          coordinates: [ring.map(([x, y]) => {
+            const { lat, lng } = mercatorToWgs84(x, y);
+            return [lng, lat];
+          })],
+        };
       }
     } catch {
       // lot area stays null
@@ -103,8 +117,12 @@ export async function POST(req: NextRequest) {
   const zoningLayer = planningControls.find((c: any) =>
     c.layerName?.includes('Land Zoning')
   );
-  const zoneRaw: string | null = zoningLayer?.results?.[0]?.Zone ?? null;
+  const zoneResult = zoningLayer?.results?.[0] ?? null;
+  const zoneRaw: string | null = zoneResult?.Zone ?? null;
   const zone: string | null = zoneRaw ? zoneRaw.split(' ')[0].toUpperCase() : null;
+  // LGA and LEP instrument from zoning result
+  const lgaName: string | null = zoneResult?.LGA_NAME ?? zoneResult?.Council ?? null;
+  const epiName: string | null = zoneResult?.EPI_NAME ?? zoneResult?.LEP_NAME ?? null;
 
   // Extract heritage (Heritage Map layer — any results = item or HCA, both ineligible under SEPP Cl 37(1)(d))
   const heritageLayer = planningControls.find((c: any) =>
@@ -155,7 +173,7 @@ export async function POST(req: NextRequest) {
   const CHECK_ORDER: (keyof typeof checks)[] = ['lot_area', 'zone', 'heritage', 'flood', 'biodiversity', 'acid_sulfate'];
   const CHECK_LABELS: Record<keyof typeof checks, string> = {
     lot_area: `Lot area ${lotArea ? Math.round(lotArea) + ' m²' : 'unknown'} — minimum 450 m² required under SEPP Housing 2021`,
-    zone: `Zone ${zone ?? 'unknown'} is not permitted for secondary dwellings under SEPP Housing 2021 (permitted: R1, R2, R3, RU5)`,
+    zone: `Zone ${zone ?? 'unknown'} is not permitted for secondary dwellings under SEPP Housing 2021 (permitted: R1, R2, R3, R4, R5/RU5)`,
     heritage: 'Property is a heritage item or within a heritage conservation area — secondary dwellings are excluded under SEPP Housing 2021 cl 37(1)(d)',
     flood: 'Property is within a flood control lot — secondary dwellings are excluded under SEPP Housing 2021',
     biodiversity: 'Property is within a biodiversity values area — secondary dwellings are excluded under SEPP Housing 2021',
@@ -190,6 +208,11 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     detect_id: detectId,
     address: property.address ?? address,
+    lat: centroidLat,
+    lng: centroidLng,
+    lot_polygon: lotPolygon,
+    lga_name: lgaName,
+    epi_name: epiName,
     lot_area_m2: lotArea ? Math.round(lotArea * 10) / 10 : null,
     zone,
     sepp_eligible,

@@ -34,14 +34,28 @@ interface Props {
   lotPolygon?: GeoJSONPolygon | null;
 }
 
+function getBounds(polygon: GeoJSONPolygon): [[number, number], [number, number]] {
+  const coords = polygon.coordinates[0];
+  const lngs = coords.map(c => c[0]);
+  const lats = coords.map(c => c[1]);
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ];
+}
+
 export function AerialTile({ lat, lng, zoom = 19, height = 220, lotPolygon }: Props) {
   const lotGeoJSON = lotPolygon
     ? { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, geometry: lotPolygon, properties: {} }] }
     : null;
 
+  const initialViewState = lotPolygon
+    ? { bounds: getBounds(lotPolygon), fitBoundsOptions: { padding: 40 } }
+    : { latitude: lat, longitude: lng, zoom };
+
   return (
     <Map
-      initialViewState={{ latitude: lat, longitude: lng, zoom }}
+      initialViewState={initialViewState}
       style={{ width: '100%', height }}
       mapStyle={ESRI_AERIAL}
       attributionControl={false}
