@@ -74,12 +74,14 @@ export async function POST(req: NextRequest) {
         for (let i = 0; i < ring.length - 1; i++) {
           area += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1];
         }
-        lotArea = Math.abs(area) / 2;
-
-        // Centroid
+        // Centroid first — needed for Mercator correction
         const xMerc = ring.reduce((s, p) => s + p[0], 0) / ring.length;
         const yMerc = ring.reduce((s, p) => s + p[1], 0) / ring.length;
         ({ lat: centroidLat, lng: centroidLng } = mercatorToWgs84(xMerc, yMerc));
+
+        // Apply Mercator cos²(lat) correction — EPSG:3857 overestimates by ~45% at Sydney latitudes
+        const latRad = centroidLat * Math.PI / 180;
+        lotArea = Math.abs(area) / 2 * Math.cos(latRad) * Math.cos(latRad);
       }
     } catch {
       // lot area stays null
