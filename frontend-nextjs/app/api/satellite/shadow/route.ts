@@ -7,7 +7,6 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/shadow
@@ -43,7 +42,7 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 1: resolve address via existing property API
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
+  const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
   let propResp: Response;
   try {
     propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) });

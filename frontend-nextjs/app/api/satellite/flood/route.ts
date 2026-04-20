@@ -7,7 +7,6 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/flood
@@ -40,8 +39,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
-  // Resolve address
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
+  // Resolve address — derive origin from request.url so preview deployments work
+  const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
   const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
