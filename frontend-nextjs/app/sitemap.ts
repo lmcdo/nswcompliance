@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { FLOOD_LGAS } from '@/lib/lga-data/flood-lgas'
 import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas'
+import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -25,5 +26,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${base}/canibuildit`, priority: 0.95, changeFrequency: 'daily' as const, lastModified: now },
   ]
 
-  return [...staticPages, ...floodPages, ...solarPages]
+  const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({
+    url: `${base}/granny-flat/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.9,
+  }))
+
+  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages]
 }
