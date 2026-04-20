@@ -215,6 +215,10 @@ export async function POST(req: NextRequest) {
   const sepp_eligible = firstFail === undefined;
   const sepp_ineligible_reason = firstFail ? CHECK_LABELS[firstFail] : null;
 
+  // DCP coverage flag — only Inner West Council has DCP data as of current dataset
+  // Update this when new councils are onboarded (see NEXT_PUBLIC_ENABLED_LGAS)
+  const dcp_available = lgaName != null && /inner\s*west/i.test(lgaName);
+
   // 7. Fire detect (if eligible) + nearby secondary dwelling DA lookup — both non-blocking, 5s cap
   let detectId: string | null = null;
   let nearbySecondaryDwellingCount: number | null = null;
@@ -311,6 +315,7 @@ export async function POST(req: NextRequest) {
     fsr,
     min_lot_size_m2: minLotSizeM2,
     nearby_secondary_dwelling_count: nearbySecondaryDwellingCount,
+    dcp_available,
     sepp_eligible,
     sepp_ineligible_reason,
     checks,

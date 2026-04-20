@@ -33,6 +33,7 @@ interface EligibilityResult {
   fsr: string | null;
   min_lot_size_m2: number | null;
   nearby_secondary_dwelling_count: number | null;
+  dcp_available: boolean;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
   confirmation_required: boolean;
@@ -200,6 +201,9 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
   // Share
   const [copied, setCopied] = useState(false);
+  // LGA DCP interest form
+  const [lgaEmail, setLgaEmail] = useState('');
+  const [lgaInterestSubmitted, setLgaInterestSubmitted] = useState(false);
   const autoSubmittedRef = useRef(false);
 
   // Auto-submit from ?address= query param (share URL)
@@ -365,6 +369,26 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
     setEmailSubmitted(true);
   };
 
+  const handleLgaInterest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!lgaEmail.trim() || !eligibility?.lga_name) return;
+    try {
+      await fetch('/api/canibuildit/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: lgaEmail.trim(),
+          address: eligibility.address,
+          lga_name: eligibility.lga_name,
+          interest_type: 'dcp_inclusion',
+        }),
+      });
+    } catch {
+      // Silent
+    }
+    setLgaInterestSubmitted(true);
+  };
+
   const handleReset = () => {
     setAddress('');
     setPostcode('');
@@ -375,6 +399,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
     setErrorMsg('');
     setEmail('');
     setEmailSubmitted(false);
+    setLgaEmail('');
+    setLgaInterestSubmitted(false);
     autoSubmittedRef.current = false;
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -878,6 +904,40 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
                 </div>
               </div>
             </>
+          )}
+
+          {/* LGA DCP interest — shown when this council's DCP is not yet in the database */}
+          {!eligibility.dcp_available && eligibility.lga_name && (
+            <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <p className="text-sm font-semibold text-gray-800 mb-1">
+                DCP controls for {eligibility.lga_name} not yet available
+              </p>
+              <p className="text-xs text-gray-500 mb-4">
+                Setback, height, and floor space controls from the local DCP are not yet in our database for this council. We&apos;re expanding coverage — register to be notified when {eligibility.lga_name} is added.
+              </p>
+              {!lgaInterestSubmitted ? (
+                <form onSubmit={handleLgaInterest} className="flex gap-2">
+                  <input
+                    type="email"
+                    required
+                    value={lgaEmail}
+                    onChange={(e) => setLgaEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  />
+                  <button
+                    type="submit"
+                    className="px-4 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  >
+                    Notify me
+                  </button>
+                </form>
+              ) : (
+                <p className="text-sm text-teal-700 font-medium">
+                  Registered — we&apos;ll notify you when {eligibility.lga_name} is added.
+                </p>
+              )}
+            </div>
           )}
 
           <div className="text-xs text-gray-400 px-2 space-y-1.5">
