@@ -6,6 +6,13 @@ const nextConfig = {
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
  async redirects() {
    return [
+     // www.canibuildit.com.au → canibuildit.com.au (Maps API key restriction)
+     {
+       source: '/:path*',
+       has: [{ type: 'host', value: 'www.canibuildit.com.au' }],
+       destination: 'https://canibuildit.com.au/:path*',
+       permanent: true,
+     },
      // whatcanibuildhere.com.au → canibuildit.com.au
      {
        source: '/:path*',
