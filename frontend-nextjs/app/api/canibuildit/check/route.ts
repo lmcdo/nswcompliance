@@ -246,10 +246,11 @@ export async function POST(req: NextRequest) {
   const minLotSizeM2: number | null = minLotVal != null ? (parseFloat(String(minLotVal)) || null) : null;
 
   // 5. Spatial overlays — independent try/catch
-  // flood: Hazard MapServer, 12 LGAs only — no rows always = unknown (partial coverage)
+  // flood: Hazard MapServer, 12 LGAs only — no rows = unknown UNLESS lga has flood data (then pass)
   // biodiversity/acid_sulfate: Protection MapServer, state-wide — no rows = pass only if query ran
   let overlayTypes = new Set<string>();
   let spatialQueryRan = false;
+  let lgaHasFloodData = false;
   if (centroidLng !== null && centroidLat !== null) {
     try {
       const sr = await query(
@@ -262,6 +263,18 @@ export async function POST(req: NextRequest) {
       spatialQueryRan = true;
     } catch {
       // spatialQueryRan stays false — all spatial checks fall to 'unknown'
+    }
+  }
+  // Check if this LGA has flood coverage — allows returning 'pass' (not 'unknown') for clear properties
+  if (lgaName) {
+    try {
+      const fcr = await query(
+        `SELECT 1 FROM spatial_overlays WHERE lga_name = $1 AND layer_type = 'flood' LIMIT 1`,
+        [lgaName.toUpperCase()]
+      );
+      lgaHasFloodData = fcr.rows.length > 0;
+    } catch {
+      // lgaHasFloodData stays false — flood falls back to 'unknown' (safe)
     }
   }
 
@@ -277,8 +290,8 @@ export async function POST(req: NextRequest) {
     lot_area: lotArea === null ? 'unknown' : lotArea >= SEPP_MIN_M2 ? 'pass' : 'fail',
     zone: zone === null ? 'unknown' : PERMITTED_ZONES.includes(zone) ? 'pass' : 'fail',
     heritage: planningControls.length === 0 ? 'unknown' : hasHeritage ? 'fail' : 'pass',
-    // flood: always unknown on no hit — partial data coverage (12 LGAs)
-    flood: overlayTypes.has('flood') ? 'fail' : 'unknown',
+    // flood: fail if in flood zone; pass if LGA has coverage but point is clear; unknown if no LGA data
+    flood: overlayTypes.has('flood') ? 'fail' : lgaHasFloodData ? 'pass' : 'unknown',
     // biodiversity/acid_sulfate: state-wide — no rows = pass, but only if query actually ran
     biodiversity: overlayTypes.has('biodiversity') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
     acid_sulfate: overlayTypes.has('acid_sulfate') ? 'fail' : spatialQueryRan ? 'pass' : 'unknown',
@@ -357,9 +370,10 @@ export async function POST(req: NextRequest) {
       const clng = centroidLng;
       let count = 0;
       for (const app of apps) {
+        // Coordinates are in Location[0].X (lng) / Location[0].Y (lat) as strings
         const loc = (app?.Location ?? [])[0];
-        const alat = parseFloat(app?.Latitude ?? loc?.Y ?? '0');
-        const alng = parseFloat(app?.Longitude ?? loc?.X ?? '0');
+        const alat = parseFloat(loc?.Y ?? '0');
+        const alng = parseFloat(loc?.X ?? '0');
         if (!alat || !alng) continue;
         // Haversine distance
         const R = 6371000;
@@ -370,18 +384,10 @@ export async function POST(req: NextRequest) {
         const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         if (dist > 500) continue;
-        // Check all plausible description fields — ePlanning API field name varies by council
-        const desc = [
-          app?.DevelopmentDescription,
-          app?.ApplicationDescription,
-          app?.PurposeOfDevelopment,
-          app?.DevelopmentType,
-        ].map((v) => (v ?? '').toLowerCase()).join(' ');
-        if (
-          desc.includes('secondary dwelling') ||
-          desc.includes('granny flat') ||
-          desc.includes('secondary dwelling')
-        ) {
+        // DevelopmentType is an array of objects: [{DevelopmentType: "Secondary dwelling"}, ...]
+        const devTypes: string[] = ((app?.DevelopmentType ?? []) as Array<{ DevelopmentType?: string }>)
+          .map((dt) => (dt?.DevelopmentType ?? '').toLowerCase());
+        if (devTypes.some((t) => t.includes('secondary dwelling') || t.includes('granny flat'))) {
           count++;
         }
       }
