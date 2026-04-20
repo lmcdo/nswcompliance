@@ -411,18 +411,19 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
 
   return (
     <div>
-      {/* Hero */}
-      <div className="pt-16 pb-10 text-center">
-        <h1 className="text-4xl font-bold text-gray-900 tracking-tight leading-tight">
-          Can I build a granny flat?
-          {lgaName && <span className="block text-2xl font-normal text-gray-500 mt-1">{lgaName}</span>}
-        </h1>
-        <p className="mt-4 text-lg text-gray-500 max-w-lg mx-auto">
-          Instant NSW eligibility check — lot area, zoning, and planning exclusions verified against
-          SEPP Housing 2021.
-        </p>
-        <p className="mt-2 text-sm text-gray-400">Free. No account needed.</p>
-      </div>
+      {/* Hero — only shown on standalone /canibuildit page, not LGA pages */}
+      {!lgaName && (
+        <div className="pt-16 pb-10 text-center">
+          <h1 className="text-4xl font-bold text-gray-900 tracking-tight leading-tight">
+            Can I build a granny flat?
+          </h1>
+          <p className="mt-4 text-lg text-gray-500 max-w-lg mx-auto">
+            Instant NSW eligibility check — lot area, zoning, and planning exclusions verified against
+            SEPP Housing 2021.
+          </p>
+          <p className="mt-2 text-sm text-gray-400">Free. No account needed.</p>
+        </div>
+      )}
 
       {/* Input form */}
       {pageState === 'idle' && (
