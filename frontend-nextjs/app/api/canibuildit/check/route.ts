@@ -3,6 +3,91 @@ import { query } from '@/lib/db';
 
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
 const NSW_EPLANNING_BASE = 'https://api.apps1.nsw.gov.au/eplanning/data/v0';
+
+// Maps Planning Portal LGA_NAME values → exact council name the NSW ePlanning API expects.
+// Ported from services/threat_radar.py _COUNCIL_NAME_MAP.
+const COUNCIL_NAME_MAP: Record<string, string> = {
+  'council of the city of sydney': 'Council of the City of Sydney',
+  'city of sydney': 'Council of the City of Sydney',
+  'sydney city council': 'Council of the City of Sydney',
+  'sydney': 'Council of the City of Sydney',
+  'inner west council': 'Inner West Council',
+  'inner west': 'Inner West Council',
+  'city of parramatta council': 'City of Parramatta Council',
+  'parramatta': 'City of Parramatta Council',
+  'northern beaches council': 'Northern Beaches Council',
+  'northern beaches': 'Northern Beaches Council',
+  'randwick city council': 'Randwick City Council',
+  'randwick': 'Randwick City Council',
+  'waverley council': 'Waverley Council',
+  'waverley': 'Waverley Council',
+  'woollahra municipal council': 'Woollahra Municipal Council',
+  'woollahra': 'Woollahra Municipal Council',
+  'mosman municipal council': 'Mosman Municipal Council',
+  'mosman': 'Mosman Municipal Council',
+  'north sydney council': 'North Sydney Council',
+  'north sydney': 'North Sydney Council',
+  'willoughby city council': 'Willoughby City Council',
+  'willoughby': 'Willoughby City Council',
+  'lane cove municipal council': 'Lane Cove Municipal Council',
+  'lane cove': 'Lane Cove Municipal Council',
+  'hunters hill council': 'Hunters Hill Council',
+  'hunters hill': 'Hunters Hill Council',
+  'ryde city council': 'Ryde City Council',
+  'ryde': 'Ryde City Council',
+  'ku-ring-gai council': 'Ku-ring-gai Council',
+  'ku-ring-gai': 'Ku-ring-gai Council',
+  'hornsby shire council': 'Hornsby Shire Council',
+  'hornsby': 'Hornsby Shire Council',
+  'the hills shire council': 'The Hills Shire Council',
+  'the hills': 'The Hills Shire Council',
+  'blacktown city council': 'Blacktown City Council',
+  'blacktown': 'Blacktown City Council',
+  'penrith city council': 'Penrith City Council',
+  'penrith': 'Penrith City Council',
+  'blue mountains city council': 'Blue Mountains City Council',
+  'blue mountains': 'Blue Mountains City Council',
+  'hawkesbury city council': 'Hawkesbury City Council',
+  'hawkesbury': 'Hawkesbury City Council',
+  'camden council': 'Camden Council',
+  'camden': 'Camden Council',
+  'campbelltown city council': 'Campbelltown City Council',
+  'campbelltown': 'Campbelltown City Council',
+  'wollondilly shire council': 'Wollondilly Shire Council',
+  'wollondilly': 'Wollondilly Shire Council',
+  'liverpool city council': 'Liverpool City Council',
+  'liverpool': 'Liverpool City Council',
+  'fairfield city council': 'Fairfield City Council',
+  'fairfield': 'Fairfield City Council',
+  'canterbury-bankstown council': 'Canterbury-Bankstown Council',
+  'canterbury-bankstown city council': 'Canterbury-Bankstown Council',
+  'canterbury bankstown': 'Canterbury-Bankstown Council',
+  'georges river council': 'Georges River Council',
+  'georges river': 'Georges River Council',
+  'sutherland shire council': 'Sutherland Shire Council',
+  'sutherland': 'Sutherland Shire Council',
+  'bayside council': 'Bayside Council',
+  'bayside': 'Bayside Council',
+  'strathfield municipal council': 'Strathfield Municipal Council',
+  'strathfield': 'Strathfield Municipal Council',
+  'burwood council': 'Burwood Council',
+  'burwood': 'Burwood Council',
+  'cumberland council': 'Cumberland Council',
+  'cumberland': 'Cumberland Council',
+  'central coast council': 'Central Coast Council',
+  'central coast': 'Central Coast Council',
+  'gosford': 'Central Coast Council',
+  'wollongong city council': 'Wollongong City Council',
+  'wollongong': 'Wollongong City Council',
+  'newcastle city council': 'Newcastle City Council',
+  'newcastle': 'Newcastle City Council',
+  'lake macquarie city council': 'Lake Macquarie City Council',
+  'lake macquarie': 'Lake Macquarie City Council',
+};
+
+function normaliseCouncilName(raw: string): string {
+  return COUNCIL_NAME_MAP[raw.trim().toLowerCase()] ?? raw.trim();
+}
 const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
 const NSW_HEADERS = {
@@ -246,7 +331,7 @@ export async function POST(req: NextRequest) {
       const since = new Date();
       since.setFullYear(since.getFullYear() - 2);
       const filtersHeader = JSON.stringify({
-        filters: { CouncilName: [lgaName], LodgementDateFrom: since.toISOString().split('T')[0] },
+        filters: { CouncilName: [normaliseCouncilName(lgaName)], LodgementDateFrom: since.toISOString().split('T')[0] },
       });
       const ePlanHdr = {
         ...NSW_HEADERS,
@@ -285,12 +370,17 @@ export async function POST(req: NextRequest) {
         const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         if (dist > 500) continue;
-        const desc = (app?.DevelopmentDescription ?? app?.ApplicationDescription ?? '').toLowerCase();
-        const devType = (app?.DevelopmentType ?? '').toLowerCase();
+        // Check all plausible description fields — ePlanning API field name varies by council
+        const desc = [
+          app?.DevelopmentDescription,
+          app?.ApplicationDescription,
+          app?.PurposeOfDevelopment,
+          app?.DevelopmentType,
+        ].map((v) => (v ?? '').toLowerCase()).join(' ');
         if (
           desc.includes('secondary dwelling') ||
           desc.includes('granny flat') ||
-          devType.includes('secondary dwelling')
+          desc.includes('secondary dwelling')
         ) {
           count++;
         }
