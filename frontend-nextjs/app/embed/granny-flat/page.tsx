@@ -1,0 +1,14 @@
+import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
+
+export default function EmbedGrannyFlatPage() {
+  return (
+    <div className="px-4 py-5">
+      <GrannyFlatTool />
+      <p className="mt-4 text-center text-xs text-gray-400">
+        <a href="https://canibuildit.com.au/canibuildit" target="_blank" rel="noopener">
+          Powered by canibuildit.com.au
+        </a>
+      </p>
+    </div>
+  )
+}

@@ -11,11 +11,11 @@ const ESRI_AERIAL: StyleSpecification = {
     esri: {
       type: 'raster',
       tiles: [
-        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        'https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/LPI_Imagery_Best/MapServer/tile/{z}/{y}/{x}',
       ],
       tileSize: 256,
-      attribution: 'Tiles &copy; Esri',
-      maxzoom: 19,
+      attribution: '&copy; NSW Government — Six Maps LPI Imagery (CC BY 4.0)',
+      maxzoom: 20,
     },
   },
   layers: [{ id: 'esri-tiles', type: 'raster', source: 'esri' }],
@@ -34,14 +34,28 @@ interface Props {
   lotPolygon?: GeoJSONPolygon | null;
 }
 
+function getBounds(polygon: GeoJSONPolygon): [[number, number], [number, number]] {
+  const coords = polygon.coordinates[0];
+  const lngs = coords.map(c => c[0]);
+  const lats = coords.map(c => c[1]);
+  return [
+    [Math.min(...lngs), Math.min(...lats)],
+    [Math.max(...lngs), Math.max(...lats)],
+  ];
+}
+
 export function AerialTile({ lat, lng, zoom = 19, height = 220, lotPolygon }: Props) {
   const lotGeoJSON = lotPolygon
     ? { type: 'FeatureCollection' as const, features: [{ type: 'Feature' as const, geometry: lotPolygon, properties: {} }] }
     : null;
 
+  const initialViewState = lotPolygon
+    ? { bounds: getBounds(lotPolygon), fitBoundsOptions: { padding: 40 } }
+    : { latitude: lat, longitude: lng, zoom };
+
   return (
     <Map
-      initialViewState={{ latitude: lat, longitude: lng, zoom }}
+      initialViewState={initialViewState}
       style={{ width: '100%', height }}
       mapStyle={ESRI_AERIAL}
       attributionControl={false}

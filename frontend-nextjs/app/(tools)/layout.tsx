@@ -1,12 +1,7 @@
-import type { Metadata } from 'next';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import Link from 'next/link';
 
-export const metadata: Metadata = {
-  title: 'Can I Build a Granny Flat? — Free NSW Eligibility Check',
-  description: 'Instant granny flat eligibility check for any NSW property. Based on SEPP Housing 2021 lot area, zoning, and exclusion rules. Free — no signup required.',
-};
-
-export default function CanIBuildItLayout({ children }: { children: React.ReactNode }) {
+export default function ToolsLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white">
       <header className="border-b border-gray-100">
