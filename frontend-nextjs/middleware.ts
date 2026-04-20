@@ -33,6 +33,7 @@ const PUBLIC_ROUTES = [
   '/api/health',
   '/api/public',
   '/api/satellite/aerial-tile',
+  '/api/property',  // used internally by satellite routes (no auth header on server-side fetches)
 ];
 
 // ============================================================================
