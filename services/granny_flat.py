@@ -159,6 +159,7 @@ class GrannyFlatDetectResponse(BaseModel):
     tile_b64: Optional[str] = None      # base64-encoded PNG aerial tile for frontend canvas
     tile_width: Optional[int] = None    # tile pixel dimensions for bbox_pixel scaling
     tile_height: Optional[int] = None
+    tile_bbox: Optional[dict] = None    # geographic bounds: {min_lat, max_lat, min_lng, max_lng}
     detect_id: str          # UUID for subsequent /confirm call
     warnings: list[str] = []
 
@@ -571,6 +572,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
         tile_b64=tile_b64,
         tile_width=tile_width,
         tile_height=tile_height,
+        tile_bbox=bbox if bbox else None,
         detect_id=detect_id,
         warnings=detect_warnings,
     )
