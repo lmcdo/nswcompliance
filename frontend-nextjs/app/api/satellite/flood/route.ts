@@ -7,7 +7,6 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/flood
@@ -40,11 +39,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
-  // Resolve address
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  // Resolve address — derive origin from request.url so preview deployments work
+  const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
+  const internalHeaders: Record<string, string> = {};
+  if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+  const propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(25_000) }).catch((e) => {
+    console.error('[flood] property fetch error:', e);
+    return null;
+  });
   if (!propResp?.ok) {
-    return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
+    const status = propResp?.status ?? 'timeout/network';
+    const body = propResp ? await propResp.text().catch(() => '') : '';
+    console.error(`[flood] property route returned ${status}:`, body);
+    return NextResponse.json({ error: `Could not resolve address: ${address} (property API: ${status})` }, { status: 422 });
   }
 
   const propData = await propResp.json();
