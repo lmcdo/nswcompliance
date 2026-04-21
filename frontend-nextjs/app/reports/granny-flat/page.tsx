@@ -62,6 +62,8 @@ export default function GrannyFlatPage() {
   const [confirmedCount, setConfirmedCount] = useState(1);
   const [finalResult, setFinalResult] = useState<ConfirmResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [calcBuildCost, setCalcBuildCost] = useState(2500);
+  const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
 
   const handleDetect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -208,8 +210,20 @@ export default function GrannyFlatPage() {
 
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
-        <ResultCard result={finalResult} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+        <div className="space-y-5">
+          <ResultCard result={finalResult} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <YieldCalculator
+            maxFloorAreaM2={finalResult.max_floor_area_m2}
+            buildCost={calcBuildCost}
+            weeklyRent={calcWeeklyRent}
+            onBuildCostChange={setCalcBuildCost}
+            onWeeklyRentChange={setCalcWeeklyRent}
+          />
+        </div>
       )}
+
+      {/* FAQs — always shown below the tool */}
+      <GrannyFlatFAQs />
     </div>
   );
 }
@@ -309,6 +323,126 @@ function StructureMap({
         </Map>
       </div>
       <p className="text-xs text-gray-400 mt-1">{licence}</p>
+    </div>
+  );
+}
+
+function YieldCalculator({
+  maxFloorAreaM2,
+  buildCost,
+  weeklyRent,
+  onBuildCostChange,
+  onWeeklyRentChange,
+}: {
+  maxFloorAreaM2: number;
+  buildCost: number;
+  weeklyRent: number;
+  onBuildCostChange: (v: number) => void;
+  onWeeklyRentChange: (v: number) => void;
+}) {
+  const totalCost = buildCost * maxFloorAreaM2;
+  const annualRent = weeklyRent * 52;
+  const grossYield = (annualRent / totalCost * 100).toFixed(1);
+  const payback = (totalCost / annualRent).toFixed(1);
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Build &amp; profit calculator</p>
+      <div className="grid grid-cols-2 gap-5 mb-5">
+        <div>
+          <label className="block text-xs text-gray-500 mb-2">Build cost per m²</label>
+          <input
+            type="range" min={1800} max={4500} step={100}
+            value={buildCost}
+            onChange={(e) => onBuildCostChange(Number(e.target.value))}
+            className="w-full accent-teal-600"
+          />
+          <span className="text-sm font-medium text-gray-700">${buildCost.toLocaleString()}/m²</span>
+        </div>
+        <div>
+          <label className="block text-xs text-gray-500 mb-2">Weekly rent</label>
+          <input
+            type="range" min={250} max={750} step={25}
+            value={weeklyRent}
+            onChange={(e) => onWeeklyRentChange(Number(e.target.value))}
+            className="w-full accent-teal-600"
+          />
+          <span className="text-sm font-medium text-gray-700">${weeklyRent}/wk</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-3 bg-gray-50 rounded-lg p-4">
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Build cost</p>
+          <p className="text-base font-semibold text-gray-900">${(totalCost / 1000).toFixed(0)}k</p>
+          <p className="text-xs text-gray-400">{maxFloorAreaM2} m² CDC max</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Annual rent</p>
+          <p className="text-base font-semibold text-gray-900">${annualRent.toLocaleString()}</p>
+          <p className="text-xs text-gray-400">gross</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Gross yield</p>
+          <p className="text-base font-semibold text-teal-700">{grossYield}%</p>
+          <p className="text-xs text-gray-400">p.a.</p>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Payback</p>
+          <p className="text-base font-semibold text-gray-900">{payback} yrs</p>
+          <p className="text-xs text-gray-400">undiscounted</p>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 mt-3">
+        Illustrative only. Excludes DA/CDC fees, finance, vacancy, and maintenance. Verify rent against NSW Fair Trading bond data.
+      </p>
+    </div>
+  );
+}
+
+const GRANNY_FLAT_FAQS = [
+  {
+    q: 'What is the minimum lot size for a granny flat in NSW?',
+    a: 'Under SEPP Housing 2021 (cl 53), a secondary dwelling approved as complying development requires a minimum site area of 450 m². A DA pathway may be available on smaller lots at council\'s discretion, subject to zone permissibility.',
+  },
+  {
+    q: 'What is the maximum size of a granny flat under SEPP Housing 2021?',
+    a: 'The maximum floor area for a secondary dwelling approved as complying development is 60 m² (SEPP Housing 2021 cl 4.18). A DA pathway allows larger floor areas subject to council DCP controls — typically up to 20–25% of the principal dwelling\'s floor area.',
+  },
+  {
+    q: 'Do I need a DA or CDC to build a granny flat?',
+    a: 'If the lot meets all SEPP Housing 2021 requirements (area, zoning, no heritage/flood/biodiversity exclusions), you can lodge a CDC — which is cheaper and faster than a DA. A CDC is approved by a private certifier in about 20 days. A DA goes to council and typically takes 60–90 days.',
+  },
+  {
+    q: 'Can a granny flat be rented to anyone?',
+    a: 'Yes. As of 2023, NSW removed the requirement that secondary dwellings be occupied by a family member. You can rent to any tenant at market rent.',
+  },
+  {
+    q: 'What setbacks apply to a granny flat under the CDC pathway?',
+    a: 'Under SEPP Housing 2021 Schedule 3 Subdivision 4: rear setback minimum 3 m, side setbacks 0.9 m for the first 8 m height and 1.5 m above that, minimum 3 m separation from the principal dwelling. Your council\'s DCP may impose stricter controls on the DA pathway.',
+  },
+  {
+    q: 'Why does this tool use aerial imagery to detect structures?',
+    a: 'SEPP Housing 2021 requires at most one secondary dwelling per lot, and a secondary dwelling cannot be built where the lot already has a dwelling that exhausts the permitted density. By detecting existing roofed structures via SAM (Segment Anything Model) on 10 cm NSW SIX Maps imagery, this tool gives a more accurate buildability estimate than relying on lot area alone.',
+  },
+  {
+    q: 'What does the yield calculator assume?',
+    a: 'The calculator uses a 60 m² floor area (CDC maximum), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are typically 1–2% lower.',
+  },
+];
+
+function GrannyFlatFAQs() {
+  return (
+    <div className="mt-12 space-y-5 pb-12">
+      <h2 className="text-xl font-semibold text-gray-900">Granny flats in NSW — common questions</h2>
+      {GRANNY_FLAT_FAQS.map((faq, i) => (
+        <div key={i} className="border-b border-gray-100 pb-4">
+          <p className="font-medium text-gray-900 text-sm">{faq.q}</p>
+          <p className="text-sm text-gray-500 mt-1">{faq.a}</p>
+        </div>
+      ))}
+      <p className="text-xs text-gray-400 pt-2">
+        DCP setback, height, and floor space controls not assessed here. Not legal advice — verify with a qualified town planner before lodging.
+      </p>
     </div>
   );
 }
