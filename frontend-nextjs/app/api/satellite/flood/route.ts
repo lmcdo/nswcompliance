@@ -41,9 +41,15 @@ export async function POST(request: NextRequest) {
 
   // Resolve address — derive origin from request.url so preview deployments work
   const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(25_000) }).catch((e) => {
+    console.error('[flood] property fetch error:', e);
+    return null;
+  });
   if (!propResp?.ok) {
-    return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
+    const status = propResp?.status ?? 'timeout/network';
+    const body = propResp ? await propResp.text().catch(() => '') : '';
+    console.error(`[flood] property route returned ${status}:`, body);
+    return NextResponse.json({ error: `Could not resolve address: ${address} (property API: ${status})` }, { status: 422 });
   }
 
   const propData = await propResp.json();
