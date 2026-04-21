@@ -28,11 +28,18 @@ import { NSW_PLANNING_CONSTANTS, isResidentialZone, isIndustrialZone, isLMRAppli
 import { getSeppPdfUrl, getAdgPdfUrl } from '@/lib/pdf-url-builder';
 import { tryGetLGAConfig } from '@/lib/lga-configs';
 
+interface StrataInfo {
+  isStrata: boolean;
+  source: string | null;
+  strataUnit: string | null;
+}
+
 interface StateLevelControlsProps {
   propertyData: any;
   developmentType: string;
   buildingHeight?: number;
   onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
+  strataInfo?: StrataInfo;
 }
 
 // ADG applies to residential flat buildings only (SEPP Housing 2021 Part 4).
@@ -47,7 +54,8 @@ export function StateLevelControls({
   propertyData,
   developmentType,
   buildingHeight,
-  onNavigateToDcp
+  onNavigateToDcp,
+  strataInfo,
 }: StateLevelControlsProps) {
   const [structuredRequirements, setStructuredRequirements] = useState<any[]>([]);
   const [adgRequirements, setAdgRequirements] = useState<any[]>([]);
@@ -631,6 +639,19 @@ export function StateLevelControls({
         zoneCode={zoneCode}
       />
 
+      {/* Strata notice — shown when unit address detected */}
+      {strataInfo?.isStrata && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-start gap-3">
+          <Info className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-orange-900">Strata unit — interpret controls at scheme level</p>
+            <p className="text-sm text-orange-800 mt-1">
+              SEPP standards below apply to the building or development on the lot as a whole. Works to an individual unit are governed by the strata by-laws and require owners corporation consent for anything affecting common property. Secondary dwellings (granny flats) cannot be erected on strata lots. CDC whole-dwelling pathways apply to new development on the scheme&apos;s parent lot, not individual unit alterations.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Exempt & Complying Development Standards - certifier CDC gateway, shown first */}
       {zoneCode && (
         <ExemptComplyingProvisions
@@ -638,6 +659,7 @@ export function StateLevelControls({
           lotArea={lotSize}
           heritageItem={!!(propertyData?.heritage?.isHeritage && propertyData?.heritage?.heritageType?.toLowerCase().includes('item'))}
           heritageAffected={!!propertyData?.heritage?.isHeritage}
+          isStrata={!!strataInfo?.isStrata}
         />
       )}
 
@@ -648,6 +670,7 @@ export function StateLevelControls({
         lotDimensions={propertyData?.lotDimensions || null}
         lotSize={lotSize || null}
         address={propertyData?.address || null}
+        strataInfo={strataInfo}
       />
 
       {/* SEPP Section */}
@@ -1049,6 +1072,7 @@ export function StateLevelControls({
                 lotWidth={lotWidth}
                 stationDistance={stationDistance}
                 isLMRArea={isLMRArea}
+                strataInfo={strataInfo}
               />
             </CardContent>
           )}

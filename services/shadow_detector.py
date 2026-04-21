@@ -386,12 +386,15 @@ def run_shadow(request: ShadowRequest):
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
 
-    _write_report(
-        request.report_id, request.address, request.lat, request.lng,
-        request.prop_id,
-        {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
-        outputs, confidence,
-    )
+    try:
+        _write_report(
+            request.report_id, request.address, request.lat, request.lng,
+            request.prop_id,
+            {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+            outputs, confidence,
+        )
+    except Exception as e:
+        logger.error(f"Shadow report DB write failed (non-fatal): {e}")
 
     return {
         "address": request.address,

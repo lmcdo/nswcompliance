@@ -42,12 +42,19 @@ interface LotDimensions {
   confidence?: number;
 }
 
+interface StrataInfo {
+  isStrata: boolean;
+  source: string | null;
+  strataUnit: string | null;
+}
+
 interface PatternBookEligibilityCardProps {
   propertyData: any;
   onNavigateToDcp?: (topic: string, hcaSlug?: string) => void;
   lotDimensions?: LotDimensions | null;
   lotSize?: number | null;
   address?: string | null;
+  strataInfo?: StrataInfo;
 }
 
 interface Exclusion {
@@ -192,7 +199,8 @@ export function PatternBookEligibilityCard({
   onNavigateToDcp,
   lotDimensions,
   lotSize,
-  address
+  address,
+  strataInfo,
 }: PatternBookEligibilityCardProps) {
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +295,15 @@ export function PatternBookEligibilityCard({
 
   return (
     <>
+      {strataInfo?.isStrata && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-start gap-2 text-sm">
+          <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+          <span className="text-orange-800">
+            <span className="font-semibold">Strata unit — </span>
+            Pattern Book CDC applies to new buildings on the parent lot, not individual unit alterations. The result below describes what could be built on this lot as a scheme. Unit works require strata by-laws and owners corporation consent.
+          </span>
+        </div>
+      )}
       <Card className={`border-l-4 ${
         isEligible ? 'border-l-green-500 bg-green-50' :
         isConditional ? 'border-l-amber-500 bg-amber-50' :

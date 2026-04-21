@@ -56,12 +56,19 @@ interface EligibilityResult {
   legislationUrl: string;
 }
 
+interface StrataInfo {
+  isStrata: boolean;
+  source: string | null;
+  strataUnit: string | null;
+}
+
 interface HousingSEPPEligibilityCardProps {
   zoneCode: string;
   lotSize: number;
   lotWidth: number;
   stationDistance?: number;
   isLMRArea?: boolean;
+  strataInfo?: StrataInfo;
 }
 
 // Format standard type for display
@@ -239,7 +246,8 @@ export function HousingSEPPEligibilityCard({
   lotSize,
   lotWidth,
   stationDistance,
-  isLMRArea
+  isLMRArea,
+  strataInfo,
 }: HousingSEPPEligibilityCardProps) {
   const [data, setData] = useState<{
     eligibleTypes: EligibilityResult[];
@@ -356,6 +364,16 @@ export function HousingSEPPEligibilityCard({
   const visibleResults = showAll ? data.eligibleTypes : data.eligibleTypes.slice(0, 4);
 
   return (
+    <>
+    {strataInfo?.isStrata && (
+      <div className="bg-orange-50 border border-orange-200 rounded-lg px-4 py-3 flex items-start gap-2 text-sm">
+        <Info className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+        <span className="text-orange-800">
+          <span className="font-semibold">Strata unit — </span>
+          Housing SEPP LMR eligibility below applies to new development on the parent lot, assessed at scheme level. Individual strata units cannot be converted between housing types without owners corporation resolution and DA approval.
+        </span>
+      </div>
+    )}
     <Card className="border-purple-200 bg-gradient-to-br from-purple-50/80 to-white">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
@@ -445,5 +463,6 @@ export function HousingSEPPEligibilityCard({
         </div>
       </CardContent>
     </Card>
+    </>
   );
 }
