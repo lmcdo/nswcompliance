@@ -247,6 +247,9 @@ function StructureCanvas({
 
       structures.forEach((s) => {
         const [x0, y0, x1, y1] = s.bbox_pixel;
+        // Discard bounding boxes covering >60% of the tile — detection misfire
+        const bboxFraction = ((x1 - x0) * (y1 - y0)) / (tile_width * tile_height);
+        if (bboxFraction > 0.6) return;
         const rx = Math.max(0, Math.min(x0 * scaleX, cw - 1));
         const ry = Math.max(0, Math.min(y0 * scaleY, ch - 1));
         const rw = Math.max(1, Math.min((x1 - x0) * scaleX, cw - rx));
@@ -322,19 +325,29 @@ function ConfirmationPanel({
           </div>
         ) : detectResult.detected_structures.length > 0 ? (
           <div className="mb-4">
-            <p className="text-sm font-medium text-gray-700 mb-2">
-              {detectResult.detected_structures.length} structure{detectResult.detected_structures.length !== 1 ? 's' : ''} detected on lot
-            </p>
-            <div className="space-y-1">
-              {detectResult.detected_structures.map((s) => (
-                <div key={s.index} className="flex items-center gap-2 text-xs text-gray-600">
-                  <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
-                  {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
-                  {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                  <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
-                </div>
-              ))}
-            </div>
+            {(() => {
+              const tileArea = (detectResult.tile_width ?? 512) * (detectResult.tile_height ?? 512);
+              const valid = detectResult.detected_structures.filter(
+                (s) => s.area_m2 == null || s.area_m2 < (detectResult.lot_area_m2 ?? Infinity) * 1.5
+              );
+              return (
+                <>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    {valid.length} structure{valid.length !== 1 ? 's' : ''} detected on lot
+                  </p>
+                  <div className="space-y-1">
+                    {valid.map((s) => (
+                      <div key={s.index} className="flex items-center gap-2 text-xs text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
+                        {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
+                        {s.area_m2 != null && ` — ~${s.area_m2} m²`}
+                        <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         ) : (
           <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
