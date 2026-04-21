@@ -11,7 +11,8 @@ import {
  AcceleratedTODInfo,
  HIAInfo,
  AnefInfo,
- LotGeometryData
+ LotGeometryData,
+ StrataInfo,
 } from './nsw-planning-portal';
 import { SeppRouter, SeppRoutingResult } from './sepp-router';
 import { determineFormerCouncilArea as determineFormerCouncilAreaUtil } from './inner-west-mapping';
@@ -86,6 +87,7 @@ export interface PropertyData {
  lotDimensions?: LotDimensions | null;
  cornerLot?: CornerLotResult | null;
  council?: string;
+ strataInfo?: StrataInfo;
 }
 
 export interface PlanningLayer {
@@ -121,7 +123,7 @@ export class PropertyDataService {
  throw new Error('Property not found in NSW Planning Portal');
  }
 
- const { propertyData, constraints, layers, roadClassifications, anefData, lotGeometry } = nswData;
+ const { propertyData, constraints, layers, roadClassifications, anefData, lotGeometry, strataInfo } = nswData;
 
  // Derive ANEF building acceptability from level (AS 2021-2015 Table 2.1).
  // NSW Portal only returns anefLevel — per-type acceptability must be derived.
@@ -353,7 +355,8 @@ export class PropertyDataService {
  geometry: lotGeometry.geometry
  } : undefined,
  lotDimensions, // Calculated frontage, depth, area from lot geometry
- cornerLot // Corner lot detection from adjacent road parcels
+ cornerLot, // Corner lot detection from adjacent road parcels
+ strataInfo,
  };
  
  } catch (error) {

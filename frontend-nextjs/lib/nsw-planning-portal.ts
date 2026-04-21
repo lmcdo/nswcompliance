@@ -289,6 +289,12 @@ function isSuburbNearby(userSuburb: string, clauseSuburb: string): boolean {
  return allInnerWestSuburbs.has(clauseSuburb);
 }
 
+export interface StrataInfo {
+  isStrata: boolean;
+  source: 'valuation_fallback' | 'address_heuristic' | 'combined' | null;
+  strataUnit: string | null;
+}
+
 export class NSWPlanningPortalService {
  private static BASE_URL = 'https://api.apps1.nsw.gov.au/planning/viewersf/V1/ePlanningApi';
  private static VALUATION_URL = 'https://maps.six.nsw.gov.au/arcgis/rest/services/public/Valuation/MapServer/5/query';
@@ -992,6 +998,7 @@ export class NSWPlanningPortalService {
  layers: PlanningLayer[];
  roadClassifications?: any[];
  anefData?: AnefInfo | null;
+ strataInfo: StrataInfo;
  lotGeometry?: LotGeometryData | null;
  } | null> {
  try {
@@ -1034,6 +1041,19 @@ export class NSWPlanningPortalService {
      // fallback failed — propertyData stays null, will throw below
    }
  }
+
+ // Detect strata: valuation-null fallback (strata unit propIds return no valuation) combined
+ // with address heuristic ("5/12 Smith St", "Unit 3/12 Smith St").
+ const valuationFallback = !initialPropertyData;
+ const unitMatch = address.match(/^(\d+)\//i) ?? address.match(/^(?:unit|apt|apartment|flat)\s+(\d+)/i);
+ const strataInfo: StrataInfo = {
+   isStrata: valuationFallback || !!unitMatch,
+   source: (valuationFallback && unitMatch) ? 'combined'
+         : valuationFallback               ? 'valuation_fallback'
+         : unitMatch                       ? 'address_heuristic'
+         : null,
+   strataUnit: unitMatch?.[1] ?? null,
+ };
 
  // Stage 2: fan out from single valuation result (needs geometry for coordinate conversion)
  let todLayers: PlanningLayer[] = [];
@@ -1188,7 +1208,8 @@ export class NSWPlanningPortalService {
  layers: allLayers, // Return merged layers including TOD/HIA
  roadClassifications, // Return road classification data for setback calculations
  anefData, // Return ANEF zone data for aircraft noise assessment
- lotGeometry // Return lot polygon geometry for dimension calculations
+ lotGeometry, // Return lot polygon geometry for dimension calculations
+ strataInfo,
  };
 
  } catch (error) {

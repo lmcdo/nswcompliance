@@ -11,6 +11,7 @@ Sep/Dec direction_deg values are approximate (pvlib not yet run for those dates)
 pybdshadow uses suncalc-py which computes correct solar position for Southern Hemisphere.
 No special Southern Hemisphere handling needed.
 """
+import json
 import logging
 import math
 from datetime import datetime, timezone
@@ -123,7 +124,10 @@ def model_shadow(lot_geometry_geojson: dict, height_limit_m: float, scenario: st
     if shadows.crs is None:
         shadows = shadows.set_crs("EPSG:4326")
 
-    return shadows.__geo_interface__
+    # Use geopandas' own JSON serialiser — avoids numpy.int64/float64 types
+    # that __geo_interface__ leaves in feature properties, which cause
+    # psycopg2.extras.Json to raise TypeError at DB write time.
+    return json.loads(shadows.to_json())
 
 
 def model_all_scenarios(lot_geometry_geojson: dict, height_limit_m: float) -> dict:
