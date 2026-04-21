@@ -76,7 +76,10 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
         'planning_portal_id,council_name,address,description,application_status,determination_date,' +
         'cost_of_development,latitude,longitude,development_type,lodgement_date,proposed_dwellings',
       )
-      .gte('lodgement_date', since)
+      // ETL fetches by DeterminationDate (Determined only), so many records have an old lodgement_date.
+      // Match on either lodgement_date OR determination_date within the window to capture both
+      // recently-lodged and recently-determined applications.
+      .or(`lodgement_date.gte.${since},determination_date.gte.${since}`)
       .gte('latitude', minLat).lte('latitude', maxLat)
       .gte('longitude', minLng).lte('longitude', maxLng),
     supabase

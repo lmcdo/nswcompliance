@@ -422,11 +422,11 @@ const GRANNY_FLAT_FAQS = [
   },
   {
     q: 'Why does this tool use aerial imagery to detect structures?',
-    a: 'SEPP Housing 2021 requires at most one secondary dwelling per lot, and a secondary dwelling cannot be built where the lot already has a dwelling that exhausts the permitted density. By detecting existing roofed structures via SAM (Segment Anything Model) on 10 cm NSW SIX Maps imagery, this tool gives a more accurate buildability estimate than relying on lot area alone.',
+    a: 'SEPP Housing 2021 requires at most one secondary dwelling per lot. By detecting existing roofed structures on 10 cm NSW SIX Maps aerial imagery, this tool gives a more accurate buildability estimate than relying on lot area alone — existing garages, sheds, and ancillary structures all affect the available building envelope.',
   },
   {
     q: 'What does the yield calculator assume?',
-    a: 'The calculator uses a 60 m² floor area (CDC maximum), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are typically 1–2% lower.',
+    a: 'The calculator uses the actual CDC maximum floor area for this property (up to 60 m²), your selected build cost per m², and your selected weekly rent. Gross yield is annual rent divided by build cost. It excludes DA/CDC fees, finance costs, vacancy, and ongoing maintenance. Net yields are typically 1–2% lower.',
   },
 ];
 
@@ -440,9 +440,18 @@ function GrannyFlatFAQs() {
           <p className="text-sm text-gray-500 mt-1">{faq.a}</p>
         </div>
       ))}
-      <p className="text-xs text-gray-400 pt-2">
-        DCP setback, height, and floor space controls not assessed here. Not legal advice — verify with a qualified town planner before lodging.
-      </p>
+
+      {/* Legislative basis — trust references matching GrannyFlatTool */}
+      <div className="text-xs text-gray-400 pt-4 space-y-1.5">
+        <p className="font-medium text-gray-500">Legislative basis</p>
+        <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 cl 53(2)(a): detached secondary dwelling minimum site area 450 m² [complying development]; cl 52 [development consent].</p>
+        <p><span className="text-gray-500">Zone</span> — SEPP (Housing) 2021 cl 50, read with definition of &ldquo;residential zone&rdquo; in cl 49: R1, R2, R3, R4, R5/RU5 where dwelling houses are permissible under the applicable LEP.</p>
+        <p><span className="text-gray-500">Heritage</span> — CDC pathway: SEPP (Housing) 2021 cl 54(3)(c) excludes heritage items and draft heritage items; DA pathway: applicable LEP cl 5.10 (Standard Instrument). Heritage Map sourced from NSW Planning Portal.</p>
+        <p><span className="text-gray-500">Flood control lot</span> — SEPP (Housing) 2021 cl 58: complying development must not be carried out on flood storage areas, floodways, flow paths, high hazard areas, or high risk areas. Spatial data: 12 LGAs covered — shown as unknown outside coverage.</p>
+        <p><span className="text-gray-500">Biodiversity</span> — SEPP (Exempt and Complying Development Codes) 2008 cl 1.19(1) excludes land mapped on the NSW Biodiversity Values Map (Biodiversity Conservation Act 2016). Spatial data: NSW DCCEEW.</p>
+        <p><span className="text-gray-500">Acid sulfate soils</span> — SEPP (Exempt and Complying Development Codes) 2008 cl 1.19(1) excludes Class 1 and Class 2 acid sulfate soils; DA pathway: applicable LEP cl 7.1 (Standard Instrument).</p>
+        <p className="pt-1 border-t border-gray-100 mt-2">DCP setback, height, floor space ratio, and landscaping controls not assessed here. This tool is indicative only — verify with a qualified town planner before lodging a DA or CDC.</p>
+      </div>
     </div>
   );
 }
