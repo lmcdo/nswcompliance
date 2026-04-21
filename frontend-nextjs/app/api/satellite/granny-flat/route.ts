@@ -62,7 +62,9 @@ export async function POST(request: NextRequest) {
 
   // Resolve address for both actions
   const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  const internalHeaders: Record<string, string> = {};
+  if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+  const propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }

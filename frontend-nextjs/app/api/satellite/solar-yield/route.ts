@@ -63,7 +63,10 @@ export async function POST(request: NextRequest) {
   // Step 1: resolve address
   let propData: Record<string, unknown>;
   try {
+    const internalHeaders: Record<string, string> = {};
+    if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
     const propResp = await fetch(`${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`, {
+      headers: internalHeaders,
       signal: AbortSignal.timeout(10_000),
     });
     if (!propResp.ok) {

@@ -41,7 +41,9 @@ export async function POST(request: NextRequest) {
 
   // Resolve address — derive origin from request.url so preview deployments work
   const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(25_000) }).catch((e) => {
+  const internalHeaders: Record<string, string> = {};
+  if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+  const propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(25_000) }).catch((e) => {
     console.error('[flood] property fetch error:', e);
     return null;
   });

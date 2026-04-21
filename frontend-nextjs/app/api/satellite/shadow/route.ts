@@ -45,7 +45,9 @@ export async function POST(request: NextRequest) {
   const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
   let propResp: Response;
   try {
-    propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) });
+    const internalHeaders: Record<string, string> = {};
+    if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+    propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(10_000) });
   } catch (err) {
     return NextResponse.json({ error: 'Property lookup network error' }, { status: 502 });
   }
