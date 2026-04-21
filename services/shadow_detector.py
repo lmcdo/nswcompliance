@@ -332,7 +332,7 @@ def run_shadow(request: ShadowRequest):
     if request.height_m:
         height_m = request.height_m
         height_source = "planning_portal"
-        lep_name = _COUNCIL_TO_LEP.get("", "Local Environmental Plan")
+        lep_name = "Local Environmental Plan"
         # Re-derive lep_name from DB without height query
         try:
             with _get_conn() as conn:
@@ -345,7 +345,7 @@ def run_shadow(request: ShadowRequest):
                     )
                     row = cur.fetchone()
                     if row and row[0]:
-                        lep_name = _COUNCIL_TO_LEP.get(row[0].lower(), f"{row[0]} LEP")
+                        lep_name = _get_lep_label(row[0])
         except Exception:
             pass
     else:

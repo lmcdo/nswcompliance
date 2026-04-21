@@ -64,8 +64,29 @@ DETECTION_PROMPTS = [
 # 15 m² ≈ a large carport. Filters out pergolas, bins, paths.
 MIN_STRUCTURE_AREA_M2 = 15.0
 
+# Upper bound: no single residential structure footprint exceeds this.
+# Sydney's largest residential footprints are ~400–500 m². 600 gives headroom.
+MAX_STRUCTURE_AREA_M2 = 600.0
+
 # IoU threshold for deduplication: two masks covering >50% the same pixels = same structure
 IOU_DEDUP_THRESHOLD = 0.5
+
+# --- SAM quality filters (applied after lot clipping) ---
+# Fill ratio: SAM mask pixels / bbox pixel area.
+# A coherent building fills its bbox; a misfire (DINO returned whole-tile bbox,
+# SAM found one small structure inside) has fill → 0.
+# Backed by SpaceNet building detection, SAMGeo docs, Ecopia AI pipeline.
+# Threshold: 0.15 (well below typical building fill of 0.40–0.85).
+MIN_FILL_RATIO = 0.15
+
+# Bbox fraction: bbox area / tile area.
+# SpaceNet6 winners, Microsoft Building Footprints effective cap: 0.25–0.40.
+# 0.35 allows for large houses while blocking tile-wide DINO misfires.
+MAX_BBOX_FRACTION = 0.35
+
+# Aspect ratio: longer side / shorter side of bbox.
+# Buildings are roughly equidimensional. Values > 8 indicate fences, roads, errors.
+MAX_ASPECT_RATIO = 8.0
 
 # SEPP Housing 2021 defaults
 SEPP_MIN_LOT_M2 = 450.0
@@ -138,6 +159,7 @@ class GrannyFlatDetectResponse(BaseModel):
     tile_b64: Optional[str] = None      # base64-encoded PNG aerial tile for frontend canvas
     tile_width: Optional[int] = None    # tile pixel dimensions for bbox_pixel scaling
     tile_height: Optional[int] = None
+    tile_bbox: Optional[dict] = None    # geographic bounds: {min_lat, max_lat, min_lng, max_lng}
     detect_id: str          # UUID for subsequent /confirm call
     warnings: list[str] = []
 
@@ -304,8 +326,51 @@ def _detect_structures_samgeo(
                 bbox_region = lot_arr[by1:by2, bx1:bx2]
                 if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.40:
                     continue
+        # --- SAM quality filters ---
+        bw, bh = x2 - x1, y2 - y1
+
+        # 1. Bbox fraction: DINO sometimes returns a whole-tile bbox for a
+        #    low-confidence detection. Cap at 35% of tile area.
+        #    (SpaceNet6 / Microsoft Building Footprints precedent: 0.25–0.40)
+        bbox_fraction = (bw * bh) / (w * h)
+        if bbox_fraction > MAX_BBOX_FRACTION:
+            logger.warning(
+                "Dropping detection: bbox covers %.1f%% of tile (max %.0f%%)",
+                bbox_fraction * 100, MAX_BBOX_FRACTION * 100,
+            )
+            continue
+
+        # 2. Fill ratio: mask pixels / bbox pixels.
+        #    A real building fills its bbox coherently (typically 0.40–0.85).
+        #    A misfire where DINO returned a huge bbox but SAM found one small
+        #    structure inside will have fill → 0.
+        #    Threshold: 0.15 (SpaceNet, SAMGeo, Ecopia AI precedent).
+        bbox_area_px = max(bw * bh, 1)
+        fill_ratio = s["area_px"] / bbox_area_px
+        if fill_ratio < MIN_FILL_RATIO:
+            logger.warning(
+                "Dropping detection: fill ratio %.3f < %.2f (prompt=%s)",
+                fill_ratio, MIN_FILL_RATIO, s["matched_prompt"],
+            )
+            continue
+
+        # 3. Aspect ratio: elongated detections are fences/roads, not buildings.
+        aspect_ratio = max(bw, bh) / max(min(bw, bh), 1)
+        if aspect_ratio > MAX_ASPECT_RATIO:
+            logger.warning(
+                "Dropping detection: aspect ratio %.1f > %.0f",
+                aspect_ratio, MAX_ASPECT_RATIO,
+            )
+            continue
+
         area_m2 = _pixel_area_to_m2(s["area_px"], bbox, w, h)
         if area_m2 < MIN_STRUCTURE_AREA_M2:
+            continue
+        if area_m2 > MAX_STRUCTURE_AREA_M2:
+            logger.warning(
+                "Dropping detection: area %.0f m² exceeds max %.0f m²",
+                area_m2, MAX_STRUCTURE_AREA_M2,
+            )
             continue
         structures.append({
             "area_px": s["area_px"],
@@ -507,6 +572,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
         tile_b64=tile_b64,
         tile_width=tile_width,
         tile_height=tile_height,
+        tile_bbox=bbox if bbox else None,
         detect_id=detect_id,
         warnings=detect_warnings,
     )

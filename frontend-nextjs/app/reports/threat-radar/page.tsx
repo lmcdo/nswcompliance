@@ -223,12 +223,20 @@ export default function ThreatRadarPage() {
                   );
                 })}
                 <a
-                  href="https://map.plotdetect.com.au"
+                  href={`https://map.plotdetect.com.au?lat=${searchResult.lat}&lng=${searchResult.lng}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 mt-1"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors mt-2"
                 >
-                  Find other current DAs in your LGA on map.plotdetect.com.au →
+                  <div>
+                    <p className="text-sm font-medium text-teal-900">
+                      Explore the full DA map for {searchResult.council_name}
+                    </p>
+                    <p className="text-xs text-teal-700 mt-0.5">
+                      Filter by cost, keywords, and development type · map.plotdetect.com.au
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-teal-600 text-base">→</span>
                 </a>
               </>
             )}
