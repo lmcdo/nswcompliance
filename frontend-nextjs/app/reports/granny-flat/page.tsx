@@ -54,7 +54,6 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
-  const [postcode, setPostcode] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -129,7 +128,7 @@ export default function GrannyFlatPage() {
           detect_id: detectResult.detect_id,
           confirmed_structure_count: confirmedCount,
           samgeo_structure_count: detectResult.samgeo_structure_count,
-          postcode: postcode.trim() || null,
+          postcode: address.match(/\b(\d{4})\b/)?.[1] ?? null,
         }),
       });
 
@@ -168,21 +167,6 @@ export default function GrannyFlatPage() {
               disabled={isRunning}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Postcode <span className="text-gray-400 font-normal">(for rent estimate)</span>
-            </label>
-            <input
-              type="text"
-              value={postcode}
-              onChange={(e) => setPostcode(e.target.value)}
-              placeholder="e.g. 2040"
-              maxLength={4}
-              className="w-40 px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              disabled={isRunning}
-            />
-          </div>
-
           {state === 'error' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
               {errorMsg}
