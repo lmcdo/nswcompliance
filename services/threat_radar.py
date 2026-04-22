@@ -33,6 +33,10 @@ class SubscribeRequest(BaseModel):
     email: str
     council_name: str
 
+    def validate_email(self) -> None:
+        if "@" not in self.email or "." not in self.email.split("@")[-1]:
+            raise ValueError(f"Invalid email address: {self.email}")
+
 
 class CheckRequest(BaseModel):
     subscription_id: str
@@ -138,10 +142,14 @@ def _normalise_council(council_name: str) -> str:
     return _COUNCIL_NAME_MAP.get(key, council_name.strip())
 
 
-def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> list:
+def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> tuple[list, bool]:
+    """
+    Fetch DAs and CDCs from NSW ePlanning API.
+    Returns (applications, api_available).
+    api_available is False only if BOTH endpoints failed — used to skip updating last_checked.
+    """
     since = (datetime.utcnow() - timedelta(days=days_back)).strftime("%Y-%m-%d")
     council = _normalise_council(council_name)
-    # Filters passed as HTTP header (not query param) — confirmed from NSW ePlanning API
     filters_header = json.dumps({"filters": {"CouncilName": [council], "LodgementDateFrom": since}})
     headers = {
         "filters": filters_header,
@@ -150,15 +158,17 @@ def _fetch_das(council_name: str, days_back: int = WINDOW_DAYS) -> list:
         "Cache-Control": "no-cache",
     }
     apps = []
+    any_success = False
     for url in (DA_URL, CDC_URL):
         try:
             r = requests.get(url, headers=headers, timeout=20)
             r.raise_for_status()
             data = r.json()
             apps.extend(data.get("Application") or data.get("ApplicationList") or [])
+            any_success = True
         except Exception as e:
             logger.warning(f"ePlanning {url}: {e}")
-    return apps
+    return apps, any_success
 
 
 def _filter_nearby(apps: list, lat: float, lng: float) -> list:
@@ -181,8 +191,22 @@ def _filter_nearby(apps: list, lat: float, lng: float) -> list:
 
 @router.post("/threat-radar/subscribe")
 def subscribe(req: SubscribeRequest):
+    try:
+        req.validate_email()
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
     with _get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Return existing active subscription rather than creating a duplicate
+            cur.execute(
+                "SELECT id FROM threat_radar_subscriptions WHERE address=%s AND email=%s AND active=true",
+                (req.address, req.email),
+            )
+            existing = cur.fetchone()
+            if existing:
+                return {"subscription_id": str(existing["id"]), "address": req.address, "status": "active"}
+
             cur.execute(
                 "INSERT INTO threat_radar_subscriptions "
                 "(address,prop_id,lat,lng,email,active,inputs) "
@@ -212,7 +236,21 @@ def check(req: CheckRequest):
     if not council:
         raise HTTPException(422, "council_name missing from subscription")
 
-    apps = _fetch_das(council)
+    apps, api_available = _fetch_das(council)
+    if not api_available:
+        # Both ePlanning endpoints failed — don't update last_checked or seen set.
+        # The next run will retry rather than treating this as a successful empty check.
+        logger.warning(f"Skipping last_checked update for {req.subscription_id} — ePlanning API unavailable")
+        return {
+            "subscription_id": req.subscription_id,
+            "address": sub["address"],
+            "new_application_count": 0,
+            "new_applications": [],
+            "total_nearby": 0,
+            "checked_at": None,
+            "api_error": "NSW ePlanning API unavailable — check will retry next run",
+        }
+
     nearby = _filter_nearby(apps, sub["lat"], sub["lng"])
     new_apps = []
     for app in nearby:

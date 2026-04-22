@@ -540,7 +540,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
         VALUES (%s, 'flood', %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET outputs = EXCLUDED.outputs
     """
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id, date.today(),
@@ -550,6 +552,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
                 data_sources,
             ))
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 # ---------------------------------------------------------------------------

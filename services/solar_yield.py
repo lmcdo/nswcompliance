@@ -109,7 +109,9 @@ def _write_report(
             outputs = EXCLUDED.outputs,
             confidence = EXCLUDED.confidence
     """
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id,
@@ -120,6 +122,9 @@ def _write_report(
                 DATA_SOURCES,
             ))
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
@@ -325,20 +330,33 @@ def _parse_solar_response(
     )
 
 
-def _check_heritage(prop_id: Optional[str]) -> bool:
-    if not prop_id:
-        return False
+def _check_heritage(lat: float, lng: float) -> bool:
+    """
+    Spatial heritage check: point-in-polygon against spatial_overlays layer_type='heritage'.
+    Returns False (safe default) if spatial_overlays has no heritage data or query fails.
+    """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) FROM regulatory_provisions "
-                    "WHERE is_current = TRUE AND v2_topic = 'Heritage' AND v2_structural_category != 'structural' LIMIT 1"
-                )
-                return cur.fetchone()[0] > 0
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                  AND ST_Contains(
+                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                      )
+                """,
+                (lng, lat),
+            )
+            return (cur.fetchone()[0] or 0) > 0
     except Exception as e:
         logger.warning(f"Heritage flag lookup failed: {e}")
         return False
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.post("/solar-yield")
@@ -352,7 +370,7 @@ async def run_solar_yield(request: SolarYieldRequest):
         raise HTTPException(status_code=502, detail=f"Google Solar API error: {e}")
 
     outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
-    outputs.is_heritage = _check_heritage(request.prop_id)
+    outputs.is_heritage = _check_heritage(request.lat, request.lng)
 
     if not outputs.coverage_available:
         confidence = "low"
