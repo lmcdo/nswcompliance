@@ -26,7 +26,6 @@ function esriRingsToGeoJSON(rings: number[][][]): { type: 'Polygon'; coordinates
   );
   return { type: 'Polygon', coordinates: coords };
 }
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/solar-yield
@@ -64,7 +63,10 @@ export async function POST(request: NextRequest) {
   // Step 1: resolve address
   let propData: Record<string, unknown>;
   try {
-    const propResp = await fetch(`${SITE_URL}/api/property/${encodeURIComponent(address)}`, {
+    const internalHeaders: Record<string, string> = {};
+    if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+    const propResp = await fetch(`${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`, {
+      headers: internalHeaders,
       signal: AbortSignal.timeout(10_000),
     });
     if (!propResp.ok) {

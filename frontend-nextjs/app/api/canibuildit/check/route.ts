@@ -317,6 +317,34 @@ export async function POST(req: NextRequest) {
   // Update this when new councils are onboarded (see NEXT_PUBLIC_ENABLED_LGAS)
   const dcp_available = lgaName != null && /inner\s*west/i.test(lgaName);
 
+  // DCP setback controls — query dcp_setback_controls for this LGA
+  // Normalise LGA name to the source_council convention (lowercase, underscored)
+  let dcpSetbacks: Array<{
+    control_type: string;
+    value_min: number | null;
+    value_max: number | null;
+    unit: string | null;
+    condition: string | null;
+    applicability: string;
+    source_text: string | null;
+    section_ref: string | null;
+  }> = [];
+  if (lgaName) {
+    try {
+      const normLga = lgaName.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+      const dcpRes = await query(
+        `SELECT control_type, value_min, value_max, unit, condition, applicability, source_text, section_ref
+         FROM dcp_setback_controls
+         WHERE lga = $1 AND dev_type = 'secondary_dwelling'
+         ORDER BY control_type`,
+        [normLga],
+      );
+      dcpSetbacks = dcpRes.rows;
+    } catch {
+      // dcp_setbacks stays [] — non-blocking
+    }
+  }
+
   // 7. Fire detect (if eligible) + nearby secondary dwelling DA lookup — both non-blocking, 5s cap
   let detectId: string | null = null;
   let nearbySecondaryDwellingCount: number | null = null;
@@ -415,6 +443,7 @@ export async function POST(req: NextRequest) {
     sepp_eligible,
     sepp_ineligible_reason,
     checks,
+    dcp_setbacks: dcpSetbacks,
     confirmation_required: false,
   });
 }

@@ -36,6 +36,16 @@ interface EligibilityResult {
   dcp_available: boolean;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
+  dcp_setbacks?: Array<{
+    control_type: string;
+    value_min: number | null;
+    value_max: number | null;
+    unit: string | null;
+    condition: string | null;
+    applicability: string;
+    source_text: string | null;
+    section_ref: string | null;
+  }>;
   confirmation_required: boolean;
   checks?: {
     lot_area: CheckResult;
@@ -198,6 +208,50 @@ const SEPP_CDC_STANDARDS = [
 
 const SEPP_LEGISLATION_URL =
   'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649';
+
+// ---------------------------------------------------------------------------
+// DCP setback control formatting helpers
+// ---------------------------------------------------------------------------
+
+function formatControlLabel(controlType: string): string {
+  const labels: Record<string, string> = {
+    rear_setback: 'Rear setback',
+    side_setback: 'Side setback',
+    front_setback: 'Front setback',
+    separation_from_dwelling: 'From principal dwelling',
+    height_max: 'Max. height',
+    height_storeys_max: 'Max. storeys',
+    floor_area_max: 'Max. floor area',
+    site_coverage_max: 'Max. site coverage',
+    landscaping_min: 'Min. landscaping',
+    car_parking: 'Car parking',
+    private_open_space: 'Private open space',
+  };
+  return labels[controlType] ?? controlType.replace(/_/g, ' ');
+}
+
+function formatControlValue(ctrl: {
+  value_min: number | null;
+  value_max: number | null;
+  unit: string | null;
+  applicability: string;
+}): string {
+  const u = ctrl.unit ?? '';
+  const unitSuffix = u === 'm2' ? ' m²' : u === '%' ? '%' : u ? ` ${u}` : '';
+  if (ctrl.value_min !== null && ctrl.value_max !== null) {
+    return `${ctrl.value_min}${unitSuffix} – ${ctrl.value_max}${unitSuffix}`;
+  }
+  if (ctrl.value_min !== null) return `${ctrl.value_min}${unitSuffix} min.`;
+  if (ctrl.value_max !== null) return `${ctrl.value_max}${unitSuffix} max.`;
+  return 'Check with council';
+}
+
+function formatSectionRef(ref: string): string {
+  // Trim to last segment after __ for display
+  const parts = ref.split('__');
+  const last = parts[parts.length - 1] ?? ref;
+  return last.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 // ---------------------------------------------------------------------------
 // Main component
@@ -795,6 +849,41 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
               <p className="text-xs text-gray-400 mt-3">
                 State-wide CDC minimums. Your council&apos;s DCP may impose stricter setback or height controls.
               </p>
+            </div>
+          )}
+
+          {/* DCP setback controls — council-specific, shown when data exists */}
+          {eligibility.dcp_setbacks && eligibility.dcp_setbacks.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+              <div className="flex items-baseline justify-between mb-3">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  {eligibility.lga_name ?? 'Council'} DCP controls
+                </h3>
+                <span className="text-xs text-amber-700 font-medium">Council-specific</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
+                {eligibility.dcp_setbacks.map((ctrl, i) => (
+                  <div key={i}>
+                    <p className="text-xs text-gray-400">{formatControlLabel(ctrl.control_type)}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {formatControlValue(ctrl)}
+                    </p>
+                    {ctrl.condition && (
+                      <p className="text-xs text-amber-700">{ctrl.condition}</p>
+                    )}
+                    {ctrl.section_ref && (
+                      <p className="text-xs text-gray-400 truncate" title={ctrl.section_ref}>
+                        {formatSectionRef(ctrl.section_ref)}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+              {eligibility.dcp_setbacks.some(c => c.applicability === 'universal_residential') && (
+                <p className="text-xs text-gray-500 mt-3 border-t border-amber-200 pt-2">
+                  * Universal residential controls — apply to secondary dwellings in this LGA.
+                </p>
+              )}
             </div>
           )}
 

@@ -8,7 +8,6 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
 const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 
@@ -62,8 +61,10 @@ export async function POST(request: NextRequest) {
   }
 
   // Resolve address for both actions
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  const propUrl = `${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`;
+  const internalHeaders: Record<string, string> = {};
+  if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+  const propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }

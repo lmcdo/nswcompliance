@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { posthog } from '@/components/providers/PostHogProvider';
 
 interface Application {
   PlanningPortalApplicationNumber?: string;
@@ -31,7 +32,7 @@ interface SearchResult {
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
-type SubscribeState = 'idle' | 'subscribing' | 'subscribed' | 'error';
+type SubscribeState = 'idle' | 'subscribing' | 'subscribed';
 
 function formatDate(iso?: string) {
   if (!iso) return null;
@@ -45,7 +46,7 @@ function formatCost(val?: number | string) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
 }
 
-export default function ThreatRadarPage() {
+export function ThreatRadarTool({ lgaSlug }: { lgaSlug?: string }) {
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('idle');
@@ -62,6 +63,8 @@ export default function ThreatRadarPage() {
     setSearchResult(null);
     setSearchError('');
 
+    posthog?.capture('threat_radar_search', { address, lga_slug: lgaSlug });
+
     try {
       const res = await fetch('/api/satellite/threat-radar/search', {
         method: 'POST',
@@ -72,9 +75,17 @@ export default function ThreatRadarPage() {
       if (!res.ok) throw new Error(json.error || 'Search failed');
       setSearchResult(json);
       setSearchState('done');
+      posthog?.capture('threat_radar_search_complete', {
+        address,
+        lga_slug: lgaSlug,
+        application_count: json.applications?.length ?? 0,
+        council_name: json.council_name,
+      });
     } catch (err: unknown) {
-      setSearchError(err instanceof Error ? err.message : 'Unknown error');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setSearchError(msg);
       setSearchState('error');
+      posthog?.capture('threat_radar_search_error', { address, lga_slug: lgaSlug, error: msg });
     }
   };
 
@@ -85,6 +96,8 @@ export default function ThreatRadarPage() {
     setSubscribeState('subscribing');
     setSubscribeError('');
 
+    posthog?.capture('threat_radar_subscribe', { address, lga_slug: lgaSlug });
+
     try {
       const res = await fetch('/api/satellite/threat-radar', {
         method: 'POST',
@@ -94,8 +107,10 @@ export default function ThreatRadarPage() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Subscription failed');
       setSubscribeState('subscribed');
+      posthog?.capture('threat_radar_subscribed', { address, lga_slug: lgaSlug });
     } catch (err: unknown) {
-      setSubscribeError(err instanceof Error ? err.message : 'Unknown error');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      setSubscribeError(msg);
       setSubscribeState('idle');
     }
   };
@@ -147,100 +162,7 @@ export default function ThreatRadarPage() {
 
         {/* Results */}
         {searchState === 'done' && searchResult && (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-gray-500">
-                {searchResult.council_name} · last {searchResult.window_days} days
-              </p>
-              <button onClick={reset} className="text-xs text-teal-600 hover:text-teal-700 underline">New search</button>
-            </div>
-
-            {searchResult.applications.length === 0 ? (
-              <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
-                <p className="text-sm font-medium text-gray-700">No applications found</p>
-                <p className="text-xs text-gray-500 mt-1">
-                  No DA or CDC applications lodged in {searchResult.council_name} in the last {searchResult.window_days} days.
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm font-medium text-gray-700">
-                  {searchResult.applications.length} application{searchResult.applications.length !== 1 ? 's' : ''} found nearby
-                </p>
-                {searchResult.applications.map((app, i) => {
-                  const appNum = app.PlanningPortalApplicationNumber ?? app.ApplicationNumber ?? '—';
-                  const type = app.ApplicationType ?? app.DevelopmentType ?? 'DA';
-                  const lodged = formatDate(app.LodgementDate);
-                  const determined = formatDate(app.DeterminationDate);
-                  const cost = formatCost(app.CostOfDevelopment);
-                  const dwellings = app.NumberOfNewDwellings != null && Number(app.NumberOfNewDwellings) > 0
-                    ? Number(app.NumberOfNewDwellings)
-                    : null;
-
-                  return (
-                    <div key={i} className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900">{appNum}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{type}</p>
-                        </div>
-                        {app._distance_m != null && (
-                          <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-                            {app._distance_m}m away
-                          </span>
-                        )}
-                      </div>
-
-                      {app.ApplicationDescription && (
-                        <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
-                      )}
-
-                      {app.PropertyAddress && (
-                        <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
-                      )}
-
-                      <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        {app.Status && (
-                          <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
-                        )}
-                        {lodged && (
-                          <span className="text-xs text-gray-400">Lodged {lodged}</span>
-                        )}
-                        {determined && (
-                          <span className="text-xs text-gray-400">Determined {determined}</span>
-                        )}
-                        {cost && (
-                          <span className="text-xs text-gray-400">Cost {cost}</span>
-                        )}
-                        {dwellings && (
-                          <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
-                        )}
-                        {app.LotDescription && (
-                          <span className="text-xs text-gray-400">{app.LotDescription}</span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                <a
-                  href={`https://map.plotdetect.com.au?lat=${searchResult.lat}&lng=${searchResult.lng}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors mt-2"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-teal-900">
-                      Explore the full DA map for {searchResult.council_name}
-                    </p>
-                    <p className="text-xs text-teal-700 mt-0.5">
-                      Filter by cost, keywords, and development type · map.plotdetect.com.au
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-teal-600 text-base">→</span>
-                </a>
-              </>
-            )}
-          </div>
+          <SearchResults result={searchResult} onReset={reset} />
         )}
 
         {/* Subscribe — always visible */}
@@ -287,6 +209,107 @@ export default function ThreatRadarPage() {
           DA and CDC data sourced from NSW ePlanning Portal.
         </p>
       </div>
+    </div>
+  );
+}
+
+function SearchResults({ result, onReset }: { result: SearchResult; onReset: () => void }) {
+  const apps = result.applications ?? [];
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">
+          {result.council_name} · last {result.window_days} days
+        </p>
+        <button onClick={onReset} className="text-xs text-teal-600 hover:text-teal-700 underline">New search</button>
+      </div>
+
+      {apps.length === 0 ? (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
+          <p className="text-sm font-medium text-gray-700">No applications found</p>
+          <p className="text-xs text-gray-500 mt-1">
+            No DA or CDC applications lodged in {result.council_name} in the last {result.window_days} days.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="text-sm font-medium text-gray-700">
+            {apps.length} application{apps.length !== 1 ? 's' : ''} found nearby
+          </p>
+          {apps.map((app, i) => {
+            const appNum = app.PlanningPortalApplicationNumber ?? app.ApplicationNumber ?? '—';
+            const type = app.ApplicationType ?? app.DevelopmentType ?? 'DA';
+            const lodged = formatDate(app.LodgementDate);
+            const determined = formatDate(app.DeterminationDate);
+            const cost = formatCost(app.CostOfDevelopment);
+            const dwellings = app.NumberOfNewDwellings != null && Number(app.NumberOfNewDwellings) > 0
+              ? Number(app.NumberOfNewDwellings)
+              : null;
+
+            return (
+              <div key={i} className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900">{appNum}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">{type}</p>
+                  </div>
+                  {app._distance_m != null && (
+                    <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                      {app._distance_m}m away
+                    </span>
+                  )}
+                </div>
+
+                {app.ApplicationDescription && (
+                  <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
+                )}
+
+                {app.PropertyAddress && (
+                  <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
+                )}
+
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  {app.Status && (
+                    <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
+                  )}
+                  {lodged && (
+                    <span className="text-xs text-gray-400">Lodged {lodged}</span>
+                  )}
+                  {determined && (
+                    <span className="text-xs text-gray-400">Determined {determined}</span>
+                  )}
+                  {cost && (
+                    <span className="text-xs text-gray-400">Cost {cost}</span>
+                  )}
+                  {dwellings && (
+                    <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
+                  )}
+                  {app.LotDescription && (
+                    <span className="text-xs text-gray-400">{app.LotDescription}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          <a
+            href={`https://map.plotdetect.com.au?lat=${result.lat}&lng=${result.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors mt-2"
+          >
+            <div>
+              <p className="text-sm font-medium text-teal-900">
+                Explore the full DA map for {result.council_name}
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                Filter by cost, keywords, and development type · map.plotdetect.com.au
+              </p>
+            </div>
+            <span className="shrink-0 text-teal-600 text-base">→</span>
+          </a>
+        </>
+      )}
     </div>
   );
 }

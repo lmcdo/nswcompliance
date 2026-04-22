@@ -332,7 +332,7 @@ def run_shadow(request: ShadowRequest):
     if request.height_m:
         height_m = request.height_m
         height_source = "planning_portal"
-        lep_name = _COUNCIL_TO_LEP.get("", "Local Environmental Plan")
+        lep_name = "Local Environmental Plan"
         # Re-derive lep_name from DB without height query
         try:
             with _get_conn() as conn:
@@ -345,7 +345,7 @@ def run_shadow(request: ShadowRequest):
                     )
                     row = cur.fetchone()
                     if row and row[0]:
-                        lep_name = _COUNCIL_TO_LEP.get(row[0].lower(), f"{row[0]} LEP")
+                        lep_name = _get_lep_label(row[0])
         except Exception:
             pass
     else:
@@ -386,12 +386,15 @@ def run_shadow(request: ShadowRequest):
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
 
-    _write_report(
-        request.report_id, request.address, request.lat, request.lng,
-        request.prop_id,
-        {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
-        outputs, confidence,
-    )
+    try:
+        _write_report(
+            request.report_id, request.address, request.lat, request.lng,
+            request.prop_id,
+            {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+            outputs, confidence,
+        )
+    except Exception as e:
+        logger.error(f"Shadow report DB write failed (non-fatal): {e}")
 
     return {
         "address": request.address,

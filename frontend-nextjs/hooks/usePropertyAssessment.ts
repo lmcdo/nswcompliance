@@ -35,6 +35,11 @@ interface PropertyData {
   };
   planningLayers?: any[];
   lotDimensions?: LotDimensions;
+  strataInfo?: {
+    isStrata: boolean;
+    source: string | null;
+    strataUnit: string | null;
+  };
 }
 
 interface UsePropertyAssessmentReturn {
