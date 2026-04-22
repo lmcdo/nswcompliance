@@ -202,6 +202,7 @@ export default function GrannyFlatPage() {
       {state === 'confirming' && detectResult && (
         <ConfirmationPanel
           detectResult={detectResult}
+          inputAddress={address}
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
           onConfirm={handleConfirm}
@@ -212,7 +213,7 @@ export default function GrannyFlatPage() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <ResultCard result={finalResult} inputAddress={address} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -477,21 +478,33 @@ function GrannyFlatFAQs() {
 
 function ConfirmationPanel({
   detectResult,
+  inputAddress,
   confirmedCount,
   onCountChange,
   onConfirm,
   onBack,
 }: {
   detectResult: DetectResult;
+  inputAddress?: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
+  const displayAddress = inputAddress?.trim() || detectResult.address;
+  const canonicalDiffers =
+    !!inputAddress?.trim() &&
+    inputAddress.trim().toLowerCase() !== detectResult.address?.toLowerCase();
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
-        <h2 className="font-semibold text-gray-900">{detectResult.address}</h2>
+        <h2 className="font-semibold text-gray-900">{displayAddress}</h2>
+        {canonicalDiffers && (
+          <p className="text-xs text-gray-400 mt-0.5">
+            Matched to {detectResult.address} on NSW Planning Portal
+          </p>
+        )}
         {detectResult.lot_area_m2 != null && (
           <p className="text-sm text-gray-500 mt-0.5">
             Lot area: {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
@@ -588,16 +601,25 @@ function ConfirmationPanel({
   );
 }
 
-function ResultCard({ result, onReset }: { result: ConfirmResult; onReset: () => void }) {
+function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; inputAddress?: string; onReset: () => void }) {
   const weeklyRent = result.estimated_weekly_rent_aud;
   const annualRent = weeklyRent ? weeklyRent * 52 : null;
+  const displayAddress = inputAddress?.trim() || result.address;
+  const canonicalDiffers =
+    !!inputAddress?.trim() &&
+    inputAddress.trim().toLowerCase() !== result.address?.toLowerCase();
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
+            <h2 className="font-semibold text-gray-900">{displayAddress}</h2>
+            {canonicalDiffers && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Matched to {result.address} on NSW Planning Portal
+              </p>
+            )}
             <p className="text-xs text-gray-400 mt-0.5">
               {CONFIDENCE_LABEL[result.confidence] ?? result.confidence}
             </p>
