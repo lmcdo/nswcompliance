@@ -388,7 +388,7 @@ def _detect_structures_samgeo(
 
 def _compute_lot_area_m2(lot_geometry: dict) -> Optional[float]:
     """Shoelace on EPSG:3857 rings, corrected for Mercator distortion (~1.45x at Sydney)."""
-    if not lot_geometry or "rings" not in lot_geometry:
+    if not lot_geometry or "rings" not in lot_geometry or not lot_geometry["rings"]:
         return None
     ring = lot_geometry["rings"][0]
     if len(ring) < 3:
