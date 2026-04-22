@@ -424,11 +424,19 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
     return None
 
 
+_RENTAL_DATA_CACHE: Optional[dict] = None
+
+
 def _load_rental_data() -> dict:
+    global _RENTAL_DATA_CACHE
+    if _RENTAL_DATA_CACHE is not None:
+        return _RENTAL_DATA_CACHE
     if not os.path.exists(RENTAL_DATA_PATH):
-        return {}
+        _RENTAL_DATA_CACHE = {}
+        return _RENTAL_DATA_CACHE
     with open(RENTAL_DATA_PATH) as f:
-        return json.load(f)
+        _RENTAL_DATA_CACHE = json.load(f)
+    return _RENTAL_DATA_CACHE
 
 
 def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
@@ -509,7 +517,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
             f"minimum of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
-    tile_path = f"/tmp/gf_{req.prop_id}.png"
+    # Sanitize prop_id to prevent path traversal (prop_ids are numeric, but be defensive)
+    safe_prop_id = "".join(c for c in req.prop_id if c.isalnum() or c in ("-", "_"))
+    tile_path = f"/tmp/gf_{safe_prop_id}.png"
     try:
         tile_path, licence, bbox = fetch_tile_to_file(
             req.lat, req.lng, output_path=tile_path, grid=3
@@ -554,6 +564,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
             )
         except Exception as e:
             logger.error(f"samgeo detection failed: {e}")
+            detect_warnings.append(
+                "Aerial structure detection failed — enter structure count manually."
+            )
 
     detect_id = str(uuid.uuid4())
     response = GrannyFlatDetectResponse(
@@ -580,6 +593,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
     # When called via Trigger.dev (async path), write detect result to DB so
     # the frontend can poll granny_flat_reports by report_id.
     if req.report_id:
+        conn = None
         try:
             conn = _get_conn()
             with conn.cursor() as cur:
@@ -677,6 +691,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
 
     report_id = req.report_id or str(uuid.uuid4())
 
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
