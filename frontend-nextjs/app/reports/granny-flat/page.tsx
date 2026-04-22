@@ -87,8 +87,17 @@ export default function GrannyFlatPage() {
 
       const jobId: string = json.jobId;
 
-      // Step 2: poll until detect result is written to DB
+      // Step 2: poll until detect result is written to DB (max 3 min)
+      const POLL_TIMEOUT_MS = 180_000;
+      const pollStart = Date.now();
+
       const poll = async (): Promise<void> => {
+        if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+          throw new Error(
+            'Detection timed out after 3 minutes. The aerial imagery server may be warming up — please try again in 30 seconds.'
+          );
+        }
+
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
 

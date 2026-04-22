@@ -300,7 +300,7 @@ def _detect_structures_samgeo(
         resp = _req.post(
             modal_url,
             json={"image_b64": image_b64},
-            timeout=150,
+            timeout=90,
         )
         resp.raise_for_status()
         result = resp.json()
