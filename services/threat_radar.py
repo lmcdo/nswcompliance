@@ -184,7 +184,7 @@ def _filter_nearby(apps: list, lat: float, lng: float) -> list:
             d = _haversine(lat, lng, alat, alng)
             if d <= ALERT_RADIUS_M:
                 nearby.append({**app, "_distance_m": round(d,1)})
-        except (TypeError, ValueError):
+        except Exception:
             pass
     return nearby
 
@@ -196,7 +196,9 @@ def subscribe(req: SubscribeRequest):
     except ValueError as e:
         raise HTTPException(422, str(e))
 
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             # Return existing active subscription rather than creating a duplicate
             cur.execute(
@@ -217,16 +219,24 @@ def subscribe(req: SubscribeRequest):
             )
             row = cur.fetchone()
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
     return {"subscription_id": str(row["id"]), "address": req.address, "status": "active"}
 
 
 @router.post("/threat-radar/check")
 def check(req: CheckRequest):
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT * FROM threat_radar_subscriptions WHERE id=%s AND active=true",
                         (req.subscription_id,))
             sub = cur.fetchone()
+    finally:
+        if conn:
+            conn.close()
     if not sub:
         raise HTTPException(404, "Subscription not found")
 
@@ -258,7 +268,9 @@ def check(req: CheckRequest):
         if num and num not in seen:
             new_apps.append(app); seen.add(num)
 
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE threat_radar_subscriptions "
@@ -268,6 +280,9 @@ def check(req: CheckRequest):
                 (psycopg2.extras.Json(list(seen)), req.subscription_id)
             )
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
     return {
         "subscription_id": req.subscription_id,
@@ -281,8 +296,13 @@ def check(req: CheckRequest):
 
 @router.get("/threat-radar/subscriptions")
 def list_subscriptions():
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
             cur.execute("SELECT id,address,email,lat,lng FROM threat_radar_subscriptions WHERE active=true")
             rows = cur.fetchall()
+    finally:
+        if conn:
+            conn.close()
     return {"subscriptions": [dict(r) for r in rows]}
