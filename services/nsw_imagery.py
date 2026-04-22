@@ -58,6 +58,10 @@ def _fetch_tile(z: int, x: int, y: int, session: requests.Session) -> Optional[I
     for attempt in range(3):
         try:
             resp = session.get(url, timeout=15)
+            if resp.status_code == 404:
+                # Tile doesn't exist at this zoom — no point retrying
+                logger.debug(f"Tile {z}/{x}/{y} not found (404) — skipping retries")
+                return None
             resp.raise_for_status()
             img = Image.open(io.BytesIO(resp.content)).convert("RGB")
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -141,31 +145,44 @@ def fetch_tile_to_file(
 
     if os.path.exists(output_path):
         logger.debug(f"Using cached tile at {output_path}")
-        # Recompute bbox without re-fetching
-        _, licence, bbox = _compute_bbox_only(lat, lng, grid)
+        # Recompute bbox without re-fetching (use ZOOM as saved zoom unknown)
+        _, licence, bbox = _compute_bbox_only(lat, lng, grid, ZOOM)
         return output_path, licence, bbox
 
-    image, licence, bbox = fetch_tile_for_location(lat, lng, grid=grid)
-
-    # Sanity check: reject uniform grey canvas (all tile fetches failed)
     import numpy as np
-    arr = np.array(image)
-    if arr.std() < 2:
-        raise RuntimeError(
-            f"All SIX Maps tile fetches failed for ({lat:.5f}, {lng:.5f}) — "
-            "server may be temporarily unavailable. Not caching grey canvas."
-        )
 
-    image.save(output_path)
-    logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px")
-    return output_path, licence, bbox
+    # Try zoom 20 first; fall back to zoom 19 if tiles are unavailable (404s)
+    zoom_candidates = [ZOOM, ZOOM - 1]
+    last_error: Optional[str] = None
+    for zoom in zoom_candidates:
+        image, licence, bbox = fetch_tile_for_location(lat, lng, grid=grid, zoom=zoom)
+
+        arr = np.array(image)
+        if arr.std() < 2:
+            last_error = (
+                f"All SIX Maps tile fetches failed at zoom {zoom} for ({lat:.5f}, {lng:.5f})"
+            )
+            logger.warning(f"{last_error} — trying zoom {zoom - 1}" if zoom > zoom_candidates[-1] else last_error)
+            continue
+
+        if zoom != ZOOM:
+            logger.info(f"Zoom {ZOOM} unavailable — used zoom {zoom} fallback for ({lat:.5f}, {lng:.5f})")
+
+        image.save(output_path)
+        logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px (zoom {zoom})")
+        return output_path, licence, bbox
+
+    raise RuntimeError(
+        f"All SIX Maps tile fetches failed for ({lat:.5f}, {lng:.5f}) at zooms "
+        f"{zoom_candidates} — server may be temporarily unavailable. Not caching grey canvas."
+    )
 
 
-def _compute_bbox_only(lat: float, lng: float, grid: int) -> tuple[None, str, dict]:
+def _compute_bbox_only(lat: float, lng: float, grid: int, zoom: int = ZOOM) -> tuple[None, str, dict]:
     half = grid // 2
-    cx, cy = _lat_lng_to_tile(lat, lng, ZOOM)
-    nw_lat, nw_lng = _tile_to_lat_lng(cx - half, cy - half, ZOOM)
-    se_lat, se_lng = _tile_to_lat_lng(cx + half + 1, cy + half + 1, ZOOM)
+    cx, cy = _lat_lng_to_tile(lat, lng, zoom)
+    nw_lat, nw_lng = _tile_to_lat_lng(cx - half, cy - half, zoom)
+    se_lat, se_lng = _tile_to_lat_lng(cx + half + 1, cy + half + 1, zoom)
     bbox = {
         "min_lat": se_lat,
         "max_lat": nw_lat,
