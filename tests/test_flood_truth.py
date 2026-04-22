@@ -521,3 +521,59 @@ def test_haversine_is_symmetric():
     a = _haversine_km(-33.87, 151.21, -28.8, 153.28)
     b = _haversine_km(-28.8, 153.28, -33.87, 151.21)
     assert a == pytest.approx(b, rel=1e-9)
+
+
+# ---------------------------------------------------------------------------
+# Pass-3 bug regression tests
+# ---------------------------------------------------------------------------
+
+def test_normalise_outputs_none_raw_does_not_crash():
+    """_normalise_outputs(None) was called on cache hits where outputs column is NULL.
+    cached["outputs"] or {} guard was added in run_flood; but _normalise_outputs itself
+    should be defensive too — if it ever receives {} it must not crash."""
+    result = _normalise_outputs({})
+    assert isinstance(result, dict)
+    assert result.get("epi_flood_class") is None
+    # flood_signal computed from empty inputs → "none" (no data = no signal), not a crash
+    assert result.get("flood_signal") == "none"
+
+
+def test_normalise_outputs_epi_label_recomputed_when_null():
+    """epi_flood_class present but epi_flood_label null (old DB rows) →
+    _normalise_outputs must recompute label from class."""
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "epi_flood_label": None,   # null in DB — written before label field was added
+    }
+    result = _normalise_outputs(raw)
+    assert result["epi_flood_label"] is not None
+    assert "flood" in result["epi_flood_label"].lower()
+
+
+def test_normalise_outputs_epi_label_preserved_when_present():
+    """epi_flood_label already in DB must not be overwritten."""
+    raw = {
+        "epi_flood_class": "flood_planning_area",
+        "epi_flood_label": "Flood Planning Area",
+    }
+    result = _normalise_outputs(raw)
+    assert result["epi_flood_label"] == "Flood Planning Area"
+
+
+def test_epi_overlay_attributes_null_does_not_crash(monkeypatch):
+    """feats[0]["attributes"] returning null (not absent) must not raise AttributeError.
+    The .get("attributes", {}) null trap was fixed to .get("attributes") or {}."""
+    import services.flood_truth as ft
+    import requests
+
+    class _FakeResp:
+        def raise_for_status(self): pass
+        def json(self):
+            # API returns feature with null attributes — can happen on partial EPI coverage
+            return {"features": [{"attributes": None}]}
+
+    monkeypatch.setattr(requests, "get", lambda *a, **kw: _FakeResp())
+    result = ft._query_epi_overlay(-33.87, 151.21)
+    # Should not raise; should return a valid dict (no class = no overlay)
+    assert isinstance(result, dict)
+    assert result.get("epi_flood_class") in (None, "none")

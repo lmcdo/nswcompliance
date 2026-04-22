@@ -168,7 +168,7 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
             return {"epi_flood_class": "none", "epi_flood_label": "No EPI Flood Overlay",
                     "data_currency": "unknown"}
 
-        attrs = feats[0].get("attributes", {})
+        attrs = feats[0].get("attributes") or {}
         # ArcGIS may return DataDate as epoch-ms integer — coerce to str for contract compliance
         currency = str(attrs.get("DataDate") or attrs.get("DATADATE") or "unknown")
         raw_class = (
@@ -511,6 +511,10 @@ def _normalise_outputs(raw: dict) -> dict:
             epi_class = "flood_planning_area" if in_overlay else "none"
             epi_label = _EPI_CLASS_LABELS.get(epi_class)
 
+    # If epi_class is present but epi_label is null (DB written before label field existed), recompute
+    if epi_class and not epi_label:
+        epi_label = _EPI_CLASS_LABELS.get(epi_class)
+
     # SAR
     sar_detected = raw.get("sar_flood_detected")
     if sar_detected is None and raw.get("flood_event_count") is not None:
@@ -610,7 +614,7 @@ def run_flood(req: FloodRequest):
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
-                "outputs": _normalise_outputs(cached["outputs"]),
+                "outputs": _normalise_outputs(cached["outputs"] or {}),
                 "confidence": cached["confidence"],
                 "data_sources": cached["data_sources"] or _DATA_SOURCES_BASE,
             }
