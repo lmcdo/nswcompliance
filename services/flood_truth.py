@@ -37,7 +37,7 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "bom_last_major_flood_peak_m": float | null,
     "s1_gap_warning": str | null,
     "data_currency": str,
-    "flood_signal": "none" | "low" | "moderate" | "elevated"  # multi-source convergence indicator
+    "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable"  # multi-source convergence
   },
   "confidence": str,
   "data_sources": list[str]
@@ -168,13 +168,19 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
             return {"epi_flood_class": "none", "epi_flood_label": "No EPI Flood Overlay",
                     "data_currency": "unknown"}
 
-        attrs = feats[0].get("attributes", {})
-        currency = attrs.get("DataDate") or attrs.get("DATADATE") or "unknown"
+        attrs = feats[0].get("attributes") or {}
+        # ArcGIS may return DataDate as epoch-ms integer — coerce to str for contract compliance
+        currency = str(attrs.get("DataDate") or attrs.get("DATADATE") or "unknown")
         raw_class = (
             attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
             or attrs.get("FldClass") or attrs.get("Flood_Class") or ""
         ).strip().lower()
-        epi_class = _EPI_CLASS_MAP.get(raw_class, "flood_planning_area")
+        # Unknown or empty class → treat as "none" (not "flood_planning_area").
+        # Defaulting to flood_planning_area on unrecognised values causes false positives.
+        epi_class = _EPI_CLASS_MAP.get(raw_class) if raw_class else "none"
+        if epi_class is None:
+            logger.warning(f"Unrecognised EPI FloodClass: {raw_class!r} — treating as flood_planning_area")
+            epi_class = "flood_planning_area"
         return {"epi_flood_class": epi_class,
                 "epi_flood_label": _EPI_CLASS_LABELS.get(epi_class, "Flood Planning Area"),
                 "data_currency": currency}
@@ -193,22 +199,23 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     Returns ems_flood_detected (bool|None) and ems_activations (list|None).
     None = table empty or unavailable (distinct from False = no match).
     """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
-                if cur.fetchone()["n"] == 0:
-                    return {"ems_flood_detected": None, "ems_activations": None}
-                cur.execute(
-                    """
-                    SELECT activation_id, event_name, event_date_start, flood_type
-                    FROM copernicus_flood_events
-                    WHERE ST_Intersects(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                    ORDER BY event_date_start DESC
-                    """,
-                    (lng, lat),
-                )
-                rows = cur.fetchall()
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
+            if cur.fetchone()["n"] == 0:
+                return {"ems_flood_detected": None, "ems_activations": None}
+            cur.execute(
+                """
+                SELECT activation_id, event_name, event_date_start, flood_type
+                FROM copernicus_flood_events
+                WHERE ST_Intersects(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                ORDER BY event_date_start DESC
+                """,
+                (lng, lat),
+            )
+            rows = cur.fetchall()
         if not rows:
             return {"ems_flood_detected": False, "ems_activations": []}
         return {
@@ -222,6 +229,9 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     except Exception as e:
         logger.warning(f"Copernicus EMS query: {e}")
         return {"ems_flood_detected": None, "ems_activations": None}
+    finally:
+        if conn:
+            conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +425,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     if internal_outputs.get("data_currency") == "query_failed":
         return "unavailable"
 
-    epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none")
+    epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
@@ -449,7 +459,7 @@ def _compute_confidence(internal_outputs: dict) -> str:
     medium — EPI + EMS + (JRC or BOM), OR EPI + ≥2 SAR seasons
     low    — EPI only
     """
-    wet_seasons    = internal_outputs.get("wet_seasons_checked", 0)
+    wet_seasons    = internal_outputs.get("wet_seasons_checked") or 0
     ems_available  = internal_outputs.get("ems_flood_detected") is not None
     jrc_available  = internal_outputs.get("jrc_water_occurrence_pct") is not None
     bom_available  = internal_outputs.get("bom_gauge_name") is not None
@@ -501,6 +511,10 @@ def _normalise_outputs(raw: dict) -> dict:
             epi_class = "flood_planning_area" if in_overlay else "none"
             epi_label = _EPI_CLASS_LABELS.get(epi_class)
 
+    # If epi_class is present but epi_label is null (DB written before label field existed), recompute
+    if epi_class and not epi_label:
+        epi_label = _EPI_CLASS_LABELS.get(epi_class)
+
     # SAR
     sar_detected = raw.get("sar_flood_detected")
     if sar_detected is None and raw.get("flood_event_count") is not None:
@@ -521,7 +535,7 @@ def _normalise_outputs(raw: dict) -> dict:
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
         "bom_last_major_flood_peak_m": raw.get("bom_last_major_flood_peak_m"),
         "s1_gap_warning":             raw.get("s1_gap_warning"),
-        "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency", "unknown"),
+        "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
@@ -540,7 +554,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
         VALUES (%s, 'flood', %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET outputs = EXCLUDED.outputs
     """
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id, date.today(),
@@ -550,6 +566,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_output
                 data_sources,
             ))
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -581,25 +600,29 @@ def run_flood(req: FloodRequest):
     Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2).
     SAR analysis is batch-only (Phase 3B).
     """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT outputs, confidence, data_sources FROM property_reports "
-                    "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
-                    (req.address,)
-                )
-                cached = cur.fetchone()
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT outputs, confidence, data_sources FROM property_reports "
+                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                (req.address,)
+            )
+            cached = cur.fetchone()
         if cached:
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
                 "run_date": date.today().isoformat(),
-                "outputs": _normalise_outputs(cached["outputs"]),
+                "outputs": _normalise_outputs(cached["outputs"] or {}),
                 "confidence": cached["confidence"],
                 "data_sources": cached["data_sources"] or _DATA_SOURCES_BASE,
             }
     except Exception as e:
         logger.warning(f"Cache lookup: {e}")
+    finally:
+        if conn:
+            conn.close()
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
@@ -622,10 +645,14 @@ def run_flood(req: FloodRequest):
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
-    _write_report(
-        req.report_id, req.address, req.lat, req.lng,
-        req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
-    )
+    try:
+        _write_report(
+            req.report_id, req.address, req.lat, req.lng,
+            req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
+        )
+    except Exception as e:
+        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
+        logger.error(f"Flood report DB write failed (non-fatal): {e}")
 
     return {
         "address": req.address, "lat": req.lat, "lng": req.lng,
@@ -643,6 +670,9 @@ def run_flood_batch(req: FloodBatchRequest):
     Full S1 pipeline: Phase 3B in ce-satellite-implementation-plan.md.
     """
     year = req.wet_season_year
+    if year < 2015 or year > 2100:
+        from fastapi import HTTPException
+        raise HTTPException(422, f"wet_season_year {year} out of valid range (2015–2100)")
     wet_start = date(year - 1, 11, 1)
     wet_end   = date(year, 3, 31)
     return {

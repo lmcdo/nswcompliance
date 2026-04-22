@@ -250,19 +250,29 @@ DCP_SETBACKS: dict = {
 }
 # fmt: on
 
-# EPI name (uppercase) → list of former councils with DCP setback data in DB.
-# Single-council entry → returned directly (no suburb disambiguation needed).
-# Multi-council entry (post-amalgamation LGAs like Inner West) → suburb lookup required.
-# Add new LGAs here as DCP setback data is onboarded.
-ZONE_EPI_TO_COUNCILS: dict[str, list[str]] = {
-    "INNER WEST LOCAL ENVIRONMENTAL PLAN 2022": ["marrickville", "leichhardt", "ashfield"],
-    # Future LGAs — uncomment as DCP setback rows are migrated to dcp_general_requirements:
-    # "CANTERBURY-BANKSTOWN LOCAL ENVIRONMENTAL PLAN 2023": ["canterbury", "bankstown"],
-    # "PARRAMATTA LOCAL ENVIRONMENTAL PLAN 2011": ["parramatta"],
-    # "CUMBERLAND LOCAL ENVIRONMENTAL PLAN 2021": ["auburn", "holroyd", "guilford"],
+# EPI name substring (uppercase) → lga slug for dcp_setback_controls.
+# Inner West is multi-council — suburb disambiguation returns marrickville/leichhardt/ashfield.
+# All other entries return the slug directly.
+# Add new LGAs here as DCP setback rows are confirmed in dcp_setback_controls.
+ZONE_EPI_TO_LGA_SLUG: dict[str, str] = {
+    "INNER WEST LOCAL ENVIRONMENTAL PLAN":           "inner_west",
+    "CANTERBURY-BANKSTOWN LOCAL ENVIRONMENTAL PLAN": "canterbury_bankstown",
+    "BLACKTOWN LOCAL ENVIRONMENTAL PLAN":            "blacktown",
+    "CAMPBELLTOWN":                                  "campbelltown",
+    "LIVERPOOL LOCAL ENVIRONMENTAL PLAN":            "liverpool",
+    "HORNSBY LOCAL ENVIRONMENTAL PLAN":              "hornsby",
+    "NORTHERN BEACHES LOCAL ENVIRONMENTAL PLAN":     "northern_beaches",
+    "PENRITH LOCAL ENVIRONMENTAL PLAN":              "penrith",
+    "WAVERLEY LOCAL ENVIRONMENTAL PLAN":             "waverley",
+    "WOOLLAHRA LOCAL ENVIRONMENTAL PLAN":            "woollahra",
+    "KU-RING-GAI LOCAL ENVIRONMENTAL PLAN":          "ku_ring_gai",
+    # Parramatta and Cumberland: registry entries exist but setback rows not yet complete.
+    # "PARRAMATTA LOCAL ENVIRONMENTAL PLAN":         "parramatta",
+    # "CUMBERLAND LOCAL ENVIRONMENTAL PLAN":         "cumberland",
 }
 
-# Suburb → former council (Inner West LGA post-2016 amalgamation)
+# Suburb → former-council slug (Inner West LGA post-2016 amalgamation).
+# Used only when ZONE_EPI_TO_LGA_SLUG returns "inner_west".
 SUBURB_TO_FORMER_COUNCIL: dict[str, str] = {
     # Marrickville precincts
     "marrickville": "marrickville", "sydenham": "marrickville", "tempe": "marrickville",
@@ -462,31 +472,31 @@ def detect_strata(address: str, lat: Optional[float] = None, lng: Optional[float
 
 
 def detect_former_council(address: str, zone_epi: str = "") -> Optional[str]:
-    """Return former_council slug for the address, or None if no DCP setback data exists.
+    """Return lga slug for dcp_setback_controls, or None if LGA not yet onboarded.
 
-    Looks up ZONE_EPI_TO_COUNCILS using the EPI name from the planning portal.
+    Looks up ZONE_EPI_TO_LGA_SLUG using the EPI name from the planning portal.
     - No match → None (LGA not yet onboarded for DCP setbacks)
-    - Single council in list → returned directly (single-council LGA)
-    - Multiple councils (post-merger LGA like Inner West) → suburb disambiguation
+    - Most LGAs → slug returned directly
+    - Inner West → suburb disambiguation returns marrickville / leichhardt / ashfield
 
-    Extend ZONE_EPI_TO_COUNCILS (not this function) when onboarding new LGAs.
+    Extend ZONE_EPI_TO_LGA_SLUG (not this function) when onboarding new LGAs.
     """
     epi_upper = zone_epi.upper()
-    councils = None
-    for epi_key, council_list in ZONE_EPI_TO_COUNCILS.items():
+    slug = None
+    for epi_key, lga_slug in ZONE_EPI_TO_LGA_SLUG.items():
         if epi_key in epi_upper or epi_upper in epi_key:
-            councils = council_list
+            slug = lga_slug
             break
-    if not councils:
+    if not slug:
         return None
-    if len(councils) == 1:
-        return councils[0]
-    # Multi-council: disambiguate by suburb in address
-    addr_lower = address.lower()
-    for suburb in sorted(SUBURB_TO_FORMER_COUNCIL, key=len, reverse=True):
-        if suburb in addr_lower:
-            return SUBURB_TO_FORMER_COUNCIL[suburb]
-    return None
+    # Inner West: disambiguate to former-council precinct by suburb
+    if slug == "inner_west":
+        addr_lower = address.lower()
+        for suburb in sorted(SUBURB_TO_FORMER_COUNCIL, key=len, reverse=True):
+            if suburb in addr_lower:
+                return SUBURB_TO_FORMER_COUNCIL[suburb]
+        return None  # IW address but suburb not mapped — no setback data
+    return slug
 
 
 
@@ -1478,7 +1488,9 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
                 nearby.append({
                     "number": app.get("PlanningPortalApplicationNumber", ""),
                     "address": address,
-                    "description": (app.get("DevelopmentDescription", "") or "")[:100],
+                    "description": ", ".join(
+                        dt.get("DevelopmentType", "") for dt in app.get("DevelopmentType", [])
+                    )[:120],
                     "status": app.get("ApplicationStatus", ""),
                     "lodged": (app.get("LodgementDate", "") or "")[:10],
                     "distance_m": round(dist),
@@ -1910,7 +1922,7 @@ def generate_pdf(
         dcp_note = dcp_setbacks_db["dcp_name"]
     elif dcp_former_council:
         # DB fetch succeeded during main() but was not passed in — fallback
-        dcp_note = DCP_SETBACKS.get(dcp_former_council, {}).get("dcp_name", "DCP controls")
+        dcp_note = dcp_former_council.replace("_", " ").title() + " DCP controls"
     else:
         dcp_note = "DCP setback controls: contact council for your LGA"
 
@@ -2097,13 +2109,13 @@ def generate_pdf(
         ["Additional Permitted Uses (LEP Sch. 1)",    apu_flag,        "PostGIS"],
         # PostGIS-sourced environmental overlays (not in s10.7 or title search)
         # flag() returns None when the layer is not mapped for this LGA — omit those rows
-        flag("biodiversity", "Biodiversity Values Map (BDAR trigger)"),
-        flag("riparian",     "Riparian Land"),
-        flag("wetlands",     "Wetlands"),
+        flag("biodiversity", "Biodiversity Values Map (BDAR trigger)", "warn"),
+        flag("riparian",     "Riparian Land",                          "warn"),
+        flag("wetlands",     "Wetlands",                               "warn"),
         flag("landslide",    "Landslide Risk"),
         flag("flood",        "Flood Planning Area"),
         # PostGIS-sourced LEP constraints
-        flag("key_sites",               "Key Site (site-specific LEP clause)", "alert"),
+        flag("key_sites",               "Key Site (site-specific LEP clause)", "warn"),
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
         flag("bushfire",                "Bushfire Prone Land (BAL assessment)", "alert"),
@@ -2503,8 +2515,13 @@ def generate_pdf(
     if not _is_strata:
         prop_zone = (controls.get("zone") or "").split()[0].upper()
         dcp_data = dcp_setbacks_db
+        # Only flag mismatch when zones_applicable is explicitly populated AND zone is not in it.
+        # Empty list means "applies to all residential zones" — no mismatch.
         zone_mismatch = bool(
-            dcp_data and prop_zone and prop_zone not in dcp_data.get("zones_applicable", [])
+            dcp_data
+            and dcp_data.get("zones_applicable")
+            and prop_zone
+            and prop_zone not in dcp_data["zones_applicable"]
         )
     else:
         dcp_data = None
@@ -2513,59 +2530,86 @@ def generate_pdf(
 
     if dcp_data and not zone_mismatch:
         story.append(Paragraph(
-            f"<b>{dcp_data['dcp_name']}</b> — {dcp_data['section']} (ref: {dcp_data['clause_ref']})",
+            f"<b>{dcp_data['dcp_name']}</b> — {dcp_data['section']}",
             ss["body"]
         ))
         story.append(Paragraph(
-            f"Scope: {dcp_data['dev_type_scope']}. "
-            f"Zone: {prop_zone}. "
-            "Controls shown for dwelling house as representative residential development type.",
+            "Controls below apply to the DA (Development Application) pathway. "
+            "If construction meets SEPP (Housing) 2021 CDC standards, complying development "
+            "certification applies different minimum setbacks — consult a certifier.",
             ss["note"]
         ))
         story.append(Spacer(1, 3 * mm))
 
-        # Split into two tables: prescribed (hard numbers) and site-derived (method only)
-        prescribed = [sb for sb in dcp_data["setbacks"] if sb["control_type"] == "prescribed"]
-        site_derived = [sb for sb in dcp_data["setbacks"] if sb["control_type"] == "site_derived"]
+        c1b, c2b, c3b, c4b = 52 * mm, 40 * mm, 28 * mm, CW - 120 * mm
 
-        c1b, c2b, c3b, c4b = 52 * mm, 40 * mm, 22 * mm, CW - 114 * mm
+        def _render_setback_group(setback_list: list[dict], label: str) -> None:
+            if not setback_list:
+                return
+            story.append(Paragraph(f"<b>{label}</b>", ss["body"]))
+            story.append(Spacer(1, 1 * mm))
 
-        if prescribed:
+            prescribed_rows = [sb for sb in setback_list if sb["control_type"] == "prescribed"]
+            site_derived_rows = [sb for sb in setback_list if sb["control_type"] == "site_derived"]
+
+            if prescribed_rows:
+                story.append(Paragraph(
+                    "Prescribed minimums — fixed numbers in the DCP text:",
+                    ss["note"]
+                ))
+                story.append(Spacer(1, 1 * mm))
+                tbl_rows = [["Setback", "Minimum", "Clause", "Notes"]]
+                for sb in prescribed_rows:
+                    tbl_rows.append([
+                        Paragraph(sb["type"], ss["body"]),
+                        Paragraph(sb["requirement"], ss["ok"]),
+                        Paragraph(sb["clause"], ss["note"]),
+                        Paragraph(sb["notes"], ss["note"]),
+                    ])
+                story.append(table(tbl_rows, [c1b, c2b, c3b, c4b]))
+                story.append(Spacer(1, 2 * mm))
+
+            if site_derived_rows:
+                story.append(Paragraph(
+                    "Site-derived controls — no fixed number; assessed from site context:",
+                    ss["note"]
+                ))
+                story.append(Spacer(1, 1 * mm))
+                tbl_rows2 = [["Setback", "Method / Basis", "Clause", "Notes"]]
+                for sb in site_derived_rows:
+                    tbl_rows2.append([
+                        Paragraph(sb["type"], ss["body"]),
+                        Paragraph(sb["requirement"], ss["warn"]),
+                        Paragraph(sb["clause"], ss["note"]),
+                        Paragraph(sb["notes"], ss["note"]),
+                    ])
+                story.append(table(tbl_rows2, [c1b, c2b, c3b, c4b]))
+                story.append(Spacer(1, 2 * mm))
+
+        # ── Dwelling house controls ──
+        _render_setback_group(dcp_data.get("setbacks", []), "Dwelling house")
+
+        # ── Secondary dwelling (granny flat) controls ──
+        sd_rows = dcp_data.get("sd_setbacks", [])
+        if sd_rows:
             story.append(Paragraph(
-                "Prescribed minimums — fixed numbers in the DCP text, applicable regardless of site context:",
-                ss["body"]
+                "Secondary dwelling (granny flat) setbacks are DCP controls for the DA pathway. "
+                "The CDC pathway via SEPP (Housing) 2021 applies minimum standards independent of "
+                "these DCP requirements — a certifier can advise on which path applies.",
+                ss["note"]
             ))
             story.append(Spacer(1, 1 * mm))
-            rows = [["Setback", "Minimum", "Clause", "Notes"]]
-            for sb in prescribed:
-                rows.append([
-                    Paragraph(sb["type"], ss["body"]),
-                    Paragraph(sb["requirement"], ss["ok"]),
-                    Paragraph(sb["clause"], ss["note"]),
-                    Paragraph(sb["notes"], ss["note"]),
-                ])
-            story.append(table(rows, [c1b, c2b, c3b, c4b]))
-            story.append(Spacer(1, 3 * mm))
-
-        if site_derived:
+            _render_setback_group(sd_rows, "Secondary dwelling (granny flat)")
+        else:
             story.append(Paragraph(
-                "Site-derived controls — no fixed number exists in the DCP. The DCP specifies "
-                "the method; the actual setback is determined by a planner from a site visit:",
-                ss["body"]
+                "Secondary dwelling setbacks: no LGA-specific DCP controls extracted. "
+                "CDC pathway uses SEPP (Housing) 2021 minimum standards.",
+                ss["note"]
             ))
-            story.append(Spacer(1, 1 * mm))
-            rows2 = [["Setback", "Method / Basis", "Clause", "What this means"]]
-            for sb in site_derived:
-                rows2.append([
-                    Paragraph(sb["type"], ss["body"]),
-                    Paragraph(sb["requirement"], ss["warn"]),
-                    Paragraph(sb["clause"], ss["note"]),
-                    Paragraph(sb["notes"], ss["note"]),
-                ])
-            story.append(table(rows2, [c1b, c2b, c3b, c4b]))
-            story.append(Spacer(1, 2 * mm))
 
-        # Area-specific caveat (Leichhardt Distinctive Neighbourhoods)
+        story.append(Spacer(1, 1 * mm))
+
+        # Dual-regime caveat (Canterbury-Bankstown) or other area-specific notes
         if dcp_data.get("caveat"):
             story.append(Paragraph(
                 f"<b>Important:</b> {dcp_data['caveat']}",
@@ -2574,20 +2618,18 @@ def generate_pdf(
             story.append(Spacer(1, 2 * mm))
 
         story.append(Paragraph(
-            "These controls apply to dwelling house development in the identified zone. "
-            "Different development types (dual occupancy, multi-dwelling, residential flat buildings) "
+            "These controls apply to the identified development types in residential zones. "
+            "Other development types (dual occupancy, multi-dwelling, residential flat buildings) "
             "trigger different DCP chapters. Heritage listings or HCA status add further controls. "
             "A town planner is required to determine applicable setbacks for any specific proposal.",
             ss["note"]
         ))
-        if site_derived:
+        if any(sb["control_type"] == "site_derived" for sb in dcp_data.get("setbacks", []) + dcp_data.get("sd_setbacks", [])):
             story.append(Spacer(1, 1 * mm))
             story.append(Paragraph(
-                "<b>Site-derived controls require site visit:</b> Where setbacks are determined by "
-                "prevailing character, building location zones, or height-dependent graphs, the actual "
-                "number cannot be established without a site analysis. Development on character-based "
-                "sites requires a pre-DA assessment and in most cases a pre-lodgement meeting with "
-                "Council before applicable setbacks can be established.",
+                "<b>Site-derived controls require a site visit:</b> Where setbacks are determined by "
+                "prevailing character or site-specific analysis, the actual number cannot be "
+                "established without a site inspection and pre-DA assessment.",
                 ss["note"]
             ))
 
@@ -2595,14 +2637,14 @@ def generate_pdf(
         story.append(Paragraph(
             f"Zone {prop_zone} — DCP setback data extracted for low density residential zones (R1/R2) only. "
             f"Controls for {prop_zone} zones in {dcp_data['dcp_name']} have not been extracted. "
-            "Obtain the applicable DCP chapter from Council or Inner West Council website.",
+            "Obtain the applicable DCP chapter from Council.",
             ss["note"]
         ))
 
     else:
         story.append(Paragraph(
-            "DCP setback data extracted for Inner West LGA (Marrickville, Leichhardt, Ashfield precincts). "
-            "For other LGAs, obtain DCP controls directly from Council.",
+            "DCP setback controls have not been extracted for this LGA. "
+            "Obtain the applicable DCP chapter directly from Council or the NSW Planning Portal.",
             ss["note"]
         ))
 
@@ -3290,8 +3332,7 @@ def main():
     zone_epi = controls.get("zone_epi", "") if controls else ""
     dcp_former_council = detect_former_council(args.address, zone_epi)
     if dcp_former_council:
-        _dcp_name_log = DCP_SETBACKS.get(dcp_former_council, {}).get("dcp_name", dcp_former_council)
-        print(f"  DCP controls: {dcp_former_council} ({_dcp_name_log})")
+        print(f"  DCP controls: lga_slug={dcp_former_council}")
     else:
         print("  DCP controls: not available for this LGA")
 
@@ -3315,7 +3356,8 @@ def main():
             postgis_heritage = fetch_heritage_postgis(_db_conn, lat, lng, lot_wkt=lot_wkt)
             _db_conn.close()
             if dcp_setbacks_db:
-                print(f"  DCP setbacks: {len(dcp_setbacks_db['setbacks'])} rows from DB")
+                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks', []))
+                print(f"  DCP setbacks: {_dh} DH + {_sd} SD rows from DB")
             if lep_clauses:
                 print(f"  LEP clauses: {len(lep_clauses)} rows")
             if postgis_heritage["has_heritage"]:

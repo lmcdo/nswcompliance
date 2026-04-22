@@ -53,14 +53,36 @@ def _fetch_tile(z: int, x: int, y: int, session: requests.Session) -> Optional[I
     cache_path = CACHE_DIR / f"{z}_{x}_{y}.png"
 
     if cache_path.exists():
-        return Image.open(cache_path).convert("RGB")
+        try:
+            return Image.open(cache_path).convert("RGB")
+        except Exception:
+            # Corrupt cache file (partial write, disk full, etc.) — delete and re-fetch
+            logger.warning(f"Cached tile {z}/{x}/{y} is corrupt — deleting and re-fetching")
+            cache_path.unlink(missing_ok=True)
+
+    # Ensure cache dir exists before the retry loop so mkdir failures surface clearly
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     for attempt in range(3):
         try:
             resp = session.get(url, timeout=15)
+            if resp.status_code == 404:
+                # Tile doesn't exist at this zoom — no point retrying
+                logger.debug(f"Tile {z}/{x}/{y} not found (404) — skipping retries")
+                return None
+            if resp.status_code == 429:
+                # Rate-limited — retrying immediately would make it worse
+                logger.warning(f"Tile {z}/{x}/{y} rate-limited (429) — skipping retries")
+                return None
             resp.raise_for_status()
+            # Guard against HTML error pages returned with 200 status
+            content_type = resp.headers.get("content-type", "")
+            if "image" not in content_type:
+                logger.warning(
+                    f"Tile {z}/{x}/{y} returned non-image content-type '{content_type}' — skipping retries"
+                )
+                return None
             img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
             img.save(cache_path)
             return img
         except Exception as e:
@@ -92,15 +114,15 @@ def fetch_tile_for_location(
     half = grid // 2
 
     cx, cy = _lat_lng_to_tile(lat, lng, zoom)
-    session = requests.Session()
-    session.headers["User-Agent"] = "PlotDetect/1.0 (property intelligence; contact@plotdetect.com)"
 
     tiles: list[list[Optional[Image.Image]]] = []
-    for dy in range(-half, half + 1):
-        row = []
-        for dx in range(-half, half + 1):
-            row.append(_fetch_tile(zoom, cx + dx, cy + dy, session))
-        tiles.append(row)
+    with requests.Session() as session:
+        session.headers["User-Agent"] = "PlotDetect/1.0 (property intelligence; contact@plotdetect.com)"
+        for dy in range(-half, half + 1):
+            row = []
+            for dx in range(-half, half + 1):
+                row.append(_fetch_tile(zoom, cx + dx, cy + dy, session))
+            tiles.append(row)
 
     # Stitch into single image
     w = grid * TILE_SIZE
@@ -139,33 +161,63 @@ def fetch_tile_to_file(
         key = hashlib.md5(f"{lat:.6f},{lng:.6f},{grid}".encode()).hexdigest()[:12]
         output_path = f"/tmp/sixmaps_{key}.png"
 
+    zoom_sidecar = output_path + ".zoom"
+
     if os.path.exists(output_path):
         logger.debug(f"Using cached tile at {output_path}")
-        # Recompute bbox without re-fetching
-        _, licence, bbox = _compute_bbox_only(lat, lng, grid)
+        # Read zoom from sidecar so bbox is computed at the correct zoom level.
+        # Legacy cache files (no sidecar) fall back to ZOOM=20.
+        cached_zoom = ZOOM
+        try:
+            cached_zoom = int(Path(zoom_sidecar).read_text().strip())
+        except Exception:
+            pass
+        _, licence, bbox = _compute_bbox_only(lat, lng, grid, cached_zoom)
         return output_path, licence, bbox
 
-    image, licence, bbox = fetch_tile_for_location(lat, lng, grid=grid)
-
-    # Sanity check: reject uniform grey canvas (all tile fetches failed)
     import numpy as np
-    arr = np.array(image)
-    if arr.std() < 2:
-        raise RuntimeError(
-            f"All SIX Maps tile fetches failed for ({lat:.5f}, {lng:.5f}) — "
-            "server may be temporarily unavailable. Not caching grey canvas."
-        )
 
-    image.save(output_path)
-    logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px")
-    return output_path, licence, bbox
-
-
-def _compute_bbox_only(lat: float, lng: float, grid: int) -> tuple[None, str, dict]:
     half = grid // 2
-    cx, cy = _lat_lng_to_tile(lat, lng, ZOOM)
-    nw_lat, nw_lng = _tile_to_lat_lng(cx - half, cy - half, ZOOM)
-    se_lat, se_lng = _tile_to_lat_lng(cx + half + 1, cy + half + 1, ZOOM)
+    center_slice = (
+        slice(half * TILE_SIZE, (half + 1) * TILE_SIZE),
+        slice(half * TILE_SIZE, (half + 1) * TILE_SIZE),
+    )
+
+    # Try zoom 20 first; fall back to zoom 19 if tiles are unavailable (404s)
+    zoom_candidates = [ZOOM, ZOOM - 1]
+    for zoom in zoom_candidates:
+        image, licence, bbox = fetch_tile_for_location(lat, lng, grid=grid, zoom=zoom)
+
+        arr = np.array(image)
+        # Check center tile specifically — that's where the lot sits.
+        # Checking full canvas std can pass if only distant outer tiles have colour.
+        center_arr = arr[center_slice[0], center_slice[1]]
+        if center_arr.std() < 2:
+            logger.warning(
+                f"Center tile grey at zoom {zoom} for ({lat:.5f}, {lng:.5f})"
+                + (f" — trying zoom {zoom - 1}" if zoom != zoom_candidates[-1] else "")
+            )
+            continue
+
+        if zoom != ZOOM:
+            logger.info(f"Zoom {ZOOM} unavailable — used zoom {zoom} fallback for ({lat:.5f}, {lng:.5f})")
+
+        image.save(output_path)
+        Path(zoom_sidecar).write_text(str(zoom))
+        logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px (zoom {zoom})")
+        return output_path, licence, bbox
+
+    raise RuntimeError(
+        f"SIX Maps center tile unavailable for ({lat:.5f}, {lng:.5f}) at zooms "
+        f"{zoom_candidates} — no imagery at this location."
+    )
+
+
+def _compute_bbox_only(lat: float, lng: float, grid: int, zoom: int = ZOOM) -> tuple[None, str, dict]:
+    half = grid // 2
+    cx, cy = _lat_lng_to_tile(lat, lng, zoom)
+    nw_lat, nw_lng = _tile_to_lat_lng(cx - half, cy - half, zoom)
+    se_lat, se_lng = _tile_to_lat_lng(cx + half + 1, cy + half + 1, zoom)
     bbox = {
         "min_lat": se_lat,
         "max_lat": nw_lat,
