@@ -160,6 +160,7 @@ class GrannyFlatDetectResponse(BaseModel):
     tile_width: Optional[int] = None    # tile pixel dimensions for bbox_pixel scaling
     tile_height: Optional[int] = None
     tile_bbox: Optional[dict] = None    # geographic bounds: {min_lat, max_lat, min_lng, max_lng}
+    lot_polygon_wgs84: Optional[list[list[list[float]]]] = None  # [[lng, lat], ...] rings in WGS84
     detect_id: str          # UUID for subsequent /confirm call
     warnings: list[str] = []
 
@@ -201,6 +202,18 @@ def _mercator_to_wgs84(x: float, y: float) -> tuple[float, float]:
     lng = x * 180.0 / R
     lat = math.degrees(2.0 * math.atan(math.exp(y * math.pi / R)) - math.pi / 2.0)
     return lat, lng
+
+
+def _mercator_rings_to_wgs84(rings: list) -> list[list[list[float]]]:
+    """Convert Web Mercator polygon rings to WGS84 [[lng, lat], ...] rings (GeoJSON order)."""
+    out = []
+    for ring in rings:
+        wgs_ring = []
+        for x_merc, y_merc in ring:
+            lat, lng = _mercator_to_wgs84(x_merc, y_merc)
+            wgs_ring.append([lng, lat])
+        out.append(wgs_ring)
+    return out
 
 
 def _mercator_rings_to_pixel_via_bbox(
@@ -573,6 +586,11 @@ def detect_structures(req: GrannyFlatDetectRequest):
         tile_width=tile_width,
         tile_height=tile_height,
         tile_bbox=bbox if bbox else None,
+        lot_polygon_wgs84=(
+            _mercator_rings_to_wgs84(lot_geometry["rings"])
+            if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]
+            else None
+        ),
         detect_id=detect_id,
         warnings=detect_warnings,
     )
