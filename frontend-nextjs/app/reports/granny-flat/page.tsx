@@ -31,6 +31,7 @@ interface DetectResult {
   tile_width?: number;
   tile_height?: number;
   tile_bbox?: { min_lat: number; max_lat: number; min_lng: number; max_lng: number };
+  lot_polygon_wgs84?: number[][][]; // [[lng, lat], ...] rings in WGS84
 }
 
 interface ConfirmResult {
@@ -275,6 +276,7 @@ function StructureMap({
   tile_width,
   tile_height,
   structures,
+  lot_polygon_wgs84,
   licence,
 }: {
   lat: number;
@@ -283,6 +285,7 @@ function StructureMap({
   tile_width?: number;
   tile_height?: number;
   structures: DetectedStructure[];
+  lot_polygon_wgs84?: number[][][];
   licence: string;
 }) {
   const tw = tile_width ?? 512;
@@ -299,6 +302,17 @@ function StructureMap({
     }
   }
 
+  const lotFeature: GeoJSON.FeatureCollection | null = lot_polygon_wgs84
+    ? {
+        type: 'FeatureCollection',
+        features: [{
+          type: 'Feature',
+          properties: {},
+          geometry: { type: 'Polygon', coordinates: lot_polygon_wgs84 },
+        }],
+      }
+    : null;
+
   return (
     <div className="mb-4">
       <div className="rounded-lg overflow-hidden border border-gray-200" style={{ height: 380 }}>
@@ -308,6 +322,11 @@ function StructureMap({
           attributionControl={false}
         >
           <NavigationControl position="top-right" showCompass showZoom />
+          {lotFeature && (
+            <Source id="lot-boundary" type="geojson" data={lotFeature}>
+              <Layer id="lot-boundary-line" type="line" paint={{ 'line-color': '#14b8a6', 'line-width': 2.5 }} />
+            </Source>
+          )}
           {tile_bbox && (
             <>
               <Source id="struct-main" type="geojson" data={mainFeatures}>
@@ -493,6 +512,7 @@ function ConfirmationPanel({
           tile_width={detectResult.tile_width}
           tile_height={detectResult.tile_height}
           structures={detectResult.detected_structures}
+          lot_polygon_wgs84={detectResult.lot_polygon_wgs84}
           licence={detectResult.tile_licence}
         />
 
