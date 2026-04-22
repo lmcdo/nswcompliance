@@ -560,6 +560,22 @@ def test_normalise_outputs_epi_label_preserved_when_present():
     assert result["epi_flood_label"] == "Flood Planning Area"
 
 
+def test_normalise_outputs_data_currency_both_null_defaults_to_unknown():
+    """data_currency=null AND epi_data_currency=null → must return 'unknown', not None.
+    .get("epi_data_currency", "unknown") only fires the default when key is ABSENT;
+    when key exists with null it returns None. Fixed with terminal `or 'unknown'`."""
+    raw = {"data_currency": None, "epi_data_currency": None}
+    result = _normalise_outputs(raw)
+    assert result["data_currency"] == "unknown"
+
+
+def test_normalise_outputs_data_currency_fallback_to_legacy_field():
+    """data_currency absent → fall back to epi_data_currency (legacy field name)."""
+    raw = {"epi_data_currency": "2024-01-01"}
+    result = _normalise_outputs(raw)
+    assert result["data_currency"] == "2024-01-01"
+
+
 def test_epi_overlay_attributes_null_does_not_crash(monkeypatch):
     """feats[0]["attributes"] returning null (not absent) must not raise AttributeError.
     The .get("attributes", {}) null trap was fixed to .get("attributes") or {}."""

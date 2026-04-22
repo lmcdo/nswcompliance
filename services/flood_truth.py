@@ -535,7 +535,7 @@ def _normalise_outputs(raw: dict) -> dict:
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
         "bom_last_major_flood_peak_m": raw.get("bom_last_major_flood_peak_m"),
         "s1_gap_warning":             raw.get("s1_gap_warning"),
-        "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency", "unknown"),
+        "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
