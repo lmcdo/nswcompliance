@@ -159,13 +159,16 @@ def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
         logger.warning(f"Invalid lot polygon, clipping skipped: {exc}")
         return sp
 
-    lot_panels = [
-        p for p in panels
-        if lot_shape.contains(Point(
-            p["center"]["longitude"],
-            p["center"]["latitude"],
-        ))
-    ]
+    lot_panels = []
+    for p in panels:
+        try:
+            center = p["center"]
+            if lot_shape.contains(Point(center["longitude"], center["latitude"])):
+                lot_panels.append(p)
+        except (KeyError, TypeError):
+            # Malformed panel entry — skip rather than crash the whole clip
+            logger.debug(f"Skipping malformed panel entry: {p}")
+            continue
 
     total_count = sp.get("maxArrayPanelsCount", len(panels))
     total_area = float(sp.get("maxArrayAreaMeters2", 0.0))
@@ -212,29 +215,46 @@ def _query_google_solar(lat: float, lng: float) -> dict:
     """
     Call Google Solar API buildingInsights endpoint.
     Returns the raw API response dict, or {"coverage_available": False} on 404.
-    Raises on other HTTP errors.
+    Raises on other HTTP errors. API key is never included in raised messages.
     """
     api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_MAPS_API_KEY env var not set")
 
-    r = requests.get(
-        GOOGLE_SOLAR_API,
-        params={
-            "location.latitude": lat,
-            "location.longitude": lng,
-            "requiredQuality": "MEDIUM",
-            "key": api_key,
-        },
-        timeout=15,
-    )
+    params = {
+        "location.latitude": lat,
+        "location.longitude": lng,
+        "requiredQuality": "MEDIUM",
+        "key": api_key,
+    }
 
-    if r.status_code == 404:
-        logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
-        return {"coverage_available": False}
-
-    r.raise_for_status()
-    return r.json()
+    # Retry on transient server errors (429, 5xx). Never retry 4xx except 429.
+    last_exc: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            r = requests.get(GOOGLE_SOLAR_API, params=params, timeout=15)
+            if r.status_code == 404:
+                logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
+                return {"coverage_available": False}
+            if r.status_code == 403:
+                # Invalid key or quota — no point retrying
+                raise ValueError(f"Google Solar API access denied (403) — check API key and quota")
+            if r.status_code == 429 and attempt < 2:
+                logger.warning(f"Google Solar API rate-limited (429) — retrying ({attempt+1}/3)")
+                continue
+            r.raise_for_status()
+            return r.json()
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
+            last_exc = e
+            logger.warning(f"Google Solar API transient error attempt {attempt+1}/3: {type(e).__name__}")
+            if attempt == 2:
+                # Raise without URL (which contains the API key)
+                raise RuntimeError(f"Google Solar API unreachable after 3 attempts: {type(e).__name__}") from None
+        except (ValueError, requests.exceptions.HTTPError):
+            raise
+        except Exception as e:
+            raise RuntimeError(f"Google Solar API error: {type(e).__name__}") from None
+    raise RuntimeError("Google Solar API failed after retries")
 
 
 def _parse_solar_response(
@@ -271,7 +291,16 @@ def _parse_solar_response(
             coverage_available=False,
         )
 
-    sp = data.get("solarPotential", {})
+    sp = data.get("solarPotential")
+    if not sp:
+        # Google returned 200 OK but without solarPotential — building found but no solar data
+        logger.warning("Google Solar API returned 200 with no solarPotential — treating as no coverage")
+        return SolarYieldOutput(
+            max_panels=0, max_panel_area_m2=0.0, annual_kwh_estimate=0.0,
+            sunshine_hours_per_year=0.0, best_pitch_deg=0.0, best_azimuth_deg=0.0,
+            roof_area_m2=0.0, is_heritage=False, is_commercial_scale=False,
+            imagery_date="unknown", coverage_available=False,
+        )
 
     # Apply lot clipping if a polygon is available
     if lot_polygon_wgs84:
@@ -295,8 +324,11 @@ def _parse_solar_response(
         quantiles = seg.get("stats", {}).get("sunshineQuantiles", [])
         median_sun = float(quantiles[4]) if len(quantiles) > 4 else 0.0
         az = seg.get("azimuthDegrees", 180.0)
-        north_bonus = (1.0 - min(az, 360 - az) / 180.0) * 10
-        return median_sun + north_bonus
+        # North-facing bonus: 0–5% of median_sun added as tiebreaker (NSW = Southern Hemisphere,
+        # north-facing receives most direct irradiance). Scaled to median_sun so it only
+        # breaks ties — a meaningfully sunnier south-facing segment still wins.
+        north_factor = 1.0 - min(az, 360.0 - az) / 180.0  # 1.0=N, 0.0=S
+        return median_sun * (1.0 + 0.05 * north_factor)
 
     best_seg = max(segments, key=_segment_score) if segments else {}
     best_pitch = best_seg.get("pitchDegrees", 0.0)
@@ -369,7 +401,12 @@ async def run_solar_yield(request: SolarYieldRequest):
         logger.exception(f"Google Solar API failed: {e}")
         raise HTTPException(status_code=502, detail=f"Google Solar API error: {e}")
 
-    outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
+    try:
+        outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
+    except Exception as e:
+        logger.exception(f"Solar response parse failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to parse solar data")
+
     outputs.is_heritage = _check_heritage(request.lat, request.lng)
 
     if not outputs.coverage_available:
@@ -381,16 +418,20 @@ async def run_solar_yield(request: SolarYieldRequest):
     else:
         confidence = "medium"  # no lot polygon — raw Google result, building may not match lot
 
-    _write_report(
-        report_id=request.report_id,
-        address=request.address,
-        lat=request.lat,
-        lng=request.lng,
-        prop_id=request.prop_id,
-        inputs={"lat": request.lat, "lng": request.lng},
-        outputs=outputs.model_dump(),
-        confidence=confidence,
-    )
+    try:
+        _write_report(
+            report_id=request.report_id,
+            address=request.address,
+            lat=request.lat,
+            lng=request.lng,
+            prop_id=request.prop_id,
+            inputs={"lat": request.lat, "lng": request.lng},
+            outputs=outputs.model_dump(),
+            confidence=confidence,
+        )
+    except Exception as e:
+        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
+        logger.error(f"Solar yield DB write failed (non-fatal): {e}")
 
     logger.info(
         f"Solar yield complete: {request.report_id} — "
