@@ -22,29 +22,24 @@ Reference: `tests/test_solar_yield.py` (31 tests) is the benchmark for what "don
 
 ## Status
 
-### 1. flood_truth.py — NEXT
+### 1. flood_truth.py — DONE ✓
 **Priority: Highest** — most consequential output (flood signal is safety-adjacent), zero tests, most pure-logic functions testable without mocks.
 
-Known bugs from initial read:
-- [ ] `_compute_confidence` line 452: `.get("wet_seasons_checked", 0)` null trap → TypeError when key exists with null
-- [ ] `_compute_flood_signal` line 418: `epi_flood_class=""` not in `(None, "none")` → false in-overlay
-- [ ] `_query_epi_overlay` line 177: unknown/empty `raw_class` defaults to `"flood_planning_area"` → false positive
-- [ ] `run_flood` line 591: `with _get_conn() as conn:` — psycopg2 connection leak
-- [ ] `_query_copernicus_ems` line 197: same connection leak
-
-Pure-logic functions to test (no mocks needed):
-- `_compute_flood_signal` — 5 output states, complex boolean combination
-- `_compute_confidence` — 3 tiers, 4 input dimensions
-- `_normalise_outputs` — legacy format migration + signal computation
-- `_build_s1_gap_warning` — two output variants
-- `_build_data_sources` — conditional source list
-- `_s1b_gap_affected` — date range overlap
-- `_jrc_tile_url` — coordinate → URL, pure math
-- `_haversine_km` — math, verifiable against known distances
+Bugs fixed (3 passes):
+- [x] `_compute_confidence`: `.get("wet_seasons_checked", 0)` null trap → `or 0`
+- [x] `_compute_flood_signal`: `epi_flood_class=""` not in `(None, "none")` → added `""`
+- [x] `_query_epi_overlay`: unknown `raw_class` defaults to `"flood_planning_area"` → empty→"none", unknown→warning
+- [x] `run_flood` + `_query_copernicus_ems`: psycopg2 connection leaks → `try/finally conn.close()`
+- [x] `_write_report` not try/excepted → DB failure caused 500 despite successful analysis
+- [x] ArcGIS `DataDate` int not coerced → `str()` coercion added
+- [x] `run_flood_batch`: `wet_season_year` unvalidated → 422 on out-of-range values
+- [x] `_query_epi_overlay`: `feats[0].get("attributes", {})` null trap → `or {}`
+- [x] `run_flood` cache path: `_normalise_outputs(cached["outputs"])` → `or {}` guard
+- [x] `_normalise_outputs`: `epi_label` not recomputed when null but `epi_class` present
 
 Deliverables:
-- [ ] `tests/test_flood_truth.py` (target: ~35 tests)
-- [ ] Bug fixes committed
+- [x] `tests/test_flood_truth.py` — 70 tests
+- [x] Bug fixes committed (3 commits)
 
 ---
 
