@@ -1488,7 +1488,9 @@ def get_nearby_das(lat: float, lng: float, council_name: Optional[str],
                 nearby.append({
                     "number": app.get("PlanningPortalApplicationNumber", ""),
                     "address": address,
-                    "description": (app.get("DevelopmentDescription", "") or "")[:100],
+                    "description": ", ".join(
+                        dt.get("DevelopmentType", "") for dt in app.get("DevelopmentType", [])
+                    )[:120],
                     "status": app.get("ApplicationStatus", ""),
                     "lodged": (app.get("LodgementDate", "") or "")[:10],
                     "distance_m": round(dist),
@@ -2107,13 +2109,13 @@ def generate_pdf(
         ["Additional Permitted Uses (LEP Sch. 1)",    apu_flag,        "PostGIS"],
         # PostGIS-sourced environmental overlays (not in s10.7 or title search)
         # flag() returns None when the layer is not mapped for this LGA — omit those rows
-        flag("biodiversity", "Biodiversity Values Map (BDAR trigger)"),
-        flag("riparian",     "Riparian Land"),
-        flag("wetlands",     "Wetlands"),
+        flag("biodiversity", "Biodiversity Values Map (BDAR trigger)", "warn"),
+        flag("riparian",     "Riparian Land",                          "warn"),
+        flag("wetlands",     "Wetlands",                               "warn"),
         flag("landslide",    "Landslide Risk"),
         flag("flood",        "Flood Planning Area"),
         # PostGIS-sourced LEP constraints
-        flag("key_sites",               "Key Site (site-specific LEP clause)", "alert"),
+        flag("key_sites",               "Key Site (site-specific LEP clause)", "warn"),
         flag("foreshore_building_line", "Foreshore Building Line", "warn"),
         flag("classified_road",         "Classified Road Frontage (9 m setback)", "warn"),
         flag("bushfire",                "Bushfire Prone Land (BAL assessment)", "alert"),
@@ -3354,7 +3356,8 @@ def main():
             postgis_heritage = fetch_heritage_postgis(_db_conn, lat, lng, lot_wkt=lot_wkt)
             _db_conn.close()
             if dcp_setbacks_db:
-                print(f"  DCP setbacks: {len(dcp_setbacks_db['setbacks'])} rows from DB")
+                _dh = len(dcp_setbacks_db['setbacks']); _sd = len(dcp_setbacks_db.get('sd_setbacks', []))
+                print(f"  DCP setbacks: {_dh} DH + {_sd} SD rows from DB")
             if lep_clauses:
                 print(f"  LEP clauses: {len(lep_clauses)} rows")
             if postgis_heritage["has_heritage"]:

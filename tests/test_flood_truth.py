@@ -28,6 +28,7 @@ from services.flood_truth import (
     _build_s1_gap_warning,
     _build_data_sources,
     _s1b_gap_affected,
+    _query_epi_overlay,  # for DataDate coercion test (monkey-patched)
     _jrc_tile_url,
     _haversine_km,
     S1B_GAP_START,
@@ -460,6 +461,60 @@ def test_haversine_sydney_to_wollongong_approx():
     """Sydney CBD to Wollongong ≈ 80 km."""
     d = _haversine_km(-33.87, 151.21, -34.42, 150.89)
     assert 65 < d < 95
+
+
+# ---------------------------------------------------------------------------
+# DataDate epoch-ms integer coercion (Bug: ArcGIS returns int, contract needs str)
+# ---------------------------------------------------------------------------
+
+def test_epi_overlay_epoch_ms_datadate_coerced_to_str(monkeypatch):
+    """ArcGIS DataDate may be an epoch-ms integer — must be coerced to str."""
+    import services.flood_truth as ft
+    import requests
+
+    class _FakeResp:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"features": [{"attributes": {
+                "DataDate": 1672531200000,  # epoch-ms integer
+                "FloodClass": "High Flood Risk",
+            }}]}
+
+    monkeypatch.setattr(requests, "get", lambda *a, **kw: _FakeResp())
+    result = ft._query_epi_overlay(-33.87, 151.21)
+    assert isinstance(result["data_currency"], str), (
+        f"data_currency must be str, got {type(result['data_currency'])}"
+    )
+
+
+def test_epi_overlay_string_datadate_passes_through(monkeypatch):
+    import services.flood_truth as ft
+    import requests
+
+    class _FakeResp:
+        def raise_for_status(self): pass
+        def json(self):
+            return {"features": [{"attributes": {
+                "DataDate": "2024-01-01",
+                "FloodClass": "low flood risk",
+            }}]}
+
+    monkeypatch.setattr(requests, "get", lambda *a, **kw: _FakeResp())
+    result = ft._query_epi_overlay(-33.87, 151.21)
+    assert result["data_currency"] == "2024-01-01"
+
+
+# ---------------------------------------------------------------------------
+# _compute_flood_signal — "unavailable" in signal contract
+# ---------------------------------------------------------------------------
+
+def test_signal_unavailable_is_a_valid_output():
+    """Confirm "unavailable" is a documented signal value (not just "none"|"low"|"moderate"|"elevated")."""
+    out = _outputs(data_currency="query_failed")
+    result = _compute_flood_signal(out)
+    assert result == "unavailable"
+    # Verify it's one of the 5 documented values
+    assert result in ("none", "low", "moderate", "elevated", "unavailable")
 
 
 def test_haversine_is_symmetric():

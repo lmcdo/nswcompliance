@@ -37,7 +37,7 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "bom_last_major_flood_peak_m": float | null,
     "s1_gap_warning": str | null,
     "data_currency": str,
-    "flood_signal": "none" | "low" | "moderate" | "elevated"  # multi-source convergence indicator
+    "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable"  # multi-source convergence
   },
   "confidence": str,
   "data_sources": list[str]
@@ -169,7 +169,8 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
                     "data_currency": "unknown"}
 
         attrs = feats[0].get("attributes", {})
-        currency = attrs.get("DataDate") or attrs.get("DATADATE") or "unknown"
+        # ArcGIS may return DataDate as epoch-ms integer — coerce to str for contract compliance
+        currency = str(attrs.get("DataDate") or attrs.get("DATADATE") or "unknown")
         raw_class = (
             attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
             or attrs.get("FldClass") or attrs.get("Flood_Class") or ""
@@ -640,10 +641,14 @@ def run_flood(req: FloodRequest):
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
-    _write_report(
-        req.report_id, req.address, req.lat, req.lng,
-        req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
-    )
+    try:
+        _write_report(
+            req.report_id, req.address, req.lat, req.lng,
+            req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
+        )
+    except Exception as e:
+        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
+        logger.error(f"Flood report DB write failed (non-fatal): {e}")
 
     return {
         "address": req.address, "lat": req.lat, "lng": req.lng,
@@ -661,6 +666,9 @@ def run_flood_batch(req: FloodBatchRequest):
     Full S1 pipeline: Phase 3B in ce-satellite-implementation-plan.md.
     """
     year = req.wet_season_year
+    if year < 2015 or year > 2100:
+        from fastapi import HTTPException
+        raise HTTPException(422, f"wet_season_year {year} out of valid range (2015–2100)")
     wet_start = date(year - 1, 11, 1)
     wet_end   = date(year, 3, 31)
     return {
