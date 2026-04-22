@@ -171,12 +171,14 @@ def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
             continue
 
     total_count = sp.get("maxArrayPanelsCount", len(panels))
-    total_area = float(sp.get("maxArrayAreaMeters2", 0.0))
-    per_panel_area = total_area / total_count if total_count > 0 else 2.0  # ~2 m² per 400 W panel
+    total_area = float(sp.get("maxArrayAreaMeters2") or 0.0)
+    # Fallback 2.0 m² when either count or area is zero (avoids 0 ÷ 0 and 0-area panels)
+    per_panel_area = total_area / total_count if total_count > 0 and total_area > 0 else 2.0
 
     lot_count = len(lot_panels)
     lot_area = round(lot_count * per_panel_area, 1)
-    lot_kwh = round(sum(p.get("yearlyEnergyDcKwh", 0.0) for p in lot_panels), 0)
+    # Guard against null yearlyEnergyDcKwh values in Google response
+    lot_kwh = round(sum((p.get("yearlyEnergyDcKwh") or 0.0) for p in lot_panels), 0)
 
     # Roof area: sum segment areas referenced by lot panels
     segment_indices = {p["segmentIndex"] for p in lot_panels if "segmentIndex" in p}
@@ -228,32 +230,36 @@ def _query_google_solar(lat: float, lng: float) -> dict:
         "key": api_key,
     }
 
-    # Retry on transient server errors (429, 5xx). Never retry 4xx except 429.
-    last_exc: Optional[Exception] = None
+    # Retry on transient errors: network failures, 429, and 5xx.
+    # Never include the response/request URL in raised exceptions (URL contains the API key).
     for attempt in range(3):
         try:
             r = requests.get(GOOGLE_SOLAR_API, params=params, timeout=15)
-            if r.status_code == 404:
-                logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
-                return {"coverage_available": False}
-            if r.status_code == 403:
-                # Invalid key or quota — no point retrying
-                raise ValueError(f"Google Solar API access denied (403) — check API key and quota")
-            if r.status_code == 429 and attempt < 2:
-                logger.warning(f"Google Solar API rate-limited (429) — retrying ({attempt+1}/3)")
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt < 2:
+                logger.warning(f"Google Solar API network error attempt {attempt+1}/3 — retrying")
                 continue
-            r.raise_for_status()
+            raise RuntimeError("Google Solar API unreachable after 3 attempts") from None
+        except Exception:
+            raise RuntimeError("Google Solar API request failed") from None
+
+        if r.status_code == 404:
+            logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
+            return {"coverage_available": False}
+        if r.status_code == 403:
+            raise ValueError("Google Solar API access denied (403) — check API key and quota")
+        if r.status_code == 429 or r.status_code >= 500:
+            if attempt < 2:
+                logger.warning(f"Google Solar API {r.status_code} attempt {attempt+1}/3 — retrying")
+                continue
+            raise RuntimeError(f"Google Solar API returned {r.status_code} after 3 attempts")
+        if not r.ok:
+            raise RuntimeError(f"Google Solar API returned {r.status_code}")
+        try:
             return r.json()
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as e:
-            last_exc = e
-            logger.warning(f"Google Solar API transient error attempt {attempt+1}/3: {type(e).__name__}")
-            if attempt == 2:
-                # Raise without URL (which contains the API key)
-                raise RuntimeError(f"Google Solar API unreachable after 3 attempts: {type(e).__name__}") from None
-        except (ValueError, requests.exceptions.HTTPError):
-            raise
-        except Exception as e:
-            raise RuntimeError(f"Google Solar API error: {type(e).__name__}") from None
+        except Exception:
+            raise RuntimeError("Google Solar API returned non-JSON response") from None
+
     raise RuntimeError("Google Solar API failed after retries")
 
 
@@ -373,16 +379,17 @@ def _check_heritage(lat: float, lng: float) -> bool:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT COUNT(*) FROM spatial_overlays
+                SELECT 1 FROM spatial_overlays
                 WHERE layer_type = 'heritage'
                   AND ST_Contains(
                         ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)
                       )
+                LIMIT 1
                 """,
                 (lng, lat),
             )
-            return (cur.fetchone()[0] or 0) > 0
+            return cur.fetchone() is not None
     except Exception as e:
         logger.warning(f"Heritage flag lookup failed: {e}")
         return False
@@ -425,7 +432,12 @@ async def run_solar_yield(request: SolarYieldRequest):
             lat=request.lat,
             lng=request.lng,
             prop_id=request.prop_id,
-            inputs={"lat": request.lat, "lng": request.lng},
+            inputs={
+            "address": request.address,
+            "lat": request.lat,
+            "lng": request.lng,
+            "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
+        },
             outputs=outputs.model_dump(),
             confidence=confidence,
         )
