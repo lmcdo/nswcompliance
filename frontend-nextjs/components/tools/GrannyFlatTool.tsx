@@ -259,6 +259,7 @@ function formatSectionRef(ref: string): string {
 
 export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName?: string | null }) {
   const [address, setAddress] = useState('');
+  const [inputAddress, setInputAddress] = useState(''); // user's original typed address
   const [postcode, setPostcode] = useState('');
   const [pageState, setPageState] = useState<PageState>('idle');
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
@@ -305,6 +306,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
   // Step 1 — quick eligibility check (extracted so auto-submit can call it directly)
   const runCheck = async (addr: string) => {
     if (!addr.trim()) return;
+    setInputAddress(addr.trim());
     setPageState('loading');
     setEligibility(null);
     setFullDetect(null);
@@ -363,10 +365,21 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
 
       const jobId: string = json.jobId;
 
-      // Poll until detect result written to DB
+      // Poll until detect result written to DB (max 3 min)
+      const POLL_TIMEOUT_MS = 180_000;
+      const pollStart = Date.now();
+
       const poll = async (): Promise<void> => {
+        if (Date.now() - pollStart > POLL_TIMEOUT_MS) {
+          throw new Error('Detection timed out — aerial imagery server may be warming up. Try again in 30 seconds.');
+        }
+
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
+
+        if (pollJson.status === 'error') {
+          throw new Error(pollJson.error || 'Detection failed');
+        }
 
         if (pollJson.status === 'detected') {
           const detectData = pollJson.data as FullDetectResult;
@@ -463,6 +476,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
 
   const handleReset = () => {
     setAddress('');
+    setInputAddress('');
     setPostcode('');
     setPageState('idle');
     setEligibility(null);
@@ -582,7 +596,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
 
           <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             <div className="p-6">
-              <h2 className="font-semibold text-gray-900">{fullDetect.address}</h2>
+              <h2 className="font-semibold text-gray-900">
+                {inputAddress || fullDetect.address}
+              </h2>
+              {inputAddress && inputAddress.toLowerCase() !== fullDetect.address?.toLowerCase() && (
+                <p className="text-xs text-gray-400 mt-0.5">Matched to {fullDetect.address} on NSW Planning Portal</p>
+              )}
               {fullDetect.lot_area_m2 != null && (
                 <p className="text-sm text-gray-500 mt-0.5">
                   Lot area: {fullDetect.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
@@ -763,7 +782,14 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
                     ? `${formatLotArea(eligibility.lot_area_m2)} — meets the SEPP Housing 2021 minimum for a secondary dwelling`
                     : deriveIneligibleReason(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">{eligibility.address}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {inputAddress && inputAddress.toLowerCase() !== eligibility.address?.toLowerCase()
+                    ? inputAddress
+                    : eligibility.address}
+                  {inputAddress && inputAddress.toLowerCase() !== eligibility.address?.toLowerCase() && (
+                    <span className="ml-1 text-gray-300">· matched to {eligibility.address}</span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
