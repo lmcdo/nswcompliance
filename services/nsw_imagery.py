@@ -53,7 +53,15 @@ def _fetch_tile(z: int, x: int, y: int, session: requests.Session) -> Optional[I
     cache_path = CACHE_DIR / f"{z}_{x}_{y}.png"
 
     if cache_path.exists():
-        return Image.open(cache_path).convert("RGB")
+        try:
+            return Image.open(cache_path).convert("RGB")
+        except Exception:
+            # Corrupt cache file (partial write, disk full, etc.) — delete and re-fetch
+            logger.warning(f"Cached tile {z}/{x}/{y} is corrupt — deleting and re-fetching")
+            cache_path.unlink(missing_ok=True)
+
+    # Ensure cache dir exists before the retry loop so mkdir failures surface clearly
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
     for attempt in range(3):
         try:
@@ -62,9 +70,19 @@ def _fetch_tile(z: int, x: int, y: int, session: requests.Session) -> Optional[I
                 # Tile doesn't exist at this zoom — no point retrying
                 logger.debug(f"Tile {z}/{x}/{y} not found (404) — skipping retries")
                 return None
+            if resp.status_code == 429:
+                # Rate-limited — retrying immediately would make it worse
+                logger.warning(f"Tile {z}/{x}/{y} rate-limited (429) — skipping retries")
+                return None
             resp.raise_for_status()
+            # Guard against HTML error pages returned with 200 status
+            content_type = resp.headers.get("content-type", "")
+            if "image" not in content_type:
+                logger.warning(
+                    f"Tile {z}/{x}/{y} returned non-image content-type '{content_type}' — skipping retries"
+                )
+                return None
             img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-            CACHE_DIR.mkdir(parents=True, exist_ok=True)
             img.save(cache_path)
             return img
         except Exception as e:
@@ -96,15 +114,15 @@ def fetch_tile_for_location(
     half = grid // 2
 
     cx, cy = _lat_lng_to_tile(lat, lng, zoom)
-    session = requests.Session()
-    session.headers["User-Agent"] = "PlotDetect/1.0 (property intelligence; contact@plotdetect.com)"
 
     tiles: list[list[Optional[Image.Image]]] = []
-    for dy in range(-half, half + 1):
-        row = []
-        for dx in range(-half, half + 1):
-            row.append(_fetch_tile(zoom, cx + dx, cy + dy, session))
-        tiles.append(row)
+    with requests.Session() as session:
+        session.headers["User-Agent"] = "PlotDetect/1.0 (property intelligence; contact@plotdetect.com)"
+        for dy in range(-half, half + 1):
+            row = []
+            for dx in range(-half, half + 1):
+                row.append(_fetch_tile(zoom, cx + dx, cy + dy, session))
+            tiles.append(row)
 
     # Stitch into single image
     w = grid * TILE_SIZE
