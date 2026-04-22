@@ -528,6 +528,39 @@ def detect_structures(req: GrannyFlatDetectRequest):
             req.lat, req.lng, output_path=tile_path, grid=3
         )
     except Exception as e:
+        # Write error state to Supabase so the frontend poll resolves immediately
+        # instead of spinning until the 3-min timeout.
+        if req.report_id:
+            try:
+                conn = _get_conn()
+                with conn.cursor() as cur:
+                    cur.execute(
+                        """
+                        INSERT INTO granny_flat_reports
+                            (id, product, address, lat, lng, prop_id, run_date, confidence, outputs)
+                        VALUES (%s, 'granny-flat', %s, %s, %s, %s, %s, 'error', %s)
+                        ON CONFLICT (id) DO UPDATE SET
+                            outputs = EXCLUDED.outputs,
+                            confidence = EXCLUDED.confidence
+                        """,
+                        (
+                            req.report_id,
+                            req.address,
+                            req.lat,
+                            req.lng,
+                            req.prop_id,
+                            date.today().isoformat(),
+                            psycopg2.extras.Json({"error": f"Tile fetch failed: {e}"}),
+                        ),
+                    )
+                conn.commit()
+            except Exception:
+                pass
+            finally:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
 
     # Encode tile as base64 for frontend canvas rendering

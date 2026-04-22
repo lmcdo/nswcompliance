@@ -101,6 +101,10 @@ export default function GrannyFlatPage() {
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
 
+        if (pollJson.status === 'error') {
+          throw new Error(pollJson.error || 'Detection failed');
+        }
+
         if (pollJson.status === 'detected') {
           const detectData = pollJson.data;
           setDetectResult(detectData);

@@ -298,6 +298,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ status: 'pending' });
   }
 
+  if (data.confidence === 'error') {
+    const msg = (data.outputs as { error?: string } | null)?.error ?? 'Detection failed';
+    return NextResponse.json({ status: 'error', error: msg });
+  }
+
   if (data.confidence !== 'pending_confirm' || !data.outputs) {
     return NextResponse.json({ status: 'pending' });
   }
