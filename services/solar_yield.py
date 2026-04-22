@@ -171,7 +171,7 @@ def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
             logger.debug(f"Skipping malformed panel entry: {p}")
             continue
 
-    total_count = sp.get("maxArrayPanelsCount", len(panels))
+    total_count = sp.get("maxArrayPanelsCount") or len(panels)
     total_area = float(sp.get("maxArrayAreaMeters2") or 0.0)
     # Fallback 2.0 m² when either count or area is zero (avoids 0 ÷ 0 and 0-area panels)
     per_panel_area = total_area / total_count if total_count > 0 and total_area > 0 else 2.0
@@ -278,7 +278,7 @@ def _parse_solar_response(
     including panels on neighbouring buildings that Google's findClosest may
     have selected.
 
-    Best segment: highest median sunshine hours (index 4 of sunshineQuantiles),
+    Best segment: highest median sunshine hours (index 5 of sunshineQuantiles = 50th pct),
     tiebroken toward north-facing.  After lot clipping, only segments referenced
     by lot panels are considered — so orientation reflects this lot's roof, not
     the whole complex.
@@ -334,7 +334,8 @@ def _parse_solar_response(
         quantiles = seg.get("stats", {}).get("sunshineQuantiles") or []
         # Google returns 11 values (0,10,20,...,100 percentile). Index 5 = 50th (median).
         median_sun = float(quantiles[5]) if len(quantiles) > 5 else 0.0
-        az = seg.get("azimuthDegrees") or 180.0
+        az_raw = seg.get("azimuthDegrees")
+        az = float(az_raw) if az_raw is not None else 180.0  # None → south (0.0 is valid: north)
         # North-facing bonus: 0–5% of median_sun as tiebreaker (Southern Hemisphere:
         # north-facing receives most direct irradiance). Scaled so a sunnier south-facing
         # segment still wins.
@@ -386,6 +387,7 @@ def _check_heritage(lat: float, lng: float) -> bool:
                 """
                 SELECT 1 FROM spatial_overlays
                 WHERE layer_type = 'heritage'
+                  AND is_active = TRUE
                   AND ST_Contains(
                         ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
                         ST_SetSRID(ST_MakePoint(%s, %s), 4326)
