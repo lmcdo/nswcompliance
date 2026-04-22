@@ -143,6 +143,54 @@ export async function POST(request: NextRequest) {
 
     const jobId = reportRow.id as string;
 
+    // Zone gate — skip 5-min inference for clearly non-residential properties
+    const zone = (propData.property?.zone ?? '') as string;
+    const CLEARLY_NON_RESIDENTIAL = ['B', 'E', 'IN', 'SP', 'W'];
+    const isNonResidentialZone = zone
+      ? CLEARLY_NON_RESIDENTIAL.some(prefix => zone.toUpperCase().startsWith(prefix))
+      : false;
+
+    if (isNonResidentialZone) {
+      let zoneGateLotAreaM2: number | null = null;
+      if (lotGeometry?.rings?.[0]) {
+        const ring: [number, number][] = lotGeometry.rings[0];
+        let area = 0;
+        for (let i = 0; i < ring.length; i++) {
+          const [x1, y1] = ring[i];
+          const [x2, y2] = ring[(i + 1) % ring.length];
+          area += x1 * y2 - x2 * y1;
+        }
+        const scale = Math.cos((lat as number) * Math.PI / 180);
+        zoneGateLotAreaM2 = Math.round(Math.abs(area) / 2 * scale * scale);
+      }
+      const zoneIneligibleOutputs = {
+        detect_id: jobId,
+        address,
+        lat,
+        lng,
+        prop_id,
+        lot_area_m2: zoneGateLotAreaM2,
+        sepp_eligible: false,
+        sepp_ineligible_reason: `Zone ${zone} is not a residential zone — SEPP Housing 2021 secondary dwellings (cl 50) require a residential zone (R1, R2, R3, R4, or R5).`,
+        detected_structures: [],
+        samgeo_structure_count: 0,
+        samgeo_validated: true,
+        confirmation_required: true,
+        tile_licence: 'CC-BY 4.0 NSW Government — Six Maps LPI Imagery',
+        tile_b64: null,
+        tile_width: null,
+        tile_height: null,
+        tile_bbox: null,
+        lot_polygon_wgs84: lotPolygonWgs84?.coordinates ?? null,
+        warnings: [],
+      };
+      await getSupabase()
+        .from('granny_flat_reports')
+        .update({ confidence: 'pending_confirm', outputs: zoneIneligibleOutputs })
+        .eq('id', jobId);
+      return NextResponse.json({ jobId, lotPolygonWgs84, centroidLat, centroidLng }, { status: 202 });
+    }
+
     // In local dev, call Python directly (Trigger.dev can't reach localhost).
     if (process.env.NODE_ENV === 'development') {
       let detectResp: Response;
