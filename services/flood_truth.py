@@ -174,7 +174,12 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
             attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
             or attrs.get("FldClass") or attrs.get("Flood_Class") or ""
         ).strip().lower()
-        epi_class = _EPI_CLASS_MAP.get(raw_class, "flood_planning_area")
+        # Unknown or empty class → treat as "none" (not "flood_planning_area").
+        # Defaulting to flood_planning_area on unrecognised values causes false positives.
+        epi_class = _EPI_CLASS_MAP.get(raw_class) if raw_class else "none"
+        if epi_class is None:
+            logger.warning(f"Unrecognised EPI FloodClass: {raw_class!r} — treating as flood_planning_area")
+            epi_class = "flood_planning_area"
         return {"epi_flood_class": epi_class,
                 "epi_flood_label": _EPI_CLASS_LABELS.get(epi_class, "Flood Planning Area"),
                 "data_currency": currency}
@@ -193,22 +198,23 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     Returns ems_flood_detected (bool|None) and ems_activations (list|None).
     None = table empty or unavailable (distinct from False = no match).
     """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
-                if cur.fetchone()["n"] == 0:
-                    return {"ems_flood_detected": None, "ems_activations": None}
-                cur.execute(
-                    """
-                    SELECT activation_id, event_name, event_date_start, flood_type
-                    FROM copernicus_flood_events
-                    WHERE ST_Intersects(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                    ORDER BY event_date_start DESC
-                    """,
-                    (lng, lat),
-                )
-                rows = cur.fetchall()
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
+            if cur.fetchone()["n"] == 0:
+                return {"ems_flood_detected": None, "ems_activations": None}
+            cur.execute(
+                """
+                SELECT activation_id, event_name, event_date_start, flood_type
+                FROM copernicus_flood_events
+                WHERE ST_Intersects(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                ORDER BY event_date_start DESC
+                """,
+                (lng, lat),
+            )
+            rows = cur.fetchall()
         if not rows:
             return {"ems_flood_detected": False, "ems_activations": []}
         return {
@@ -222,6 +228,9 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     except Exception as e:
         logger.warning(f"Copernicus EMS query: {e}")
         return {"ems_flood_detected": None, "ems_activations": None}
+    finally:
+        if conn:
+            conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -415,7 +424,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     if internal_outputs.get("data_currency") == "query_failed":
         return "unavailable"
 
-    epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none")
+    epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
@@ -449,7 +458,7 @@ def _compute_confidence(internal_outputs: dict) -> str:
     medium — EPI + EMS + (JRC or BOM), OR EPI + ≥2 SAR seasons
     low    — EPI only
     """
-    wet_seasons    = internal_outputs.get("wet_seasons_checked", 0)
+    wet_seasons    = internal_outputs.get("wet_seasons_checked") or 0
     ems_available  = internal_outputs.get("ems_flood_detected") is not None
     jrc_available  = internal_outputs.get("jrc_water_occurrence_pct") is not None
     bom_available  = internal_outputs.get("bom_gauge_name") is not None
@@ -586,15 +595,16 @@ def run_flood(req: FloodRequest):
     Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2).
     SAR analysis is batch-only (Phase 3B).
     """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-                cur.execute(
-                    "SELECT outputs, confidence, data_sources FROM property_reports "
-                    "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
-                    (req.address,)
-                )
-                cached = cur.fetchone()
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT outputs, confidence, data_sources FROM property_reports "
+                "WHERE product='flood' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                (req.address,)
+            )
+            cached = cur.fetchone()
         if cached:
             return {
                 "address": req.address, "lat": req.lat, "lng": req.lng,
@@ -605,6 +615,9 @@ def run_flood(req: FloodRequest):
             }
     except Exception as e:
         logger.warning(f"Cache lookup: {e}")
+    finally:
+        if conn:
+            conn.close()
 
     with ThreadPoolExecutor(max_workers=4) as pool:
         f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
