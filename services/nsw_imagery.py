@@ -143,38 +143,55 @@ def fetch_tile_to_file(
         key = hashlib.md5(f"{lat:.6f},{lng:.6f},{grid}".encode()).hexdigest()[:12]
         output_path = f"/tmp/sixmaps_{key}.png"
 
+    zoom_sidecar = output_path + ".zoom"
+
     if os.path.exists(output_path):
         logger.debug(f"Using cached tile at {output_path}")
-        # Recompute bbox without re-fetching (use ZOOM as saved zoom unknown)
-        _, licence, bbox = _compute_bbox_only(lat, lng, grid, ZOOM)
+        # Read zoom from sidecar so bbox is computed at the correct zoom level.
+        # Legacy cache files (no sidecar) fall back to ZOOM=20.
+        cached_zoom = ZOOM
+        try:
+            cached_zoom = int(Path(zoom_sidecar).read_text().strip())
+        except Exception:
+            pass
+        _, licence, bbox = _compute_bbox_only(lat, lng, grid, cached_zoom)
         return output_path, licence, bbox
 
     import numpy as np
 
+    half = grid // 2
+    center_slice = (
+        slice(half * TILE_SIZE, (half + 1) * TILE_SIZE),
+        slice(half * TILE_SIZE, (half + 1) * TILE_SIZE),
+    )
+
     # Try zoom 20 first; fall back to zoom 19 if tiles are unavailable (404s)
     zoom_candidates = [ZOOM, ZOOM - 1]
-    last_error: Optional[str] = None
     for zoom in zoom_candidates:
         image, licence, bbox = fetch_tile_for_location(lat, lng, grid=grid, zoom=zoom)
 
         arr = np.array(image)
-        if arr.std() < 2:
-            last_error = (
-                f"All SIX Maps tile fetches failed at zoom {zoom} for ({lat:.5f}, {lng:.5f})"
+        # Check center tile specifically — that's where the lot sits.
+        # Checking full canvas std can pass if only distant outer tiles have colour.
+        center_arr = arr[center_slice[0], center_slice[1]]
+        if center_arr.std() < 2:
+            logger.warning(
+                f"Center tile grey at zoom {zoom} for ({lat:.5f}, {lng:.5f})"
+                + (f" — trying zoom {zoom - 1}" if zoom != zoom_candidates[-1] else "")
             )
-            logger.warning(f"{last_error} — trying zoom {zoom - 1}" if zoom > zoom_candidates[-1] else last_error)
             continue
 
         if zoom != ZOOM:
             logger.info(f"Zoom {ZOOM} unavailable — used zoom {zoom} fallback for ({lat:.5f}, {lng:.5f})")
 
         image.save(output_path)
+        Path(zoom_sidecar).write_text(str(zoom))
         logger.info(f"Saved {grid}x{grid} tile grid to {output_path} — {image.size[0]}x{image.size[1]}px (zoom {zoom})")
         return output_path, licence, bbox
 
     raise RuntimeError(
-        f"All SIX Maps tile fetches failed for ({lat:.5f}, {lng:.5f}) at zooms "
-        f"{zoom_candidates} — server may be temporarily unavailable. Not caching grey canvas."
+        f"SIX Maps center tile unavailable for ({lat:.5f}, {lng:.5f}) at zooms "
+        f"{zoom_candidates} — no imagery at this location."
     )
 
 
