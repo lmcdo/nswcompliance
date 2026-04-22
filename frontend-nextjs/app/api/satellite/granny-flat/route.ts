@@ -117,6 +117,21 @@ export async function POST(request: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
+  // Zone eligibility pre-check — fast gate before expensive SAM inference
+  // -------------------------------------------------------------------------
+  const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+  const zone: string | null = (propData.property as { zone?: string | null })?.zone ?? null;
+  if (zone) {
+    const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
+    if (!eligible) {
+      return NextResponse.json(
+        { error: `Zone ${zone} does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones.` },
+        { status: 422 },
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // DETECT — async via Trigger.dev (production) / direct Python call (dev)
   // -------------------------------------------------------------------------
   if (action === 'detect') {
@@ -296,6 +311,11 @@ export async function GET(request: NextRequest) {
 
   if (error || !data) {
     return NextResponse.json({ status: 'pending' });
+  }
+
+  if (data.confidence === 'error') {
+    const msg = (data.outputs as { error?: string } | null)?.error ?? 'Detection failed — please try again.';
+    return NextResponse.json({ status: 'error', error: msg });
   }
 
   if (data.confidence !== 'pending_confirm' || !data.outputs) {

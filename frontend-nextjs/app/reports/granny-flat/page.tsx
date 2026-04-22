@@ -50,6 +50,8 @@ interface ConfirmResult {
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error';
 
+const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
   medium: 'Medium confidence',
@@ -58,6 +60,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
+  const [inputAddress, setInputAddress] = useState(''); // user's typed input, preserved for display
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -70,6 +73,7 @@ export default function GrannyFlatPage() {
     e.preventDefault();
     if (!address.trim()) return;
 
+    setInputAddress(address.trim());
     setState('detecting');
     setDetectResult(null);
     setFinalResult(null);
@@ -87,11 +91,17 @@ export default function GrannyFlatPage() {
 
       const jobId: string = json.jobId;
 
-      // Step 2: poll until detect result is written to DB
-      const poll = async (): Promise<void> => {
+      // Step 2: poll until detect result is written to DB (max 3 min)
+      const poll = async (attempts = 0): Promise<void> => {
+        if (attempts >= 90) {
+          throw new Error('Detection timed out after 3 minutes. Please try again.');
+        }
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
 
+        if (pollJson.status === 'error') {
+          throw new Error(pollJson.error || 'Detection failed — please try again.');
+        }
         if (pollJson.status === 'detected') {
           const detectData = pollJson.data;
           setDetectResult(detectData);
@@ -106,7 +116,7 @@ export default function GrannyFlatPage() {
 
         // Still pending — try again in 2s
         await new Promise((r) => setTimeout(r, 2000));
-        return poll();
+        return poll(attempts + 1);
       };
 
       await poll();
@@ -202,6 +212,7 @@ export default function GrannyFlatPage() {
       {state === 'confirming' && detectResult && (
         <ConfirmationPanel
           detectResult={detectResult}
+          inputAddress={inputAddress}
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
           onConfirm={handleConfirm}
@@ -212,7 +223,7 @@ export default function GrannyFlatPage() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -477,21 +488,28 @@ function GrannyFlatFAQs() {
 
 function ConfirmationPanel({
   detectResult,
+  inputAddress,
   confirmedCount,
   onCountChange,
   onConfirm,
   onBack,
 }: {
   detectResult: DetectResult;
+  inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
+  const canonical = detectResult.address;
+  const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
-        <h2 className="font-semibold text-gray-900">{detectResult.address}</h2>
+        <h2 className="font-semibold text-gray-900">{inputAddress || canonical}</h2>
+        {showCanonical && (
+          <p className="text-xs text-gray-400 mt-0.5">Matched to: {canonical}</p>
+        )}
         {detectResult.lot_area_m2 != null && (
           <p className="text-sm text-gray-500 mt-0.5">
             Lot area: {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
@@ -588,16 +606,17 @@ function ConfirmationPanel({
   );
 }
 
-function ResultCard({ result, onReset }: { result: ConfirmResult; onReset: () => void }) {
+function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; inputAddress: string; onReset: () => void }) {
   const weeklyRent = result.estimated_weekly_rent_aud;
   const annualRent = weeklyRent ? weeklyRent * 52 : null;
+  const displayAddr = inputAddress || result.address;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
+            <h2 className="font-semibold text-gray-900">{displayAddr}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {CONFIDENCE_LABEL[result.confidence] ?? result.confidence}
             </p>
