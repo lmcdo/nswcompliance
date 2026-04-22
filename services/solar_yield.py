@@ -38,6 +38,7 @@ Response contract (must match frontend-nextjs/app/reports/solar-yield/page.tsx):
 """
 import logging
 import os
+import time
 from datetime import date
 from typing import Optional
 
@@ -184,13 +185,13 @@ def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
     segment_indices = {p["segmentIndex"] for p in lot_panels if "segmentIndex" in p}
     segments = sp.get("roofSegmentStats", [])
     lot_roof_area = sum(
-        s.get("stats", {}).get("areaMeters2", 0.0)
+        s.get("stats", {}).get("areaMeters2") or 0.0
         for i, s in enumerate(segments)
         if i in segment_indices
     )
     if not lot_roof_area and total_count > 0:
         # Proportional fallback when segmentIndex mapping yields nothing
-        whole = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
+        whole = sp.get("wholeRoofStats", {}).get("areaMeters2") or 0.0
         lot_roof_area = round(whole * lot_count / total_count, 1)
 
     lot_segments = [s for i, s in enumerate(segments) if i in segment_indices]
@@ -250,7 +251,9 @@ def _query_google_solar(lat: float, lng: float) -> dict:
             raise ValueError("Google Solar API access denied (403) — check API key and quota")
         if r.status_code == 429 or r.status_code >= 500:
             if attempt < 2:
-                logger.warning(f"Google Solar API {r.status_code} attempt {attempt+1}/3 — retrying")
+                wait = 2 ** attempt  # 1s, 2s
+                logger.warning(f"Google Solar API {r.status_code} attempt {attempt+1}/3 — retrying in {wait}s")
+                time.sleep(wait)
                 continue
             raise RuntimeError(f"Google Solar API returned {r.status_code} after 3 attempts")
         if not r.ok:
@@ -320,44 +323,46 @@ def _parse_solar_response(
         imagery_date = "unknown"
 
     # Roof area (from wholeRoofStats, already updated by clipping if applied)
-    roof_area = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
+    # Use `or 0.0` throughout — .get(key, default) returns None when key exists with null value
+    roof_area = sp.get("wholeRoofStats", {}).get("areaMeters2") or 0.0
 
     # Best segment: highest median sunshine hours among (lot-filtered) segments.
     # Tiebreak: prefer segments closer to north-facing (azimuth near 0/360).
     segments = sp.get("roofSegmentStats", [])
 
     def _segment_score(seg: dict) -> float:
-        quantiles = seg.get("stats", {}).get("sunshineQuantiles", [])
-        median_sun = float(quantiles[4]) if len(quantiles) > 4 else 0.0
-        az = seg.get("azimuthDegrees", 180.0)
-        # North-facing bonus: 0–5% of median_sun added as tiebreaker (NSW = Southern Hemisphere,
-        # north-facing receives most direct irradiance). Scaled to median_sun so it only
-        # breaks ties — a meaningfully sunnier south-facing segment still wins.
+        quantiles = seg.get("stats", {}).get("sunshineQuantiles") or []
+        # Google returns 11 values (0,10,20,...,100 percentile). Index 5 = 50th (median).
+        median_sun = float(quantiles[5]) if len(quantiles) > 5 else 0.0
+        az = seg.get("azimuthDegrees") or 180.0
+        # North-facing bonus: 0–5% of median_sun as tiebreaker (Southern Hemisphere:
+        # north-facing receives most direct irradiance). Scaled so a sunnier south-facing
+        # segment still wins.
         north_factor = 1.0 - min(az, 360.0 - az) / 180.0  # 1.0=N, 0.0=S
         return median_sun * (1.0 + 0.05 * north_factor)
 
     best_seg = max(segments, key=_segment_score) if segments else {}
-    best_pitch = best_seg.get("pitchDegrees", 0.0)
-    best_azimuth = best_seg.get("azimuthDegrees", 0.0)
+    best_pitch = best_seg.get("pitchDegrees") or 0.0
+    best_azimuth = best_seg.get("azimuthDegrees") or 0.0
 
     # Annual kWh: use per-panel sum when lot-clipped (more accurate), otherwise
     # take the max solarPanelConfigs entry (Google's aggregate for the whole building).
     if sp.get("_lot_clipped"):
-        annual_kwh = float(sp.get("_lot_annual_kwh", 0.0))
+        annual_kwh = float(sp.get("_lot_annual_kwh") or 0.0)
     else:
-        configs = sp.get("solarPanelConfigs", [])
+        configs = sp.get("solarPanelConfigs") or []
         max_config = configs[-1] if configs else {}
-        annual_kwh = float(max_config.get("yearlyEnergyDcKwh", 0.0))
+        annual_kwh = float(max_config.get("yearlyEnergyDcKwh") or 0.0)
 
-    max_panels = int(sp.get("maxArrayPanelsCount", 0))
-    max_panel_area = round(float(sp.get("maxArrayAreaMeters2", 0.0)), 1)
+    max_panels = int(sp.get("maxArrayPanelsCount") or 0)
+    max_panel_area = round(float(sp.get("maxArrayAreaMeters2") or 0.0), 1)
     roof_area_rounded = round(float(roof_area), 1)
 
     return SolarYieldOutput(
         max_panels=max_panels,
         max_panel_area_m2=max_panel_area,
         annual_kwh_estimate=round(annual_kwh, 0),
-        sunshine_hours_per_year=round(float(sp.get("maxSunshineHoursPerYear", 0.0)), 0),
+        sunshine_hours_per_year=round(float(sp.get("maxSunshineHoursPerYear") or 0.0), 0),
         best_pitch_deg=round(float(best_pitch), 1),
         best_azimuth_deg=round(float(best_azimuth), 1),
         roof_area_m2=roof_area_rounded,
@@ -399,7 +404,7 @@ def _check_heritage(lat: float, lng: float) -> bool:
 
 
 @router.post("/solar-yield")
-async def run_solar_yield(request: SolarYieldRequest):
+def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
 
     try:
@@ -433,11 +438,11 @@ async def run_solar_yield(request: SolarYieldRequest):
             lng=request.lng,
             prop_id=request.prop_id,
             inputs={
-            "address": request.address,
-            "lat": request.lat,
-            "lng": request.lng,
-            "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
-        },
+                "address": request.address,
+                "lat": request.lat,
+                "lng": request.lng,
+                "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
+            },
             outputs=outputs.model_dump(),
             confidence=confidence,
         )
