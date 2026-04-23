@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { headers } from 'next/headers'
+import { captureServerEvent } from '@/lib/posthog-server'
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
@@ -32,11 +33,15 @@ export default async function EmbedLayout({ children }: { children: React.ReactN
   const referer = headersList.get('referer');
   const domain = getEmbedDomain(referer);
 
-  // Log all embed usage for partner monitoring — non-blocking
-  if (domain && !AUTHORISED_EMBED_DOMAINS.includes(domain)) {
-    console.info(`[embed] External embed from: ${domain}`);
-    // TODO: when partner list is active, return 403 for unregistered domains
-  }
+  // Track all embed usage in PostHog — visible in dashboard under embed_request event
+  const isAuthorised = !domain || AUTHORISED_EMBED_DOMAINS.includes(domain)
+  const tool = headersList.get('x-invoke-path')?.split('/')[2] ?? 'unknown'
+  captureServerEvent('embed_request', {
+    domain: domain ?? 'direct',
+    tool,
+    authorised: isAuthorised,
+  })
+  // TODO: when partner list is active, return 403 for !isAuthorised
 
   return (
     <div className="bg-white" style={{ fontFamily: 'system-ui, sans-serif' }}>
