@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
   let body: {
     address?: string;
     action?: 'detect' | 'confirm';
+    notification_email?: string;
     detect_id?: string;
     confirmed_structure_count?: number;
     samgeo_structure_count?: number;
@@ -82,7 +83,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { address, action = 'detect' } = body;
+  const { address, action = 'detect', notification_email } = body;
   if (!address?.trim()) {
     return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
@@ -270,6 +271,7 @@ export async function POST(request: NextRequest) {
           prop_id,
           report_id: jobId,
           extra_body: { lot_geometry: lotGeometry },
+          ...(notification_email ? { notification_email } : {}),
         },
       }),
     });
