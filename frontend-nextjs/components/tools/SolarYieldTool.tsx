@@ -41,7 +41,7 @@ interface ReportData {
   data_sources: string[];
 }
 
-type PageState = 'idle' | 'running' | 'complete' | 'error';
+type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
 const RETAIL_RATE        = 0.32;
 const FEED_IN_RATE       = 0.06;
@@ -121,17 +121,21 @@ function fmt$(n: number) {
 
 export function SolarYieldTool({ lgaSlug }: { lgaSlug?: string }) {
   const [address, setAddress] = useState('');
+  const [inputAddress, setInputAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [report, setReport] = useState<ReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [ineligible, setIneligible] = useState<{ error: string; evidence?: string; evidence_label?: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim()) return;
 
+    setInputAddress(address.trim());
     setState('running');
     setReport(null);
     setErrorMsg('');
+    setIneligible(null);
 
     try {
       const res = await fetch('/api/satellite/solar-yield', {
@@ -143,6 +147,11 @@ export function SolarYieldTool({ lgaSlug }: { lgaSlug?: string }) {
       const json = await res.json();
 
       if (!res.ok) {
+        if (json.ineligible) {
+          setIneligible({ error: json.error, evidence: json.evidence, evidence_label: json.evidence_label });
+          setState('ineligible');
+          return;
+        }
         throw new Error(json.error || 'Failed to run report');
       }
 
@@ -196,6 +205,35 @@ export function SolarYieldTool({ lgaSlug }: { lgaSlug?: string }) {
       {state === 'error' && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-sm text-red-700">
           {errorMsg}
+        </div>
+      )}
+
+      {state === 'ineligible' && ineligible && (
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <div className="p-6 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
+              <button
+                type="button"
+                onClick={() => { setState('idle'); setIneligible(null); setAddress(''); }}
+                className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
+              >
+                Check another address
+              </button>
+            </div>
+            <span className="shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+              Not assessable
+            </span>
+          </div>
+          <div className="p-6">
+            <p className="text-sm text-gray-700">{ineligible.error}</p>
+          </div>
+          {ineligible.evidence && (
+            <div className="px-6 py-3 bg-gray-50">
+              <p className="text-xs text-gray-400 mb-0.5">{ineligible.evidence_label || 'Source'}</p>
+              <p className="text-xs font-mono text-gray-600">{ineligible.evidence}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -339,8 +377,14 @@ function ReportCard({ report }: { report: ReportData }) {
 
       {/* Heritage warning */}
       {o.is_heritage && (
-        <div className="px-6 py-4 bg-amber-50 text-xs text-amber-800">
-          Heritage area — solar panel installations may require council heritage approval before proceeding.
+        <div className="px-6 py-4 bg-amber-50 text-xs text-amber-800 space-y-1">
+          <p className="font-medium">Heritage item or conservation area</p>
+          <p>
+            Solar panels visible from a public place on a heritage item or within a Heritage Conservation Area
+            may require council approval under your LEP (cl 5.10). Panels on rear or concealed roof faces
+            are generally approvable — panels on the street-facing primary facade are often refused.
+            Confirm with council or a heritage consultant before proceeding.
+          </p>
         </div>
       )}
 
