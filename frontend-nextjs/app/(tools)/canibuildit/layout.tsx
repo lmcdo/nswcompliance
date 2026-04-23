@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Can I Build a Granny Flat? — Free NSW Eligibility Check',
-  description: 'Instant granny flat eligibility check for any NSW property. Based on SEPP Housing 2021 lot area, zoning, and exclusion rules. Free — no signup required.',
+  title: 'Granny Flat Income Calculator NSW — Free Eligibility & Yield Check',
+  description: 'Could your NSW property support a granny flat worth $280–$340/week? Free instant check — lot size, zoning, heritage, flood rules — with a rental yield estimate. No signup.',
 };
 
 export default function CanIBuildItLayout({ children }: { children: React.ReactNode }) {

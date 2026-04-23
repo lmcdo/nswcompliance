@@ -111,6 +111,23 @@ function formatLotArea(m2: number | null): string {
   return `${Math.round(m2).toLocaleString()} m²`;
 }
 
+function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
+  if (lotArea != null && lotArea < 450) {
+    const shortfall = Math.round(450 - lotArea);
+    return `A boundary adjustment of ${shortfall} m² could unlock CDC eligibility. A DA pathway may also be available at council's discretion — a certifier or town planner can advise.`;
+  }
+  if (reason?.toLowerCase().includes('heritage')) {
+    return 'Heritage exclusions apply to the CDC pathway only. A DA pathway remains available — contact a heritage-experienced town planner.';
+  }
+  if (reason?.toLowerCase().includes('flood')) {
+    return 'Flood control lot exclusions apply to the CDC pathway only. A DA with a flood risk management report may still be available — consult a hydraulic engineer.';
+  }
+  if (reason?.toLowerCase().includes('zone') || reason?.toLowerCase().includes('zoning')) {
+    return 'Zoning restrictions may be fixed unless a planning proposal is lodged. Check the applicable LEP with a town planner.';
+  }
+  return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
+}
+
 function deriveIneligibleReason(reason: string | null, lotArea: number | null): string {
   if (reason) return reason;
   if (lotArea != null && lotArea < 450) {
@@ -487,11 +504,10 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
       {!lgaName && (
         <div className="pt-16 pb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight leading-tight">
-            Can I build a granny flat?
+            Could this property earn an extra $300/week?
           </h1>
           <p className="mt-4 text-lg text-gray-500 max-w-lg mx-auto">
-            Instant NSW eligibility check — lot area, zoning, and planning exclusions verified against
-            SEPP Housing 2021.
+            Free granny flat eligibility check for any NSW address — lot size, zoning, heritage, flood — plus a rental yield estimate. Takes 15 seconds.
           </p>
           <p className="mt-2 text-sm text-gray-400">Free. No account needed.</p>
         </div>
@@ -517,7 +533,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
             disabled={!address.trim()}
             className="w-full py-3 px-6 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-base"
           >
-            Check for free →
+            Check my property →
           </button>
         </form>
       )}
@@ -763,6 +779,9 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
                     ? `${formatLotArea(eligibility.lot_area_m2)} — meets the SEPP Housing 2021 minimum for a secondary dwelling`
                     : deriveIneligibleReason(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
                 </p>
+                {eligibility.sepp_eligible && (
+                  <p className="text-sm text-teal-700 mt-1 font-medium">Estimated rental income: $280–$340/week</p>
+                )}
                 <p className="text-xs text-gray-400 mt-1">{eligibility.address}</p>
               </div>
             </div>
@@ -993,9 +1012,9 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
           ) : (
             <>
               <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="font-semibold text-gray-900 mb-1">What are your options?</h3>
+                <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
                 <p className="text-sm text-gray-500 mb-4">
-                  A full report shows other development options for your lot — CDC, alterations, or subdivision potential.
+                  {deriveWhatToChange(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
                 </p>
                 {!emailSubmitted ? (
                   <form onSubmit={handleEmailSubmit} className="flex gap-2">
