@@ -20,11 +20,11 @@ const nextConfig = {
        destination: 'https://canibuildit.com.au/:path*',
        permanent: false,
      },
-     // plotdetect.com.au root → assessment app (professional compliance tool)
+     // plotdetect.com.au root → canibuildit.com.au (fallback if DNS ever points here)
      {
        source: '/',
        has: [{ type: 'host', value: 'plotdetect.com.au' }],
-       destination: '/assessment',
+       destination: 'https://canibuildit.com.au',
        permanent: false,
      },
    ];
