@@ -78,6 +78,11 @@ scripts/_check_*.py
 # Test trail files
 test-trail/
 
+# SAR validation outputs and local credentials (large GeoTIFFs, not for VCS)
+validation_output/
+scripts/drawdown_creds.txt
+scripts/drawdown_run.bat
+
 # Frontend Next.js specific
 frontend-nextjs/node_modules/
 frontend-nextjs/.next/

@@ -19,6 +19,20 @@ function getClient(): PostHog | null {
 }
 
 /**
+ * Capture any server-side event to PostHog.
+ * Safe to call anywhere — no-ops if key is missing or in test env.
+ */
+export function captureServerEvent(
+  event: string,
+  properties: Record<string, unknown> = {},
+  distinctId = 'server'
+): void {
+  const client = getClient()
+  if (!client) return
+  client.capture({ distinctId, event, properties })
+}
+
+/**
  * Capture a server-side exception to PostHog.
  * Safe to call in any API route catch block — no-ops if key is missing or in test env.
  */
