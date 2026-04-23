@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     postcode?: string;
     report_id?: string;
     existing_secondary_dwelling?: boolean | null;
+    main_dwelling_area_m2?: number | null;
   };
   try {
     body = await request.json();
@@ -289,7 +290,7 @@ export async function POST(request: NextRequest) {
   // CONFIRM — direct call (<30s)
   // -------------------------------------------------------------------------
   if (action === 'confirm') {
-    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling } = body;
+    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2 } = body;
 
     if (!detect_id) {
       return NextResponse.json({ error: 'detect_id is required for confirm action' }, { status: 400 });
@@ -353,6 +354,7 @@ export async function POST(request: NextRequest) {
           report_id: report_id ?? crypto.randomUUID(),
           is_heritage,
           existing_secondary_dwelling: existing_secondary_dwelling ?? null,
+          main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
         }),
         signal: AbortSignal.timeout(30_000),
       });

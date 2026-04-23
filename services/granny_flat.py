@@ -178,6 +178,7 @@ class GrannyFlatConfirmRequest(BaseModel):
     report_id: Optional[str] = None     # pre-allocated by Next.js
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
     existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
+    main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -708,6 +709,44 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             f"of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
+    # Residual area proxy check — simple heuristic pending full geometric envelope computation.
+    # Rationale: a CDC granny flat needs ≥60 m² floor area (SEPP Housing 2021 cl 4.18) plus
+    # clearances: 3 m rear setback + 0.9 m each side + 3 m separation from principal dwelling.
+    # For a typical 10 m-wide lot rear yard that buffer alone consumes ~50–60 m² of ground.
+    # Threshold 120 m² = 60 m² GF footprint + ~60 m² setback/circulation buffer.
+    # Only fires when SAM returned a reliable main dwelling area.
+    #
+    # TODO — full geometric envelope check (v2):
+    #   1. Reproject lot_polygon_wgs84 to a local UTM zone (e.g. GDA2020 / MGA Zone 55 for Sydney).
+    #   2. Identify street frontage edge = longest polygon side within 20 m of nearest road centreline
+    #      (use OSM road layer or lot centroid + bearing heuristic as fallback).
+    #   3. Rear boundary = opposite edge to frontage.
+    #   4. Apply inward offsets: rear −3 m, each side −0.9 m → buildable lot polygon.
+    #   5. Subtract principal dwelling polygon (from SAM mask contour, not bbox) buffered 3 m.
+    #   6. Compute area of remaining buildable polygon.
+    #   7. If area < 60 m²: not buildable. If 60–80 m²: buildable but tight (warn).
+    #   8. For the 12 LGAs in dcp_setback_controls: query table for council-specific rear/side
+    #      setbacks and substitute SEPP defaults above.
+    #   Data needed: lot polygon in UTM, SAM mask contour (not bbox), road centreline layer.
+    if (
+        granny_flat_buildable
+        and lot_area_m2 is not None
+        and req.main_dwelling_area_m2 is not None
+        and req.main_dwelling_area_m2 > 0
+    ):
+        residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
+        if residual_area_m2 < 120:
+            granny_flat_buildable = False
+            warnings.append(
+                f"Insufficient space for a complying development granny flat. "
+                f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
+                f"approximately {residual_area_m2:.0f} m² remains — less than the ~120 m² "
+                f"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks "
+                f"(3 m rear, 0.9 m sides, 3 m from dwelling). "
+                f"A DA pathway may allow a smaller or differently positioned structure — "
+                f"consult a town planner."
+            )
+
     is_heritage = bool(req.is_heritage)
     if is_heritage:
         warnings.append(
@@ -799,6 +838,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": req.postcode,
                         "existing_secondary_dwelling": req.existing_secondary_dwelling,
+                        "main_dwelling_area_m2": req.main_dwelling_area_m2,
                     }),
                     psycopg2.extras.Json({
                         "granny_flat_buildable": granny_flat_buildable,
