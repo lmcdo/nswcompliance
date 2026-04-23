@@ -330,17 +330,17 @@ def _detect_structures_samgeo(
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
         if lot_arr is not None:
             h_arr, w_arr = lot_arr.shape
-            centre_in = (0 <= cy < h_arr and 0 <= cx < w_arr and lot_arr[cy, cx])
-            if not centre_in:
-                # Fallback: accept if ≥40% of bbox overlaps lot (handles small
-                # structures near boundary whose centroid may miss by a pixel).
-                bx1 = max(0, x1); by1 = max(0, y1)
-                bx2 = min(w_arr, x2); by2 = min(h_arr, y2)
-                if bx2 <= bx1 or by2 <= by1:
-                    continue
-                bbox_region = lot_arr[by1:by2, bx1:bx2]
-                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.40:
-                    continue
+            # Require ≥60% of the bbox area to overlap the lot polygon.
+            # A centroid-only check fails when a large neighbouring building
+            # straddles the boundary with its centre just inside the lot.
+            # 60% ensures the majority of the detected structure is on the lot.
+            bx1 = max(0, x1); by1 = max(0, y1)
+            bx2 = min(w_arr, x2); by2 = min(h_arr, y2)
+            if bx2 <= bx1 or by2 <= by1:
+                continue
+            bbox_region = lot_arr[by1:by2, bx1:bx2]
+            if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.60:
+                continue
         # --- SAM quality filters ---
         bw, bh = x2 - x1, y2 - y1
 
