@@ -1006,7 +1006,7 @@ function ReportUnlockCTA({
           <div>
             <h3 className="font-semibold text-teal-900">Get the detailed report</h3>
             <p className="text-sm text-teal-700 mt-1">
-              Full CDC compliance checklist, setback calculations, yield sensitivity analysis, and a shareable PDF — $29.
+              CDC pathway checklist, applicable setback standards with clause citations, yield sensitivity analysis, and a shareable PDF — $29.
             </p>
           </div>
           <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
@@ -1025,19 +1025,12 @@ function ReportUnlockCTA({
               type="submit"
               className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
             >
-              Continue to full report →
+              Notify me when ready →
             </button>
           </form>
-        ) : STRIPE_LINK ? (
-          <a
-            href={STRIPE_LINK}
-            className="block w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors text-center"
-          >
-            Unlock detailed report — $29
-          </a>
         ) : (
           <p className="text-sm text-teal-700 font-medium">
-            Thanks! The detailed report is coming soon — we&apos;ll email you when it&apos;s ready.
+            Thanks — we&apos;ll email you at {email} when the detailed report is ready.
           </p>
         )}
       </div>
