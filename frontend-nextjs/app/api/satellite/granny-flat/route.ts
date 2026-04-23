@@ -8,6 +8,31 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+
+// NSW Standard Instrument zone names (source: Standard Instrument (Local Environmental Plans) Order 2006)
+// These are official zone identifiers, not regulatory controls — safe to keep as a display lookup.
+const NSW_ZONE_NAMES: Record<string, string> = {
+  R1: 'General Residential', R2: 'Low Density Residential',
+  R3: 'Medium Density Residential', R4: 'High Density Residential',
+  R5: 'Large Lot Residential',
+  RU1: 'Primary Production', RU2: 'Rural Landscape', RU3: 'Forestry',
+  RU4: 'Primary Production Small Lots', RU5: 'Village', RU6: 'Transition',
+  MU1: 'Mixed Use',
+  E1: 'Local Centre', E2: 'Commercial Centre', E3: 'Productivity Support',
+  E4: 'General Industrial', E5: 'Heavy Industrial',
+  IN1: 'General Industrial', IN2: 'Light Industrial',
+  IN3: 'Heavy Industrial', IN4: 'Working Waterfront',
+  SP1: 'Special Activities', SP2: 'Infrastructure', SP3: 'Tourist',
+  RE1: 'Public Recreation', RE2: 'Private Recreation',
+  C1: 'Environmental Protection', C2: 'Environmental Conservation',
+  C3: 'Environmental Management', C4: 'Environmental Living',
+  W1: 'Natural Waterways', W2: 'Recreational Waterways',
+  W3: 'Working Waterways', W4: 'Working Waterways',
+  // Legacy B zones (pre-2023 reform — still present on some LEPs)
+  B1: 'Neighbourhood Centre', B2: 'Local Centre', B3: 'Commercial Core',
+  B4: 'Mixed Use', B5: 'Business Development', B6: 'Enterprise Corridor',
+  B7: 'Business Park', B8: 'Metropolitan Centre',
+};
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
 const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 
@@ -172,7 +197,7 @@ export async function POST(request: NextRequest) {
           ineligible: true,
           error:
             'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
-          evidence: `Zone ${zone}`,
+          evidence: NSW_ZONE_NAMES[zone] ? `${zone} — ${NSW_ZONE_NAMES[zone]}` : zone,
           evidence_label: 'NSW Planning Portal — land zoning',
         },
         { status: 422 },
