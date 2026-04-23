@@ -48,7 +48,7 @@ interface ConfirmResult {
   warnings: string[];
 }
 
-type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error';
+type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
 
 const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
@@ -87,7 +87,14 @@ export default function GrannyFlatPage() {
         body: JSON.stringify({ address, action: 'detect' }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Detection failed');
+      if (!res.ok) {
+        if (res.status === 422 && json.error?.includes('does not permit')) {
+          setErrorMsg(json.error);
+          setState('ineligible');
+          return;
+        }
+        throw new Error(json.error || 'Detection failed');
+      }
 
       const jobId: string = json.jobId;
 
@@ -197,6 +204,28 @@ export default function GrannyFlatPage() {
             Detect structures
           </button>
         </form>
+      )}
+
+      {/* Zone ineligible — permanent result, no retry button */}
+      {state === 'ineligible' && (
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <div className="p-6">
+            <p className="text-sm font-semibold text-gray-900 mb-0.5">{inputAddress}</p>
+            <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800 mt-1">Not eligible</span>
+          </div>
+          <div className="p-6">
+            <p className="text-sm text-red-700">{errorMsg}</p>
+          </div>
+          <div className="px-6 py-4">
+            <button
+              type="button"
+              onClick={() => { setState('idle'); setErrorMsg(''); setAddress(''); }}
+              className="text-sm text-teal-600 hover:text-teal-700 underline"
+            >
+              Search another address
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Loading */}
