@@ -179,8 +179,8 @@ export default function GrannyFlatPage() {
         </p>
       </div>
 
-      {/* Step 1: address entry */}
-      {(state === 'idle' || state === 'error') && (
+      {/* Step 1: address entry — stays visible and disabled during detection */}
+      {(state === 'idle' || state === 'error' || state === 'detecting') && (
         <form onSubmit={handleDetect} className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
@@ -188,7 +188,7 @@ export default function GrannyFlatPage() {
               value={address}
               onChange={setAddress}
               onSelect={(addr) => setAddress(addr)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
           </div>
@@ -198,22 +198,39 @@ export default function GrannyFlatPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isRunning || !address.trim()}
-            className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Detect structures
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={isRunning || !address.trim()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRunning && (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {isRunning ? 'Detecting structures...' : 'Detect structures'}
+            </button>
+          </div>
+          {state === 'detecting' && (
+            <p className="text-xs text-gray-400">
+              Fetching aerial imagery and running structure detection. First-run inference can take 1–2 minutes.
+            </p>
+          )}
         </form>
       )}
 
-      {/* Ineligible — permanent result, no retry button */}
+      {/* Ineligible — permanent result, search another at top */}
       {state === 'ineligible' && (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           <div className="p-6 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
+              <button
+                type="button"
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
+                className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
+              >
+                Search another address
+              </button>
             </div>
             <span className="shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-800">
               Not eligible
@@ -228,24 +245,6 @@ export default function GrannyFlatPage() {
           <div className="p-6">
             <p className="text-sm text-gray-700">{errorMsg}</p>
           </div>
-          <div className="px-6 py-4">
-            <button
-              type="button"
-              onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
-              className="text-sm text-teal-600 hover:text-teal-700 underline"
-            >
-              Search another address
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Loading */}
-      {state === 'detecting' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Fetching aerial imagery and detecting structures...</p>
-          <p className="text-xs text-gray-400 mt-1">This takes 15–30 seconds.</p>
         </div>
       )}
 
@@ -601,7 +600,9 @@ function ConfirmationPanel({
                         <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
                         {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
                         {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                        <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
+                        {!s.is_main_dwelling && (
+                          <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -669,6 +670,12 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
             {result.confidence_reason && (
               <p className="text-xs text-gray-500 mt-1 max-w-sm">{result.confidence_reason}</p>
             )}
+            <button
+              onClick={onReset}
+              className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
+            >
+              New address
+            </button>
           </div>
           <span
             className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
@@ -716,16 +723,10 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
         </div>
       )}
 
-      <div className="px-6 py-4 flex items-center justify-between">
+      <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
           Data: {result.data_sources.join(' · ')}
         </p>
-        <button
-          onClick={onReset}
-          className="text-xs text-teal-600 hover:text-teal-700 underline"
-        >
-          New address
-        </button>
       </div>
     </div>
   );
