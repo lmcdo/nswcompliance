@@ -96,8 +96,10 @@ export default function GrannyFlatPage() {
   const DETECT_STEPS = [
     { label: 'Resolving address with NSW Planning Portal', ms: 0 },
     { label: 'Retrieving aerial imagery', ms: 4000 },
-    { label: 'Running satellite structure detection', ms: 14000 },
-    { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 100000 },
+    { label: 'Uploading tile to GPU inference engine', ms: 14000 },
+    { label: 'Running LangSAM structure segmentation', ms: 20000 },
+    { label: 'Filtering detections against lot boundary', ms: 82000 },
+    { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 92000 },
   ];
   const [detectStep, setDetectStep] = useState(0);
   const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
