@@ -305,7 +305,7 @@ export default function GrannyFlatPage() {
                 );
               })}
               <p className="text-xs text-gray-400 pt-1">
-                Satellite analysis takes 1–3 minutes — this is a manual check done automatically.
+                Takes 1–3 minutes — we&apos;re running live satellite imagery through an ML model and cross-referencing your lot against the NSW Planning Portal in real time. A town planner would take days to do this manually.
               </p>
             </div>
           )}
