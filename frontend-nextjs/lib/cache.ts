@@ -212,3 +212,56 @@ export function createCacheKey(prefix: string, params: Record<string, any>): str
     .join('&');
   return `${prefix}:${sortedParams}`;
 }
+
+// ============================================================================
+// REDIS ADDRESS CHECK CACHE
+// Persistent 24-hour cache for /api/canibuildit/check results.
+// Prevents the same address from re-hitting the NSW Planning Portal API,
+// protects against scraping, and reduces Railway + Planning Portal costs.
+// Falls back to no-op if UPSTASH_REDIS_REST_URL/TOKEN are not set.
+// ============================================================================
+
+import { Redis } from '@upstash/redis';
+
+function createAddressRedisClient(): Redis | null {
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  return new Redis({ url, token });
+}
+
+const addressRedis = createAddressRedisClient();
+const ADDRESS_CACHE_TTL = 86400; // 24 hours in seconds
+
+function normaliseAddressKey(address: string): string {
+  return `cache:canibuildit:check:${address.trim().toLowerCase().replace(/\s+/g, ' ')}`;
+}
+
+/**
+ * Retrieve a cached canibuildit check result.
+ * Returns null on miss, Redis error, or if Redis is not configured.
+ */
+export async function getCachedAddressCheck(address: string): Promise<Record<string, unknown> | null> {
+  if (!addressRedis) return null;
+  try {
+    const raw = await addressRedis.get<unknown>(normaliseAddressKey(address));
+    if (!raw) return null;
+    if (typeof raw === 'object') return raw as Record<string, unknown>;
+    return JSON.parse(raw as string) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Store a canibuildit check result in Redis with a 24-hour TTL.
+ * Silent no-op on error — cache failure must never break the response.
+ */
+export async function setCachedAddressCheck(address: string, result: Record<string, unknown>): Promise<void> {
+  if (!addressRedis) return;
+  try {
+    await addressRedis.set(normaliseAddressKey(address), JSON.stringify(result), { ex: ADDRESS_CACHE_TTL });
+  } catch {
+    // Non-fatal
+  }
+}

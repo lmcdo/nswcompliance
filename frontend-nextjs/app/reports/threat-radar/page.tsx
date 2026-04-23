@@ -28,6 +28,7 @@ interface SearchResult {
   council_name: string;
   applications: Application[];
   window_days: number;
+  radius_m: number;
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
@@ -150,7 +151,7 @@ export default function ThreatRadarPage() {
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <p className="text-xs text-gray-500">
-                {searchResult.council_name} · last {searchResult.window_days} days
+                {searchResult.council_name} · within {searchResult.radius_m}m · last {searchResult.window_days} days
               </p>
               <button onClick={reset} className="text-xs text-teal-600 hover:text-teal-700 underline">New search</button>
             </div>
@@ -159,13 +160,13 @@ export default function ThreatRadarPage() {
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
                 <p className="text-sm font-medium text-gray-700">No applications found</p>
                 <p className="text-xs text-gray-500 mt-1">
-                  No DA or CDC applications lodged in {searchResult.council_name} in the last {searchResult.window_days} days.
+                  No DA or CDC applications lodged within {searchResult.radius_m}m of this address in the last {searchResult.window_days} days.
                 </p>
               </div>
             ) : (
               <>
                 <p className="text-sm font-medium text-gray-700">
-                  {searchResult.applications.length} application{searchResult.applications.length !== 1 ? 's' : ''} found nearby
+                  {searchResult.applications.length} application{searchResult.applications.length !== 1 ? 's' : ''} within {searchResult.radius_m}m
                 </p>
                 {searchResult.applications.map((app, i) => {
                   const appNum = app.PlanningPortalApplicationNumber ?? app.ApplicationNumber ?? '—';

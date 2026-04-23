@@ -8,6 +8,31 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+
+// NSW Standard Instrument zone names (source: Standard Instrument (Local Environmental Plans) Order 2006)
+// These are official zone identifiers, not regulatory controls — safe to keep as a display lookup.
+const NSW_ZONE_NAMES: Record<string, string> = {
+  R1: 'General Residential', R2: 'Low Density Residential',
+  R3: 'Medium Density Residential', R4: 'High Density Residential',
+  R5: 'Large Lot Residential',
+  RU1: 'Primary Production', RU2: 'Rural Landscape', RU3: 'Forestry',
+  RU4: 'Primary Production Small Lots', RU5: 'Village', RU6: 'Transition',
+  MU1: 'Mixed Use',
+  E1: 'Local Centre', E2: 'Commercial Centre', E3: 'Productivity Support',
+  E4: 'General Industrial', E5: 'Heavy Industrial',
+  IN1: 'General Industrial', IN2: 'Light Industrial',
+  IN3: 'Heavy Industrial', IN4: 'Working Waterfront',
+  SP1: 'Special Activities', SP2: 'Infrastructure', SP3: 'Tourist',
+  RE1: 'Public Recreation', RE2: 'Private Recreation',
+  C1: 'Environmental Protection', C2: 'Environmental Conservation',
+  C3: 'Environmental Management', C4: 'Environmental Living',
+  W1: 'Natural Waterways', W2: 'Recreational Waterways',
+  W3: 'Working Waterways', W4: 'Working Waterways',
+  // Legacy B zones (pre-2023 reform — still present on some LEPs)
+  B1: 'Neighbourhood Centre', B2: 'Local Centre', B3: 'Commercial Core',
+  B4: 'Mixed Use', B5: 'Business Development', B6: 'Enterprise Corridor',
+  B7: 'Business Park', B8: 'Metropolitan Centre',
+};
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
 const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 
@@ -48,6 +73,8 @@ export async function POST(request: NextRequest) {
     samgeo_structure_count?: number;
     postcode?: string;
     report_id?: string;
+    existing_secondary_dwelling?: boolean | null;
+    main_dwelling_area_m2?: number | null;
   };
   try {
     body = await request.json();
@@ -134,6 +161,7 @@ export async function POST(request: NextRequest) {
         error:
           'This address contains a unit or apartment number. SEPP Housing 2021 (cl 53) secondary dwelling provisions apply to individual lots containing a dwelling house — not strata units, apartments, or commercial tenancies.',
         evidence: canonicalAddress,
+        evidence_label: 'NSW Planning Portal — canonical address',
       },
       { status: 422 },
     );
@@ -152,6 +180,7 @@ export async function POST(request: NextRequest) {
           error:
             `This lot is registered on Strata Plan ${spMatch[1]}. Secondary dwelling provisions under SEPP Housing 2021 apply to lots containing a single dwelling house — lots within a strata scheme are typically units or apartments within a larger building and do not qualify.`,
           evidence: lot_description,
+          evidence_label: 'NSW Planning Portal — lot registration',
         },
         { status: 422 },
       );
@@ -169,7 +198,8 @@ export async function POST(request: NextRequest) {
           ineligible: true,
           error:
             'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
-          evidence: zone,
+          evidence: NSW_ZONE_NAMES[zone] ? `${zone} — ${NSW_ZONE_NAMES[zone]}` : zone,
+          evidence_label: 'NSW Planning Portal — land zoning',
         },
         { status: 422 },
       );
@@ -260,7 +290,7 @@ export async function POST(request: NextRequest) {
   // CONFIRM — direct call (<30s)
   // -------------------------------------------------------------------------
   if (action === 'confirm') {
-    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id } = body;
+    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2 } = body;
 
     if (!detect_id) {
       return NextResponse.json({ error: 'detect_id is required for confirm action' }, { status: 400 });
@@ -278,6 +308,14 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'confirmed_structure_count must be an integer between 0 and 20' },
+        { status: 400 },
+      );
+    }
+
+    if (existing_secondary_dwelling !== undefined && existing_secondary_dwelling !== null &&
+        typeof existing_secondary_dwelling !== 'boolean') {
+      return NextResponse.json(
+        { error: 'existing_secondary_dwelling must be boolean or null' },
         { status: 400 },
       );
     }
@@ -315,6 +353,8 @@ export async function POST(request: NextRequest) {
           postcode: postcode ?? null,
           report_id: report_id ?? crypto.randomUUID(),
           is_heritage,
+          existing_secondary_dwelling: existing_secondary_dwelling ?? null,
+          main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
         }),
         signal: AbortSignal.timeout(30_000),
       });

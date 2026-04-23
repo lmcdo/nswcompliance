@@ -177,6 +177,8 @@ class GrannyFlatConfirmRequest(BaseModel):
     postcode: Optional[str] = None
     report_id: Optional[str] = None     # pre-allocated by Next.js
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
+    existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
+    main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -694,18 +696,70 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     granny_flat_buildable = True
     max_floor_area_m2 = SEPP_MAX_GF_AREA_M2
 
-    if lot_area_m2 is not None and lot_area_m2 < SEPP_MIN_LOT_M2:
+    if lot_area_m2 is None:
+        warnings.append(
+            "Lot area could not be calculated for this property — lot geometry was unavailable. "
+            "The 450 m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
+            "Confirm lot area on NSW Planning Portal before proceeding."
+        )
+    elif lot_area_m2 < SEPP_MIN_LOT_M2:
         granny_flat_buildable = False
         warnings.append(
             f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 minimum "
             f"of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
+    # Residual area proxy check — simple heuristic pending full geometric envelope computation.
+    # Rationale: a CDC granny flat needs ≥60 m² floor area (SEPP Housing 2021 cl 4.18) plus
+    # clearances: 3 m rear setback + 0.9 m each side + 3 m separation from principal dwelling.
+    # For a typical 10 m-wide lot rear yard that buffer alone consumes ~50–60 m² of ground.
+    # Threshold 120 m² = 60 m² GF footprint + ~60 m² setback/circulation buffer.
+    # Only fires when SAM returned a reliable main dwelling area.
+    #
+    # TODO — full geometric envelope check (v2):
+    #   1. Reproject lot_polygon_wgs84 to a local UTM zone (e.g. GDA2020 / MGA Zone 55 for Sydney).
+    #   2. Identify street frontage edge = longest polygon side within 20 m of nearest road centreline
+    #      (use OSM road layer or lot centroid + bearing heuristic as fallback).
+    #   3. Rear boundary = opposite edge to frontage.
+    #   4. Apply inward offsets: rear −3 m, each side −0.9 m → buildable lot polygon.
+    #   5. Subtract principal dwelling polygon (from SAM mask contour, not bbox) buffered 3 m.
+    #   6. Compute area of remaining buildable polygon.
+    #   7. If area < 60 m²: not buildable. If 60–80 m²: buildable but tight (warn).
+    #   8. For the 12 LGAs in dcp_setback_controls: query table for council-specific rear/side
+    #      setbacks and substitute SEPP defaults above.
+    #   Data needed: lot polygon in UTM, SAM mask contour (not bbox), road centreline layer.
+    if (
+        granny_flat_buildable
+        and lot_area_m2 is not None
+        and req.main_dwelling_area_m2 is not None
+        and req.main_dwelling_area_m2 > 0
+    ):
+        residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
+        if residual_area_m2 < 120:
+            granny_flat_buildable = False
+            warnings.append(
+                f"Insufficient space for a complying development granny flat. "
+                f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
+                f"approximately {residual_area_m2:.0f} m² remains — less than the ~120 m² "
+                f"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks "
+                f"(3 m rear, 0.9 m sides, 3 m from dwelling). "
+                f"A DA pathway may allow a smaller or differently positioned structure — "
+                f"consult a town planner."
+            )
+
     is_heritage = bool(req.is_heritage)
     if is_heritage:
         warnings.append(
             "Property is in a Heritage Conservation Area or has a heritage listing. "
             "Granny flat construction may require heritage approval — confirm with council."
+        )
+
+    # SEPP Housing 2021 cl 53(1): only one secondary dwelling per lot.
+    if req.existing_secondary_dwelling is True:
+        granny_flat_buildable = False
+        warnings.append(
+            "A secondary dwelling already exists on this lot. SEPP Housing 2021 (cl 53(1)) "
+            "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
         )
 
     weekly_rent = _get_weekly_rent(req.postcode)
@@ -727,7 +781,10 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "Run services/scripts/update_rental_data.py to populate."
         )
 
-    if req.confirmed_structure_count >= 2:
+    # Only show generic "verify outbuilding" warning if user hasn't already answered
+    # the secondary dwelling question. If they said True, we've already blocked buildability.
+    # If they said False, no ambiguity. Only warn when None (not asked / not answered).
+    if req.confirmed_structure_count >= 2 and req.existing_secondary_dwelling is None:
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
             "the existing structure is already an ancillary dwelling — verify with council."
@@ -739,6 +796,16 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         samgeo_count=req.samgeo_structure_count,
         rent_available=weekly_rent is not None,
     )
+
+    # Bug fix: lot area unknown → eligibility unverified → cap at medium
+    if lot_area_m2 is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
+
+    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
+    if req.existing_secondary_dwelling is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " Secondary dwelling status unconfirmed — SEPP cl 53(1) eligibility is unverified."
 
     report_id = req.report_id or str(uuid.uuid4())
 
@@ -770,6 +837,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "confirmed_structure_count": req.confirmed_structure_count,
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": req.postcode,
+                        "existing_secondary_dwelling": req.existing_secondary_dwelling,
+                        "main_dwelling_area_m2": req.main_dwelling_area_m2,
                     }),
                     psycopg2.extras.Json({
                         "granny_flat_buildable": granny_flat_buildable,

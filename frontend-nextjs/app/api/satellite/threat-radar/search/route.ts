@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import {
   satelliteRateLimiter,
   getClientIdentifier,
@@ -9,9 +9,16 @@ import {
 } from '@/lib/rate-limit';
 
 const WINDOW_DAYS = 90;
-// Bounding box pre-filter: ±0.005° ≈ 500m at Sydney latitudes — matches the radius limit
+// Bounding box pre-filter: ±0.005° ≈ 500m at Sydney latitudes
 const BBOX_DELTA = 0.005;
 const RADIUS_M = 500;
+
+// ETL Supabase — DA/CDC data written by nsw-planning-etl GH Actions
+const getEtlSupabase = () =>
+  createClient(
+    process.env.ETL_SUPABASE_URL!,
+    process.env.ETL_SUPABASE_SERVICE_KEY!,
+  );
 
 const schema = z.object({
   address: z.string().min(5).max(300),
@@ -28,7 +35,6 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 interface Application {
   PlanningPortalApplicationNumber?: string;
-  ApplicationNumber?: string;
   ApplicationType?: string;
   DevelopmentType?: string;
   ApplicationDescription?: string;
@@ -56,13 +62,13 @@ function parseDevTypes(raw: string | null): string {
 }
 
 /**
- * Query development_applications and complying_development_certificates within a
- * bounding box (±BBOX_DELTA°) and last WINDOW_DAYS days, then post-filter to RADIUS_M.
- * Both tables have latitude/longitude float columns populated by the ETL.
+ * Query ETL Supabase (development_applications + complying_development_certificates)
+ * within a bounding box (±BBOX_DELTA°) and last WINDOW_DAYS days, then
+ * post-filter to RADIUS_M via haversine. Sorted closest first.
  */
 async function queryNearbyApplications(lat: number, lng: number): Promise<Application[]> {
   const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-  const supabase = await createClient();
+  const supabase = getEtlSupabase();
 
   const minLat = lat - BBOX_DELTA;
   const maxLat = lat + BBOX_DELTA;
@@ -76,9 +82,7 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
         'planning_portal_id,council_name,address,description,application_status,determination_date,' +
         'cost_of_development,latitude,longitude,development_type,lodgement_date,proposed_dwellings',
       )
-      // ETL fetches by DeterminationDate (Determined only), so many records have an old lodgement_date.
-      // Match on either lodgement_date OR determination_date within the window to capture both
-      // recently-lodged and recently-determined applications.
+      // ETL fetches by DeterminationDate — match on either date to capture recently-determined apps
       .or(`lodgement_date.gte.${since},determination_date.gte.${since}`)
       .gte('latitude', minLat).lte('latitude', maxLat)
       .gte('longitude', minLng).lte('longitude', maxLng),
@@ -128,7 +132,7 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
       ApplicationType: 'CDC',
       DevelopmentType: parseDevTypes(row.development_type) || undefined,
       ApplicationDescription: row.description,
-      LodgementDate: row.submission_date,  // CDCs use submission_date, map to LodgementDate for UI parity
+      LodgementDate: row.submission_date,
       DeterminationDate: row.determination_date,
       Status: row.application_status,
       PropertyAddress: row.address,
@@ -148,8 +152,9 @@ async function queryNearbyApplications(lat: number, lng: number): Promise<Applic
  * POST /api/satellite/threat-radar/search
  * Body: { address: string }
  *
- * Returns DA/CDC applications within 500m of the address (last 90 days), sourced from
- * Supabase (populated daily by the NSW Planning ETL). Sorted closest first.
+ * Returns DA/CDC applications within 500m of the address (last 90 days),
+ * sourced from the ETL Supabase (populated daily by nsw-planning-etl GH Actions).
+ * Sorted closest first.
  */
 export async function POST(request: NextRequest) {
   const clientIP = getClientIdentifier(request);
@@ -178,12 +183,17 @@ export async function POST(request: NextRequest) {
 
   const { address } = parsed.data;
 
-  // Resolve address
+  // Resolve address → lat/lng
   const siteUrl = new URL(request.url).origin;
   const propUrl = `${siteUrl}/api/property/${encodeURIComponent(address)}`;
   const internalHeaders: Record<string, string> = {};
   if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
-  const propResp = await fetch(propUrl, { headers: internalHeaders, signal: AbortSignal.timeout(10_000) }).catch(() => null);
+
+  const propResp = await fetch(propUrl, {
+    headers: internalHeaders,
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }
@@ -202,14 +212,17 @@ export async function POST(request: NextRequest) {
     const xMerc = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
     const yMerc = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
     lng = (xMerc / 20037508.34) * 180;
-    lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+    lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
   }
 
   if (!lat || !lng) {
-    return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
+    return NextResponse.json(
+      { error: 'Could not determine coordinates for this address' },
+      { status: 422 },
+    );
   }
 
-  // Resolve council name for display (non-fatal if unavailable)
+  // Resolve council name for display (non-fatal)
   let council_name: string | null = propData.property.lga_name ?? null;
   if (!council_name) {
     try {

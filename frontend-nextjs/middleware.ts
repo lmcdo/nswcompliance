@@ -33,7 +33,8 @@ const PUBLIC_ROUTES = [
   '/api/health',
   '/api/public',
   '/api/satellite/aerial-tile',
-  '/api/property',  // used internally by satellite routes (no auth header on server-side fetches)
+  '/api/property',     // used internally by satellite routes (no auth header on server-side fetches)
+  '/api/canibuildit',  // consumer-facing tool — no API key required from browsers
 ];
 
 // ============================================================================
@@ -48,6 +49,9 @@ const PRODUCTION_ORIGINS = [
   'https://plotdetect.com',
   'https://www.plotdetect.com',
   'https://plotdetect.vercel.app',
+  'https://canibuildit.com.au',
+  'https://www.canibuildit.com.au',
+  'https://whatcanibuildhere.com.au',
 ];
 
 /**

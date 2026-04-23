@@ -52,6 +52,23 @@ type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'i
 
 const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
+function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
+  if (lotArea != null && lotArea < 450) {
+    const shortfall = Math.round(450 - lotArea);
+    return `A boundary adjustment of ${shortfall} m² could unlock CDC eligibility. A DA pathway may also be available at council's discretion — a certifier or town planner can advise.`;
+  }
+  if (reason?.toLowerCase().includes('heritage')) {
+    return 'Heritage exclusions apply to the CDC pathway only. A DA pathway remains available — contact a heritage-experienced town planner.';
+  }
+  if (reason?.toLowerCase().includes('flood')) {
+    return 'Flood control lot exclusions apply to the CDC pathway only. A DA with a flood risk management report may still be available — consult a hydraulic engineer.';
+  }
+  if (reason?.toLowerCase().includes('zone') || reason?.toLowerCase().includes('zoning')) {
+    return 'Zoning restrictions may be fixed unless a planning proposal is lodged. Check the applicable LEP with a town planner.';
+  }
+  return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
+}
+
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
   medium: 'Medium confidence',
@@ -60,8 +77,10 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
-  const [inputAddress, setInputAddress] = useState(''); // user's typed input, preserved for display
-  const [ineligibleEvidence, setIneligibleEvidence] = useState(''); // authoritative reference shown in ineligible state
+  const [postcode, setPostcode] = useState(''); // from Google Places address_components
+  const [inputAddress, setInputAddress] = useState('');
+  const [ineligibleEvidence, setIneligibleEvidence] = useState('');
+  const [ineligibleEvidenceLabel, setIneligibleEvidenceLabel] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -69,6 +88,26 @@ export default function GrannyFlatPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [calcBuildCost, setCalcBuildCost] = useState(2500);
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
+  const [email, setEmail] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      await fetch('/api/canibuildit/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          address: finalResult?.address ?? detectResult?.address ?? inputAddress,
+          eligible: finalResult?.granny_flat_buildable ?? null,
+        }),
+      });
+    } catch { /* silent */ }
+    setEmailSubmitted(true);
+  };
 
   const handleDetect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +118,7 @@ export default function GrannyFlatPage() {
     setDetectResult(null);
     setFinalResult(null);
     setErrorMsg('');
+    setExistingSecondaryDwelling(null);
 
     try {
       // Step 1: enqueue detect job (returns immediately with jobId)
@@ -92,6 +132,7 @@ export default function GrannyFlatPage() {
         if (json.ineligible) {
           setErrorMsg(json.error ?? 'This property is not eligible.');
           setIneligibleEvidence(json.evidence ?? '');
+          setIneligibleEvidenceLabel(json.evidence_label ?? '');
           setState('ineligible');
           return;
         }
@@ -153,7 +194,9 @@ export default function GrannyFlatPage() {
           detect_id: detectResult.detect_id,
           confirmed_structure_count: confirmedCount,
           samgeo_structure_count: detectResult.samgeo_structure_count,
-          postcode: address.match(/\b(\d{4})\b/)?.[1] ?? null,
+          postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
+          existing_secondary_dwelling: existingSecondaryDwelling,
+          main_dwelling_area_m2: detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
         }),
       });
 
@@ -173,9 +216,11 @@ export default function GrannyFlatPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Granny Flat Yield Predictor</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Detect existing structures from aerial imagery, calculate the buildable envelope under SEPP Housing 2021, and estimate weekly rental yield.
+        <h1 className="text-3xl font-bold text-gray-900 leading-tight">
+          Could this property earn an extra $300/week?
+        </h1>
+        <p className="mt-2 text-gray-500">
+          Granny flat eligibility check for any NSW address — aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate.
         </p>
       </div>
 
@@ -187,7 +232,7 @@ export default function GrannyFlatPage() {
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
-              onSelect={(addr) => setAddress(addr)}
+              onSelect={(addr, _lat, _lng, pc) => { setAddress(addr); if (pc) setPostcode(pc); }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
@@ -226,7 +271,7 @@ export default function GrannyFlatPage() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -236,14 +281,40 @@ export default function GrannyFlatPage() {
               Not eligible
             </span>
           </div>
-          {ineligibleEvidence && (
-            <div className="px-6 py-3 bg-gray-50">
-              <p className="text-xs text-gray-500 mb-0.5">Property record</p>
-              <p className="text-xs font-mono text-gray-700">{ineligibleEvidence}</p>
-            </div>
-          )}
           <div className="p-6">
             <p className="text-sm text-gray-700">{errorMsg}</p>
+          </div>
+          {ineligibleEvidence && (
+            <div className="px-6 py-3 bg-gray-50 border-t border-gray-100">
+              <p className="text-xs text-gray-400 mb-0.5">{ineligibleEvidenceLabel || 'Source'}</p>
+              <p className="text-xs font-mono text-gray-600">{ineligibleEvidence}</p>
+            </div>
+          )}
+          <div className="p-6 border-t border-gray-100">
+            <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {deriveWhatToChange(errorMsg, null)}
+            </p>
+            {!emailSubmitted ? (
+              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+                >
+                  Notify me
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm text-teal-700 font-medium">Got it — we&apos;ll be in touch if anything changes for this address.</p>
+            )}
           </div>
         </div>
       )}
@@ -255,15 +326,26 @@ export default function GrannyFlatPage() {
           inputAddress={inputAddress}
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
+          existingSecondaryDwelling={existingSecondaryDwelling}
+          onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
           onConfirm={handleConfirm}
-          onBack={() => { setState('idle'); setDetectResult(null); }}
+          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
         />
       )}
 
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setExistingSecondaryDwelling(null); }} />
+          <ReportUnlockCTA
+            buildable={finalResult.granny_flat_buildable}
+            sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
+            lot_area_m2={detectResult?.lot_area_m2 ?? null}
+            email={email}
+            setEmail={setEmail}
+            emailSubmitted={emailSubmitted}
+            onEmailSubmit={handleEmailSubmit}
+          />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -531,6 +613,8 @@ function ConfirmationPanel({
   inputAddress,
   confirmedCount,
   onCountChange,
+  existingSecondaryDwelling,
+  onExistingSecondaryDwellingChange,
   onConfirm,
   onBack,
 }: {
@@ -538,6 +622,8 @@ function ConfirmationPanel({
   inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
+  existingSecondaryDwelling: boolean | null;
+  onExistingSecondaryDwellingChange: (v: boolean | null) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
@@ -614,23 +700,104 @@ function ConfirmationPanel({
           <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
         )}
 
-        <form onSubmit={onConfirm} className="space-y-4">
+        {/* Gate: if detect says ineligible, block confirm entirely */}
+        {(() => {
+          const mainDwelling = detectResult.detected_structures.find(s => s.is_main_dwelling);
+          const mainDwellingArea = mainDwelling?.area_m2 ?? null;
+          const lotArea = detectResult.lot_area_m2;
+          const residualArea = lotArea != null && mainDwellingArea != null ? lotArea - mainDwellingArea : null;
+          const proxyFails = residualArea != null && residualArea < 120;
+
+          if (!detectResult.sepp_eligible || proxyFails) {
+            return (
+              <div className="space-y-4">
+                {proxyFails && detectResult.sepp_eligible && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-2">
+                    <p className="font-medium">Insufficient space for a complying development granny flat</p>
+                    <p>
+                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m² of a {lotArea!.toFixed(0)} m² lot,
+                      leaving ~{residualArea!.toFixed(0)} m² of residual space. A 60 m² secondary dwelling requires at least
+                      120 m² of residual area to accommodate the structure plus mandatory SEPP Housing 2021 setbacks:
+                      3 m from the rear boundary, 0.9 m from each side boundary, and 3 m separation from the principal dwelling.
+                    </p>
+                    <p className="text-red-700">
+                      This is an estimate based on aerial detection. A DA pathway may allow a smaller or differently positioned
+                      structure — consult a town planner or private certifier.
+                    </p>
+                  </div>
+                )}
+                {!detectResult.sepp_eligible && (
+                  <p className="text-sm text-gray-500">
+                    A granny flat cannot be approved on this lot via the complying development pathway.
+                    A DA may still be available at council&apos;s discretion — consult a town planner.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                >
+                  Check another address
+                </button>
+              </div>
+            );
+          }
+
+          return (
+        <form onSubmit={onConfirm} className="space-y-5">
+          {/* Secondary dwelling question — the only thing SEPP cl 53(1) cares about */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Confirmed number of structures on lot
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={confirmedCount}
-              onChange={(e) => onCountChange(parseInt(e.target.value, 10) || 1)}
-              className="w-24 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Count all roofed structures: main dwelling, garage, shed, any secondary dwelling.
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              Is there an existing secondary dwelling or granny flat on this property?
             </p>
+            <p className="text-xs text-gray-400 mb-3">
+              SEPP Housing 2021 (cl 53) permits only one secondary dwelling per lot. A converted garage, studio, or detached cabin counts.
+            </p>
+            <div className="flex gap-2">
+              {([
+                { label: 'Yes', value: true },
+                { label: 'No', value: false },
+                { label: 'Not sure', value: null },
+              ] as { label: string; value: boolean | null }[]).map(({ label, value }) => {
+                const active = existingSecondaryDwelling === value;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => onExistingSecondaryDwellingChange(value)}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {existingSecondaryDwelling === true && (
+              <p className="mt-2 text-xs text-red-600">
+                An existing secondary dwelling will make this property ineligible — SEPP Housing 2021 (cl 53(1)) permits only one per lot.
+              </p>
+            )}
+            {existingSecondaryDwelling === null && confirmedCount >= 2 && (
+              <p className="mt-2 text-xs text-amber-600">
+                Outbuildings were detected. If any is a secondary dwelling, eligibility will change. &ldquo;Not sure&rdquo; will cap confidence at medium.
+              </p>
+            )}
           </div>
+
+          {/* Warn when SAM ran but couldn't size the main dwelling — envelope unverifiable */}
+          {detectResult.samgeo_validated &&
+           detectResult.detected_structures.length > 0 &&
+           detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 == null && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+              The main dwelling footprint area could not be determined from aerial detection.
+              Available building envelope could not be verified — review the aerial map and confirm
+              sufficient rear yard space exists before proceeding.
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button
@@ -648,7 +815,112 @@ function ConfirmationPanel({
             </button>
           </div>
         </form>
+          );
+        })()}
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ReportUnlockCTA — shown after result card
+// Pass variant: email capture → Stripe link to unlock detailed PDF report
+// Fail variant: "What could change this?" + notify-me email capture
+// ---------------------------------------------------------------------------
+
+const STRIPE_LINK = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_STRIPE_GRANNY_FLAT_LINK ?? null)
+  : null;
+
+function ReportUnlockCTA({
+  buildable,
+  sepp_ineligible_reason,
+  lot_area_m2,
+  email,
+  setEmail,
+  emailSubmitted,
+  onEmailSubmit,
+}: {
+  buildable: boolean;
+  sepp_ineligible_reason: string | null;
+  lot_area_m2: number | null;
+  email: string;
+  setEmail: (v: string) => void;
+  emailSubmitted: boolean;
+  onEmailSubmit: (e: React.FormEvent) => void;
+}) {
+  if (buildable) {
+    return (
+      <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-semibold text-teal-900">Get the detailed report</h3>
+            <p className="text-sm text-teal-700 mt-1">
+              Full CDC compliance checklist, setback calculations, yield sensitivity analysis, and a shareable PDF — $29.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
+        </div>
+        {!emailSubmitted ? (
+          <form onSubmit={onEmailSubmit} className="space-y-3">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+            />
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              Continue to full report →
+            </button>
+          </form>
+        ) : STRIPE_LINK ? (
+          <a
+            href={STRIPE_LINK}
+            className="block w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors text-center"
+          >
+            Unlock detailed report — $29
+          </a>
+        ) : (
+          <p className="text-sm text-teal-700 font-medium">
+            Thanks! The detailed report is coming soon — we&apos;ll email you when it&apos;s ready.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Fail variant
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        {deriveWhatToChange(sepp_ineligible_reason, lot_area_m2)}
+      </p>
+      {!emailSubmitted ? (
+        <form onSubmit={onEmailSubmit} className="flex gap-2">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+          >
+            Notify me
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm text-teal-700 font-medium">Got it — we&apos;ll be in touch if anything changes for this address.</p>
+      )}
     </div>
   );
 }

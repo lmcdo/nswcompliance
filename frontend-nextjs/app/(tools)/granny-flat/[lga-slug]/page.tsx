@@ -16,8 +16,8 @@ export function generateMetadata(
   const lga = GRANNY_FLAT_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) return {}
   return {
-    title: `Can I Build a Granny Flat in ${lga.name}? — Free NSW Eligibility Check`,
-    description: `Instant granny flat eligibility check for ${lga.name} NSW. Checks lot area, zoning, heritage (${lga.heritageCount.toLocaleString()} items), flood${lga.hasFloodData ? ' (ARI data available)' : ''}, and biodiversity exclusions against SEPP Housing 2021. Free.`,
+    title: `Granny Flat Income Potential in ${lga.name}, NSW — Free Eligibility Check`,
+    description: `Could your ${lga.name} property earn $280–$340/week with a granny flat? Free eligibility check — lot size, zoning, heritage (${lga.heritageCount.toLocaleString()} items), flood${lga.hasFloodData ? ' (ARI data)' : ''}, biodiversity. No signup.`,
   }
 }
 
