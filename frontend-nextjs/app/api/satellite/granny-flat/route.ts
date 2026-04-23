@@ -117,6 +117,66 @@ export async function POST(request: NextRequest) {
   }
 
   // -------------------------------------------------------------------------
+  // Eligibility gates — run before pre-allocating Supabase row or firing SAM
+  // All return { ineligible: true, error, evidence? } so the frontend can
+  // render a result card with specific authoritative evidence.
+  // -------------------------------------------------------------------------
+
+  // Gate 1: Unit / apartment / shop address
+  // Check the canonical NSW Planning Portal address (structured, not user input).
+  // Match only when a known indicator is at the start followed by a number,
+  // e.g. "UNIT 5 43 SHORELINE DR" — avoids false positives like "Flat Rock Rd".
+  const canonicalAddress: string = (propData.property as { address?: string })?.address ?? '';
+  if (/^(UNIT|APT|APARTMENT|FLAT|SUITE|LEVEL|SHOP|OFFICE|U)\s+\d/i.test(canonicalAddress)) {
+    return NextResponse.json(
+      {
+        ineligible: true,
+        error:
+          'This address contains a unit or apartment number. SEPP Housing 2021 (cl 53) secondary dwelling provisions apply to individual lots containing a dwelling house — not strata units, apartments, or commercial tenancies.',
+        evidence: canonicalAddress,
+      },
+      { status: 422 },
+    );
+  }
+
+  // Gate 2: Strata Plan lot (SP number in lot description)
+  // Lot descriptions are "Lot 1 SP 87654" (strata) or "Lot 12 DP 123456" (Torrens).
+  // Strata lots are typically individual units within a multi-dwelling building.
+  const lot_description: string | null = (propData as { lot_description?: string | null }).lot_description ?? null;
+  if (lot_description) {
+    const spMatch = lot_description.match(/\bSP\s*(\d+)\b/i);
+    if (spMatch) {
+      return NextResponse.json(
+        {
+          ineligible: true,
+          error:
+            `This lot is registered on Strata Plan ${spMatch[1]}. Secondary dwelling provisions under SEPP Housing 2021 apply to lots containing a single dwelling house — lots within a strata scheme are typically units or apartments within a larger building and do not qualify.`,
+          evidence: lot_description,
+        },
+        { status: 422 },
+      );
+    }
+  }
+
+  // Gate 3: Zone not in eligible residential set
+  const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
+  const zone: string | null = (propData.property as { zone?: string | null })?.zone ?? null;
+  if (zone) {
+    const eligible = ELIGIBLE_ZONE_PREFIXES.some((p) => zone.startsWith(p));
+    if (!eligible) {
+      return NextResponse.json(
+        {
+          ineligible: true,
+          error:
+            'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
+          evidence: zone,
+        },
+        { status: 422 },
+      );
+    }
+  }
+
+  // -------------------------------------------------------------------------
   // DETECT — async via Trigger.dev (production) / direct Python call (dev)
   // -------------------------------------------------------------------------
   if (action === 'detect') {
@@ -296,6 +356,11 @@ export async function GET(request: NextRequest) {
 
   if (error || !data) {
     return NextResponse.json({ status: 'pending' });
+  }
+
+  if (data.confidence === 'error') {
+    const msg = (data.outputs as { error?: string } | null)?.error ?? 'Detection failed — please try again.';
+    return NextResponse.json({ status: 'error', error: msg });
   }
 
   if (data.confidence !== 'pending_confirm' || !data.outputs) {

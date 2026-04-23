@@ -48,7 +48,9 @@ interface ConfirmResult {
   warnings: string[];
 }
 
-type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error';
+type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
+
+const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
@@ -58,6 +60,8 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
+  const [inputAddress, setInputAddress] = useState(''); // user's typed input, preserved for display
+  const [ineligibleEvidence, setIneligibleEvidence] = useState(''); // authoritative reference shown in ineligible state
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -70,6 +74,7 @@ export default function GrannyFlatPage() {
     e.preventDefault();
     if (!address.trim()) return;
 
+    setInputAddress(address.trim());
     setState('detecting');
     setDetectResult(null);
     setFinalResult(null);
@@ -83,15 +88,29 @@ export default function GrannyFlatPage() {
         body: JSON.stringify({ address, action: 'detect' }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Detection failed');
+      if (!res.ok) {
+        if (json.ineligible) {
+          setErrorMsg(json.error ?? 'This property is not eligible.');
+          setIneligibleEvidence(json.evidence ?? '');
+          setState('ineligible');
+          return;
+        }
+        throw new Error(json.error || 'Detection failed');
+      }
 
       const jobId: string = json.jobId;
 
-      // Step 2: poll until detect result is written to DB
-      const poll = async (): Promise<void> => {
+      // Step 2: poll until detect result is written to DB (max 3 min)
+      const poll = async (attempts = 0): Promise<void> => {
+        if (attempts >= 90) {
+          throw new Error('Detection timed out after 3 minutes. Please try again.');
+        }
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
 
+        if (pollJson.status === 'error') {
+          throw new Error(pollJson.error || 'Detection failed — please try again.');
+        }
         if (pollJson.status === 'detected') {
           const detectData = pollJson.data;
           setDetectResult(detectData);
@@ -106,7 +125,7 @@ export default function GrannyFlatPage() {
 
         // Still pending — try again in 2s
         await new Promise((r) => setTimeout(r, 2000));
-        return poll();
+        return poll(attempts + 1);
       };
 
       await poll();
@@ -160,8 +179,8 @@ export default function GrannyFlatPage() {
         </p>
       </div>
 
-      {/* Step 1: address entry */}
-      {(state === 'idle' || state === 'error') && (
+      {/* Step 1: address entry — stays visible and disabled during detection */}
+      {(state === 'idle' || state === 'error' || state === 'detecting') && (
         <form onSubmit={handleDetect} className="space-y-4 mb-6">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Property address</label>
@@ -169,7 +188,7 @@ export default function GrannyFlatPage() {
               value={address}
               onChange={setAddress}
               onSelect={(addr) => setAddress(addr)}
-              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
           </div>
@@ -179,22 +198,53 @@ export default function GrannyFlatPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isRunning || !address.trim()}
-            className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            Detect structures
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              type="submit"
+              disabled={isRunning || !address.trim()}
+              className="flex items-center gap-2 px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {isRunning && (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              )}
+              {isRunning ? 'Detecting structures...' : 'Detect structures'}
+            </button>
+          </div>
+          {state === 'detecting' && (
+            <p className="text-xs text-gray-400">
+              Fetching aerial imagery and running structure detection. First-run inference can take 1–2 minutes.
+            </p>
+          )}
         </form>
       )}
 
-      {/* Loading */}
-      {state === 'detecting' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
-          <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
-          <p className="text-sm font-medium text-gray-700">Fetching aerial imagery and detecting structures...</p>
-          <p className="text-xs text-gray-400 mt-1">This takes 15–30 seconds.</p>
+      {/* Ineligible — permanent result, search another at top */}
+      {state === 'ineligible' && (
+        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+          <div className="p-6 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
+              <button
+                type="button"
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
+                className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
+              >
+                Search another address
+              </button>
+            </div>
+            <span className="shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-800">
+              Not eligible
+            </span>
+          </div>
+          {ineligibleEvidence && (
+            <div className="px-6 py-3 bg-gray-50">
+              <p className="text-xs text-gray-500 mb-0.5">Property record</p>
+              <p className="text-xs font-mono text-gray-700">{ineligibleEvidence}</p>
+            </div>
+          )}
+          <div className="p-6">
+            <p className="text-sm text-gray-700">{errorMsg}</p>
+          </div>
         </div>
       )}
 
@@ -202,6 +252,7 @@ export default function GrannyFlatPage() {
       {state === 'confirming' && detectResult && (
         <ConfirmationPanel
           detectResult={detectResult}
+          inputAddress={inputAddress}
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
           onConfirm={handleConfirm}
@@ -212,7 +263,7 @@ export default function GrannyFlatPage() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -477,25 +528,37 @@ function GrannyFlatFAQs() {
 
 function ConfirmationPanel({
   detectResult,
+  inputAddress,
   confirmedCount,
   onCountChange,
   onConfirm,
   onBack,
 }: {
   detectResult: DetectResult;
+  inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
+  const canonical = detectResult.address;
+  const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
-        <h2 className="font-semibold text-gray-900">{detectResult.address}</h2>
+        <h2 className="font-semibold text-gray-900">{inputAddress || canonical}</h2>
+        {showCanonical && (
+          <p className="text-xs text-gray-400 mt-0.5">Matched to: {canonical}</p>
+        )}
         {detectResult.lot_area_m2 != null && (
           <p className="text-sm text-gray-500 mt-0.5">
             Lot area: {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
           </p>
+        )}
+        {detectResult.lot_area_m2 != null && detectResult.lot_area_m2 > 2000 && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+            <span className="font-medium">Large lot area</span> — {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m² is unusually large for a single dwelling house. If this is a strata parent lot or a multi-dwelling development site, SEPP Housing 2021 secondary dwelling provisions do not apply.
+          </div>
         )}
         {!detectResult.sepp_eligible && detectResult.sepp_ineligible_reason && (
           <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
@@ -537,7 +600,9 @@ function ConfirmationPanel({
                         <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
                         {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
                         {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                        <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
+                        {!s.is_main_dwelling && (
+                          <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -588,22 +653,29 @@ function ConfirmationPanel({
   );
 }
 
-function ResultCard({ result, onReset }: { result: ConfirmResult; onReset: () => void }) {
+function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; inputAddress: string; onReset: () => void }) {
   const weeklyRent = result.estimated_weekly_rent_aud;
   const annualRent = weeklyRent ? weeklyRent * 52 : null;
+  const displayAddr = inputAddress || result.address;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
       <div className="p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-gray-900">{result.address}</h2>
+            <h2 className="font-semibold text-gray-900">{displayAddr}</h2>
             <p className="text-xs text-gray-400 mt-0.5">
               {CONFIDENCE_LABEL[result.confidence] ?? result.confidence}
             </p>
             {result.confidence_reason && (
               <p className="text-xs text-gray-500 mt-1 max-w-sm">{result.confidence_reason}</p>
             )}
+            <button
+              onClick={onReset}
+              className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
+            >
+              New address
+            </button>
           </div>
           <span
             className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
@@ -651,16 +723,10 @@ function ResultCard({ result, onReset }: { result: ConfirmResult; onReset: () =>
         </div>
       )}
 
-      <div className="px-6 py-4 flex items-center justify-between">
+      <div className="px-6 py-4">
         <p className="text-xs text-gray-400">
           Data: {result.data_sources.join(' · ')}
         </p>
-        <button
-          onClick={onReset}
-          className="text-xs text-teal-600 hover:text-teal-700 underline"
-        >
-          New address
-        </button>
       </div>
     </div>
   );

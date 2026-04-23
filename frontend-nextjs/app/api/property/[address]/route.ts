@@ -121,7 +121,8 @@ export async function GET(
 
  // Step 2: Get lot geometry
  let lotGeometry: LotGeometry | null = null;
- 
+ let lot_description: string | null = null;
+
  try {
  const lotResponse = await fetch(
  `${NSW_API_BASE}/viewersf/V1/ePlanningApi/lot?propId=${property.propId}`,
@@ -137,7 +138,8 @@ export async function GET(
  const lotData: NSWLotResponse[] = await lotResponse.json();
  if (lotData && lotData.length > 0) {
  lotGeometry = lotData[0].geometry;
- console.log(`[API] Retrieved lot geometry with ${lotGeometry.rings[0]?.length || 0} coordinate points`);
+ lot_description = lotData[0].attributes?.LotDescription ?? null;
+ console.log(`[API] Retrieved lot geometry with ${lotGeometry.rings[0]?.length || 0} coordinate points. Lot: ${lot_description ?? 'unknown'}`);
  }
  }
  } catch (error) {
@@ -224,6 +226,7 @@ export async function GET(
  success: true,
  property: planningData,
  lotGeometry: lotGeometry,
+ lot_description: lot_description,
  lotDimensions: lotDimensions || undefined,
  cornerLot: cornerLot || undefined,
  processing_time_ms: processingTime

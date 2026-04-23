@@ -91,6 +91,7 @@ export interface PropertyIntelligenceResponse {
  success: boolean;
  property: PropertyData | null;
  lotGeometry: LotGeometry | null;
+ lot_description?: string | null;   // e.g. "Lot 1 SP 87654" or "Lot 12 DP 123456"
  lotDimensions?: LotDimensions | null;
  cornerLot?: CornerLotInfo | null;
  error?: string;
