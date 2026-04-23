@@ -222,7 +222,6 @@ export default function GrannyFlatPage() {
         <p className="mt-2 text-gray-500">
           Granny flat eligibility check for any NSW address — aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate.
         </p>
-        <p className="mt-1 text-sm text-gray-400">Free. No account needed.</p>
       </div>
 
       {/* Step 1: address entry — stays visible and disabled during detection */}
@@ -702,21 +701,49 @@ function ConfirmationPanel({
         )}
 
         {/* Gate: if detect says ineligible, block confirm entirely */}
-        {!detectResult.sepp_eligible ? (
-          <div className="space-y-4">
-            <p className="text-sm text-gray-500">
-              A granny flat cannot be approved on this lot via the complying development pathway.
-              A DA may still be available at council&apos;s discretion — consult a town planner.
-            </p>
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              Check another address
-            </button>
-          </div>
-        ) : (
+        {(() => {
+          const mainDwelling = detectResult.detected_structures.find(s => s.is_main_dwelling);
+          const mainDwellingArea = mainDwelling?.area_m2 ?? null;
+          const lotArea = detectResult.lot_area_m2;
+          const residualArea = lotArea != null && mainDwellingArea != null ? lotArea - mainDwellingArea : null;
+          const proxyFails = residualArea != null && residualArea < 120;
+
+          if (!detectResult.sepp_eligible || proxyFails) {
+            return (
+              <div className="space-y-4">
+                {proxyFails && detectResult.sepp_eligible && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-2">
+                    <p className="font-medium">Insufficient space for a complying development granny flat</p>
+                    <p>
+                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m² of a {lotArea!.toFixed(0)} m² lot,
+                      leaving ~{residualArea!.toFixed(0)} m² of residual space. A 60 m² secondary dwelling requires at least
+                      120 m² of residual area to accommodate the structure plus mandatory SEPP Housing 2021 setbacks:
+                      3 m from the rear boundary, 0.9 m from each side boundary, and 3 m separation from the principal dwelling.
+                    </p>
+                    <p className="text-red-700">
+                      This is an estimate based on aerial detection. A DA pathway may allow a smaller or differently positioned
+                      structure — consult a town planner or private certifier.
+                    </p>
+                  </div>
+                )}
+                {!detectResult.sepp_eligible && (
+                  <p className="text-sm text-gray-500">
+                    A granny flat cannot be approved on this lot via the complying development pathway.
+                    A DA may still be available at council&apos;s discretion — consult a town planner.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+                >
+                  Check another address
+                </button>
+              </div>
+            );
+          }
+
+          return (
         <form onSubmit={onConfirm} className="space-y-5">
           {/* Secondary dwelling question — the only thing SEPP cl 53(1) cares about */}
           <div>
@@ -761,6 +788,17 @@ function ConfirmationPanel({
             )}
           </div>
 
+          {/* Warn when SAM ran but couldn't size the main dwelling — envelope unverifiable */}
+          {detectResult.samgeo_validated &&
+           detectResult.detected_structures.length > 0 &&
+           detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 == null && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+              The principal dwelling footprint area could not be determined from aerial detection.
+              Available building envelope could not be verified — review the aerial map and confirm
+              sufficient rear yard space exists before proceeding.
+            </div>
+          )}
+
           <div className="flex gap-3">
             <button
               type="submit"
@@ -777,7 +815,8 @@ function ConfirmationPanel({
             </button>
           </div>
         </form>
-        )}
+          );
+        })()}
       </div>
     </div>
   );
