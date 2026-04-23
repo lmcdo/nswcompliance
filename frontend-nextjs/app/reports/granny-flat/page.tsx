@@ -78,7 +78,6 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
   const [inputAddress, setInputAddress] = useState(''); // user's typed input, preserved for display
-  const [ineligibleEvidence, setIneligibleEvidence] = useState(''); // authoritative reference shown in ineligible state
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -127,7 +126,6 @@ export default function GrannyFlatPage() {
       if (!res.ok) {
         if (json.ineligible) {
           setErrorMsg(json.error ?? 'This property is not eligible.');
-          setIneligibleEvidence(json.evidence ?? '');
           setState('ineligible');
           return;
         }
@@ -265,7 +263,7 @@ export default function GrannyFlatPage() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setAddress(''); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -275,12 +273,6 @@ export default function GrannyFlatPage() {
               Not eligible
             </span>
           </div>
-          {ineligibleEvidence && (
-            <div className="px-6 py-3 bg-gray-50">
-              <p className="text-xs text-gray-500 mb-0.5">Property record</p>
-              <p className="text-xs font-mono text-gray-700">{ineligibleEvidence}</p>
-            </div>
-          )}
           <div className="p-6">
             <p className="text-sm text-gray-700">{errorMsg}</p>
           </div>
