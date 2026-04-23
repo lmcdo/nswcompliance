@@ -94,9 +94,14 @@ export default function HomePage() {
         <span className="text-lg font-bold tracking-tight">
           canibuildit<span className="text-[#00d9b8]">.com.au</span>
         </span>
-        <a href="/reports/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
-          Try the tools →
-        </a>
+        <div className="flex items-center gap-6">
+          <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
+            Pricing
+          </a>
+          <a href="/reports/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
+            Try the tools →
+          </a>
+        </div>
       </nav>
 
       {/* Hero */}

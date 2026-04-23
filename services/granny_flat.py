@@ -324,22 +324,59 @@ def _detect_structures_samgeo(
         )
         lot_arr = _build_lot_arr(rings_px, w, h)
 
+    # Build a Shapely lot polygon in WGS84 for geographic containment checks.
+    # This is more reliable than pixel-space rasterisation, which can produce
+    # a lot mask that is slightly offset from the visually rendered boundary.
+    lot_shape_wgs84 = None
+    if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]:
+        try:
+            from shapely.geometry import Polygon as _Polygon, MultiPolygon as _MultiPolygon
+            wgs84_rings = _mercator_rings_to_wgs84(lot_geometry["rings"])
+            if wgs84_rings:
+                exterior = [(lng, lat) for lng, lat in wgs84_rings[0]]
+                holes = [[(lng, lat) for lng, lat in r] for r in wgs84_rings[1:]]
+                lot_shape_wgs84 = _Polygon(exterior, holes)
+                if not lot_shape_wgs84.is_valid:
+                    lot_shape_wgs84 = lot_shape_wgs84.buffer(0)
+        except Exception as _e:
+            logger.warning(f"Could not build lot Shapely polygon: {_e}")
+
     structures = []
     for s in raw_structures:
         x1, y1, x2, y2 = s["bbox_pixel"]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        if lot_arr is not None:
+
+        if lot_shape_wgs84 is not None:
+            # Convert structure bbox from pixel → WGS84 and compute the fraction
+            # of its area that falls inside the lot polygon.
+            # Accept if ≥50% of bbox area is inside the lot.
+            # This correctly rejects neighbouring structures that merely clip
+            # the lot boundary on one edge (e.g. 10-20% overlap), while
+            # accepting genuine boundary-straddling sheds/garages (>50% inside).
+            from shapely.geometry import Polygon as _BboxPoly
+            lng1 = bbox["min_lng"] + (x1 / w) * (bbox["max_lng"] - bbox["min_lng"])
+            lat1 = bbox["max_lat"] - (y1 / h) * (bbox["max_lat"] - bbox["min_lat"])
+            lng2 = bbox["min_lng"] + (x2 / w) * (bbox["max_lng"] - bbox["min_lng"])
+            lat2 = bbox["max_lat"] - (y2 / h) * (bbox["max_lat"] - bbox["min_lat"])
+            struct_poly = _BboxPoly([(lng1, lat1), (lng2, lat1), (lng2, lat2), (lng1, lat2)])
+            try:
+                intersection_area = lot_shape_wgs84.intersection(struct_poly).area
+                fraction_inside = intersection_area / struct_poly.area if struct_poly.area > 0 else 0.0
+            except Exception:
+                fraction_inside = 0.0
+            if fraction_inside < 0.50:
+                continue
+        elif lot_arr is not None:
+            # Pixel-space fallback if Shapely polygon failed to build.
             h_arr, w_arr = lot_arr.shape
             centre_in = (0 <= cy < h_arr and 0 <= cx < w_arr and lot_arr[cy, cx])
             if not centre_in:
-                # Fallback: accept if ≥40% of bbox overlaps lot (handles small
-                # structures near boundary whose centroid may miss by a pixel).
                 bx1 = max(0, x1); by1 = max(0, y1)
                 bx2 = min(w_arr, x2); by2 = min(h_arr, y2)
                 if bx2 <= bx1 or by2 <= by1:
                     continue
                 bbox_region = lot_arr[by1:by2, bx1:bx2]
-                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.40:
+                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.60:
                     continue
         # --- SAM quality filters ---
         bw, bh = x2 - x1, y2 - y1
