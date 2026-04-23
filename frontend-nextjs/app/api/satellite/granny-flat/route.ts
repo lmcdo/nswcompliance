@@ -134,6 +134,7 @@ export async function POST(request: NextRequest) {
         error:
           'This address contains a unit or apartment number. SEPP Housing 2021 (cl 53) secondary dwelling provisions apply to individual lots containing a dwelling house — not strata units, apartments, or commercial tenancies.',
         evidence: canonicalAddress,
+        evidence_label: 'NSW Planning Portal — canonical address',
       },
       { status: 422 },
     );
@@ -152,6 +153,7 @@ export async function POST(request: NextRequest) {
           error:
             `This lot is registered on Strata Plan ${spMatch[1]}. Secondary dwelling provisions under SEPP Housing 2021 apply to lots containing a single dwelling house — lots within a strata scheme are typically units or apartments within a larger building and do not qualify.`,
           evidence: lot_description,
+          evidence_label: 'NSW Planning Portal — lot registration',
         },
         { status: 422 },
       );
@@ -169,7 +171,8 @@ export async function POST(request: NextRequest) {
           ineligible: true,
           error:
             'This zone does not permit secondary dwellings under SEPP Housing 2021 (cl 50). Secondary dwellings are only permitted in R1, R2, R3, R4, R5, and RU5 zones where dwelling houses are permissible.',
-          evidence: zone,
+          evidence: `Zone ${zone}`,
+          evidence_label: 'NSW Planning Portal — land zoning',
         },
         { status: 422 },
       );
