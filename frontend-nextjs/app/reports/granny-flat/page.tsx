@@ -52,6 +52,23 @@ type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'i
 
 const ELIGIBLE_ZONE_PREFIXES = ['R1', 'R2', 'R3', 'R4', 'R5', 'RU5'];
 
+function deriveWhatToChange(reason: string | null, lotArea: number | null): string {
+  if (lotArea != null && lotArea < 450) {
+    const shortfall = Math.round(450 - lotArea);
+    return `A boundary adjustment of ${shortfall} m² could unlock CDC eligibility. A DA pathway may also be available at council's discretion — a certifier or town planner can advise.`;
+  }
+  if (reason?.toLowerCase().includes('heritage')) {
+    return 'Heritage exclusions apply to the CDC pathway only. A DA pathway remains available — contact a heritage-experienced town planner.';
+  }
+  if (reason?.toLowerCase().includes('flood')) {
+    return 'Flood control lot exclusions apply to the CDC pathway only. A DA with a flood risk management report may still be available — consult a hydraulic engineer.';
+  }
+  if (reason?.toLowerCase().includes('zone') || reason?.toLowerCase().includes('zoning')) {
+    return 'Zoning restrictions may be fixed unless a planning proposal is lodged. Check the applicable LEP with a town planner.';
+  }
+  return "A DA pathway may still be available at council's discretion — a town planner or certifier can advise on your options.";
+}
+
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
   medium: 'Medium confidence',
@@ -69,6 +86,25 @@ export default function GrannyFlatPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [calcBuildCost, setCalcBuildCost] = useState(2500);
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
+  const [email, setEmail] = useState('');
+  const [emailSubmitted, setEmailSubmitted] = useState(false);
+
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      await fetch('/api/canibuildit/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          address: finalResult?.address ?? detectResult?.address ?? inputAddress,
+          eligible: finalResult?.granny_flat_buildable ?? null,
+        }),
+      });
+    } catch { /* silent */ }
+    setEmailSubmitted(true);
+  };
 
   const handleDetect = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -173,10 +209,13 @@ export default function GrannyFlatPage() {
   return (
     <div className="max-w-2xl">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">Granny Flat Yield Predictor</h1>
-        <p className="mt-1.5 text-sm text-gray-500">
-          Detect existing structures from aerial imagery, calculate the buildable envelope under SEPP Housing 2021, and estimate weekly rental yield.
+        <h1 className="text-3xl font-bold text-gray-900 leading-tight">
+          Could this property earn an extra $300/week?
+        </h1>
+        <p className="mt-2 text-gray-500">
+          Granny flat eligibility check for any NSW address — aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate.
         </p>
+        <p className="mt-1 text-sm text-gray-400">Free. No account needed.</p>
       </div>
 
       {/* Step 1: address entry — stays visible and disabled during detection */}
@@ -245,6 +284,32 @@ export default function GrannyFlatPage() {
           <div className="p-6">
             <p className="text-sm text-gray-700">{errorMsg}</p>
           </div>
+          <div className="p-6 border-t border-gray-100">
+            <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              {deriveWhatToChange(errorMsg, null)}
+            </p>
+            {!emailSubmitted ? (
+              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+                >
+                  Notify me
+                </button>
+              </form>
+            ) : (
+              <p className="text-sm text-teal-700 font-medium">Got it — we&apos;ll be in touch if anything changes for this address.</p>
+            )}
+          </div>
         </div>
       )}
 
@@ -263,7 +328,16 @@ export default function GrannyFlatPage() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setEmail(''); setEmailSubmitted(false); }} />
+          <ReportUnlockCTA
+            buildable={finalResult.granny_flat_buildable}
+            sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
+            lot_area_m2={detectResult?.lot_area_m2 ?? null}
+            email={email}
+            setEmail={setEmail}
+            emailSubmitted={emailSubmitted}
+            onEmailSubmit={handleEmailSubmit}
+          />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -649,6 +723,109 @@ function ConfirmationPanel({
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ReportUnlockCTA — shown after result card
+// Pass variant: email capture → Stripe link to unlock detailed PDF report
+// Fail variant: "What could change this?" + notify-me email capture
+// ---------------------------------------------------------------------------
+
+const STRIPE_LINK = typeof window !== 'undefined'
+  ? (process.env.NEXT_PUBLIC_STRIPE_GRANNY_FLAT_LINK ?? null)
+  : null;
+
+function ReportUnlockCTA({
+  buildable,
+  sepp_ineligible_reason,
+  lot_area_m2,
+  email,
+  setEmail,
+  emailSubmitted,
+  onEmailSubmit,
+}: {
+  buildable: boolean;
+  sepp_ineligible_reason: string | null;
+  lot_area_m2: number | null;
+  email: string;
+  setEmail: (v: string) => void;
+  emailSubmitted: boolean;
+  onEmailSubmit: (e: React.FormEvent) => void;
+}) {
+  if (buildable) {
+    return (
+      <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 className="font-semibold text-teal-900">Get the detailed report</h3>
+            <p className="text-sm text-teal-700 mt-1">
+              Full CDC compliance checklist, setback calculations, yield sensitivity analysis, and a shareable PDF — $29.
+            </p>
+          </div>
+          <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
+        </div>
+        {!emailSubmitted ? (
+          <form onSubmit={onEmailSubmit} className="space-y-3">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+            />
+            <button
+              type="submit"
+              className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
+            >
+              Continue to full report →
+            </button>
+          </form>
+        ) : STRIPE_LINK ? (
+          <a
+            href={STRIPE_LINK}
+            className="block w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors text-center"
+          >
+            Unlock detailed report — $29
+          </a>
+        ) : (
+          <p className="text-sm text-teal-700 font-medium">
+            Thanks! The detailed report is coming soon — we&apos;ll email you when it&apos;s ready.
+          </p>
+        )}
+      </div>
+    );
+  }
+
+  // Fail variant
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-6">
+      <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
+      <p className="text-sm text-gray-500 mb-4">
+        {deriveWhatToChange(sepp_ineligible_reason, lot_area_m2)}
+      </p>
+      {!emailSubmitted ? (
+        <form onSubmit={onEmailSubmit} className="flex gap-2">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="flex-1 px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+          />
+          <button
+            type="submit"
+            className="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors whitespace-nowrap"
+          >
+            Notify me
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm text-teal-700 font-medium">Got it — we&apos;ll be in touch if anything changes for this address.</p>
+      )}
     </div>
   );
 }
