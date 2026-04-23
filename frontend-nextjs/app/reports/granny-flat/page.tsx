@@ -97,7 +97,7 @@ export default function GrannyFlatPage() {
     { label: 'Resolving address with NSW Planning Portal', ms: 0 },
     { label: 'Retrieving aerial imagery', ms: 4000 },
     { label: 'Uploading tile to GPU inference engine', ms: 14000 },
-    { label: 'Running LangSAM structure segmentation', ms: 20000 },
+    { label: 'Running AI structure segmentation', ms: 20000 },
     { label: 'Filtering detections against lot boundary', ms: 82000 },
     { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 92000 },
   ];
@@ -169,6 +169,16 @@ export default function GrannyFlatPage() {
       }
 
       const jobId: string = json.jobId;
+
+      // If email was provided at idle state, register it now so result can be emailed
+      if (email.trim()) {
+        fetch('/api/canibuildit/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), address: address.trim(), eligible: null }),
+        }).catch(() => {});
+        setEmailSubmitted(true);
+      }
 
       // Step 2: poll until detect result is written to DB (max 3 min)
       const poll = async (attempts = 0): Promise<void> => {
@@ -266,6 +276,20 @@ export default function GrannyFlatPage() {
               disabled={isRunning}
             />
           </div>
+          {state === 'idle' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-gray-400 font-normal">(optional — get result by email so you can close this tab)</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+            </div>
+          )}
           {state === 'error' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
               {errorMsg}
