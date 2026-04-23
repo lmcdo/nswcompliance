@@ -90,6 +90,7 @@ export default function GrannyFlatPage() {
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +118,7 @@ export default function GrannyFlatPage() {
     setDetectResult(null);
     setFinalResult(null);
     setErrorMsg('');
+    setExistingSecondaryDwelling(null);
 
     try {
       // Step 1: enqueue detect job (returns immediately with jobId)
@@ -193,6 +195,7 @@ export default function GrannyFlatPage() {
           confirmed_structure_count: confirmedCount,
           samgeo_structure_count: detectResult.samgeo_structure_count,
           postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
+          existing_secondary_dwelling: existingSecondaryDwelling,
         }),
       });
 
@@ -323,15 +326,17 @@ export default function GrannyFlatPage() {
           inputAddress={inputAddress}
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
+          existingSecondaryDwelling={existingSecondaryDwelling}
+          onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
           onConfirm={handleConfirm}
-          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); }}
+          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
         />
       )}
 
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setExistingSecondaryDwelling(null); }} />
           <ReportUnlockCTA
             buildable={finalResult.granny_flat_buildable}
             sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
@@ -608,6 +613,8 @@ function ConfirmationPanel({
   inputAddress,
   confirmedCount,
   onCountChange,
+  existingSecondaryDwelling,
+  onExistingSecondaryDwellingChange,
   onConfirm,
   onBack,
 }: {
@@ -615,6 +622,8 @@ function ConfirmationPanel({
   inputAddress: string;
   confirmedCount: number;
   onCountChange: (n: number) => void;
+  existingSecondaryDwelling: boolean | null;
+  onExistingSecondaryDwellingChange: (v: boolean | null) => void;
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
@@ -691,22 +700,48 @@ function ConfirmationPanel({
           <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
         )}
 
-        <form onSubmit={onConfirm} className="space-y-4">
+        <form onSubmit={onConfirm} className="space-y-5">
+          {/* Secondary dwelling question — the only thing SEPP cl 53(1) cares about */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Confirmed number of structures on lot
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={confirmedCount}
-              onChange={(e) => onCountChange(parseInt(e.target.value, 10) || 1)}
-              className="w-24 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-            />
-            <p className="text-xs text-gray-400 mt-1">
-              Count all roofed structures: main dwelling, garage, shed, any secondary dwelling.
+            <p className="text-sm font-medium text-gray-700 mb-1">
+              Is there an existing secondary dwelling or granny flat on this property?
             </p>
+            <p className="text-xs text-gray-400 mb-3">
+              SEPP Housing 2021 (cl 53) permits only one secondary dwelling per lot. A converted garage, studio, or detached cabin counts.
+            </p>
+            <div className="flex gap-2">
+              {([
+                { label: 'Yes', value: true },
+                { label: 'No', value: false },
+                { label: 'Not sure', value: null },
+              ] as { label: string; value: boolean | null }[]).map(({ label, value }) => {
+                const active = existingSecondaryDwelling === value;
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => onExistingSecondaryDwellingChange(value)}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      active
+                        ? 'bg-teal-600 text-white border-teal-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            {existingSecondaryDwelling === true && (
+              <p className="mt-2 text-xs text-red-600">
+                An existing secondary dwelling will make this property ineligible — SEPP Housing 2021 (cl 53(1)) permits only one per lot.
+              </p>
+            )}
+            {existingSecondaryDwelling === null && confirmedCount >= 2 && (
+              <p className="mt-2 text-xs text-amber-600">
+                Outbuildings were detected. If any is a secondary dwelling, eligibility will change. &ldquo;Not sure&rdquo; will cap confidence at medium.
+              </p>
+            )}
           </div>
 
           <div className="flex gap-3">

@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     samgeo_structure_count?: number;
     postcode?: string;
     report_id?: string;
+    existing_secondary_dwelling?: boolean | null;
   };
   try {
     body = await request.json();
@@ -263,7 +264,7 @@ export async function POST(request: NextRequest) {
   // CONFIRM — direct call (<30s)
   // -------------------------------------------------------------------------
   if (action === 'confirm') {
-    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id } = body;
+    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling } = body;
 
     if (!detect_id) {
       return NextResponse.json({ error: 'detect_id is required for confirm action' }, { status: 400 });
@@ -281,6 +282,14 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'confirmed_structure_count must be an integer between 0 and 20' },
+        { status: 400 },
+      );
+    }
+
+    if (existing_secondary_dwelling !== undefined && existing_secondary_dwelling !== null &&
+        typeof existing_secondary_dwelling !== 'boolean') {
+      return NextResponse.json(
+        { error: 'existing_secondary_dwelling must be boolean or null' },
         { status: 400 },
       );
     }
@@ -318,6 +327,7 @@ export async function POST(request: NextRequest) {
           postcode: postcode ?? null,
           report_id: report_id ?? crypto.randomUUID(),
           is_heritage,
+          existing_secondary_dwelling: existing_secondary_dwelling ?? null,
         }),
         signal: AbortSignal.timeout(30_000),
       });

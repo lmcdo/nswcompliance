@@ -177,6 +177,7 @@ class GrannyFlatConfirmRequest(BaseModel):
     postcode: Optional[str] = None
     report_id: Optional[str] = None     # pre-allocated by Next.js
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
+    existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -714,6 +715,14 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "Granny flat construction may require heritage approval — confirm with council."
         )
 
+    # SEPP Housing 2021 cl 53(1): only one secondary dwelling per lot.
+    if req.existing_secondary_dwelling is True:
+        granny_flat_buildable = False
+        warnings.append(
+            "A secondary dwelling already exists on this lot. SEPP Housing 2021 (cl 53(1)) "
+            "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
+        )
+
     weekly_rent = _get_weekly_rent(req.postcode)
     annual_rent = weekly_rent * 52 if weekly_rent else None
 
@@ -733,7 +742,10 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "Run services/scripts/update_rental_data.py to populate."
         )
 
-    if req.confirmed_structure_count >= 2:
+    # Only show generic "verify outbuilding" warning if user hasn't already answered
+    # the secondary dwelling question. If they said True, we've already blocked buildability.
+    # If they said False, no ambiguity. Only warn when None (not asked / not answered).
+    if req.confirmed_structure_count >= 2 and req.existing_secondary_dwelling is None:
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
             "the existing structure is already an ancillary dwelling — verify with council."
@@ -750,6 +762,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     if lot_area_m2 is None and confidence == "high":
         confidence = "medium"
         confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
+
+    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
+    if req.existing_secondary_dwelling is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " Secondary dwelling status unconfirmed — SEPP cl 53(1) eligibility is unverified."
 
     report_id = req.report_id or str(uuid.uuid4())
 
@@ -781,6 +798,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "confirmed_structure_count": req.confirmed_structure_count,
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": req.postcode,
+                        "existing_secondary_dwelling": req.existing_secondary_dwelling,
                     }),
                     psycopg2.extras.Json({
                         "granny_flat_buildable": granny_flat_buildable,
