@@ -77,6 +77,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
+  const [postcode, setPostcode] = useState(''); // from Google Places address_components
   const [inputAddress, setInputAddress] = useState('');
   const [ineligibleEvidence, setIneligibleEvidence] = useState('');
   const [ineligibleEvidenceLabel, setIneligibleEvidenceLabel] = useState('');
@@ -191,7 +192,7 @@ export default function GrannyFlatPage() {
           detect_id: detectResult.detect_id,
           confirmed_structure_count: confirmedCount,
           samgeo_structure_count: detectResult.samgeo_structure_count,
-          postcode: address.match(/\b(\d{4})\b/)?.[1] ?? null,
+          postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
         }),
       });
 
@@ -228,7 +229,7 @@ export default function GrannyFlatPage() {
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
-              onSelect={(addr) => setAddress(addr)}
+              onSelect={(addr, _lat, _lng, pc) => { setAddress(addr); if (pc) setPostcode(pc); }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
@@ -267,7 +268,7 @@ export default function GrannyFlatPage() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -323,14 +324,14 @@ export default function GrannyFlatPage() {
           confirmedCount={confirmedCount}
           onCountChange={setConfirmedCount}
           onConfirm={handleConfirm}
-          onBack={() => { setState('idle'); setDetectResult(null); }}
+          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); }}
         />
       )}
 
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setEmail(''); setEmailSubmitted(false); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); }} />
           <ReportUnlockCTA
             buildable={finalResult.granny_flat_buildable}
             sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}

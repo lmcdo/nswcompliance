@@ -694,7 +694,13 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     granny_flat_buildable = True
     max_floor_area_m2 = SEPP_MAX_GF_AREA_M2
 
-    if lot_area_m2 is not None and lot_area_m2 < SEPP_MIN_LOT_M2:
+    if lot_area_m2 is None:
+        warnings.append(
+            "Lot area could not be calculated for this property — lot geometry was unavailable. "
+            "The 450 m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
+            "Confirm lot area on NSW Planning Portal before proceeding."
+        )
+    elif lot_area_m2 < SEPP_MIN_LOT_M2:
         granny_flat_buildable = False
         warnings.append(
             f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 minimum "
@@ -739,6 +745,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         samgeo_count=req.samgeo_structure_count,
         rent_available=weekly_rent is not None,
     )
+
+    # Bug fix: lot area unknown → eligibility unverified → cap at medium
+    if lot_area_m2 is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
 
     report_id = req.report_id or str(uuid.uuid4())
 

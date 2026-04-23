@@ -8,7 +8,7 @@ const NSW_BOUNDS = { north: -28.157, south: -37.505, east: 153.638, west: 141.00
 interface AddressAutocompleteProps {
   value: string;
   onChange: (value: string) => void;
-  onSelect: (address: string, lat: number, lng: number) => void;
+  onSelect: (address: string, lat: number, lng: number, postcode?: string) => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -72,8 +72,11 @@ export function AddressAutocomplete({
         const address = place.formatted_address;
         const lat = place.geometry.location.lat();
         const lng = place.geometry.location.lng();
+        const postcode = place.address_components?.find(
+          (c: google.maps.GeocoderAddressComponent) => c.types.includes('postal_code')
+        )?.short_name;
         onChangeRef.current(address);
-        onSelectRef.current(address, lat, lng);
+        onSelectRef.current(address, lat, lng, postcode);
       });
 
       return true;
