@@ -169,6 +169,20 @@ export const dataRateLimiter = redis
   : null;
 
 /**
+ * canibuildit check rate limiter: 20 requests per minute per IP
+ * Applied to /api/canibuildit/check — hits NSW Planning Portal on every call.
+ * 20/min is generous for real users (checking multiple addresses) but stops scrapers.
+ */
+export const canibuilditCheckLimiter = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.slidingWindow(20, '1 m'),
+      analytics: true,
+      prefix: 'rl:canibuildit',
+    })
+  : null;
+
+/**
  * Satellite pipeline rate limiter: 10 requests per minute per IP
  * Applied to expensive endpoints that call Railway/Google Solar/paid APIs.
  * Tighter than the global 100/min to limit per-user cost exposure.

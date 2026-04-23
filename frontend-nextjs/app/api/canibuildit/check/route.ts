@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
+import {
+  canibuilditCheckLimiter,
+  getClientIdentifier,
+  checkRateLimit,
+  createRateLimitHeaders,
+} from '@/lib/rate-limit';
+import { getCachedAddressCheck, setCachedAddressCheck } from '@/lib/cache';
 
 const NSW_API_BASE = process.env.NSW_PLANNING_API_BASE_URL || 'https://api.apps1.nsw.gov.au/planning';
 const NSW_EPLANNING_BASE = 'https://api.apps1.nsw.gov.au/eplanning/data/v0';
@@ -110,9 +117,26 @@ function mercatorToWgs84(xMerc: number, yMerc: number): { lat: number; lng: numb
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limit: 20 checks/min per IP — stops scrapers, fine for real users
+  const clientIP = getClientIdentifier(req);
+  const rl = await checkRateLimit(clientIP, canibuilditCheckLimiter, 20, 60000);
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please wait a moment before checking another address.' },
+      { status: 429, headers: createRateLimitHeaders(rl) },
+    );
+  }
+
   const { address } = await req.json();
   if (!address?.trim()) {
     return NextResponse.json({ error: 'Address required' }, { status: 400 });
+  }
+
+  // Address cache: return stored result if checked within last 24 hours.
+  // Prevents re-hitting the NSW Planning Portal for the same address.
+  const cached = await getCachedAddressCheck(address);
+  if (cached) {
+    return NextResponse.json({ ...cached, _cached: true });
   }
 
   // 1. Resolve address → propId
@@ -423,7 +447,7 @@ export async function POST(req: NextRequest) {
     })(),
   ]);
 
-  return NextResponse.json({
+  const result = {
     detect_id: detectId,
     address: property.address ?? address,
     lat: centroidLat,
@@ -445,5 +469,10 @@ export async function POST(req: NextRequest) {
     checks,
     dcp_setbacks: dcpSetbacks,
     confirmation_required: false,
-  });
+  };
+
+  // Cache result for 24 hours — non-blocking, failure is silent
+  void setCachedAddressCheck(address, result as Record<string, unknown>);
+
+  return NextResponse.json(result);
 }
