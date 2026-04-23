@@ -97,7 +97,7 @@ export default function GrannyFlatPage() {
     { label: 'Resolving address with NSW Planning Portal', ms: 0 },
     { label: 'Retrieving aerial imagery', ms: 4000 },
     { label: 'Uploading tile to GPU inference engine', ms: 14000 },
-    { label: 'Running AI structure segmentation', ms: 20000 },
+    { label: 'Running AI structure segmentation', ms: 20000, estimate: '~60s' as const },
     { label: 'Filtering detections against lot boundary', ms: 82000 },
     { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 92000 },
   ];
@@ -326,6 +326,9 @@ export default function GrannyFlatPage() {
                     )}
                     <span className={done ? 'text-gray-400 line-through' : active ? 'text-gray-700 font-medium' : 'text-gray-300'}>
                       {step.label}
+                      {'estimate' in step && active && (
+                        <span className="ml-1.5 font-normal text-gray-400">{(step as { estimate: string }).estimate}</span>
+                      )}
                     </span>
                   </div>
                 );
