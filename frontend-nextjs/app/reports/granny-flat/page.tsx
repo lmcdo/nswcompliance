@@ -700,6 +700,22 @@ function ConfirmationPanel({
           <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
         )}
 
+        {/* Gate: if detect says ineligible, block confirm entirely */}
+        {!detectResult.sepp_eligible ? (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              A granny flat cannot be approved on this lot via the complying development pathway.
+              A DA may still be available at council&apos;s discretion — consult a town planner.
+            </p>
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Check another address
+            </button>
+          </div>
+        ) : (
         <form onSubmit={onConfirm} className="space-y-5">
           {/* Secondary dwelling question — the only thing SEPP cl 53(1) cares about */}
           <div>
@@ -760,6 +776,7 @@ function ConfirmationPanel({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );
