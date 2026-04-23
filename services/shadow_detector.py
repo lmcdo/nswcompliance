@@ -35,6 +35,7 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
   "data_sources": list[str]
 }
 """
+import concurrent.futures
 import logging
 import math
 import os
@@ -369,7 +370,12 @@ def run_shadow(request: ShadowRequest):
         height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
     try:
-        change = compute_change_score(request.lat, request.lng, radius_m=200)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(compute_change_score, request.lat, request.lng, 200)
+            change = fut.result(timeout=25)
+    except concurrent.futures.TimeoutError:
+        logger.warning("Sentinel-2 change score timed out after 25s — skipping")
+        change = {"change_score": None, "construction_detected": False, "note": "Sentinel-2 timeout"}
     except Exception as e:
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
