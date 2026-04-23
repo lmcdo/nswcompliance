@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
@@ -92,6 +92,35 @@ export default function GrannyFlatPage() {
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
 
+  // Named step progress — driven by elapsed time during detect phase only
+  const DETECT_STEPS = [
+    { label: 'Resolving address with NSW Planning Portal', ms: 0 },
+    { label: 'Retrieving aerial imagery', ms: 4000 },
+    { label: 'Uploading tile to GPU inference engine', ms: 14000 },
+    { label: 'Running AI structure segmentation', ms: 20000 },
+    { label: 'Filtering detections against lot boundary', ms: 82000 },
+    { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 92000 },
+  ];
+  const [detectStep, setDetectStep] = useState(0);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    // Only run step advancement during the detect phase (not confirm)
+    if (state === 'detecting' && detectResult === null) {
+      setDetectStep(0);
+      stepTimersRef.current.forEach(clearTimeout);
+      stepTimersRef.current = DETECT_STEPS.slice(1).map((s, i) =>
+        setTimeout(() => setDetectStep(i + 1), s.ms)
+      );
+    } else {
+      stepTimersRef.current.forEach(clearTimeout);
+      stepTimersRef.current = [];
+      if (state !== 'detecting') setDetectStep(0);
+    }
+    return () => { stepTimersRef.current.forEach(clearTimeout); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, detectResult]);
+
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
@@ -140,6 +169,16 @@ export default function GrannyFlatPage() {
       }
 
       const jobId: string = json.jobId;
+
+      // If email was provided at idle state, register it now so result can be emailed
+      if (email.trim()) {
+        fetch('/api/canibuildit/lead', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), address: address.trim(), eligible: null }),
+        }).catch(() => {});
+        setEmailSubmitted(true);
+      }
 
       // Step 2: poll until detect result is written to DB (max 3 min)
       const poll = async (attempts = 0): Promise<void> => {
@@ -237,6 +276,20 @@ export default function GrannyFlatPage() {
               disabled={isRunning}
             />
           </div>
+          {state === 'idle' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email <span className="text-gray-400 font-normal">(optional — get result by email so you can close this tab)</span>
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              />
+            </div>
+          )}
           {state === 'error' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
               {errorMsg}
@@ -255,10 +308,35 @@ export default function GrannyFlatPage() {
               {isRunning ? 'Detecting structures...' : 'Detect structures'}
             </button>
           </div>
-          {state === 'detecting' && (
-            <p className="text-xs text-gray-400">
-              Fetching aerial imagery and running structure detection. First-run inference can take 1–2 minutes.
-            </p>
+          {state === 'detecting' && detectResult === null && (
+            <div className="mt-3 space-y-2">
+              {DETECT_STEPS.map((step, i) => {
+                const done = i < detectStep;
+                const active = i === detectStep;
+                return (
+                  <div key={step.label} className="flex items-center gap-2.5 text-xs">
+                    {done ? (
+                      <svg className="w-3.5 h-3.5 text-teal-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    ) : active ? (
+                      <span className="w-3.5 h-3.5 shrink-0 border-2 border-teal-500 border-t-transparent rounded-full animate-spin inline-block" />
+                    ) : (
+                      <span className="w-3.5 h-3.5 shrink-0 rounded-full border border-gray-200 inline-block" />
+                    )}
+                    <span className={done ? 'text-gray-400 line-through' : active ? 'text-gray-700 font-medium' : 'text-gray-300'}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-gray-400 pt-1">
+                Takes 1–3 minutes — we&apos;re running live satellite imagery through an ML model and cross-referencing your lot against the NSW Planning Portal in real time. A town planner would take days to do this manually.
+              </p>
+            </div>
+          )}
+          {state === 'detecting' && detectResult !== null && (
+            <p className="text-xs text-gray-400 mt-2">Calculating eligibility and yield estimate…</p>
           )}
         </form>
       )}
@@ -321,16 +399,44 @@ export default function GrannyFlatPage() {
 
       {/* Step 2: confirmation */}
       {state === 'confirming' && detectResult && (
-        <ConfirmationPanel
-          detectResult={detectResult}
-          inputAddress={inputAddress}
-          confirmedCount={confirmedCount}
-          onCountChange={setConfirmedCount}
-          existingSecondaryDwelling={existingSecondaryDwelling}
-          onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
-          onConfirm={handleConfirm}
-          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
-        />
+        <>
+          <ConfirmationPanel
+            detectResult={detectResult}
+            inputAddress={inputAddress}
+            confirmedCount={confirmedCount}
+            onCountChange={setConfirmedCount}
+            existingSecondaryDwelling={existingSecondaryDwelling}
+            onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
+            onConfirm={handleConfirm}
+            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
+          />
+          {!emailSubmitted ? (
+            <form
+              onSubmit={handleEmailSubmit}
+              className="flex items-center gap-2 mt-3 p-4 rounded-xl border border-gray-100 bg-gray-50"
+            >
+              <p className="text-xs text-gray-500 shrink-0 mr-1">Get result by email instead:</p>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+              />
+              <button
+                type="submit"
+                className="shrink-0 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Send
+              </button>
+            </form>
+          ) : (
+            <p className="text-xs text-teal-700 mt-3 px-1">
+              Got it — result on its way to {email}.
+            </p>
+          )}
+        </>
       )}
 
       {/* Step 3: result */}

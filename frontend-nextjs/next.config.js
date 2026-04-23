@@ -20,7 +20,7 @@ const nextConfig = {
        destination: 'https://canibuildit.com.au/:path*',
        permanent: false,
      },
-     // plotdetect.com.au root → canibuildit.com.au
+     // plotdetect.com.au root → canibuildit.com.au (fallback if DNS ever points here)
      {
        source: '/',
        has: [{ type: 'host', value: 'plotdetect.com.au' }],
