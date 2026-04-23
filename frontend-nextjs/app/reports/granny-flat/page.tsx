@@ -373,16 +373,44 @@ export default function GrannyFlatPage() {
 
       {/* Step 2: confirmation */}
       {state === 'confirming' && detectResult && (
-        <ConfirmationPanel
-          detectResult={detectResult}
-          inputAddress={inputAddress}
-          confirmedCount={confirmedCount}
-          onCountChange={setConfirmedCount}
-          existingSecondaryDwelling={existingSecondaryDwelling}
-          onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
-          onConfirm={handleConfirm}
-          onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
-        />
+        <>
+          <ConfirmationPanel
+            detectResult={detectResult}
+            inputAddress={inputAddress}
+            confirmedCount={confirmedCount}
+            onCountChange={setConfirmedCount}
+            existingSecondaryDwelling={existingSecondaryDwelling}
+            onExistingSecondaryDwellingChange={setExistingSecondaryDwelling}
+            onConfirm={handleConfirm}
+            onBack={() => { setState('idle'); setDetectResult(null); setPostcode(''); setExistingSecondaryDwelling(null); }}
+          />
+          {!emailSubmitted ? (
+            <form
+              onSubmit={handleEmailSubmit}
+              className="flex items-center gap-2 mt-3 p-4 rounded-xl border border-gray-100 bg-gray-50"
+            >
+              <p className="text-xs text-gray-500 shrink-0 mr-1">Get result by email instead:</p>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="flex-1 min-w-0 px-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+              />
+              <button
+                type="submit"
+                className="shrink-0 px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              >
+                Send
+              </button>
+            </form>
+          ) : (
+            <p className="text-xs text-teal-700 mt-3 px-1">
+              Got it — result on its way to {email}.
+            </p>
+          )}
+        </>
       )}
 
       {/* Step 3: result */}
