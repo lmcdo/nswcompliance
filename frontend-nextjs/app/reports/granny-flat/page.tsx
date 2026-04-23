@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
@@ -91,6 +91,33 @@ export default function GrannyFlatPage() {
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
+
+  // Named step progress — driven by elapsed time during detect phase only
+  const DETECT_STEPS = [
+    { label: 'Resolving address with NSW Planning Portal', ms: 0 },
+    { label: 'Retrieving aerial imagery', ms: 4000 },
+    { label: 'Running satellite structure detection', ms: 14000 },
+    { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 100000 },
+  ];
+  const [detectStep, setDetectStep] = useState(0);
+  const stepTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    // Only run step advancement during the detect phase (not confirm)
+    if (state === 'detecting' && detectResult === null) {
+      setDetectStep(0);
+      stepTimersRef.current.forEach(clearTimeout);
+      stepTimersRef.current = DETECT_STEPS.slice(1).map((s, i) =>
+        setTimeout(() => setDetectStep(i + 1), s.ms)
+      );
+    } else {
+      stepTimersRef.current.forEach(clearTimeout);
+      stepTimersRef.current = [];
+      if (state !== 'detecting') setDetectStep(0);
+    }
+    return () => { stepTimersRef.current.forEach(clearTimeout); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, detectResult]);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -255,10 +282,35 @@ export default function GrannyFlatPage() {
               {isRunning ? 'Detecting structures...' : 'Detect structures'}
             </button>
           </div>
-          {state === 'detecting' && (
-            <p className="text-xs text-gray-400">
-              Fetching aerial imagery and running structure detection. First-run inference can take 1–2 minutes.
-            </p>
+          {state === 'detecting' && detectResult === null && (
+            <div className="mt-3 space-y-2">
+              {DETECT_STEPS.map((step, i) => {
+                const done = i < detectStep;
+                const active = i === detectStep;
+                return (
+                  <div key={step.label} className="flex items-center gap-2.5 text-xs">
+                    {done ? (
+                      <svg className="w-3.5 h-3.5 text-teal-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    ) : active ? (
+                      <span className="w-3.5 h-3.5 shrink-0 border-2 border-teal-500 border-t-transparent rounded-full animate-spin inline-block" />
+                    ) : (
+                      <span className="w-3.5 h-3.5 shrink-0 rounded-full border border-gray-200 inline-block" />
+                    )}
+                    <span className={done ? 'text-gray-400 line-through' : active ? 'text-gray-700 font-medium' : 'text-gray-300'}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+              <p className="text-xs text-gray-400 pt-1">
+                Satellite analysis takes 1–3 minutes — this is a manual check done automatically.
+              </p>
+            </div>
+          )}
+          {state === 'detecting' && detectResult !== null && (
+            <p className="text-xs text-gray-400 mt-2">Calculating eligibility and yield estimate…</p>
           )}
         </form>
       )}
