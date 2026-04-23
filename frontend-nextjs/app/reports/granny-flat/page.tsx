@@ -793,7 +793,7 @@ function ConfirmationPanel({
            detectResult.detected_structures.length > 0 &&
            detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 == null && (
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
-              The principal dwelling footprint area could not be determined from aerial detection.
+              The main dwelling footprint area could not be determined from aerial detection.
               Available building envelope could not be verified — review the aerial map and confirm
               sufficient rear yard space exists before proceeding.
             </div>
