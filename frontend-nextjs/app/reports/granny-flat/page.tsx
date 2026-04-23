@@ -61,6 +61,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 export default function GrannyFlatPage() {
   const [address, setAddress] = useState('');
   const [inputAddress, setInputAddress] = useState(''); // user's typed input, preserved for display
+  const [ineligibleEvidence, setIneligibleEvidence] = useState(''); // authoritative reference shown in ineligible state
   const [state, setState] = useState<PageState>('idle');
   const [detectResult, setDetectResult] = useState<DetectResult | null>(null);
   const [confirmedCount, setConfirmedCount] = useState(1);
@@ -88,8 +89,9 @@ export default function GrannyFlatPage() {
       });
       const json = await res.json();
       if (!res.ok) {
-        if (res.status === 422 && json.error?.includes('does not permit')) {
-          setErrorMsg(json.error);
+        if (json.ineligible) {
+          setErrorMsg(json.error ?? 'This property is not eligible.');
+          setIneligibleEvidence(json.evidence ?? '');
           setState('ineligible');
           return;
         }
@@ -206,20 +208,30 @@ export default function GrannyFlatPage() {
         </form>
       )}
 
-      {/* Zone ineligible — permanent result, no retry button */}
+      {/* Ineligible — permanent result, no retry button */}
       {state === 'ineligible' && (
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          <div className="p-6">
-            <p className="text-sm font-semibold text-gray-900 mb-0.5">{inputAddress}</p>
-            <span className="inline-block text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-800 mt-1">Not eligible</span>
+          <div className="p-6 flex items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
+            </div>
+            <span className="shrink-0 text-xs font-medium px-2 py-1 rounded-full bg-red-100 text-red-800">
+              Not eligible
+            </span>
           </div>
+          {ineligibleEvidence && (
+            <div className="px-6 py-3 bg-gray-50">
+              <p className="text-xs text-gray-500 mb-0.5">Property record</p>
+              <p className="text-xs font-mono text-gray-700">{ineligibleEvidence}</p>
+            </div>
+          )}
           <div className="p-6">
-            <p className="text-sm text-red-700">{errorMsg}</p>
+            <p className="text-sm text-gray-700">{errorMsg}</p>
           </div>
           <div className="px-6 py-4">
             <button
               type="button"
-              onClick={() => { setState('idle'); setErrorMsg(''); setAddress(''); }}
+              onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setAddress(''); }}
               className="text-sm text-teal-600 hover:text-teal-700 underline"
             >
               Search another address
@@ -543,6 +555,11 @@ function ConfirmationPanel({
           <p className="text-sm text-gray-500 mt-0.5">
             Lot area: {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
           </p>
+        )}
+        {detectResult.lot_area_m2 != null && detectResult.lot_area_m2 > 2000 && (
+          <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+            <span className="font-medium">Large lot area</span> — {detectResult.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m² is unusually large for a single dwelling house. If this is a strata parent lot or a multi-dwelling development site, SEPP Housing 2021 secondary dwelling provisions do not apply.
+          </div>
         )}
         {!detectResult.sepp_eligible && detectResult.sepp_ineligible_reason && (
           <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">
