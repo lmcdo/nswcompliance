@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
@@ -76,6 +77,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 };
 
 export default function GrannyFlatPage() {
+  const searchParams = useSearchParams();
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState(''); // from Google Places address_components
   const [inputAddress, setInputAddress] = useState('');
@@ -97,7 +99,7 @@ export default function GrannyFlatPage() {
     { label: 'Resolving address with NSW Planning Portal', ms: 0 },
     { label: 'Retrieving aerial imagery', ms: 4000 },
     { label: 'Uploading tile to GPU inference engine', ms: 14000 },
-    { label: 'Running AI structure segmentation', ms: 20000 },
+    { label: 'Running AI structure segmentation', ms: 20000, estimate: '~60s' as const },
     { label: 'Filtering detections against lot boundary', ms: 82000 },
     { label: 'Cross-referencing SEPP Housing 2021 rules', ms: 92000 },
   ];
@@ -120,6 +122,45 @@ export default function GrannyFlatPage() {
     return () => { stepTimersRef.current.forEach(clearTimeout); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, detectResult]);
+
+  // Resume poll from email link (?jobId=&address=)
+  const resumePoll = useCallback(async (jobId: string, addr: string) => {
+    setInputAddress(addr);
+    setAddress(addr);
+    setState('detecting');
+    setDetectResult(null);
+    setFinalResult(null);
+    setErrorMsg('');
+
+    const poll = async (attempts = 0): Promise<void> => {
+      if (attempts >= 90) throw new Error('Detection timed out — please try again.');
+      const res = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
+      const json = await res.json();
+      if (json.status === 'error') throw new Error(json.error || 'Detection failed.');
+      if (json.status === 'detected') {
+        const d = json.data;
+        setDetectResult(d);
+        setConfirmedCount(d.samgeo_validated && d.detected_structures?.length > 0 ? d.detected_structures.length : 1);
+        setState('confirming');
+        return;
+      }
+      await new Promise((r) => setTimeout(r, 2000));
+      return poll(attempts + 1);
+    };
+
+    try { await poll(); }
+    catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
+      setState('error');
+    }
+  }, []);
+
+  useEffect(() => {
+    const jobId = searchParams?.get('jobId');
+    const addr = searchParams?.get('address');
+    if (jobId && addr) resumePoll(jobId, addr);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,7 +195,7 @@ export default function GrannyFlatPage() {
       const res = await fetch('/api/satellite/granny-flat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, action: 'detect' }),
+        body: JSON.stringify({ address, action: 'detect', notification_email: email.trim() || undefined }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -326,6 +367,9 @@ export default function GrannyFlatPage() {
                     )}
                     <span className={done ? 'text-gray-400 line-through' : active ? 'text-gray-700 font-medium' : 'text-gray-300'}>
                       {step.label}
+                      {'estimate' in step && active && (
+                        <span className="ml-1.5 font-normal text-gray-400">{(step as { estimate: string }).estimate}</span>
+                      )}
                     </span>
                   </div>
                 );
