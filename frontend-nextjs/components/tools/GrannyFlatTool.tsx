@@ -274,7 +274,7 @@ function formatSectionRef(ref: string): string {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName?: string | null }) {
+export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: string; lgaName?: string | null; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState('');
   const [pageState, setPageState] = useState<PageState>('idle');
@@ -347,7 +347,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
 
       posthog.capture('tool_run', {
         tool: 'granny-flat',
-        source: lgaSlug ? 'lga_page' : 'direct',
+        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+        embed_ref: embedRef ?? null,
         lga_slug: lgaSlug ?? null,
         result: result.sepp_eligible ? 'eligible' : 'ineligible',
       });

@@ -46,7 +46,7 @@ function formatCost(val?: number | string) {
   return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 }).format(n);
 }
 
-export function ThreatRadarTool({ lgaSlug }: { lgaSlug?: string }) {
+export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [email, setEmail] = useState('');
   const [searchState, setSearchState] = useState<SearchState>('idle');
@@ -63,7 +63,12 @@ export function ThreatRadarTool({ lgaSlug }: { lgaSlug?: string }) {
     setSearchResult(null);
     setSearchError('');
 
-    posthog?.capture('threat_radar_search', { address, lga_slug: lgaSlug });
+    posthog?.capture('threat_radar_search', {
+      address,
+      lga_slug: lgaSlug,
+      source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+      embed_ref: embedRef ?? null,
+    });
 
     try {
       const res = await fetch('/api/satellite/threat-radar/search', {
@@ -226,11 +231,29 @@ function SearchResults({ result, onReset }: { result: SearchResult; onReset: () 
       </div>
 
       {apps.length === 0 ? (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
-          <p className="text-sm font-medium text-gray-700">No applications found</p>
-          <p className="text-xs text-gray-500 mt-1">
-            No DA or CDC applications lodged in {result.council_name} in the last {result.window_days} days.
-          </p>
+        <div className="space-y-3">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 text-center">
+            <p className="text-sm font-medium text-gray-700">No applications found</p>
+            <p className="text-xs text-gray-500 mt-1">
+              No DA or CDC applications lodged within 500m in the last {result.window_days} days.
+            </p>
+          </div>
+          <a
+            href={`https://map.plotdetect.com.au?lat=${result.lat}&lng=${result.lng}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between gap-3 rounded-xl border border-teal-200 bg-teal-50 px-4 py-3 hover:bg-teal-100 transition-colors"
+          >
+            <div>
+              <p className="text-sm font-medium text-teal-900">
+                Explore the full DA map for {result.council_name}
+              </p>
+              <p className="text-xs text-teal-700 mt-0.5">
+                See all applications across the LGA · map.plotdetect.com.au
+              </p>
+            </div>
+            <span className="shrink-0 text-teal-600 text-base">→</span>
+          </a>
         </div>
       ) : (
         <>
