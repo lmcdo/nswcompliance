@@ -842,7 +842,11 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
     if req.existing_secondary_dwelling is None and confidence == "high":
         confidence = "medium"
-        confidence_reason += " Secondary dwelling status unconfirmed — SEPP cl 53(1) eligibility is unverified."
+        confidence_reason += (
+            " You indicated you weren't sure whether a granny flat already exists on this lot. "
+            "NSW planning rules only allow one secondary dwelling per lot — if one already exists, "
+            "a second cannot be approved. Confidence is capped until this is confirmed."
+        )
 
     report_id = req.report_id or str(uuid.uuid4())
 

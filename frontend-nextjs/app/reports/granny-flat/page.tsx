@@ -901,7 +901,7 @@ function ConfirmationPanel({
               Is there an existing secondary dwelling or granny flat on this property?
             </p>
             <p className="text-xs text-gray-400 mb-3">
-              SEPP Housing 2021 (cl 53) permits only one secondary dwelling per lot. A converted garage, studio, or detached cabin counts.
+              NSW planning rules only allow one secondary dwelling (granny flat) per lot. A converted garage, studio, or detached cabin counts as one.
             </p>
             <div className="flex gap-2">
               {([
@@ -928,12 +928,12 @@ function ConfirmationPanel({
             </div>
             {existingSecondaryDwelling === true && (
               <p className="mt-2 text-xs text-red-600">
-                An existing secondary dwelling will make this property ineligible — SEPP Housing 2021 (cl 53(1)) permits only one per lot.
+                If there&apos;s already a granny flat on this lot, a second one cannot be approved under NSW planning rules. This property would be ineligible.
               </p>
             )}
-            {existingSecondaryDwelling === null && confirmedCount >= 2 && (
+            {existingSecondaryDwelling === null && (
               <p className="mt-2 text-xs text-amber-600">
-                Outbuildings were detected. If any is a secondary dwelling, eligibility will change. &ldquo;Not sure&rdquo; will cap confidence at medium.
+                If you&apos;re not sure, we&apos;ll still run the analysis — but confidence will be capped at Medium until this is confirmed. Check the lot on the NSW Planning Portal or ask the owner.
               </p>
             )}
           </div>
