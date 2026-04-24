@@ -297,7 +297,7 @@ function GrannyFlatPageInner() {
     <div className="max-w-2xl">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 leading-tight">
-          Could this property earn an extra $300/week?
+          Could this property earn an extra $280–$340/week?
         </h1>
         <p className="mt-2 text-gray-500">
           Granny flat eligibility check for any NSW address — aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate.

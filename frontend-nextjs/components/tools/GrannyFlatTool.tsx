@@ -504,7 +504,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName }: { lgaSlug?: string; lgaName
       {!lgaName && (
         <div className="pt-16 pb-10 text-center">
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight leading-tight">
-            Could this property earn an extra $300/week?
+            Could this property earn an extra $280–$340/week?
           </h1>
           <p className="mt-4 text-lg text-gray-500 max-w-lg mx-auto">
             Free granny flat eligibility check for any NSW address — lot size, zoning, heritage, flood — plus a rental yield estimate. Takes 15 seconds.

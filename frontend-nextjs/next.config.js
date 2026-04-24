@@ -27,6 +27,12 @@ const nextConfig = {
        destination: 'https://canibuildit.com.au',
        permanent: false,
      },
+     // Clean distribution URLs — for builder emails, QR cards, social links
+     { source: '/granny-flat', destination: '/reports/granny-flat', permanent: false },
+     { source: '/flood-risk', destination: '/reports/flood', permanent: false },
+     { source: '/solar-yield', destination: '/reports/solar-yield', permanent: false },
+     { source: '/shadow-check', destination: '/reports/shadow', permanent: false },
+     { source: '/threat-radar', destination: '/reports/threat-radar', permanent: false },
    ];
  },
  async rewrites() {

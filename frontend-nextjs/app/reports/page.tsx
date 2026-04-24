@@ -3,7 +3,7 @@ import Link from 'next/link';
 const HERO_PRODUCT = {
   href: '/reports/granny-flat',
   title: 'Granny Flat Yield Predictor',
-  tagline: 'Could this property earn an extra $300/week?',
+  tagline: 'Could this property earn an extra $280–$340/week?',
   description:
     'Aerial structure detection, SEPP Housing 2021 eligibility, and a rental yield estimate for any NSW address. Free check — detailed report $29.',
   cta: 'Check my property',

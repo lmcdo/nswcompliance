@@ -15,7 +15,7 @@ const TOOLS = [
   {
     emoji: '🏡',
     title: 'Granny Flat Check',
-    subtitle: 'Can you build a second dwelling on this lot?',
+    subtitle: 'Could this property earn $280–$340/week extra?',
     detail: 'Zone, lot size, strata, and SEPP Housing 2021 eligibility — instantly.',
     href: '/reports/granny-flat',
     cta: 'Check eligibility',
@@ -107,13 +107,13 @@ export default function HomePage() {
       {/* Hero */}
       <section className="px-6 pt-16 pb-20 max-w-3xl mx-auto text-center">
         <h1 className="text-4xl sm:text-5xl font-bold leading-tight mb-4">
-          Know what you can build
+          Could this property earn
           <br />
-          <span className="text-[#00d9b8]">before you spend a dollar.</span>
+          <span className="text-[#00d9b8]">an extra $280–$340/week?</span>
         </h1>
         <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto">
-          Five free planning tools for NSW property owners, buyers, and builders.
-          No sign-up. No jargon. Real answers.
+          Check granny flat eligibility for any NSW address — free. Plus flood risk,
+          solar yield, shadow analysis, and planning alerts.
         </p>
 
         <form onSubmit={handleSubmit} className="flex gap-2 max-w-xl mx-auto">
