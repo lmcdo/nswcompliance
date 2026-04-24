@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
@@ -76,7 +76,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
   low: 'Low confidence (pre-validation)',
 };
 
-export default function GrannyFlatPage() {
+function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState(''); // from Google Places address_components
@@ -1144,5 +1144,13 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
         </p>
       </div>
     </div>
+  );
+}
+
+export default function GrannyFlatPage() {
+  return (
+    <Suspense>
+      <GrannyFlatPageInner />
+    </Suspense>
   );
 }
