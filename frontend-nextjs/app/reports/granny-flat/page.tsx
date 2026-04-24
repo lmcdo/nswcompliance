@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { posthog } from '@/components/providers/PostHogProvider';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import type { StyleSpecification } from 'maplibre-gl';
 
@@ -176,6 +177,10 @@ function GrannyFlatPageInner() {
         }),
       });
     } catch { /* silent */ }
+    posthog?.capture('granny_flat_email_capture', {
+      address: finalResult?.address ?? detectResult?.address ?? inputAddress,
+      eligible: finalResult?.granny_flat_buildable ?? null,
+    });
     setEmailSubmitted(true);
   };
 
@@ -189,6 +194,7 @@ function GrannyFlatPageInner() {
     setFinalResult(null);
     setErrorMsg('');
     setExistingSecondaryDwelling(null);
+    posthog?.capture('granny_flat_detect_start', { address: address.trim() });
 
     try {
       // Step 1: enqueue detect job (returns immediately with jobId)
@@ -200,6 +206,7 @@ function GrannyFlatPageInner() {
       const json = await res.json();
       if (!res.ok) {
         if (json.ineligible) {
+          posthog?.capture('granny_flat_ineligible', { address: address.trim(), reason: json.evidence_label ?? json.error });
           setErrorMsg(json.error ?? 'This property is not eligible.');
           setIneligibleEvidence(json.evidence ?? '');
           setIneligibleEvidenceLabel(json.evidence_label ?? '');
@@ -234,6 +241,11 @@ function GrannyFlatPageInner() {
         }
         if (pollJson.status === 'detected') {
           const detectData = pollJson.data;
+          posthog?.capture('granny_flat_detect_complete', {
+            address: detectData.address,
+            structure_count: detectData.detected_structures?.length ?? 0,
+            samgeo_validated: detectData.samgeo_validated,
+          });
           setDetectResult(detectData);
           if (detectData.samgeo_validated && detectData.detected_structures?.length > 0) {
             setConfirmedCount(detectData.detected_structures.length);
@@ -251,7 +263,9 @@ function GrannyFlatPageInner() {
 
       await poll();
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      posthog?.capture('granny_flat_detect_error', { address: address.trim(), error: msg });
+      setErrorMsg(msg);
       setState('error');
     }
   };
@@ -263,6 +277,10 @@ function GrannyFlatPageInner() {
     setState('detecting'); // reuse spinner
     setFinalResult(null);
     setErrorMsg('');
+    posthog?.capture('granny_flat_confirm', {
+      address: detectResult.address,
+      confirmed_count: confirmedCount,
+    });
 
     try {
       const res = await fetch('/api/satellite/granny-flat', {
@@ -283,10 +301,17 @@ function GrannyFlatPageInner() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Calculation failed');
 
+      posthog?.capture('granny_flat_result', {
+        address: detectResult.address,
+        eligible: json.granny_flat_buildable,
+        max_floor_area_m2: json.max_floor_area_m2 ?? null,
+      });
       setFinalResult(json);
       setState('complete');
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error');
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      posthog?.capture('granny_flat_confirm_error', { address: detectResult.address, error: msg });
+      setErrorMsg(msg);
       setState('error');
     }
   };
