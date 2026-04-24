@@ -119,7 +119,7 @@ function fmt$(n: number) {
   return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
 }
 
-export function SolarYieldTool({ lgaSlug }: { lgaSlug?: string }) {
+export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [inputAddress, setInputAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
@@ -159,7 +159,8 @@ export function SolarYieldTool({ lgaSlug }: { lgaSlug?: string }) {
       setState('complete');
       posthog.capture('tool_run', {
         tool: 'solar-yield',
-        source: lgaSlug ? 'lga_page' : 'direct',
+        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+        embed_ref: embedRef ?? null,
         lga_slug: lgaSlug ?? null,
         result: json.data?.outputs?.coverage_available ? 'coverage_available' : 'no_coverage',
       });

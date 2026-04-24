@@ -78,7 +78,7 @@ const EPI_CLASS_META: Record<string, { label: string; color: string }> = {
   none:                { label: 'Not in statutory flood overlay', color: 'bg-green-50 text-green-700' },
 };
 
-export function FloodTool({ lgaSlug }: { lgaSlug?: string }) {
+export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<FloodResult | null>(null);
@@ -103,7 +103,8 @@ export function FloodTool({ lgaSlug }: { lgaSlug?: string }) {
       setState('complete');
       posthog.capture('tool_run', {
         tool: 'flood-truth',
-        source: lgaSlug ? 'lga_page' : 'direct',
+        source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+        embed_ref: embedRef ?? null,
         lga_slug: lgaSlug ?? null,
         result: json.outputs?.flood_signal ?? null,
       });

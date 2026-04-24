@@ -81,7 +81,7 @@ function bearingToCompass(deg: number): string {
   return dirs[Math.round(deg / 45) % 8];
 }
 
-export function ShadowTool({ lgaSlug }: { lgaSlug?: string }) {
+export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<ShadowResult | null>(null);
@@ -95,7 +95,12 @@ export function ShadowTool({ lgaSlug }: { lgaSlug?: string }) {
     setResult(null);
     setErrorMsg('');
 
-    posthog?.capture('shadow_tool_run', { address, lga_slug: lgaSlug });
+    posthog?.capture('shadow_tool_run', {
+      address,
+      lga_slug: lgaSlug,
+      source: embedRef ? 'embed' : lgaSlug ? 'lga_page' : 'direct',
+      embed_ref: embedRef ?? null,
+    });
 
     try {
       const res = await fetch('/api/satellite/shadow', {
