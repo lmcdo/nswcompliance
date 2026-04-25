@@ -147,6 +147,27 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   );
 }
 
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A buyers agent can advise on negotiating price adjustments based on nearby development risk. A town planner can assess whether the DAs, if approved, would generate third-party appeal rights or materially affect amenity.
+      </Text>
+    </View>
+  );
+}
+
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
     <View style={s.footer} fixed>
@@ -179,6 +200,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <Text style={s.dateText}>
           {data.council_name ?? 'NSW'} · last {data.window_days} days · within {radius} m
         </Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Summary stat */}
         <View style={s.statBlock}>
@@ -241,6 +263,8 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
             })}
           </>
         )}
+
+        <ReferralBox />
 
         <View style={[s.divider, { marginTop: 16 }]} />
         <Text style={[s.bodyText, { color: GRAY_500, fontSize: 7.5 }]}>

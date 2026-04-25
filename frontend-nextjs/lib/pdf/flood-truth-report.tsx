@@ -151,6 +151,27 @@ const s = StyleSheet.create({
 // Helper: page number
 // ---------------------------------------------------------------------------
 
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A licensed flood consultant can assess whether this flood classification triggers mandatory disclosure under the Conveyancing (Sale of Land) Regulation 2022. A conveyancer can advise on the impact on contract terms and negotiate appropriate special conditions.
+      </Text>
+    </View>
+  );
+}
+
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -195,11 +216,19 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         <Text style={s.h1}>Flood Data Summary</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Signal badge */}
         <View style={[s.badge, { backgroundColor: signalMeta.bg }]}>
           <Text style={[s.badgeText, { color: signalMeta.color }]}>
             {signalMeta.label}
+          </Text>
+        </View>
+
+        {/* Insurance implication note */}
+        <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginTop: 6, marginBottom: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
+          <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
+            Properties in a Flood Planning Area typically attract higher building and contents insurance premiums. Request a flood loading quote from your insurer before proceeding with purchase or finance.
           </Text>
         </View>
 
@@ -342,6 +371,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Important limitations</Text>
         <Text style={s.bodyText}>

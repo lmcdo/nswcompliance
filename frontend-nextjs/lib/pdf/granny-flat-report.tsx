@@ -220,6 +220,14 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 
 // Helvetica (react-pdf default) only covers Latin-1. Strip characters outside that range
 // so they don't render as garbage glyphs (e.g. em dash -> " - ", smart quotes -> plain).
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
 function sanitise(str: string): string {
   return str
     .replace(/\u2014/g, ' - ')   // em dash
@@ -266,6 +274,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <Text style={s.coverTitle}>Granny Flat Eligibility Report</Text>
         <Text style={s.coverAddress}>{data.address}</Text>
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Verdict badge */}
         <View style={pass ? s.coverBadgePass : isMultiStructureBlock ? s.coverBadgeAmber : s.coverBadgeFail}>
@@ -644,12 +653,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           Environmental Planning and Assessment Regulation 2021
         </Text>
         <View style={s.mb8} />
-        <View style={s.calloutTeal}>
-          <Text style={{ ...s.calloutTitle, color: TEAL }}>Get more detail on this property</Text>
+        <View style={{ backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10, marginTop: 8, borderWidth: 1, borderColor: TEAL_BORDER }}>
+          <Text style={{ ...s.calloutTitle, color: TEAL, marginBottom: 4 }}>Get professional advice</Text>
           <Text style={{ ...s.calloutText }}>
+            A private certifier experienced in secondary dwellings can confirm SEPP compliance and lodge your CDC. A draftsperson can prepare CDC-ready drawings for approximately $2,000-$5,000. Visit{' '}
             <Link src="https://canibuildit.com.au" style={{ color: TEAL }}>canibuildit.com.au</Link>
-            {' '}— Free granny flat eligibility checks for any NSW address.
-            Run a new check, monitor nearby DA activity, or check flood, solar, and shadow risk.
+            {' '}to run checks on any NSW address.
           </Text>
         </View>
 

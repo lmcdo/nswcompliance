@@ -151,6 +151,27 @@ function azimuthLabel(deg: number): string {
   return 'NW';
 }
 
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        An accredited solar installer (Clean Energy Council) can provide a site-specific design and quote. CEC accreditation is required to access the Small-scale Technology Certificate (STC) rebate, which typically reduces system cost by $2,000-$4,000.
+      </Text>
+    </View>
+  );
+}
+
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -208,6 +229,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         <Text style={s.h1}>Solar Potential Assessment</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Grade badge */}
         <View style={[s.gradeBadge, { backgroundColor: gradeColors.bg }]}>
@@ -321,6 +343,8 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         )}
 
         <View style={s.divider} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

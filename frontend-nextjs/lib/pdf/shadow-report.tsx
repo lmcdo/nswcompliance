@@ -158,6 +158,27 @@ function coveragePillColor(pct: number | null): { bg: string; fg: string } {
   return { bg: GRAY_100, fg: GRAY_500 };
 }
 
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A registered town planner can advise on lodging a formal objection or requesting independent shadow modelling as part of a DA response. A solicitor can advise on rights during the neighbour notification period.
+      </Text>
+    </View>
+  );
+}
+
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -224,13 +245,23 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         <Text style={s.h1}>Construction Shadow Detector</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* ADG verdict badge */}
         <View style={[s.adgBadge, { backgroundColor: adgColor.bg }]}>
           <Text style={[s.adgText, { color: adgColor.fg }]}>{adgLabel}</Text>
         </View>
 
-        <Text style={[s.bodyText, { marginBottom: 16 }]}>{summaryText}</Text>
+        <Text style={[s.bodyText, { marginBottom: 8 }]}>{summaryText}</Text>
+
+        {/* ADG non-compliance consequence — only when concern flagged */}
+        {!data.adg_compliant && data.zone !== null && (
+          <View style={{ backgroundColor: '#fff7ed', borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa' }}>
+            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
+              ADG 2015 Part 3D sets a minimum 3-hour solar access requirement for living areas. Overshadowing of this extent may constitute grounds for formal objection during the DA neighbour notification period. Council is not required to approve a DA that fails the ADG solar access test.
+            </Text>
+          </View>
+        )}
 
         <View style={s.divider} />
 
@@ -359,6 +390,8 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         </Text>
 
         <View style={s.divider} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>
