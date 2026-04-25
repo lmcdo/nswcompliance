@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
     confidence_reason: (outputs.confidence_reason as string) ?? '',
     warnings: (outputs.warnings as string[]) ?? [],
     data_sources: (outputs.data_sources as string[]) ?? [],
+    tile_b64: (outputs.tile_b64 as string | null) ?? null,
   };
 
   let pdfBuffer: Buffer;

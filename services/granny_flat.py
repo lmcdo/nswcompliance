@@ -33,6 +33,7 @@ import json
 import logging
 import math
 import os
+import re
 import uuid
 from datetime import date
 from typing import Optional
@@ -799,7 +800,14 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
         )
 
-    weekly_rent = _get_weekly_rent(req.postcode)
+    # Resolve postcode — prefer explicit field, fall back to last 4 digits of address
+    postcode = req.postcode
+    if not postcode and req.address:
+        m = re.search(r'\b(\d{4})\s*$', req.address.strip())
+        if m:
+            postcode = m.group(1)
+
+    weekly_rent = _get_weekly_rent(postcode)
     annual_rent = weekly_rent * 52 if weekly_rent else None
 
     build_cost_per_m2 = 2500.0
@@ -854,6 +862,19 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
+            # Carry tile_b64 forward from the detect outputs so the PDF can render
+            # the aerial image. The detect step stores it in outputs JSONB; the
+            # confirm step overwrites outputs, so we must read it before writing.
+            tile_b64: Optional[str] = None
+            if req.report_id:
+                cur.execute(
+                    "SELECT outputs->>'tile_b64' FROM granny_flat_reports WHERE id = %s",
+                    (req.report_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    tile_b64 = row[0]  # None if key absent or value null
+
             cur.execute(
                 """
                 INSERT INTO granny_flat_reports
@@ -877,7 +898,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "lot_area_m2": lot_area_m2,
                         "confirmed_structure_count": req.confirmed_structure_count,
                         "samgeo_structure_count": req.samgeo_structure_count,
-                        "postcode": req.postcode,
+                        "postcode": postcode,
                         "existing_secondary_dwelling": req.existing_secondary_dwelling,
                         "main_dwelling_area_m2": req.main_dwelling_area_m2,
                     }),
@@ -890,6 +911,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "is_heritage": is_heritage,
                         "confidence_reason": confidence_reason,
                         "warnings": warnings,
+                        "tile_b64": tile_b64,
                     }),
                     confidence,
                     data_sources,
