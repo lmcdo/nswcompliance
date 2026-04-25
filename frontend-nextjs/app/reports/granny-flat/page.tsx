@@ -435,6 +435,7 @@ function GrannyFlatPageInner() {
 
       {/* Ineligible — permanent result, search another at top */}
       {state === 'ineligible' && (
+        <>
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           <div className="p-6 flex items-start justify-between gap-4">
             <div>
@@ -487,6 +488,8 @@ function GrannyFlatPageInner() {
             )}
           </div>
         </div>
+        <CrossSellCards buildable={false} address={inputAddress} />
+        </>
       )}
 
       {/* Step 2: confirmation */}
@@ -551,6 +554,10 @@ function GrannyFlatPageInner() {
             weeklyRent={calcWeeklyRent}
             onBuildCostChange={setCalcBuildCost}
             onWeeklyRentChange={setCalcWeeklyRent}
+          />
+          <CrossSellCards
+            buildable={finalResult.granny_flat_buildable}
+            address={finalResult.address ?? inputAddress}
           />
         </div>
       )}
@@ -1016,6 +1023,58 @@ function ConfirmationPanel({
         </form>
           );
         })()}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CrossSellCards — contextual upsell to related tools
+// Pass variant: Threat Radar + Flood Truth (pre-construction due diligence)
+// Fail variant: Threat Radar only (monitor for zone/DA changes)
+// ---------------------------------------------------------------------------
+
+function CrossSellCards({ buildable, address }: { buildable: boolean; address: string }) {
+  const encoded = encodeURIComponent(address);
+  const passCards = [
+    {
+      title: 'Neighbour Development Threat Radar',
+      body: 'Check whether nearby DAs could block sunlight or views once your granny flat is built.',
+      href: `/reports/threat-radar?address=${encoded}`,
+      label: 'Check nearby DAs →',
+    },
+    {
+      title: 'Wet Season Flood Truth',
+      body: 'Verify flood risk before you build — required by certifiers for any new structure.',
+      href: `/reports/flood?address=${encoded}`,
+      label: 'Check flood risk →',
+    },
+  ];
+  const failCards = [
+    {
+      title: 'Neighbour Development Threat Radar',
+      body: 'Monitor nearby DA applications — a rezoning or approval nearby could change your eligibility.',
+      href: `/reports/threat-radar?address=${encoded}`,
+      label: 'Monitor this area →',
+    },
+  ];
+  const cards = buildable ? passCards : failCards;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Also check</p>
+      <div className={`grid gap-3 ${buildable ? 'sm:grid-cols-2' : ''}`}>
+        {cards.map((card) => (
+          <a
+            key={card.href}
+            href={card.href}
+            className="block rounded-xl border border-gray-200 bg-white p-4 hover:border-teal-300 hover:shadow-sm transition-all"
+          >
+            <p className="text-sm font-semibold text-gray-900 mb-1">{card.title}</p>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">{card.body}</p>
+            <span className="text-xs font-medium text-teal-600">{card.label}</span>
+          </a>
+        ))}
       </div>
     </div>
   );
