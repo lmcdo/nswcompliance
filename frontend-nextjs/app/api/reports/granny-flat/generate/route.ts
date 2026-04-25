@@ -11,11 +11,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { renderToBuffer } from '@react-pdf/renderer';
 import React from 'react';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import {
   GrannyFlatReportDocument,
   type GrannyFlatReportData,
 } from '@/lib/pdf/granny-flat-report';
+
+// Use service role — this route is server-only, report_id is an unguessable UUID.
+// The anon+cookie client fails with no session (called from webhook or curl).
+const getSupabase = () =>
+  createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
 export const dynamic = 'force-dynamic';
 // PDF generation can take 3–8s — extend Vercel function timeout
@@ -34,7 +42,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'report_id is required' }, { status: 400 });
   }
 
-  const supabase = await createClient();
+  const supabase = getSupabase();
 
   const { data: row, error } = await supabase
     .from('granny_flat_reports')
