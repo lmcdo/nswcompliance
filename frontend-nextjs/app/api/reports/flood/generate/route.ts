@@ -13,6 +13,7 @@ import {
   FloodTruthReportDocument,
   type FloodReportData,
 } from '@/lib/pdf/flood-truth-report';
+import { getLogoBase64 } from '@/lib/pdf/logo';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -63,7 +64,10 @@ export async function POST(req: NextRequest) {
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
   // Fetch aerial tile
-  const tile_b64 = (lat && lng) ? await fetchAerialTile(lat, lng) : null;
+  const [tile_b64, logo_b64] = await Promise.all([
+    (lat && lng) ? fetchAerialTile(lat, lng) : Promise.resolve(null),
+    Promise.resolve(getLogoBase64()),
+  ]);
 
   const data: FloodReportData = {
     address: String(raw.address),
@@ -93,6 +97,7 @@ export async function POST(req: NextRequest) {
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
     tile_b64,
+    logo_b64,
   };
 
   let pdfBuffer: Buffer;

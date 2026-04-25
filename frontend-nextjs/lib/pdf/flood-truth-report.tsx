@@ -30,6 +30,7 @@ export interface FloodReportData {
   run_date: string;
   lat: number;
   lng: number;
+  logo_b64?: string | null;
   // outputs
   epi_flood_class: string | null;
   epi_flood_label: string | null;
@@ -102,7 +103,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 48,
     lineHeight: 1.4,
   },
-  logo:     { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 64 },
+  logo:     { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
+  logoRow:  { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  logoImg:  { width: 18, height: 18 },
   h1:       { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
   subhead:  { fontSize: 12, color: GRAY_700, marginBottom: 4 },
   dateText: { fontSize: 9, color: GRAY_500, marginBottom: 48 },
@@ -148,6 +151,17 @@ const s = StyleSheet.create({
 // Helper: page number
 // ---------------------------------------------------------------------------
 
+function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
+  return (
+    <View style={s.logoRow}>
+      {logo_b64 ? (
+        <Image src={`data:image/png;base64,${logo_b64}`} style={s.logoImg} />
+      ) : null}
+      <Text style={s.logo}>PlotDetect</Text>
+    </View>
+  );
+}
+
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
     <View style={s.footer} fixed>
@@ -177,7 +191,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       {/* PAGE 1: Cover + Signal + Data grid                                  */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Flood Data Summary</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
@@ -327,7 +341,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       {/* PAGE 2: Disclaimer                                                   */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
 
         <Text style={s.sectionTitle}>Important limitations</Text>
         <Text style={s.bodyText}>
@@ -361,7 +375,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       {/* ------------------------------------------------------------------ */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
-          <Text style={s.logo}>PlotDetect</Text>
+          <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
           <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
             Google Maps satellite imagery for context.

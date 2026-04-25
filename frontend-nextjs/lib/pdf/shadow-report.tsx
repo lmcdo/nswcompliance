@@ -48,6 +48,7 @@ export interface ShadowReportData {
   data_sources: string[];
   warnings?: string[];
   tile_b64: string | null;
+  logo_b64?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,7 +93,9 @@ const s = StyleSheet.create({
     paddingHorizontal: 48,
     lineHeight: 1.4,
   },
-  logo:      { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 64 },
+  logo:      { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
+  logoRow:   { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  logoImg:   { width: 18, height: 18 },
   h1:        { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
   subhead:   { fontSize: 12, color: GRAY_700, marginBottom: 4 },
   dateText:  { fontSize: 9, color: GRAY_500, marginBottom: 32 },
@@ -155,6 +158,17 @@ function coveragePillColor(pct: number | null): { bg: string; fg: string } {
   return { bg: GRAY_100, fg: GRAY_500 };
 }
 
+function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
+  return (
+    <View style={s.logoRow}>
+      {logo_b64 ? (
+        <Image src={`data:image/png;base64,${logo_b64}`} style={s.logoImg} />
+      ) : null}
+      <Text style={s.logo}>PlotDetect</Text>
+    </View>
+  );
+}
+
 function Footer({ pageNum, total }: { pageNum: number; total: number }) {
   return (
     <View style={s.footer} fixed>
@@ -206,7 +220,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       {/* PAGE 1: Cover + ADG verdict + Scenarios table                       */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Construction Shadow Detector</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
@@ -318,7 +332,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       {/* PAGE 2: Methodology + Disclaimer                                     */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
 
         <Text style={s.sectionTitle}>Methodology</Text>
         <Text style={s.bodyText}>
@@ -364,7 +378,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
       {/* ------------------------------------------------------------------ */}
       {data.tile_b64 && (
         <Page size="A4" style={s.page}>
-          <Text style={s.logo}>PlotDetect</Text>
+          <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
           <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
             Google Maps satellite imagery for context. Shadow polygons cannot be shown in a

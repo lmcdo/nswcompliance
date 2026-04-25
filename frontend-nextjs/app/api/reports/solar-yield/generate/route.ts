@@ -13,6 +13,7 @@ import {
   SolarYieldReportDocument,
   type SolarYieldReportData,
 } from '@/lib/pdf/solar-yield-report';
+import { getLogoBase64 } from '@/lib/pdf/logo';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -99,7 +100,10 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  const tile_b64 = (lat && lng) ? await fetchAerialTile(lat, lng) : null;
+  const [tile_b64, logo_b64] = await Promise.all([
+    (lat && lng) ? fetchAerialTile(lat, lng) : Promise.resolve(null),
+    Promise.resolve(getLogoBase64()),
+  ]);
 
   // Pre-compute ROI and grade (same formulas as the tool component)
   const kwh        = Number(raw.annual_kwh_estimate ?? 0);
@@ -141,6 +145,7 @@ export async function POST(req: NextRequest) {
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     tile_b64,
+    logo_b64,
   };
 
   let pdfBuffer: Buffer;

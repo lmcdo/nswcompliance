@@ -40,6 +40,7 @@ export interface GrannyFlatReportData {
   data_sources: string[];
   // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
   tile_b64: string | null;
+  logo_b64?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -71,7 +72,9 @@ const s = StyleSheet.create({
     lineHeight: 1.4,
   },
   // Cover
-  coverLogo: { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 64 },
+  coverLogo:    { fontSize: 11, fontFamily: 'Helvetica-Bold', color: TEAL },
+  coverLogoRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 64 },
+  coverLogoImg: { width: 18, height: 18 },
   coverTitle: { fontSize: 22, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 8 },
   coverAddress: { fontSize: 12, color: GRAY_700, marginBottom: 4 },
   coverDate: { fontSize: 9, color: GRAY_500, marginBottom: 48 },
@@ -200,6 +203,17 @@ function yieldMatrix(maxArea: number) {
 // PDF Document
 // ---------------------------------------------------------------------------
 
+function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
+  return (
+    <View style={s.coverLogoRow}>
+      {logo_b64 ? (
+        <Image src={`data:image/png;base64,${logo_b64}`} style={s.coverLogoImg} />
+      ) : null}
+      <Text style={s.coverLogo}>PlotDetect</Text>
+    </View>
+  );
+}
+
 export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData }) {
   const pass = data.granny_flat_buildable;
   const matrix = pass ? yieldMatrix(data.max_floor_area_m2) : null;
@@ -224,7 +238,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         {/* Logo */}
-        <Text style={s.coverLogo}>canibuildit.com.au</Text>
+        <LogoRow logo_b64={data.logo_b64} />
 
         {/* Title */}
         <Text style={s.coverTitle}>Granny Flat Eligibility Report</Text>

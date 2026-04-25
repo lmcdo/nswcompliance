@@ -13,6 +13,7 @@ import {
   ThreatRadarReportDocument,
   type ThreatRadarReportData,
 } from '@/lib/pdf/threat-radar-report';
+import { getLogoBase64 } from '@/lib/pdf/logo';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -61,7 +62,10 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  const tile_b64 = (lat && lng) ? await fetchAerialTile(lat, lng) : null;
+  const [tile_b64, logo_b64] = await Promise.all([
+    (lat && lng) ? fetchAerialTile(lat, lng) : Promise.resolve(null),
+    Promise.resolve(getLogoBase64()),
+  ]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -77,6 +81,7 @@ export async function POST(req: NextRequest) {
     window_days: typeof raw.window_days === 'number' ? raw.window_days : 90,
     radius_m: typeof raw.radius_m === 'number' ? raw.radius_m : 500,
     tile_b64,
+    logo_b64,
   };
 
   let pdfBuffer: Buffer;
