@@ -14,21 +14,10 @@ import {
   type ShadowReportData,
 } from '@/lib/pdf/shadow-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
+import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
-async function fetchAerialTile(lat: number, lng: number, origin: string): Promise<string | null> {
-  try {
-    const url = `${origin}/api/satellite/aerial-tile?lat=${lat}&lng=${lng}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
-    if (!res.ok) return null;
-    const buf = await res.arrayBuffer();
-    return Buffer.from(buf).toString('base64');
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(req: NextRequest) {
   let body: { data?: unknown };
@@ -51,9 +40,8 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  const origin = new URL(req.url).origin;
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTile(lat, lng, origin) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 

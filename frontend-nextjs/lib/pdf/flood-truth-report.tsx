@@ -378,14 +378,14 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           <LogoRow logo_b64={data.logo_b64} />
           <Text style={s.sectionTitle}>Property aerial view</Text>
           <Text style={[s.bodyText, { color: GRAY_500, marginBottom: 10 }]}>
-            Google Maps satellite imagery for context.
+            NSW SIX Maps aerial imagery for context.
           </Text>
           <Image
             src={`data:image/png;base64,${data.tile_b64}`}
             style={{ width: '100%', borderRadius: 4 }}
           />
           <Text style={[s.bodyText, { fontSize: 7, color: GRAY_500, marginTop: 6 }]}>
-            Imagery © Google Maps · for reference only
+            © NSW SIX Maps (LPI_Imagery_Best) — CC-BY 4.0 NSW Government · for reference only
           </Text>
           <Footer pageNum={3} total={totalPages} />
         </Page>
