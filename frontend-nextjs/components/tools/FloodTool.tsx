@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -154,7 +155,16 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         </div>
       )}
 
-      {state === 'complete' && result && <FloodCard result={result} />}
+      {state === 'complete' && result && (
+        <>
+          <FloodCard result={result} />
+          <PostResultEmailStrip
+            address={result.address}
+            product="flood-truth"
+            copy="Get this flood risk report emailed to you — share with your conveyancer →"
+          />
+        </>
+      )}
     </div>
   );
 }

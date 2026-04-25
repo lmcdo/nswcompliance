@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -239,7 +240,16 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
       )}
 
       {state === 'complete' && report && (
-        <ReportCard report={report} />
+        <>
+          <ReportCard report={report} />
+          {report.outputs.coverage_available && (
+            <PostResultEmailStrip
+              address={report.address}
+              product="solar-yield"
+              copy="Get this solar analysis emailed to you →"
+            />
+          )}
+        </>
       )}
     </div>
   );

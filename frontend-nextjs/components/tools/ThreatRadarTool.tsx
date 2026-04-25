@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface Application {
@@ -168,6 +169,15 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
         {/* Results */}
         {searchState === 'done' && searchResult && (
           <SearchResults result={searchResult} onReset={reset} />
+        )}
+
+        {/* Email me this result — shown only when results are available */}
+        {searchState === 'done' && searchResult && (
+          <PostResultEmailStrip
+            address={searchResult.address}
+            product="threat-radar"
+            copy="Email me this result →"
+          />
         )}
 
         {/* Subscribe — always visible */}

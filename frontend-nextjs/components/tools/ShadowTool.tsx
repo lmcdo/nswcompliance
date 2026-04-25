@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const ShadowMap = dynamic(
@@ -174,7 +175,16 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         </div>
       )}
 
-      {state === 'complete' && result && <ShadowCard result={result} />}
+      {state === 'complete' && result && (
+        <>
+          <ShadowCard result={result} />
+          <PostResultEmailStrip
+            address={result.address}
+            product="shadow-detector"
+            copy="Get this shadow analysis emailed to you →"
+          />
+        </>
+      )}
     </div>
   );
 }
