@@ -26,7 +26,6 @@ function esriRingsToGeoJSON(rings: number[][][]): { type: 'Polygon'; coordinates
   );
   return { type: 'Polygon', coordinates: coords };
 }
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
 
 /**
  * POST /api/satellite/solar-yield
@@ -64,7 +63,10 @@ export async function POST(request: NextRequest) {
   // Step 1: resolve address
   let propData: Record<string, unknown>;
   try {
-    const propResp = await fetch(`${SITE_URL}/api/property/${encodeURIComponent(address)}`, {
+    const internalHeaders: Record<string, string> = {};
+    if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+    const propResp = await fetch(`${new URL(request.url).origin}/api/property/${encodeURIComponent(address)}`, {
+      headers: internalHeaders,
       signal: AbortSignal.timeout(10_000),
     });
     if (!propResp.ok) {
@@ -85,6 +87,47 @@ export async function POST(request: NextRequest) {
   const prop = propData.property as Record<string, unknown>;
   const prop_id = String(prop.prop_id);
   const lotGeometry = (propData.lotGeometry as Record<string, unknown>) ?? null;
+
+  // -------------------------------------------------------------------------
+  // Eligibility gates — run before calling Railway / Google Solar API (paid)
+  // -------------------------------------------------------------------------
+
+  // Gate 1: Unit / apartment address
+  // Individual unit owners do not control the building roof — the owners
+  // corporation does. A solar assessment for a unit number is misleading.
+  const canonicalAddress: string = (prop.address as string) ?? '';
+  if (/^(UNIT|APT|APARTMENT|FLAT|SUITE|LEVEL|SHOP|OFFICE|U)\s+\d/i.test(canonicalAddress)) {
+    return NextResponse.json(
+      {
+        ineligible: true,
+        error:
+          'This address is a unit or apartment. Individual unit owners do not control the building roof — solar installation decisions belong to the owners corporation (strata body). A building-wide assessment would need to be commissioned by the strata manager.',
+        evidence: canonicalAddress,
+        evidence_label: 'NSW Planning Portal — canonical address',
+      },
+      { status: 422 },
+    );
+  }
+
+  // Gate 2: Strata Plan lot
+  // Lot descriptions like "Lot 1 SP 87654" indicate a strata scheme — same
+  // roof ownership issue as Gate 1.
+  const lot_description: string | null = (propData as { lot_description?: string | null }).lot_description ?? null;
+  if (lot_description) {
+    const spMatch = lot_description.match(/\bSP\s*(\d+)\b/i);
+    if (spMatch) {
+      return NextResponse.json(
+        {
+          ineligible: true,
+          error:
+            `This lot is registered on Strata Plan ${spMatch[1]}. Solar installation on a strata building requires owners corporation approval — individual lot owners cannot install panels on the common roof without a special resolution or by-law. Contact your strata manager to explore a building-wide system.`,
+          evidence: lot_description,
+          evidence_label: 'NSW Planning Portal — lot registration',
+        },
+        { status: 422 },
+      );
+    }
+  }
 
   let lat: number | null = (prop.coordinates as Record<string, number>)?.lat ?? null;
   let lng: number | null = (prop.coordinates as Record<string, number>)?.lng ?? null;

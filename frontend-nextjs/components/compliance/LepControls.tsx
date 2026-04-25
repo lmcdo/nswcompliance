@@ -6,8 +6,14 @@ import { HeritageProvisionsCard } from './HeritageProvisionsCard';
 import { NotApplicableCard } from './NotApplicableCard';
 import { PlanningConstraints, PlanningLayer } from '@/lib/nsw-planning-portal';
 import { AuthorityColors } from '@/lib/design-tokens';
-import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText } from 'lucide-react';
+import { Building2, Ruler, AlertTriangle, Droplets, Flame, FlaskConical, ExternalLink, Plane, TreePine, Waves, MapPin, CheckCircle2, AlertCircle, XCircle, Anchor, BookOpen, LandPlot, FileText, Info } from 'lucide-react';
 import { calculateGFA, anefStatusConfig, bushfireCategoryAnnotation } from '@/lib/see/propertyUtils';
+
+interface StrataInfo {
+  isStrata: boolean;
+  source: string | null;
+  strataUnit: string | null;
+}
 
 interface LepControlsProps {
   propertyData?: any; // Keep for now - full PropertyData type would require extensive refactoring
@@ -15,6 +21,7 @@ interface LepControlsProps {
   constraints: PlanningConstraints;
   formerCouncil?: string;
   lotArea?: number;
+  strataInfo?: StrataInfo;
 }
 
 export function LepControls({
@@ -23,6 +30,7 @@ export function LepControls({
   constraints,
   formerCouncil,
   lotArea,
+  strataInfo,
 }: LepControlsProps) {
   const lepName = constraints?.lga 
     ? `${constraints.lga} Local Environmental Plan 2022` 
@@ -65,6 +73,7 @@ export function LepControls({
         <LandUseZoningCard
           zone={constraints.zone}
           zoneDescription={constraints.zoneDescription ?? undefined}
+          zoneFull={zoneResult?.['Land Use']}
           legislationUrl={zoneResult?.['legislationUrl']}
           epiName={zoneResult?.['EPI Name']}
           amendment={zoneResult?.['Amendment']}
@@ -142,6 +151,17 @@ export function LepControls({
               </div>
             )}
           </div>
+
+          {/* Strata notice — FSR/GFA and subdivision figures apply to the parent lot */}
+          {strataInfo?.isStrata && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2">
+              <Info className="h-4 w-4 text-orange-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-orange-800">
+                <span className="font-semibold">Strata unit — </span>
+                Height, FSR, and lot area figures above apply to the parent lot, not the individual unit. GFA capacity shown is the whole-lot entitlement. Subdivision of a strata lot requires owners corporation resolution — Torrens-title subdivision is not applicable.
+              </p>
+            </div>
+          )}
 
           {/* Link to legislation */}
           {zoneResult?.['legislationUrl'] && (

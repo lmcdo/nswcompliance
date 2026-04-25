@@ -35,6 +35,7 @@ Response contract (must match frontend-nextjs/app/reports/shadow/page.tsx):
   "data_sources": list[str]
 }
 """
+import concurrent.futures
 import logging
 import math
 import os
@@ -102,7 +103,7 @@ def _arcgis_to_geojson(geometry: dict) -> dict:
     """
     R = 20037508.342789244
     rings_wgs84 = []
-    for ring in geometry.get("rings", []):
+    for ring in geometry.get("rings") or []:
         coords = []
         for x, y in ring:
             lng = x * 180.0 / R
@@ -123,17 +124,37 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
         return None
 
 
-# former_council value → LEP instrument name
-_COUNCIL_TO_LEP = {
-    "marrickville": "Inner West LEP 2022",
-    "leichhardt":   "Inner West LEP 2022",
-    "ashfield":     "Inner West LEP 2022",
-    "inner west":   "Inner West LEP 2022",
-    "sydney":       "Sydney LEP 2012",
-    "city of sydney": "Sydney LEP 2012",
-    "ku-ring-gai":  "Ku-ring-gai LEP 2015",
-    "kuringgai":    "Ku-ring-gai LEP 2015",
-}
+def _get_lep_label(lga_name: str) -> str:
+    """Return the LEP instrument label for a given LGA name.
+
+    Query instrument_registry first (populated as legislation_monitor runs).
+    Fall back to a title-cased display name so any NSW LGA gets a reasonable label.
+    """
+    if not lga_name:
+        return "Local Environmental Plan"
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT instrument_label FROM instrument_registry
+                WHERE instrument_type = 'lep'
+                  AND council ILIKE %s
+                  AND is_active = TRUE
+                LIMIT 1
+                """,
+                (lga_name.strip(),),
+            )
+            row = cur.fetchone()
+            if row:
+                return row[0]
+    except Exception:
+        pass
+    finally:
+        if conn:
+            conn.close()
+    return f"{lga_name.title()} Local Environmental Plan"
 
 
 
@@ -150,74 +171,77 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
     height_source values: "spatial_overlays" | "regulatory_provisions" | "default"
     """
     import re
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor() as cur:
+        conn = _get_conn()
+        with conn.cursor() as cur:
 
-                # 1. spatial_overlays — authoritative LEP height limit for 33 LGAs
-                cur.execute(
-                    """
-                    SELECT value, lga_name
-                    FROM spatial_overlays
-                    WHERE layer_type = 'height'
-                      AND ST_Contains(
-                            ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
-                            ST_SetSRID(ST_MakePoint(%s, %s), 4326)
-                          )
-                    LIMIT 1
-                    """,
-                    (lng, lat),
+            # 1. spatial_overlays — authoritative LEP height limit for 33 LGAs
+            cur.execute(
+                """
+                SELECT value, lga_name
+                FROM spatial_overlays
+                WHERE layer_type = 'height'
+                  AND ST_Contains(
+                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                      )
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+            if row and row[0]:
+                raw_val = str(row[0])
+                lga_name = (row[1] or "").strip()
+                # value is typically "9" or "9m" or "9.0"
+                nums = re.findall(r"(\d+(?:\.\d+)?)", raw_val)
+                if nums:
+                    height = float(nums[0])
+                    lep_name = _get_lep_label(lga_name)
+                    logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
+                    return height, lep_name, "spatial_overlays"
+
+            # 2. regulatory_provisions fallback (Inner West only)
+            cur.execute(
+                """
+                SELECT former_council
+                FROM dcp_precinct_boundaries
+                WHERE former_council IS NOT NULL
+                ORDER BY ST_Distance(
+                    ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
+                    ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(boundary_geojson::text), 4326))::geography
                 )
-                row = cur.fetchone()
-                if row and row[0]:
-                    raw_val = str(row[0])
-                    lga_name = (row[1] or "").strip()
-                    # value is typically "9" or "9m" or "9.0"
-                    nums = re.findall(r"(\d+(?:\.\d+)?)", raw_val)
-                    if nums:
-                        height = float(nums[0])
-                        lep_name = _COUNCIL_TO_LEP.get(lga_name.lower(),
-                                                        f"{lga_name} LEP" if lga_name else "Local Environmental Plan")
-                        logger.info(f"Height from spatial_overlays: {height}m ({lga_name})")
-                        return height, lep_name, "spatial_overlays"
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+            former_council = (row[0] or "").strip() if row else ""
 
-                # 2. regulatory_provisions fallback (Inner West only)
+            if former_council:
                 cur.execute(
-                    """
-                    SELECT former_council
-                    FROM dcp_precinct_boundaries
-                    WHERE former_council IS NOT NULL
-                    ORDER BY ST_Distance(
-                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)::geography,
-                        ST_Centroid(ST_SetSRID(ST_GeomFromGeoJSON(boundary_geojson::text), 4326))::geography
-                    )
-                    LIMIT 1
-                    """,
-                    (lng, lat),
+                    "SELECT provision_text FROM regulatory_provisions "
+                    "WHERE is_current = TRUE AND v2_topic ILIKE %s AND former_council = %s LIMIT 20",
+                    ("%height%", former_council),
                 )
-                row = cur.fetchone()
-                former_council = (row[0] or "").strip() if row else ""
-
-                if former_council:
-                    cur.execute(
-                        "SELECT provision_text FROM regulatory_provisions "
-                        "WHERE is_current = TRUE AND v2_topic ILIKE %s AND former_council = %s LIMIT 20",
-                        ("%height%", former_council),
-                    )
-                    heights = []
-                    for (text,) in cur.fetchall():
-                        for m in re.findall(r"(\d+(?:\.\d+)?)\s*m", text or ""):
-                            h = float(m)
-                            if 4 <= h <= 30:
-                                heights.append(h)
-                    if heights:
-                        height = float(max(heights))
-                        lep_name = _COUNCIL_TO_LEP.get(former_council.lower(), "Local Environmental Plan")
-                        logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
-                        return height, lep_name, "regulatory_provisions"
+                heights = []
+                for (text,) in cur.fetchall():
+                    for m in re.findall(r"(\d+(?:\.\d+)?)\s*m", text or ""):
+                        h = float(m)
+                        if 4 <= h <= 30:
+                            heights.append(h)
+                if heights:
+                    height = float(max(heights))
+                    lep_name = _get_lep_label(former_council)
+                    logger.info(f"Height from regulatory_provisions: {height}m ({former_council})")
+                    return height, lep_name, "regulatory_provisions"
 
     except Exception as e:
         logger.warning(f"Height limit query: {e}")
+    finally:
+        if conn:
+            conn.close()
 
     return DEFAULT_HEIGHT_M, "Local Environmental Plan", "default"
 
@@ -233,7 +257,7 @@ def _build_scenario_list(
     scenarios = []
     for key, *_ in SHADOW_SCENARIOS:
         _, month, day, hour_utc, description, date_str, time_local, direction_deg = meta_by_key[key]
-        shadow_geojson = shadow_map.get(key, {})
+        shadow_geojson = shadow_map.get(key) or {}
         if "error" in shadow_geojson:
             length = 0.0
             fraction = 0.0
@@ -277,14 +301,14 @@ def _adg_compliant(scenarios: list) -> bool:
     noon = next((s for s in scenarios if s["scenario"] == "jun21_12pm"), None)
     if noon is None:
         return True  # can't assess — default to compliant
-    return not noon["overlaps_subject_lot"]
+    return not bool(noon.get("overlaps_subject_lot"))
 
 
 def _worst_case(scenarios: list) -> str:
     """Scenario with the longest shadow throw."""
     if not scenarios:
         return "jun21_9am"
-    return max(scenarios, key=lambda s: s["shadow_length_m"])["scenario"]
+    return max(scenarios, key=lambda s: s.get("shadow_length_m") or 0.0)["scenario"]
 
 
 def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confidence):
@@ -294,7 +318,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
         VALUES (%s, 'shadow', %s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON CONFLICT (id) DO UPDATE SET outputs = EXCLUDED.outputs
     """
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id, date.today(),
@@ -304,6 +330,9 @@ def _write_report(report_id, address, lat, lng, prop_id, inputs, outputs, confid
                 DATA_SOURCES,
             ))
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.post("/shadow")
@@ -317,27 +346,36 @@ def run_shadow(request: ShadowRequest):
     if request.height_m:
         height_m = request.height_m
         height_source = "planning_portal"
-        lep_name = _COUNCIL_TO_LEP.get("", "Local Environmental Plan")
+        lep_name = "Local Environmental Plan"
         # Re-derive lep_name from DB without height query
+        _lep_conn = None
         try:
-            with _get_conn() as conn:
-                with conn.cursor() as cur:
-                    cur.execute(
-                        "SELECT lga_name FROM spatial_overlays WHERE layer_type = 'height' "
-                        "AND ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON(geom::text),4326), "
-                        "ST_SetSRID(ST_MakePoint(%s,%s),4326)) LIMIT 1",
-                        (request.lng, request.lat),
-                    )
-                    row = cur.fetchone()
-                    if row and row[0]:
-                        lep_name = _COUNCIL_TO_LEP.get(row[0].lower(), f"{row[0]} LEP")
+            _lep_conn = _get_conn()
+            with _lep_conn.cursor() as cur:
+                cur.execute(
+                    "SELECT lga_name FROM spatial_overlays WHERE layer_type = 'height' "
+                    "AND ST_Contains(ST_SetSRID(ST_GeomFromGeoJSON(geom::text),4326), "
+                    "ST_SetSRID(ST_MakePoint(%s,%s),4326)) LIMIT 1",
+                    (request.lng, request.lat),
+                )
+                row = cur.fetchone()
+                if row and row[0]:
+                    lep_name = _get_lep_label(row[0])
         except Exception:
             pass
+        finally:
+            if _lep_conn:
+                _lep_conn.close()
     else:
         height_m, lep_name, height_source = _get_height_limit(request.lat, request.lng)
 
     try:
-        change = compute_change_score(request.lat, request.lng, radius_m=200)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+            fut = ex.submit(compute_change_score, request.lat, request.lng, 200)
+            change = fut.result(timeout=25)
+    except concurrent.futures.TimeoutError:
+        logger.warning("Sentinel-2 change score timed out after 25s — skipping")
+        change = {"change_score": None, "construction_detected": False, "note": "Sentinel-2 timeout"}
     except Exception as e:
         logger.warning(f"Change score: {e}")
         change = {"change_score": None, "construction_detected": False, "note": str(e)}
@@ -371,12 +409,15 @@ def run_shadow(request: ShadowRequest):
     }
     confidence = "medium" if height_m != DEFAULT_HEIGHT_M and lep_name != "Local Environmental Plan" else "low"
 
-    _write_report(
-        request.report_id, request.address, request.lat, request.lng,
-        request.prop_id,
-        {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
-        outputs, confidence,
-    )
+    try:
+        _write_report(
+            request.report_id, request.address, request.lat, request.lng,
+            request.prop_id,
+            {"prop_id": request.prop_id, "lat": request.lat, "lng": request.lng},
+            outputs, confidence,
+        )
+    except Exception as e:
+        logger.error(f"Shadow report DB write failed (non-fatal): {e}")
 
     return {
         "address": request.address,

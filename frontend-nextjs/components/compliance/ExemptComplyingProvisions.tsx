@@ -52,9 +52,10 @@ interface Props {
   lotArea?: number | null;    // m² — from property context
   heritageItem?: boolean;     // true = individually listed heritage item (LEP Schedule 5)
   heritageAffected?: boolean; // true = any heritage flag (item OR conservation area)
+  isStrata?: boolean;         // true = strata unit — lot area figures are parent lot, not unit
 }
 
-export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false, heritageAffected = false }: Props) {
+export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = false, heritageAffected = false, isStrata = false }: Props) {
   const residentialZones = ['R1', 'R2', 'R3', 'R4', 'RU5'];
   const [expanded, setExpanded] = useState(residentialZones.includes(zoneCode));
   const [selectedType, setSelectedType] = useState<WorkTypeKey | null>(null);
@@ -134,6 +135,15 @@ export function ExemptComplyingProvisions({ zoneCode, lotArea, heritageItem = fa
 
       {expanded && (
         <CardContent className="pt-0">
+          {isStrata && (
+            <div className="mb-3 bg-orange-50 border border-orange-200 rounded px-3 py-2 flex items-start gap-2 text-xs">
+              <Shield className="h-3.5 w-3.5 text-orange-500 flex-shrink-0 mt-0.5" />
+              <span className="text-orange-800">
+                <span className="font-semibold">Strata unit — </span>
+                Lot area figures below apply to the parent lot. For individual unit works (decks, fences within a lot), confirm area with your strata plan. Works affecting common property require owners corporation consent.
+              </span>
+            </div>
+          )}
           <p className="text-sm text-purple-700 mb-4">
             Standards that apply to development that may proceed as complying development
             on this property. Click a work type to view the applicable standards.

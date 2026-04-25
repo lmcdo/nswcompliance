@@ -6,6 +6,8 @@
  * Use case: Show all 82 Marrickville DCP documents (57 with TOC, 25 without)
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 import { dataRateLimiter, getClientIdentifier, checkRateLimit, createRateLimitHeaders } from '@/lib/rate-limit';

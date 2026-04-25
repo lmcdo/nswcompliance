@@ -65,6 +65,24 @@ autoschema_database_output/
 images/
 *.json.bak
 
+# Flood study shapefiles and raw spatial data (large binaries, not for VCS)
+data/flood_studies/
+data/spatial_raw/
+
+# Generated conveyancing PDF reports (outputs, not source)
+reports/conveyancing/*.pdf
+
+# One-off diagnostic scripts (not part of the codebase)
+scripts/_check_*.py
+
+# Test trail files
+test-trail/
+
+# SAR validation outputs and local credentials (large GeoTIFFs, not for VCS)
+validation_output/
+scripts/drawdown_creds.txt
+scripts/drawdown_run.bat
+
 # Frontend Next.js specific
 frontend-nextjs/node_modules/
 frontend-nextjs/.next/
@@ -449,3 +467,7 @@ reviews/
 
 # Large GIS data files — ingested into PostGIS, not stored in repo
 data/hawkesbury_flood/
+
+# Leigh presentation deck (binary)
+leigh-verify.pdf
+data/dcps/

@@ -6,6 +6,13 @@ const nextConfig = {
  // Rewrite /pdf-pages/* to Cloudflare R2 in production
  async redirects() {
    return [
+     // www.canibuildit.com.au → canibuildit.com.au (Maps API key restriction)
+     {
+       source: '/:path*',
+       has: [{ type: 'host', value: 'www.canibuildit.com.au' }],
+       destination: 'https://canibuildit.com.au/:path*',
+       permanent: true,
+     },
      // whatcanibuildhere.com.au → canibuildit.com.au
      {
        source: '/:path*',
@@ -13,13 +20,19 @@ const nextConfig = {
        destination: 'https://canibuildit.com.au/:path*',
        permanent: false,
      },
-     // plotdetect.com.au root → canibuildit.com.au
+     // plotdetect.com.au root → canibuildit.com.au (fallback if DNS ever points here)
      {
        source: '/',
        has: [{ type: 'host', value: 'plotdetect.com.au' }],
        destination: 'https://canibuildit.com.au',
        permanent: false,
      },
+     // Clean distribution URLs — for builder emails, QR cards, social links
+     { source: '/granny-flat', destination: '/reports/granny-flat', permanent: false },
+     { source: '/flood-risk', destination: '/reports/flood', permanent: false },
+     { source: '/solar-yield', destination: '/reports/solar-yield', permanent: false },
+     { source: '/shadow-check', destination: '/reports/shadow', permanent: false },
+     { source: '/threat-radar', destination: '/reports/threat-radar', permanent: false },
    ];
  },
  async rewrites() {

@@ -87,7 +87,7 @@ ALL_LGA_NAMES = sorted([
 LAYER_CONFIG = {
     # LEP layers
     "zone":         {"service": "Principal_Planning_Layers", "layer_id": 11, "value_field": "SYM_CODE"},
-    "heritage":     {"service": "Principal_Planning_Layers", "layer_id": 8,  "value_field": "CLASSIFCTN"},
+    "heritage":     {"service": "Principal_Planning_Layers", "layer_id": 8,  "value_field": "LAY_CLASS"},  # LAY_CLASS verified 2026-04-19 from ArcGIS layer 8 metadata
     "height":       {"service": "Principal_Planning_Layers", "layer_id": 7,  "value_field": "MAX_B_H_M", "numeric": True},
     "fsr":          {"service": "Principal_Planning_Layers", "layer_id": 4,  "value_field": "SYM_CODE"},
     "lot_size":     {"service": "Principal_Planning_Layers", "layer_id": 14, "value_field": "LOT_SIZE", "numeric": True},
@@ -144,6 +144,95 @@ LAYER_CONFIG = {
 # These are hosted on council ArcGIS Online organisations, not mapprod3.
 # Coordinates are returned in WGS84 (outSR=4326 requested) so no reprojection needed.
 # ──────────────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------------------
+# Post-ingest validation config
+# ---------------------------------------------------------------------------
+
+# Per-layer validation rules. After ingest completes for a layer, _validate_layer()
+# checks null rates and (for heritage) value taxonomy to catch field-name regressions.
+LAYER_VALIDATIONS: dict[str, dict] = {
+    "heritage": {
+        "max_null_rate": 0.02,
+        "allowed_values": {
+            "Conservation Area - General", "Conservation Area - Landscape",
+            "Conservation Area - Archaeological", "Conservation Area - Aboriginal",
+            "Item - General", "Item - Landscape", "Item - Archaeological",
+            "Item - Aboriginal", "Aboriginal Place of Heritage Significance",
+            "Aboriginal Object",
+        },
+    },
+    "zone":      {"max_null_rate": 0.01},
+    "flood":     {"max_null_rate": 0.05},
+    "bushfire":  {"max_null_rate": 0.10},  # d_Category can be NULL for unclassified areas
+    "height":    {"max_null_rate": 0.05},
+    "fsr":       {"max_null_rate": 0.05},
+    "lot_size":  {"max_null_rate": 0.05},
+}
+
+
+def _validate_layer(cur, layer_type: str, lga_name: str | None) -> None:
+    """Post-ingest assertions for a completed layer ingest.
+
+    Prints warnings — never raises. Ingest continues even if assertions fail
+    so that a single bad LGA/layer doesn't abort a full-NSW run.
+
+    Checks:
+      1. NULL rate for `value` column (catches wrong field name in LAYER_CONFIG)
+      2. Unexpected values (for layers with allowed_values taxonomy)
+    """
+    rules = LAYER_VALIDATIONS.get(layer_type)
+    if not rules:
+        return
+
+    lga_clause = "AND lga_name = %s" if lga_name else ""
+    params_base = [layer_type] + ([lga_name] if lga_name else [])
+
+    # 1. NULL rate
+    cur.execute(
+        f"""
+        SELECT
+            COUNT(*) FILTER (WHERE value IS NULL) AS nulls,
+            COUNT(*) AS total
+        FROM spatial_overlays
+        WHERE layer_type = %s {lga_clause}
+        """,
+        params_base,
+    )
+    row = cur.fetchone()
+    if row and row[1] > 0:
+        null_rate = row[0] / row[1]
+        max_null = rules.get("max_null_rate", 0.05)
+        scope = lga_name or "ALL"
+        if null_rate > max_null:
+            print(
+                f"  [WARN] {scope}/{layer_type}: NULL rate {null_rate:.1%} exceeds "
+                f"threshold {max_null:.0%} ({row[0]}/{row[1]} rows have NULL value). "
+                f"Check value_field in LAYER_CONFIG."
+            )
+        else:
+            print(f"  [OK]   {scope}/{layer_type}: NULL rate {null_rate:.1%} ({row[0]}/{row[1]})")
+
+    # 2. Unexpected values (taxonomy check)
+    allowed = rules.get("allowed_values")
+    if allowed and row and row[1] > 0:
+        cur.execute(
+            f"""
+            SELECT DISTINCT value
+            FROM spatial_overlays
+            WHERE layer_type = %s {lga_clause}
+              AND value IS NOT NULL
+            """,
+            params_base,
+        )
+        found_values = {r[0] for r in cur.fetchall()}
+        unexpected = found_values - allowed
+        if unexpected:
+            print(
+                f"  [WARN] {lga_name or 'ALL'}/{layer_type}: unexpected values "
+                f"(not in taxonomy): {sorted(unexpected)}"
+            )
+
+
 COUNCIL_FEATURESERVER_CONFIG: dict[str, dict] = {
     # Inner West Council — Special Entertainment Precincts
     # Source: services-ap1.arcgis.com/dp2UIID5MUpTUFVA (public, 10,950 views confirmed)
@@ -527,13 +616,20 @@ def main():
                 print(f"\n[GLOBAL / {layer_type.upper()}]")
                 count = ingest_layer(cur, layer_type, lga_name=None, dry_run=args.dry_run)
                 if not args.dry_run:
+                    # Write single 'ALL' coverage row for global layers
                     cur.execute("""
                         INSERT INTO spatial_overlays_coverage (lga_name, layer_type, ingested_at, feature_count)
                         VALUES ('ALL', %s, now(), %s)
                         ON CONFLICT (lga_name, layer_type) DO UPDATE
                             SET ingested_at = now(), feature_count = EXCLUDED.feature_count
                     """, (layer_type, count))
+                    # Remove any stale per-LGA rows that may have been created by an older run
+                    cur.execute(
+                        "DELETE FROM spatial_overlays_coverage WHERE layer_type = %s AND lga_name != 'ALL'",
+                        (layer_type,),
+                    )
                     conn.commit()
+                    _validate_layer(cur, layer_type, lga_name=None)
                 print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
             else:
                 for lga in lgas:
@@ -541,13 +637,21 @@ def main():
                     try:
                         count = ingest_layer(cur, layer_type, lga_name=lga, dry_run=args.dry_run)
                         if not args.dry_run:
+                            # Re-count from actual table — guards against a mapprod3 run returning 0
+                            # for an LGA whose data was ingested from a council FeatureServer endpoint.
+                            cur.execute(
+                                "SELECT COUNT(*) FROM spatial_overlays WHERE layer_type = %s AND lga_name = %s",
+                                (layer_type, lga),
+                            )
+                            actual_count = cur.fetchone()[0]
                             cur.execute("""
                                 INSERT INTO spatial_overlays_coverage (lga_name, layer_type, ingested_at, feature_count)
                                 VALUES (%s, %s, now(), %s)
                                 ON CONFLICT (lga_name, layer_type) DO UPDATE
                                     SET ingested_at = now(), feature_count = EXCLUDED.feature_count
-                            """, (lga, layer_type, count))
+                            """, (lga, layer_type, actual_count))
                             conn.commit()
+                            _validate_layer(cur, layer_type, lga_name=lga)
                         print(f"  Done: {count} features {'(dry run -- not written)' if args.dry_run else 'upserted'}")
                     except Exception as e:
                         conn.rollback()

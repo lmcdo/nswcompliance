@@ -38,20 +38,96 @@ Response contract (must match frontend-nextjs/app/reports/solar-yield/page.tsx):
 """
 import logging
 import os
+import time
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 import psycopg2
 import psycopg2.extras
 import requests
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 GOOGLE_SOLAR_API = "https://solar.googleapis.com/v1/buildingInsights:findClosest"
 DATA_SOURCES = ["Google Solar API"]
+
+
+# ---------------------------------------------------------------------------
+# Google Solar API response models
+# ---------------------------------------------------------------------------
+# These validate and normalise the raw API response at the boundary.
+# _NullSafeModel strips null values before field validation so field defaults
+# apply when Google sends null — this eliminates the `or 0.0` pattern
+# throughout parsing code and prevents TypeError on null numeric fields.
+#
+# Exception: azimuthDegrees is kept Optional[float] = None because 0.0 is a
+# *valid* value (due north) that must be distinguished from "not provided".
+# ---------------------------------------------------------------------------
+
+class _NullSafeModel(BaseModel):
+    """Strip null dict values before Pydantic processes them so defaults apply."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _strip_nulls(cls, data: object) -> object:
+        if isinstance(data, dict):
+            return {k: v for k, v in data.items() if v is not None}
+        return data
+
+
+class _SolarPanelCenter(_NullSafeModel):
+    latitude: float = 0.0
+    longitude: float = 0.0
+
+
+class _SolarPanel(_NullSafeModel):
+    center: _SolarPanelCenter = _SolarPanelCenter()
+    segmentIndex: int = 0
+    yearlyEnergyDcKwh: float = 0.0
+
+
+class _RoofSegmentSunshineStats(_NullSafeModel):
+    areaMeters2: float = 0.0
+    sunshineQuantiles: List[float] = []
+
+
+class _RoofSegmentStats(_NullSafeModel):
+    stats: _RoofSegmentSunshineStats = _RoofSegmentSunshineStats()
+    pitchDegrees: float = 0.0
+    # Optional — 0.0 is valid (north); None means Google didn't provide a value
+    azimuthDegrees: Optional[float] = None
+
+
+class _WholeRoofStats(_NullSafeModel):
+    areaMeters2: float = 0.0
+
+
+class _SolarPanelConfig(_NullSafeModel):
+    panelsCount: int = 0
+    yearlyEnergyDcKwh: float = 0.0
+
+
+class _SolarPotential(_NullSafeModel):
+    maxArrayPanelsCount: int = 0
+    maxArrayAreaMeters2: float = 0.0
+    maxSunshineHoursPerYear: float = 0.0
+    wholeRoofStats: _WholeRoofStats = _WholeRoofStats()
+    roofSegmentStats: List[_RoofSegmentStats] = []
+    solarPanels: List[_SolarPanel] = []
+    solarPanelConfigs: List[_SolarPanelConfig] = []
+
+
+class _ImageryDate(_NullSafeModel):
+    year: Optional[int] = None
+    month: Optional[int] = None
+
+
+class _GoogleSolarResponse(BaseModel):
+    solarPotential: Optional[_SolarPotential] = None
+    imageryDate: _ImageryDate = _ImageryDate()
 
 
 class SolarYieldRequest(BaseModel):
@@ -109,7 +185,9 @@ def _write_report(
             outputs = EXCLUDED.outputs,
             confidence = EXCLUDED.confidence
     """
-    with _get_conn() as conn:
+    conn = None
+    try:
+        conn = _get_conn()
         with conn.cursor() as cur:
             cur.execute(sql, (
                 report_id, address, lat, lng, prop_id,
@@ -120,6 +198,9 @@ def _write_report(
                 DATA_SOURCES,
             ))
         conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
@@ -154,33 +235,38 @@ def _clip_panels_to_lot(sp: dict, lot_polygon_wgs84: dict) -> dict:
         logger.warning(f"Invalid lot polygon, clipping skipped: {exc}")
         return sp
 
-    lot_panels = [
-        p for p in panels
-        if lot_shape.contains(Point(
-            p["center"]["longitude"],
-            p["center"]["latitude"],
-        ))
-    ]
+    lot_panels = []
+    for p in panels:
+        try:
+            center = p["center"]
+            if lot_shape.contains(Point(center["longitude"], center["latitude"])):
+                lot_panels.append(p)
+        except (KeyError, TypeError):
+            # Malformed panel entry — skip rather than crash the whole clip
+            logger.debug(f"Skipping malformed panel entry: {p}")
+            continue
 
-    total_count = sp.get("maxArrayPanelsCount", len(panels))
-    total_area = float(sp.get("maxArrayAreaMeters2", 0.0))
-    per_panel_area = total_area / total_count if total_count > 0 else 2.0  # ~2 m² per 400 W panel
+    total_count = sp.get("maxArrayPanelsCount") or len(panels)
+    total_area = float(sp.get("maxArrayAreaMeters2") or 0.0)
+    # Fallback 2.0 m² when either count or area is zero (avoids 0 ÷ 0 and 0-area panels)
+    per_panel_area = total_area / total_count if total_count > 0 and total_area > 0 else 2.0
 
     lot_count = len(lot_panels)
     lot_area = round(lot_count * per_panel_area, 1)
-    lot_kwh = round(sum(p.get("yearlyEnergyDcKwh", 0.0) for p in lot_panels), 0)
+    # Guard against null yearlyEnergyDcKwh values in Google response
+    lot_kwh = round(sum((p.get("yearlyEnergyDcKwh") or 0.0) for p in lot_panels), 0)
 
     # Roof area: sum segment areas referenced by lot panels
     segment_indices = {p["segmentIndex"] for p in lot_panels if "segmentIndex" in p}
     segments = sp.get("roofSegmentStats", [])
     lot_roof_area = sum(
-        s.get("stats", {}).get("areaMeters2", 0.0)
+        s.get("stats", {}).get("areaMeters2") or 0.0
         for i, s in enumerate(segments)
         if i in segment_indices
     )
     if not lot_roof_area and total_count > 0:
         # Proportional fallback when segmentIndex mapping yields nothing
-        whole = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
+        whole = sp.get("wholeRoofStats", {}).get("areaMeters2") or 0.0
         lot_roof_area = round(whole * lot_count / total_count, 1)
 
     lot_segments = [s for i, s in enumerate(segments) if i in segment_indices]
@@ -207,29 +293,61 @@ def _query_google_solar(lat: float, lng: float) -> dict:
     """
     Call Google Solar API buildingInsights endpoint.
     Returns the raw API response dict, or {"coverage_available": False} on 404.
-    Raises on other HTTP errors.
+    Raises on other HTTP errors. API key is never included in raised messages.
     """
     api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
     if not api_key:
         raise ValueError("GOOGLE_MAPS_API_KEY env var not set")
 
-    r = requests.get(
-        GOOGLE_SOLAR_API,
-        params={
-            "location.latitude": lat,
-            "location.longitude": lng,
-            "requiredQuality": "MEDIUM",
-            "key": api_key,
-        },
-        timeout=15,
+    params = {
+        "location.latitude": lat,
+        "location.longitude": lng,
+        "requiredQuality": "MEDIUM",
+        "key": api_key,
+    }
+
+    # Retry on transient errors: network failures, 429, and 5xx.
+    # Never include the response/request URL in raised exceptions (URL contains the API key).
+    for attempt in range(3):
+        try:
+            r = requests.get(GOOGLE_SOLAR_API, params=params, timeout=15)
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
+            if attempt < 2:
+                logger.warning(f"Google Solar API network error attempt {attempt+1}/3 — retrying")
+                continue
+            raise RuntimeError("Google Solar API unreachable after 3 attempts") from None
+        except Exception:
+            raise RuntimeError("Google Solar API request failed") from None
+
+        if r.status_code == 404:
+            logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
+            return {"coverage_available": False}
+        if r.status_code == 403:
+            raise ValueError("Google Solar API access denied (403) — check API key and quota")
+        if r.status_code == 429 or r.status_code >= 500:
+            if attempt < 2:
+                wait = 2 ** attempt  # 1s, 2s
+                logger.warning(f"Google Solar API {r.status_code} attempt {attempt+1}/3 — retrying in {wait}s")
+                time.sleep(wait)
+                continue
+            raise RuntimeError(f"Google Solar API returned {r.status_code} after 3 attempts")
+        if not r.ok:
+            raise RuntimeError(f"Google Solar API returned {r.status_code}")
+        try:
+            return r.json()
+        except Exception:
+            raise RuntimeError("Google Solar API returned non-JSON response") from None
+
+    raise RuntimeError("Google Solar API failed after retries")
+
+
+def _no_coverage_output() -> SolarYieldOutput:
+    return SolarYieldOutput(
+        max_panels=0, max_panel_area_m2=0.0, annual_kwh_estimate=0.0,
+        sunshine_hours_per_year=0.0, best_pitch_deg=0.0, best_azimuth_deg=0.0,
+        roof_area_m2=0.0, is_heritage=False, is_commercial_scale=False,
+        imagery_date="unknown", coverage_available=False,
     )
-
-    if r.status_code == 404:
-        logger.warning(f"Google Solar API: no coverage at ({lat}, {lng})")
-        return {"coverage_available": False}
-
-    r.raise_for_status()
-    return r.json()
 
 
 def _parse_solar_response(
@@ -239,110 +357,139 @@ def _parse_solar_response(
     """
     Extract the fields we need from the Google Solar API buildingInsights response.
 
-    If lot_polygon_wgs84 is provided, clips solarPanels[] to the lot boundary
-    before computing counts, area, and yield.  This prevents the analysis from
-    including panels on neighbouring buildings that Google's findClosest may
-    have selected.
+    Validates and normalises the raw response using _GoogleSolarResponse — null
+    fields in the API response are coerced to defaults by _NullSafeModel, so
+    no defensive `or 0.0` is required when accessing the validated model's fields.
 
-    Best segment: highest median sunshine hours (index 4 of sunshineQuantiles),
+    If lot_polygon_wgs84 is provided, clips solarPanels[] to the lot boundary
+    before computing counts, area, and yield.  Clipping works on a plain dict
+    (model_dump() of solarPotential) so synthetic fields (_lot_clipped, etc.)
+    can be appended by _clip_panels_to_lot without modifying the model class.
+
+    Best segment: highest median sunshine hours (index 5 of sunshineQuantiles = 50th pct),
     tiebroken toward north-facing.  After lot clipping, only segments referenced
     by lot panels are considered — so orientation reflects this lot's roof, not
     the whole complex.
 
     Azimuth convention: Google compass bearing (0=N, 90=E, 180=S, 270=W).
     """
+    # Our synthetic no-coverage sentinel (set by _query_google_solar on 404)
     if not data.get("coverage_available", True):
-        return SolarYieldOutput(
-            max_panels=0,
-            max_panel_area_m2=0.0,
-            annual_kwh_estimate=0.0,
-            sunshine_hours_per_year=0.0,
-            best_pitch_deg=0.0,
-            best_azimuth_deg=0.0,
-            roof_area_m2=0.0,
-            is_heritage=False,
-            is_commercial_scale=False,
-            imagery_date="unknown",
-            coverage_available=False,
-        )
+        return _no_coverage_output()
 
-    sp = data.get("solarPotential", {})
+    # Validate and normalise at the API boundary.
+    # _NullSafeModel strips null values so field defaults apply — a null
+    # maxArrayPanelsCount becomes 0, a null roofSegmentStats becomes [].
+    # ValidationError here means a structurally unexpected response; treat as no coverage.
+    try:
+        gsolar = _GoogleSolarResponse.model_validate(data)
+    except Exception as exc:
+        logger.warning(f"Google Solar API response validation failed: {exc} — treating as no coverage")
+        return _no_coverage_output()
 
-    # Apply lot clipping if a polygon is available
+    if not gsolar.solarPotential:
+        logger.warning("Google Solar API returned 200 with no solarPotential — treating as no coverage")
+        return _no_coverage_output()
+
+    # Convert validated model → plain dict so _clip_panels_to_lot can append
+    # synthetic fields (_lot_clipped, _lot_annual_kwh) without modifying the model.
+    # All values in this dict are guaranteed non-null (normalised by _NullSafeModel).
+    sp: dict = gsolar.solarPotential.model_dump()
+
     if lot_polygon_wgs84:
         sp = _clip_panels_to_lot(sp, lot_polygon_wgs84)
 
-    # Imagery date
-    img_date = data.get("imageryDate", {})
-    if img_date.get("year") and img_date.get("month"):
-        imagery_date = f"{img_date['year']}-{img_date['month']:02d}"
-    else:
-        imagery_date = "unknown"
+    # Imagery date from validated model — year/month are Optional[int]
+    gd = gsolar.imageryDate
+    imagery_date = f"{gd.year}-{gd.month:02d}" if gd.year and gd.month else "unknown"
 
-    # Roof area (from wholeRoofStats, already updated by clipping if applied)
-    roof_area = sp.get("wholeRoofStats", {}).get("areaMeters2", 0.0)
+    # All numeric fields guaranteed non-null after model normalisation
+    roof_area: float = sp["wholeRoofStats"]["areaMeters2"]
 
     # Best segment: highest median sunshine hours among (lot-filtered) segments.
     # Tiebreak: prefer segments closer to north-facing (azimuth near 0/360).
-    segments = sp.get("roofSegmentStats", [])
+    segments: list = sp["roofSegmentStats"]
 
     def _segment_score(seg: dict) -> float:
-        quantiles = seg.get("stats", {}).get("sunshineQuantiles", [])
-        median_sun = float(quantiles[4]) if len(quantiles) > 4 else 0.0
-        az = seg.get("azimuthDegrees", 180.0)
-        north_bonus = (1.0 - min(az, 360 - az) / 180.0) * 10
-        return median_sun + north_bonus
+        quantiles: list = seg["stats"]["sunshineQuantiles"]
+        # Google returns 11 values (0,10,20,...,100 percentile). Index 5 = 50th (median).
+        median_sun = quantiles[5] if len(quantiles) > 5 else 0.0
+        # azimuthDegrees is Optional[float]=None in the model: 0.0 is valid (north-facing).
+        # None means Google didn't provide a value — default to south (worst case, no bonus).
+        az_raw = seg["azimuthDegrees"]
+        az = float(az_raw) if az_raw is not None else 180.0
+        # North-facing bonus: 0–5% of median_sun as tiebreaker (Southern Hemisphere:
+        # north-facing receives most direct irradiance). Scaled so a sunnier south-facing
+        # segment still wins.
+        north_factor = 1.0 - min(az, 360.0 - az) / 180.0  # 1.0=N, 0.0=S
+        return median_sun * (1.0 + 0.05 * north_factor)
 
-    best_seg = max(segments, key=_segment_score) if segments else {}
-    best_pitch = best_seg.get("pitchDegrees", 0.0)
-    best_azimuth = best_seg.get("azimuthDegrees", 0.0)
+    best_seg: dict = max(segments, key=_segment_score) if segments else {}
+    best_pitch: float = best_seg.get("pitchDegrees", 0.0)
+    # azimuthDegrees can be None (Optional[float]) — keep None-safe check
+    best_az_raw = best_seg.get("azimuthDegrees")
+    best_azimuth: float = float(best_az_raw) if best_az_raw is not None else 0.0
 
     # Annual kWh: use per-panel sum when lot-clipped (more accurate), otherwise
     # take the max solarPanelConfigs entry (Google's aggregate for the whole building).
     if sp.get("_lot_clipped"):
-        annual_kwh = float(sp.get("_lot_annual_kwh", 0.0))
+        annual_kwh: float = float(sp["_lot_annual_kwh"])
     else:
-        configs = sp.get("solarPanelConfigs", [])
-        max_config = configs[-1] if configs else {}
-        annual_kwh = float(max_config.get("yearlyEnergyDcKwh", 0.0))
+        configs: list = sp["solarPanelConfigs"]
+        annual_kwh = float(configs[-1]["yearlyEnergyDcKwh"]) if configs else 0.0
 
-    max_panels = int(sp.get("maxArrayPanelsCount", 0))
-    max_panel_area = round(float(sp.get("maxArrayAreaMeters2", 0.0)), 1)
-    roof_area_rounded = round(float(roof_area), 1)
+    max_panels: int = int(sp["maxArrayPanelsCount"])
+    max_panel_area: float = round(float(sp["maxArrayAreaMeters2"]), 1)
+    roof_area_rounded: float = round(roof_area, 1)
 
     return SolarYieldOutput(
         max_panels=max_panels,
         max_panel_area_m2=max_panel_area,
         annual_kwh_estimate=round(annual_kwh, 0),
-        sunshine_hours_per_year=round(float(sp.get("maxSunshineHoursPerYear", 0.0)), 0),
-        best_pitch_deg=round(float(best_pitch), 1),
-        best_azimuth_deg=round(float(best_azimuth), 1),
+        sunshine_hours_per_year=round(float(sp["maxSunshineHoursPerYear"]), 0),
+        best_pitch_deg=round(best_pitch, 1),
+        best_azimuth_deg=round(best_azimuth, 1),
         roof_area_m2=roof_area_rounded,
-        is_heritage=False,  # populated below
+        is_heritage=False,  # populated by caller
         is_commercial_scale=roof_area_rounded > 500,
         imagery_date=imagery_date,
         coverage_available=True,
     )
 
 
-def _check_heritage(prop_id: Optional[str]) -> bool:
-    if not prop_id:
-        return False
+def _check_heritage(lat: float, lng: float) -> bool:
+    """
+    Spatial heritage check: point-in-polygon against spatial_overlays layer_type='heritage'.
+    Returns False (safe default) if spatial_overlays has no heritage data or query fails.
+    """
+    conn = None
     try:
-        with _get_conn() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "SELECT COUNT(*) FROM regulatory_provisions "
-                    "WHERE is_current = TRUE AND v2_topic = 'Heritage' AND v2_structural_category != 'structural' LIMIT 1"
-                )
-                return cur.fetchone()[0] > 0
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                  AND is_active = TRUE
+                  AND ST_Contains(
+                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                      )
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            return cur.fetchone() is not None
     except Exception as e:
         logger.warning(f"Heritage flag lookup failed: {e}")
         return False
+    finally:
+        if conn:
+            conn.close()
 
 
 @router.post("/solar-yield")
-async def run_solar_yield(request: SolarYieldRequest):
+def run_solar_yield(request: SolarYieldRequest):
     logger.info(f"Solar yield: {request.address} ({request.lat}, {request.lng})")
 
     try:
@@ -351,8 +498,13 @@ async def run_solar_yield(request: SolarYieldRequest):
         logger.exception(f"Google Solar API failed: {e}")
         raise HTTPException(status_code=502, detail=f"Google Solar API error: {e}")
 
-    outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
-    outputs.is_heritage = _check_heritage(request.prop_id)
+    try:
+        outputs = _parse_solar_response(raw, lot_polygon_wgs84=request.lot_polygon_wgs84)
+    except Exception as e:
+        logger.exception(f"Solar response parse failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to parse solar data")
+
+    outputs.is_heritage = _check_heritage(request.lat, request.lng)
 
     if not outputs.coverage_available:
         confidence = "low"
@@ -363,16 +515,25 @@ async def run_solar_yield(request: SolarYieldRequest):
     else:
         confidence = "medium"  # no lot polygon — raw Google result, building may not match lot
 
-    _write_report(
-        report_id=request.report_id,
-        address=request.address,
-        lat=request.lat,
-        lng=request.lng,
-        prop_id=request.prop_id,
-        inputs={"lat": request.lat, "lng": request.lng},
-        outputs=outputs.model_dump(),
-        confidence=confidence,
-    )
+    try:
+        _write_report(
+            report_id=request.report_id,
+            address=request.address,
+            lat=request.lat,
+            lng=request.lng,
+            prop_id=request.prop_id,
+            inputs={
+                "address": request.address,
+                "lat": request.lat,
+                "lng": request.lng,
+                "lot_polygon_provided": request.lot_polygon_wgs84 is not None,
+            },
+            outputs=outputs.model_dump(),
+            confidence=confidence,
+        )
+    except Exception as e:
+        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
+        logger.error(f"Solar yield DB write failed (non-fatal): {e}")
 
     logger.info(
         f"Solar yield complete: {request.report_id} — "

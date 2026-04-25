@@ -28,6 +28,7 @@ SEPP Housing 2021 rules applied:
   - Setbacks: SEPP Housing defaults (rear 3m, side 0.9m)
 """
 
+import base64
 import json
 import logging
 import math
@@ -63,8 +64,29 @@ DETECTION_PROMPTS = [
 # 15 m² ≈ a large carport. Filters out pergolas, bins, paths.
 MIN_STRUCTURE_AREA_M2 = 15.0
 
+# Upper bound: no single residential structure footprint exceeds this.
+# Sydney's largest residential footprints are ~400–500 m². 600 gives headroom.
+MAX_STRUCTURE_AREA_M2 = 600.0
+
 # IoU threshold for deduplication: two masks covering >50% the same pixels = same structure
 IOU_DEDUP_THRESHOLD = 0.5
+
+# --- SAM quality filters (applied after lot clipping) ---
+# Fill ratio: SAM mask pixels / bbox pixel area.
+# A coherent building fills its bbox; a misfire (DINO returned whole-tile bbox,
+# SAM found one small structure inside) has fill → 0.
+# Backed by SpaceNet building detection, SAMGeo docs, Ecopia AI pipeline.
+# Threshold: 0.15 (well below typical building fill of 0.40–0.85).
+MIN_FILL_RATIO = 0.15
+
+# Bbox fraction: bbox area / tile area.
+# SpaceNet6 winners, Microsoft Building Footprints effective cap: 0.25–0.40.
+# 0.35 allows for large houses while blocking tile-wide DINO misfires.
+MAX_BBOX_FRACTION = 0.35
+
+# Aspect ratio: longer side / shorter side of bbox.
+# Buildings are roughly equidimensional. Values > 8 indicate fences, roads, errors.
+MAX_ASPECT_RATIO = 8.0
 
 # SEPP Housing 2021 defaults
 SEPP_MIN_LOT_M2 = 450.0
@@ -134,6 +156,11 @@ class GrannyFlatDetectResponse(BaseModel):
     samgeo_validated: bool
     confirmation_required: bool
     tile_licence: str
+    tile_b64: Optional[str] = None      # base64-encoded PNG aerial tile for frontend canvas
+    tile_width: Optional[int] = None    # tile pixel dimensions for bbox_pixel scaling
+    tile_height: Optional[int] = None
+    tile_bbox: Optional[dict] = None    # geographic bounds: {min_lat, max_lat, min_lng, max_lng}
+    lot_polygon_wgs84: Optional[list[list[list[float]]]] = None  # [[lng, lat], ...] rings in WGS84
     detect_id: str          # UUID for subsequent /confirm call
     warnings: list[str] = []
 
@@ -150,6 +177,8 @@ class GrannyFlatConfirmRequest(BaseModel):
     postcode: Optional[str] = None
     report_id: Optional[str] = None     # pre-allocated by Next.js
     is_heritage: Optional[bool] = None  # from NSW Planning Portal via Next.js
+    existing_secondary_dwelling: Optional[bool] = None  # user self-report: is there already a granny flat on this lot?
+    main_dwelling_area_m2: Optional[float] = None  # SAM-detected footprint of principal dwelling (is_main_dwelling=True)
 
 
 class GrannyFlatConfirmResponse(BaseModel):
@@ -175,6 +204,18 @@ def _mercator_to_wgs84(x: float, y: float) -> tuple[float, float]:
     lng = x * 180.0 / R
     lat = math.degrees(2.0 * math.atan(math.exp(y * math.pi / R)) - math.pi / 2.0)
     return lat, lng
+
+
+def _mercator_rings_to_wgs84(rings: list) -> list[list[list[float]]]:
+    """Convert Web Mercator polygon rings to WGS84 [[lng, lat], ...] rings (GeoJSON order)."""
+    out = []
+    for ring in rings:
+        wgs_ring = []
+        for x_merc, y_merc in ring:
+            lat, lng = _mercator_to_wgs84(x_merc, y_merc)
+            wgs_ring.append([lng, lat])
+        out.append(wgs_ring)
+    return out
 
 
 def _mercator_rings_to_pixel_via_bbox(
@@ -283,25 +324,105 @@ def _detect_structures_samgeo(
         )
         lot_arr = _build_lot_arr(rings_px, w, h)
 
+    # Build a Shapely lot polygon in WGS84 for geographic containment checks.
+    # This is more reliable than pixel-space rasterisation, which can produce
+    # a lot mask that is slightly offset from the visually rendered boundary.
+    lot_shape_wgs84 = None
+    if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]:
+        try:
+            from shapely.geometry import Polygon as _Polygon, MultiPolygon as _MultiPolygon
+            wgs84_rings = _mercator_rings_to_wgs84(lot_geometry["rings"])
+            if wgs84_rings:
+                exterior = [(lng, lat) for lng, lat in wgs84_rings[0]]
+                holes = [[(lng, lat) for lng, lat in r] for r in wgs84_rings[1:]]
+                lot_shape_wgs84 = _Polygon(exterior, holes)
+                if not lot_shape_wgs84.is_valid:
+                    lot_shape_wgs84 = lot_shape_wgs84.buffer(0)
+        except Exception as _e:
+            logger.warning(f"Could not build lot Shapely polygon: {_e}")
+
     structures = []
     for s in raw_structures:
         x1, y1, x2, y2 = s["bbox_pixel"]
         cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-        if lot_arr is not None:
+
+        if lot_shape_wgs84 is not None:
+            # Convert structure bbox from pixel → WGS84 and compute the fraction
+            # of its area that falls inside the lot polygon.
+            # Accept if ≥50% of bbox area is inside the lot.
+            # This correctly rejects neighbouring structures that merely clip
+            # the lot boundary on one edge (e.g. 10-20% overlap), while
+            # accepting genuine boundary-straddling sheds/garages (>50% inside).
+            from shapely.geometry import Polygon as _BboxPoly
+            lng1 = bbox["min_lng"] + (x1 / w) * (bbox["max_lng"] - bbox["min_lng"])
+            lat1 = bbox["max_lat"] - (y1 / h) * (bbox["max_lat"] - bbox["min_lat"])
+            lng2 = bbox["min_lng"] + (x2 / w) * (bbox["max_lng"] - bbox["min_lng"])
+            lat2 = bbox["max_lat"] - (y2 / h) * (bbox["max_lat"] - bbox["min_lat"])
+            struct_poly = _BboxPoly([(lng1, lat1), (lng2, lat1), (lng2, lat2), (lng1, lat2)])
+            try:
+                intersection_area = lot_shape_wgs84.intersection(struct_poly).area
+                fraction_inside = intersection_area / struct_poly.area if struct_poly.area > 0 else 0.0
+            except Exception:
+                fraction_inside = 0.0
+            if fraction_inside < 0.50:
+                continue
+        elif lot_arr is not None:
+            # Pixel-space fallback if Shapely polygon failed to build.
             h_arr, w_arr = lot_arr.shape
             centre_in = (0 <= cy < h_arr and 0 <= cx < w_arr and lot_arr[cy, cx])
             if not centre_in:
-                # Fallback: accept if ≥40% of bbox overlaps lot (handles small
-                # structures near boundary whose centroid may miss by a pixel).
                 bx1 = max(0, x1); by1 = max(0, y1)
                 bx2 = min(w_arr, x2); by2 = min(h_arr, y2)
                 if bx2 <= bx1 or by2 <= by1:
                     continue
                 bbox_region = lot_arr[by1:by2, bx1:bx2]
-                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.40:
+                if bbox_region.size == 0 or bbox_region.sum() / bbox_region.size < 0.60:
                     continue
+        # --- SAM quality filters ---
+        bw, bh = x2 - x1, y2 - y1
+
+        # 1. Bbox fraction: DINO sometimes returns a whole-tile bbox for a
+        #    low-confidence detection. Cap at 35% of tile area.
+        #    (SpaceNet6 / Microsoft Building Footprints precedent: 0.25–0.40)
+        bbox_fraction = (bw * bh) / (w * h)
+        if bbox_fraction > MAX_BBOX_FRACTION:
+            logger.warning(
+                "Dropping detection: bbox covers %.1f%% of tile (max %.0f%%)",
+                bbox_fraction * 100, MAX_BBOX_FRACTION * 100,
+            )
+            continue
+
+        # 2. Fill ratio: mask pixels / bbox pixels.
+        #    A real building fills its bbox coherently (typically 0.40–0.85).
+        #    A misfire where DINO returned a huge bbox but SAM found one small
+        #    structure inside will have fill → 0.
+        #    Threshold: 0.15 (SpaceNet, SAMGeo, Ecopia AI precedent).
+        bbox_area_px = max(bw * bh, 1)
+        fill_ratio = s["area_px"] / bbox_area_px
+        if fill_ratio < MIN_FILL_RATIO:
+            logger.warning(
+                "Dropping detection: fill ratio %.3f < %.2f (prompt=%s)",
+                fill_ratio, MIN_FILL_RATIO, s["matched_prompt"],
+            )
+            continue
+
+        # 3. Aspect ratio: elongated detections are fences/roads, not buildings.
+        aspect_ratio = max(bw, bh) / max(min(bw, bh), 1)
+        if aspect_ratio > MAX_ASPECT_RATIO:
+            logger.warning(
+                "Dropping detection: aspect ratio %.1f > %.0f",
+                aspect_ratio, MAX_ASPECT_RATIO,
+            )
+            continue
+
         area_m2 = _pixel_area_to_m2(s["area_px"], bbox, w, h)
         if area_m2 < MIN_STRUCTURE_AREA_M2:
+            continue
+        if area_m2 > MAX_STRUCTURE_AREA_M2:
+            logger.warning(
+                "Dropping detection: area %.0f m² exceeds max %.0f m²",
+                area_m2, MAX_STRUCTURE_AREA_M2,
+            )
             continue
         structures.append({
             "area_px": s["area_px"],
@@ -319,7 +440,7 @@ def _detect_structures_samgeo(
 
 def _compute_lot_area_m2(lot_geometry: dict) -> Optional[float]:
     """Shoelace on EPSG:3857 rings, corrected for Mercator distortion (~1.45x at Sydney)."""
-    if not lot_geometry or "rings" not in lot_geometry:
+    if not lot_geometry or "rings" not in lot_geometry or not lot_geometry["rings"]:
         return None
     ring = lot_geometry["rings"][0]
     if len(ring) < 3:
@@ -355,11 +476,19 @@ def _fetch_lot_geometry(prop_id: str) -> Optional[dict]:
     return None
 
 
+_RENTAL_DATA_CACHE: Optional[dict] = None
+
+
 def _load_rental_data() -> dict:
+    global _RENTAL_DATA_CACHE
+    if _RENTAL_DATA_CACHE is not None:
+        return _RENTAL_DATA_CACHE
     if not os.path.exists(RENTAL_DATA_PATH):
-        return {}
+        _RENTAL_DATA_CACHE = {}
+        return _RENTAL_DATA_CACHE
     with open(RENTAL_DATA_PATH) as f:
-        return json.load(f)
+        _RENTAL_DATA_CACHE = json.load(f)
+    return _RENTAL_DATA_CACHE
 
 
 def _get_weekly_rent(postcode: Optional[str]) -> Optional[float]:
@@ -440,13 +569,61 @@ def detect_structures(req: GrannyFlatDetectRequest):
             f"minimum of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
-    tile_path = f"/tmp/gf_{req.prop_id}.png"
+    # Sanitize prop_id to prevent path traversal (prop_ids are numeric, but be defensive)
+    safe_prop_id = "".join(c for c in req.prop_id if c.isalnum() or c in ("-", "_"))
+    tile_path = f"/tmp/gf_{safe_prop_id}.png"
     try:
         tile_path, licence, bbox = fetch_tile_to_file(
             req.lat, req.lng, output_path=tile_path, grid=3
         )
     except Exception as e:
+        # Write error state to DB so the frontend poll resolves immediately
+        if req.report_id:
+            _err_conn = None
+            try:
+                _err_conn = _get_conn()
+                with _err_conn.cursor() as _cur:
+                    _cur.execute(
+                        """
+                        INSERT INTO granny_flat_reports
+                            (id, product, address, lat, lng, prop_id, run_date, confidence, outputs)
+                        VALUES (%s, 'granny-flat', %s, %s, %s, %s, %s, 'error', %s)
+                        ON CONFLICT (id) DO UPDATE SET
+                            confidence = 'error',
+                            outputs = EXCLUDED.outputs
+                        """,
+                        (
+                            req.report_id,
+                            req.address,
+                            req.lat,
+                            req.lng,
+                            req.prop_id,
+                            date.today().isoformat(),
+                            psycopg2.extras.Json({"error": f"Tile fetch failed: {e}"}),
+                        ),
+                    )
+                _err_conn.commit()
+            except Exception:
+                pass
+            finally:
+                try:
+                    _err_conn.close()
+                except Exception:
+                    pass
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
+
+    # Encode tile as base64 for frontend canvas rendering
+    tile_b64: Optional[str] = None
+    tile_width: Optional[int] = None
+    tile_height: Optional[int] = None
+    try:
+        from PIL import Image as _PILImage
+        with _PILImage.open(tile_path) as _img:
+            tile_width, tile_height = _img.size
+        with open(tile_path, "rb") as _f:
+            tile_b64 = base64.b64encode(_f.read()).decode()
+    except Exception as e:
+        logger.warning(f"Tile encode failed: {e}")
 
     detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
@@ -472,6 +649,9 @@ def detect_structures(req: GrannyFlatDetectRequest):
             )
         except Exception as e:
             logger.error(f"samgeo detection failed: {e}")
+            detect_warnings.append(
+                "Aerial structure detection failed — enter structure count manually."
+            )
 
     detect_id = str(uuid.uuid4())
     response = GrannyFlatDetectResponse(
@@ -487,6 +667,15 @@ def detect_structures(req: GrannyFlatDetectRequest):
         samgeo_validated=SAMGEO_VALIDATED,
         confirmation_required=True,
         tile_licence=licence,
+        tile_b64=tile_b64,
+        tile_width=tile_width,
+        tile_height=tile_height,
+        tile_bbox=bbox if bbox else None,
+        lot_polygon_wgs84=(
+            _mercator_rings_to_wgs84(lot_geometry["rings"])
+            if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]
+            else None
+        ),
         detect_id=detect_id,
         warnings=detect_warnings,
     )
@@ -494,6 +683,7 @@ def detect_structures(req: GrannyFlatDetectRequest):
     # When called via Trigger.dev (async path), write detect result to DB so
     # the frontend can poll granny_flat_reports by report_id.
     if req.report_id:
+        conn = None
         try:
             conn = _get_conn()
             with conn.cursor() as cur:
@@ -543,18 +733,70 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     granny_flat_buildable = True
     max_floor_area_m2 = SEPP_MAX_GF_AREA_M2
 
-    if lot_area_m2 is not None and lot_area_m2 < SEPP_MIN_LOT_M2:
+    if lot_area_m2 is None:
+        warnings.append(
+            "Lot area could not be calculated for this property — lot geometry was unavailable. "
+            "The 450 m² minimum under SEPP Housing 2021 (cl 53) could not be verified. "
+            "Confirm lot area on NSW Planning Portal before proceeding."
+        )
+    elif lot_area_m2 < SEPP_MIN_LOT_M2:
         granny_flat_buildable = False
         warnings.append(
             f"Lot area {lot_area_m2:.0f} m² is below the SEPP Housing 2021 minimum "
             f"of {SEPP_MIN_LOT_M2:.0f} m²"
         )
 
+    # Residual area proxy check — simple heuristic pending full geometric envelope computation.
+    # Rationale: a CDC granny flat needs ≥60 m² floor area (SEPP Housing 2021 cl 4.18) plus
+    # clearances: 3 m rear setback + 0.9 m each side + 3 m separation from principal dwelling.
+    # For a typical 10 m-wide lot rear yard that buffer alone consumes ~50–60 m² of ground.
+    # Threshold 120 m² = 60 m² GF footprint + ~60 m² setback/circulation buffer.
+    # Only fires when SAM returned a reliable main dwelling area.
+    #
+    # TODO — full geometric envelope check (v2):
+    #   1. Reproject lot_polygon_wgs84 to a local UTM zone (e.g. GDA2020 / MGA Zone 55 for Sydney).
+    #   2. Identify street frontage edge = longest polygon side within 20 m of nearest road centreline
+    #      (use OSM road layer or lot centroid + bearing heuristic as fallback).
+    #   3. Rear boundary = opposite edge to frontage.
+    #   4. Apply inward offsets: rear −3 m, each side −0.9 m → buildable lot polygon.
+    #   5. Subtract principal dwelling polygon (from SAM mask contour, not bbox) buffered 3 m.
+    #   6. Compute area of remaining buildable polygon.
+    #   7. If area < 60 m²: not buildable. If 60–80 m²: buildable but tight (warn).
+    #   8. For the 12 LGAs in dcp_setback_controls: query table for council-specific rear/side
+    #      setbacks and substitute SEPP defaults above.
+    #   Data needed: lot polygon in UTM, SAM mask contour (not bbox), road centreline layer.
+    if (
+        granny_flat_buildable
+        and lot_area_m2 is not None
+        and req.main_dwelling_area_m2 is not None
+        and req.main_dwelling_area_m2 > 0
+    ):
+        residual_area_m2 = lot_area_m2 - req.main_dwelling_area_m2
+        if residual_area_m2 < 120:
+            granny_flat_buildable = False
+            warnings.append(
+                f"Insufficient space for a complying development granny flat. "
+                f"After the principal dwelling footprint (~{req.main_dwelling_area_m2:.0f} m²), "
+                f"approximately {residual_area_m2:.0f} m² remains — less than the ~120 m² "
+                f"needed for a 60 m² secondary dwelling plus SEPP Housing 2021 setbacks "
+                f"(3 m rear, 0.9 m sides, 3 m from dwelling). "
+                f"A DA pathway may allow a smaller or differently positioned structure — "
+                f"consult a town planner."
+            )
+
     is_heritage = bool(req.is_heritage)
     if is_heritage:
         warnings.append(
             "Property is in a Heritage Conservation Area or has a heritage listing. "
             "Granny flat construction may require heritage approval — confirm with council."
+        )
+
+    # SEPP Housing 2021 cl 53(1): only one secondary dwelling per lot.
+    if req.existing_secondary_dwelling is True:
+        granny_flat_buildable = False
+        warnings.append(
+            "A secondary dwelling already exists on this lot. SEPP Housing 2021 (cl 53(1)) "
+            "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
         )
 
     weekly_rent = _get_weekly_rent(req.postcode)
@@ -576,7 +818,10 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "Run services/scripts/update_rental_data.py to populate."
         )
 
-    if req.confirmed_structure_count >= 2:
+    # Only show generic "verify outbuilding" warning if user hasn't already answered
+    # the secondary dwelling question. If they said True, we've already blocked buildability.
+    # If they said False, no ambiguity. Only warn when None (not asked / not answered).
+    if req.confirmed_structure_count >= 2 and req.existing_secondary_dwelling is None:
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
             "the existing structure is already an ancillary dwelling — verify with council."
@@ -589,8 +834,23 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         rent_available=weekly_rent is not None,
     )
 
+    # Bug fix: lot area unknown → eligibility unverified → cap at medium
+    if lot_area_m2 is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
+
+    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
+    if req.existing_secondary_dwelling is None and confidence == "high":
+        confidence = "medium"
+        confidence_reason += (
+            " You indicated you weren't sure whether a granny flat already exists on this lot. "
+            "NSW planning rules only allow one secondary dwelling per lot — if one already exists, "
+            "a second cannot be approved. Confidence is capped until this is confirmed."
+        )
+
     report_id = req.report_id or str(uuid.uuid4())
 
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
@@ -618,6 +878,8 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "confirmed_structure_count": req.confirmed_structure_count,
                         "samgeo_structure_count": req.samgeo_structure_count,
                         "postcode": req.postcode,
+                        "existing_secondary_dwelling": req.existing_secondary_dwelling,
+                        "main_dwelling_area_m2": req.main_dwelling_area_m2,
                     }),
                     psycopg2.extras.Json({
                         "granny_flat_buildable": granny_flat_buildable,

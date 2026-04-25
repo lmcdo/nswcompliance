@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import { createClient } from '@supabase/supabase-js';
 import {
   satelliteRateLimiter,
   getClientIdentifier,
@@ -7,68 +8,21 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3003';
-const DA_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineDA';
-const CDC_URL = 'https://api.apps1.nsw.gov.au/eplanning/data/v0/OnlineCDC';
-const RADIUS_M = 200;
 const WINDOW_DAYS = 90;
+// Bounding box pre-filter: ±0.005° ≈ 500m at Sydney latitudes
+const BBOX_DELTA = 0.005;
+const RADIUS_M = 500;
+
+// ETL Supabase — DA/CDC data written by nsw-planning-etl GH Actions
+const getEtlSupabase = () =>
+  createClient(
+    process.env.ETL_SUPABASE_URL!,
+    process.env.ETL_SUPABASE_SERVICE_KEY!,
+  );
 
 const schema = z.object({
   address: z.string().min(5).max(300),
 });
-
-// NSW Spatial Services returns uppercase LGA names (e.g. "INNER WEST").
-// NSW ePlanning API needs the exact registered council name.
-const COUNCIL_NAME_MAP: Record<string, string> = {
-  'sydney':                          'Council of the City of Sydney',
-  'city of sydney':                  'Council of the City of Sydney',
-  'inner west':                      'Inner West Council',
-  'parramatta':                      'City of Parramatta Council',
-  'city of parramatta':              'City of Parramatta Council',
-  'northern beaches':                'Northern Beaches Council',
-  'randwick':                        'Randwick City Council',
-  'waverley':                        'Waverley Council',
-  'woollahra':                       'Woollahra Municipal Council',
-  'mosman':                          'Mosman Municipal Council',
-  'north sydney':                    'North Sydney Council',
-  'willoughby':                      'Willoughby City Council',
-  'lane cove':                       'Lane Cove Municipal Council',
-  'hunters hill':                    'Hunters Hill Council',
-  'ryde':                            'Ryde City Council',
-  'ku-ring-gai':                     'Ku-ring-gai Council',
-  'hornsby':                         'Hornsby Shire Council',
-  'the hills':                       'The Hills Shire Council',
-  'hills shire':                     'The Hills Shire Council',
-  'blacktown':                       'Blacktown City Council',
-  'penrith':                         'Penrith City Council',
-  'blue mountains':                  'Blue Mountains City Council',
-  'hawkesbury':                      'Hawkesbury City Council',
-  'camden':                          'Camden Council',
-  'campbelltown':                    'Campbelltown City Council',
-  'wollondilly':                     'Wollondilly Shire Council',
-  'liverpool':                       'Liverpool City Council',
-  'fairfield':                       'Fairfield City Council',
-  'canterbury-bankstown':            'Canterbury-Bankstown Council',
-  'canterbury bankstown':            'Canterbury-Bankstown Council',
-  'georges river':                   'Georges River Council',
-  'sutherland':                      'Sutherland Shire Council',
-  'sutherland shire':                'Sutherland Shire Council',
-  'bayside':                         'Bayside Council',
-  'strathfield':                     'Strathfield Municipal Council',
-  'burwood':                         'Burwood Council',
-  'cumberland':                      'Cumberland Council',
-  'gosford':                         'Central Coast Council',
-  'wyong':                           'Central Coast Council',
-  'central coast':                   'Central Coast Council',
-  'wollongong':                      'Wollongong City Council',
-  'newcastle':                       'Newcastle City Council',
-  'lake macquarie':                  'Lake Macquarie City Council',
-  'maitland':                        'Maitland City Council',
-};
-
-function normaliseCouncil(raw: string): string {
-  return COUNCIL_NAME_MAP[raw.trim().toLowerCase()] ?? raw.trim();
-}
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6_371_000;
@@ -81,7 +35,6 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 
 interface Application {
   PlanningPortalApplicationNumber?: string;
-  ApplicationNumber?: string;
   ApplicationType?: string;
   DevelopmentType?: string;
   ApplicationDescription?: string;
@@ -95,86 +48,113 @@ interface Application {
   CouncilName?: string;
   Latitude?: string | number;
   Longitude?: string | number;
-  Location?: { X?: string; Y?: string }[];
   _distance_m?: number | null;
 }
 
-async function fetchApplications(councilName: string): Promise<Application[]> {
-  const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000)
-    .toISOString()
-    .slice(0, 10);
-  const normalised = normaliseCouncil(councilName);
-  const filtersHeader = JSON.stringify({
-    filters: { CouncilName: [normalised], LodgementDateFrom: since },
-  });
-  const headers: Record<string, string> = {
-    filters: filtersHeader,
-    PageSize: '200',
-    PageNumber: '1',
-    'Cache-Control': 'no-cache',
-  };
+function parseDevTypes(raw: string | null): string {
+  if (!raw) return '';
+  try {
+    const arr = JSON.parse(raw) as Array<{ DevelopmentType?: string }>;
+    return arr.map((d) => d.DevelopmentType ?? '').filter(Boolean).join(', ');
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Query ETL Supabase (development_applications + complying_development_certificates)
+ * within a bounding box (±BBOX_DELTA°) and last WINDOW_DAYS days, then
+ * post-filter to RADIUS_M via haversine. Sorted closest first.
+ */
+async function queryNearbyApplications(lat: number, lng: number): Promise<Application[]> {
+  const since = new Date(Date.now() - WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const supabase = getEtlSupabase();
+
+  const minLat = lat - BBOX_DELTA;
+  const maxLat = lat + BBOX_DELTA;
+  const minLng = lng - BBOX_DELTA;
+  const maxLng = lng + BBOX_DELTA;
+
+  const [daResult, cdcResult] = await Promise.all([
+    supabase
+      .from('development_applications')
+      .select(
+        'planning_portal_id,council_name,address,description,application_status,determination_date,' +
+        'cost_of_development,latitude,longitude,development_type,lodgement_date,proposed_dwellings',
+      )
+      // ETL fetches by DeterminationDate — match on either date to capture recently-determined apps
+      .or(`lodgement_date.gte.${since},determination_date.gte.${since}`)
+      .gte('latitude', minLat).lte('latitude', maxLat)
+      .gte('longitude', minLng).lte('longitude', maxLng),
+    supabase
+      .from('complying_development_certificates')
+      .select(
+        'planning_portal_id,council_name,address,description,application_status,determination_date,' +
+        'cost_of_development,latitude,longitude,development_type,submission_date,number_of_new_dwellings',
+      )
+      .gte('submission_date', since)
+      .gte('latitude', minLat).lte('latitude', maxLat)
+      .gte('longitude', minLng).lte('longitude', maxLng),
+  ]);
 
   const apps: Application[] = [];
-  for (const url of [DA_URL, CDC_URL]) {
-    try {
-      const resp = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
-      if (resp.ok) {
-        const data = await resp.json();
-        const list: Application[] = data?.Application ?? data?.ApplicationList ?? [];
-        apps.push(...list);
-      }
-    } catch {
-      // non-fatal — one endpoint failing shouldn't block the other
-    }
-  }
-  return apps;
-}
 
-// Extract the street component from an address (strip leading number, take first segment before comma).
-// "78 Tennyson Road, Mortlake NSW" → "tennyson road"
-function extractStreet(addr: string): string {
-  return addr
-    .replace(/^\d+[-\d]*[A-Za-z]?\s+/i, '')
-    .split(',')[0]
-    .trim()
-    .toLowerCase();
-}
-
-function filterNearby(apps: Application[], lat: number, lng: number, queriedAddress: string): Application[] {
-  const queriedStreet = extractStreet(queriedAddress);
-  const result: Application[] = [];
-
-  for (const app of apps) {
-    try {
-      const loc = (app.Location ?? [{}])[0] ?? {};
-      const alat = parseFloat(String(app.Latitude ?? loc.Y ?? '0'));
-      const alng = parseFloat(String(app.Longitude ?? loc.X ?? '0'));
-
-      if (!alat || !alng) {
-        // No coordinates — include if PropertyAddress is on the same street
-        const daStreet = app.PropertyAddress ? extractStreet(app.PropertyAddress) : '';
-        if (queriedStreet && daStreet && daStreet === queriedStreet) {
-          result.push({ ...app, _distance_m: null });
-        }
-        continue;
-      }
-
-      const d = haversine(lat, lng, alat, alng);
-      if (d <= RADIUS_M) result.push({ ...app, _distance_m: Math.round(d) });
-    } catch {
-      // skip malformed entry
-    }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (daResult.data ?? []) as any[]) {
+    if (!row.latitude || !row.longitude) continue;
+    const dist = haversine(lat, lng, row.latitude as number, row.longitude as number);
+    if (dist > RADIUS_M) continue;
+    apps.push({
+      PlanningPortalApplicationNumber: row.planning_portal_id,
+      ApplicationType: 'DA',
+      DevelopmentType: parseDevTypes(row.development_type) || undefined,
+      ApplicationDescription: row.description,
+      LodgementDate: row.lodgement_date,
+      DeterminationDate: row.determination_date,
+      Status: row.application_status,
+      PropertyAddress: row.address,
+      CostOfDevelopment: row.cost_of_development,
+      NumberOfNewDwellings: row.proposed_dwellings,
+      CouncilName: row.council_name,
+      Latitude: row.latitude as number,
+      Longitude: row.longitude as number,
+      _distance_m: Math.round(dist),
+    });
   }
 
-  return result.sort((a, b) => (a._distance_m ?? 999) - (b._distance_m ?? 999));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  for (const row of (cdcResult.data ?? []) as any[]) {
+    if (!row.latitude || !row.longitude) continue;
+    const dist = haversine(lat, lng, row.latitude as number, row.longitude as number);
+    if (dist > RADIUS_M) continue;
+    apps.push({
+      PlanningPortalApplicationNumber: row.planning_portal_id,
+      ApplicationType: 'CDC',
+      DevelopmentType: parseDevTypes(row.development_type) || undefined,
+      ApplicationDescription: row.description,
+      LodgementDate: row.submission_date,
+      DeterminationDate: row.determination_date,
+      Status: row.application_status,
+      PropertyAddress: row.address,
+      CostOfDevelopment: row.cost_of_development,
+      NumberOfNewDwellings: row.number_of_new_dwellings,
+      CouncilName: row.council_name,
+      Latitude: row.latitude as number,
+      Longitude: row.longitude as number,
+      _distance_m: Math.round(dist),
+    });
+  }
+
+  return apps.sort((a, b) => (a._distance_m ?? Infinity) - (b._distance_m ?? Infinity));
 }
 
 /**
  * POST /api/satellite/threat-radar/search
  * Body: { address: string }
  *
- * Returns current DA/CDC applications within 200m of the address (last 90 days).
- * Also returns resolved lat/lng/prop_id/council_name so the subscribe step can reuse them.
+ * Returns DA/CDC applications within 500m of the address (last 90 days),
+ * sourced from the ETL Supabase (populated daily by nsw-planning-etl GH Actions).
+ * Sorted closest first.
  */
 export async function POST(request: NextRequest) {
   const clientIP = getClientIdentifier(request);
@@ -203,9 +183,17 @@ export async function POST(request: NextRequest) {
 
   const { address } = parsed.data;
 
-  // Resolve address
-  const propUrl = `${SITE_URL}/api/property/${encodeURIComponent(address)}`;
-  const propResp = await fetch(propUrl, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
+  // Resolve address → lat/lng
+  const siteUrl = new URL(request.url).origin;
+  const propUrl = `${siteUrl}/api/property/${encodeURIComponent(address)}`;
+  const internalHeaders: Record<string, string> = {};
+  if (process.env.API_KEY) internalHeaders['x-api-key'] = process.env.API_KEY;
+
+  const propResp = await fetch(propUrl, {
+    headers: internalHeaders,
+    signal: AbortSignal.timeout(10_000),
+  }).catch(() => null);
+
   if (!propResp?.ok) {
     return NextResponse.json({ error: `Could not resolve address: ${address}` }, { status: 422 });
   }
@@ -224,14 +212,17 @@ export async function POST(request: NextRequest) {
     const xMerc = ring.reduce((s: number, p: [number, number]) => s + p[0], 0) / ring.length;
     const yMerc = ring.reduce((s: number, p: [number, number]) => s + p[1], 0) / ring.length;
     lng = (xMerc / 20037508.34) * 180;
-    lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360 / Math.PI) - 90;
+    lat = (Math.atan(Math.exp((yMerc / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
   }
 
   if (!lat || !lng) {
-    return NextResponse.json({ error: 'Could not determine coordinates for this address' }, { status: 422 });
+    return NextResponse.json(
+      { error: 'Could not determine coordinates for this address' },
+      { status: 422 },
+    );
   }
 
-  // Resolve council name
+  // Resolve council name for display (non-fatal)
   let council_name: string | null = propData.property.lga_name ?? null;
   if (!council_name) {
     try {
@@ -249,15 +240,7 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (!council_name) {
-    return NextResponse.json(
-      { error: 'Could not determine council for this address. Try a different address format.' },
-      { status: 422 },
-    );
-  }
-
-  const apps = await fetchApplications(council_name);
-  const nearby = filterNearby(apps, lat, lng, address);
+  const applications = await queryNearbyApplications(lat, lng);
 
   return NextResponse.json({
     address,
@@ -265,7 +248,7 @@ export async function POST(request: NextRequest) {
     lat,
     lng,
     council_name,
-    applications: nearby,
+    applications,
     window_days: WINDOW_DAYS,
     radius_m: RADIUS_M,
   });
