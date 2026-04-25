@@ -218,6 +218,19 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   );
 }
 
+// Helvetica (react-pdf default) only covers Latin-1. Strip characters outside that range
+// so they don't render as garbage glyphs (e.g. em dash -> " - ", smart quotes -> plain).
+function sanitise(str: string): string {
+  return str
+    .replace(/\u2014/g, ' - ')   // em dash
+    .replace(/\u2013/g, ' - ')   // en dash
+    .replace(/\u2019/g, "'")     // right single quote
+    .replace(/\u2018/g, "'")     // left single quote
+    .replace(/\u201c/g, '"')     // left double quote
+    .replace(/\u201d/g, '"')     // right double quote
+    .replace(/[^\x00-\xFF]/g, ''); // strip any remaining non-Latin-1
+}
+
 export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData }) {
   const pass = data.granny_flat_buildable;
   // Detect the conservative multi-structure block — distinct from a hard ineligibility
@@ -258,10 +271,10 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <View style={pass ? s.coverBadgePass : isMultiStructureBlock ? s.coverBadgeAmber : s.coverBadgeFail}>
           <Text>
             {pass
-              ? '✓  Eligible under SEPP Housing 2021'
+              ? 'Eligible under SEPP Housing 2021'
               : isMultiStructureBlock
-              ? '⚠  Eligibility unconfirmed — multiple structures detected'
-              : '✗  Not eligible (CDC pathway)'}
+              ? 'Eligibility unconfirmed - multiple structures detected'
+              : 'Not eligible (CDC pathway)'}
           </Text>
         </View>
         <Text style={s.coverConfidence}>{confidenceLabel(data.confidence)}</Text>
@@ -269,7 +282,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {/* Confidence reason */}
         {data.confidence_reason ? (
           <View style={{ ...s.calloutAmber, marginTop: 12 }}>
-            <Text style={s.calloutText}>{data.confidence_reason}</Text>
+            <Text style={s.calloutText}>{sanitise(data.confidence_reason)}</Text>
           </View>
         ) : null}
 
@@ -278,7 +291,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           ?.filter((w) => !w.includes('Run services/') && !w.includes('Run scripts/') && !w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'))
           .map((w, i) => (
             <View key={i} style={{ ...s.calloutAmber, marginTop: 6 }}>
-              <Text style={{ ...s.calloutText, color: AMBER }}>{w}</Text>
+              <Text style={{ ...s.calloutText, color: AMBER }}>{sanitise(w)}</Text>
             </View>
           ))}
 
@@ -318,7 +331,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </Text>
           <Text style={s.calloutText}>
             {pass
-              ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway (SEPP Housing 2021 cl 50–58). A CDC can be lodged with a private certifier without council consent.'
+              ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway (SEPP Housing 2021 cl 50-58). A CDC can be lodged with a private certifier without council consent.'
               : isMultiStructureBlock
               ? 'Two or more secondary structures were detected on this lot. SEPP Housing 2021 (cl 53(1)) only permits one secondary dwelling per lot. Eligibility cannot be confirmed until a town planner or private certifier determines whether either existing structure is already classified as a secondary dwelling. The CDC pathway may be available once this is resolved.'
               : 'This property does not meet one or more requirements for a secondary dwelling under the CDC pathway. A Development Application (DA) to council may still be available — consult a town planner or certifier.'}
