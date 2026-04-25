@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface Application {
@@ -170,13 +171,20 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
           <SearchResults result={searchResult} onReset={reset} />
         )}
 
-        {/* Email me this result — shown only when results are available */}
+        {/* Download PDF + email — shown only when results are available */}
         {searchState === 'done' && searchResult && (
-          <PostResultEmailStrip
-            address={searchResult.address}
-            product="threat-radar"
-            copy="Email me this result →"
-          />
+          <>
+            <DownloadPdfButton
+              label="Download PDF report"
+              apiPath="/api/reports/threat-radar/generate"
+              data={searchResult}
+            />
+            <PostResultEmailStrip
+              address={searchResult.address}
+              product="threat-radar"
+              copy="Email me this result →"
+            />
+          </>
         )}
 
         {/* Subscribe — always visible */}

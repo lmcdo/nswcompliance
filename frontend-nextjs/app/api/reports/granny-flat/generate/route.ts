@@ -16,6 +16,7 @@ import {
   GrannyFlatReportDocument,
   type GrannyFlatReportData,
 } from '@/lib/pdf/granny-flat-report';
+import { getLogoBase64 } from '@/lib/pdf/logo';
 
 // Use service role — this route is server-only, report_id is an unguessable UUID.
 // The anon+cookie client fails with no session (called from webhook or curl).
@@ -81,6 +82,7 @@ export async function POST(req: NextRequest) {
     warnings: (outputs.warnings as string[]) ?? [],
     data_sources: (outputs.data_sources as string[]) ?? [],
     tile_b64: (outputs.tile_b64 as string | null) ?? null,
+    logo_b64: getLogoBase64(),
   };
 
   let pdfBuffer: Buffer;

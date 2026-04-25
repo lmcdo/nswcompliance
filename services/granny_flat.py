@@ -846,6 +846,24 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
         )
 
+    # Conservative gate: when ≥2 secondary structures are detected and the user has not
+    # confirmed whether any of them is an existing secondary dwelling, we cannot safely
+    # assert eligibility. With 2 secondary structures the probability that at least one is
+    # already a secondary dwelling is high. Block and require human verification.
+    if (
+        granny_flat_buildable
+        and req.confirmed_structure_count >= 3  # 1 main + 2 secondary = 3 total
+        and req.existing_secondary_dwelling is None
+    ):
+        granny_flat_buildable = False
+        warnings.append(
+            "MULTIPLE_SECONDARY_STRUCTURES: Two or more secondary structures were detected on "
+            "this lot. SEPP Housing 2021 (cl 53(1)) permits only one secondary dwelling per lot. "
+            "Eligibility cannot be confirmed without knowing whether either existing structure is "
+            "already classified as a secondary dwelling. A town planner or private certifier can "
+            "confirm the current status before you proceed."
+        )
+
     # Resolve postcode — prefer explicit field, fall back to last 4 digits of address
     postcode = req.postcode
     if not postcode and req.address:
@@ -873,9 +891,13 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         )
 
     # Only show generic "verify outbuilding" warning if user hasn't already answered
-    # the secondary dwelling question. If they said True, we've already blocked buildability.
+    # the secondary dwelling question, and we haven't already blocked above.
+    # If they said True, we've already blocked buildability.
     # If they said False, no ambiguity. Only warn when None (not asked / not answered).
-    if req.confirmed_structure_count >= 2 and req.existing_secondary_dwelling is None:
+    if (
+        req.confirmed_structure_count == 2  # exactly 1 secondary structure — ambiguous but not blocked
+        and req.existing_secondary_dwelling is None
+    ):
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
             "the existing structure is already an ancillary dwelling — verify with council."
@@ -893,13 +915,15 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         confidence = "medium"
         confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
 
-    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
-    if req.existing_secondary_dwelling is None and confidence == "high":
+    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium.
+    # Covers both the single-outbuilding ambiguity (count == 2) and the multiple-secondary
+    # block (count >= 3) where we conservatively blocked buildability above.
+    if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2 and confidence == "high":
         confidence = "medium"
         confidence_reason += (
-            " You indicated you weren't sure whether a granny flat already exists on this lot. "
-            "NSW planning rules only allow one secondary dwelling per lot — if one already exists, "
-            "a second cannot be approved. Confidence is capped until this is confirmed."
+            " Eligibility is capped because the status of one or more existing secondary "
+            "structures on this lot could not be confirmed. NSW planning rules only allow one "
+            "secondary dwelling per lot."
         )
 
     report_id = req.report_id or str(uuid.uuid4())

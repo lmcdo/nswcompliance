@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -159,6 +160,20 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
+          <DownloadPdfButton
+            label="Download PDF report"
+            apiPath="/api/reports/flood/generate"
+            data={{
+              ...result.outputs,
+              address: result.address,
+              run_date: result.run_date,
+              lat: result.lat,
+              lng: result.lng,
+              confidence: result.confidence,
+              data_sources: result.data_sources,
+              warnings: result.warnings ?? [],
+            }}
+          />
           <PostResultEmailStrip
             address={result.address}
             product="flood-truth"
