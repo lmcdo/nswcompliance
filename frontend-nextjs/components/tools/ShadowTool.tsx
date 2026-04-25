@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const ShadowMap = dynamic(
@@ -183,6 +184,7 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
             product="shadow-detector"
             copy="Get this shadow analysis emailed to you →"
           />
+          <ToolCrossSell currentTool="shadow-detector" address={result.address} />
         </>
       )}
     </div>

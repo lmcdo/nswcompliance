@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -163,6 +164,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
             product="flood-truth"
             copy="Get this flood risk report emailed to you — share with your conveyancer →"
           />
+          <ToolCrossSell currentTool="flood-truth" address={result.address} />
         </>
       )}
     </div>

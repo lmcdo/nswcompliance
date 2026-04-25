@@ -4,6 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -249,6 +250,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
               copy="Get this solar analysis emailed to you →"
             />
           )}
+          <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
       )}
     </div>
