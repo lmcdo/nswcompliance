@@ -18,10 +18,6 @@ import { getLogoBase64 } from '@/lib/pdf/logo';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!;
-const NSW_LAT = { min: -38.0, max: -28.0 };
-const NSW_LNG = { min: 140.5, max: 154.0 };
-
 const RETAIL_RATE        = 0.32;
 const FEED_IN_RATE       = 0.06;
 const SELF_CONSUME_RATIO = 0.30;
@@ -60,17 +56,10 @@ function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
   return              { grade: 'F', reason: 'Poor solar potential' };
 }
 
-async function fetchAerialTile(lat: number, lng: number): Promise<string | null> {
-  if (
-    !isFinite(lat) || !isFinite(lng) ||
-    lat < NSW_LAT.min || lat > NSW_LAT.max ||
-    lng < NSW_LNG.min || lng > NSW_LNG.max ||
-    !MAPS_KEY
-  ) return null;
-
+async function fetchAerialTile(lat: number, lng: number, origin: string): Promise<string | null> {
   try {
-    const url = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x300&maptype=satellite&key=${MAPS_KEY}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10_000) });
+    const url = `${origin}/api/satellite/aerial-tile?lat=${lat}&lng=${lng}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(12_000) });
     if (!res.ok) return null;
     const buf = await res.arrayBuffer();
     return Buffer.from(buf).toString('base64');
@@ -100,8 +89,9 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
+  const origin = new URL(req.url).origin;
   const [tile_b64, logo_b64] = await Promise.all([
-    (lat && lng) ? fetchAerialTile(lat, lng) : Promise.resolve(null),
+    (lat && lng) ? fetchAerialTile(lat, lng, origin) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 
