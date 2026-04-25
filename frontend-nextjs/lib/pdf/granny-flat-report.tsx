@@ -14,6 +14,7 @@ import {
   Text,
   StyleSheet,
   Link,
+  Image,
 } from '@react-pdf/renderer';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +38,8 @@ export interface GrannyFlatReportData {
   confidence_reason: string;
   warnings: string[];
   data_sources: string[];
+  // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
+  tile_b64: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -124,7 +127,7 @@ const s = StyleSheet.create({
   tableCellBold: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900 },
   tableCellTeal: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL },
   // Checklist
-  checkRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 6 },
+  checkRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12 },
   checkDot: {
     width: 14, height: 14, borderRadius: 7, backgroundColor: TEAL,
     alignItems: 'center', justifyContent: 'center', marginRight: 8, marginTop: 0.5,
@@ -401,6 +404,20 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             <Text style={{ ...s.tableCell, flex: 2 }}>{row.da}</Text>
           </View>
         ))}
+
+        {/* --- Aerial tile --- */}
+        {data.tile_b64 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={s.sectionTitle}>Property Aerial View</Text>
+            <Image
+              src={`data:image/png;base64,${data.tile_b64}`}
+              style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 4 }}
+            />
+            <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+              NSW SIX Maps 10 cm imagery — CC-BY 4.0 NSW Government
+            </Text>
+          </View>
+        )}
 
         {/* Footer */}
         <View style={s.footer} fixed>
