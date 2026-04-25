@@ -92,7 +92,8 @@ function GrannyFlatPageInner() {
   const [calcBuildCost, setCalcBuildCost] = useState(2500);
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
   const [email, setEmail] = useState('');
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailSubmitted, setEmailSubmitted] = useState(false);      // confirming-state resume-link capture
+  const [reportEmailCaptured, setReportEmailCaptured] = useState(false); // post-result CTA capture
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
 
   // Named step progress — driven by elapsed time during detect phase only
@@ -163,7 +164,27 @@ function GrannyFlatPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Confirming-state capture: "get result by email so you can close this tab"
   const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      await fetch('/api/canibuildit/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          address: detectResult?.address ?? inputAddress,
+          eligible: null,
+        }),
+      });
+    } catch { /* silent */ }
+    posthog?.capture('granny_flat_email_capture', { address: detectResult?.address ?? inputAddress, stage: 'confirming' });
+    setEmailSubmitted(true);
+  };
+
+  // Post-result capture: shown after pass/fail result is fully displayed
+  const handleReportEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     try {
@@ -180,8 +201,9 @@ function GrannyFlatPageInner() {
     posthog?.capture('granny_flat_email_capture', {
       address: finalResult?.address ?? detectResult?.address ?? inputAddress,
       eligible: finalResult?.granny_flat_buildable ?? null,
+      stage: 'post_result',
     });
-    setEmailSubmitted(true);
+    setReportEmailCaptured(true);
   };
 
   const handleDetect = async (e: React.FormEvent) => {
@@ -218,14 +240,15 @@ function GrannyFlatPageInner() {
 
       const jobId: string = json.jobId;
 
-      // If email was provided at idle state, register it now so result can be emailed
+      // If email was provided at idle state, register for resume-link delivery
+      // NOTE: does NOT set emailSubmitted — that's reserved for the confirming-state strip
+      // so the post-result ReportUnlockCTA always shows explicitly for the user to opt in
       if (email.trim()) {
         fetch('/api/canibuildit/lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), address: address.trim(), eligible: null }),
         }).catch(() => {});
-        setEmailSubmitted(true);
       }
 
       // Step 2: poll until detect result is written to DB (max 3 min)
@@ -418,7 +441,7 @@ function GrannyFlatPageInner() {
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -442,8 +465,8 @@ function GrannyFlatPageInner() {
             <p className="text-sm text-gray-500 mb-4">
               {deriveWhatToChange(errorMsg, null)}
             </p>
-            {!emailSubmitted ? (
-              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+            {!reportEmailCaptured ? (
+              <form onSubmit={handleReportEmailSubmit} className="flex gap-2">
                 <input
                   type="email"
                   required
@@ -511,15 +534,15 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setExistingSecondaryDwelling(null); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); }} />
           <ReportUnlockCTA
             buildable={finalResult.granny_flat_buildable}
             sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
             lot_area_m2={detectResult?.lot_area_m2 ?? null}
             email={email}
             setEmail={setEmail}
-            emailSubmitted={emailSubmitted}
-            onEmailSubmit={handleEmailSubmit}
+            emailCaptured={reportEmailCaptured}
+            onEmailSubmit={handleReportEmailSubmit}
           />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
@@ -1003,17 +1026,13 @@ function ConfirmationPanel({
 // Fail variant: "What could change this?" + notify-me email capture
 // ---------------------------------------------------------------------------
 
-const STRIPE_LINK = typeof window !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_STRIPE_GRANNY_FLAT_LINK ?? null)
-  : null;
-
 function ReportUnlockCTA({
   buildable,
   sepp_ineligible_reason,
   lot_area_m2,
   email,
   setEmail,
-  emailSubmitted,
+  emailCaptured,
   onEmailSubmit,
 }: {
   buildable: boolean;
@@ -1021,7 +1040,7 @@ function ReportUnlockCTA({
   lot_area_m2: number | null;
   email: string;
   setEmail: (v: string) => void;
-  emailSubmitted: boolean;
+  emailCaptured: boolean;
   onEmailSubmit: (e: React.FormEvent) => void;
 }) {
   if (buildable) {
@@ -1036,7 +1055,7 @@ function ReportUnlockCTA({
           </div>
           <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
         </div>
-        {!emailSubmitted ? (
+        {!emailCaptured ? (
           <form onSubmit={onEmailSubmit} className="space-y-3">
             <input
               type="email"
@@ -1069,7 +1088,7 @@ function ReportUnlockCTA({
       <p className="text-sm text-gray-500 mb-4">
         {deriveWhatToChange(sepp_ineligible_reason, lot_area_m2)}
       </p>
-      {!emailSubmitted ? (
+      {!emailCaptured ? (
         <form onSubmit={onEmailSubmit} className="flex gap-2">
           <input
             type="email"
