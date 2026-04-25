@@ -86,6 +86,10 @@ const s = StyleSheet.create({
     backgroundColor: RED, color: WHITE, fontSize: 11, fontFamily: 'Helvetica-Bold',
     paddingVertical: 6, paddingHorizontal: 14, borderRadius: 4, alignSelf: 'flex-start',
   },
+  coverBadgeAmber: {
+    backgroundColor: AMBER, color: WHITE, fontSize: 11, fontFamily: 'Helvetica-Bold',
+    paddingVertical: 6, paddingHorizontal: 14, borderRadius: 4, alignSelf: 'flex-start',
+  },
   coverConfidence: { fontSize: 8, color: GRAY_500, marginTop: 8 },
   // Section
   sectionTitle: {
@@ -216,6 +220,11 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 
 export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData }) {
   const pass = data.granny_flat_buildable;
+  // Detect the conservative multi-structure block — distinct from a hard ineligibility
+  const isMultiStructureBlock =
+    !pass &&
+    (data.confirmed_structure_count ?? 0) >= 3 &&
+    data.warnings?.some((w) => w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'));
   const matrix = pass ? yieldMatrix(data.max_floor_area_m2) : null;
   const formattedDate = (() => {
     try {
@@ -246,8 +255,14 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
 
         {/* Verdict badge */}
-        <View style={pass ? s.coverBadgePass : s.coverBadgeFail}>
-          <Text>{pass ? '✓  Eligible under SEPP Housing 2021' : '✗  Not eligible (CDC pathway)'}</Text>
+        <View style={pass ? s.coverBadgePass : isMultiStructureBlock ? s.coverBadgeAmber : s.coverBadgeFail}>
+          <Text>
+            {pass
+              ? '✓  Eligible under SEPP Housing 2021'
+              : isMultiStructureBlock
+              ? '⚠  Eligibility unconfirmed — multiple structures detected'
+              : '✗  Not eligible (CDC pathway)'}
+          </Text>
         </View>
         <Text style={s.coverConfidence}>{confidenceLabel(data.confidence)}</Text>
 
@@ -258,12 +273,14 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </View>
         ) : null}
 
-        {/* Warnings — filter out internal pipeline messages (not user-facing) */}
-        {data.warnings?.filter((w) => !w.includes('Run services/') && !w.includes('Run scripts/')).map((w, i) => (
-          <View key={i} style={{ ...s.calloutAmber, marginTop: 6 }}>
-            <Text style={{ ...s.calloutText, color: AMBER }}>{w}</Text>
-          </View>
-        ))}
+        {/* Warnings — filter out internal sentinel tags and pipeline messages */}
+        {data.warnings
+          ?.filter((w) => !w.includes('Run services/') && !w.includes('Run scripts/') && !w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'))
+          .map((w, i) => (
+            <View key={i} style={{ ...s.calloutAmber, marginTop: 6 }}>
+              <Text style={{ ...s.calloutText, color: AMBER }}>{w}</Text>
+            </View>
+          ))}
 
         {/* --- Section 1: Eligibility Verdict --- */}
         <Text style={s.sectionTitle}>1. Eligibility Verdict</Text>
@@ -271,8 +288,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <View style={s.twoCol}>
           <View style={s.col}>
             <Text style={s.labelGray}>CDC pathway</Text>
-            <Text style={{ ...s.body, ...s.bold, color: pass ? TEAL : RED }}>
-              {pass ? 'Eligible' : 'Not eligible'}
+            <Text style={{ ...s.body, ...s.bold, color: pass ? TEAL : isMultiStructureBlock ? AMBER : RED }}>
+              {pass ? 'Eligible' : isMultiStructureBlock ? 'Unconfirmed' : 'Not eligible'}
             </Text>
           </View>
           {data.lot_area_m2 != null && (
@@ -291,13 +308,19 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
 
         <View style={s.mb8} />
 
-        <View style={pass ? s.calloutTeal : s.calloutRed}>
-          <Text style={{ ...s.calloutTitle, color: pass ? TEAL : RED }}>
-            {pass ? 'SEPP Housing 2021 criteria met' : 'CDC pathway blocked'}
+        <View style={pass ? s.calloutTeal : isMultiStructureBlock ? s.calloutAmber : s.calloutRed}>
+          <Text style={{ ...s.calloutTitle, color: pass ? TEAL : isMultiStructureBlock ? AMBER : RED }}>
+            {pass
+              ? 'SEPP Housing 2021 criteria met'
+              : isMultiStructureBlock
+              ? 'Manual verification required'
+              : 'CDC pathway blocked'}
           </Text>
           <Text style={s.calloutText}>
             {pass
               ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway (SEPP Housing 2021 cl 50–58). A CDC can be lodged with a private certifier without council consent.'
+              : isMultiStructureBlock
+              ? 'Two or more secondary structures were detected on this lot. SEPP Housing 2021 (cl 53(1)) only permits one secondary dwelling per lot. Eligibility cannot be confirmed until a town planner or private certifier determines whether either existing structure is already classified as a secondary dwelling. The CDC pathway may be available once this is resolved.'
               : 'This property does not meet one or more requirements for a secondary dwelling under the CDC pathway. A Development Application (DA) to council may still be available — consult a town planner or certifier.'}
           </Text>
         </View>
