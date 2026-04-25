@@ -543,6 +543,7 @@ function GrannyFlatPageInner() {
             setEmail={setEmail}
             emailCaptured={reportEmailCaptured}
             onEmailSubmit={handleReportEmailSubmit}
+            reportId={finalResult.report_id}
           />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
@@ -1034,6 +1035,7 @@ function ReportUnlockCTA({
   setEmail,
   emailCaptured,
   onEmailSubmit,
+  reportId,
 }: {
   buildable: boolean;
   sepp_ineligible_reason: string | null;
@@ -1042,41 +1044,63 @@ function ReportUnlockCTA({
   setEmail: (v: string) => void;
   emailCaptured: boolean;
   onEmailSubmit: (e: React.FormEvent) => void;
+  reportId?: string;
 }) {
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+
+  const handleBuyReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !reportId) return;
+    setCheckoutLoading(true);
+    setCheckoutError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/granny-flat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.checkout_url) throw new Error(data.error ?? 'Checkout failed');
+      window.location.href = data.checkout_url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Something went wrong — try again.');
+      setCheckoutLoading(false);
+    }
+  };
+
   if (buildable) {
     return (
       <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="font-semibold text-teal-900">Get the detailed report</h3>
+            <h3 className="font-semibold text-teal-900">Get the full report — $29</h3>
             <p className="text-sm text-teal-700 mt-1">
-              CDC pathway checklist, applicable setback standards with clause citations, yield sensitivity analysis, and a shareable PDF — $29.
+              CDC pathway checklist, setback standards with SEPP clause citations, yield sensitivity table, and a shareable PDF — emailed instantly after payment.
             </p>
           </div>
           <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
         </div>
-        {!emailCaptured ? (
-          <form onSubmit={onEmailSubmit} className="space-y-3">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-            />
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              Notify me when ready →
-            </button>
-          </form>
-        ) : (
-          <p className="text-sm text-teal-700 font-medium">
-            Thanks — we&apos;ll email you at {email} when the detailed report is ready.
-          </p>
-        )}
+        <form onSubmit={handleBuyReport} className="space-y-3">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          />
+          <button
+            type="submit"
+            disabled={checkoutLoading}
+            className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
+          >
+            {checkoutLoading ? 'Redirecting to payment…' : 'Get full report — $29 →'}
+          </button>
+          {checkoutError && (
+            <p className="text-sm text-red-600">{checkoutError}</p>
+          )}
+        </form>
       </div>
     );
   }
