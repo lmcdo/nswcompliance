@@ -241,8 +241,8 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </View>
         ) : null}
 
-        {/* Warnings */}
-        {data.warnings?.map((w, i) => (
+        {/* Warnings — filter out internal pipeline messages (not user-facing) */}
+        {data.warnings?.filter((w) => !w.includes('Run services/') && !w.includes('Run scripts/')).map((w, i) => (
           <View key={i} style={{ ...s.calloutAmber, marginTop: 6 }}>
             <Text style={{ ...s.calloutText, color: AMBER }}>{w}</Text>
           </View>
@@ -289,33 +289,46 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {pass && (
           <>
             <Text style={s.sectionTitle}>2. Income Potential</Text>
-            <View style={s.statRow}>
-              <View style={s.statBox}>
-                <Text style={s.statLabel}>Est. weekly rent</Text>
-                <Text style={s.statValue}>{fmtCurrency(data.estimated_weekly_rent_aud)}/wk</Text>
-                <Text style={s.statSub}>NSW Fair Trading median</Text>
-              </View>
-              <View style={s.statBox}>
-                <Text style={s.statLabel}>Annual gross income</Text>
-                <Text style={s.statValue}>
-                  {fmtCurrency(data.estimated_weekly_rent_aud != null ? data.estimated_weekly_rent_aud * 52 : null)}
+            {data.estimated_weekly_rent_aud != null ? (
+              <>
+                <View style={s.statRow}>
+                  <View style={s.statBox}>
+                    <Text style={s.statLabel}>Est. weekly rent</Text>
+                    <Text style={s.statValue}>{fmtCurrency(data.estimated_weekly_rent_aud)}/wk</Text>
+                    <Text style={s.statSub}>NSW Fair Trading median</Text>
+                  </View>
+                  <View style={s.statBox}>
+                    <Text style={s.statLabel}>Annual gross income</Text>
+                    <Text style={s.statValue}>
+                      {fmtCurrency(data.estimated_weekly_rent_aud * 52)}
+                    </Text>
+                    <Text style={s.statSub}>Before vacancy and costs</Text>
+                  </View>
+                  <View style={s.statBox}>
+                    <Text style={s.statLabel}>Gross yield (on build cost)</Text>
+                    <Text style={s.statValue}>
+                      {data.rental_yield_annual_pct != null ? `${data.rental_yield_annual_pct.toFixed(1)}%` : '—'}
+                    </Text>
+                    <Text style={s.statSub}>
+                      {fmtCurrency(data.assumed_build_cost_aud)} assumed build
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
+                  Rent estimate based on NSW Fair Trading rental bond data for comparable 1-bedroom units.
+                  Yield is gross before vacancy, management fees, and maintenance. Net yield typically 1–2% lower.
                 </Text>
-                <Text style={s.statSub}>Before vacancy and costs</Text>
-              </View>
-              <View style={s.statBox}>
-                <Text style={s.statLabel}>Gross yield (on build cost)</Text>
-                <Text style={s.statValue}>
-                  {data.rental_yield_annual_pct != null ? `${data.rental_yield_annual_pct}%` : '—'}
+              </>
+            ) : (
+              <View style={{ ...s.calloutAmber, marginBottom: 4 }}>
+                <Text style={{ ...s.calloutTitle, color: AMBER }}>Rental data not yet available for this postcode</Text>
+                <Text style={s.calloutText}>
+                  NSW Fair Trading rental bond data has not yet been loaded for this area.
+                  The yield sensitivity table on page 3 uses benchmark rent assumptions — use those as a guide.
+                  Typical 1-bedroom granny flat rents in greater Sydney range from $300–$550/week depending on location and finish.
                 </Text>
-                <Text style={s.statSub}>
-                  {fmtCurrency(data.assumed_build_cost_aud)} assumed build
-                </Text>
               </View>
-            </View>
-            <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5 }}>
-              Rent estimate based on NSW Fair Trading rental bond data for comparable 1-bedroom units.
-              Yield is gross before vacancy, management fees, and maintenance. Net yield typically 1–2% lower.
-            </Text>
+            )}
           </>
         )}
 
