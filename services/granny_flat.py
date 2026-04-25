@@ -613,7 +613,6 @@ def detect_structures(req: GrannyFlatDetectRequest):
                     pass
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
 
-    # Encode tile as base64 for frontend canvas rendering
     tile_b64: Optional[str] = None
     tile_width: Optional[int] = None
     tile_height: Optional[int] = None
@@ -621,10 +620,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
         from PIL import Image as _PILImage
         with _PILImage.open(tile_path) as _img:
             tile_width, tile_height = _img.size
-        with open(tile_path, "rb") as _f:
-            tile_b64 = base64.b64encode(_f.read()).decode()
     except Exception as e:
-        logger.warning(f"Tile encode failed: {e}")
+        logger.warning(f"Tile size read failed: {e}")
 
     detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
@@ -653,6 +650,55 @@ def detect_structures(req: GrannyFlatDetectRequest):
             detect_warnings.append(
                 "Aerial structure detection failed — enter structure count manually."
             )
+
+    # Annotate tile with lot boundary + structure boxes, then encode as base64.
+    # Uses the same bbox_pixel values the frontend canvas draws — no re-projection needed
+    # for structures. Lot polygon uses linear WGS84 → pixel projection via tile_bbox.
+    try:
+        from PIL import Image as _PILImage, ImageDraw as _ImageDraw
+        import io as _io
+
+        with _PILImage.open(tile_path) as _img:
+            _img = _img.convert("RGBA")
+            _draw = _ImageDraw.Draw(_img, "RGBA")
+            tw, th = _img.size
+
+            def _wgs84_to_px(lat: float, lng: float) -> tuple[int, int]:
+                px = int((lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * tw)
+                py = int((bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * th)
+                return px, py
+
+            # Draw lot boundary (teal outline)
+            # _mercator_rings_to_wgs84 returns list of rings [[lng, lat], ...]
+            lot_rings = (
+                _mercator_rings_to_wgs84(lot_geometry["rings"])
+                if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]
+                else None
+            )
+            if lot_rings:
+                ring = lot_rings[0]  # exterior boundary
+                pts = [_wgs84_to_px(lat, lng) for lng, lat in ring]
+                _draw.line(pts + [pts[0]], fill=(15, 118, 110, 220), width=3)
+
+            # Draw structure bounding boxes
+            MAIN_COL = (239, 68, 68, 200)    # red — main dwelling
+            OTHER_COL = (250, 204, 21, 200)  # yellow — outbuildings
+            for s in detected_structures:
+                x0, y0, x1, y1 = s.bbox_pixel
+                col = MAIN_COL if s.is_main_dwelling else OTHER_COL
+                _draw.rectangle([x0, y0, x1, y1], outline=col, width=2)
+
+            # Re-encode as PNG bytes → base64
+            _buf = _io.BytesIO()
+            _img.convert("RGB").save(_buf, format="PNG")
+            tile_b64 = base64.b64encode(_buf.getvalue()).decode()
+    except Exception as e:
+        logger.warning(f"Tile annotation failed, falling back to raw tile: {e}")
+        try:
+            with open(tile_path, "rb") as _f:
+                tile_b64 = base64.b64encode(_f.read()).decode()
+        except Exception:
+            pass
 
     detect_id = str(uuid.uuid4())
     response = GrannyFlatDetectResponse(
