@@ -405,26 +405,35 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </View>
         ))}
 
-        {/* --- Aerial tile --- */}
-        {data.tile_b64 && (
-          <View style={{ marginTop: 16 }}>
-            <Text style={s.sectionTitle}>Property Aerial View</Text>
-            <Image
-              src={`data:image/png;base64,${data.tile_b64}`}
-              style={{ width: '100%', height: 180, objectFit: 'cover', borderRadius: 4 }}
-            />
-            <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
-              NSW SIX Maps 10 cm imagery — CC-BY 4.0 NSW Government
-            </Text>
-          </View>
-        )}
-
         {/* Footer */}
         <View style={s.footer} fixed>
           <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
           <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
         </View>
       </Page>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Aerial Page — only rendered when tile_b64 is available              */}
+      {/* ------------------------------------------------------------------ */}
+      {data.tile_b64 && (
+        <Page size="A4" style={s.page}>
+          <Text style={s.sectionTitle}>Property Aerial View</Text>
+          <Text style={{ ...s.body, color: GRAY_500, marginBottom: 10 }}>
+            10 cm resolution aerial imagery of the subject lot.
+          </Text>
+          <Image
+            src={`data:image/png;base64,${data.tile_b64}`}
+            style={{ width: '100%', borderRadius: 4 }}
+          />
+          <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 6 }}>
+            NSW SIX Maps 10 cm imagery — CC-BY 4.0 NSW Government
+          </Text>
+          <View style={s.footer} fixed>
+            <Text style={s.footerText}>canibuildit.com.au — Granny Flat Eligibility Report</Text>
+            <Text style={s.footerText} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
+          </View>
+        </Page>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Page 3 — Yield Table + Next Steps + Disclaimer                      */}
@@ -525,12 +534,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 body: 'Rental income from a secondary dwelling is assessable income. Consult a tax accountant about land tax implications and depreciation schedules.',
               },
             ].map((step) => (
-              <View key={step.n} style={s.checkRow}>
-                <View style={s.checkDot}><Text style={s.checkNum}>{step.n}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ ...s.body, ...s.bold, marginBottom: 2 }}>{step.title}</Text>
-                  <Text style={s.checkText}>{step.body}</Text>
+              <View key={step.n} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                  <View style={s.checkDot}><Text style={s.checkNum}>{step.n}</Text></View>
+                  <Text style={{ ...s.body, ...s.bold, marginLeft: 8 }}>{step.title}</Text>
                 </View>
+                <Text style={{ ...s.checkText, marginLeft: 22 }}>{step.body}</Text>
               </View>
             ))}
           </>
@@ -553,12 +562,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 body: 'Nearby properties with larger lots or different zone/heritage status may be eligible. Use the canibuildit.com.au tool on alternative addresses.',
               },
             ].map((step) => (
-              <View key={step.n} style={s.checkRow}>
-                <View style={{ ...s.checkDot, backgroundColor: GRAY_500 }}><Text style={s.checkNum}>{step.n}</Text></View>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ ...s.body, ...s.bold, marginBottom: 2 }}>{step.title}</Text>
-                  <Text style={s.checkText}>{step.body}</Text>
+              <View key={step.n} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 3 }}>
+                  <View style={{ ...s.checkDot, backgroundColor: GRAY_500 }}><Text style={s.checkNum}>{step.n}</Text></View>
+                  <Text style={{ ...s.body, ...s.bold, marginLeft: 8 }}>{step.title}</Text>
                 </View>
+                <Text style={{ ...s.checkText, marginLeft: 22 }}>{step.body}</Text>
               </View>
             ))}
           </>
