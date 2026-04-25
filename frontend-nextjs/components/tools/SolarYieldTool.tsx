@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -244,11 +245,26 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
         <>
           <ReportCard report={report} />
           {report.outputs.coverage_available && (
-            <PostResultEmailStrip
-              address={report.address}
-              product="solar-yield"
-              copy="Get this solar analysis emailed to you →"
-            />
+            <>
+              <DownloadPdfButton
+                label="Download PDF report"
+                apiPath="/api/reports/solar-yield/generate"
+                data={{
+                  ...report.outputs,
+                  address: report.address,
+                  run_date: report.run_date,
+                  lat: report.lat,
+                  lng: report.lng,
+                  confidence: report.confidence,
+                  data_sources: report.data_sources,
+                }}
+              />
+              <PostResultEmailStrip
+                address={report.address}
+                product="solar-yield"
+                copy="Get this solar analysis emailed to you →"
+              />
+            </>
           )}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
