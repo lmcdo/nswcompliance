@@ -534,14 +534,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 body: 'Rental income from a secondary dwelling is assessable income. Consult a tax accountant about land tax implications and depreciation schedules.',
               },
             ].map((step) => (
-              <View key={step.n} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-                <View style={{ ...s.checkDot, marginTop: 1, flexShrink: 0 }}>
+              <View key={step.n} style={{ position: 'relative', paddingLeft: 26, marginBottom: 16 }}>
+                <View style={{ position: 'absolute', left: 0, top: 1, ...s.checkDot }}>
                   <Text style={s.checkNum}>{step.n}</Text>
                 </View>
-                <View style={{ flex: 1, flexDirection: 'column', marginLeft: 8 }}>
-                  <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 9, marginBottom: 4 }}>{step.title}</Text>
-                  <Text style={{ fontSize: 8.5, color: GRAY_700, lineHeight: 1.5 }}>{step.body}</Text>
-                </View>
+                <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 9, marginBottom: 4 }}>{step.title}</Text>
+                <Text style={{ fontSize: 8.5, color: GRAY_700, lineHeight: 1.5 }}>{step.body}</Text>
               </View>
             ))}
           </>
@@ -564,14 +562,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
                 body: 'Nearby properties with larger lots or different zone/heritage status may be eligible. Use the canibuildit.com.au tool on alternative addresses.',
               },
             ].map((step) => (
-              <View key={step.n} style={{ flexDirection: 'row', alignItems: 'flex-start', marginBottom: 16 }}>
-                <View style={{ ...s.checkDot, backgroundColor: GRAY_500, marginTop: 1, flexShrink: 0 }}>
+              <View key={step.n} style={{ position: 'relative', paddingLeft: 26, marginBottom: 16 }}>
+                <View style={{ position: 'absolute', left: 0, top: 1, ...s.checkDot, backgroundColor: GRAY_500 }}>
                   <Text style={s.checkNum}>{step.n}</Text>
                 </View>
-                <View style={{ flex: 1, flexDirection: 'column', marginLeft: 8 }}>
-                  <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 9, marginBottom: 4 }}>{step.title}</Text>
-                  <Text style={{ fontSize: 8.5, color: GRAY_700, lineHeight: 1.5 }}>{step.body}</Text>
-                </View>
+                <Text style={{ fontFamily: 'Helvetica-Bold', fontSize: 9, marginBottom: 4 }}>{step.title}</Text>
+                <Text style={{ fontSize: 8.5, color: GRAY_700, lineHeight: 1.5 }}>{step.body}</Text>
               </View>
             ))}
           </>
