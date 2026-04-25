@@ -69,7 +69,7 @@ export async function GET(req: NextRequest) {
         'additional_permitted_uses', 'foreshore_building_line', 'land_reservation',
         'riparian', 'wetlands', 'key_sites', 'active_street_frontages', 'flood',
         'sep', 'tod_precinct', 'tod_accelerated', 'tod_deferred',
-        'biodiversity', 'landslide'
+        'biodiversity', 'landslide', 'fsr', 'acid_sulfate', 'lot_size'
       )`,
      [spatialLon, spatialLat]
    );
@@ -142,6 +142,24 @@ export async function GET(req: NextRequest) {
        hasRisk: true,
        layClass: landslideRows[0].value ?? undefined,
      };
+   }
+
+   // PostGIS fallbacks — only set if Planning Portal didn't return a value
+   const fsrRows = rows.filter(r => r.layer_type === 'fsr');
+   if (fsrRows.length > 0 && !propertyData.constraints.maxFsr) {
+     const fsrVal = parseFloat(fsrRows[0].value as string);
+     if (!isNaN(fsrVal)) propertyData.constraints.maxFsr = fsrVal;
+   }
+
+   const acidRows = rows.filter(r => r.layer_type === 'acid_sulfate');
+   if (acidRows.length > 0 && !propertyData.constraints.acidSulfateSoils) {
+     propertyData.constraints.acidSulfateSoils = acidRows[0].value as string ?? 'Present';
+   }
+
+   const lotSizeRows = rows.filter(r => r.layer_type === 'lot_size');
+   if (lotSizeRows.length > 0 && propertyData.constraints.minLotSize === null) {
+     const parsed = parseFloat(lotSizeRows[0].value as string);
+     if (!isNaN(parsed)) propertyData.constraints.minLotSize = parsed;
    }
 
    const sepRows = rows.filter(r => r.layer_type === 'sep');

@@ -164,7 +164,7 @@ def _get_height_limit(lat: float, lng: float) -> tuple:
     Returns (height_m: float, lep_name: str, height_source: str) for the lot at (lat, lng).
 
     Priority:
-      1. spatial_overlays table, layer_type='height' — point-in-polygon, covers 33 LGAs.
+      1. spatial_overlays table, layer_type='height' — point-in-polygon, covers 75 LGAs.
       2. regulatory_provisions text extraction — Inner West only, kept as fallback.
       3. DEFAULT_HEIGHT_M (9.0 m) if both fail.
 

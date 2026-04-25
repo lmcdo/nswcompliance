@@ -995,7 +995,7 @@ def parse_controls(raw: list[dict]) -> dict:
 # PostGIS — unique overlays (NOT in portal layerintersect)
 # ---------------------------------------------------------------------------
 
-POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "bushfire", "anef"}
+POSTGIS_UNIQUE_LAYERS = {"biodiversity", "riparian", "wetlands", "landslide", "flood", "acid_sulfate", "lot_size", "bushfire", "anef"}
 
 # Layers ingested globally (bbox or filter_mode='all') — one 'ALL' coverage row, no per-LGA rows.
 # covered_layers for these is determined by the 'ALL' row, not per-LGA rows.
@@ -3304,6 +3304,16 @@ def main():
             print(f"  {ov['layer_type']:15s} {ov['value'] or 'present'}")
     else:
         print("  None found at this location")
+
+    # PostGIS fallbacks — use spatial data when Planning Portal returned nothing
+    _ov_by_type = {o["layer_type"]: o for o in unique_overlays}
+    if not controls.get("ass_class") and "acid_sulfate" in _ov_by_type:
+        controls["ass_class"] = _ov_by_type["acid_sulfate"].get("value") or "Present"
+        print(f"  [PostGIS fallback] acid_sulfate → ass_class={controls['ass_class']}")
+    if not controls.get("lot_size") and "lot_size" in _ov_by_type:
+        controls["lot_size"] = _ov_by_type["lot_size"].get("value")
+        controls["lot_size_units"] = "m²"
+        print(f"  [PostGIS fallback] lot_size → {controls['lot_size']}")
 
     print("\nDetecting title type ...")
     strata_info = detect_strata(args.address, lat, lng)
