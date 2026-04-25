@@ -49,15 +49,95 @@ export async function POST(req: NextRequest) {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-  const { report_id, email } = session.metadata ?? {};
+  const meta = session.metadata ?? {};
 
-  if (!report_id || !email) {
-    console.error('[stripe/webhook] Missing metadata on session:', session.id);
-    // Return 200 so Stripe does not retry — this is a configuration error, not transient
+  // ---------------------------------------------------------------------------
+  // Route by product
+  // ---------------------------------------------------------------------------
+
+  if (session.mode === 'subscription' && meta.product === 'threat-radar-monitor') {
+    return handleThreatRadarMonitor(session, meta);
+  }
+
+  // Default: granny flat one-time report PDF
+  return handleGrannyFlatReport(session, meta);
+}
+
+// ---------------------------------------------------------------------------
+// Threat Radar monitoring subscription — activate monitoring + confirm email
+// ---------------------------------------------------------------------------
+
+async function handleThreatRadarMonitor(
+  session: Stripe.Checkout.Session,
+  meta: Record<string, string>
+) {
+  const { email, address } = meta;
+
+  if (!email || !address) {
+    console.error('[stripe/webhook] threat-radar-monitor missing metadata on session:', session.id);
     return NextResponse.json({ received: true });
   }
 
-  // Generate the PDF by calling our own generate route internally
+  // Activate monitoring by calling the existing threat-radar subscribe endpoint
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  try {
+    await fetch(`${baseUrl}/api/satellite/threat-radar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address, email, stripe_subscription_id: session.subscription }),
+    });
+  } catch (err) {
+    // Log but don't retry — monitoring save failure is non-critical
+    console.error('[stripe/webhook] threat-radar monitoring activation error:', err);
+  }
+
+  // Send confirmation email
+  try {
+    await resend.emails.send({
+      from: 'Can I Build It <info@plotdetect.com.au>',
+      to: [email],
+      subject: 'Threat Radar monitoring activated',
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+            You're now being monitored.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            We'll send you a weekly email every Monday when new DA or CDC applications
+            are lodged within 200m of <strong>${address}</strong>.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            To cancel your subscription, reply to this email or visit your Stripe billing portal.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('[stripe/webhook] threat-radar confirm email error:', err);
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Granny Flat one-time report — generate PDF + email attachment
+// ---------------------------------------------------------------------------
+
+async function handleGrannyFlatReport(
+  _session: Stripe.Checkout.Session,
+  meta: Record<string, string>
+) {
+  const { report_id, email } = meta;
+
+  if (!report_id || !email) {
+    console.error('[stripe/webhook] granny-flat missing metadata');
+    return NextResponse.json({ received: true });
+  }
+
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
   let pdfBuffer: Buffer;
 
@@ -76,11 +156,9 @@ export async function POST(req: NextRequest) {
     pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
   } catch (err) {
     console.error('[stripe/webhook] PDF generation error:', err);
-    // Return 500 — Stripe will retry, giving the pipeline a chance to recover
     return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
   }
 
-  // Email the PDF
   const filename = `granny-flat-report-${report_id.slice(0, 8)}.pdf`;
 
   try {
