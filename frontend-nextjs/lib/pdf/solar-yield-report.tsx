@@ -394,6 +394,24 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           </View>
         )}
 
+        {/* Battery upgrade callout — PAID */}
+        {data.is_paid !== false && (() => {
+          const batteryPayback = (data.system_cost_aud + 12000) / (data.annual_kwh_estimate * 0.32 * 0.80);
+          return (
+            <View style={{
+              backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10,
+              marginTop: 8, borderWidth: 1, borderColor: '#99f6e4',
+            }}>
+              <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+                Battery storage upgrade
+              </Text>
+              <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback reduces to approximately ${batteryPayback.toFixed(1)} years. Battery storage also provides grid independence during outages.`}
+              </Text>
+            </View>
+          );
+        })()}
+
         <View style={s.divider} />
 
         <ReferralBox />

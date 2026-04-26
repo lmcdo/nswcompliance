@@ -25,6 +25,12 @@ export interface EmsActivation {
   flood_type: string;
 }
 
+export interface BomFloodEvent {
+  date: string;
+  peak_m: number;
+  ari_category: string;
+}
+
 export interface FloodReportData {
   address: string;
   run_date: string;
@@ -45,12 +51,17 @@ export interface FloodReportData {
   bom_gauge_distance_km: number | null;
   bom_last_major_flood_date: string | null;
   bom_last_major_flood_peak_m: number | null;
+  // flood enhancements
+  bom_flood_history?: BomFloodEvent[] | null;
+  flood_study_name?: string | null;
+  flood_study_date?: string | null;
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  is_paid?: boolean;
   tile_b64: string | null;
 }
 
@@ -248,6 +259,12 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             <Text style={s.cardSub}>
               NSW EPI Flood WFS · {data.data_currency !== 'unknown' ? data.data_currency : 'date unavailable'}
             </Text>
+            {/* Flood study provenance — FREE */}
+            {data.flood_study_name && (
+              <Text style={[s.cardSub, { color: GRAY_500, marginTop: 4 }]}>
+                {`Source: ${data.flood_study_name}${data.flood_study_date ? ` (effective ${data.flood_study_date})` : ''}. Flood planning controls derive from this study.`}
+              </Text>
+            )}
           </View>
           <View style={s.card}>
             <Text style={s.cardLabel}>Copernicus EMS observed events</Text>
@@ -322,6 +339,31 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             )}
           </View>
         </View>
+
+        {/* BoM flood event history table — PAID (up to 3 events) */}
+        {data.is_paid !== false && data.bom_flood_history && data.bom_flood_history.length > 0 && (
+          <View style={{ marginBottom: 12 }}>
+            <Text style={s.sectionTitle}>BOM flood event history</Text>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`,
+              paddingVertical: 4,
+            }}>
+              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Date</Text>
+              <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Peak height</Text>
+              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>ARI category</Text>
+            </View>
+            {data.bom_flood_history.slice(0, 3).map((event, i) => (
+              <View key={i} style={{
+                flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5,
+              }}>
+                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700 }}>{event.date}</Text>
+                <Text style={{ flex: 1.5, fontSize: 8.5, color: RED, fontFamily: 'Helvetica-Bold', textAlign: 'right' }}>{event.peak_m} m</Text>
+                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700, textAlign: 'right' }}>{event.ari_category}</Text>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* SAR row */}
         {data.sar_flood_detected !== null && (

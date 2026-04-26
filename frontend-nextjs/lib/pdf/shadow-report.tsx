@@ -311,6 +311,19 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           </View>
         </View>
 
+        {/* Height threshold callout — FREE, shown whenever height > 8 m */}
+        {data.height_m > 8.0 && (
+          <View style={{
+            backgroundColor: '#fff7ed', borderRadius: 4, padding: 8,
+            marginTop: 8, marginBottom: 4,
+            borderWidth: 1, borderColor: '#fed7aa',
+          }}>
+            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
+              {`At ${data.height_m} m, this building exceeds the 8 m CDC height limit. A Development Application to council is required, which triggers mandatory neighbour notification and the right to lodge a formal objection.`}
+            </Text>
+          </View>
+        )}
+
         <View style={s.divider} />
 
         {/* Scenarios table */}
