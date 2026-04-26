@@ -38,6 +38,7 @@ export interface GrannyFlatReportData {
   confidence_reason: string;
   warnings: string[];
   data_sources: string[];
+  is_paid?: boolean;
   // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
   tile_b64: string | null;
   logo_b64?: string | null;
@@ -560,6 +561,51 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             </Text>
           </>
         )}
+
+        {/* --- Section 5b: 10-Year ROI table (paid, eligible + rent data only) --- */}
+        {pass && data.is_paid !== false && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
+          const annualRent = data.estimated_weekly_rent_aud! * 52;
+          const buildCost = data.assumed_build_cost_aud!;
+          const years = [1, 2, 3, 5, 7, 10];
+          const rows = years.map(yr => ({
+            yr,
+            cumulative: Math.round(annualRent * yr),
+            net: Math.round(annualRent * yr - buildCost),
+          }));
+          const breakEven = years.find(yr => annualRent * yr >= buildCost);
+          return (
+            <View style={{ marginTop: 8 }}>
+              <Text style={s.sectionTitle}>5b. 10-Year Return on Investment</Text>
+              {/* Header */}
+              <View style={[s.tableHeader]}>
+                <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Year</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2, textAlign: 'right' }}>Cumul. income</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2, textAlign: 'right' }}>Net position</Text>
+              </View>
+              {rows.map(({ yr, cumulative, net }) => {
+                const isBreakEven = yr === breakEven;
+                const netColor = net >= 0 ? '#16a34a' : GRAY_700;
+                return (
+                  <View key={yr} style={[s.tableRow, isBreakEven ? { backgroundColor: TEAL_LIGHT } : {}]}>
+                    <Text style={{ ...s.tableCell, flex: 1 }}>
+                      Yr {yr}{isBreakEven ? ' (break-even)' : ''}
+                    </Text>
+                    <Text style={{ ...s.tableCell, flex: 2, textAlign: 'right' }}>
+                      {fmtCurrency(cumulative)}
+                    </Text>
+                    <Text style={{ ...s.tableCellBold, flex: 2, textAlign: 'right', color: netColor }}>
+                      {net >= 0 ? '+' : ''}{fmtCurrency(net)}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 4 }}>
+                Net position = cumulative rent income minus assumed build cost of {fmtCurrency(buildCost)}.
+                Excludes vacancy, management fees, and maintenance costs.
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* --- Section 6: Next Steps --- */}
         <Text style={s.sectionTitle}>{pass ? '6.' : '5.'} Next Steps</Text>

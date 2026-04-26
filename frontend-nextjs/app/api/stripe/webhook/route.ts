@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
     return handleThreatRadarMonitor(session, meta);
   }
 
+  if (meta.product === 'pre-da-history-report') {
+    return handlePreDAHistoryReport(session, meta);
+  }
+
   // Default: granny flat one-time report PDF
   return handleGrannyFlatReport(session, meta);
 }
@@ -195,6 +199,82 @@ async function handleGrannyFlatReport(
   } catch (err) {
     // Email failure is logged but we return 200 — PDF was generated, retry would re-charge
     console.error('[stripe/webhook] Resend email error:', err);
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Pre-DA Site History — generate PDF + email attachment
+// ---------------------------------------------------------------------------
+
+async function handlePreDAHistoryReport(
+  _session: Stripe.Checkout.Session,
+  meta: Record<string, string>
+) {
+  const { report_id, email } = meta;
+
+  if (!report_id || !email) {
+    console.error('[stripe/webhook] pre-da-history missing metadata');
+    return NextResponse.json({ received: true });
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  let pdfBuffer: Buffer;
+
+  try {
+    const pdfRes = await fetch(`${baseUrl}/api/reports/pre-da-history/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id }),
+    });
+
+    if (!pdfRes.ok) {
+      const errBody = await pdfRes.json().catch(() => ({}));
+      throw new Error(`PDF generation failed: ${pdfRes.status} — ${JSON.stringify(errBody)}`);
+    }
+
+    pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  } catch (err) {
+    console.error('[stripe/webhook] pre-da-history PDF generation error:', err);
+    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
+  }
+
+  const filename = `pre-da-history-${report_id.slice(0, 8)}.pdf`;
+
+  try {
+    await resend.emails.send({
+      from: 'Can I Build It <info@plotdetect.com.au>',
+      to: [email],
+      subject: 'Your Pre-DA Site History Report',
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+            Your report is attached.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your Pre-DA Site History Report is attached as a PDF.
+            It covers satellite change detection across 2017–2024, matched DA and CC events from
+            the NSW ePlanning Portal, heritage flag status, and flood/bushfire event annotations.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            You can share this with your town planner, solicitor, or buyer's agent for preliminary due diligence.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+          </p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename,
+          content: pdfBuffer,
+        },
+      ],
+    });
+  } catch (err) {
+    console.error('[stripe/webhook] pre-da-history Resend email error:', err);
   }
 
   return NextResponse.json({ received: true });

@@ -47,6 +47,7 @@ export interface ShadowReportData {
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  is_paid?: boolean;
   tile_b64: string | null;
   logo_b64?: string | null;
 }
@@ -148,6 +149,25 @@ const s = StyleSheet.create({
 function bearingToCompass(deg: number): string {
   const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
   return dirs[Math.round(deg / 45) % 8];
+}
+
+function seasonalSummary(scenarios: ShadowScenario[]) {
+  const winter = scenarios.filter(sc => sc.scenario.startsWith('jun21_'));
+  const spring = scenarios.filter(sc => sc.scenario === 'sep21_12pm');
+  const summer = scenarios.filter(sc => sc.scenario === 'dec21_12pm');
+
+  function worstPct(group: ShadowScenario[]) {
+    const vals = group
+      .map(sc => sc.shadow_overlap_fraction != null ? Math.round(sc.shadow_overlap_fraction * 100) : null)
+      .filter((v): v is number => v !== null);
+    return vals.length ? Math.max(...vals) : null;
+  }
+
+  return [
+    { season: 'Winter (21 Jun)', pct: worstPct(winter) },
+    { season: 'Spring (21 Sep)', pct: worstPct(spring) },
+    { season: 'Summer (21 Dec)', pct: worstPct(summer) },
+  ];
 }
 
 function coveragePillColor(pct: number | null): { bg: string; fg: string } {
@@ -339,8 +359,41 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         })}
 
         <Text style={[s.bodyText, { marginTop: 8, fontSize: 7.5, color: GRAY_500 }]}>
-          ★ worst-case scenario · Coverage = fraction of subject lot in shadow
+          * worst-case scenario · Coverage = fraction of subject lot in shadow
         </Text>
+
+        {/* Seasonal summary — paid */}
+        {data.is_paid !== false && (() => {
+          const seasons = seasonalSummary(scenarios);
+          return (
+            <View style={{ marginTop: 16 }}>
+              <Text style={s.sectionTitle}>Seasonal shadow summary</Text>
+              {/* Header */}
+              <View style={[s.tableHeader]}>
+                <Text style={[{ flex: 3 }, s.colHeaderText]}>Season</Text>
+                <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Worst coverage</Text>
+                <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Flag</Text>
+              </View>
+              {seasons.map(({ season, pct }) => {
+                const pill = coveragePillColor(pct);
+                const flag = pct != null && pct > 20 ? 'Above 20%' : pct != null ? 'Within limit' : 'No data';
+                const flagColor = pct != null && pct > 20 ? RED : GRAY_500;
+                return (
+                  <View key={season} style={s.tableRow}>
+                    <Text style={[{ flex: 3 }, s.colDate]}>{season}</Text>
+                    <Text style={[{ flex: 1.5, textAlign: 'right', fontSize: 8.5 }, { color: pill.fg }]}>
+                      {pct != null ? `${pct}%` : '—'}
+                    </Text>
+                    <Text style={[{ flex: 1.5, textAlign: 'right', fontSize: 8, color: flagColor }]}>{flag}</Text>
+                  </View>
+                );
+              })}
+              <Text style={[s.bodyText, { marginTop: 4, fontSize: 7.5, color: GRAY_500 }]}>
+                ADG Part 3F threshold: no more than 20% of a neighbouring open space in shadow at 12pm on 21 June.
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* Warnings */}
         {data.warnings && data.warnings.length > 0 && (

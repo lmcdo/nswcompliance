@@ -19,8 +19,9 @@ import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown };
+  let body: { data?: unknown; is_paid?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -46,6 +47,12 @@ export async function POST(req: NextRequest) {
   ]);
 
   const today = new Date().toISOString().split('T')[0];
+  const is_paid = body.is_paid !== false;
+
+  const applications = Array.isArray(raw.applications)
+    ? (raw.applications as ThreatRadarReportData['applications'])
+    : [];
+  const radius_m = typeof raw.radius_m === 'number' ? raw.radius_m : 500;
 
   const data: ThreatRadarReportData = {
     address: String(raw.address),
@@ -53,11 +60,10 @@ export async function POST(req: NextRequest) {
     lat: lat ?? 0,
     lng: lng ?? 0,
     council_name: (raw.council_name as string | null) ?? null,
-    applications: Array.isArray(raw.applications)
-      ? (raw.applications as ThreatRadarReportData['applications'])
-      : [],
+    applications,
     window_days: typeof raw.window_days === 'number' ? raw.window_days : 90,
-    radius_m: typeof raw.radius_m === 'number' ? raw.radius_m : 500,
+    radius_m,
+    is_paid,
     tile_b64,
     logo_b64,
   };

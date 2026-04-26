@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown };
+  let body: { data?: unknown; is_paid?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
   ]);
 
   const today = new Date().toISOString().split('T')[0];
+  const is_paid = body.is_paid !== false;
 
   // Strip GeoJSON geometry fields — PDF doesn't need them
   const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
@@ -79,6 +80,7 @@ export async function POST(req: NextRequest) {
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
+    is_paid,
     tile_b64,
     logo_b64,
   };

@@ -26,6 +26,14 @@ const COST_PER_WATT      = 1.00;
 const PANEL_WATTS        = 400;
 const INVERTER_REPLACE   = 2000;
 
+// NSW long-run average monthly share of annual irradiance (PVGIS, sums to ~1.0)
+const MONTHLY_IRRADIANCE_SHARE = [
+  0.099, 0.090, 0.091, 0.079, 0.068, 0.058,  // Jan–Jun
+  0.065, 0.074, 0.082, 0.090, 0.095, 0.109,  // Jul–Dec
+];
+
+const SENSITIVITY_FEED_IN_RATES = [0.04, 0.06, 0.10];
+
 function calcROI(kwh: number, maxPanels: number) {
   const systemKw      = (maxPanels * PANEL_WATTS) / 1000;
   const selfKwh       = kwh * SELF_CONSUME_RATIO;
@@ -58,7 +66,7 @@ function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
 }
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown };
+  let body: { data?: unknown; is_paid?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -93,6 +101,22 @@ export async function POST(req: NextRequest) {
   const roi   = calcROI(kwh, maxPanels);
   const grade = solarGrade(pitch, azimuth, sunHours);
 
+  // Payback sensitivity: same system cost, 3 feed-in rate scenarios
+  const sensitivity = SENSITIVITY_FEED_IN_RATES.map((feedIn) => {
+    const selfKwh     = kwh * SELF_CONSUME_RATIO;
+    const exportKwh   = kwh * (1 - SELF_CONSUME_RATIO);
+    const annualSaving = selfKwh * RETAIL_RATE + exportKwh * feedIn;
+    const paybackYears = annualSaving > 0 ? roi.systemCost / annualSaving : null;
+    return { feed_in_rate: feedIn, annual_saving: Math.round(annualSaving), payback_years: paybackYears !== null ? Math.round(paybackYears * 10) / 10 : null };
+  });
+
+  // Monthly kWh estimate from annual × NSW irradiance distribution
+  const monthly_kwh = kwh > 0
+    ? MONTHLY_IRRADIANCE_SHARE.map((share) => Math.round(kwh * share))
+    : null;
+
+  const is_paid = body.is_paid !== false; // default true — gated by Stripe in P2-B
+
   const today = new Date().toISOString().split('T')[0];
 
   const data: SolarYieldReportData = {
@@ -119,6 +143,10 @@ export async function POST(req: NextRequest) {
     system_kw: roi.systemKw,
     solar_grade: grade.grade,
     solar_grade_reason: grade.reason,
+    // paid enhancements
+    sensitivity,
+    monthly_kwh,
+    is_paid,
     // meta
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],

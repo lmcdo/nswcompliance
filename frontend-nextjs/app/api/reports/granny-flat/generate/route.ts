@@ -17,6 +17,7 @@ import {
   type GrannyFlatReportData,
 } from '@/lib/pdf/granny-flat-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
+import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 
 // Use service role — this route is server-only, report_id is an unguessable UUID.
 // The anon+cookie client fails with no session (called from webhook or curl).
@@ -48,6 +49,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'data.address is required' }, { status: 400 });
     }
     const today = new Date().toISOString().split('T')[0];
+    const lat = typeof raw.lat === 'number' ? raw.lat : null;
+    const lng = typeof raw.lng === 'number' ? raw.lng : null;
+
+    const [tile_b64, logo_b64] = await Promise.all([
+      (raw.tile_b64 as string | null) != null
+        ? Promise.resolve(raw.tile_b64 as string)
+        : (lat && lng) ? fetchAerialTileBase64(lat, lng, 'property') : Promise.resolve(null),
+      Promise.resolve(getLogoBase64()),
+    ]);
+
     data = {
       address: String(raw.address),
       run_date: String(raw.run_date ?? today),
@@ -63,8 +74,8 @@ export async function POST(req: NextRequest) {
       confidence_reason: String(raw.confidence_reason ?? ''),
       warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
       data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
-      tile_b64: (raw.tile_b64 as string | null) ?? null,
-      logo_b64: getLogoBase64(),
+      tile_b64,
+      logo_b64,
     };
     const slug = String(data.address).slice(0, 30).replace(/[^a-z0-9]/gi, '-').toLowerCase();
     filename = `granny-flat-report-${slug}.pdf`;
