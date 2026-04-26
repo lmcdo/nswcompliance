@@ -15,6 +15,12 @@ import {
 } from '@react-pdf/renderer';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -35,6 +41,8 @@ export interface SolarYieldReportData {
   is_commercial_scale: boolean;
   imagery_date: string;
   coverage_available: boolean;
+  // optional monthly breakdown (Google Solar API)
+  monthly_kwh?: number[];
   // financial (pre-computed on route)
   annual_saving_aud: number;
   system_cost_aud: number;
@@ -303,6 +311,78 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
             </Text>
           </View>
         </View>
+
+        {/* Payback sensitivity — feed-in rate */}
+        {(() => {
+          const kwh = data.annual_kwh_estimate;
+          const selfUse = 0.30;
+          const retail = 0.32;
+          const feedInRates = [0.04, 0.06, 0.10];
+          const rows = feedInRates.map(rate => {
+            const saving = kwh * selfUse * retail + kwh * (1 - selfUse) * rate;
+            const payback = saving > 0 ? data.system_cost_aud / saving : null;
+            return { rate, saving, payback, isCurrent: rate === 0.06 };
+          });
+          return (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={s.sectionTitle}>Payback sensitivity — feed-in rate</Text>
+              <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Feed-in rate</Text>
+                <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Annual saving</Text>
+                <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Payback</Text>
+              </View>
+              {rows.map(r => (
+                <View key={r.rate} style={{
+                  flexDirection: 'row', paddingVertical: 6,
+                  borderBottom: `1 solid ${GRAY_300}`,
+                  backgroundColor: r.isCurrent ? TEAL_LIGHT : 'transparent',
+                }}>
+                  <Text style={{ flex: 2, fontSize: 8.5, color: r.isCurrent ? TEAL : GRAY_700 }}>
+                    {(r.rate * 100).toFixed(0)}c/kWh{r.isCurrent ? ' (current AER benchmark)' : ''}
+                  </Text>
+                  <Text style={{ flex: 1.5, fontSize: 8.5, color: r.isCurrent ? TEAL : GRAY_700, textAlign: 'right' }}>
+                    {fmt$(Math.round(r.saving))}
+                  </Text>
+                  <Text style={{ flex: 1.5, fontSize: 8.5, color: r.isCurrent ? TEAL : GRAY_700, textAlign: 'right' }}>
+                    {r.payback != null ? `${r.payback.toFixed(1)} yrs` : '—'}
+                  </Text>
+                </View>
+              ))}
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+                30% self-consumption at 32c retail · remaining exported at stated rate
+              </Text>
+            </View>
+          );
+        })()}
+
+        {/* Monthly output grid */}
+        {data.monthly_kwh && data.monthly_kwh.length === 12 && (() => {
+          const months = data.monthly_kwh;
+          const firstRow = months.slice(0, 6);
+          const secondRow = months.slice(6, 12);
+          return (
+            <View style={{ marginBottom: 16 }}>
+              <Text style={s.sectionTitle}>Monthly output estimate (kWh)</Text>
+              {[firstRow, secondRow].map((row, ri) => (
+                <View key={ri} style={{ flexDirection: 'row', gap: 4, marginBottom: 4 }}>
+                  {row.map((kwh, ci) => (
+                    <View key={ci} style={{
+                      flex: 1, backgroundColor: GRAY_100, borderRadius: 4,
+                      paddingVertical: 6, paddingHorizontal: 2, alignItems: 'center',
+                    }}>
+                      <Text style={{ fontSize: 7, color: GRAY_500, marginBottom: 2 }}>
+                        {MONTH_NAMES[ri * 6 + ci]}
+                      </Text>
+                      <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: TEAL }}>
+                        {Math.round(kwh)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              ))}
+            </View>
+          );
+        })()}
 
         {/* Heritage notice */}
         {data.is_heritage && (

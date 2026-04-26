@@ -191,6 +191,60 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
 
         <View style={s.divider} />
 
+        {/* Highest-impact application callout */}
+        {apps.length > 0 && (() => {
+          const sorted = [...apps].sort((a, b) => {
+            const dA = Number(a.NumberOfNewDwellings) || 0;
+            const dB = Number(b.NumberOfNewDwellings) || 0;
+            if (dB !== dA) return dB - dA;
+            const cA = typeof a.CostOfDevelopment === 'string'
+              ? parseFloat(a.CostOfDevelopment) : (Number(a.CostOfDevelopment) || 0);
+            const cB = typeof b.CostOfDevelopment === 'string'
+              ? parseFloat(b.CostOfDevelopment) : (Number(b.CostOfDevelopment) || 0);
+            if (cB !== cA) return cB - cA;
+            return (a._distance_m ?? 9999) - (b._distance_m ?? 9999);
+          });
+          const top = sorted[0];
+          const dwellings = Number(top.NumberOfNewDwellings) || 0;
+          const cost = formatCost(top.CostOfDevelopment);
+          if (!dwellings && !cost) return null;
+          const metaParts = [
+            top.Status,
+            cost ? `Cost ${cost}` : null,
+            dwellings ? `${dwellings} new dwelling${dwellings !== 1 ? 's' : ''}` : null,
+            top._distance_m != null ? `${top._distance_m} m away` : null,
+          ].filter(Boolean);
+          return (
+            <View style={{
+              backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
+              paddingVertical: 8, paddingHorizontal: 10, marginBottom: 12, borderRadius: 2,
+            }}>
+              <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
+                Highest-impact application nearby
+              </Text>
+              <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 2 }}>
+                {top.PlanningPortalApplicationNumber ?? '—'}
+                {top.DevelopmentType ? ` — ${top.DevelopmentType}` : ''}
+              </Text>
+              {top.ApplicationDescription ? (
+                <Text style={{ fontSize: 8, color: GRAY_700, marginBottom: 2 }}>
+                  {top.ApplicationDescription}
+                </Text>
+              ) : null}
+              {top.PropertyAddress ? (
+                <Text style={{ fontSize: 7.5, color: GRAY_500, marginBottom: 2 }}>
+                  {top.PropertyAddress}
+                </Text>
+              ) : null}
+              {metaParts.length > 0 && (
+                <Text style={{ fontSize: 7.5, color: GRAY_700 }}>
+                  {metaParts.join(' · ')}
+                </Text>
+              )}
+            </View>
+          );
+        })()}
+
         {/* Applications list */}
         {apps.length === 0 ? (
           <Text style={s.bodyText}>

@@ -260,6 +260,23 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
           </View>
         </View>
 
+        {/* Height threshold callout */}
+        {data.height_m > 8.0 && (
+          <View style={{
+            backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
+            paddingVertical: 6, paddingHorizontal: 8, marginBottom: 12, borderRadius: 2,
+          }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 2 }}>
+              Tall building zone ({data.height_m} m HOB)
+            </Text>
+            <Text style={{ fontSize: 8, color: GRAY_700 }}>
+              Permitted building height exceeds 8 m. Shadow impact at winter solstice is
+              likely to be substantial. A formal shadow study by a qualified architect is
+              strongly recommended before lodging a DA.
+            </Text>
+          </View>
+        )}
+
         <View style={s.divider} />
 
         {/* Scenarios table */}
@@ -290,7 +307,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             >
               <Text style={s.colDate}>
                 {SCENARIO_LABELS[sc.scenario] ?? sc.scenario}
-                {isWorstCase ? ' ★' : ''}
+                {isWorstCase ? ' *' : ''}
               </Text>
               <Text style={s.colReach}>
                 {sc.shadow_length_m > 0 ? `${sc.shadow_length_m.toFixed(0)} m` : '—'}
@@ -308,7 +325,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         })}
 
         <Text style={[s.bodyText, { marginTop: 8, fontSize: 7.5, color: GRAY_500 }]}>
-          ★ worst-case scenario · Coverage = fraction of subject lot in shadow
+          * worst-case scenario · Coverage = fraction of subject lot in shadow
         </Text>
 
         {/* Warnings */}
@@ -324,6 +341,52 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             ))}
           </View>
         )}
+
+        {/* Seasonal shadow summary */}
+        {scenarios.length > 0 && (() => {
+          const seasonBest: Record<string, number> = {};
+          scenarios.forEach(sc => {
+            const season =
+              sc.scenario.startsWith('jun21') ? 'Winter'
+              : sc.scenario === 'sep21_12pm' ? 'Spring'
+              : sc.scenario === 'dec21_12pm' ? 'Summer'
+              : null;
+            if (!season) return;
+            const pct = sc.shadow_overlap_fraction != null
+              ? Math.round(sc.shadow_overlap_fraction * 100)
+              : 0;
+            if (!(season in seasonBest) || pct > seasonBest[season]) {
+              seasonBest[season] = pct;
+            }
+          });
+          const seasonKeys = (['Winter', 'Spring', 'Summer'] as const).filter(k => k in seasonBest);
+          if (seasonKeys.length === 0) return null;
+          return (
+            <View style={{ marginTop: 16 }}>
+              <Text style={s.sectionTitle}>Seasonal shadow summary (worst case per season)</Text>
+              <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Season</Text>
+                <Text style={{ flex: 1, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Worst coverage</Text>
+              </View>
+              {seasonKeys.map((season, i) => {
+                const pct = seasonBest[season];
+                const pillColor = coveragePillColor(pct);
+                return (
+                  <View key={season} style={{
+                    flexDirection: 'row', paddingVertical: 6,
+                    borderBottom: `1 solid ${GRAY_300}`,
+                    backgroundColor: i % 2 === 1 ? GRAY_100 : 'transparent',
+                  }}>
+                    <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700 }}>{season}</Text>
+                    <Text style={{ flex: 1, fontSize: 8.5, textAlign: 'right', color: pillColor.fg }}>
+                      {pct}%
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          );
+        })()}
 
         <Footer pageNum={1} total={totalPages} />
       </Page>
