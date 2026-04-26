@@ -1,34 +1,45 @@
 import Link from 'next/link';
 
 export default function NotFound() {
+  const TOOLS = [
+    { emoji: '🏡', label: 'Granny Flat', href: '/reports/granny-flat', color: 'border-teal-800 hover:border-teal-600' },
+    { emoji: '🌊', label: 'Flood Risk',  href: '/reports/flood',        color: 'border-blue-800 hover:border-blue-600' },
+    { emoji: '☀️', label: 'Solar Yield', href: '/reports/solar-yield',  color: 'border-amber-800 hover:border-amber-600' },
+    { emoji: '🌑', label: 'Shadow',      href: '/reports/shadow',       color: 'border-slate-700 hover:border-slate-500' },
+    { emoji: '📡', label: 'Threat Radar',href: '/reports/threat-radar', color: 'border-violet-800 hover:border-violet-600' },
+  ];
+
   return (
-    <main className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
-      <p className="text-5xl font-bold text-gray-100 mb-2">404</p>
-      <h1 className="text-xl font-semibold text-gray-900 mb-2">Page not found</h1>
-      <p className="text-sm text-gray-500 mb-8 max-w-sm">
-        The address you entered doesn&apos;t match any page. Try one of the tools below.
+    <main className="min-h-screen bg-[#0b1628] text-white flex flex-col items-center justify-center px-6 text-center">
+      {/* Logo */}
+      <Link href="/" className="text-lg font-bold tracking-tight mb-16 opacity-60 hover:opacity-100 transition-opacity">
+        canibuildit<span className="text-[#00d9b8]">.com.au</span>
+      </Link>
+
+      {/* Error */}
+      <p className="text-8xl font-bold text-white/10 leading-none mb-4 select-none">404</p>
+      <h1 className="text-xl font-semibold text-white mb-2">Page not found</h1>
+      <p className="text-sm text-slate-400 mb-12 max-w-sm">
+        That address doesn&apos;t exist — but your property address probably does. Try a tool.
       </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <Link
-          href="/reports/granny-flat"
-          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-        >
-          Granny Flat Check
-        </Link>
-        <Link
-          href="/reports/flood"
-          className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          Flood Risk
-        </Link>
-        <Link
-          href="/"
-          className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-        >
-          All tools →
-        </Link>
+
+      {/* Tool grid */}
+      <div className="flex flex-wrap justify-center gap-3 max-w-lg mb-12">
+        {TOOLS.map((t) => (
+          <Link
+            key={t.href}
+            href={t.href}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${t.color} bg-white/5 text-sm font-medium text-white transition-colors`}
+          >
+            <span>{t.emoji}</span>
+            <span>{t.label}</span>
+          </Link>
+        ))}
       </div>
-      <p className="text-xs text-gray-300 mt-12">canibuildit.com.au</p>
+
+      <Link href="/" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+        ← Back to home
+      </Link>
     </main>
   );
 }
