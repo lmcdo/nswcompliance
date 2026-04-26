@@ -35,6 +35,9 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "bom_gauge_distance_km": float | null,
     "bom_last_major_flood_date": str | null,
     "bom_last_major_flood_peak_m": float | null,
+    "bom_flood_history": list[{date, peak_m, ari_category}],  # up to 3 events (paid tier)
+    "flood_study_name": str | null,                            # EPI layer study name (free tier)
+    "flood_study_date": str | null,                            # EPI layer effective date (free tier)
     "s1_gap_warning": str | null,
     "data_currency": str,
     "flood_signal": "none" | "low" | "moderate" | "elevated" | "unavailable"  # multi-source convergence
@@ -166,7 +169,7 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
         feats = body.get("features") or []
         if not feats:
             return {"epi_flood_class": "none", "epi_flood_label": "No EPI Flood Overlay",
-                    "data_currency": "unknown"}
+                    "data_currency": "unknown", "flood_study_name": None, "flood_study_date": None}
 
         attrs = feats[0].get("attributes") or {}
         # ArcGIS may return DataDate as epoch-ms integer — coerce to str for contract compliance
@@ -181,12 +184,41 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
         if epi_class is None:
             logger.warning(f"Unrecognised EPI FloodClass: {raw_class!r} — treating as flood_planning_area")
             epi_class = "flood_planning_area"
-        return {"epi_flood_class": epi_class,
-                "epi_flood_label": _EPI_CLASS_LABELS.get(epi_class, "Flood Planning Area"),
-                "data_currency": currency}
+
+        # Extract flood study name and date from layer attributes (free-tier provenance signal).
+        # Field names vary across ArcGIS services — try common options.
+        _STUDY_NAME_FIELDS = [
+            "StudyName", "STUDYNAME", "FloodStudy", "FLOODSTUDY",
+            "DataName", "DATANAME", "StudyRef", "StudyTitle",
+            "FPA_Study", "Study_Name", "FloodStudyName",
+        ]
+        _STUDY_DATE_FIELDS = [
+            "StudyDate", "STUDYDATE", "EffectiveDate", "EFFECTIVEDATE",
+        ]
+        flood_study_name: Optional[str] = None
+        for field in _STUDY_NAME_FIELDS:
+            val = attrs.get(field)
+            if val and str(val).strip() and str(val).strip().lower() not in ("null", "none", ""):
+                flood_study_name = str(val).strip()
+                break
+        flood_study_date: Optional[str] = None
+        for field in _STUDY_DATE_FIELDS:
+            val = attrs.get(field)
+            if val and str(val).strip() and str(val).strip().lower() not in ("null", "none", "", "unknown"):
+                flood_study_date = str(val).strip()
+                break
+
+        return {
+            "epi_flood_class": epi_class,
+            "epi_flood_label": _EPI_CLASS_LABELS.get(epi_class, "Flood Planning Area"),
+            "data_currency": currency,
+            "flood_study_name": flood_study_name,
+            "flood_study_date": flood_study_date,
+        }
     except Exception as e:
         logger.warning(f"EPI REST: {e}")
-        return {"epi_flood_class": None, "epi_flood_label": None, "data_currency": "query_failed"}
+        return {"epi_flood_class": None, "epi_flood_label": None, "data_currency": "query_failed",
+                "flood_study_name": None, "flood_study_date": None}
 
 
 # ---------------------------------------------------------------------------
@@ -312,74 +344,150 @@ def _haversine_km(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     return R * 2 * math.asin(math.sqrt(a))
 
 
-def _fetch_bom_peak(station_id: str, major_flood_m: float) -> tuple[Optional[str], Optional[float]]:
-    """
-    Fetch last 6 years of water level from BOM SOS2 API.
-    Returns (peak_date_iso, peak_level_m) for the highest reading, or (None, None) on failure.
-    Only returns if the peak exceeded the major_flood_m threshold.
-    """
-    start = "2021-01-01T00:00:00+10:00"
-    end   = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
+def _parse_bom_observations(xml: str) -> list[tuple[datetime, float]]:
+    """Parse time/value pairs from a BOM SOS2 XML response. Returns sorted list."""
+    pairs = re.findall(
+        r"<[^>]*:?time>([^<]+)</[^>]*:?time>\s*<[^>]*:?value>([^<]+)</[^>]*:?value>",
+        xml,
+    )
+    obs: list[tuple[datetime, float]] = []
+    for t, v in pairs:
+        try:
+            fv = float(v)
+            dt = datetime.fromisoformat(t.strip().replace("Z", "+00:00"))
+            obs.append((dt, fv))
+        except (ValueError, Exception):
+            continue
+    obs.sort(key=lambda x: x[0])
+    return obs
+
+
+def _fetch_bom_observations(station_id: str, start_iso: str) -> str:
+    """Fetch SOS2 XML for a station from start_iso to now."""
+    end = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00")
     params = {
         "service": "SOS",
         "version": "2.0.0",
         "request": "GetObservation",
         "featureOfInterest": f"http://bom.gov.au/waterdata/id/station/{station_id}",
         "observedProperty": "http://bom.gov.au/waterdata/def/property/Water_Course_Level",
-        "temporalFilter": f"om:phenomenonTime,{start}/{end}",
+        "temporalFilter": f"om:phenomenonTime,{start_iso}/{end}",
     }
-    try:
-        r = requests.get(BOM_SOS2, params=params, timeout=15)
-        r.raise_for_status()
-        xml = r.text
+    r = requests.get(BOM_SOS2, params=params, timeout=15)
+    r.raise_for_status()
+    return r.text
 
-        # Extract all time/value pairs from the SOS2 XML response.
-        # Matches both wml2: and plain element names to handle namespace variations.
-        pairs = re.findall(
-            r"<[^>]*:?time>([^<]+)</[^>]*:?time>\s*<[^>]*:?value>([^<]+)</[^>]*:?value>",
-            xml,
-        )
-        if not pairs:
+
+def _fetch_bom_peak(station_id: str, major_flood_m: float) -> tuple[Optional[str], Optional[float]]:
+    """
+    Fetch last 6 years of water level from BOM SOS2 API.
+    Returns (peak_date_iso, peak_level_m) for the highest reading above threshold, or (None, None).
+    """
+    try:
+        xml = _fetch_bom_observations(station_id, "2021-01-01T00:00:00+10:00")
+        obs = _parse_bom_observations(xml)
+        if not obs:
             return None, None
 
         peak_val = -999.0
-        peak_time = ""
-        for t, v in pairs:
-            try:
-                fv = float(v)
-                if fv > peak_val:
-                    peak_val = fv
-                    peak_time = t.strip()
-            except ValueError:
-                continue
+        peak_time: Optional[datetime] = None
+        for dt, fv in obs:
+            if fv > peak_val:
+                peak_val = fv
+                peak_time = dt
 
-        if peak_val < major_flood_m:
-            return None, None  # No major flood in this period
+        if peak_val < major_flood_m or peak_time is None:
+            return None, None
 
-        # Parse ISO datetime → date string
-        try:
-            dt = datetime.fromisoformat(peak_time.replace("Z", "+00:00"))
-            peak_date = dt.date().isoformat()
-        except Exception:
-            peak_date = peak_time[:10]  # fallback: first 10 chars
-
-        return peak_date, round(peak_val, 2)
+        return peak_time.date().isoformat(), round(peak_val, 2)
 
     except Exception as e:
         logger.warning(f"BOM SOS2 {station_id}: {e}")
         return None, None
 
 
+def _ari_category(peak_m: float, major_flood_m: float) -> str:
+    """Estimate ARI category from peak relative to major flood threshold."""
+    if major_flood_m <= 0:
+        return "major flood"
+    ratio = peak_m / major_flood_m
+    if ratio >= 1.5:
+        return "1-in-100 year (est.)"
+    if ratio >= 1.2:
+        return "1-in-50 year (est.)"
+    return "1-in-20 year (est.)"
+
+
+def _fetch_bom_flood_history(
+    station_id: str, major_flood_m: float, max_events: int = 3
+) -> list[dict]:
+    """
+    Fetch up to max_events major flood events from BOM SOS2 (2000–present).
+    A "flood event" is a contiguous period where water level >= major_flood_m.
+    Returns list of {date, peak_m, ari_category} sorted newest first.
+    """
+    try:
+        xml = _fetch_bom_observations(station_id, "2000-01-01T00:00:00+10:00")
+        obs = _parse_bom_observations(xml)
+        if not obs:
+            return []
+
+        # Identify flood events: contiguous periods at or above the major flood level.
+        # Each time the level drops back below threshold, the event closes.
+        events: list[tuple[datetime, float]] = []
+        in_event = False
+        event_peak = -999.0
+        event_peak_dt: Optional[datetime] = None
+
+        for dt, val in obs:
+            if val >= major_flood_m:
+                in_event = True
+                if val > event_peak:
+                    event_peak = val
+                    event_peak_dt = dt
+            else:
+                if in_event and event_peak_dt is not None:
+                    events.append((event_peak_dt, event_peak))
+                in_event = False
+                event_peak = -999.0
+                event_peak_dt = None
+
+        # Close trailing open event
+        if in_event and event_peak_dt is not None:
+            events.append((event_peak_dt, event_peak))
+
+        if not events:
+            return []
+
+        # Newest first, cap
+        events.sort(key=lambda x: x[0], reverse=True)
+        events = events[:max_events]
+
+        return [
+            {
+                "date": evt[0].date().isoformat(),
+                "peak_m": round(evt[1], 2),
+                "ari_category": _ari_category(evt[1], major_flood_m),
+            }
+            for evt in events
+        ]
+
+    except Exception as e:
+        logger.warning(f"BOM flood history {station_id}: {e}")
+        return []
+
+
 def _query_bom_gauge(lat: float, lng: float) -> dict:
     """
-    Find nearest pre-seeded NSW river gauge and fetch last major flood event from BOM SOS2.
-    Returns gauge metadata + flood event if available.
+    Find nearest pre-seeded NSW river gauge and fetch flood events from BOM SOS2.
+    Returns gauge metadata, last major flood (single event), and bom_flood_history (up to 3).
     """
     null_result = {
         "bom_gauge_name": None,
         "bom_gauge_distance_km": None,
         "bom_last_major_flood_date": None,
         "bom_last_major_flood_peak_m": None,
+        "bom_flood_history": [],
     }
     try:
         nearest = min(
@@ -393,12 +501,14 @@ def _query_bom_gauge(lat: float, lng: float) -> dict:
             return null_result
 
         peak_date, peak_m = _fetch_bom_peak(station_id, major_level)
+        flood_history = _fetch_bom_flood_history(station_id, major_level, max_events=3)
 
         return {
             "bom_gauge_name": name,
             "bom_gauge_distance_km": round(dist, 1),
             "bom_last_major_flood_date": peak_date,
             "bom_last_major_flood_peak_m": peak_m,
+            "bom_flood_history": flood_history,
         }
     except Exception as e:
         logger.warning(f"BOM gauge query: {e}")
@@ -534,6 +644,9 @@ def _normalise_outputs(raw: dict) -> dict:
         "bom_gauge_distance_km":      raw.get("bom_gauge_distance_km"),
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
         "bom_last_major_flood_peak_m": raw.get("bom_last_major_flood_peak_m"),
+        "bom_flood_history":          raw.get("bom_flood_history") or [],
+        "flood_study_name":           raw.get("flood_study_name"),
+        "flood_study_date":           raw.get("flood_study_date"),
         "s1_gap_warning":             raw.get("s1_gap_warning"),
         "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
