@@ -69,7 +69,7 @@ S1_COLLECTION = "sentinel-1-rtc"
 # Layer 0 = Flood Planning Hazard overlay.
 EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
             "Planning/Hazard/MapServer/0/query")
-BOM_SOS2 = "http://www.bom.gov.au/waterdata/services/sos2/getObservation"
+BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
 
