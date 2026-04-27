@@ -65,10 +65,11 @@ router = APIRouter(prefix="/pipeline", tags=["satellite"])
 
 PC_CATALOG = "https://planetarycomputer.microsoft.com/api/stac/v1"
 S1_COLLECTION = "sentinel-1-rtc"
-# ArcGIS REST API — more reliable than WFS for ArcGIS Server (CQL_FILTER not supported).
-# Layer 0 = Flood Planning Hazard overlay.
+# ArcGIS REST API — Layer 0 is broken server-side (returns 400 for all queries).
+# Layer 1 ("Flood Planning") works but covers only ~11 LGAs that have uploaded polygon data.
+# Addresses in uncovered LGAs return 0 features → epi_flood_class: "none" (correct, not an error).
 EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
-            "Planning/Hazard/MapServer/0/query")
+            "Planning/Hazard/MapServer/1/query")
 BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
@@ -147,8 +148,12 @@ def _get_conn():
 # ---------------------------------------------------------------------------
 
 def _query_epi_overlay(lat: float, lng: float) -> dict:
-    """Query NSW SEED EPI Flood via ArcGIS REST API (CQL_FILTER unsupported on ArcGIS Server WFS).
-    Returns epi_flood_class, epi_flood_label, data_currency."""
+    """Query NSW SEED EPI Flood Planning layer via ArcGIS REST (Layer 1).
+
+    Layer 1 covers ~11 LGAs that have uploaded polygon data to the state portal.
+    Addresses in uncovered LGAs return 0 features → epi_flood_class "none" (not an error).
+    Returns epi_flood_class, epi_flood_label, data_currency, flood_study_name, flood_study_date.
+    """
     try:
         params = {
             "geometry": f"{lng},{lat}",
@@ -172,10 +177,21 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
                     "data_currency": "unknown", "flood_study_name": None, "flood_study_date": None}
 
         attrs = feats[0].get("attributes") or {}
-        # ArcGIS may return DataDate as epoch-ms integer — coerce to str for contract compliance
-        currency = str(attrs.get("DataDate") or attrs.get("DATADATE") or "unknown")
+        # Layer 1 uses CURRENCY_DATE (epoch-ms). Convert to ISO date string when available.
+        _currency_raw = (
+            attrs.get("CURRENCY_DATE") or attrs.get("CurrencyDate")
+            or attrs.get("DataDate") or attrs.get("DATADATE")
+        )
+        if isinstance(_currency_raw, (int, float)) and _currency_raw > 0:
+            from datetime import datetime, timezone
+            currency = datetime.fromtimestamp(_currency_raw / 1000, tz=timezone.utc).date().isoformat()
+        else:
+            currency = str(_currency_raw or "unknown")
+        # Layer 1 stores the classification in LAY_CLASS ("Flood Planning Area").
+        # Earlier WFS layers used FloodClass/FLOODCLASS — keep both for resilience.
         raw_class = (
-            attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
+            attrs.get("LAY_CLASS") or attrs.get("lay_class")
+            or attrs.get("FloodClass") or attrs.get("FLOODCLASS") or attrs.get("Category")
             or attrs.get("FldClass") or attrs.get("Flood_Class") or ""
         ).strip().lower()
         # Unknown or empty class → treat as "none" (not "flood_planning_area").
@@ -191,6 +207,8 @@ def _query_epi_overlay(lat: float, lng: float) -> dict:
             "StudyName", "STUDYNAME", "FloodStudy", "FLOODSTUDY",
             "DataName", "DATANAME", "StudyRef", "StudyTitle",
             "FPA_Study", "Study_Name", "FloodStudyName",
+            # Layer 1 fallback: EPI_NAME is the LEP name (e.g. "Wollongong LEP 2009")
+            "EPI_NAME",
         ]
         _STUDY_DATE_FIELDS = [
             "StudyDate", "STUDYDATE", "EffectiveDate", "EFFECTIVEDATE",
