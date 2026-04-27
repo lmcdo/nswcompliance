@@ -128,7 +128,11 @@ export async function middleware(request: NextRequest) {
   // Both canibuildit.com.au and verify.plotdetect.com.au point to the same
   // Next.js build. Rewrite root requests to the right section.
   // ============================================================================
-  const hostname = request.headers.get('host') ?? '';
+  // x-forwarded-host is more reliable than host when behind Cloudflare + Vercel
+  const hostname =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    request.nextUrl.hostname;
   const isVerifyDomain =
     hostname === 'verify.plotdetect.com.au' ||
     hostname === 'plotdetect.com.au' ||
