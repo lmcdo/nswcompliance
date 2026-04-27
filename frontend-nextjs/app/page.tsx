@@ -227,11 +227,18 @@ export default function HomePage() {
           <p className="text-xs text-slate-700 mt-2">
             Results are indicative only and do not constitute planning advice. Always consult a registered town planner or certifier.
           </p>
+          <p className="text-xs text-slate-600 mt-3">
+            Questions?{' '}
+            <a href="mailto:hello@canibuildit.com.au" className="text-slate-400 hover:text-slate-200 transition-colors underline underline-offset-2">
+              hello@canibuildit.com.au
+            </a>
+          </p>
           <div className="flex flex-wrap justify-center gap-5 mt-4">
             {[
               { href: '/how-it-works', label: 'How it works' },
               { href: '/pricing', label: 'Pricing' },
               { href: '/partner', label: 'Embed program' },
+              { href: '/contact', label: 'Contact' },
               { href: '/privacy', label: 'Privacy' },
               { href: '/terms', label: 'Terms' },
             ].map(({ href, label }) => (

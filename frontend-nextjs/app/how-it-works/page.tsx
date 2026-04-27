@@ -141,6 +141,7 @@ export default function HowItWorksPage() {
           <Link href="/" className="hover:text-gray-600">Home</Link>
           <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
           <Link href="/partner" className="hover:text-gray-600">Embed program</Link>
+          <Link href="/contact" className="hover:text-gray-600">Contact</Link>
           <Link href="/privacy" className="hover:text-gray-600">Privacy</Link>
           <Link href="/terms" className="hover:text-gray-600">Terms</Link>
         </div>

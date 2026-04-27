@@ -117,9 +117,10 @@ export default function PrivacyPage() {
       <footer className="border-t border-gray-100 py-6 px-6">
         <div className="max-w-3xl mx-auto flex flex-wrap gap-4 text-xs text-gray-400">
           <Link href="/" className="hover:text-gray-600">Home</Link>
-          <Link href="/terms" className="hover:text-gray-600">Terms of Service</Link>
           <Link href="/how-it-works" className="hover:text-gray-600">How it works</Link>
           <Link href="/pricing" className="hover:text-gray-600">Pricing</Link>
+          <Link href="/contact" className="hover:text-gray-600">Contact</Link>
+          <Link href="/terms" className="hover:text-gray-600">Terms</Link>
         </div>
       </footer>
     </main>
