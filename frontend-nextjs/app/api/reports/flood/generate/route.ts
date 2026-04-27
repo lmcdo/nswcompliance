@@ -16,11 +16,17 @@ import {
 } from '@/lib/pdf/flood-truth-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
+import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
+  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
+  }
+
   let body: { data?: unknown; is_paid?: boolean };
   try {
     body = await req.json();

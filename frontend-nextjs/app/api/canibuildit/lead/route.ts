@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as dns } from 'dns';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier } from '@/lib/rate-limit';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+// Service role client — bypasses RLS, server-only, never exposed to browser.
+const getSupabase = () =>
+  createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
 
 // ============================================================================
 // MX DOMAIN CHECK
@@ -115,7 +122,7 @@ export async function POST(req: NextRequest) {
 
   // --- 5. Duplicate detection — same email+address within 24h ---
   try {
-    const supabase = await createClient();
+    const supabase = getSupabase();
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const { data: existing } = await supabase
       .from('canibuildit_leads')
@@ -135,7 +142,7 @@ export async function POST(req: NextRequest) {
 
   // --- 6. Store lead ---
   try {
-    const supabase = await createClient();
+    const supabase = getSupabase();
     await supabase.from('canibuildit_leads').insert({
       email: cleanEmail,
       address: cleanAddress,
