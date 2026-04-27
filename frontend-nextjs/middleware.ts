@@ -281,5 +281,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/api/:path*', '/reports/:path*', '/auth/:path*', '/login'],
+  // Match everything except Next.js internals and static files.
+  // Required for hostname-based routing to fire on the root path.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
