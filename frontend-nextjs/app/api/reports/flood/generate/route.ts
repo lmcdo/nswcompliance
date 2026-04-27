@@ -12,15 +12,22 @@ import React from 'react';
 import {
   FloodTruthReportDocument,
   type FloodReportData,
+  type BomFloodEvent,
 } from '@/lib/pdf/flood-truth-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
+import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown };
+  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
+  }
+
+  let body: { data?: unknown; is_paid?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +54,8 @@ export async function POST(req: NextRequest) {
     Promise.resolve(getLogoBase64()),
   ]);
 
+  const is_paid = body.is_paid !== false;
+
   const data: FloodReportData = {
     address: String(raw.address),
     run_date: String(raw.run_date),
@@ -68,12 +77,17 @@ export async function POST(req: NextRequest) {
     bom_last_major_flood_date: (raw.bom_last_major_flood_date as string | null) ?? null,
     bom_last_major_flood_peak_m: raw.bom_last_major_flood_peak_m != null
       ? Number(raw.bom_last_major_flood_peak_m) : null,
+    bom_flood_history: Array.isArray(raw.bom_flood_history)
+      ? (raw.bom_flood_history as BomFloodEvent[]) : null,
+    flood_study_name: (raw.flood_study_name as string | null) ?? null,
+    flood_study_date: (raw.flood_study_date as string | null) ?? null,
     s1_gap_warning: (raw.s1_gap_warning as string | null) ?? null,
     data_currency: String(raw.data_currency ?? 'unknown'),
     flood_signal: (raw.flood_signal as FloodReportData['flood_signal']) ?? null,
     confidence: String(raw.confidence ?? 'low'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
+    is_paid,
     tile_b64,
     logo_b64,
   };

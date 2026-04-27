@@ -47,6 +47,7 @@ export interface ShadowReportData {
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  is_paid?: boolean;
   tile_b64: string | null;
   logo_b64?: string | null;
 }
@@ -150,12 +151,52 @@ function bearingToCompass(deg: number): string {
   return dirs[Math.round(deg / 45) % 8];
 }
 
+function seasonalSummary(scenarios: ShadowScenario[]) {
+  const winter = scenarios.filter(sc => sc.scenario.startsWith('jun21_'));
+  const spring = scenarios.filter(sc => sc.scenario === 'sep21_12pm');
+  const summer = scenarios.filter(sc => sc.scenario === 'dec21_12pm');
+
+  function worstPct(group: ShadowScenario[]) {
+    const vals = group
+      .map(sc => sc.shadow_overlap_fraction != null ? Math.round(sc.shadow_overlap_fraction * 100) : null)
+      .filter((v): v is number => v !== null);
+    return vals.length ? Math.max(...vals) : null;
+  }
+
+  return [
+    { season: 'Winter (21 Jun)', pct: worstPct(winter) },
+    { season: 'Spring (21 Sep)', pct: worstPct(spring) },
+    { season: 'Summer (21 Dec)', pct: worstPct(summer) },
+  ];
+}
+
 function coveragePillColor(pct: number | null): { bg: string; fg: string } {
   if (pct == null) return { bg: GRAY_100, fg: GRAY_500 };
   if (pct >= 70) return { bg: RED_LIGHT,   fg: RED    };
   if (pct >= 40) return { bg: AMBER_LIGHT, fg: AMBER  };
   if (pct >  0)  return { bg: '#fefce8',   fg: '#ca8a04' };
   return { bg: GRAY_100, fg: GRAY_500 };
+}
+
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A registered town planner can advise on lodging a formal objection or requesting independent shadow modelling as part of a DA response. A solicitor can advise on rights during the neighbour notification period.
+      </Text>
+    </View>
+  );
 }
 
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
@@ -224,13 +265,23 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         <Text style={s.h1}>Construction Shadow Detector</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* ADG verdict badge */}
         <View style={[s.adgBadge, { backgroundColor: adgColor.bg }]}>
           <Text style={[s.adgText, { color: adgColor.fg }]}>{adgLabel}</Text>
         </View>
 
-        <Text style={[s.bodyText, { marginBottom: 16 }]}>{summaryText}</Text>
+        <Text style={[s.bodyText, { marginBottom: 8 }]}>{summaryText}</Text>
+
+        {/* ADG non-compliance consequence — only when concern flagged */}
+        {!data.adg_compliant && data.zone !== null && (
+          <View style={{ backgroundColor: '#fff7ed', borderRadius: 4, padding: 8, marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa' }}>
+            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
+              ADG 2015 Part 3D sets a minimum 3-hour solar access requirement for living areas. Overshadowing of this extent may constitute grounds for formal objection during the DA neighbour notification period. Council is not required to approve a DA that fails the ADG solar access test.
+            </Text>
+          </View>
+        )}
 
         <View style={s.divider} />
 
@@ -259,6 +310,19 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
             </Text>
           </View>
         </View>
+
+        {/* Height threshold callout — FREE, shown whenever height > 8 m */}
+        {data.height_m > 8.0 && (
+          <View style={{
+            backgroundColor: '#fff7ed', borderRadius: 4, padding: 8,
+            marginTop: 8, marginBottom: 4,
+            borderWidth: 1, borderColor: '#fed7aa',
+          }}>
+            <Text style={{ fontSize: 8, color: '#9a3412', lineHeight: 1.5 }}>
+              {`At ${data.height_m} m, this building exceeds the 8 m CDC height limit. A Development Application to council is required, which triggers mandatory neighbour notification and the right to lodge a formal objection.`}
+            </Text>
+          </View>
+        )}
 
         <View style={s.divider} />
 
@@ -308,8 +372,41 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         })}
 
         <Text style={[s.bodyText, { marginTop: 8, fontSize: 7.5, color: GRAY_500 }]}>
-          ★ worst-case scenario · Coverage = fraction of subject lot in shadow
+          * worst-case scenario · Coverage = fraction of subject lot in shadow
         </Text>
+
+        {/* Seasonal summary — paid */}
+        {data.is_paid !== false && (() => {
+          const seasons = seasonalSummary(scenarios);
+          return (
+            <View style={{ marginTop: 16 }}>
+              <Text style={s.sectionTitle}>Seasonal shadow summary</Text>
+              {/* Header */}
+              <View style={[s.tableHeader]}>
+                <Text style={[{ flex: 3 }, s.colHeaderText]}>Season</Text>
+                <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Worst coverage</Text>
+                <Text style={[{ flex: 1.5 }, s.colHeaderText, { textAlign: 'right' }]}>Flag</Text>
+              </View>
+              {seasons.map(({ season, pct }) => {
+                const pill = coveragePillColor(pct);
+                const flag = pct != null && pct > 20 ? 'Above 20%' : pct != null ? 'Within limit' : 'No data';
+                const flagColor = pct != null && pct > 20 ? RED : GRAY_500;
+                return (
+                  <View key={season} style={s.tableRow}>
+                    <Text style={[{ flex: 3 }, s.colDate]}>{season}</Text>
+                    <Text style={[{ flex: 1.5, textAlign: 'right', fontSize: 8.5 }, { color: pill.fg }]}>
+                      {pct != null ? `${pct}%` : '—'}
+                    </Text>
+                    <Text style={[{ flex: 1.5, textAlign: 'right', fontSize: 8, color: flagColor }]}>{flag}</Text>
+                  </View>
+                );
+              })}
+              <Text style={[s.bodyText, { marginTop: 4, fontSize: 7.5, color: GRAY_500 }]}>
+                ADG Part 3F threshold: no more than 20% of a neighbouring open space in shadow at 12pm on 21 June.
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* Warnings */}
         {data.warnings && data.warnings.length > 0 && (
@@ -359,6 +456,8 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         </Text>
 
         <View style={s.divider} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

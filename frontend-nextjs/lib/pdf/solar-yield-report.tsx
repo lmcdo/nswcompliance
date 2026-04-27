@@ -43,6 +43,10 @@ export interface SolarYieldReportData {
   system_kw: number;
   solar_grade: string;
   solar_grade_reason: string;
+  // paid enhancements
+  sensitivity: Array<{ feed_in_rate: number; annual_saving: number; payback_years: number | null }>;
+  monthly_kwh: number[] | null;
+  is_paid?: boolean;
   // meta
   confidence: string;
   data_sources: string[];
@@ -140,6 +144,8 @@ function fmt$(n: number) {
   });
 }
 
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
 function azimuthLabel(deg: number): string {
   if (deg >= 337.5 || deg < 22.5) return 'N';
   if (deg < 67.5) return 'NE';
@@ -149,6 +155,27 @@ function azimuthLabel(deg: number): string {
   if (deg < 247.5) return 'SW';
   if (deg < 292.5) return 'W';
   return 'NW';
+}
+
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        An accredited solar installer (Clean Energy Council) can provide a site-specific design and quote. CEC accreditation is required to access the Small-scale Technology Certificate (STC) rebate, which typically reduces system cost by $2,000-$4,000.
+      </Text>
+    </View>
+  );
 }
 
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
@@ -208,6 +235,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         <Text style={s.h1}>Solar Potential Assessment</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Grade badge */}
         <View style={[s.gradeBadge, { backgroundColor: gradeColors.bg }]}>
@@ -320,7 +348,73 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           </View>
         )}
 
+        {/* Payback sensitivity — paid */}
+        {data.is_paid !== false && data.sensitivity && data.sensitivity.length > 0 && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={s.sectionTitle}>Payback sensitivity — feed-in rate scenarios</Text>
+            {/* Header */}
+            <View style={[s.roiRow, { borderBottom: `1 solid ${GRAY_300}` }]}>
+              <Text style={[s.roiLabel, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Feed-in rate (¢/kWh)</Text>
+              <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Annual saving</Text>
+              <Text style={[s.roiValue, { fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }]}>Payback</Text>
+            </View>
+            {data.sensitivity.map((row) => {
+              const isCurrent = row.feed_in_rate === 0.06;
+              return (
+                <View key={row.feed_in_rate} style={[s.roiRow, isCurrent ? { backgroundColor: TEAL_LIGHT } : {}]}>
+                  <Text style={[s.roiLabel, isCurrent ? { fontFamily: 'Helvetica-Bold' } : {}]}>
+                    {(row.feed_in_rate * 100).toFixed(0)}c{isCurrent ? ' (current AER benchmark)' : ''}
+                  </Text>
+                  <Text style={[s.roiValue, isCurrent ? { color: GREEN } : {}]}>{fmt$(row.annual_saving)}</Text>
+                  <Text style={s.roiValue}>{row.payback_years != null ? `${row.payback_years.toFixed(1)} yrs` : '—'}</Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+
+        {/* Monthly output — paid */}
+        {data.is_paid !== false && data.monthly_kwh && data.monthly_kwh.length === 12 && (
+          <View style={{ marginTop: 16 }}>
+            <Text style={s.sectionTitle}>Estimated monthly output (kWh)</Text>
+            {[0, 1].map((half) => (
+              <View key={half} style={{ flexDirection: 'row', gap: 4, marginBottom: 4 }}>
+                {MONTH_NAMES.slice(half * 6, half * 6 + 6).map((month, i) => {
+                  const idx = half * 6 + i;
+                  const val = data.monthly_kwh![idx];
+                  return (
+                    <View key={month} style={{ flex: 1, backgroundColor: GRAY_100, borderRadius: 3, padding: 5, alignItems: 'center' }}>
+                      <Text style={{ fontSize: 7, color: GRAY_500 }}>{month}</Text>
+                      <Text style={{ fontSize: 10, fontFamily: 'Helvetica-Bold', color: TEAL, marginTop: 2 }}>{val}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Battery upgrade callout — PAID */}
+        {data.is_paid !== false && (() => {
+          const batteryPayback = (data.system_cost_aud + 12000) / (data.annual_kwh_estimate * 0.32 * 0.80);
+          return (
+            <View style={{
+              backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10,
+              marginTop: 8, borderWidth: 1, borderColor: '#99f6e4',
+            }}>
+              <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+                Battery storage upgrade
+              </Text>
+              <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback reduces to approximately ${batteryPayback.toFixed(1)} years. Battery storage also provides grid independence during outages.`}
+              </Text>
+            </View>
+          );
+        })()}
+
         <View style={s.divider} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Disclaimer</Text>
         <Text style={s.bodyText}>

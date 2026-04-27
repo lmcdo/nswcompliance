@@ -30,6 +30,7 @@ export interface ThreatRadarApplication {
   CostOfDevelopment?: number | string;
   NumberOfNewDwellings?: number | string;
   CouncilName?: string;
+  ApplicantName?: string;
   _distance_m?: number | null;
 }
 
@@ -43,6 +44,7 @@ export interface ThreatRadarReportData {
   applications: ThreatRadarApplication[];
   window_days: number;
   radius_m?: number;
+  is_paid?: boolean;
   tile_b64: string | null;
 }
 
@@ -136,6 +138,48 @@ function formatCost(val?: number | string) {
   }).format(n);
 }
 
+// ---------------------------------------------------------------------------
+// Paid analytical helpers
+// ---------------------------------------------------------------------------
+
+function calcPressureScore(apps: ThreatRadarApplication[]): number {
+  if (apps.length === 0) return 0;
+  let total = 0;
+  for (const app of apps) {
+    const base = (app._distance_m ?? 999) < 100 ? 3 : (app._distance_m ?? 999) < 250 ? 2 : 1;
+    const dw = Number(app.NumberOfNewDwellings ?? 0);
+    const scale = dw >= 10 ? 2 : dw >= 4 ? 1.5 : 1;
+    total += base * scale;
+  }
+  return Math.min(10, Math.max(1, Math.round(total)));
+}
+
+function pressureLabel(score: number): string {
+  if (score >= 8) return 'high';
+  if (score >= 5) return 'elevated';
+  if (score >= 3) return 'moderate';
+  return 'low';
+}
+
+function estimateConstructionWindow(app: ThreatRadarApplication): string | null {
+  const status = (app.Status ?? '').toLowerCase();
+  const now = new Date();
+
+  if (status.includes('approved') || status.includes('determined')) {
+    const det = app.DeterminationDate ? new Date(app.DeterminationDate) : now;
+    const startYear = det.getFullYear() + Math.floor((det.getMonth() + 6) / 12);
+    const endYear = det.getFullYear() + Math.floor((det.getMonth() + 12) / 12);
+    return `Construction likely ${startYear}–${endYear} (6–12 months post-approval typical).`;
+  }
+  if (status.includes('under assessment') || status.includes('assessment')) {
+    const approvalYear = now.getFullYear() + (now.getMonth() >= 8 ? 1 : 0);
+    const buildStart = approvalYear + 1;
+    const buildEnd = buildStart + 1;
+    return `If approved mid-${approvalYear}, construction likely ${buildStart}–${buildEnd} (12–18 month typical build). Noise and access impacts possible.`;
+  }
+  return null;
+}
+
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -143,6 +187,27 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
         <Image src={`data:image/png;base64,${logo_b64}`} style={s.logoImg} />
       ) : null}
       <Text style={s.logo}>PlotDetect</Text>
+    </View>
+  );
+}
+
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A buyers agent can advise on negotiating price adjustments based on nearby development risk. A town planner can assess whether the DAs, if approved, would generate third-party appeal rights or materially affect amenity.
+      </Text>
     </View>
   );
 }
@@ -179,9 +244,10 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <Text style={s.dateText}>
           {data.council_name ?? 'NSW'} · last {data.window_days} days · within {radius} m
         </Text>
+        <ValidityNote runDate={data.run_date} />
 
-        {/* Summary stat */}
-        <View style={s.statBlock}>
+        {/* Summary stat — row layout avoids react-pdf large-font line-height bug */}
+        <View style={[s.statBlock, { flexDirection: 'row', alignItems: 'center', gap: 16 }]}>
           <Text style={s.statNumber}>{apps.length}</Text>
           <Text style={s.statLabel}>
             DA/CDC application{apps.length !== 1 ? 's' : ''} found within {radius} m
@@ -190,6 +256,133 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         </View>
 
         <View style={s.divider} />
+
+        {/* Key risk callout — paid, only when applications exist */}
+        {data.is_paid !== false && apps.length > 0 && (() => {
+          const keyApp = [...apps].sort((a, b) => {
+            const dwA = Number(a.NumberOfNewDwellings ?? 0);
+            const dwB = Number(b.NumberOfNewDwellings ?? 0);
+            if (dwB !== dwA) return dwB - dwA;
+            const costA = Number(a.CostOfDevelopment ?? 0);
+            const costB = Number(b.CostOfDevelopment ?? 0);
+            if (costB !== costA) return costB - costA;
+            return (a._distance_m ?? 9999) - (b._distance_m ?? 9999);
+          })[0];
+          const appNum = keyApp.PlanningPortalApplicationNumber ?? '—';
+          const cost = formatCost(keyApp.CostOfDevelopment);
+          const dwellings = Number(keyApp.NumberOfNewDwellings ?? 0);
+          const metaParts = [
+            keyApp.Status,
+            keyApp._distance_m != null ? `${keyApp._distance_m} m away` : null,
+            cost ? `Cost ${cost}` : null,
+            dwellings > 0 ? `${dwellings} new dwelling${dwellings !== 1 ? 's' : ''}` : null,
+          ].filter(Boolean);
+          return (
+            <View style={{ backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`, borderRadius: 2, paddingVertical: 10, paddingHorizontal: 12, marginBottom: 16 }}>
+              <Text style={{ fontSize: 7.5, fontFamily: 'Helvetica-Bold', color: AMBER, marginBottom: 4 }}>
+                Highest-impact application nearby
+              </Text>
+              <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
+                {appNum}{keyApp.DevelopmentType ? `  -  ${keyApp.DevelopmentType}` : ''}
+              </Text>
+              {keyApp.ApplicationDescription ? (
+                <Text style={{ fontSize: 8.5, color: GRAY_700, marginBottom: 3 }}>
+                  {keyApp.ApplicationDescription}
+                </Text>
+              ) : null}
+              {keyApp.PropertyAddress ? (
+                <Text style={{ fontSize: 7.5, color: GRAY_500, marginBottom: 3 }}>
+                  {keyApp.PropertyAddress}
+                </Text>
+              ) : null}
+              {metaParts.length > 0 && (
+                <Text style={{ fontSize: 7.5, color: GRAY_700 }}>{metaParts.join('  -  ')}</Text>
+              )}
+            </View>
+          );
+        })()}
+
+        {/* ---- PAID analytical enhancements ---- */}
+        {data.is_paid !== false && apps.length > 0 && (() => {
+          // 3a. Neighbourhood pressure score
+          const score = calcPressureScore(apps);
+          const label = pressureLabel(score);
+
+          // 3b. Construction impact window — top 2 active DAs by scale
+          const activeDAs = apps
+            .filter(a => {
+              const st = (a.Status ?? '').toLowerCase();
+              return st.includes('approved') || st.includes('determined') ||
+                     st.includes('under assessment') || st.includes('assessment');
+            })
+            .sort((a, b) => Number(b.NumberOfNewDwellings ?? 0) - Number(a.NumberOfNewDwellings ?? 0))
+            .slice(0, 2);
+
+          // 3c. Serial developer flag
+          const nameCounts: Record<string, number> = {};
+          for (const app of apps) {
+            const name = (app.ApplicantName ?? '').trim();
+            if (name) nameCounts[name] = (nameCounts[name] ?? 0) + 1;
+          }
+          const serialDevs = Object.entries(nameCounts).filter(([, n]) => n >= 2);
+
+          return (
+            <>
+              {/* Pressure score */}
+              <View style={{
+                backgroundColor: GRAY_100, borderRadius: 4, padding: 10,
+                marginBottom: 12,
+              }}>
+                <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
+                  {`Neighbourhood pressure: ${score} / 10 (${label})`}
+                </Text>
+                <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                  {`Based on ${apps.length} development application${apps.length !== 1 ? 's' : ''} within ${data.radius_m ?? 500} m, weighted by proximity and scale.`}
+                </Text>
+              </View>
+
+              {/* Construction windows */}
+              {activeDAs.length > 0 && (
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={[s.sectionTitle, { marginTop: 0 }]}>Construction impact window</Text>
+                  {activeDAs.map((app, i) => {
+                    const window = estimateConstructionWindow(app);
+                    if (!window) return null;
+                    const appNum = app.PlanningPortalApplicationNumber ?? '—';
+                    return (
+                      <View key={i} style={{
+                        backgroundColor: AMBER_LIGHT, borderLeft: `3 solid ${AMBER}`,
+                        paddingVertical: 6, paddingHorizontal: 8, marginBottom: 6, borderRadius: 2,
+                      }}>
+                        <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 2 }}>
+                          {appNum}{app.PropertyAddress ? `  —  ${app.PropertyAddress}` : ''}
+                        </Text>
+                        <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.4 }}>{window}</Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Serial developer flag */}
+              {serialDevs.length > 0 && (
+                <View style={{
+                  backgroundColor: '#fff7ed', borderRadius: 4, padding: 10,
+                  marginBottom: 12, borderWidth: 1, borderColor: '#fed7aa',
+                }}>
+                  <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: '#9a3412', marginBottom: 4 }}>
+                    Serial developer activity
+                  </Text>
+                  {serialDevs.map(([name, count]) => (
+                    <Text key={name} style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+                      {`${name} has ${count} applications within ${data.radius_m ?? 500} m. This pattern may indicate staged development.`}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </>
+          );
+        })()}
 
         {/* Applications list */}
         {apps.length === 0 ? (
@@ -241,6 +434,8 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
             })}
           </>
         )}
+
+        <ReferralBox />
 
         <View style={[s.divider, { marginTop: 16 }]} />
         <Text style={[s.bodyText, { color: GRAY_500, fontSize: 7.5 }]}>

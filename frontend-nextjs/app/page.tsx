@@ -219,13 +219,35 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-[#0b1628] py-8 px-6 text-center">
-        <p className="text-sm text-slate-600">
-          © 2026 canibuildit.com.au — NSW planning intelligence for property owners and builders.
-        </p>
-        <p className="text-xs text-slate-700 mt-2">
-          Results are indicative only and do not constitute planning advice. Always consult a registered town planner or certifier.
-        </p>
+      <footer className="bg-[#0b1628] py-8 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-sm text-slate-600">
+            © 2026 canibuildit.com.au — NSW planning intelligence for property owners and builders.
+          </p>
+          <p className="text-xs text-slate-700 mt-2">
+            Results are indicative only and do not constitute planning advice. Always consult a registered town planner or certifier.
+          </p>
+          <p className="text-xs text-slate-600 mt-3">
+            Questions?{' '}
+            <a href="mailto:hello@canibuildit.com.au" className="text-slate-400 hover:text-slate-200 transition-colors underline underline-offset-2">
+              hello@canibuildit.com.au
+            </a>
+          </p>
+          <div className="flex flex-wrap justify-center gap-5 mt-4">
+            {[
+              { href: '/how-it-works', label: 'How it works' },
+              { href: '/pricing', label: 'Pricing' },
+              { href: '/partner', label: 'Embed program' },
+              { href: '/contact', label: 'Contact' },
+              { href: '/privacy', label: 'Privacy' },
+              { href: '/terms', label: 'Terms' },
+            ].map(({ href, label }) => (
+              <a key={href} href={href} className="text-xs text-slate-600 hover:text-slate-400 transition-colors">
+                {label}
+              </a>
+            ))}
+          </div>
+        </div>
       </footer>
     </main>
   );
