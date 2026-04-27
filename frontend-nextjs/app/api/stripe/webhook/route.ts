@@ -99,6 +99,7 @@ async function handleThreatRadarMonitor(
   try {
     await resend.emails.send({
       from: 'Can I Build It <info@plotdetect.com.au>',
+      reply_to: 'hello@canibuildit.com.au',
       to: [email],
       subject: 'Threat Radar monitoring activated',
       html: `
@@ -168,6 +169,7 @@ async function handleGrannyFlatReport(
   try {
     await resend.emails.send({
       from: 'Can I Build It <info@plotdetect.com.au>',
+      reply_to: 'hello@canibuildit.com.au',
       to: [email],
       subject: 'Your Granny Flat Eligibility Report',
       html: `
@@ -245,6 +247,7 @@ async function handlePreDAHistoryReport(
   try {
     await resend.emails.send({
       from: 'Can I Build It <info@plotdetect.com.au>',
+      reply_to: 'hello@canibuildit.com.au',
       to: [email],
       subject: 'Your Pre-DA Site History Report',
       html: `

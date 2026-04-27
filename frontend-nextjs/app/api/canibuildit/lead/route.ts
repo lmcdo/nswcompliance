@@ -32,6 +32,7 @@ export async function POST(req: NextRequest) {
   try {
     await resend.emails.send({
       from: 'Can I Build It <info@plotdetect.com.au>',
+      reply_to: 'hello@canibuildit.com.au',
       to: [cleanEmail],
       subject,
       html: `
