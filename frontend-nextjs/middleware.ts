@@ -123,6 +123,21 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // ============================================================================
+  // HOSTNAME ROUTING — serve correct app per domain
+  // Both canibuildit.com.au and verify.plotdetect.com.au point to the same
+  // Next.js build. Rewrite root requests to the right section.
+  // ============================================================================
+  const hostname = request.headers.get('host') ?? '';
+  const isVerifyDomain =
+    hostname === 'verify.plotdetect.com.au' ||
+    hostname === 'plotdetect.com.au' ||
+    hostname === 'www.plotdetect.com.au';
+
+  if (isVerifyDomain && pathname === '/') {
+    return NextResponse.rewrite(new URL('/assessment', request.url));
+  }
+
   // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {
     return NextResponse.next();
