@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-function buildEmailContent(product: string, address: string): { subject: string; body: string } {
+export function buildEmailContent(product: string, address: string): { subject: string; body: string } {
   switch (product) {
     case 'flood':
     case 'flood-truth':
