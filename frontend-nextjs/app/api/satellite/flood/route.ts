@@ -5,6 +5,7 @@ import {
   checkRateLimit,
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
+import { signReport } from '@/lib/report-token';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
@@ -106,5 +107,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(await pythonResp.json());
+  const result = await pythonResp.json();
+  const report_token = signReport(lat, lng, address, result.run_date ?? '');
+  return NextResponse.json({ ...result, report_token });
 }

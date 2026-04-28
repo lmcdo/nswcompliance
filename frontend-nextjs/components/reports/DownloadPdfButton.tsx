@@ -7,16 +7,21 @@ interface Props {
   apiPath: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: Record<string, any>;
+  /** HMAC token issued by the satellite route — required for server-side verification. */
+  reportToken?: string;
 }
 
 /**
  * Generic "Download PDF" button for satellite tool result pages.
- * POSTs { data } to apiPath and triggers a browser file download.
+ * POSTs { data, report_token } to apiPath and triggers a browser file download.
+ * The report_token is an HMAC signed by the satellite route and verified server-side
+ * before PDF rendering — prevents generating PDFs from arbitrary injected data.
  */
 export function DownloadPdfButton({
   label = 'Download PDF report',
   apiPath,
   data,
+  reportToken,
 }: Props) {
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +33,7 @@ export function DownloadPdfButton({
       const res = await fetch(apiPath, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ data }),
+        body: JSON.stringify({ data, report_token: reportToken }),
       });
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));

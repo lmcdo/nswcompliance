@@ -59,6 +59,7 @@ interface ShadowResult {
   data_sources: string[];
   zone: string | null;
   warnings?: string[];
+  report_token?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
@@ -183,6 +184,7 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
           <DownloadPdfButton
             label="Download PDF report"
             apiPath="/api/reports/shadow/generate"
+            reportToken={result.report_token}
             data={{
               address: result.address,
               run_date: result.run_date,

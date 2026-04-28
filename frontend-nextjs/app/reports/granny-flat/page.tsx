@@ -320,6 +320,7 @@ function GrannyFlatPageInner() {
           postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
           existing_secondary_dwelling: existingSecondaryDwelling,
           main_dwelling_area_m2: detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
+          ...(email.trim() ? { notification_email: email.trim() } : {}),
         }),
       });
 

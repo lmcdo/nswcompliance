@@ -42,6 +42,7 @@ interface ReportData {
   outputs: SolarYieldOutputs;
   confidence: string;
   data_sources: string[];
+  report_token?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
@@ -249,6 +250,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
               <DownloadPdfButton
                 label="Download PDF report"
                 apiPath="/api/reports/solar-yield/generate"
+                reportToken={report.report_token}
                 data={{
                   ...report.outputs,
                   address: report.address,

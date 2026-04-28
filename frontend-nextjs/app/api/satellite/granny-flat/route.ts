@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { createClient } from '@supabase/supabase-js';
 import {
   satelliteRateLimiter,
@@ -8,6 +9,7 @@ import {
 } from '@/lib/rate-limit';
 
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 // NSW Standard Instrument zone names (source: Standard Instrument (Local Environmental Plans) Order 2006)
 // These are official zone identifiers, not regulatory controls — safe to keep as a display lookup.
@@ -292,7 +294,7 @@ export async function POST(request: NextRequest) {
   // CONFIRM — direct call (<30s)
   // -------------------------------------------------------------------------
   if (action === 'confirm') {
-    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2 } = body;
+    const { detect_id, confirmed_structure_count, samgeo_structure_count, postcode, report_id, existing_secondary_dwelling, main_dwelling_area_m2, notification_email } = body;
 
     if (!detect_id) {
       return NextResponse.json({ error: 'detect_id is required for confirm action' }, { status: 400 });
@@ -373,7 +375,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(await pythonResp.json());
+    const result = await pythonResp.json();
+
+    // Send results email — fire-and-forget, never blocks the response
+    if (notification_email && process.env.RESEND_API_KEY) {
+      const eligible: boolean = result.granny_flat_buildable ?? false;
+      const maxArea: number | null = result.max_floor_area_m2 ?? null;
+      const rent: number | null = result.estimated_weekly_rent_aud ?? null;
+      const reportAddress: string = result.address ?? address ?? '';
+      const addressParam = encodeURIComponent(reportAddress);
+      const reportUrl = `https://canibuildit.com.au/reports/granny-flat?address=${addressParam}`;
+
+      const verdictColor = eligible ? '#0f766e' : '#dc2626';
+      const verdictLabel = eligible ? 'Eligible' : 'Not eligible';
+      const verdictNote = eligible
+        ? `Max floor area: <strong>${maxArea ?? '—'} m²</strong> (CDC pathway)`
+        : result.confidence_reason ?? 'Does not meet SEPP Housing 2021 criteria.';
+
+      resend.emails.send({
+        from: 'Can I Build It <info@plotdetect.com.au>',
+        to: [notification_email],
+        subject: `Your granny flat result — ${reportAddress}`,
+        html: `
+          <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+            <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your result is in.</p>
+            <div style="background: #f9fafb; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px;">
+              <p style="margin: 0 0 4px; font-size: 13px; color: #6b7280;">${reportAddress}</p>
+              <p style="margin: 0; font-size: 22px; font-weight: 700; color: ${verdictColor};">${verdictLabel}</p>
+              <p style="margin: 6px 0 0; font-size: 13px; color: #374151;">${verdictNote}</p>
+              ${eligible && rent ? `<p style="margin: 6px 0 0; font-size: 13px; color: #374151;">Est. weekly rent: <strong>$${rent}/wk</strong></p>` : ''}
+            </div>
+            <a href="${reportUrl}" style="display: inline-block; background: #0f766e; color: #fff; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 600; margin-bottom: 20px;">
+              View full report
+            </a>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #999; font-size: 12px; margin: 0;">
+              Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+            </p>
+          </div>
+        `,
+      }).catch((err: unknown) => {
+        console.error('[granny-flat/confirm] Resend error:', err);
+      });
+    }
+
+    return NextResponse.json(result);
   }
 
   return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 });

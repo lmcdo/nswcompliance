@@ -777,6 +777,13 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     ]
 
     lot_area_m2 = req.lot_area_m2
+    # If Next.js couldn't compute lot area (lot geometry unavailable during confirm call),
+    # fall back to fetching it directly from the NSW Planning Portal here.
+    if lot_area_m2 is None and req.prop_id:
+        _fallback_geom = _fetch_lot_geometry(req.prop_id)
+        if _fallback_geom:
+            lot_area_m2 = _compute_lot_area_m2(_fallback_geom)
+
     granny_flat_buildable = True
     max_floor_area_m2 = SEPP_MAX_GF_AREA_M2
 
@@ -952,6 +959,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                      inputs, outputs, confidence, data_sources)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (id) DO UPDATE SET
+                    inputs = EXCLUDED.inputs,
                     outputs = EXCLUDED.outputs,
                     confidence = EXCLUDED.confidence,
                     data_sources = EXCLUDED.data_sources
@@ -979,8 +987,10 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "rental_yield_annual_pct": rental_yield_pct,
                         "assumed_build_cost_aud": assumed_build_cost,
                         "is_heritage": is_heritage,
+                        "confidence": confidence,
                         "confidence_reason": confidence_reason,
                         "warnings": warnings,
+                        "data_sources": data_sources,
                         "tile_b64": tile_b64,
                     }),
                     confidence,

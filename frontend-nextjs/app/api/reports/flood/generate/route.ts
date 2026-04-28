@@ -17,6 +17,7 @@ import {
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
+import { verifyReport } from '@/lib/report-token';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
   }
 
-  let body: { data?: unknown; is_paid?: boolean };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
   try {
     body = await req.json();
   } catch {
@@ -47,6 +48,11 @@ export async function POST(req: NextRequest) {
 
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
+
+  // Verify HMAC token — must come from a real /api/satellite/flood run
+  if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date), body.report_token)) {
+    return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
+  }
 
   // Fetch aerial tile
   const [tile_b64, logo_b64] = await Promise.all([
