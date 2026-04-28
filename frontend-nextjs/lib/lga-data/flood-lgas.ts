@@ -77,7 +77,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 30,
     ariScenarios: [],
     floodStudyName: 'Wollongong Flood Planning',
-    heritageCount: 0,
+    heritageCount: 519,
     faqs: [
       {
         q: 'Is my Wollongong property in a flood planning area?',
@@ -107,7 +107,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 19,
     ariScenarios: [],
     floodStudyName: 'Tamworth Regional Flood Planning',
-    heritageCount: 0,
+    heritageCount: 513,
     faqs: [
       {
         q: 'Is my Tamworth property in a flood planning area?',
@@ -137,7 +137,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 10,
     ariScenarios: [],
     floodStudyName: 'Bathurst Regional Flood Planning',
-    heritageCount: 0,
+    heritageCount: 431,
     faqs: [
       {
         q: 'Is my Bathurst property in a flood planning area?',
@@ -167,7 +167,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 9,
     ariScenarios: [],
     floodStudyName: 'Wingecarribee Flood Planning',
-    heritageCount: 0,
+    heritageCount: 577,
     faqs: [
       {
         q: 'Is my Southern Highlands property in a flood planning area?',
@@ -197,7 +197,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 2,
     ariScenarios: [],
     floodStudyName: 'Hornsby Flood Planning',
-    heritageCount: 0,
+    heritageCount: 769,
     faqs: [
       {
         q: 'Is my Hornsby property in a flood planning area?',
@@ -227,7 +227,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 2,
     ariScenarios: [],
     floodStudyName: 'Mid-Western Regional Flood Planning',
-    heritageCount: 0,
+    heritageCount: 501,
     faqs: [
       {
         q: 'Is my Mid-Western Regional property in a flood planning area?',
@@ -257,7 +257,7 @@ export const FLOOD_LGAS: FloodLgaData[] = [
     floodFeatureCount: 2,
     ariScenarios: [],
     floodStudyName: 'Wentworth Flood Planning',
-    heritageCount: 0,
+    heritageCount: 130,
     faqs: [
       {
         q: 'Is my Wentworth property in a flood planning area?',

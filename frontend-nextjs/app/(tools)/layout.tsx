@@ -1,4 +1,3 @@
-import 'maplibre-gl/dist/maplibre-gl.css';
 import Link from 'next/link';
 
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
