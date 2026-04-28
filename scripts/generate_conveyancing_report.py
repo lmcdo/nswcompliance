@@ -175,81 +175,6 @@ LT_BASE = 100
 # and legislation_url fields returned by the portal layerintersect call.
 # Do NOT re-add a hardcoded lookup here — it will be wrong within months of any LEP amendment.
 
-# ---------------------------------------------------------------------------
-# DCP setback controls — Inner West (Marrickville, Leichhardt, Ashfield)
-#
-# IMPORTANT LIMITATIONS:
-#   1. Zone-gated: controls shown only when zone matches zones_applicable.
-#      R2/R1 → low density chapter. R3/R4 → not extracted yet.
-#   2. control_type:
-#      "prescribed"   — a number exists in the DCP text regardless of site context.
-#                       Can be cited as a minimum.
-#      "site_derived" — no fixed number. The DCP specifies the METHOD for calculating
-#                       the setback (BLZ, prevailing character, graph). The actual number
-#                       is derived by a planner from a site visit. Cannot be cited without
-#                       site-specific assessment.
-#   3. Leichhardt caveat: Part C3.2 is the GENERAL residential chapter. Area-specific
-#      "Distinctive Neighbourhood" / Building Typology Statements (DCP Appendix) may
-#      impose additional or different controls for specific streets. Not mapped in DB.
-#   4. These controls are for dwelling houses as the representative residential dev type.
-#      Different development types (dual occupancy, multi-dwelling, residential flat
-#      buildings) trigger different DCP chapters with different setbacks.
-# ---------------------------------------------------------------------------
-
-# fmt: off
-DCP_SETBACKS: dict = {
-    "marrickville": {
-        "dcp_name": "Marrickville DCP 2011",
-        "section": "Part 4.1 — Low Density Residential",
-        "clause_ref": "O14, C10–C11",
-        "zones_applicable": ["R1", "R2"],
-        "dev_type_scope": "Dwelling houses, attached dwellings, semi-detached dwellings",
-        "caveat": None,
-        "setbacks": [
-            {"type": "Front",                                     "control_type": "site_derived",  "requirement": "Match prevailing setback",  "clause": "C10(i)",      "notes": "Consistent with adjoining development or the dominant setback found along the street. No fixed number — determined by site context."},
-            {"type": "Side — 1 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "900 mm minimum",            "clause": "C10(ii)",     "notes": "Lots less than 8 m wide: at Council's discretion — visual impact and solar access determine setback."},
-            {"type": "Side — 2 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "1.5 m minimum",             "clause": "C10(ii)",     "notes": ""},
-            {"type": "Side — 3 storey (lot ≥ 8 m wide)",         "control_type": "prescribed",    "requirement": "2.5 m minimum",             "clause": "C10(ii)",     "notes": ""},
-            {"type": "Rear",                                      "control_type": "site_derived",  "requirement": "Merit-based",               "clause": "C10(iii)",    "notes": "Assessed on merit — adverse amenity impacts and adequate open space are primary considerations. No fixed number."},
-            {"type": "Secondary dwelling — side (detached, rear)", "control_type": "prescribed",   "requirement": "1.5 m minimum",             "clause": "C11(iii)(b)", "notes": "Detached secondary dwellings at rear of lot."},
-            {"type": "Secondary dwelling — separation",           "control_type": "prescribed",    "requirement": "4.0 m minimum",             "clause": "C11",         "notes": "Minimum separation between principal and detached secondary dwelling."},
-        ],
-    },
-    "leichhardt": {
-        "dcp_name": "Leichhardt DCP 2013",
-        "section": "Part C3.2 — Site Layout and Building Design",
-        "clause_ref": "C4, C7",
-        "zones_applicable": ["R1", "R2"],
-        "dev_type_scope": "Dwelling houses and residential development generally",
-        "caveat": (
-            "Area-specific controls may apply: Leichhardt DCP includes 'Distinctive Neighbourhood' "
-            "Building Typology Statements (Appendix) for individual streets and precincts. These can "
-            "impose additional or different controls not reflected here. Confirm with Council for the "
-            "specific street."
-        ),
-        "setbacks": [
-            {"type": "Front",  "control_type": "site_derived", "requirement": "Building Location Zone — prevailing character", "clause": "C4", "notes": "BLZ is determined by where buildings sit on adjoining properties. No fixed number — derived by planner from site visit."},
-            {"type": "Side",   "control_type": "site_derived", "requirement": "Height-dependent graph (60° angle from wall)",  "clause": "C7", "notes": "Setback scales continuously with wall height per Figure C129. Approx 1.0 m at 4 m wall height, 1.5 m at 5.5 m. Not a fixed minimum — derived from the graph."},
-            {"type": "Rear",   "control_type": "site_derived", "requirement": "Building Location Zone — prevailing character", "clause": "C4", "notes": "Consistent with rear building line of adjoining properties. No fixed number."},
-        ],
-    },
-    "ashfield": {
-        "dcp_name": "Inner West DCP 2016 (Ashfield precinct)",
-        "section": "Chapter F — Dwelling Houses and Dual Occupancies",
-        "clause_ref": "Chapter F DS",
-        "zones_applicable": ["R1", "R2", "R3"],
-        "dev_type_scope": "Dwelling houses and dual occupancies",
-        "caveat": None,
-        "setbacks": [
-            {"type": "Front",                               "control_type": "site_derived", "requirement": "On merits — no fixed minimum",  "clause": "DS1.1",        "notes": "Performance criteria based. Site analysis and streetscape character required. No pre-determined number."},
-            {"type": "Side",                                "control_type": "prescribed",   "requirement": "0.9 m minimum",                 "clause": "Chapter F DS", "notes": "Minimum side setback for dwelling houses. Council may require greater setback under performance criteria."},
-            {"type": "Rear",                                "control_type": "site_derived", "requirement": "On merits",                     "clause": "DS13.3",       "notes": "Must include adequate green space between adjoining properties. Assessed on merit — no fixed number."},
-            {"type": "Garage / carport (rear lane access)", "control_type": "prescribed",   "requirement": "1.0 m from rear boundary",      "clause": "DS6.5",        "notes": "Minimum to allow sight lines for manoeuvring."},
-        ],
-    },
-}
-# fmt: on
-
 # EPI name substring (uppercase) → lga slug for dcp_setback_controls.
 # Inner West is multi-council — suburb disambiguation returns marrickville/leichhardt/ashfield.
 # All other entries return the slug directly.
@@ -517,7 +442,7 @@ def calc_feasibility(controls: dict, valuation: dict, unique_overlays: list[dict
     # SEPP (Housing) 2021, Division 2 — minimum lot area 450m² (Cl 53(1)(b)), zones R1/R2/R3/R4.
     # These are SEPP standards — check current instrument if SEPP has been amended.
     # Source: legislation.nsw.gov.au — SEPP (Housing) 2021
-    _SD_MIN_LOT = 450   # Cl 53(1)(b) SEPP (Housing) 2021 — update if SEPP amended
+    _SD_MIN_LOT = 450   # Cl 53(1)(b) SEPP (Housing) 2021 — source: https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649#sec.53
     _SD_ZONES = {"R1", "R2", "R3", "R4"}  # Cl 53(1)(a)
     if is_strata:
         results.append({
