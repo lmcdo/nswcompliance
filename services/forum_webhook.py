@@ -25,10 +25,18 @@ router = APIRouter(prefix="/api/telegram")
 
 _bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-_supabase: Client = create_client(
-    os.environ.get("SUPABASE_URL", ""),
-    os.environ.get("SUPABASE_SERVICE_ROLE_KEY", ""),
-)
+_supabase: Client | None = None
+
+
+def _get_supabase() -> Client:
+    global _supabase
+    if _supabase is None:
+        url = os.environ.get("SUPABASE_URL", "")
+        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
+        if not url or not key:
+            raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+        _supabase = create_client(url, key)
+    return _supabase
 
 
 @router.post("/forum-webhook")
@@ -63,7 +71,7 @@ async def forum_webhook(request: Request) -> dict:
 
 async def _handle_approve(callback_id: str, chat_id: str, queue_id: str) -> None:
     result = (
-        _supabase.table("forum_monitor_queue")
+        _get_supabase().table("forum_monitor_queue")
         .select("thread_title, thread_url, draft_response, product, forum, section")
         .eq("id", queue_id)
         .single()
@@ -77,7 +85,7 @@ async def _handle_approve(callback_id: str, chat_id: str, queue_id: str) -> None
     row = result.data
 
     # Update status
-    _supabase.table("forum_monitor_queue").update({"status": "approved"}).eq("id", queue_id).execute()
+    _get_supabase().table("forum_monitor_queue").update({"status": "approved"}).eq("id", queue_id).execute()
 
     # Send the draft as a plain copyable message
     text = (
@@ -92,7 +100,7 @@ async def _handle_approve(callback_id: str, chat_id: str, queue_id: str) -> None
 
 
 async def _handle_skip(callback_id: str, queue_id: str) -> None:
-    _supabase.table("forum_monitor_queue").update({"status": "skipped"}).eq("id", queue_id).execute()
+    _get_supabase().table("forum_monitor_queue").update({"status": "skipped"}).eq("id", queue_id).execute()
     await _answer_callback(callback_id, "Skipped")
 
 
