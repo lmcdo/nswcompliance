@@ -1749,6 +1749,13 @@ def generate_pdf(
         ("VALIGN",       (0, 0), (-1, -1), "MIDDLE"),
     ]))
     story.append(cards_tbl)
+    if valuation.get("land_value") and valuation.get("val_base_date"):
+        story.append(Spacer(1, 2 * mm))
+        story.append(Paragraph(
+            f"Land value as at {valuation['val_base_date']} (NSW Valuer General — updated annually, "
+            f"typically published 6–12 months after base date). Current market value may differ materially.",
+            ss["caveat"],
+        ))
     story.append(Spacer(1, 6 * mm))
 
     # ------------------------------------------------------------------
@@ -2149,21 +2156,22 @@ def generate_pdf(
         noon = next((s for s in jun21 if s["scenario"] == "jun21_12pm"), None)
         noon_pct = round((noon.get("shadow_overlap_fraction", 0) or 0) * 100) if noon else 0
 
+        _hob_note = f" (LEP maximum height of buildings: {height_m} m)"
         if adg_ok and overlap_count == 0:
             shadow_flag = Paragraph(
                 f"Clear — a {height_m} m building on the northern adjacent lot would not "
-                f"significantly shadow this property on any Jun 21 scenario.",
+                f"significantly shadow this property on any Jun 21 scenario.{_hob_note}",
                 ss["ok"])
         elif adg_ok:
             shadow_flag = Paragraph(
                 f"Low risk — a {height_m} m building on the northern adjacent lot would shadow "
-                f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.",
+                f"{noon_pct}% of this property at Jun 21 noon. ADG solar access requirement met.{_hob_note}",
                 ss["warn"])
         else:
             shadow_flag = Paragraph(
                 f"ADG concern — a {height_m} m building on the northern adjacent lot would shadow "
                 f"{noon_pct}% of this property at Jun 21 noon. Solar access may not meet the "
-                f"2-hour ADG requirement.",
+                f"2-hour ADG requirement.{_hob_note}",
                 ss["alert"])
         risk_rows.append(["Northern Development Shadow Risk", shadow_flag, "NSW LEP · shadow model"])
     else:
@@ -3126,66 +3134,73 @@ def generate_pdf(
 
     notes = [
         ("s10.7 Planning Certificate",
-         "This report is NOT a substitute for a Section 10.7 Planning Certificate issued under the "
+         "This report is <b>NOT a substitute</b> for a <b>Section 10.7 Planning Certificate</b> issued under the "
          "Environmental Planning and Assessment Act 1979. A s10.7(5) certificate from council is the "
-         "authoritative statutory disclosure document for conveyancing. This report supplements — "
-         "it does not replace — that certificate."),
+         "<b>authoritative statutory disclosure document</b> for conveyancing. This report <b>supplements — "
+         "it does not replace</b> — that certificate."),
         ("Environmental and spatial overlays",
-         "Biodiversity, riparian, wetlands, landslide, flood, bushfire prone land (BFPL), aircraft noise "
-         "(ANEF), TOD precinct status, and Additional Permitted Uses data are sourced from PostGIS spatial "
+         "<b>Biodiversity, riparian, wetlands, landslide, flood, bushfire prone land (BFPL), aircraft noise "
+         "(ANEF), TOD precinct status,</b> and Additional Permitted Uses data are sourced from PostGIS spatial "
          "overlays ingested from NSW Government ArcGIS services (128 NSW councils). "
-         "None of these layers appear in a standard s10.7(2) certificate or title search. "
+         "<b>None of these layers appear in a standard s10.7(2) certificate or title search.</b> "
          "Data reflects the last ingestion date — accuracy is subject to NSW Government mapping precision. "
          "Verify with council for site-specific confirmation."),
         ("Title classification",
-         "Strata and community title identification sourced from NSW Planning Portal cadastral data. "
-         "Company title properties return as Torrens in the land register and may not be automatically "
-         "identified — confirm via title search for older inner Sydney apartment buildings."),
+         "<b>Strata and community title</b> identification sourced from NSW Planning Portal cadastral data. "
+         "<b>Company title</b> properties return as Torrens in the land register and <b>may not be automatically "
+         "identified</b> — confirm via title search for older inner Sydney apartment buildings."),
         ("DCP provisions",
-         f"DCP setback controls are currently available for: Inner West LGA (Marrickville, Leichhardt, "
+         f"DCP setback controls are currently available for: <b>Inner West LGA</b> (Marrickville, Leichhardt, "
          f"Ashfield precincts). For all other councils, Section 4 of this report is not populated — "
          f"obtain DCP controls directly from council or via a town planning consultant."),
         ("Permitted and prohibited uses",
-         "Zone permitted and prohibited uses are derived from the NSW Planning Portal's LEP Land Use "
-         "field (zone objectives text), which follows the standard instrument LEP format across all "
-         "NSW councils. Uses are parsed from the authoritative portal response — not from a static lookup. "
-         "Always verify the current LEP land use table via the legislation link provided."),
+         "Zone permitted and prohibited uses are derived from the <b>NSW Planning Portal LEP Land Use</b> "
+         "field, which follows the standard instrument LEP format across all NSW councils. "
+         "Uses are parsed from the authoritative portal response — not from a static lookup. "
+         "Always verify the current LEP land use table via the <b>legislation link</b> provided."),
         ("Data sources and currency",
-         f"NSW Planning Portal data: live query as at {date.today().strftime('%d %B %Y')}. "
-         "NSW Valuation Service land values: most recently published base date (shown in report). "
-         "PostGIS spatial overlays: last ingestion from NSW Government ArcGIS services (ingestion date "
-         "recorded per layer). DA activity: NSW ePlanning Portal API, past 12 months. "
+         f"<b>NSW Planning Portal:</b> live query as at {date.today().strftime('%d %B %Y')}. "
+         "<b>NSW Valuation Service</b> land values: most recently published base date (shown in report). "
+         "<b>PostGIS spatial overlays:</b> last ingestion from NSW Government ArcGIS services. "
+         "<b>DA activity:</b> NSW ePlanning Portal API, past 12 months. "
          "No representation is made as to the completeness or accuracy of any data source."),
+        ("Shadow risk methodology",
+         "Northern development shadow risk is modelled using the <b>maximum permissible building height "
+         "(Height of Buildings, HOB)</b> from the applicable Local Environmental Plan. HOB is the LEP "
+         "control that sets the tallest structure a neighbour could legally build — <b>it is not the "
+         "height of any existing building.</b> The model tests whether a worst-case neighbour build at "
+         "the HOB limit would shadow this property on the <b>NSW Apartment Design Guide (ADG)</b> test dates "
+         "(21 June winter solstice, 9 am / 12 pm / 3 pm). ADG compliance requires <b>at least 2 hours "
+         "of direct sunlight between 9 am and 3 pm on 21 June</b> for living areas and private open space. "
+         "This is a <b>conservative envelope model</b> — not a site-specific shadow study. A formal shadow "
+         "impact assessment by a qualified architect is required for DA submission."),
         ("Infrastructure contributions (S7.11 / S7.12)",
-         "This report does not include infrastructure contribution liability estimates. "
-         "Development applications for new dwellings or subdivision require a Council "
-         "Section 7.11 (or 7.12) Contributions Plan levy. These are calculated per new lot or "
-         "dwelling and vary by council area — typically $10,000–$50,000+ per dwelling in "
-         "Greater Sydney, and higher in growth area councils. "
+         "This report <b>does not include infrastructure contribution liability estimates.</b> "
+         "Development applications for new dwellings or subdivision require a <b>Section 7.11 or 7.12 "
+         "Contributions Plan levy</b> — typically <b>$10,000–$50,000+ per dwelling</b> in Greater Sydney. "
          "Contribution rates must be confirmed directly with the relevant council's contributions "
          "plan before any development feasibility assessment can be relied upon."),
         ("Easements and covenants on title",
-         "This report does not assess easements, covenants, restrictions on use, or positive "
-         "covenants registered on the title. A stormwater easement, drainage reserve, or "
-         "positive covenant for infrastructure maintenance can significantly affect the "
-         "buildable area on a lot — in some cases more than any planning control. "
-         "These are disclosed in the title search (DP plan diagram) and must be reviewed "
-         "before any development feasibility assessment. Obtain a full title search and review "
+         "This report <b>does not assess easements, covenants, restrictions on use,</b> or positive "
+         "covenants registered on the title. A <b>stormwater easement, drainage reserve,</b> or "
+         "positive covenant can <b>significantly affect the buildable area</b> on a lot — in some cases "
+         "more than any planning control. "
+         "These are disclosed in the <b>title search (DP plan diagram)</b> and must be reviewed "
+         "before any development feasibility assessment. Obtain a <b>full title search</b> and review "
          "the deposited plan before exchange."),
         ("Existing floor area and building footprint",
-         "Floor space ratio (FSR) headroom calculations in this report are based on the LEP "
-         "maximum FSR applied to the lot area. They do not account for the gross floor area "
-         "of any existing buildings on the lot. The actual development potential depends on "
-         "existing GFA — which must be calculated from building plans, approved DAs, or a "
-         "building surveyor's assessment. Do not use this report's FSR data as a standalone "
-         "feasibility basis without first quantifying existing GFA."),
+         "<b>FSR headroom calculations</b> in this report are based on the LEP maximum FSR applied to lot area. "
+         "They <b>do not account for the gross floor area (GFA) of existing buildings</b> on the lot. "
+         "Actual development potential depends on existing GFA — which must be calculated from "
+         "building plans, approved DAs, or a building surveyor's assessment. "
+         "<b>Do not use FSR data as a standalone feasibility basis</b> without first quantifying existing GFA."),
         ("Liability",
-         "This report provides planning intelligence for due diligence review only. "
-         "It does not constitute planning, legal, environmental or conveyancing advice. "
+         "This report provides <b>planning intelligence for due diligence review only.</b> "
+         "It <b>does not constitute planning, legal, environmental or conveyancing advice.</b> "
          "Do not rely on this report as the sole basis for any decision to enter into a contract "
-         "or proceed with a transaction. Independent professional advice should be obtained as "
+         "or proceed with a transaction. <b>Independent professional advice should be obtained</b> as "
          "appropriate for each matter. To the maximum extent permitted by law, the report "
-         "provider accepts no liability for any loss or damage arising from reliance on this report."),
+         "provider <b>accepts no liability</b> for any loss or damage arising from reliance on this report."),
     ]
     for heading, body in notes:
         story.append(Paragraph(f"<b>{heading}:</b> {body}", ss["body"]))
