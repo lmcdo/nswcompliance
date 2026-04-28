@@ -15,12 +15,19 @@ import {
 } from '@/lib/pdf/shadow-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
+import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
+import { verifyReport } from '@/lib/report-token';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  let body: { data?: unknown };
+  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
+  if (!rl.success) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
+  }
+
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
   try {
     body = await req.json();
   } catch {
@@ -40,12 +47,17 @@ export async function POST(req: NextRequest) {
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
+  if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
+    return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
+  }
+
   const [tile_b64, logo_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 
   const today = new Date().toISOString().split('T')[0];
+  const is_paid = body.is_paid !== false;
 
   // Strip GeoJSON geometry fields — PDF doesn't need them
   const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
@@ -79,6 +91,7 @@ export async function POST(req: NextRequest) {
     confidence: String(raw.confidence ?? 'medium'),
     data_sources: Array.isArray(raw.data_sources) ? (raw.data_sources as string[]) : [],
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
+    is_paid,
     tile_b64,
     logo_b64,
   };
