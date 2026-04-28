@@ -19,6 +19,7 @@ try:
     from services.flood_truth import router as flood_router
     from services.granny_flat import router as granny_flat_router
     from services.lec_collector import router as lec_router
+    from services.drawdown_verify import router as drawdown_verify_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -26,6 +27,7 @@ except ImportError:
     from flood_truth import router as flood_router
     from granny_flat import router as granny_flat_router
     from lec_collector import router as lec_router
+    from drawdown_verify import router as drawdown_verify_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -53,6 +55,7 @@ app.include_router(threat_radar_router)
 app.include_router(flood_router)
 app.include_router(granny_flat_router)
 app.include_router(lec_router)
+app.include_router(drawdown_verify_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()
