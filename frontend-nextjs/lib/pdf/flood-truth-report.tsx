@@ -25,6 +25,12 @@ export interface EmsActivation {
   flood_type: string;
 }
 
+export interface BomFloodEvent {
+  date: string;
+  peak_m: number;
+  ari_category: string;
+}
+
 export interface FloodReportData {
   address: string;
   run_date: string;
@@ -45,12 +51,17 @@ export interface FloodReportData {
   bom_gauge_distance_km: number | null;
   bom_last_major_flood_date: string | null;
   bom_last_major_flood_peak_m: number | null;
+  // flood enhancements
+  bom_flood_history?: BomFloodEvent[] | null;
+  flood_study_name?: string | null;
+  flood_study_date?: string | null;
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  is_paid?: boolean;
   tile_b64: string | null;
 }
 
@@ -151,6 +162,27 @@ const s = StyleSheet.create({
 // Helper: page number
 // ---------------------------------------------------------------------------
 
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function ReferralBox() {
+  return (
+    <View style={{ backgroundColor: '#f0fdfa', borderRadius: 4, padding: 10, marginTop: 16, borderWidth: 1, borderColor: '#99f6e4' }}>
+      <Text style={{ fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: TEAL, marginBottom: 4 }}>
+        Get professional advice
+      </Text>
+      <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
+        A licensed flood consultant can assess whether this flood classification triggers mandatory disclosure under the Conveyancing (Sale of Land) Regulation 2022. A conveyancer can advise on the impact on contract terms and negotiate appropriate special conditions.
+      </Text>
+    </View>
+  );
+}
+
 function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   return (
     <View style={s.logoRow}>
@@ -195,11 +227,19 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         <Text style={s.h1}>Flood Data Summary</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Signal badge */}
         <View style={[s.badge, { backgroundColor: signalMeta.bg }]}>
           <Text style={[s.badgeText, { color: signalMeta.color }]}>
             {signalMeta.label}
+          </Text>
+        </View>
+
+        {/* Insurance implication note */}
+        <View style={{ backgroundColor: AMBER_LIGHT, borderRadius: 4, padding: 8, marginTop: 6, marginBottom: 4, borderWidth: 1, borderColor: '#fcd34d' }}>
+          <Text style={{ fontSize: 8, color: '#92400e', lineHeight: 1.5 }}>
+            Properties in a Flood Planning Area typically attract higher building and contents insurance premiums. Request a flood loading quote from your insurer before proceeding with purchase or finance.
           </Text>
         </View>
 
@@ -219,6 +259,12 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             <Text style={s.cardSub}>
               NSW EPI Flood WFS · {data.data_currency !== 'unknown' ? data.data_currency : 'date unavailable'}
             </Text>
+            {/* Flood study provenance — FREE */}
+            {data.flood_study_name && (
+              <Text style={[s.cardSub, { color: GRAY_500, marginTop: 4 }]}>
+                {`Source: ${data.flood_study_name}${data.flood_study_date ? ` (effective ${data.flood_study_date})` : ''}. Flood planning controls derive from this study.`}
+              </Text>
+            )}
           </View>
           <View style={s.card}>
             <Text style={s.cardLabel}>Copernicus EMS observed events</Text>
@@ -294,6 +340,31 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
           </View>
         </View>
 
+        {/* BoM flood event history table — PAID (up to 3 events) */}
+        {data.is_paid !== false && data.bom_flood_history && data.bom_flood_history.length > 0 && (
+          <View style={{ marginBottom: 12 }}>
+            <Text style={s.sectionTitle}>BOM flood event history</Text>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`,
+              paddingVertical: 4,
+            }}>
+              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>Date</Text>
+              <Text style={{ flex: 1.5, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Peak height</Text>
+              <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>ARI category</Text>
+            </View>
+            {data.bom_flood_history.slice(0, 3).map((event, i) => (
+              <View key={i} style={{
+                flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5,
+              }}>
+                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700 }}>{event.date}</Text>
+                <Text style={{ flex: 1.5, fontSize: 8.5, color: RED, fontFamily: 'Helvetica-Bold', textAlign: 'right' }}>{event.peak_m} m</Text>
+                <Text style={{ flex: 2, fontSize: 8.5, color: GRAY_700, textAlign: 'right' }}>{event.ari_category}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* SAR row */}
         {data.sar_flood_detected !== null && (
           <View style={[s.card, { marginBottom: 12 }]}>
@@ -342,6 +413,8 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
         <LogoRow logo_b64={data.logo_b64} />
+
+        <ReferralBox />
 
         <Text style={s.sectionTitle}>Important limitations</Text>
         <Text style={s.bodyText}>
