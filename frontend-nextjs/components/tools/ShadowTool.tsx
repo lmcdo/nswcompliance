@@ -3,6 +3,9 @@
 import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
+import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const ShadowMap = dynamic(
@@ -174,7 +177,32 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         </div>
       )}
 
-      {state === 'complete' && result && <ShadowCard result={result} />}
+      {state === 'complete' && result && (
+        <>
+          <ShadowCard result={result} />
+          <DownloadPdfButton
+            label="Download PDF report"
+            apiPath="/api/reports/shadow/generate"
+            data={{
+              address: result.address,
+              run_date: result.run_date,
+              lat: result.lat,
+              lng: result.lng,
+              zone: result.zone,
+              outputs: result.outputs,
+              confidence: result.confidence,
+              data_sources: result.data_sources,
+              warnings: result.warnings ?? [],
+            }}
+          />
+          <PostResultEmailStrip
+            address={result.address}
+            product="shadow-detector"
+            copy="Get this shadow analysis emailed to you →"
+          />
+          <ToolCrossSell currentTool="shadow-detector" address={result.address} />
+        </>
+      )}
     </div>
   );
 }

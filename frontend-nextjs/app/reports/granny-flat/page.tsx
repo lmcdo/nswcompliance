@@ -92,8 +92,11 @@ function GrannyFlatPageInner() {
   const [calcBuildCost, setCalcBuildCost] = useState(2500);
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450);
   const [email, setEmail] = useState('');
-  const [emailSubmitted, setEmailSubmitted] = useState(false);
+  const [emailSubmitted, setEmailSubmitted] = useState(false);      // confirming-state resume-link capture
+  const [reportEmailCaptured, setReportEmailCaptured] = useState(false); // post-result CTA capture
   const [existingSecondaryDwelling, setExistingSecondaryDwelling] = useState<boolean | null>(null);
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(null);
 
   // Named step progress — driven by elapsed time during detect phase only
   const DETECT_STEPS = [
@@ -163,7 +166,27 @@ function GrannyFlatPageInner() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Confirming-state capture: "get result by email so you can close this tab"
   const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    try {
+      await fetch('/api/canibuildit/lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          address: detectResult?.address ?? inputAddress,
+          eligible: null,
+        }),
+      });
+    } catch { /* silent */ }
+    posthog?.capture('granny_flat_email_capture', { address: detectResult?.address ?? inputAddress, stage: 'confirming' });
+    setEmailSubmitted(true);
+  };
+
+  // Post-result capture: shown after pass/fail result is fully displayed
+  const handleReportEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
     try {
@@ -180,8 +203,9 @@ function GrannyFlatPageInner() {
     posthog?.capture('granny_flat_email_capture', {
       address: finalResult?.address ?? detectResult?.address ?? inputAddress,
       eligible: finalResult?.granny_flat_buildable ?? null,
+      stage: 'post_result',
     });
-    setEmailSubmitted(true);
+    setReportEmailCaptured(true);
   };
 
   const handleDetect = async (e: React.FormEvent) => {
@@ -218,14 +242,15 @@ function GrannyFlatPageInner() {
 
       const jobId: string = json.jobId;
 
-      // If email was provided at idle state, register it now so result can be emailed
+      // If email was provided at idle state, register for resume-link delivery
+      // NOTE: does NOT set emailSubmitted — that's reserved for the confirming-state strip
+      // so the post-result ReportUnlockCTA always shows explicitly for the user to opt in
       if (email.trim()) {
         fetch('/api/canibuildit/lead', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), address: address.trim(), eligible: null }),
         }).catch(() => {});
-        setEmailSubmitted(true);
       }
 
       // Step 2: poll until detect result is written to DB (max 3 min)
@@ -337,7 +362,7 @@ function GrannyFlatPageInner() {
             <AddressAutocomplete
               value={address}
               onChange={setAddress}
-              onSelect={(addr, _lat, _lng, pc) => { setAddress(addr); if (pc) setPostcode(pc); }}
+              onSelect={(addr, lat, lng, pc) => { setAddress(addr); setSelectedLat(lat); setSelectedLng(lng); if (pc) setPostcode(pc); }}
               className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
               disabled={isRunning}
             />
@@ -412,13 +437,14 @@ function GrannyFlatPageInner() {
 
       {/* Ineligible — permanent result, search another at top */}
       {state === 'ineligible' && (
+        <>
         <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
           <div className="p-6 flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-semibold text-gray-900">{inputAddress}</p>
               <button
                 type="button"
-                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); }}
+                onClick={() => { setState('idle'); setErrorMsg(''); setIneligibleEvidence(''); setIneligibleEvidenceLabel(''); setAddress(''); setPostcode(''); setReportEmailCaptured(false); setSelectedLat(null); setSelectedLng(null); }}
                 className="text-xs text-teal-600 hover:text-teal-700 underline mt-1"
               >
                 Search another address
@@ -442,8 +468,8 @@ function GrannyFlatPageInner() {
             <p className="text-sm text-gray-500 mb-4">
               {deriveWhatToChange(errorMsg, null)}
             </p>
-            {!emailSubmitted ? (
-              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+            {!reportEmailCaptured ? (
+              <form onSubmit={handleReportEmailSubmit} className="flex gap-2">
                 <input
                   type="email"
                   required
@@ -464,6 +490,11 @@ function GrannyFlatPageInner() {
             )}
           </div>
         </div>
+        {selectedLat !== null && selectedLng !== null && (
+          <NearbyEligible lat={selectedLat} lng={selectedLng} />
+        )}
+        <CrossSellCards buildable={false} address={inputAddress} />
+        </>
       )}
 
       {/* Step 2: confirmation */}
@@ -511,15 +542,16 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setExistingSecondaryDwelling(null); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); }} />
           <ReportUnlockCTA
             buildable={finalResult.granny_flat_buildable}
             sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
             lot_area_m2={detectResult?.lot_area_m2 ?? null}
             email={email}
             setEmail={setEmail}
-            emailSubmitted={emailSubmitted}
-            onEmailSubmit={handleEmailSubmit}
+            emailCaptured={reportEmailCaptured}
+            onEmailSubmit={handleReportEmailSubmit}
+            reportId={finalResult.report_id}
           />
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
@@ -527,6 +559,10 @@ function GrannyFlatPageInner() {
             weeklyRent={calcWeeklyRent}
             onBuildCostChange={setCalcBuildCost}
             onWeeklyRentChange={setCalcWeeklyRent}
+          />
+          <CrossSellCards
+            buildable={finalResult.granny_flat_buildable}
+            address={finalResult.address ?? inputAddress}
           />
         </div>
       )}
@@ -998,14 +1034,114 @@ function ConfirmationPanel({
 }
 
 // ---------------------------------------------------------------------------
+// NearbyEligible — shows nearby properties with confirmed granny flat eligibility
+// Only shown on ineligible result. Fetches from /api/reports/granny-flat/nearby.
+// Graceful empty state — zero results = renders nothing.
+// ---------------------------------------------------------------------------
+
+interface NearbyResult {
+  address: string;
+  run_date: string | null;
+  max_floor_area_m2: number | null;
+  estimated_weekly_rent_aud: number | null;
+}
+
+function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
+  const [results, setResults] = useState<NearbyResult[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/reports/granny-flat/nearby?lat=${lat}&lng=${lng}`)
+      .then((r) => r.json())
+      .then((d) => { setResults(d.results ?? []); setLoaded(true); })
+      .catch(() => setLoaded(true)); // silent failure
+  }, [lat, lng]);
+
+  if (!loaded || results.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-teal-100 bg-teal-50 p-5">
+      <h3 className="font-semibold text-teal-900 mb-1 text-sm">
+        Eligible properties nearby
+      </h3>
+      <p className="text-xs text-teal-700 mb-4">
+        These properties near you have been confirmed eligible — check if one suits you, or use these as DA precedents.
+      </p>
+      <div className="space-y-2">
+        {results.map((r) => (
+          <a
+            key={r.address}
+            href={`/reports/granny-flat?address=${encodeURIComponent(r.address)}`}
+            className="flex items-center justify-between gap-4 rounded-lg bg-white border border-teal-100 px-4 py-3 hover:border-teal-300 transition-colors"
+          >
+            <span className="text-sm text-gray-800 truncate">{r.address}</span>
+            <span className="shrink-0 text-xs text-teal-600 font-medium">
+              {r.estimated_weekly_rent_aud ? `~$${r.estimated_weekly_rent_aud}/wk` : `${r.max_floor_area_m2 ?? '?'} m²`}
+            </span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CrossSellCards — contextual upsell to related tools
+// Pass variant: Threat Radar + Flood Truth (pre-construction due diligence)
+// Fail variant: Threat Radar only (monitor for zone/DA changes)
+// ---------------------------------------------------------------------------
+
+function CrossSellCards({ buildable, address }: { buildable: boolean; address: string }) {
+  const encoded = encodeURIComponent(address);
+  const passCards = [
+    {
+      title: 'Neighbour Development Threat Radar',
+      body: 'Check whether nearby DAs could block sunlight or views once your granny flat is built.',
+      href: `/reports/threat-radar?address=${encoded}`,
+      label: 'Check nearby DAs →',
+    },
+    {
+      title: 'Wet Season Flood Truth',
+      body: 'Verify flood risk before you build — required by certifiers for any new structure.',
+      href: `/reports/flood?address=${encoded}`,
+      label: 'Check flood risk →',
+    },
+  ];
+  const failCards = [
+    {
+      title: 'Neighbour Development Threat Radar',
+      body: 'Monitor nearby DA applications — a rezoning or approval nearby could change your eligibility.',
+      href: `/reports/threat-radar?address=${encoded}`,
+      label: 'Monitor this area →',
+    },
+  ];
+  const cards = buildable ? passCards : failCards;
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Also check</p>
+      <div className={`grid gap-3 ${buildable ? 'sm:grid-cols-2' : ''}`}>
+        {cards.map((card) => (
+          <a
+            key={card.href}
+            href={card.href}
+            className="block rounded-xl border border-gray-200 bg-white p-4 hover:border-teal-300 hover:shadow-sm transition-all"
+          >
+            <p className="text-sm font-semibold text-gray-900 mb-1">{card.title}</p>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">{card.body}</p>
+            <span className="text-xs font-medium text-teal-600">{card.label}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ReportUnlockCTA — shown after result card
 // Pass variant: email capture → Stripe link to unlock detailed PDF report
 // Fail variant: "What could change this?" + notify-me email capture
 // ---------------------------------------------------------------------------
-
-const STRIPE_LINK = typeof window !== 'undefined'
-  ? (process.env.NEXT_PUBLIC_STRIPE_GRANNY_FLAT_LINK ?? null)
-  : null;
 
 function ReportUnlockCTA({
   buildable,
@@ -1013,51 +1149,74 @@ function ReportUnlockCTA({
   lot_area_m2,
   email,
   setEmail,
-  emailSubmitted,
+  emailCaptured,
   onEmailSubmit,
+  reportId,
 }: {
   buildable: boolean;
   sepp_ineligible_reason: string | null;
   lot_area_m2: number | null;
   email: string;
   setEmail: (v: string) => void;
-  emailSubmitted: boolean;
+  emailCaptured: boolean;
   onEmailSubmit: (e: React.FormEvent) => void;
+  reportId?: string;
 }) {
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
+
+  const handleBuyReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !reportId) return;
+    setCheckoutLoading(true);
+    setCheckoutError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/granny-flat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, email: email.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.checkout_url) throw new Error(data.error ?? 'Checkout failed');
+      window.location.href = data.checkout_url;
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : 'Something went wrong — try again.');
+      setCheckoutLoading(false);
+    }
+  };
+
   if (buildable) {
     return (
       <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="font-semibold text-teal-900">Get the detailed report</h3>
+            <h3 className="font-semibold text-teal-900">Get the full report — $29</h3>
             <p className="text-sm text-teal-700 mt-1">
-              CDC pathway checklist, applicable setback standards with clause citations, yield sensitivity analysis, and a shareable PDF — $29.
+              CDC pathway checklist, setback standards with SEPP clause citations, yield sensitivity table, and a shareable PDF — emailed instantly after payment.
             </p>
           </div>
           <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
         </div>
-        {!emailSubmitted ? (
-          <form onSubmit={onEmailSubmit} className="space-y-3">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
-            />
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors"
-            >
-              Notify me when ready →
-            </button>
-          </form>
-        ) : (
-          <p className="text-sm text-teal-700 font-medium">
-            Thanks — we&apos;ll email you at {email} when the detailed report is ready.
-          </p>
-        )}
+        <form onSubmit={handleBuyReport} className="space-y-3">
+          <input
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+            className="w-full px-4 py-2.5 rounded-lg border border-teal-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 bg-white"
+          />
+          <button
+            type="submit"
+            disabled={checkoutLoading}
+            className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
+          >
+            {checkoutLoading ? 'Redirecting to payment…' : 'Get full report — $29 →'}
+          </button>
+          {checkoutError && (
+            <p className="text-sm text-red-600">{checkoutError}</p>
+          )}
+        </form>
       </div>
     );
   }
@@ -1069,7 +1228,7 @@ function ReportUnlockCTA({
       <p className="text-sm text-gray-500 mb-4">
         {deriveWhatToChange(sepp_ineligible_reason, lot_area_m2)}
       </p>
-      {!emailSubmitted ? (
+      {!emailCaptured ? (
         <form onSubmit={onEmailSubmit} className="flex gap-2">
           <input
             type="email"

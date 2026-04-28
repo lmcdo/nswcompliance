@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
+import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
+import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface Application {
@@ -104,15 +106,14 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
     posthog?.capture('threat_radar_subscribe', { address, lga_slug: lgaSlug });
 
     try {
-      const res = await fetch('/api/satellite/threat-radar', {
+      const res = await fetch('/api/stripe/checkout/threat-radar-monitor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ address: address.trim(), email: email.trim() }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Subscription failed');
-      setSubscribeState('subscribed');
-      posthog?.capture('threat_radar_subscribed', { address, lga_slug: lgaSlug });
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
       setSubscribeError(msg);
@@ -170,12 +171,31 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
           <SearchResults result={searchResult} onReset={reset} />
         )}
 
+        {/* Download PDF + email — shown only when results are available */}
+        {searchState === 'done' && searchResult && (
+          <>
+            <DownloadPdfButton
+              label="Download PDF report"
+              apiPath="/api/reports/threat-radar/generate"
+              data={searchResult}
+            />
+            <PostResultEmailStrip
+              address={searchResult.address}
+              product="threat-radar"
+              copy="Email me this result →"
+            />
+          </>
+        )}
+
         {/* Subscribe — always visible */}
         {subscribeState !== 'subscribed' ? (
           <div className="border border-teal-200 bg-teal-50 rounded-xl p-5">
-            <p className="text-sm font-medium text-teal-900 mb-1">Subscribe to weekly alerts</p>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-sm font-medium text-teal-900">Weekly DA monitoring — $9.99/month</p>
+              <span className="text-xs font-bold text-teal-900">$9.99/mo</span>
+            </div>
             <p className="text-xs text-teal-700 mb-3">
-              Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address.
+              Get emailed every Monday when new DAs or CDCs are lodged within 200m of this address. Cancel anytime.
             </p>
             <form onSubmit={handleSubscribe} className="flex gap-2">
               <input
@@ -192,7 +212,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
                 disabled={subscribeState === 'subscribing' || !email.trim() || !address.trim()}
                 className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
-                {subscribeState === 'subscribing' ? 'Subscribing...' : 'Subscribe'}
+                {subscribeState === 'subscribing' ? 'Redirecting...' : 'Subscribe — $9.99/mo →'}
               </button>
             </form>
             {subscribeError && (

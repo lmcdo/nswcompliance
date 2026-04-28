@@ -123,6 +123,25 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // ============================================================================
+  // HOSTNAME ROUTING — serve correct app per domain
+  // Both canibuildit.com.au and verify.plotdetect.com.au point to the same
+  // Next.js build. Rewrite root requests to the right section.
+  // ============================================================================
+  // x-forwarded-host is more reliable than host when behind Cloudflare + Vercel
+  const hostname =
+    request.headers.get('x-forwarded-host') ??
+    request.headers.get('host') ??
+    request.nextUrl.hostname;
+  const isVerifyDomain =
+    hostname === 'verify.plotdetect.com.au' ||
+    hostname === 'plotdetect.com.au' ||
+    hostname === 'www.plotdetect.com.au';
+
+  if (isVerifyDomain && pathname === '/') {
+    return NextResponse.rewrite(new URL('/assessment', request.url));
+  }
+
   // Only apply rate limiting / auth to API routes
   if (!pathname.startsWith('/api')) {
     return NextResponse.next();
@@ -262,5 +281,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/api/:path*', '/reports/:path*', '/auth/:path*', '/login'],
+  // Match everything except Next.js internals and static files.
+  // Required for hostname-based routing to fire on the root path.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

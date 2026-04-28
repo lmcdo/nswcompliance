@@ -33,6 +33,7 @@ import json
 import logging
 import math
 import os
+import re
 import uuid
 from datetime import date
 from typing import Optional
@@ -612,7 +613,6 @@ def detect_structures(req: GrannyFlatDetectRequest):
                     pass
         raise HTTPException(status_code=502, detail=f"Tile fetch failed: {e}")
 
-    # Encode tile as base64 for frontend canvas rendering
     tile_b64: Optional[str] = None
     tile_width: Optional[int] = None
     tile_height: Optional[int] = None
@@ -620,10 +620,8 @@ def detect_structures(req: GrannyFlatDetectRequest):
         from PIL import Image as _PILImage
         with _PILImage.open(tile_path) as _img:
             tile_width, tile_height = _img.size
-        with open(tile_path, "rb") as _f:
-            tile_b64 = base64.b64encode(_f.read()).decode()
     except Exception as e:
-        logger.warning(f"Tile encode failed: {e}")
+        logger.warning(f"Tile size read failed: {e}")
 
     detect_warnings: list[str] = []
     detected_structures: list[DetectedStructure] = []
@@ -652,6 +650,55 @@ def detect_structures(req: GrannyFlatDetectRequest):
             detect_warnings.append(
                 "Aerial structure detection failed — enter structure count manually."
             )
+
+    # Annotate tile with lot boundary + structure boxes, then encode as base64.
+    # Uses the same bbox_pixel values the frontend canvas draws — no re-projection needed
+    # for structures. Lot polygon uses linear WGS84 → pixel projection via tile_bbox.
+    try:
+        from PIL import Image as _PILImage, ImageDraw as _ImageDraw
+        import io as _io
+
+        with _PILImage.open(tile_path) as _img:
+            _img = _img.convert("RGBA")
+            _draw = _ImageDraw.Draw(_img, "RGBA")
+            tw, th = _img.size
+
+            def _wgs84_to_px(lat: float, lng: float) -> tuple[int, int]:
+                px = int((lng - bbox["min_lng"]) / (bbox["max_lng"] - bbox["min_lng"]) * tw)
+                py = int((bbox["max_lat"] - lat) / (bbox["max_lat"] - bbox["min_lat"]) * th)
+                return px, py
+
+            # Draw lot boundary (teal outline)
+            # _mercator_rings_to_wgs84 returns list of rings [[lng, lat], ...]
+            lot_rings = (
+                _mercator_rings_to_wgs84(lot_geometry["rings"])
+                if lot_geometry and "rings" in lot_geometry and lot_geometry["rings"]
+                else None
+            )
+            if lot_rings:
+                ring = lot_rings[0]  # exterior boundary
+                pts = [_wgs84_to_px(lat, lng) for lng, lat in ring]
+                _draw.line(pts + [pts[0]], fill=(15, 118, 110, 220), width=3)
+
+            # Draw structure bounding boxes
+            MAIN_COL = (239, 68, 68, 200)    # red — main dwelling
+            OTHER_COL = (250, 204, 21, 200)  # yellow — outbuildings
+            for s in detected_structures:
+                x0, y0, x1, y1 = s.bbox_pixel
+                col = MAIN_COL if s.is_main_dwelling else OTHER_COL
+                _draw.rectangle([x0, y0, x1, y1], outline=col, width=2)
+
+            # Re-encode as PNG bytes → base64
+            _buf = _io.BytesIO()
+            _img.convert("RGB").save(_buf, format="PNG")
+            tile_b64 = base64.b64encode(_buf.getvalue()).decode()
+    except Exception as e:
+        logger.warning(f"Tile annotation failed, falling back to raw tile: {e}")
+        try:
+            with open(tile_path, "rb") as _f:
+                tile_b64 = base64.b64encode(_f.read()).decode()
+        except Exception:
+            pass
 
     detect_id = str(uuid.uuid4())
     response = GrannyFlatDetectResponse(
@@ -799,7 +846,32 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
             "permits only one secondary dwelling per lot — a second granny flat cannot be approved."
         )
 
-    weekly_rent = _get_weekly_rent(req.postcode)
+    # Conservative gate: when ≥2 secondary structures are detected and the user has not
+    # confirmed whether any of them is an existing secondary dwelling, we cannot safely
+    # assert eligibility. With 2 secondary structures the probability that at least one is
+    # already a secondary dwelling is high. Block and require human verification.
+    if (
+        granny_flat_buildable
+        and req.confirmed_structure_count >= 3  # 1 main + 2 secondary = 3 total
+        and req.existing_secondary_dwelling is None
+    ):
+        granny_flat_buildable = False
+        warnings.append(
+            "MULTIPLE_SECONDARY_STRUCTURES: Two or more secondary structures were detected on "
+            "this lot. SEPP Housing 2021 (cl 53(1)) permits only one secondary dwelling per lot. "
+            "Eligibility cannot be confirmed without knowing whether either existing structure is "
+            "already classified as a secondary dwelling. A town planner or private certifier can "
+            "confirm the current status before you proceed."
+        )
+
+    # Resolve postcode — prefer explicit field, fall back to last 4 digits of address
+    postcode = req.postcode
+    if not postcode and req.address:
+        m = re.search(r'\b(\d{4})\s*$', req.address.strip())
+        if m:
+            postcode = m.group(1)
+
+    weekly_rent = _get_weekly_rent(postcode)
     annual_rent = weekly_rent * 52 if weekly_rent else None
 
     build_cost_per_m2 = 2500.0
@@ -819,9 +891,13 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         )
 
     # Only show generic "verify outbuilding" warning if user hasn't already answered
-    # the secondary dwelling question. If they said True, we've already blocked buildability.
+    # the secondary dwelling question, and we haven't already blocked above.
+    # If they said True, we've already blocked buildability.
     # If they said False, no ambiguity. Only warn when None (not asked / not answered).
-    if req.confirmed_structure_count >= 2 and req.existing_secondary_dwelling is None:
+    if (
+        req.confirmed_structure_count == 2  # exactly 1 secondary structure — ambiguous but not blocked
+        and req.existing_secondary_dwelling is None
+    ):
         warnings.append(
             "Existing outbuilding detected. Granny flat approval depends on whether "
             "the existing structure is already an ancillary dwelling — verify with council."
@@ -839,13 +915,15 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         confidence = "medium"
         confidence_reason += " Lot area could not be verified — eligibility is unconfirmed."
 
-    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium
-    if req.existing_secondary_dwelling is None and confidence == "high":
+    # Secondary dwelling status unknown → SEPP cl 53(1) unverified → cap at medium.
+    # Covers both the single-outbuilding ambiguity (count == 2) and the multiple-secondary
+    # block (count >= 3) where we conservatively blocked buildability above.
+    if req.existing_secondary_dwelling is None and req.confirmed_structure_count >= 2 and confidence == "high":
         confidence = "medium"
         confidence_reason += (
-            " You indicated you weren't sure whether a granny flat already exists on this lot. "
-            "NSW planning rules only allow one secondary dwelling per lot — if one already exists, "
-            "a second cannot be approved. Confidence is capped until this is confirmed."
+            " Eligibility is capped because the status of one or more existing secondary "
+            "structures on this lot could not be confirmed. NSW planning rules only allow one "
+            "secondary dwelling per lot."
         )
 
     report_id = req.report_id or str(uuid.uuid4())
@@ -854,6 +932,19 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
+            # Carry tile_b64 forward from the detect outputs so the PDF can render
+            # the aerial image. The detect step stores it in outputs JSONB; the
+            # confirm step overwrites outputs, so we must read it before writing.
+            tile_b64: Optional[str] = None
+            if req.report_id:
+                cur.execute(
+                    "SELECT outputs->>'tile_b64' FROM granny_flat_reports WHERE id = %s",
+                    (req.report_id,),
+                )
+                row = cur.fetchone()
+                if row:
+                    tile_b64 = row[0]  # None if key absent or value null
+
             cur.execute(
                 """
                 INSERT INTO granny_flat_reports
@@ -877,7 +968,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "lot_area_m2": lot_area_m2,
                         "confirmed_structure_count": req.confirmed_structure_count,
                         "samgeo_structure_count": req.samgeo_structure_count,
-                        "postcode": req.postcode,
+                        "postcode": postcode,
                         "existing_secondary_dwelling": req.existing_secondary_dwelling,
                         "main_dwelling_area_m2": req.main_dwelling_area_m2,
                     }),
@@ -890,6 +981,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
                         "is_heritage": is_heritage,
                         "confidence_reason": confidence_reason,
                         "warnings": warnings,
+                        "tile_b64": tile_b64,
                     }),
                     confidence,
                     data_sources,

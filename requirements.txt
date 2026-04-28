@@ -200,3 +200,8 @@ segmentation-models-pytorch==0.3.4
 samgeo
 planetary-computer
 # transformers[vision] — already present as transformers==4.55.3 above (newer version, Pillow already installed)
+
+# Pre-DA Site History pipeline
+geotessera
+psycopg2-binary
+scikit-image
