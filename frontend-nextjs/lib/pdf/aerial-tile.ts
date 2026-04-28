@@ -11,35 +11,38 @@
 const EXPORT_URL =
   'https://maps.six.nsw.gov.au/arcgis/rest/services/sixmaps/LPI_Imagery_Best/MapServer/export';
 
-// Width/height of the exported image in pixels
-const IMG_W = 600;
-const IMG_H = 300;
-
-// Bounding box half-extents in degrees around the subject point
-// At Sydney's latitude (~34°S): 0.003° lng ≈ 283m, 0.0015° lat ≈ 167m
-const D_LNG = 0.003;
-const D_LAT = 0.0015;
-
 const NSW_LAT = { min: -38.0, max: -28.0 };
 const NSW_LNG = { min: 140.5, max: 154.0 };
 
-export async function fetchAerialTileBase64(lat: number, lng: number): Promise<string | null> {
+// 'property': ~90m × 90m — lot-level, individual property visible clearly
+// 'neighbourhood': ~550m × 330m — street context, used by flood/shadow/solar/threat-radar
+const ZOOM_PRESETS = {
+  property:     { d_lng: 0.0005, d_lat: 0.0005, w: 512, h: 512 },
+  neighbourhood:{ d_lng: 0.003,  d_lat: 0.0015, w: 600, h: 300 },
+};
+
+export async function fetchAerialTileBase64(
+  lat: number,
+  lng: number,
+  zoom: 'property' | 'neighbourhood' = 'neighbourhood',
+): Promise<string | null> {
   if (
     !isFinite(lat) || !isFinite(lng) ||
     lat < NSW_LAT.min || lat > NSW_LAT.max ||
     lng < NSW_LNG.min || lng > NSW_LNG.max
   ) return null;
 
-  const minX = (lng - D_LNG).toFixed(6);
-  const minY = (lat - D_LAT).toFixed(6);
-  const maxX = (lng + D_LNG).toFixed(6);
-  const maxY = (lat + D_LAT).toFixed(6);
+  const { d_lng, d_lat, w, h } = ZOOM_PRESETS[zoom];
+  const minX = (lng - d_lng).toFixed(6);
+  const minY = (lat - d_lat).toFixed(6);
+  const maxX = (lng + d_lng).toFixed(6);
+  const maxY = (lat + d_lat).toFixed(6);
 
   const params = new URLSearchParams({
     bbox: `${minX},${minY},${maxX},${maxY}`,
     bboxSR: '4326',
     imageSR: '4326',
-    size: `${IMG_W},${IMG_H}`,
+    size: `${w},${h}`,
     format: 'png',
     f: 'image',
   });

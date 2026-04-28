@@ -21,6 +21,7 @@ try:
     from services.lec_collector import router as lec_router
     from services.drawdown_verify import router as drawdown_verify_router
     from services.forum_webhook import router as forum_webhook_router
+    from services.pre_da_history import router as pre_da_history_router
 except ImportError:
     from solar_yield import router as solar_yield_router  # Local (run from services/)
     from shadow_detector import router as shadow_router
@@ -30,6 +31,7 @@ except ImportError:
     from lec_collector import router as lec_router
     from drawdown_verify import router as drawdown_verify_router
     from forum_webhook import router as forum_webhook_router
+    from pre_da_history import router as pre_da_history_router
 
 app = FastAPI(title="NSW Compliance API", version="1.0.0")
 
@@ -59,6 +61,7 @@ app.include_router(granny_flat_router)
 app.include_router(lec_router)
 app.include_router(drawdown_verify_router)
 app.include_router(forum_webhook_router)
+app.include_router(pre_da_history_router)
 
 # Initialize the compliance API
 compliance_api = EnhancedComplianceAPI()

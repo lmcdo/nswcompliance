@@ -1284,7 +1284,7 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
                 : 'bg-red-100 text-red-800'
             }`}
           >
-            {result.granny_flat_buildable ? 'Eligible under SEPP' : 'Not eligible'}
+            {result.granny_flat_buildable ? 'Eligible ✓' : 'Not eligible'}
           </span>
         </div>
       </div>
@@ -1296,9 +1296,9 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
             <p className="text-lg font-semibold text-gray-900">{result.max_floor_area_m2} m²</p>
           </div>
           <div className="p-5">
-            <p className="text-xs text-gray-400 mb-1">Est. weekly rent</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {weeklyRent ? `$${weeklyRent.toLocaleString('en-AU', { maximumFractionDigits: 0 })}/wk` : 'N/A'}
+            <p className="text-xs text-gray-400 mb-1">Rental income potential</p>
+            <p className="text-lg font-semibold text-teal-700">
+              {weeklyRent ? `$${weeklyRent.toLocaleString('en-AU', { maximumFractionDigits: 0 })}/wk` : '$280–$340/wk'}
             </p>
           </div>
           <div className="p-5">

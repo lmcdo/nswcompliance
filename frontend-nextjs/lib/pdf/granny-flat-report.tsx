@@ -38,6 +38,7 @@ export interface GrannyFlatReportData {
   confidence_reason: string;
   warnings: string[];
   data_sources: string[];
+  is_paid?: boolean;
   // aerial tile — base64 PNG from SIX Maps (optional, carried from detect step)
   tile_b64: string | null;
   logo_b64?: string | null;
@@ -218,6 +219,27 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
   );
 }
 
+// Helvetica (react-pdf default) only covers Latin-1. Strip characters outside that range
+// so they don't render as garbage glyphs (e.g. em dash -> " - ", smart quotes -> plain).
+function ValidityNote({ runDate }: { runDate: string }) {
+  return (
+    <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
+      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+    </Text>
+  );
+}
+
+function sanitise(str: string): string {
+  return str
+    .replace(/\u2014/g, ' - ')   // em dash
+    .replace(/\u2013/g, ' - ')   // en dash
+    .replace(/\u2019/g, "'")     // right single quote
+    .replace(/\u2018/g, "'")     // left single quote
+    .replace(/\u201c/g, '"')     // left double quote
+    .replace(/\u201d/g, '"')     // right double quote
+    .replace(/[^\x00-\xFF]/g, ''); // strip any remaining non-Latin-1
+}
+
 export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData }) {
   const pass = data.granny_flat_buildable;
   // Detect the conservative multi-structure block — distinct from a hard ineligibility
@@ -253,15 +275,16 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         <Text style={s.coverTitle}>Granny Flat Eligibility Report</Text>
         <Text style={s.coverAddress}>{data.address}</Text>
         <Text style={s.coverDate}>Prepared {formattedDate}</Text>
+        <ValidityNote runDate={data.run_date} />
 
         {/* Verdict badge */}
         <View style={pass ? s.coverBadgePass : isMultiStructureBlock ? s.coverBadgeAmber : s.coverBadgeFail}>
           <Text>
             {pass
-              ? '✓  Eligible under SEPP Housing 2021'
+              ? 'Eligible under SEPP Housing 2021'
               : isMultiStructureBlock
-              ? '⚠  Eligibility unconfirmed — multiple structures detected'
-              : '✗  Not eligible (CDC pathway)'}
+              ? 'Eligibility unconfirmed - multiple structures detected'
+              : 'Not eligible (CDC pathway)'}
           </Text>
         </View>
         <Text style={s.coverConfidence}>{confidenceLabel(data.confidence)}</Text>
@@ -269,7 +292,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         {/* Confidence reason */}
         {data.confidence_reason ? (
           <View style={{ ...s.calloutAmber, marginTop: 12 }}>
-            <Text style={s.calloutText}>{data.confidence_reason}</Text>
+            <Text style={s.calloutText}>{sanitise(data.confidence_reason)}</Text>
           </View>
         ) : null}
 
@@ -278,7 +301,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           ?.filter((w) => !w.includes('Run services/') && !w.includes('Run scripts/') && !w.startsWith('MULTIPLE_SECONDARY_STRUCTURES'))
           .map((w, i) => (
             <View key={i} style={{ ...s.calloutAmber, marginTop: 6 }}>
-              <Text style={{ ...s.calloutText, color: AMBER }}>{w}</Text>
+              <Text style={{ ...s.calloutText, color: AMBER }}>{sanitise(w)}</Text>
             </View>
           ))}
 
@@ -318,19 +341,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </Text>
           <Text style={s.calloutText}>
             {pass
-              ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway (SEPP Housing 2021 cl 50–58). A CDC can be lodged with a private certifier without council consent.'
+              ? 'This property meets the minimum requirements for a secondary dwelling under the Complying Development pathway (SEPP Housing 2021 cl 50-58). A CDC can be lodged with a private certifier without council consent.'
               : isMultiStructureBlock
               ? 'Two or more secondary structures were detected on this lot. SEPP Housing 2021 (cl 53(1)) only permits one secondary dwelling per lot. Eligibility cannot be confirmed until a town planner or private certifier determines whether either existing structure is already classified as a secondary dwelling. The CDC pathway may be available once this is resolved.'
               : 'This property does not meet one or more requirements for a secondary dwelling under the CDC pathway. A Development Application (DA) to council may still be available — consult a town planner or certifier.'}
           </Text>
         </View>
-        {pass && (
-          <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginBottom: 8 }}>
-            Note: eligibility is assessed against lot area, zoning, and structure count. Whether the
-            required setbacks (3 m rear, 3 m separation, 0.9 m sides) can be met on your specific lot
-            geometry must be confirmed by a private certifier before committing to design.
-          </Text>
-        )}
 
         {/* --- Section 2: Income Potential --- */}
         {pass && (
@@ -496,7 +512,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
             {/* Column headers */}
             <View style={{ flexDirection: 'row', marginBottom: 2 }}>
               <View style={{ flex: 1.2, padding: 6, backgroundColor: GRAY_900, borderRadius: 3 }}>
-                <Text style={{ color: WHITE, fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>Build rate / Rent</Text>
+                <Text style={{ color: WHITE, fontSize: 7.5, fontFamily: 'Helvetica-Bold' }}>Build rate ↓ / Rent →</Text>
               </View>
               {WEEKLY_RENTS.map((r) => (
                 <View key={r} style={{ flex: 1, padding: 6, backgroundColor: GRAY_900, marginLeft: 2 }}>
@@ -546,43 +562,44 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           </>
         )}
 
-        {/* --- Section 5b: 10-Year ROI (pass + rent + cost available) --- */}
-        {pass && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
-          const annualIncome = data.estimated_weekly_rent_aud * 52;
-          const buildCost = data.assumed_build_cost_aud;
+        {/* --- Section 5b: 10-Year ROI table (paid, eligible + rent data only) --- */}
+        {pass && data.is_paid !== false && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
+          const annualRent = data.estimated_weekly_rent_aud! * 52;
+          const buildCost = data.assumed_build_cost_aud!;
           const years = [1, 2, 3, 5, 7, 10];
-          const rows = years.map((yr) => {
-            const cumul = annualIncome * yr;
-            const net = cumul - buildCost;
-            return { yr, cumul, net };
-          });
-          const breakevenRow = rows.find((r) => r.net >= 0);
+          const rows = years.map(yr => ({
+            yr,
+            cumulative: Math.round(annualRent * yr),
+            net: Math.round(annualRent * yr - buildCost),
+          }));
+          const breakEven = years.find(yr => annualRent * yr >= buildCost);
           return (
-            <View style={{ marginTop: 16 }}>
+            <View style={{ marginTop: 8 }}>
               <Text style={s.sectionTitle}>5b. 10-Year Return on Investment</Text>
-              <View style={s.tableHeader}>
+              {/* Header */}
+              <View style={[s.tableHeader]}>
                 <Text style={{ ...s.tableHeaderCell, flex: 1 }}>Year</Text>
-                <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Cumul. income</Text>
-                <Text style={{ ...s.tableHeaderCell, flex: 1.5 }}>Net position</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2, textAlign: 'right' }}>Cumul. income</Text>
+                <Text style={{ ...s.tableHeaderCell, flex: 2, textAlign: 'right' }}>Net position</Text>
               </View>
-              {rows.map((r, i) => {
-                const isBreakeven = breakevenRow && r.yr === breakevenRow.yr;
-                const rowStyle = isBreakeven
-                  ? [s.tableRow, { backgroundColor: TEAL_LIGHT }]
-                  : [s.tableRow, i % 2 === 1 ? s.tableRowAlt : {}];
+              {rows.map(({ yr, cumulative, net }) => {
+                const isBreakEven = yr === breakEven;
+                const netColor = net >= 0 ? '#16a34a' : GRAY_700;
                 return (
-                  <View key={r.yr} style={rowStyle} wrap={false}>
-                    <Text style={{ ...s.tableCellBold, flex: 1, color: isBreakeven ? TEAL : GRAY_900 }}>
-                      Yr {r.yr}{isBreakeven ? ' (break-even)' : ''}
+                  <View key={yr} style={[s.tableRow, isBreakEven ? { backgroundColor: TEAL_LIGHT } : {}]}>
+                    <Text style={{ ...s.tableCell, flex: 1 }}>
+                      Yr {yr}{isBreakEven ? ' (break-even)' : ''}
                     </Text>
-                    <Text style={{ ...s.tableCell, flex: 1.5 }}>{fmtCurrency(r.cumul)}</Text>
-                    <Text style={{ ...s.tableCell, flex: 1.5, color: r.net >= 0 ? TEAL : GRAY_700 }}>
-                      {r.net >= 0 ? '+' : ''}{fmtCurrency(r.net)}
+                    <Text style={{ ...s.tableCell, flex: 2, textAlign: 'right' }}>
+                      {fmtCurrency(cumulative)}
+                    </Text>
+                    <Text style={{ ...s.tableCellBold, flex: 2, textAlign: 'right', color: netColor }}>
+                      {net >= 0 ? '+' : ''}{fmtCurrency(net)}
                     </Text>
                   </View>
                 );
               })}
-              <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 6 }}>
+              <Text style={{ ...s.body, color: GRAY_500, fontSize: 7.5, marginTop: 4 }}>
                 Net position = cumulative rent income minus assumed build cost of {fmtCurrency(buildCost)}.
                 Excludes vacancy, management fees, and maintenance costs.
               </Text>
@@ -682,12 +699,12 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
           Environmental Planning and Assessment Regulation 2021
         </Text>
         <View style={s.mb8} />
-        <View style={s.calloutTeal}>
-          <Text style={{ ...s.calloutTitle, color: TEAL }}>Get more detail on this property</Text>
+        <View style={{ backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10, marginTop: 8, borderWidth: 1, borderColor: TEAL_BORDER }}>
+          <Text style={{ ...s.calloutTitle, color: TEAL, marginBottom: 4 }}>Get professional advice</Text>
           <Text style={{ ...s.calloutText }}>
+            A private certifier experienced in secondary dwellings can confirm SEPP compliance and lodge your CDC. A draftsperson can prepare CDC-ready drawings for approximately $2,000-$5,000. Visit{' '}
             <Link src="https://canibuildit.com.au" style={{ color: TEAL }}>canibuildit.com.au</Link>
-            {' '}— Free granny flat eligibility checks for any NSW address.
-            Run a new check, monitor nearby DA activity, or check flood, solar, and shadow risk.
+            {' '}to run checks on any NSW address.
           </Text>
         </View>
 
