@@ -21,6 +21,7 @@ import { verifyReport } from '@/lib/report-token';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
+
 export async function POST(req: NextRequest) {
   const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
   if (!rl.success) {
