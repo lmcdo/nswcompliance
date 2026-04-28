@@ -28,9 +28,11 @@ interface SearchResult {
   prop_id: string;
   lat: number;
   lng: number;
+  run_date?: string;
   council_name: string;
   applications: Application[];
   window_days: number;
+  report_token?: string;
 }
 
 type SearchState = 'idle' | 'searching' | 'done' | 'error';
@@ -177,6 +179,7 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
             <DownloadPdfButton
               label="Download PDF report"
               apiPath="/api/reports/threat-radar/generate"
+              reportToken={searchResult.report_token}
               data={searchResult}
             />
             <PostResultEmailStrip

@@ -7,6 +7,7 @@ import {
   checkRateLimit,
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
+import { signReport } from '@/lib/report-token';
 
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -182,6 +183,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Step 3: store in Supabase (Railway already wrote it, this is the read-back for the frontend)
+  const run_date = new Date().toISOString().slice(0, 10);
+  const report_token = signReport(lat, lng, address, run_date);
   return NextResponse.json({
     jobId,
     status: 'complete',
@@ -191,10 +194,11 @@ export async function POST(request: NextRequest) {
       lat,
       lng,
       lot_polygon: lotPolygon,
-      run_date: new Date().toISOString().slice(0, 10),
+      run_date,
       outputs: pipelineResult.outputs,
       confidence: pipelineResult.confidence,
       data_sources: pipelineResult.data_sources,
+      report_token,
     },
   }, { status: 200 });
 }

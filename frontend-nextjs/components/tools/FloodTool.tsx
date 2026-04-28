@@ -42,6 +42,7 @@ interface FloodResult {
   confidence: string;
   data_sources: string[];
   warnings?: string[];
+  report_token?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
@@ -163,6 +164,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
           <DownloadPdfButton
             label="Download PDF report"
             apiPath="/api/reports/flood/generate"
+            reportToken={result.report_token}
             data={{
               ...result.outputs,
               address: result.address,
