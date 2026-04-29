@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ShadowTool } from '@/components/tools/ShadowTool'
 import { SHADOW_LGAS, SHADOW_LGA_SLUG_MAP } from '@/lib/lga-data/shadow-lgas'
+import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
 
 export const revalidate = 86400
@@ -27,6 +29,8 @@ export default function ShadowLgaPage(
   const lga = SHADOW_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) notFound()
 
+  const grannyFlatData = GRANNY_FLAT_LGA_SLUG_MAP[lga.slug]
+
   return (
     <div className="max-w-2xl mx-auto px-6">
 
@@ -39,6 +43,13 @@ export default function ShadowLgaPage(
           See how much shadow neighbouring buildings cast on your {lga.name} property
           at the summer and winter solstice. {lga.densityNote}
           {lga.heritageCount > 200 && ` ${lga.name} has ${lga.heritageCount.toLocaleString()} heritage items — character buildings can cast unexpected shadows.`}
+          {' '}Shadow analysis works best alongside a{' '}
+          <Link href={`/solar-potential/${lga.slug}`} className="text-amber-600 hover:underline">solar yield estimate</Link>
+          {' '}— shading directly reduces panel output. If you are planning a granny flat, check{' '}
+          <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">SEPP eligibility</Link>
+          {' '}and{' '}
+          <Link href={`/threat-radar/${lga.slug}`} className="text-violet-600 hover:underline">nearby development activity</Link>
+          {' '}in {lga.name}.
         </p>
       </div>
 
@@ -119,6 +130,28 @@ export default function ShadowLgaPage(
           </a>
         </div>
       </div>
+
+      {/* Related areas */}
+      {grannyFlatData && grannyFlatData.relatedSlugs.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Also check nearby councils</p>
+          <div className="flex flex-wrap gap-2">
+            {grannyFlatData.relatedSlugs.map(slug => {
+              const related = GRANNY_FLAT_LGA_SLUG_MAP[slug]
+              if (!related) return null
+              return (
+                <Link
+                  key={slug}
+                  href={`/shadow/${slug}`}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-slate-400 hover:text-slate-700 transition-colors"
+                >
+                  {related.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <p className="mt-8 text-xs text-gray-400 text-center px-4 pb-12">

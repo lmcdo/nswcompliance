@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { ThreatRadarTool } from '@/components/tools/ThreatRadarTool'
 import { THREAT_RADAR_LGAS, THREAT_RADAR_LGA_SLUG_MAP } from '@/lib/lga-data/threat-radar-lgas'
+import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
 
 export const revalidate = 86400
@@ -27,6 +29,8 @@ export default function ThreatRadarLgaPage(
   const lga = THREAT_RADAR_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) notFound()
 
+  const grannyFlatData = GRANNY_FLAT_LGA_SLUG_MAP[lga.slug]
+
   return (
     <div className="max-w-2xl mx-auto px-6">
 
@@ -39,6 +43,11 @@ export default function ThreatRadarLgaPage(
           See DA and CDC applications lodged near any {lga.name} address — updated weekly from the
           NSW ePlanning Portal. {lga.activityDescription}. Subscribe to get emailed
           every Monday when new applications are lodged within 200m of your property.
+          {' '}Combine with a{' '}
+          <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility check</Link>
+          {' '}to understand the full development picture, or run a{' '}
+          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow analysis</Link>
+          {' '}to see how nearby DAs could affect your property.
         </p>
       </div>
 
@@ -134,6 +143,28 @@ export default function ThreatRadarLgaPage(
           </a>
         </div>
       </div>
+
+      {/* Related areas */}
+      {grannyFlatData && grannyFlatData.relatedSlugs.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Also check nearby councils</p>
+          <div className="flex flex-wrap gap-2">
+            {grannyFlatData.relatedSlugs.map(slug => {
+              const related = GRANNY_FLAT_LGA_SLUG_MAP[slug]
+              if (!related) return null
+              return (
+                <Link
+                  key={slug}
+                  href={`/threat-radar/${slug}`}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-violet-400 hover:text-violet-700 transition-colors"
+                >
+                  {related.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <p className="mt-8 text-xs text-gray-400 text-center px-4 pb-12">

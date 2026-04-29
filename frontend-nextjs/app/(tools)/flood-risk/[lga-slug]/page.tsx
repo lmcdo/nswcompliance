@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { FloodTool } from '@/components/tools/FloodTool'
 import { FLOOD_LGAS, FLOOD_LGA_SLUG_MAP } from '@/lib/lga-data/flood-lgas'
+import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
 
 export const revalidate = 86400
@@ -31,6 +33,7 @@ export default function FloodRiskLgaPage(
   if (!lga) notFound()
 
   const hasAri = lga.ariScenarios.length > 0
+  const grannyFlatData = GRANNY_FLAT_LGA_SLUG_MAP[lga.slug]
 
   return (
     <div className="max-w-2xl mx-auto px-6">
@@ -45,6 +48,11 @@ export default function FloodRiskLgaPage(
           {hasAri
             ? ` ${lga.name} has ARI-quantified flood data from the ${lga.floodStudyName} — ${lga.ariScenarios.length} scenarios mapped (${lga.ariScenarios.join(', ')}).`
             : ` Data sourced from the ${lga.floodStudyName} and NSW EPI statutory overlays.`}
+          {' '}Flood status directly affects{' '}
+          <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
+          {' '}and{' '}
+          <Link href={`/threat-radar/${lga.slug}`} className="text-violet-600 hover:underline">nearby development activity</Link>
+          {' '}in {lga.name}.
         </p>
       </div>
 
@@ -122,6 +130,30 @@ export default function FloodRiskLgaPage(
           </a>
         </p>
       </div>
+
+      {/* Related areas */}
+      {grannyFlatData && grannyFlatData.relatedSlugs.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Also check nearby councils</p>
+          <div className="flex flex-wrap gap-2">
+            {grannyFlatData.relatedSlugs.map(slug => {
+              const related = GRANNY_FLAT_LGA_SLUG_MAP[slug]
+              if (!related) return null
+              const floodRelated = FLOOD_LGA_SLUG_MAP[slug]
+              if (!floodRelated) return null
+              return (
+                <Link
+                  key={slug}
+                  href={`/flood-risk/${slug}`}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-blue-400 hover:text-blue-700 transition-colors"
+                >
+                  {related.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <p className="mt-8 text-xs text-gray-400 text-center px-4 pb-12">

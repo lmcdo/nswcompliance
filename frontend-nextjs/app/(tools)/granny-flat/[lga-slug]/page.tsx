@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
 import { GRANNY_FLAT_LGAS, GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
@@ -39,8 +40,14 @@ export default function GrannyFlatLgaPage(
           Instant SEPP Housing 2021 eligibility check for any {lga.name} address — lot area, zoning,
           heritage exclusions
           {lga.heritageCount > 0 && ` (${lga.heritageCount.toLocaleString()} items in ${lga.name})`},
-          {lga.hasFloodData ? ' flood control lots,' : ''} biodiversity values, and acid sulfate soils.
-          Free.
+          {lga.hasFloodData
+            ? <>{' '}<Link href={`/flood-risk/${lga.slug}`} className="text-blue-600 hover:underline">flood control lots</Link>,</>
+            : ''}
+          {' '}biodiversity values, and acid sulfate soils. Free. Also check{' '}
+          <Link href={`/solar-potential/${lga.slug}`} className="text-amber-600 hover:underline">solar yield</Link>
+          {' '}and{' '}
+          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow impact</Link>
+          {' '}for any {lga.name} address.
         </p>
       </div>
 
@@ -127,6 +134,28 @@ export default function GrannyFlatLgaPage(
           </a>
         </div>
       </div>
+
+      {/* Related areas */}
+      {lga.relatedSlugs.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Also check nearby councils</p>
+          <div className="flex flex-wrap gap-2">
+            {lga.relatedSlugs.map(slug => {
+              const related = GRANNY_FLAT_LGA_SLUG_MAP[slug]
+              if (!related) return null
+              return (
+                <Link
+                  key={slug}
+                  href={`/granny-flat/${slug}`}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-teal-400 hover:text-teal-700 transition-colors"
+                >
+                  {related.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <p className="mt-8 text-xs text-gray-400 text-center px-4 pb-12">
