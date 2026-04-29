@@ -160,7 +160,7 @@ function azimuthLabel(deg: number): string {
 function ValidityNote({ runDate }: { runDate: string }) {
   return (
     <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+      {'Data valid as of ' + runDate + '. Google Solar imagery is updated periodically — re-run this report if more than 12 months have passed or if significant works have occurred on the property.'}
     </Text>
   );
 }
@@ -305,7 +305,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Annual output</Text>
-            <Text style={s.statValue}>{data.annual_kwh_estimate.toLocaleString()}</Text>
+            <Text style={s.statValue}>{Math.round(data.annual_kwh_estimate).toLocaleString('en-AU')}</Text>
             <Text style={s.statSub}>kWh/year</Text>
           </View>
         </View>
@@ -315,7 +315,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
             <Text style={[s.statValue, { fontSize: 12 }]}>
               {azimuthLabel(data.best_azimuth_deg)} · {data.best_pitch_deg}° pitch
             </Text>
-            <Text style={s.statSub}>{data.sunshine_hours_per_year.toLocaleString()} hr/yr sunshine</Text>
+            <Text style={s.statSub}>{Math.round(data.sunshine_hours_per_year).toLocaleString('en-AU')} hr/yr sunshine</Text>
           </View>
           <View style={s.statCard}>
             <Text style={s.statLabel}>Imagery date</Text>
@@ -344,6 +344,21 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
             <Text style={{ fontSize: 8, color: GRAY_700 }}>
               Solar panels visible from a public place may require council approval under LEP
               cl 5.10. Panels on rear or concealed roof faces are generally approvable.
+            </Text>
+          </View>
+        )}
+
+        {/* Commercial scale notice */}
+        {data.is_commercial_scale && (
+          <View style={{
+            backgroundColor: '#f0f9ff', borderLeft: `3 solid #0284c7`,
+            paddingVertical: 8, paddingHorizontal: 10, marginBottom: 12, borderRadius: 2,
+          }}>
+            <Text style={{ fontSize: 8, fontFamily: 'Helvetica-Bold', color: GRAY_900, marginBottom: 3 }}>
+              Large-scale roof detected
+            </Text>
+            <Text style={{ fontSize: 8, color: GRAY_700 }}>
+              {`Roof area: ${data.roof_area_m2.toLocaleString('en-AU')} m\u00B2. Results reflect panels within this lot boundary only. Financial figures assume a single-occupant system. A commercial energy assessment is recommended for multi-tenancy or strata sites.`}
             </Text>
           </View>
         )}
@@ -396,7 +411,11 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
 
         {/* Battery upgrade callout — PAID */}
         {data.is_paid !== false && (() => {
-          const batteryPayback = (data.system_cost_aud + 12000) / (data.annual_kwh_estimate * 0.32 * 0.80);
+          // With battery: 80% self-consumed at retail, 20% exported at feed-in
+          const batteryAnnualSaving = data.annual_kwh_estimate * (0.80 * 0.32 + 0.20 * 0.06);
+          const batteryPayback = batteryAnnualSaving > 0
+            ? (data.system_cost_aud + 12000) / batteryAnnualSaving
+            : null;
           return (
             <View style={{
               backgroundColor: TEAL_LIGHT, borderRadius: 4, padding: 10,
@@ -406,7 +425,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
                 Battery storage upgrade
               </Text>
               <Text style={{ fontSize: 8, color: GRAY_700, lineHeight: 1.5 }}>
-                {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback reduces to approximately ${batteryPayback.toFixed(1)} years. Battery storage also provides grid independence during outages.`}
+                {`With a home battery (~$12,000): self-consumption rises from ~30% to ~80%. Estimated payback reduces to approximately ${batteryPayback != null ? batteryPayback.toFixed(1) : 'N/A'} years. Battery storage also provides grid independence during outages.`}
               </Text>
             </View>
           );
