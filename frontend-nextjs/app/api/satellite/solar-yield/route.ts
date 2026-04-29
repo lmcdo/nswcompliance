@@ -28,15 +28,19 @@ function esriRingsToGeoJSON(rings: number[][][]): { type: 'Polygon'; coordinates
   return { type: 'Polygon', coordinates: coords };
 }
 
+export const dynamic = 'force-dynamic';
+// Railway /pipeline/solar-yield can take up to ~50s (Google Solar API + clipping)
+export const maxDuration = 60;
+
 /**
  * POST /api/satellite/solar-yield
  * Body: { address: string }
  *
- * Calls Railway directly (no Trigger.dev) — Google Solar API is ~2s, well within timeout.
+ * Calls Railway directly (no Trigger.dev) — returns complete report immediately.
  * 1. Resolve address → lat/lng
- * 2. Call Railway /pipeline/solar-yield
- * 3. Store result in property_reports
- * 4. Return { jobId } — frontend polls /api/satellite/solar-yield?jobId=X
+ * 2. Eligibility gates (unit/strata)
+ * 3. Call Railway /pipeline/solar-yield (Google Solar API + lot clipping + heritage check)
+ * 4. Return full report data including report_id for Stripe checkout
  */
 export async function POST(request: NextRequest) {
   // Per-product rate limit — calls Google Solar API (paid) and Railway compute

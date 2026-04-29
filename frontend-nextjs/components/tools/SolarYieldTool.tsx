@@ -47,23 +47,7 @@ interface ReportData {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
-const RETAIL_RATE        = 0.32;
-const FEED_IN_RATE       = 0.06;
-const SELF_CONSUME_RATIO = 0.30;
-const COST_PER_WATT      = 1.00;
-const PANEL_WATTS        = 400;
-const INVERTER_REPLACE   = 2000;
-
-function calcROI(kwh: number, maxPanels: number) {
-  const systemKw  = (maxPanels * PANEL_WATTS) / 1000;
-  const selfKwh   = kwh * SELF_CONSUME_RATIO;
-  const exportKwh = kwh * (1 - SELF_CONSUME_RATIO);
-  const annualSaving = selfKwh * RETAIL_RATE + exportKwh * FEED_IN_RATE;
-  const systemCost   = systemKw * 1000 * COST_PER_WATT;
-  const paybackYears = annualSaving > 0 ? systemCost / annualSaving : null;
-  const tenYearReturn = annualSaving * 10 - systemCost - INVERTER_REPLACE;
-  return { systemKw, annualSaving, systemCost, paybackYears, tenYearReturn };
-}
+const PANEL_WATTS = 400;
 
 function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
   grade: string; colour: string; reason: string;
@@ -247,7 +231,7 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
               reportId={report.report_id}
               address={report.address}
               price={19}
-              alarmHeadline={`${report.outputs.annual_kwh_estimate.toLocaleString()} kWh/yr potential — get the full financial case`}
+              alarmHeadline={`${Math.round(report.outputs.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr potential — get the full financial case`}
               alarmDetail="Your installer will ask for exact panel count, system size, and payback period before quoting. This report answers all three."
               previewItems={[
                 'Exact panel count and system size (kW) for this roof',
@@ -288,8 +272,8 @@ function ReportCard({ report }: { report: ReportData }) {
     );
   }
 
-  const roi   = calcROI(o.annual_kwh_estimate, o.max_panels);
-  const grade = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
+  const systemKw = (o.max_panels * PANEL_WATTS) / 1000;
+  const grade    = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -317,10 +301,10 @@ function ReportCard({ report }: { report: ReportData }) {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          {grade.reason} · {roi.systemKw.toFixed(1)} kW system
+          {grade.reason} · {systemKw.toFixed(1)} kW system
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString()} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
+          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
         </p>
       </div>
 
@@ -335,11 +319,11 @@ function ReportCard({ report }: { report: ReportData }) {
           <div>
             <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
             <p className="font-medium text-gray-800">{azimuthLabel(o.best_azimuth_deg)} · {o.best_pitch_deg}° pitch</p>
-            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString()} hr/yr sun</p>
+            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr sun</p>
           </div>
           <div>
             <p className="text-xs text-gray-400 mb-0.5">Annual output estimate</p>
-            <p className="font-medium text-gray-800">{o.annual_kwh_estimate.toLocaleString()} kWh/yr</p>
+            <p className="font-medium text-gray-800">{Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr</p>
             <p className="text-xs text-gray-400">full roof potential</p>
           </div>
         </div>
@@ -348,9 +332,9 @@ function ReportCard({ report }: { report: ReportData }) {
       {/* Commercial scale notice */}
       {o.is_commercial_scale && (
         <div className="px-6 py-4 bg-sky-50 text-xs text-sky-800">
-          Large-scale roof detected ({o.roof_area_m2.toLocaleString()} m²). Results reflect
-          the panels within this lot boundary only. Financial figures assume a single-occupant
-          system — a commercial energy assessment is recommended for multi-tenancy or strata sites.
+          Large-scale roof detected ({o.roof_area_m2.toLocaleString('en-AU')} m²). Results reflect
+          panels within this lot boundary only. A commercial energy assessment is recommended
+          for multi-tenancy or strata sites.
         </div>
       )}
 
