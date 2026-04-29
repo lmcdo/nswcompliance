@@ -19,7 +19,12 @@ import {
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { verifyReport } from '@/lib/report-token';
-import { getSupabase } from '@/lib/supabase-client';
+import { createClient } from '@supabase/supabase-js';
+
+const getSupabase = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
