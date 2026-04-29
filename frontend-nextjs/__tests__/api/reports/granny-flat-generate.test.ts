@@ -17,16 +17,35 @@ jest.mock('@react-pdf/renderer', () => ({
 }));
 
 // ---------------------------------------------------------------------------
-// Mock Supabase server client
+// Mock Supabase service role client (@supabase/supabase-js)
+// Route uses createServiceClient directly, not @/lib/supabase/server
 // ---------------------------------------------------------------------------
 
-const mockSingle = jest.fn();
-const mockEq = jest.fn(() => ({ single: mockSingle }));
-const mockSelect = jest.fn(() => ({ eq: mockEq }));
-const mockFrom = jest.fn(() => ({ select: mockSelect }));
+jest.mock('@supabase/supabase-js', () => {
+  const mockSingle = jest.fn();
+  const mockEq = jest.fn(() => ({ single: mockSingle }));
+  const mockSelect = jest.fn(() => ({ eq: mockEq }));
+  const mockFrom = jest.fn(() => ({ select: mockSelect }));
+  return {
+    createClient: jest.fn(() => ({ from: mockFrom })),
+    __mocks: { mockSingle, mockEq, mockFrom },
+  };
+});
 
 jest.mock('@/lib/supabase/server', () => ({
-  createClient: jest.fn(async () => ({ from: mockFrom })),
+  createClient: jest.fn(async () => ({ from: jest.fn() })),
+}));
+
+// ---------------------------------------------------------------------------
+// Mock aerial-tile and logo (server-side fetches not needed in tests)
+// ---------------------------------------------------------------------------
+
+jest.mock('@/lib/pdf/aerial-tile', () => ({
+  fetchAerialTileBase64: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('@/lib/pdf/logo', () => ({
+  getLogoBase64: jest.fn().mockReturnValue('mock-logo-b64'),
 }));
 
 // ---------------------------------------------------------------------------
@@ -39,8 +58,17 @@ jest.mock('@/lib/pdf/granny-flat-report', () => ({
 
 import { POST } from '@/app/api/reports/granny-flat/generate/route';
 import { renderToBuffer } from '@react-pdf/renderer';
+import * as supabasePkg from '@supabase/supabase-js';
 
 const mockRender = renderToBuffer as jest.MockedFunction<typeof renderToBuffer>;
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const { mockSingle, mockEq, mockFrom } = (supabasePkg as any).__mocks as {
+  mockSingle: jest.Mock;
+  mockEq: jest.Mock;
+  mockFrom: jest.Mock;
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ---------------------------------------------------------------------------
 // Helpers

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useCallback, useEffect, useReducer, ReactNode } from 'react';
 import { DevelopmentType, ValidationResult } from '@/components/development/types';
 
 interface DevelopmentContextState {
@@ -80,7 +80,7 @@ interface DevelopmentProviderProps {
 export const DevelopmentProvider: React.FC<DevelopmentProviderProps> = ({ children }) => {
  const [state, dispatch] = useReducer(developmentReducer, initialState);
 
- const loadDevelopmentTypes = async (propertyId?: string) => {
+ const loadDevelopmentTypes = useCallback(async (propertyId?: string) => {
  try {
  dispatch({ type: 'SET_LOADING', payload: true });
 
@@ -100,21 +100,21 @@ export const DevelopmentProvider: React.FC<DevelopmentProviderProps> = ({ childr
  payload: error instanceof Error ? error.message : 'Unknown error',
  });
  }
- };
+ }, [dispatch]);
 
- const setSelectedDevelopment = (development: DevelopmentType | null) => {
+ const setSelectedDevelopment = useCallback((development: DevelopmentType | null) => {
  dispatch({ type: 'SET_SELECTED', payload: development });
- };
+ }, [dispatch]);
 
- const updateFilters = (filters: Partial<DevelopmentContextState['filters']>) => {
+ const updateFilters = useCallback((filters: Partial<DevelopmentContextState['filters']>) => {
  dispatch({ type: 'SET_FILTERS', payload: filters });
- };
+ }, [dispatch]);
 
- const clearSelection = () => {
+ const clearSelection = useCallback(() => {
  dispatch({ type: 'CLEAR_SELECTION' });
- };
+ }, [dispatch]);
 
- const validateDevelopment = (
+ const validateDevelopment = useCallback((
  development: DevelopmentType,
  property: any
  ): ValidationResult => {
@@ -145,7 +145,7 @@ export const DevelopmentProvider: React.FC<DevelopmentProviderProps> = ({ childr
  warnings,
  errors,
  };
- };
+ }, []);
 
  const contextValue = {
  ...state,

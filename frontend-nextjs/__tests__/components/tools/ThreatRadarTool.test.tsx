@@ -86,7 +86,7 @@ function mockSearchError(message: string) {
 }
 
 function mockSubscribeSuccess() {
-  mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ subscription_id: 'sub_abc' }) });
+  mockFetch.mockResolvedValueOnce({ ok: true, json: async () => ({ checkout_url: 'https://checkout.stripe.com/mock' }) });
 }
 
 function mockSubscribeError(message: string) {
@@ -113,13 +113,13 @@ describe('ThreatRadarTool — idle state', () => {
 
   it('subscribe form is visible on initial render', () => {
     render(<ThreatRadarTool />);
-    expect(screen.getByText('Subscribe to weekly alerts')).toBeInTheDocument();
+    expect(screen.getByText(/Subscribe for weekly email alerts/i)).toBeInTheDocument();
   });
 
   it('subscribe button disabled when address is empty (even with email filled)', () => {
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'test@example.com' } });
-    expect(screen.getByRole('button', { name: 'Subscribe' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Subscribe/i })).toBeDisabled();
   });
 });
 
@@ -287,18 +287,20 @@ describe('ThreatRadarTool — search results', () => {
 describe('ThreatRadarTool — subscribe', () => {
   beforeEach(() => { mockFetch.mockReset(); mockCapture.mockReset(); });
 
-  it('shows subscribed confirmation after successful subscribe', async () => {
-    // First search completes, then subscribe
+  it('redirects to Stripe checkout on successful subscribe', async () => {
+    // Subscribe now redirects to Stripe rather than showing "Subscribed"
     mockSearchSuccess(makeSearchResult());
     mockSubscribeSuccess();
+    const assignSpy = jest.spyOn(window, 'location', 'get').mockReturnValue({ href: '' } as Location);
     render(<ThreatRadarTool />);
     fireEvent.change(screen.getByTestId('address-input'), { target: { value: '1 Smith St Surry Hills' } });
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
     await screen.findByText('No applications found');
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
-    expect(await screen.findByText('Subscribed')).toBeInTheDocument();
-    expect(screen.getByText(/user@example\.com/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
+    // Button shows 'Redirecting...' while in-flight
+    expect(await screen.findByRole('button', { name: /Redirecting/i })).toBeInTheDocument();
+    assignSpy.mockRestore();
   });
 
   it('shows inline error when subscribe fails', async () => {
@@ -309,13 +311,13 @@ describe('ThreatRadarTool — subscribe', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
     await screen.findByText('No applications found');
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
+    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
     expect(await screen.findByText('Email already subscribed')).toBeInTheDocument();
     // Form still visible — not subscribed
     expect(screen.queryByText('Subscribed')).not.toBeInTheDocument();
   });
 
-  it('fires posthog threat_radar_subscribed on success', async () => {
+  it('fires posthog threat_radar_subscribe on submit', async () => {
     mockSearchSuccess(makeSearchResult());
     mockSubscribeSuccess();
     render(<ThreatRadarTool />);
@@ -323,8 +325,8 @@ describe('ThreatRadarTool — subscribe', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check nearby applications' }));
     await screen.findByText('No applications found');
     fireEvent.change(screen.getByPlaceholderText('you@example.com'), { target: { value: 'user@example.com' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Subscribe' }));
-    await screen.findByText('Subscribed');
-    expect(mockCapture).toHaveBeenCalledWith('threat_radar_subscribed', expect.anything());
+    fireEvent.click(screen.getByRole('button', { name: /Subscribe/i }));
+    await screen.findByRole('button', { name: /Redirecting/i });
+    expect(mockCapture).toHaveBeenCalledWith('threat_radar_subscribe', expect.anything());
   });
 });

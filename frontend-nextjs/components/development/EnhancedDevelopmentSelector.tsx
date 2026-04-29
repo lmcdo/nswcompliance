@@ -46,11 +46,7 @@ export const EnhancedDevelopmentSelector: React.FC<DevelopmentSelectorProps> = (
  );
  }
 
- if (lotSize && lotSize > 0) {
- filtered = filtered.filter(dev =>
- !dev.minimumLotSize || lotSize >= dev.minimumLotSize
- );
- }
+ // Lot size is validated on selection (shows warning), not used to hide options from the list.
 
  if (searchTerm) {
  const term = searchTerm.toLowerCase();
@@ -66,7 +62,7 @@ export const EnhancedDevelopmentSelector: React.FC<DevelopmentSelectorProps> = (
  }
 
  return filtered.filter(dev => dev.isEnabled);
- }, [availableDevelopments, filterByZoning, zoning, lotSize, searchTerm, filters]);
+ }, [availableDevelopments, filterByZoning, zoning, searchTerm, filters]);
 
  // Validation for selected development
  const validationResult = useMemo(() => {
