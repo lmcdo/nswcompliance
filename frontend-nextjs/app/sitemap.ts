@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { FLOOD_LGAS } from '@/lib/lga-data/flood-lgas'
 import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas'
 import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
+import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -33,5 +34,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.9,
   }))
 
-  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages]
+  const threatRadarPages = THREAT_RADAR_LGAS.map(lga => ({
+    url: `${base}/threat-radar/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'daily' as const,
+    priority: 0.85,
+  }))
+
+  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages]
 }

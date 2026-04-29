@@ -781,9 +781,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                     : deriveIneligibleReason(eligibility.sepp_ineligible_reason, eligibility.lot_area_m2)}
                 </p>
                 {eligibility.sepp_eligible && (
-                  <p className="text-sm text-teal-700 mt-1 font-medium">Estimated rental income: $280–$340/week</p>
+                  <p className="text-sm text-teal-700 mt-1 font-medium">
+                    Estimated rental income: $280–$340/week
+                  </p>
                 )}
-                <p className="text-xs text-gray-400 mt-1">{eligibility.address}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {address && address.toLowerCase() !== eligibility.address?.toLowerCase()
+                    ? address
+                    : eligibility.address}
+                  {address && address.toLowerCase() !== eligibility.address?.toLowerCase() && (
+                    <span className="ml-1 text-gray-300">· matched to {eligibility.address}</span>
+                  )}
+                </p>
               </div>
             </div>
           </div>

@@ -7,6 +7,7 @@ import {
   checkRateLimit,
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
+import { signReport } from '@/lib/report-token';
 
 const WINDOW_DAYS = 90;
 // Bounding box pre-filter: ±0.005° ≈ 500m at Sydney latitudes
@@ -241,15 +242,19 @@ export async function POST(request: NextRequest) {
   }
 
   const applications = await queryNearbyApplications(lat, lng);
+  const run_date = new Date().toISOString().slice(0, 10);
+  const report_token = signReport(lat, lng, address, run_date);
 
   return NextResponse.json({
     address,
     prop_id,
     lat,
     lng,
+    run_date,
     council_name,
     applications,
     window_days: WINDOW_DAYS,
     radius_m: RADIUS_M,
+    report_token,
   });
 }
