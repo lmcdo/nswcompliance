@@ -417,7 +417,8 @@ def run_shadow(request: ShadowRequest):
             outputs, confidence,
         )
     except Exception as e:
-        logger.error(f"Shadow report DB write failed (non-fatal): {e}")
+        logger.error(f"Shadow report DB write failed: {e}")
+        raise HTTPException(status_code=503, detail="Failed to save report — please retry")
 
     return {
         "address": request.address,

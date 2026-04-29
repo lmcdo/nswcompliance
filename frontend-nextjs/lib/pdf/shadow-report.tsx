@@ -181,7 +181,7 @@ function coveragePillColor(pct: number | null): { bg: string; fg: string } {
 function ValidityNote({ runDate }: { runDate: string }) {
   return (
     <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+      {'Data valid as of ' + runDate + '. LEP height limits are amended periodically — re-run this report if the applicable LEP has been updated or before lodging a DA objection.'}
     </Text>
   );
 }
@@ -376,7 +376,7 @@ export function ShadowReportDocument({ data }: { data: ShadowReportData }) {
         </Text>
 
         {/* Seasonal summary — paid */}
-        {data.is_paid !== false && (() => {
+        {data.is_paid === true && (() => {
           const seasons = seasonalSummary(scenarios);
           return (
             <View style={{ marginTop: 16 }}>

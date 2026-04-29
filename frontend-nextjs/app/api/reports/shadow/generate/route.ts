@@ -17,7 +17,6 @@ import {
 } from '@/lib/pdf/shadow-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
-import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
 import { getSupabase } from '@/lib/supabase-client';
 
@@ -25,10 +24,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
 
 export async function POST(req: NextRequest) {
-  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
-  if (!rl.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
-  }
+  // No rate limit — route is guarded by DB UUID (Path A) and HMAC (Path B).
+  // Webhook calls all originate from the same Vercel internal IP; a 10/min bucket
+  // would block PDF delivery above 10 concurrent paid reports.
 
   let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
   try {
