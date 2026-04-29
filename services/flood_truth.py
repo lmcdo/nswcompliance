@@ -57,7 +57,7 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 import requests
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -782,8 +782,8 @@ def run_flood(req: FloodRequest):
             req.prop_id, {"lat": req.lat, "lng": req.lng}, internal_outputs,
         )
     except Exception as e:
-        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
-        logger.error(f"Flood report DB write failed (non-fatal): {e}")
+        logger.error(f"Flood report DB write failed: {e}")
+        raise HTTPException(status_code=503, detail="Failed to save report — please retry")
 
     return {
         "address": req.address, "lat": req.lat, "lng": req.lng,
@@ -802,7 +802,6 @@ def run_flood_batch(req: FloodBatchRequest):
     """
     year = req.wet_season_year
     if year < 2015 or year > 2100:
-        from fastapi import HTTPException
         raise HTTPException(422, f"wet_season_year {year} out of valid range (2015–2100)")
     wet_start = date(year - 1, 11, 1)
     wet_end   = date(year, 3, 31)

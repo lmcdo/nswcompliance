@@ -7,6 +7,10 @@ import {
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
 
+export const dynamic = 'force-dynamic';
+// Flood pipeline (EPI WFS + EMS + JRC + BOM + SAR) can take up to ~50s
+export const maxDuration = 60;
+
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
 /**
