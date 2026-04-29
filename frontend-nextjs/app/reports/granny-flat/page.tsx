@@ -79,6 +79,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
+  const isPaid = searchParams?.get('payment') === 'success';
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState(''); // from Google Places address_components
   const [inputAddress, setInputAddress] = useState('');
@@ -544,16 +545,20 @@ function GrannyFlatPageInner() {
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
           <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); }} />
-          <ReportUnlockCTA
-            buildable={finalResult.granny_flat_buildable}
-            sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
-            lot_area_m2={detectResult?.lot_area_m2 ?? null}
-            email={email}
-            setEmail={setEmail}
-            emailCaptured={reportEmailCaptured}
-            onEmailSubmit={handleReportEmailSubmit}
-            reportId={finalResult.report_id}
-          />
+          {isPaid ? (
+            <PaidDownloadCTA reportId={finalResult.report_id} address={finalResult.address ?? inputAddress} />
+          ) : (
+            <ReportUnlockCTA
+              buildable={finalResult.granny_flat_buildable}
+              sepp_ineligible_reason={detectResult?.sepp_ineligible_reason ?? null}
+              lot_area_m2={detectResult?.lot_area_m2 ?? null}
+              email={email}
+              setEmail={setEmail}
+              emailCaptured={reportEmailCaptured}
+              onEmailSubmit={handleReportEmailSubmit}
+              reportId={finalResult.report_id}
+            />
+          )}
           <YieldCalculator
             maxFloorAreaM2={finalResult.max_floor_area_m2}
             buildCost={calcBuildCost}
@@ -1139,6 +1144,62 @@ function CrossSellCards({ buildable, address }: { buildable: boolean; address: s
 }
 
 // ---------------------------------------------------------------------------
+// PaidDownloadCTA — shown after result when user arrives via payment=success
+// ---------------------------------------------------------------------------
+
+function PaidDownloadCTA({ reportId, address }: { reportId: string; address: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/granny-flat/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error((json as { error?: string }).error ?? 'Download failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const slug = address.slice(0, 30).replace(/[^a-z0-9]/gi, '-').toLowerCase();
+      a.download = `granny-flat-report-${slug}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDlError(err instanceof Error ? err.message : 'Download failed — please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
+      <h3 className="font-semibold text-teal-900 mb-1">Download your report</h3>
+      <p className="text-sm text-teal-700 mb-4">
+        CDC pathway checklist, setback standards with SEPP clause citations, yield sensitivity table, and full data source log.
+      </p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
+      >
+        {downloading ? 'Generating PDF…' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-sm text-red-600 mt-2">{dlError}</p>}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ReportUnlockCTA — shown after result card
 // Pass variant: email capture → Stripe link to unlock detailed PDF report
 // Fail variant: "What could change this?" + notify-me email capture
@@ -1191,12 +1252,12 @@ function ReportUnlockCTA({
       <div className="rounded-xl border border-teal-200 bg-teal-50 p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
-            <h3 className="font-semibold text-teal-900">Get the full report — $29</h3>
+            <h3 className="font-semibold text-teal-900">Get the full report — $49</h3>
             <p className="text-sm text-teal-700 mt-1">
               CDC pathway checklist, setback standards with SEPP clause citations, yield sensitivity table, and a shareable PDF — emailed instantly after payment.
             </p>
           </div>
-          <span className="shrink-0 text-sm font-bold text-teal-900">$29</span>
+          <span className="shrink-0 text-sm font-bold text-teal-900">$49</span>
         </div>
         <form onSubmit={handleBuyReport} className="space-y-3">
           <input
@@ -1212,7 +1273,7 @@ function ReportUnlockCTA({
             disabled={checkoutLoading}
             className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 transition-colors disabled:opacity-60"
           >
-            {checkoutLoading ? 'Redirecting to payment…' : 'Get full report — $29 →'}
+            {checkoutLoading ? 'Redirecting to payment…' : 'Get full report — $49 →'}
           </button>
           {checkoutError && (
             <p className="text-sm text-red-600">{checkoutError}</p>

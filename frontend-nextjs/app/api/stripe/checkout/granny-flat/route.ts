@@ -1,10 +1,13 @@
 /**
  * POST /api/stripe/checkout/granny-flat
- * Body: { report_id: string; email: string }
+ * Body: { job_id: string; address: string; email?: string }
  *
- * Creates a Stripe Checkout session for the $29 granny flat report.
- * report_id and email are stored in session metadata so the webhook
- * can generate and deliver the PDF after payment.
+ * Creates a Stripe Checkout session for the $49 granny flat analysis.
+ * Detect job is already running — job_id, address, email stored in metadata
+ * so the webhook can send a resume-link email after payment.
+ *
+ * success_url redirects to /reports/granny-flat with ?jobId + ?payment=success
+ * so the page auto-polls and shows the confirmation flow.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -17,22 +20,24 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
-  let report_id: string | undefined;
+  let job_id: string | undefined;
+  let address: string | undefined;
   let email: string | undefined;
 
   try {
     const body = await req.json();
-    report_id = body?.report_id?.trim();
-    email = body?.email?.trim();
+    job_id = body?.job_id?.trim();
+    address = body?.address?.trim();
+    email = body?.email?.trim() || undefined;
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!report_id) {
-    return NextResponse.json({ error: 'report_id is required' }, { status: 400 });
+  if (!job_id) {
+    return NextResponse.json({ error: 'job_id is required' }, { status: 400 });
   }
-  if (!email) {
-    return NextResponse.json({ error: 'email is required' }, { status: 400 });
+  if (!address) {
+    return NextResponse.json({ error: 'address is required' }, { status: 400 });
   }
 
   const priceId = process.env.STRIPE_GRANNY_FLAT_PRICE_ID;
@@ -46,15 +51,16 @@ export async function POST(req: NextRequest) {
   try {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      customer_email: email,
+      ...(email ? { customer_email: email } : {}),
       line_items: [{ price: priceId, quantity: 1 }],
       metadata: {
-        report_id,
-        email,
-        product: 'granny-flat-report',
+        job_id,
+        address,
+        email: email ?? '',
+        product: 'granny-flat-analysis',
       },
-      success_url: `${origin}/reports/granny-flat?payment=success&report_id=${report_id}`,
-      cancel_url: `${origin}/reports/granny-flat?payment=cancelled`,
+      success_url: `${origin}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`,
+      cancel_url: `${origin}/canibuildit?payment=cancelled&address=${encodeURIComponent(address)}`,
     });
 
     return NextResponse.json({ checkout_url: session.url });

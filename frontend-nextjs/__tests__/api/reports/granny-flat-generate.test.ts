@@ -223,6 +223,14 @@ describe('POST /api/reports/granny-flat/generate — happy path', () => {
     expect(mockRender).toHaveBeenCalledTimes(1);
   });
 
+  it('passes is_paid: true to renderToBuffer for DB-fetched reports', async () => {
+    mockSingle.mockResolvedValueOnce({ data: COMPLETE_ROW, error: null });
+    await POST(makeReq({ report_id: VALID_UUID }));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderedProps = (mockRender.mock.calls[0][0] as any).props?.data as Record<string, unknown>;
+    expect(renderedProps.is_paid).toBe(true);
+  });
+
   it('trims whitespace from report_id before querying', async () => {
     mockSingle.mockResolvedValueOnce({ data: COMPLETE_ROW, error: null });
     await POST(makeReq({ report_id: `  ${VALID_UUID}  ` }));

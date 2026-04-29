@@ -75,7 +75,11 @@ export async function POST(req: NextRequest) {
     return handleSatelliteReport(session, meta, 'solar-yield');
   }
 
-  // Default: granny flat one-time report PDF
+  if (meta.product === 'granny-flat-analysis') {
+    return handleGrannyFlatAnalysis(session, meta);
+  }
+
+  // Default: granny flat one-time report PDF (legacy flow)
   return handleGrannyFlatReport(session, meta);
 }
 
@@ -135,6 +139,71 @@ async function handleThreatRadarMonitor(
     });
   } catch (err) {
     console.error('[stripe/webhook] threat-radar confirm email error:', err);
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Granny Flat analysis (new paywall flow) — detect already running, send link
+// ---------------------------------------------------------------------------
+
+async function handleGrannyFlatAnalysis(
+  _session: Stripe.Checkout.Session,
+  meta: Record<string, string>
+) {
+  const { job_id, email, address } = meta;
+
+  if (!job_id || !address) {
+    console.error('[stripe/webhook] granny-flat-analysis missing metadata on session:', _session.id);
+    return NextResponse.json({ received: true });
+  }
+
+  if (!email) {
+    // No email — nothing to send, but still acknowledge
+    return NextResponse.json({ received: true });
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  const resultsUrl = `${baseUrl}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`;
+
+  try {
+    await resend.emails.send({
+      from: 'Can I Build It <info@plotdetect.com.au>',
+      replyTo: 'hello@canibuildit.com.au',
+      to: [email],
+      subject: 'Your granny flat analysis — view your results',
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">
+            Your analysis is running.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Your granny flat analysis for <strong>${address}</strong> is in progress.
+            The AI is scanning aerial imagery and cross-referencing NSW planning rules.
+          </p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">
+            Click the button below to view your results — takes 1&ndash;3 minutes on first run.
+          </p>
+          <p style="margin: 28px 0;">
+            <a href="${resultsUrl}"
+               style="display: inline-block; padding: 12px 24px; background: #0d9488; color: white;
+                      text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+              View your results &rarr;
+            </a>
+          </p>
+          <p style="color: #999; font-size: 12px;">
+            This link is unique to your purchase. Bookmark it for your records.
+          </p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+          </p>
+        </div>
+      `,
+    });
+  } catch (err) {
+    console.error('[stripe/webhook] granny-flat-analysis email error:', err);
   }
 
   return NextResponse.json({ received: true });

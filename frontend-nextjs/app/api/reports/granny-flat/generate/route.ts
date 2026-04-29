@@ -121,6 +121,7 @@ export async function POST(req: NextRequest) {
       data_sources: (outputs.data_sources as string[]) ?? [],
       tile_b64: (outputs.tile_b64 as string | null) ?? null,
       logo_b64: getLogoBase64(),
+      is_paid: true, // UUID access = sufficient guard; always render paid sections for DB-fetched reports
     };
     filename = `granny-flat-report-${report_id.slice(0, 8)}.pdf`;
   }
