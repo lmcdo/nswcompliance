@@ -1,8 +1,10 @@
 /**
  * POST /api/reports/shadow/generate
- * Body: { data: ShadowReportData } — full result from /api/satellite/shadow
  *
- * Fetches an aerial tile server-side, then renders the Shadow Detector PDF.
+ * Two call paths:
+ *   A) Stripe webhook: { report_id } — fetches from property_reports, generates paid PDF
+ *   B) Legacy direct:  { data, report_token } — verifies HMAC, generates free PDF
+ *
  * Returns application/pdf stream.
  */
 
@@ -17,6 +19,7 @@ import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
+import { getSupabase } from '@/lib/supabase-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -27,39 +30,71 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
   }
 
-  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!body?.data || typeof body.data !== 'object') {
-    return NextResponse.json({ error: 'data is required' }, { status: 400 });
-  }
+  let raw: Record<string, unknown>;
+  let is_paid: boolean;
 
-  const raw = body.data as Record<string, unknown>;
+  // Path A: webhook call with report_id — fetch from DB, always paid
+  if (body.report_id) {
+    const { data: row, error } = await getSupabase()
+      .from('property_reports')
+      .select('address, lat, lng, run_date, outputs, confidence, data_sources')
+      .eq('id', body.report_id.trim())
+      .single();
 
-  if (!raw.address) {
-    return NextResponse.json({ error: 'data.address is required' }, { status: 400 });
+    if (error || !row) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    const outputs = (row.outputs as Record<string, unknown>) ?? {};
+    raw = {
+      address: row.address,
+      lat: row.lat,
+      lng: row.lng,
+      run_date: row.run_date,
+      confidence: row.confidence,
+      data_sources: row.data_sources,
+      outputs,
+      zone: outputs.zone ?? null,
+      warnings: outputs.warnings ?? [],
+    };
+    is_paid = true;
+
+  // Path B: direct call with data + HMAC token — free version
+  } else {
+    if (!body?.data || typeof body.data !== 'object') {
+      return NextResponse.json({ error: 'report_id or data is required' }, { status: 400 });
+    }
+    raw = body.data as Record<string, unknown>;
+
+    if (!raw.address) {
+      return NextResponse.json({ error: 'data.address is required' }, { status: 400 });
+    }
+
+    const lat = typeof raw.lat === 'number' ? raw.lat : null;
+    const lng = typeof raw.lng === 'number' ? raw.lng : null;
+
+    if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
+      return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
+    }
+    is_paid = false;
   }
 
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
-
-  if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
-    return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
-  }
+  const today = new Date().toISOString().split('T')[0];
 
   const [tile_b64, logo_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
 
-  const today = new Date().toISOString().split('T')[0];
-  const is_paid = body.is_paid !== false;
-
-  // Strip GeoJSON geometry fields — PDF doesn't need them
   const rawOutputs = (raw.outputs as Record<string, unknown> | null) ?? raw;
 
   const data: ShadowReportData = {
@@ -67,7 +102,7 @@ export async function POST(req: NextRequest) {
     run_date: String(raw.run_date ?? today),
     lat: lat ?? 0,
     lng: lng ?? 0,
-    zone: (raw.zone as string | null) ?? null,
+    zone: (raw.zone as string | null) ?? (rawOutputs.zone as string | null) ?? null,
     height_m: Number(rawOutputs.height_m ?? raw.height_m ?? 9),
     height_source: (rawOutputs.height_source as string | null) ?? null,
     lep_name: (rawOutputs.lep_name as string | null) ?? null,
@@ -81,10 +116,8 @@ export async function POST(req: NextRequest) {
       shadow_direction_deg: sc.shadow_direction_deg,
       overlaps_subject_lot: sc.overlaps_subject_lot,
     })),
-    construction_change_score:
-      rawOutputs.construction_change_score != null
-        ? Number(rawOutputs.construction_change_score)
-        : null,
+    construction_change_score: rawOutputs.construction_change_score != null
+      ? Number(rawOutputs.construction_change_score) : null,
     construction_change_detected: Boolean(rawOutputs.construction_change_detected),
     adg_compliant: Boolean(rawOutputs.adg_compliant),
     worst_case_scenario: String(rawOutputs.worst_case_scenario ?? 'jun21_12pm'),

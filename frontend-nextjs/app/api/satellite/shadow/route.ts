@@ -150,8 +150,10 @@ export async function POST(request: NextRequest) {
   }
 
   const report_token = signReport(lat, lng, address, result.run_date ?? '');
+  // Include report_id so the frontend can pass it to the Stripe checkout route
   return NextResponse.json({
     ...result,
+    report_id,
     zone,
     ...(warnings.length ? { warnings } : {}),
     report_token,

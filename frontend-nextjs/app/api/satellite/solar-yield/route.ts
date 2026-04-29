@@ -199,6 +199,7 @@ export async function POST(request: NextRequest) {
       confidence: pipelineResult.confidence,
       data_sources: pipelineResult.data_sources,
       report_token,
+      report_id: jobId,
     },
   }, { status: 200 });
 }

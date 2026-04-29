@@ -3,9 +3,8 @@
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
+import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -43,6 +42,7 @@ interface ReportData {
   confidence: string;
   data_sources: string[];
   report_token?: string;
+  report_id?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
@@ -117,10 +117,6 @@ function azimuthLabel(deg: number): string {
   if (deg < 247.5) return 'SW';
   if (deg < 292.5) return 'W';
   return 'NW';
-}
-
-function fmt$(n: number) {
-  return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
 }
 
 export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
@@ -245,29 +241,24 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
       {state === 'complete' && report && (
         <>
           <ReportCard report={report} />
-          {report.outputs.coverage_available && (
-            <>
-              <DownloadPdfButton
-                label="Download PDF report"
-                apiPath="/api/reports/solar-yield/generate"
-                reportToken={report.report_token}
-                data={{
-                  ...report.outputs,
-                  address: report.address,
-                  run_date: report.run_date,
-                  lat: report.lat,
-                  lng: report.lng,
-                  confidence: report.confidence,
-                  data_sources: report.data_sources,
-                }}
-              />
-              <PostResultEmailStrip
-                address={report.address}
-                product="solar-yield"
-                copy="Get this solar analysis emailed to you →"
-              />
-            </>
-          )}
+          {report.outputs.coverage_available && report.report_id ? (
+            <PaywallGate
+              tool="solar-yield"
+              reportId={report.report_id}
+              address={report.address}
+              price={19}
+              alarmHeadline={`${report.outputs.annual_kwh_estimate.toLocaleString()} kWh/yr potential — get the full financial case`}
+              alarmDetail="Your installer will ask for exact panel count, system size, and payback period before quoting. This report answers all three."
+              previewItems={[
+                'Exact panel count and system size (kW) for this roof',
+                'Annual bill savings at current NSW retail and feed-in rates',
+                'Payback period and 10-year return after install cost',
+                'Monthly kWh breakdown by season',
+                'Payback sensitivity at 3 feed-in rate scenarios',
+                'Printable PDF with full data source citations',
+              ]}
+            />
+          ) : null}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
       )}
@@ -338,60 +329,17 @@ function ReportCard({ report }: { report: ReportData }) {
         <AerialTile lat={report.lat} lng={report.lng} lotPolygon={o.coverage_available ? report.lot_polygon : null} />
       </div>
 
-      {/* Financial ROI */}
+      {/* Free tier summary — orientation + kWh only, no $ figures */}
       <div className="p-6">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Financial return</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Annual savings</p>
-            <p className="text-xl font-semibold text-gray-900">{fmt$(roi.annualSaving)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">at current NSW rates</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Payback period</p>
-            <p className="text-xl font-semibold text-gray-900">
-              {roi.paybackYears ? `${roi.paybackYears.toFixed(1)} yrs` : '—'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">system cost {fmt$(roi.systemCost)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">10-year return</p>
-            <p className={`text-xl font-semibold ${roi.tenYearReturn >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {fmt$(roi.tenYearReturn)}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">after install + inverter</p>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
-          Assumes {fmt$(RETAIL_RATE * 100)}¢/kWh retail (AER DMO 2025–26 mid-market) · {fmt$(FEED_IN_RATE * 100)}¢/kWh
-          feed-in (AER benchmark) · 30% self-consumption (ARENA/CSIRO Solar Home study) ·{' '}
-          {fmt$(COST_PER_WATT * 1000)}/kW installed after STCs (SolarQuotes NSW 2026) · inverter
-          replacement {fmt$(INVERTER_REPLACE)} at year 10.
-        </p>
-      </div>
-
-      {/* Roof and system */}
-      <div className="p-6">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Roof and system</h3>
-        <div className="grid grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Max panels</p>
-            <p className="font-medium text-gray-800">{o.max_panels} panels</p>
-            <p className="text-xs text-gray-400">{roi.systemKw.toFixed(1)} kW</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Usable roof area</p>
-            <p className="font-medium text-gray-800">{o.max_panel_area_m2} m²</p>
-            <p className="text-xs text-gray-400">of {o.roof_area_m2} m² total</p>
-          </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
             <p className="font-medium text-gray-800">{azimuthLabel(o.best_azimuth_deg)} · {o.best_pitch_deg}° pitch</p>
             <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString()} hr/yr sun</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">Annual output</p>
-            <p className="font-medium text-gray-800">{o.annual_kwh_estimate.toLocaleString()} kWh</p>
+            <p className="text-xs text-gray-400 mb-0.5">Annual output estimate</p>
+            <p className="font-medium text-gray-800">{o.annual_kwh_estimate.toLocaleString()} kWh/yr</p>
             <p className="text-xs text-gray-400">full roof potential</p>
           </div>
         </div>

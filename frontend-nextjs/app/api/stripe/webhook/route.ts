@@ -63,6 +63,18 @@ export async function POST(req: NextRequest) {
     return handlePreDAHistoryReport(session, meta);
   }
 
+  if (meta.product === 'flood-truth-report') {
+    return handleSatelliteReport(session, meta, 'flood-truth');
+  }
+
+  if (meta.product === 'shadow-report') {
+    return handleSatelliteReport(session, meta, 'shadow');
+  }
+
+  if (meta.product === 'solar-yield-report') {
+    return handleSatelliteReport(session, meta, 'solar-yield');
+  }
+
   // Default: granny flat one-time report PDF
   return handleGrannyFlatReport(session, meta);
 }
@@ -201,6 +213,95 @@ async function handleGrannyFlatReport(
   } catch (err) {
     // Email failure is logged but we return 200 — PDF was generated, retry would re-charge
     console.error('[stripe/webhook] Resend email error:', err);
+  }
+
+  return NextResponse.json({ received: true });
+}
+
+// ---------------------------------------------------------------------------
+// Flood Truth / Shadow / Solar Yield — generate PDF + email attachment
+// ---------------------------------------------------------------------------
+
+const SATELLITE_REPORT_META: Record<
+  'flood-truth' | 'shadow' | 'solar-yield',
+  { generatePath: string; subject: string; bodyLine: string; filePrefix: string }
+> = {
+  'flood-truth': {
+    generatePath: '/api/reports/flood/generate',
+    subject: 'Your Flood Truth Report',
+    bodyLine: 'Your Flood Truth Report is attached as a PDF. It includes ARI flood depths at 1-in-20, 1-in-100, and 1-in-500 year return periods, access risk, historical flood events, and full data source citations.',
+    filePrefix: 'flood-truth-report',
+  },
+  'shadow': {
+    generatePath: '/api/reports/shadow/generate',
+    subject: 'Your Shadow Analysis Report',
+    bodyLine: 'Your Shadow Analysis Report is attached as a PDF. It includes hourly and seasonal shadow diagrams, ADG compliance assessment, and an objection-ready summary for your council submission.',
+    filePrefix: 'shadow-report',
+  },
+  'solar-yield': {
+    generatePath: '/api/reports/solar-yield/generate',
+    subject: 'Your Solar Yield Report',
+    bodyLine: 'Your Solar Yield Report is attached as a PDF. It includes system sizing, installed cost estimate, annual bill savings, payback period, and a monthly kWh breakdown.',
+    filePrefix: 'solar-yield-report',
+  },
+};
+
+async function handleSatelliteReport(
+  _session: Stripe.Checkout.Session,
+  meta: Record<string, string>,
+  product: 'flood-truth' | 'shadow' | 'solar-yield'
+) {
+  const { report_id, email } = meta;
+  const cfg = SATELLITE_REPORT_META[product];
+
+  if (!report_id || !email) {
+    console.error(`[stripe/webhook] ${product} missing metadata`);
+    return NextResponse.json({ received: true });
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
+  let pdfBuffer: Buffer;
+
+  try {
+    const pdfRes = await fetch(`${baseUrl}${cfg.generatePath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id }),
+    });
+
+    if (!pdfRes.ok) {
+      const errBody = await pdfRes.json().catch(() => ({}));
+      throw new Error(`PDF generation failed: ${pdfRes.status} — ${JSON.stringify(errBody)}`);
+    }
+
+    pdfBuffer = Buffer.from(await pdfRes.arrayBuffer());
+  } catch (err) {
+    console.error(`[stripe/webhook] ${product} PDF generation error:`, err);
+    return NextResponse.json({ error: 'PDF generation failed' }, { status: 500 });
+  }
+
+  const filename = `${cfg.filePrefix}-${report_id.slice(0, 8)}.pdf`;
+
+  try {
+    await resend.emails.send({
+      from: 'Can I Build It <info@plotdetect.com.au>',
+      replyTo: 'hello@canibuildit.com.au',
+      to: [email],
+      subject: cfg.subject,
+      html: `
+        <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; color: #111;">
+          <p style="font-size: 16px; font-weight: 600; margin-bottom: 8px;">Your report is attached.</p>
+          <p style="color: #555; font-size: 14px; line-height: 1.6;">${cfg.bodyLine}</p>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">
+            Can I Build It? &middot; <a href="https://canibuildit.com.au" style="color: #0d9488;">canibuildit.com.au</a>
+          </p>
+        </div>
+      `,
+      attachments: [{ filename, content: pdfBuffer }],
+    });
+  } catch (err) {
+    console.error(`[stripe/webhook] ${product} Resend email error:`, err);
   }
 
   return NextResponse.json({ received: true });

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
+import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const ShadowMap = dynamic(
@@ -60,6 +60,7 @@ interface ShadowResult {
   zone: string | null;
   warnings?: string[];
   report_token?: string;
+  report_id?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
@@ -181,27 +182,32 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
       {state === 'complete' && result && (
         <>
           <ShadowCard result={result} />
-          <DownloadPdfButton
-            label="Download PDF report"
-            apiPath="/api/reports/shadow/generate"
-            reportToken={result.report_token}
-            data={{
-              address: result.address,
-              run_date: result.run_date,
-              lat: result.lat,
-              lng: result.lng,
-              zone: result.zone,
-              outputs: result.outputs,
-              confidence: result.confidence,
-              data_sources: result.data_sources,
-              warnings: result.warnings ?? [],
-            }}
-          />
-          <PostResultEmailStrip
-            address={result.address}
-            product="shadow-detector"
-            copy="Get this shadow analysis emailed to you →"
-          />
+          {result.report_id ? (
+            <PaywallGate
+              tool="shadow"
+              reportId={result.report_id}
+              address={result.address}
+              price={29}
+              alarmHeadline={
+                result.outputs.scenarios.filter(s => s.overlaps_subject_lot).length > 0
+                  ? `Shadow impact on ${result.outputs.scenarios.filter(s => s.overlaps_subject_lot).length} of 5 test scenarios`
+                  : 'Shadow analysis complete — get the diagram for your records'
+              }
+              alarmDetail={
+                !result.outputs.adg_compliant
+                  ? 'This property may not meet the ADG 2-hour solar access requirement on 21 June. The full report has the hourly diagram you need for a council objection.'
+                  : 'The full report includes the hourly and seasonal shadow diagrams with your lot boundary — ready to attach to a council submission or share with a town planner.'
+              }
+              previewItems={[
+                'Shadow diagram showing affected area by hour (9am, 12pm, 3pm) at winter solstice',
+                'ADG solar access compliance assessment with clause reference',
+                'Scenario table — which times and seasons are affected',
+                'Objection-ready summary paragraph (copy-paste into council submission)',
+                'Proposed building height source and LEP reference',
+                'Printable PDF with full data source citations',
+              ]}
+            />
+          ) : null}
           <ToolCrossSell currentTool="shadow-detector" address={result.address} />
         </>
       )}
@@ -302,81 +308,6 @@ function ShadowCard({ result }: { result: ShadowResult }) {
       <p className="px-6 py-2 text-xs text-gray-400 border-b border-gray-100">
         Shadow modelled from the north lot boundary at max permitted height. Geometric model — not derived from satellite imagery. Aerial imagery © Esri.
       </p>
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Max building height modelled</p>
-          <p className="text-xl font-semibold text-gray-900">{o.height_m} m</p>
-          <p className="text-xs text-gray-400 mt-1">{o.lep_name ?? 'Local Environmental Plan'}</p>
-          {o.height_source === 'default' && (
-            <p className="text-xs text-amber-600 mt-1">
-              No Height of Buildings control found in LEP — 9 m default used. Actual height limit may differ.
-            </p>
-          )}
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Recent construction activity</p>
-          <p className="text-xl font-semibold text-gray-900">
-            {o.construction_change_detected ? 'Detected' : 'None detected'}
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {o.construction_change_score != null
-              ? o.construction_change_detected
-                ? `Significant change detected — demolition or excavation visible in satellite imagery over the past 90 days. (BSI Δ ${o.construction_change_score.toFixed(3)}, threshold 0.120)`
-                : `No significant change detected — no demolition or excavation visible in satellite imagery over the past 90 days. (BSI Δ ${o.construction_change_score.toFixed(3)}, threshold 0.120)`
-              : 'Sentinel-2 satellite imagery analysed — past 90 days vs 12-month baseline'}
-          </p>
-        </div>
-      </div>
-
-      {/* Scenarios table — clicking a row switches the map */}
-      <div className="p-6">
-        <p className="text-sm font-medium text-gray-700 mb-1">Shadow impact by scenario</p>
-        <p className="text-xs text-gray-400 mb-4">
-          Click a row to view that shadow on the map. Does the shadow from a {o.height_m} m building on the northern neighbouring lot reach this property?
-        </p>
-        <div className="space-y-0 divide-y divide-gray-50">
-          <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 pb-2 text-xs font-medium text-gray-400 uppercase tracking-wide">
-            <span>Date &amp; time</span>
-            <span className="text-right">Reach</span>
-            <span className="text-right">Direction</span>
-            <span className="text-right">Coverage</span>
-          </div>
-          {scenarios.map((s) => {
-            const pct = s.shadow_overlap_fraction != null
-              ? Math.round(s.shadow_overlap_fraction * 100)
-              : null;
-            const coverageColor = pct == null ? 'bg-gray-100 text-gray-400'
-              : pct >= 70 ? 'bg-red-100 text-red-700'
-              : pct >= 40 ? 'bg-amber-100 text-amber-700'
-              : pct > 0   ? 'bg-yellow-50 text-yellow-700'
-              : 'bg-gray-100 text-gray-500';
-            return (
-              <button
-                key={s.scenario}
-                onClick={() => setActiveScenario(s.scenario)}
-                className={`w-full grid grid-cols-[1fr_auto_auto_auto] gap-4 py-3 text-sm items-center text-left rounded transition-colors ${
-                  activeScenario === s.scenario
-                    ? 'bg-teal-50 -mx-2 px-2'
-                    : 'hover:bg-gray-50 -mx-2 px-2'
-                }`}
-              >
-                <span className="text-gray-700">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
-                <span className="text-gray-500 text-xs text-right tabular-nums">
-                  {s.shadow_length_m > 0 ? `${s.shadow_length_m.toFixed(0)} m` : '—'}
-                </span>
-                <span className="text-gray-400 text-xs text-right">
-                  {s.shadow_direction_deg != null ? bearingToCompass(s.shadow_direction_deg) : '—'}
-                </span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full text-right ${coverageColor}`}>
-                  {pct != null ? `${pct}%` : '—'}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       {/* Warnings */}
       {result.warnings && result.warnings.length > 0 && (

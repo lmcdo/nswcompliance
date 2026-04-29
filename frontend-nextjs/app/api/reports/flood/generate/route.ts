@@ -1,8 +1,10 @@
 /**
  * POST /api/reports/flood/generate
- * Body: { data: FloodReportData } — full result from /api/satellite/flood
  *
- * Fetches an aerial tile server-side, then renders the Flood Truth PDF.
+ * Two call paths:
+ *   A) Stripe webhook: { report_id } — fetches from property_reports, generates paid PDF
+ *   B) Legacy direct:  { data, report_token } — verifies HMAC, generates free PDF
+ *
  * Returns application/pdf stream.
  */
 
@@ -18,6 +20,7 @@ import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
 import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
+import { getSupabase } from '@/lib/supabase-client';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -28,39 +31,66 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
   }
 
-  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!body?.data || typeof body.data !== 'object') {
-    return NextResponse.json({ error: 'data is required' }, { status: 400 });
-  }
+  let raw: Record<string, unknown>;
+  let is_paid: boolean;
 
-  const raw = body.data as Record<string, unknown>;
+  // Path A: webhook call with report_id — fetch from DB, always paid
+  if (body.report_id) {
+    const { data: row, error } = await getSupabase()
+      .from('property_reports')
+      .select('address, lat, lng, run_date, outputs, confidence, data_sources')
+      .eq('id', body.report_id.trim())
+      .single();
 
-  // Guard: must have basic fields
-  if (!raw.address || !raw.run_date) {
-    return NextResponse.json({ error: 'data.address and data.run_date are required' }, { status: 400 });
+    if (error || !row) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    raw = {
+      address: row.address,
+      lat: row.lat,
+      lng: row.lng,
+      run_date: row.run_date,
+      confidence: row.confidence,
+      data_sources: row.data_sources,
+      ...(row.outputs as Record<string, unknown>),
+    };
+    is_paid = true;
+
+  // Path B: direct call with data + HMAC token — free version
+  } else {
+    if (!body?.data || typeof body.data !== 'object') {
+      return NextResponse.json({ error: 'report_id or data is required' }, { status: 400 });
+    }
+    raw = body.data as Record<string, unknown>;
+
+    if (!raw.address || !raw.run_date) {
+      return NextResponse.json({ error: 'data.address and data.run_date are required' }, { status: 400 });
+    }
+
+    const lat = typeof raw.lat === 'number' ? raw.lat : null;
+    const lng = typeof raw.lng === 'number' ? raw.lng : null;
+
+    if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date), body.report_token)) {
+      return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
+    }
+    is_paid = false;
   }
 
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
 
-  // Verify HMAC token — must come from a real /api/satellite/flood run
-  if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date), body.report_token)) {
-    return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
-  }
-
-  // Fetch aerial tile
   const [tile_b64, logo_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
     Promise.resolve(getLogoBase64()),
   ]);
-
-  const is_paid = body.is_paid !== false;
 
   const data: FloodReportData = {
     address: String(raw.address),
@@ -74,17 +104,13 @@ export async function POST(req: NextRequest) {
     sar_analysis_date: (raw.sar_analysis_date as string | null) ?? null,
     ems_flood_detected: raw.ems_flood_detected != null ? Boolean(raw.ems_flood_detected) : null,
     ems_activations: (raw.ems_activations as FloodReportData['ems_activations']) ?? null,
-    jrc_water_occurrence_pct: raw.jrc_water_occurrence_pct != null
-      ? Number(raw.jrc_water_occurrence_pct) : null,
+    jrc_water_occurrence_pct: raw.jrc_water_occurrence_pct != null ? Number(raw.jrc_water_occurrence_pct) : null,
     jrc_data_year: raw.jrc_data_year != null ? Number(raw.jrc_data_year) : null,
     bom_gauge_name: (raw.bom_gauge_name as string | null) ?? null,
-    bom_gauge_distance_km: raw.bom_gauge_distance_km != null
-      ? Number(raw.bom_gauge_distance_km) : null,
+    bom_gauge_distance_km: raw.bom_gauge_distance_km != null ? Number(raw.bom_gauge_distance_km) : null,
     bom_last_major_flood_date: (raw.bom_last_major_flood_date as string | null) ?? null,
-    bom_last_major_flood_peak_m: raw.bom_last_major_flood_peak_m != null
-      ? Number(raw.bom_last_major_flood_peak_m) : null,
-    bom_flood_history: Array.isArray(raw.bom_flood_history)
-      ? (raw.bom_flood_history as BomFloodEvent[]) : null,
+    bom_last_major_flood_peak_m: raw.bom_last_major_flood_peak_m != null ? Number(raw.bom_last_major_flood_peak_m) : null,
+    bom_flood_history: Array.isArray(raw.bom_flood_history) ? (raw.bom_flood_history as BomFloodEvent[]) : null,
     flood_study_name: (raw.flood_study_name as string | null) ?? null,
     flood_study_date: (raw.flood_study_date as string | null) ?? null,
     s1_gap_warning: (raw.s1_gap_warning as string | null) ?? null,

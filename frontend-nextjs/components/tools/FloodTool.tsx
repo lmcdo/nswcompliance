@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
+import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -43,6 +43,7 @@ interface FloodResult {
   data_sources: string[];
   warnings?: string[];
   report_token?: string;
+  report_id?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
@@ -161,26 +162,34 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          <DownloadPdfButton
-            label="Download PDF report"
-            apiPath="/api/reports/flood/generate"
-            reportToken={result.report_token}
-            data={{
-              ...result.outputs,
-              address: result.address,
-              run_date: result.run_date,
-              lat: result.lat,
-              lng: result.lng,
-              confidence: result.confidence,
-              data_sources: result.data_sources,
-              warnings: result.warnings ?? [],
-            }}
-          />
-          <PostResultEmailStrip
-            address={result.address}
-            product="flood-truth"
-            copy="Get this flood risk report emailed to you — share with your conveyancer →"
-          />
+          {result.report_id ? (
+            <PaywallGate
+              tool="flood-truth"
+              reportId={result.report_id}
+              address={result.address}
+              price={49}
+              alarmHeadline={
+                result.outputs.flood_signal && result.outputs.flood_signal !== 'none'
+                  ? `${FLOOD_SIGNAL_META[result.outputs.flood_signal]?.label ?? 'Flood signal'} detected at this address`
+                  : result.outputs.epi_flood_class && result.outputs.epi_flood_class !== 'none'
+                  ? `${EPI_CLASS_META[result.outputs.epi_flood_class]?.label ?? 'Flood planning area'} confirmed at this address`
+                  : 'Flood check complete — get the verified PDF for your records'
+              }
+              alarmDetail={
+                result.outputs.flood_signal && result.outputs.flood_signal !== 'none'
+                  ? `Your lender, insurer, and conveyancer will ask for exact ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. This report answers that question.`
+                  : `The full report includes ARI depths, historical flood events, BOM gauge data, and source citations — ready to share with your conveyancer.`
+              }
+              previewItems={[
+                'ARI flood depths at 1-in-20, 1-in-100, and 1-in-500 year return periods',
+                'Access risk — whether the access road is also affected',
+                'Historical flood events at this address (2011–2025)',
+                'Comparison to LGA average flood depth at same ARI band',
+                'Nearest flood study reference + DPIE source link',
+                'Printable PDF with full data source citations and dates',
+              ]}
+            />
+          ) : null}
           <ToolCrossSell currentTool="flood-truth" address={result.address} />
         </>
       )}
@@ -217,7 +226,7 @@ function FloodCard({ result }: { result: FloodResult }) {
         </p>
       </div>
 
-      {/* Row 1: Council flood overlay + Copernicus observed events */}
+      {/* Free tier: council overlay badge only — depth, history, gauge hidden behind paywall */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
@@ -229,89 +238,13 @@ function FloodCard({ result }: { result: FloodResult }) {
           </p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Observed flood events</p>
-          {o.ems_flood_detected === null ? (
-            <p className="text-sm text-gray-400">Data not available</p>
-          ) : o.ems_flood_detected && o.ems_activations?.length ? (
-            <ul className="space-y-1.5">
-              {o.ems_activations.map((act) => (
-                <li key={act.activation_id} className="flex items-start gap-2">
-                  <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <div>
-                    <p className="text-xs font-medium text-gray-900">{act.event_name}</p>
-                    <p className="text-xs text-gray-400">{act.activation_id} · {act.event_date}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-600">No recorded events at this location</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">Copernicus EMS · NSW Spatial Services</p>
+          <p className="text-xs text-gray-400 mb-1">Data sources checked</p>
+          <p className="text-sm font-medium text-gray-900">{sourceCount} independent sources</p>
+          <p className="text-xs text-gray-400 mt-1">EPI overlay · Copernicus EMS · JRC 40yr history · BOM gauge · Sentinel-1 SAR</p>
         </div>
       </div>
 
-      {/* Row 2: JRC water history + BOM gauge */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">40-year surface water history</p>
-          {o.jrc_water_occurrence_pct != null ? (
-            <>
-              <p className="text-lg font-semibold text-gray-900">
-                {o.jrc_water_occurrence_pct.toFixed(0)}
-                <span className="text-sm font-normal text-gray-500">% of months</span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {o.jrc_water_occurrence_pct === 0
-                  ? 'No surface water observed at this site 1984–present'
-                  : o.jrc_water_occurrence_pct < 5
-                  ? 'Rare — episodic inundation only'
-                  : o.jrc_water_occurrence_pct < 15
-                  ? 'Occasional — periodic inundation'
-                  : o.jrc_water_occurrence_pct < 40
-                  ? 'Frequent — seasonal or recurring inundation'
-                  : 'Persistent — regular or permanent surface water'}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Not available</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">JRC Global Surface Water · Landsat 1984–{o.jrc_data_year ?? 2021}</p>
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">River gauge proximity</p>
-          {o.bom_gauge_name ? (
-            <>
-              <p className="text-sm font-semibold text-gray-900 leading-snug">{o.bom_gauge_name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{o.bom_gauge_distance_km} km from property</p>
-              {o.bom_last_major_flood_date ? (
-                <p className="text-xs text-red-700 mt-2 font-medium">
-                  Last major flood recorded: {o.bom_last_major_flood_date} — {o.bom_last_major_flood_peak_m}m peak
-                </p>
-              ) : (
-                <p className="text-xs text-gray-400 mt-2">No major flood recorded at this gauge since 2021</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">No BOM gauge within 75 km</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">BOM WaterConnect · SOS2 API</p>
-        </div>
-      </div>
-
-      {/* SAR — shown only when data available */}
-      {o.sar_flood_detected !== null && (
-        <div className="px-6 py-4">
-          <p className="text-xs text-gray-400 mb-1">Satellite SAR flood detection</p>
-          <p className="text-sm font-medium text-gray-900">
-            {o.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
-            {o.sar_confidence && <span className="font-normal text-gray-500"> — {o.sar_confidence} confidence</span>}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">Sentinel-1 RTC · Microsoft Planetary Computer{o.sar_analysis_date ? ` · ${o.sar_analysis_date}` : ''}</p>
-        </div>
-      )}
-
-      {/* Warnings */}
+      {/* Warnings — always shown */}
       {(o.s1_gap_warning || result.warnings?.length) && (
         <div className="px-6 py-4 bg-amber-50 space-y-1">
           {o.s1_gap_warning && <p className="text-xs text-amber-800">{o.s1_gap_warning}</p>}
