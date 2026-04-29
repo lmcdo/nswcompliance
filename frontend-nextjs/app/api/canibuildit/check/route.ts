@@ -95,8 +95,6 @@ const COUNCIL_NAME_MAP: Record<string, string> = {
 function normaliseCouncilName(raw: string): string {
   return COUNCIL_NAME_MAP[raw.trim().toLowerCase()] ?? raw.trim();
 }
-const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
-
 const NSW_HEADERS = {
   'Origin': 'https://www.planningportal.nsw.gov.au',
   'Referer': 'https://www.planningportal.nsw.gov.au/',
@@ -369,28 +367,14 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // 7. Fire detect (if eligible) + nearby secondary dwelling DA lookup — both non-blocking, 5s cap
-  let detectId: string | null = null;
+  // 7. Nearby secondary dwelling DAs + CDCs from NSW ePlanning API
+  // Note: detect is NOT pre-fired here. The frontend's runDetect triggers via Trigger.dev
+  // after eligibility cards are shown. Pre-firing added 5s latency and was unused (frontend
+  // creates its own DB row + Trigger.dev job via /api/satellite/granny-flat POST).
   let nearbySecondaryDwellingCount: number | null = null;
 
   await Promise.allSettled([
-    // 7a. Trigger Railway detect
-    (async () => {
-      if (!sepp_eligible) return;
-      const detectRes = await fetch(`${PYTHON_API_URL}/pipeline/granny-flat/detect`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, prop_id: propId, lat: centroidLat ?? 0, lng: centroidLng ?? 0 }),
-        signal: AbortSignal.timeout(5000),
-      });
-      if (detectRes.ok) {
-        const d = await detectRes.json();
-        detectId = d.detect_id ?? null;
-        if (d.lot_area_m2) lotArea = d.lot_area_m2;
-      }
-    })(),
-
-    // 7b. Nearby secondary dwelling DAs + CDCs from NSW ePlanning API
+    // Nearby secondary dwelling DAs + CDCs
     (async () => {
       if (!lgaName || centroidLat === null || centroidLng === null) return;
       const since = new Date();
@@ -406,8 +390,8 @@ export async function POST(req: NextRequest) {
       };
 
       const daResults = await Promise.allSettled([
-        fetch(`${NSW_EPLANNING_BASE}/OnlineDA`, { headers: ePlanHdr, signal: AbortSignal.timeout(4000) }),
-        fetch(`${NSW_EPLANNING_BASE}/OnlineCDC`, { headers: ePlanHdr, signal: AbortSignal.timeout(4000) }),
+        fetch(`${NSW_EPLANNING_BASE}/OnlineDA`, { headers: ePlanHdr, signal: AbortSignal.timeout(2000) }),
+        fetch(`${NSW_EPLANNING_BASE}/OnlineCDC`, { headers: ePlanHdr, signal: AbortSignal.timeout(2000) }),
       ]);
 
       const apps: any[] = [];
@@ -448,7 +432,7 @@ export async function POST(req: NextRequest) {
   ]);
 
   const result = {
-    detect_id: detectId,
+    detect_id: null,
     address: property.address ?? address,
     lat: centroidLat,
     lng: centroidLng,
