@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
 import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
