@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -124,16 +124,25 @@ describe('EnhancedDevelopmentSelector', () => {
  });
 
  test('validates property constraints', async () => {
- render(
+ // Controlled wrapper — updates selectedDevelopment when onDevelopmentChange fires
+ const ControlledSelector = () => {
+ const [selected, setSelected] = useState<(typeof mockDevelopmentTypes)[0] | undefined>(undefined);
+ return (
  <TestWrapper>
  <EnhancedDevelopmentSelector
- {...defaultProps}
- zoning="R1"
+ propertyId="test-property"
+ selectedDevelopment={selected}
+ onDevelopmentChange={setSelected}
+ filterByZoning={false}
  lotSize={300}
  />
  </TestWrapper>
  );
+ };
 
+ render(<ControlledSelector />);
+
+ // Both devs shown (filterByZoning=false). lotSize 300 < RFB minimum 600 → error on click.
  await waitFor(() => {
  expect(screen.getByText('Residential Flat Building')).toBeInTheDocument();
  });
