@@ -17,7 +17,6 @@ import {
 } from '@/lib/pdf/solar-yield-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
-import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
 import { getSupabase } from '@/lib/supabase-client';
 
@@ -71,10 +70,10 @@ function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
 }
 
 export async function POST(req: NextRequest) {
-  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
-  if (!rl.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
-  }
+  // No rate limit here — route is guarded by DB UUID (Path A) and HMAC (Path B).
+  // The expensive Google Solar API call is already rate-limited at /api/satellite/solar-yield.
+  // Applying satelliteRateLimiter here would cause webhook calls (which all come from the
+  // same Vercel internal IP) to compete for the same 10/min bucket and fail above 10 sales/min.
 
   let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
   try {

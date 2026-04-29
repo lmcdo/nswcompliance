@@ -231,7 +231,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
       {/* PAGE 1: Cover + Grade + Financial ROI                               */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
         <Text style={s.h1}>Solar Potential Assessment</Text>
         <Text style={s.subhead}>{data.address}</Text>
         <Text style={s.dateText}>Report date: {data.run_date}</Text>
@@ -288,7 +288,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
       {/* PAGE 2: Roof specs + Disclaimer                                      */}
       {/* ------------------------------------------------------------------ */}
       <Page size="A4" style={s.page}>
-        <Text style={s.logo}>PlotDetect</Text>
+        <LogoRow logo_b64={data.logo_b64} />
 
         {/* Roof and system */}
         <Text style={s.sectionTitle}>Roof and system specifications</Text>
@@ -364,7 +364,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         )}
 
         {/* Payback sensitivity — paid */}
-        {data.is_paid !== false && data.sensitivity && data.sensitivity.length > 0 && (
+        {data.is_paid === true && data.sensitivity && data.sensitivity.length > 0 && (
           <View style={{ marginTop: 8 }}>
             <Text style={s.sectionTitle}>Payback sensitivity — feed-in rate scenarios</Text>
             {/* Header */}
@@ -389,7 +389,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         )}
 
         {/* Monthly output — paid */}
-        {data.is_paid !== false && data.monthly_kwh && data.monthly_kwh.length === 12 && (
+        {data.is_paid === true && data.monthly_kwh && data.monthly_kwh.length === 12 && (
           <View style={{ marginTop: 16 }}>
             <Text style={s.sectionTitle}>Estimated monthly output (kWh)</Text>
             {[0, 1].map((half) => (
@@ -410,7 +410,7 @@ export function SolarYieldReportDocument({ data }: { data: SolarYieldReportData 
         )}
 
         {/* Battery upgrade callout — PAID */}
-        {data.is_paid !== false && (() => {
+        {data.is_paid === true && (() => {
           // With battery: 80% self-consumed at retail, 20% exported at feed-in
           const batteryAnnualSaving = data.annual_kwh_estimate * (0.80 * 0.32 + 0.20 * 0.06);
           const batteryPayback = batteryAnnualSaving > 0
