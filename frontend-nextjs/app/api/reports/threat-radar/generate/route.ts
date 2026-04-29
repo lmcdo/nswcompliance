@@ -15,19 +15,13 @@ import {
 } from '@/lib/pdf/threat-radar-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
-import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
-
+// No rate limit — route is guarded by HMAC (verifyReport). Threat radar has no DB path.
 
 export async function POST(req: NextRequest) {
-  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
-  if (!rl.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
-  }
-
   let body: { data?: unknown; is_paid?: boolean; report_token?: string };
   try {
     body = await req.json();
@@ -58,7 +52,7 @@ export async function POST(req: NextRequest) {
   ]);
 
   const today = new Date().toISOString().split('T')[0];
-  const is_paid = body.is_paid !== false;
+  const is_paid = body.is_paid === true;
 
   const applications = Array.isArray(raw.applications)
     ? (raw.applications as ThreatRadarReportData['applications'])
