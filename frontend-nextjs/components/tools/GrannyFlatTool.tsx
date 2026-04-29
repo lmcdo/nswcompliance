@@ -99,6 +99,8 @@ interface ConfirmResult {
 }
 
 type PageState = 'idle' | 'loading' | 'result' | 'detecting' | 'confirming' | 'complete' | 'error';
+// 'detecting' = structure analysis running (background, eligibility cards still shown)
+// 'confirming' = user is confirming structure count (calculation phase uses isCalculating flag)
 
 const CONFIDENCE_LABEL: Record<string, string> = {
   high: 'High confidence',
@@ -288,6 +290,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
   // Yield calculator
   const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
+  // Yield calculation in-flight (keeps confirming UI visible instead of re-using detecting state)
+  const [isCalculating, setIsCalculating] = useState(false);
   // Share
   const [copied, setCopied] = useState(false);
   // LGA DCP interest form
@@ -380,9 +384,36 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
       if (!res.ok) throw new Error(json.error || 'Detection failed');
 
       const jobId: string = json.jobId;
+      const pollDeadline = Date.now() + 3.5 * 60 * 1000; // 3.5 min client-side limit
+
+      // Fallback: Modal/Trigger.dev failed or timed out — let user enter count manually
+      const fallbackToManual = (detectedStructures: FullDetectResult['detected_structures'] = []) => {
+        setFullDetect({
+          detect_id: jobId,
+          address: addr,
+          lat: json.centroidLat ?? 0,
+          lng: json.centroidLng ?? 0,
+          prop_id: '',
+          lot_area_m2: null,
+          sepp_eligible: true,
+          sepp_ineligible_reason: null,
+          detected_structures: detectedStructures,
+          samgeo_structure_count: detectedStructures.length,
+          samgeo_validated: false,
+          confirmation_required: true,
+          tile_licence: '',
+        });
+        setConfirmedCount(1);
+        setPageState('confirming');
+      };
 
       // Poll until detect result written to DB
       const poll = async (): Promise<void> => {
+        if (Date.now() > pollDeadline) {
+          fallbackToManual();
+          return;
+        }
+
         const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
         const pollJson = await pollRes.json();
 
@@ -395,6 +426,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               : 1
           );
           setPageState('confirming');
+          return;
+        }
+
+        if (pollJson.status === 'error') {
+          // AI detection failed — fall back to manual structure count entry
+          fallbackToManual();
           return;
         }
 
@@ -414,7 +451,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     e.preventDefault();
     if (!fullDetect) return;
 
-    setPageState('detecting');
+    setIsCalculating(true);
     setErrorMsg('');
 
     try {
@@ -437,6 +474,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setPageState('error');
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -491,6 +530,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     setEmailSubmitted(false);
     setLgaEmail('');
     setLgaInterestSubmitted(false);
+    setIsCalculating(false);
     autoSubmittedRef.current = false;
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -553,8 +593,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         </div>
       )}
 
-      {/* Loading — ML detect */}
-      {pageState === 'detecting' && (
+      {/* Loading — ML detect (only shown when no eligibility data yet) */}
+      {pageState === 'detecting' && !eligibility && (
         <div className="mt-10 text-center">
           <div className="inline-flex items-center gap-3 text-gray-500">
             <svg className="animate-spin h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="none">
@@ -563,7 +603,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </svg>
             <span className="text-base">Fetching aerial imagery and detecting structures…</span>
           </div>
-          <p className="mt-3 text-sm text-gray-400">Usually takes 15–30 seconds</p>
+          <p className="mt-3 text-sm text-gray-400">Usually takes 30–90 seconds</p>
         </div>
       )}
 
@@ -664,9 +704,18 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 </div>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
+                  disabled={isCalculating}
+                  className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-60 transition-colors inline-flex items-center gap-2"
                 >
-                  Calculate yield →
+                  {isCalculating ? (
+                    <>
+                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Calculating…
+                    </>
+                  ) : 'Calculate yield →'}
                 </button>
               </form>
             </div>
@@ -754,8 +803,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         </div>
       )}
 
-      {/* Quick eligibility result (shown while detect is loading or if ineligible) */}
-      {pageState === 'result' && eligibility && (
+      {/* Eligibility result — shown immediately after check, and stays visible during structure detection */}
+      {(pageState === 'result' || pageState === 'detecting') && eligibility && (
         <div className="mt-6 space-y-5">
           {/* Aerial tile */}
           {eligibility.lat != null && eligibility.lng != null && (
@@ -1013,13 +1062,21 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </button>
           </div>
 
-          {/* If eligible — note that full analysis is running / lead capture if ineligible */}
-          {eligibility.sepp_eligible ? (
-            <div className="rounded-xl border border-teal-100 bg-teal-50 p-5 text-center">
-              <p className="text-sm text-teal-700 font-medium">Running full structure analysis…</p>
-              <p className="text-xs text-teal-600 mt-1">Aerial imagery + SAM detection — this takes 15–30 seconds</p>
+          {/* Structure detection progress banner — shown while AI analysis runs in background */}
+          {pageState === 'detecting' && eligibility.sepp_eligible ? (
+            <div className="rounded-xl border border-teal-100 bg-teal-50 p-4 flex items-start gap-3">
+              <svg className="animate-spin h-4 w-4 text-teal-600 mt-0.5 shrink-0" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+              </svg>
+              <div>
+                <p className="text-sm text-teal-700 font-medium">Aerial structure analysis running…</p>
+                <p className="text-xs text-teal-600 mt-0.5">
+                  AI is scanning your lot for buildings and outbuildings. First run takes 1–2 minutes while the model starts up — the eligibility checks above are already complete.
+                </p>
+              </div>
             </div>
-          ) : (
+          ) : !eligibility.sepp_eligible ? (
             <>
               <div className="rounded-xl border border-gray-200 bg-white p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
@@ -1069,7 +1126,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 </div>
               </div>
             </>
-          )}
+          ) : null}
 
           {/* LGA DCP interest — shown when this council's DCP is not yet in the database */}
           {!eligibility.dcp_available && eligibility.lga_name && (
