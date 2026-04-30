@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -47,7 +46,11 @@ interface ReportData {
 
 type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
-const PANEL_WATTS = 400;
+const PANEL_WATTS        = 400;
+const RETAIL_RATE        = 0.32;   // $/kWh — matches solar-yield generate route
+const FEED_IN_TARIFF     = 0.06;   // $/kWh
+const SELF_CONSUME_RATIO = 0.30;
+const COST_PER_WATT      = 1.00;   // $/W installed
 
 function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
   grade: string; colour: string; reason: string;
@@ -110,6 +113,37 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
   const [report, setReport] = useState<ReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [ineligible, setIneligible] = useState<{ error: string; evidence?: string; evidence_label?: string } | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async () => {
+    if (!report?.report_id || !report?.address) return;
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/solar-yield', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: report.report_id, address: report.address }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,22 +260,16 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
         <>
           <ReportCard report={report} />
           {report.outputs.coverage_available && report.report_id ? (
-            <PaywallGate
-              tool="solar-yield"
-              reportId={report.report_id}
-              address={report.address}
-              price={19}
-              alarmHeadline={`${Math.round(report.outputs.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr potential — get the full financial case`}
-              alarmDetail="Your installer will ask for exact panel count, system size, and payback period before quoting. This report answers all three."
-              previewItems={[
-                'Exact panel count and system size (kW) for this roof',
-                'Annual bill savings at current NSW retail and feed-in rates',
-                'Payback period and 10-year return after install cost',
-                'Monthly kWh breakdown by season',
-                'Payback sensitivity at 3 feed-in rate scenarios',
-                'Printable PDF with full data source citations',
-              ]}
-            />
+            paidReportId ? (
+              <PaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <SolarLockedPreviewCard
+                outputs={report.outputs}
+                onUnlock={handleUnlock}
+                unlocking={unlocking}
+                error={unlockError}
+              />
+            )
           ) : null}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
@@ -430,6 +458,141 @@ function CoverageInterestForm({ address, lat, lng }: { address: string; lat: num
       {status === 'error' && (
         <p className="text-xs text-red-600 mt-1">Something went wrong. Please try again.</p>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SolarLockedPreviewCard — blur-to-reveal with real computed financial values
+// ---------------------------------------------------------------------------
+
+function SolarLockedPreviewCard({
+  outputs,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  outputs: SolarYieldOutputs;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
+  const annualKwh       = outputs.annual_kwh_estimate;
+  const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
+  const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
+  const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);
+  const systemCost      = systemKw * 1000 * COST_PER_WATT;
+  const paybackYears    = systemCost / annualSavings;
+
+  const fmt = (n: number, prefix = '') =>
+    prefix + Math.round(n).toLocaleString('en-AU');
+
+  const rows = [
+    { label: 'Annual electricity savings',  preview: `$${fmt(annualSavings)} / yr` },
+    { label: 'Payback period',              preview: `${paybackYears.toFixed(1)} years` },
+    { label: `System size — ${systemKw.toFixed(1)} kW`, preview: `${outputs.max_panels} panels` },
+    { label: 'Installed cost estimate',     preview: `$${fmt(systemCost)}` },
+    { label: 'Feed-in contribution',        preview: `$${fmt(exported * FEED_IN_TARIFF)} / yr` },
+    { label: 'Full PDF report',             preview: 'solar-yield-report.pdf' },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">
+          {fmt(outputs.annual_kwh_estimate)} kWh / yr potential — see the full financial case
+        </p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+          Your installer will ask for panel count, system size, and payback period before quoting.
+          Your numbers are below — unlocked with one payment.
+        </p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Your solar financials
+        </p>
+        <div className="space-y-2">
+          {rows.map(({ label, preview }) => (
+            <div key={label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-gray-700">{label}</span>
+              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
+                {preview}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock full analysis — $19'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PaidDownloadCTA — shown after Stripe redirects back with payment=success
+// ---------------------------------------------------------------------------
+
+function PaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/solar-yield/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `solar-yield-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }

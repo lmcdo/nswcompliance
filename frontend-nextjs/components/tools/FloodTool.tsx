@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -87,6 +86,36 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<FloodResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async (reportId: string, addr: string) => {
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/flood-truth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,36 +191,179 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         <>
           <FloodCard result={result} />
           {result.report_id ? (
-            <PaywallGate
-              tool="flood-truth"
-              reportId={result.report_id}
-              address={result.address}
-              price={49}
-              alarmHeadline={
-                result.outputs.flood_signal && result.outputs.flood_signal !== 'none'
-                  ? `${FLOOD_SIGNAL_META[result.outputs.flood_signal]?.label ?? 'Flood signal'} detected at this address`
-                  : result.outputs.epi_flood_class && result.outputs.epi_flood_class !== 'none'
-                  ? `${EPI_CLASS_META[result.outputs.epi_flood_class]?.label ?? 'Flood planning area'} confirmed at this address`
-                  : 'Flood check complete — get the verified PDF for your records'
-              }
-              alarmDetail={
-                result.outputs.flood_signal && result.outputs.flood_signal !== 'none'
-                  ? `Your lender, insurer, and conveyancer will ask for exact ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. This report answers that question.`
-                  : `The full report includes ARI depths, historical flood events, BOM gauge data, and source citations — ready to share with your conveyancer.`
-              }
-              previewItems={[
-                'ARI flood depths at 1-in-20, 1-in-100, and 1-in-500 year return periods',
-                'Access risk — whether the access road is also affected',
-                'Historical flood events at this address (2011–2025)',
-                'Comparison to LGA average flood depth at same ARI band',
-                'Nearest flood study reference + DPIE source link',
-                'Printable PDF with full data source citations and dates',
-              ]}
-            />
+            paidReportId ? (
+              <FloodPaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <FloodLockedPreviewCard
+                result={result}
+                onUnlock={() => handleUnlock(result.report_id!, result.address)}
+                unlocking={unlocking}
+                error={unlockError}
+              />
+            )
           ) : null}
           <ToolCrossSell currentTool="flood-truth" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FloodLockedPreviewCard — blur-to-reveal with real data from API response
+// ---------------------------------------------------------------------------
+
+function formatFloodDate(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+}
+
+function FloodLockedPreviewCard({
+  result,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  result: FloodResult;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const o = result.outputs;
+  const signal = o.flood_signal ?? 'none';
+
+  const alarmHeadline = signal !== 'none'
+    ? `${FLOOD_SIGNAL_META[signal]?.label ?? 'Flood signal'} — lenders and insurers will want the full data`
+    : o.epi_flood_class && o.epi_flood_class !== 'none'
+    ? `${EPI_CLASS_META[o.epi_flood_class]?.label ?? 'Flood overlay'} — verified clean for your records`
+    : 'Flood check complete — verified clean for conveyancing';
+
+  const alarmDetail = signal !== 'none'
+    ? 'Your conveyancer, lender, and insurer will ask for ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. Your numbers are below.'
+    : 'The full report includes ARI depths, BOM gauge data, and source citations — ready to share with your conveyancer.';
+
+  const emsCount = o.ems_activations?.length ?? 0;
+
+  const rows = [
+    {
+      label: 'BOM last major flood',
+      preview: o.bom_last_major_flood_date ? formatFloodDate(o.bom_last_major_flood_date) : '—',
+    },
+    {
+      label: 'Peak river height',
+      preview: o.bom_last_major_flood_peak_m != null ? `${o.bom_last_major_flood_peak_m}m above minor flood` : '—',
+    },
+    {
+      label: 'Historical inundation events',
+      preview: `${emsCount} event${emsCount !== 1 ? 's' : ''} since 2000`,
+    },
+    {
+      label: '40-year water occurrence',
+      preview: o.jrc_water_occurrence_pct != null ? `${o.jrc_water_occurrence_pct}% of satellite observations` : '—',
+    },
+    {
+      label: 'Nearest BOM gauge',
+      preview: o.bom_gauge_name && o.bom_gauge_distance_km != null
+        ? `${o.bom_gauge_name} · ${o.bom_gauge_distance_km}km`
+        : '—',
+    },
+    {
+      label: 'ARI depths — 1-in-20, 1-in-100, 1-in-500 yr',
+      preview: 'Included in full report',
+    },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">{alarmHeadline}</p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">{alarmDetail}</p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Your flood data
+        </p>
+        <div className="space-y-2">
+          {rows.map(({ label, preview }) => (
+            <div key={label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-gray-700">{label}</span>
+              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums text-right">
+                {preview}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock flood report — $49'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FloodPaidDownloadCTA — shown after Stripe payment=success redirect
+// ---------------------------------------------------------------------------
+
+function FloodPaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/flood/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flood-truth-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }

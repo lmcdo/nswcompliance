@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { PaywallGate } from '@/components/reports/PaywallGate';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const ShadowMap = dynamic(
@@ -90,6 +89,36 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<ShadowResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async (reportId: string, addr: string) => {
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/shadow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,34 +211,207 @@ export function ShadowTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?:
         <>
           <ShadowCard result={result} />
           {result.report_id ? (
-            <PaywallGate
-              tool="shadow"
-              reportId={result.report_id}
-              address={result.address}
-              price={29}
-              alarmHeadline={
-                result.outputs.scenarios.filter(s => s.overlaps_subject_lot).length > 0
-                  ? `Shadow impact on ${result.outputs.scenarios.filter(s => s.overlaps_subject_lot).length} of 5 test scenarios`
-                  : 'Shadow analysis complete — get the diagram for your records'
-              }
-              alarmDetail={
-                !result.outputs.adg_compliant
-                  ? 'This property may not meet the ADG 2-hour solar access requirement on 21 June. The full report has the hourly diagram you need for a council objection.'
-                  : 'The full report includes the hourly and seasonal shadow diagrams with your lot boundary — ready to attach to a council submission or share with a town planner.'
-              }
-              previewItems={[
-                'Shadow diagram showing affected area by hour (9am, 12pm, 3pm) at winter solstice',
-                'ADG solar access compliance assessment with clause reference',
-                'Scenario table — which times and seasons are affected',
-                'Objection-ready summary paragraph (copy-paste into council submission)',
-                'Proposed building height source and LEP reference',
-                'Printable PDF with full data source citations',
-              ]}
-            />
+            paidReportId ? (
+              <ShadowPaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <ShadowLockedPreviewCard
+                result={result}
+                onUnlock={() => handleUnlock(result.report_id!, result.address)}
+                unlocking={unlocking}
+                error={unlockError}
+              />
+            )
           ) : null}
           <ToolCrossSell currentTool="shadow-detector" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ShadowLockedPreviewCard — gate documentation value, not the verdict
+// Free: ADG verdict + map. Paid: scenario data, construction detection, objection para.
+// ---------------------------------------------------------------------------
+
+const SCENARIO_ORDER = ['jun21_9am', 'jun21_12pm', 'jun21_3pm', 'sep21_12pm', 'dec21_12pm'];
+
+function ShadowLockedPreviewCard({
+  result,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  result: ShadowResult;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const o = result.outputs;
+  const overlapCount = o.scenarios.filter(s => s.overlaps_subject_lot).length;
+
+  // Find worst-case overlap fraction for blurred preview
+  const worstScenario = o.scenarios.find(s => s.scenario === o.worst_case_scenario);
+  const worstOverlapPct = worstScenario?.shadow_overlap_fraction != null
+    ? `${Math.round(worstScenario.shadow_overlap_fraction * 100)}% of lot`
+    : `${overlapCount} of 5 scenarios`;
+
+  // Sort scenarios in standard order for consistent display
+  const sortedScenarios = [...o.scenarios].sort(
+    (a, b) => SCENARIO_ORDER.indexOf(a.scenario) - SCENARIO_ORDER.indexOf(b.scenario)
+  );
+  const teaserScenarios = sortedScenarios.slice(0, 2);
+  const blurredCount = Math.max(0, sortedScenarios.length - 2);
+
+  const alarmHeadline = !o.adg_compliant
+    ? `ADG concern — shadow impact on ${overlapCount} of 5 test scenarios`
+    : overlapCount > 0
+    ? `Shadow impact on ${overlapCount} of 5 scenarios — get the diagrams for your records`
+    : 'Shadow analysis complete — get the council-ready documentation';
+
+  const alarmDetail = !o.adg_compliant
+    ? 'This property may not meet the ADG 2-hour solar access requirement on 21 June. The full report has the scenario diagrams and objection paragraph you need.'
+    : 'The full report includes hourly shadow diagrams and a ready-to-paste objection paragraph for your council submission.';
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">{alarmHeadline}</p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">{alarmDetail}</p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3 space-y-4">
+        {/* Construction detection — blurred */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Construction detected nearby
+          </p>
+          <span className="blur-sm select-none pointer-events-none text-sm font-medium text-gray-900">
+            {o.construction_change_detected ? 'Yes — recent activity detected' : 'No recent construction activity'}
+          </span>
+        </div>
+
+        {/* Worst-case overlap — blurred */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Shadow overlap — worst case
+          </p>
+          <span className="blur-sm select-none pointer-events-none text-sm font-medium text-gray-900">
+            {worstOverlapPct}
+          </span>
+        </div>
+
+        {/* Scenario table — 2 teasers + blurred rows */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Scenario breakdown
+          </p>
+          <div className="space-y-1.5">
+            {teaserScenarios.map((s) => (
+              <div key={s.scenario} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
+                <span className="text-gray-600">{SCENARIO_LABELS[s.scenario] ?? s.scenario}</span>
+                <span className="font-medium text-gray-900 tabular-nums">
+                  {s.shadow_length_m.toFixed(0)}m shadow
+                  {s.overlaps_subject_lot ? ' · overlaps lot' : ''}
+                </span>
+              </div>
+            ))}
+            {/* Blurred remaining rows */}
+            {Array.from({ length: blurredCount }).map((_, i) => (
+              <div key={`blur-${i}`} className="flex items-center justify-between gap-4 text-sm py-1 border-b border-gray-50">
+                <span className="blur-sm select-none pointer-events-none text-gray-600">
+                  {SCENARIO_LABELS[SCENARIO_ORDER[2 + i]] ?? `Scenario ${3 + i}`}
+                </span>
+                <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
+                  {14 + i * 3}m shadow · {i === 0 ? 'overlaps lot' : 'clear'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Objection paragraph — fully blurred block */}
+        <div>
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+            Objection-ready paragraph
+          </p>
+          <p className="blur-sm select-none pointer-events-none text-sm text-gray-700 leading-relaxed">
+            Shadow modelling conducted in accordance with NSW Apartment Design Guide Part 3F
+            indicates that a maximum-height building on the northern boundary would cast a shadow
+            over {Math.round((worstScenario?.shadow_overlap_fraction ?? 0.3) * 100)}% of the subject
+            lot at 21 June 12pm, which does not comply with the 2-hour solar access requirement.
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock shadow report — $29'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ShadowPaidDownloadCTA — shown after Stripe payment=success redirect
+// ---------------------------------------------------------------------------
+
+function ShadowPaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/shadow/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `shadow-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }
