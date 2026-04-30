@@ -22,6 +22,7 @@ interface FloodOutputs {
   ems_activations: EmsActivation[] | null;
   jrc_water_occurrence_pct: number | null;
   jrc_data_year: number | null;
+  dea_wofs_frequency_pct: number | null;
   bom_gauge_name: string | null;
   bom_gauge_distance_km: number | null;
   bom_last_major_flood_date: string | null;
@@ -259,7 +260,10 @@ function FloodLockedPreviewCard({
     },
     {
       label: '40-year water occurrence',
-      preview: o.jrc_water_occurrence_pct != null ? `${o.jrc_water_occurrence_pct}% of satellite observations` : '—',
+      preview: (() => {
+        const pct = o.dea_wofs_frequency_pct ?? o.jrc_water_occurrence_pct;
+        return pct != null ? `${pct}% of satellite observations` : '—';
+      })(),
     },
     {
       label: 'Nearest BOM gauge',

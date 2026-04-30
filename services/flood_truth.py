@@ -1,13 +1,14 @@
 """
 Wet Season Flood Truth Engine -- FastAPI router.
 
-POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + BOM gauge
+POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + DEA WOfS + BOM gauge
 POST /pipeline/flood/batch  -- batch LGA processing (Trigger.dev cron, quarterly)
 
 Data sources:
   NSW SEED EPI Flood WFS         (statutory overlay, free, no auth)
   Copernicus EMS activations      (copernicus_flood_events table, one-time ingest)
   JRC Global Surface Water        (Landsat 1984–present, GCS tiles, free)
+  DEA Water Observations (WOfS)   (Landsat 1987–present, 25m AU, ows.dea.ga.gov.au, CC BY 4.0)
   BOM/WaterConnect nearest gauge  (WaterNSW SOS2, last major flood event)
   Sentinel-1 RTC                  (Microsoft Planetary Computer, batch only)
 
@@ -31,6 +32,7 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "ems_activations": list[dict] | null,
     "jrc_water_occurrence_pct": float | null,   # % of months since 1984 classified as water
     "jrc_data_year": int | null,                # 2021 (current JRC dataset version)
+    "dea_wofs_frequency_pct": float | null,     # % of satellite passes classified wet, 1987–present (DEA WOfS)
     "bom_gauge_name": str | null,
     "bom_gauge_distance_km": float | null,
     "bom_last_major_flood_date": str | null,
@@ -73,6 +75,10 @@ EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
 BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
+
+DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
+_DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
 
 FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
@@ -351,6 +357,65 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# DEA Water Observations (WOfS)
+# ---------------------------------------------------------------------------
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA WOfS multi-year frequency at a point via WCS GetCoverage.
+
+    Layer: ga_ls_wo_fq_myear_3 (all-of-archive composite, 1987–present, 25m).
+    Band 1 = frequency (0.0–1.0 fraction). nodata = -999.0.
+    Returns dea_wofs_frequency_pct (0–100) or None on failure.
+
+    Simpler than JRC: no vsicurl, no tile lookup — single HTTP request, in-memory rasterio.
+    """
+    try:
+        import io
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — DEA WOfS unavailable")
+        return {"dea_wofs_frequency_pct": None}
+
+    try:
+        delta = 0.001  # ~100m bbox, enough for a point sample
+        r = requests.get(
+            DEA_WCS_BASE,
+            params={
+                "service": "WCS",
+                "version": "1.0.0",
+                "request": "GetCoverage",
+                "coverage": DEA_WOFS_LAYER,
+                "format": "GeoTIFF",
+                "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+                "crs": "EPSG:4326",
+                "resx": str(delta),
+                "resy": str(delta),
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+
+        # Validate response is a GeoTIFF (not an XML error response)
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            logger.warning(f"DEA WOfS: unexpected Content-Type {ct}")
+            return {"dea_wofs_frequency_pct": None}
+
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
+
+
+# ---------------------------------------------------------------------------
 # BOM nearest river gauge
 # ---------------------------------------------------------------------------
 
@@ -555,12 +620,15 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
 
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
+    # Use DEA WOfS frequency when JRC is unavailable (DEA is AU-specific, 25m, 1987–present)
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
+    wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
+    effective_pct  = jrc_pct if jrc_pct > 0 else wofs_pct
     bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
 
-    jrc_low      = 0 < jrc_pct < 15
-    jrc_moderate = 15 <= jrc_pct < 40
-    jrc_high     = jrc_pct >= 40
+    jrc_low      = 0 < effective_pct < 15
+    jrc_moderate = 15 <= effective_pct < 40
+    jrc_high     = effective_pct >= 40
 
     # Elevated: multiple independent sources agree
     if (epi_in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
@@ -590,8 +658,9 @@ def _compute_confidence(internal_outputs: dict) -> str:
     wet_seasons    = internal_outputs.get("wet_seasons_checked") or 0
     ems_available  = internal_outputs.get("ems_flood_detected") is not None
     jrc_available  = internal_outputs.get("jrc_water_occurrence_pct") is not None
+    wofs_available = internal_outputs.get("dea_wofs_frequency_pct") is not None
     bom_available  = internal_outputs.get("bom_gauge_name") is not None
-    spatial_layers = sum([ems_available, jrc_available, bom_available])
+    spatial_layers = sum([ems_available, jrc_available or wofs_available, bom_available])
 
     if spatial_layers >= 3 and wet_seasons >= 1:
         return "high"
@@ -622,6 +691,8 @@ def _build_data_sources(internal_outputs: dict) -> list:
         sources.append(_DATA_SOURCE_EMS)
     if internal_outputs.get("jrc_water_occurrence_pct") is not None:
         sources.append(_DATA_SOURCE_JRC)
+    if internal_outputs.get("dea_wofs_frequency_pct") is not None:
+        sources.append(_DATA_SOURCE_DEA)
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
     sources.append("Microsoft Planetary Computer S1 RTC")
@@ -658,6 +729,7 @@ def _normalise_outputs(raw: dict) -> dict:
         "ems_activations":            raw.get("ems_activations"),
         "jrc_water_occurrence_pct":   raw.get("jrc_water_occurrence_pct"),
         "jrc_data_year":              raw.get("jrc_data_year"),
+        "dea_wofs_frequency_pct":     raw.get("dea_wofs_frequency_pct"),
         "bom_gauge_name":             raw.get("bom_gauge_name"),
         "bom_gauge_distance_km":      raw.get("bom_gauge_distance_km"),
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
@@ -755,15 +827,17 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
-        f_ems = pool.submit(_query_copernicus_ems, req.lat, req.lng)
-        f_jrc = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
-        f_bom = pool.submit(_query_bom_gauge, req.lat, req.lng)
-        epi = f_epi.result()
-        ems = f_ems.result()
-        jrc = f_jrc.result()
-        bom = f_bom.result()
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
+        f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
+        f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
+        f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
+        f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
+        epi  = f_epi.result()
+        ems  = f_ems.result()
+        jrc  = f_jrc.result()
+        wofs = f_wofs.result()
+        bom  = f_bom.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -772,7 +846,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom,
+        **epi, **ems, **jrc, **wofs, **bom,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 

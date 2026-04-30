@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
     ems_activations: (raw.ems_activations as FloodReportData['ems_activations']) ?? null,
     jrc_water_occurrence_pct: raw.jrc_water_occurrence_pct != null ? Number(raw.jrc_water_occurrence_pct) : null,
     jrc_data_year: raw.jrc_data_year != null ? Number(raw.jrc_data_year) : null,
+    dea_wofs_frequency_pct: raw.dea_wofs_frequency_pct != null ? Number(raw.dea_wofs_frequency_pct) : null,
     bom_gauge_name: (raw.bom_gauge_name as string | null) ?? null,
     bom_gauge_distance_km: raw.bom_gauge_distance_km != null ? Number(raw.bom_gauge_distance_km) : null,
     bom_last_major_flood_date: (raw.bom_last_major_flood_date as string | null) ?? null,
