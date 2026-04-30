@@ -6,11 +6,10 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-gray-100">
         <div className="max-w-2xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <span className="font-bold text-gray-900 text-base tracking-tight">canibuildit</span>
-            <span className="text-xs text-gray-400 font-normal hidden sm:block">by PlotDetect</span>
+            <span className="font-bold text-gray-900 text-base tracking-tight">canibuildit<span className="text-teal-600">.com.au</span></span>
           </Link>
           <a
-            href="mailto:hello@plotdetect.com.au"
+            href="mailto:hello@canibuildit.com.au"
             className="text-sm text-gray-400 hover:text-gray-600 transition-colors"
           >
             Contact
