@@ -3,6 +3,7 @@ import { FLOOD_LGAS } from '@/lib/lga-data/flood-lgas'
 import { SOLAR_LGAS } from '@/lib/lga-data/solar-lgas'
 import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
 import { THREAT_RADAR_LGAS } from '@/lib/lga-data/threat-radar-lgas'
+import { SHADOW_LGAS } from '@/lib/lga-data/shadow-lgas'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const base = 'https://canibuildit.com.au'
@@ -41,5 +42,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.85,
   }))
 
-  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages]
+  const shadowPages = SHADOW_LGAS.map(lga => ({
+    url: `${base}/shadow/${lga.slug}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.85,
+  }))
+
+  return [...staticPages, ...grannyFlatPages, ...floodPages, ...solarPages, ...threatRadarPages, ...shadowPages]
 }

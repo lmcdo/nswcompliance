@@ -4,6 +4,8 @@ export interface GrannyFlatLgaData {
   heritageCount: number
   hasFloodData: boolean
   hasAriData: boolean
+  /** Geographically adjacent LGAs in the same tool set */
+  relatedSlugs: string[]
   faqs: Array<{ q: string; a: string }>
 }
 
@@ -14,6 +16,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 116,
     hasFloodData: true,
     hasAriData: true,
+    relatedSlugs: ['camden', 'liverpool', 'sutherland-shire'],
     faqs: [
       { q: 'Can I build a granny flat in Campbelltown?', a: 'Yes — many Campbelltown properties qualify under SEPP Housing 2021. The minimum lot size is 450 m² and the property must not be a heritage item, flood control lot, or affected by biodiversity or acid sulfate soil exclusions. R1, R2, R3, and RU5 zones are generally permitted. Use the checker above to confirm your specific address.' },
       { q: 'What is the minimum lot size for a granny flat in Campbelltown?', a: 'The minimum lot size under SEPP Housing 2021 is 450 m². Campbelltown has a mix of lot sizes — many post-war suburban lots are 550–700 m² and qualify. Newer estate lots under 450 m² do not qualify for complying development.' },
@@ -28,6 +31,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 604,
     hasFloodData: true,
     hasAriData: true,
+    relatedSlugs: ['penrith', 'the-hills-shire', 'blacktown'],
     faqs: [
       { q: 'Can I build a granny flat in Hawkesbury?', a: 'Many Hawkesbury properties qualify, but flood exclusions are significant. The Hawkesbury-Nepean catchment has extensive flood mapping — properties within flood control lots are ineligible for CDC secondary dwellings. Check your address above to see the full picture.' },
       { q: 'How does flooding affect granny flat eligibility in Hawkesbury?', a: 'Hawkesbury has one of NSW\'s most significant flood risks. The 2024 Hawkesbury-Nepean River Flood Study maps 12 ARI scenarios. Properties within the 1% AEP (1-in-100-year) flood extent are on flood control lots and cannot use the CDC pathway for secondary dwellings.' },
@@ -42,6 +46,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 2039,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['bayside', 'canterbury-bankstown', 'lane-cove'],
     faqs: [
       { q: 'Can I build a granny flat in the Inner West?', a: 'Yes, if your property meets the SEPP Housing 2021 criteria. The Inner West has many R2 and R3 zoned properties over 450 m² that qualify. However, with 2,039 heritage items, heritage exclusions are a common reason for ineligibility. Check your address above.' },
       { q: 'Why might my Inner West property be ineligible for a granny flat?', a: 'The most common exclusions in the Inner West are: heritage listing (heritage item or conservation area), lot under 450 m², or a zone that doesn\'t permit secondary dwellings. Flood exclusions are less common but possible near creek lines in Marrickville and Leichhardt.' },
@@ -56,6 +61,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 274,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['bayside', 'inner-west', 'georges-river'],
     faqs: [
       { q: 'Can I build a granny flat in Canterbury-Bankstown?', a: 'Many properties in Canterbury-Bankstown qualify — the area has a large stock of R2 residential lots over 450 m². Heritage exclusions are less common than in inner-city suburbs. Check your address above to confirm zone, lot area, and any exclusions.' },
       { q: 'What lot size is needed for a granny flat in Canterbury-Bankstown?', a: 'The minimum under SEPP Housing 2021 is 450 m². Post-war suburban lots in Bankstown, Canterbury, and Punchbowl are typically 550–700 m² and qualify. Smaller lots in terrace streets are less likely to meet the minimum.' },
@@ -70,6 +76,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 803,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['blacktown', 'ryde', 'penrith'],
     faqs: [
       { q: 'Can I build a granny flat in Parramatta?', a: 'Yes, many Parramatta properties qualify under SEPP Housing 2021. R2 residential lots over 450 m² in suburbs like Merrylands, Granville, and Toongabbie are good candidates. Heritage exclusions are more common near the Parramatta CBD heritage conservation area.' },
       { q: 'Does heritage affect granny flat eligibility in Parramatta?', a: 'Parramatta has 803 heritage items, with significant heritage conservation areas around the CBD and older residential precincts. Properties that are heritage items are excluded from SEPP Housing 2021 complying development.' },
@@ -84,6 +91,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 131,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['parramatta', 'the-hills-shire', 'penrith'],
     faqs: [
       { q: 'Can I build a granny flat in Blacktown?', a: 'Blacktown is one of the most granny-flat-friendly LGAs in Greater Sydney. With low heritage density and large lot sizes across most suburbs, many properties qualify under SEPP Housing 2021. Check your address above to confirm.' },
       { q: 'What lot size is needed for a granny flat in Blacktown?', a: 'The minimum is 450 m². Blacktown\'s post-war and newer suburban lots are typically 600–900 m² — well above the minimum. Even many newer estate lots qualify.' },
@@ -98,6 +106,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 223,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['hornsby', 'blacktown', 'penrith'],
     faqs: [
       { q: 'Can I build a granny flat in The Hills Shire?', a: 'The Hills Shire is well-suited to granny flats. Large residential lots across Castle Hill, Baulkham Hills, and Kellyville frequently exceed 450 m², and heritage exclusions are relatively uncommon. Check your address above to confirm all criteria.' },
       { q: 'What lot size is needed for a granny flat in The Hills Shire?', a: 'The minimum under SEPP Housing 2021 is 450 m². The Hills Shire has some of Greater Sydney\'s larger residential lots — 700 m²+ is common in established suburbs. Newer townhouse estates with compact lots may be below the threshold.' },
@@ -112,6 +121,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 956,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['ku-ring-gai', 'lane-cove', 'hornsby'],
     faqs: [
       { q: 'Can I build a granny flat on the Northern Beaches?', a: 'Many Northern Beaches properties qualify, but heritage exclusions are significant — 956 heritage items cover large portions of Manly, Avalon, and Pittwater. Coastal properties may also have biodiversity or acid sulfate soil exclusions. Check your address above.' },
       { q: 'Why might my Northern Beaches property be ineligible?', a: 'The most common exclusions are heritage (conservation areas in beachside villages), biodiversity values map (coastal heathlands and bushland areas), and lot size (some older beachside lots are under 450 m²). The checker above identifies which exclusion applies.' },
@@ -126,6 +136,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 769,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['ku-ring-gai', 'the-hills-shire', 'northern-beaches'],
     faqs: [
       { q: 'Can I build a granny flat in Hornsby Shire?', a: 'Many Hornsby properties qualify, but bushland setting means biodiversity exclusions are common, and heritage is significant with 769 items. Large lot sizes work in favour of eligibility. Check your address above to confirm.' },
       { q: 'Are biodiversity exclusions common in Hornsby?', a: 'Yes. Hornsby Shire has extensive bushland areas mapped on the Biodiversity Values Map. Properties near creek lines, reserves, and bushland edges are frequently affected. The checker above cross-references this map for your specific address.' },
@@ -140,6 +151,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 1046,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['hornsby', 'northern-beaches', 'lane-cove'],
     faqs: [
       { q: 'Can I build a granny flat in Ku-ring-gai?', a: 'Ku-ring-gai is one of the harder LGAs for granny flat eligibility. With 1,046 heritage items and extensive heritage conservation areas across Gordon, Killara, Lindfield, and Wahroonga, heritage exclusions affect a large proportion of properties. Check your address above.' },
       { q: 'Why do so many Ku-ring-gai properties fail the heritage check?', a: 'Ku-ring-gai has the second-highest heritage item count in our coverage. Entire streets in established suburbs are within heritage conservation areas. Any property within a conservation area — not just individually listed items — is excluded from SEPP Housing 2021 complying development.' },
@@ -154,6 +166,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 328,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['sutherland-shire', 'bayside', 'campbelltown'],
     faqs: [
       { q: 'Can I build a granny flat in Georges River?', a: 'Many Georges River properties qualify under SEPP Housing 2021. Suburbs like Hurstville, Kogarah, Penshurst, and Oatley have R2 lots over 450 m² that are good candidates. Heritage exclusions are moderate. Check your address above.' },
       { q: 'What lot size is needed for a granny flat in Georges River?', a: 'The minimum is 450 m². Post-war suburban lots in Georges River are typically 550–700 m² and qualify. Compact lots near town centres and some strata-style subdivisions may be below the minimum.' },
@@ -168,6 +181,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 424,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['randwick', 'georges-river', 'inner-west'],
     faqs: [
       { q: 'Can I build a granny flat in Bayside?', a: 'Many Bayside properties qualify. Suburbs like Bexley, Arncliffe, Rockdale, and Mascot have R2 lots over 450 m² that are good candidates. Heritage exclusions exist in some precincts. Check your address above.' },
       { q: 'What lot size is needed for a granny flat in Bayside?', a: 'The minimum is 450 m² under SEPP Housing 2021. Post-war suburban lots in Bayside are typically 500–700 m². Compact lots near Botany and inner areas may be below the threshold.' },
@@ -182,6 +196,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 574,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['waverley', 'woollahra', 'bayside'],
     faqs: [
       { q: 'Can I build a granny flat in Randwick?', a: 'It depends heavily on your specific address. Randwick has 574 heritage items and many streets in Coogee, Kensington, and Randwick itself are in heritage conservation areas. Lot sizes in inner Randwick are often below 450 m². Check your address above.' },
       { q: 'Why are many Randwick properties ineligible for a granny flat?', a: 'Two main reasons: lot size (many terrace and semi-detached lots are under 450 m²) and heritage (conservation areas cover large parts of Randwick, Coogee, and Kingsford). The checker identifies which constraint applies to your address.' },
@@ -196,6 +211,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 633,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['woollahra', 'randwick', 'bayside'],
     faqs: [
       { q: 'Can I build a granny flat in Waverley?', a: 'Waverley is one of the harder council areas for granny flat eligibility. Most lots are under 450 m², and heritage conservation areas cover large parts of Bondi, Waverley, and Bronte. Check your address above — detached homes on larger blocks have the best chance.' },
       { q: 'Why are most Waverley properties ineligible?', a: 'Waverley\'s density means most residential lots are under 450 m² — the most common reason for ineligibility. Heritage conservation areas add a second common exclusion. The two together make Waverley one of the lowest SEPP eligibility rates in Sydney.' },
@@ -210,6 +226,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 761,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['waverley', 'randwick', 'inner-west'],
     faqs: [
       { q: 'Can I build a granny flat in Woollahra?', a: 'Woollahra is challenging for granny flat eligibility. With 761 heritage items and many lots under 450 m² in Paddington and Double Bay, a large proportion of properties are ineligible via CDC. Check your address above — larger detached homes in Woollahra and Bellevue Hill have better prospects.' },
       { q: 'Why are many Woollahra properties ineligible for a granny flat?', a: 'Two main reasons: heritage (conservation areas cover most of Paddington and parts of Woollahra village) and lot size (Paddington terrace lots are typically 100–250 m²). Either exclusion alone is enough to block the CDC pathway.' },
@@ -224,6 +241,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 477,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['georges-river', 'campbelltown', 'camden'],
     faqs: [
       { q: 'Can I build a granny flat in the Sutherland Shire?', a: 'Many Sutherland Shire properties qualify. The area has predominantly detached suburban homes on lots well over 450 m², and heritage exclusions are moderate. Biodiversity exclusions near bushland are the main risk factor. Check your address above.' },
       { q: 'Are biodiversity exclusions common in the Sutherland Shire?', a: 'Yes. The Royal National Park and extensive bushland corridors through Sutherland Shire create biodiversity value mapping across many residential properties near the bush. The checker above cross-references the Biodiversity Values Map for your address.' },
@@ -238,6 +256,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 149,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['campbelltown', 'liverpool', 'sutherland-shire'],
     faqs: [
       { q: 'Can I build a granny flat in Camden?', a: 'Camden is one of the most granny-flat-friendly LGAs in Greater Sydney. Large lots, low heritage density, and R2 zoning across most residential areas make eligibility rates high. Check your address above to confirm.' },
       { q: 'What lot size is needed for a granny flat in Camden?', a: 'The minimum is 450 m² under SEPP Housing 2021. Camden\'s established suburbs have lots typically 600–900 m². Some newer estate lots in Leppington and Oran Park may be under 450 m² — check your specific lot.' },
@@ -252,6 +271,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 97,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['camden', 'campbelltown', 'parramatta'],
     faqs: [
       { q: 'Can I build a granny flat in Liverpool?', a: 'Liverpool has strong granny flat eligibility. Low heritage density, predominantly R2 zoning, and suburban lot sizes over 450 m² across most of the LGA combine for high eligibility rates. Check your address above to confirm.' },
       { q: 'What lot size is needed for a granny flat in Liverpool?', a: 'The minimum is 450 m². Liverpool\'s established suburbs typically have lots of 600–800 m². Newer estate subdivisions in Edmondson Park and Carnes Hill may have smaller lots — check your specific lot.' },
@@ -266,6 +286,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 253,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['blacktown', 'hawkesbury', 'the-hills-shire'],
     faqs: [
       { q: 'Can I build a granny flat in Penrith?', a: 'Penrith has good granny flat eligibility. Large residential lots, moderate heritage density, and R2 zoning across most suburbs make many properties eligible. Flood exclusions near the Nepean River are worth checking. Use the checker above.' },
       { q: 'What lot size is needed for a granny flat in Penrith?', a: 'The minimum is 450 m². Penrith\'s established suburbs typically have lots of 600–900 m². Newer estate lots in Jordan Springs and Thornton may be smaller — check your specific lot.' },
@@ -280,6 +301,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 318,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['ryde', 'ku-ring-gai', 'inner-west'],
     faqs: [
       { q: 'Can I build a granny flat in Lane Cove?', a: 'Many Lane Cove properties qualify. Post-war detached homes on lots over 450 m² are common. Heritage exclusions are moderate and mainly affect the Lane Cove village area. Biodiversity exclusions near the Lane Cove River are worth checking.' },
       { q: 'Are biodiversity exclusions a risk in Lane Cove?', a: 'Yes. Lane Cove National Park and bushland corridors create biodiversity value mapping near creek lines and reserves. Properties adjoining or near Lane Cove National Park should check the Biodiversity Values Map.' },
@@ -294,6 +316,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 221,
     hasFloodData: false,
     hasAriData: false,
+    relatedSlugs: ['lane-cove', 'parramatta', 'ku-ring-gai'],
     faqs: [
       { q: 'Can I build a granny flat in Ryde?', a: 'Many Ryde properties qualify under SEPP Housing 2021. Post-war suburban lots over 450 m² are common across Meadowbank, West Ryde, and Eastwood. Heritage exclusions are moderate. Check your address above.' },
       { q: 'What lot size is needed for a granny flat in Ryde?', a: 'The minimum is 450 m². Ryde\'s established suburbs typically have lots of 550–750 m². Newer apartment-adjacent subdivisions and smaller inner lots may be below the threshold.' },
@@ -308,6 +331,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 519,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['wingecarribee', 'campbelltown', 'sutherland-shire'],
     faqs: [
       { q: 'Can I build a granny flat in Wollongong?', a: 'Many Wollongong properties qualify under SEPP Housing 2021. Suburban lots across Wollongong, Figtree, and Unanderra are typically over 450 m². Heritage and flood exclusions are worth checking depending on suburb. Use the checker above.' },
       { q: 'What lot size is needed for a granny flat in Wollongong?', a: 'The minimum is 450 m² under SEPP Housing 2021. Most post-war residential lots in Wollongong are 550–800 m². Compact lots near the CBD and beachside suburbs may be below the threshold.' },
@@ -322,6 +346,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 1153,
     hasFloodData: true,
     hasAriData: true,
+    relatedSlugs: ['tamworth-regional', 'bathurst-regional', 'yass-valley'],
     faqs: [
       { q: 'Can I build a granny flat in Clarence Valley?', a: 'Clarence Valley eligibility varies significantly by location. Flood exclusions are significant across the Clarence River floodplain. Heritage exclusions are also notable with 1,153 items. Rural-residential lots away from the floodplain have better prospects.' },
       { q: 'How does flooding affect granny flat eligibility in Clarence Valley?', a: 'The Clarence River creates extensive flood planning areas across Grafton, Maclean, and Yamba. Properties on flood control lots are excluded from the CDC pathway. Given the 2022 flood events, flood status should always be checked before proceeding.' },
@@ -336,6 +361,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 332,
     hasFloodData: true,
     hasAriData: true,
+    relatedSlugs: ['wingecarribee', 'bathurst-regional', 'wollongong'],
     faqs: [
       { q: 'Can I build a granny flat in Yass Valley?', a: 'Many Yass Valley properties qualify. Rural-residential and suburban lots in the Yass area are typically large. The main exclusion risks are flood (near the Yass River) and heritage in the Yass town centre precinct.' },
       { q: 'What lot size is needed for a granny flat in Yass Valley?', a: 'The minimum is 450 m². Most Yass Valley residential lots clear this easily. Compact town lots in central Yass are the exception.' },
@@ -350,6 +376,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 168,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['bathurst-regional', 'tamworth-regional', 'parramatta'],
     faqs: [
       { q: 'Can I build a granny flat in Forbes?', a: 'Forbes eligibility is significantly affected by flood risk — the town has a history of major Lachlan River floods. Many Forbes lots are within flood planning areas. Rural properties away from the floodplain have better prospects. Check your address above.' },
       { q: 'How does flooding affect granny flat eligibility in Forbes?', a: 'Forbes has experienced multiple major Lachlan River floods, most recently in 2022. A large portion of Forbes town lots are within flood planning areas. Properties on flood control lots are excluded from the CDC pathway and require a DA.' },
@@ -364,6 +391,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 513,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['bathurst-regional', 'forbes', 'clarence-valley'],
     faqs: [
       { q: 'Can I build a granny flat in Tamworth?', a: 'Many Tamworth Regional properties qualify. The area has predominantly R2 residential lots over 450 m². Flood exclusions near the Peel River are the main risk. Heritage is notable but mainly affects the CBD precinct.' },
       { q: 'What lot size is needed for a granny flat in Tamworth?', a: 'The minimum is 450 m². Tamworth\'s suburban lots are typically 600–900 m² and well above the minimum. Rural-residential lots are even larger.' },
@@ -378,6 +406,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 431,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['tamworth-regional', 'yass-valley', 'forbes'],
     faqs: [
       { q: 'Can I build a granny flat in Bathurst?', a: 'Many Bathurst properties qualify. Suburban lots over 450 m² are common and heritage exclusions mainly affect the Bathurst CBD heritage conservation area. Flood risk near the Macquarie River is worth checking.' },
       { q: 'What lot size is needed for a granny flat in Bathurst?', a: 'The minimum is 450 m². Bathurst\'s established suburbs typically have lots of 600–800 m². Newer subdivisions may have smaller lots — check your specific lot.' },
@@ -392,6 +421,7 @@ export const GRANNY_FLAT_LGAS: GrannyFlatLgaData[] = [
     heritageCount: 577,
     hasFloodData: true,
     hasAriData: false,
+    relatedSlugs: ['wollongong', 'yass-valley', 'campbelltown'],
     faqs: [
       { q: 'Can I build a granny flat in the Southern Highlands?', a: 'Many Wingecarribee properties qualify. Rural-residential and suburban lots are typically large. Heritage exclusions in Bowral, Moss Vale, and Mittagong, and flood risk near the Wingecarribee River, are the main considerations.' },
       { q: 'What lot size is needed for a granny flat in Wingecarribee?', a: 'The minimum is 450 m². Southern Highlands residential lots are typically well over 450 m². Rural-residential lots of 2,000 m²+ are common and easily qualify.' },

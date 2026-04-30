@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { SolarYieldTool } from '@/components/tools/SolarYieldTool'
 import { SOLAR_LGAS, SOLAR_LGA_SLUG_MAP } from '@/lib/lga-data/solar-lgas'
+import { GRANNY_FLAT_LGA_SLUG_MAP } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
 
 export const revalidate = 86400
@@ -27,6 +29,8 @@ export default function SolarPotentialLgaPage(
   const lga = SOLAR_LGA_SLUG_MAP[params['lga-slug']]
   if (!lga) notFound()
 
+  const grannyFlatData = GRANNY_FLAT_LGA_SLUG_MAP[lga.slug]
+
   return (
     <div className="max-w-2xl mx-auto px-6">
 
@@ -38,7 +42,12 @@ export default function SolarPotentialLgaPage(
         <p className="mt-3 text-base text-gray-500">
           Estimate the rooftop solar yield for any {lga.name} address — panel count, annual kWh,
           and payback period based on aerial imagery analysis of your actual roof.
-          {lga.heritageCount > 200 && ` Note: ${lga.name} has ${lga.heritageCount.toLocaleString()} heritage items — check your address for heritage constraints.`}
+          {lga.heritageCount > 200 && ` ${lga.name} has ${lga.heritageCount.toLocaleString()} heritage items — check your address for heritage constraints.`}
+          {' '}Combine with a{' '}
+          <Link href={`/shadow/${lga.slug}`} className="text-slate-600 hover:underline">shadow check</Link>
+          {' '}to see if neighbouring buildings will reduce your yield, or check{' '}
+          <Link href={`/granny-flat/${lga.slug}`} className="text-teal-600 hover:underline">granny flat eligibility</Link>
+          {' '}if you are planning a secondary dwelling.
         </p>
       </div>
 
@@ -118,6 +127,28 @@ export default function SolarPotentialLgaPage(
           </a>
         </p>
       </div>
+
+      {/* Related areas */}
+      {grannyFlatData && grannyFlatData.relatedSlugs.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs text-gray-400 font-medium uppercase tracking-wide mb-2">Also check nearby councils</p>
+          <div className="flex flex-wrap gap-2">
+            {grannyFlatData.relatedSlugs.map(slug => {
+              const related = GRANNY_FLAT_LGA_SLUG_MAP[slug]
+              if (!related) return null
+              return (
+                <Link
+                  key={slug}
+                  href={`/solar-potential/${slug}`}
+                  className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:border-amber-400 hover:text-amber-700 transition-colors"
+                >
+                  {related.name}
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Disclaimer */}
       <p className="mt-8 text-xs text-gray-400 text-center px-4 pb-12">
