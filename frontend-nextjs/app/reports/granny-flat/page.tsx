@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { posthog } from '@/components/providers/PostHogProvider';
 import Map, { Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
@@ -79,6 +80,7 @@ const CONFIDENCE_LABEL: Record<string, string> = {
 
 function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const isPaid = searchParams?.get('payment') === 'success';
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState(''); // from Google Places address_components
@@ -163,6 +165,11 @@ function GrannyFlatPageInner() {
   useEffect(() => {
     const jobId = searchParams?.get('jobId');
     const addr = searchParams?.get('address');
+    const payment = searchParams?.get('payment');
+    if (!jobId && payment !== 'success') {
+      router.replace('/canibuildit');
+      return;
+    }
     if (jobId && addr) resumePoll(jobId, addr);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
