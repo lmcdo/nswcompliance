@@ -1,10 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 interface EmsActivation {
@@ -43,6 +41,7 @@ interface FloodResult {
   data_sources: string[];
   warnings?: string[];
   report_token?: string;
+  report_id?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error';
@@ -87,6 +86,36 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
   const [state, setState] = useState<PageState>('idle');
   const [result, setResult] = useState<FloodResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async (reportId: string, addr: string) => {
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/flood-truth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId, address: addr }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -161,29 +190,180 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       {state === 'complete' && result && (
         <>
           <FloodCard result={result} />
-          <DownloadPdfButton
-            label="Download PDF report"
-            apiPath="/api/reports/flood/generate"
-            reportToken={result.report_token}
-            data={{
-              ...result.outputs,
-              address: result.address,
-              run_date: result.run_date,
-              lat: result.lat,
-              lng: result.lng,
-              confidence: result.confidence,
-              data_sources: result.data_sources,
-              warnings: result.warnings ?? [],
-            }}
-          />
-          <PostResultEmailStrip
-            address={result.address}
-            product="flood-truth"
-            copy="Get this flood risk report emailed to you — share with your conveyancer →"
-          />
+          {result.report_id ? (
+            paidReportId ? (
+              <FloodPaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <FloodLockedPreviewCard
+                result={result}
+                onUnlock={() => handleUnlock(result.report_id!, result.address)}
+                unlocking={unlocking}
+                error={unlockError}
+              />
+            )
+          ) : null}
           <ToolCrossSell currentTool="flood-truth" address={result.address} />
         </>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FloodLockedPreviewCard — blur-to-reveal with real data from API response
+// ---------------------------------------------------------------------------
+
+function formatFloodDate(iso?: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' });
+}
+
+function FloodLockedPreviewCard({
+  result,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  result: FloodResult;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const o = result.outputs;
+  const signal = o.flood_signal ?? 'none';
+
+  const alarmHeadline = signal !== 'none'
+    ? `${FLOOD_SIGNAL_META[signal]?.label ?? 'Flood signal'} — lenders and insurers will want the full data`
+    : o.epi_flood_class && o.epi_flood_class !== 'none'
+    ? `${EPI_CLASS_META[o.epi_flood_class]?.label ?? 'Flood overlay'} — verified clean for your records`
+    : 'Flood check complete — verified clean for conveyancing';
+
+  const alarmDetail = signal !== 'none'
+    ? 'Your conveyancer, lender, and insurer will ask for ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. Your numbers are below.'
+    : 'The full report includes ARI depths, BOM gauge data, and source citations — ready to share with your conveyancer.';
+
+  const emsCount = o.ems_activations?.length ?? 0;
+
+  const rows = [
+    {
+      label: 'BOM last major flood',
+      preview: o.bom_last_major_flood_date ? formatFloodDate(o.bom_last_major_flood_date) : '—',
+    },
+    {
+      label: 'Peak river height',
+      preview: o.bom_last_major_flood_peak_m != null ? `${o.bom_last_major_flood_peak_m}m above minor flood` : '—',
+    },
+    {
+      label: 'Historical inundation events',
+      preview: `${emsCount} event${emsCount !== 1 ? 's' : ''} since 2000`,
+    },
+    {
+      label: '40-year water occurrence',
+      preview: o.jrc_water_occurrence_pct != null ? `${o.jrc_water_occurrence_pct}% of satellite observations` : '—',
+    },
+    {
+      label: 'Nearest BOM gauge',
+      preview: o.bom_gauge_name && o.bom_gauge_distance_km != null
+        ? `${o.bom_gauge_name} · ${o.bom_gauge_distance_km}km`
+        : '—',
+    },
+    {
+      label: 'ARI depths — 1-in-20, 1-in-100, 1-in-500 yr',
+      preview: 'Included in full report',
+    },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">{alarmHeadline}</p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">{alarmDetail}</p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Your flood data
+        </p>
+        <div className="space-y-2">
+          {rows.map(({ label, preview }) => (
+            <div key={label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-gray-700">{label}</span>
+              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums text-right">
+                {preview}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock flood report — $49'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FloodPaidDownloadCTA — shown after Stripe payment=success redirect
+// ---------------------------------------------------------------------------
+
+function FloodPaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/flood/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `flood-truth-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }
@@ -217,7 +397,7 @@ function FloodCard({ result }: { result: FloodResult }) {
         </p>
       </div>
 
-      {/* Row 1: Council flood overlay + Copernicus observed events */}
+      {/* Free tier: council overlay badge only — depth, history, gauge hidden behind paywall */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
@@ -229,89 +409,13 @@ function FloodCard({ result }: { result: FloodResult }) {
           </p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Observed flood events</p>
-          {o.ems_flood_detected === null ? (
-            <p className="text-sm text-gray-400">Data not available</p>
-          ) : o.ems_flood_detected && o.ems_activations?.length ? (
-            <ul className="space-y-1.5">
-              {o.ems_activations.map((act) => (
-                <li key={act.activation_id} className="flex items-start gap-2">
-                  <span className="mt-1.5 shrink-0 w-1.5 h-1.5 rounded-full bg-red-500" />
-                  <div>
-                    <p className="text-xs font-medium text-gray-900">{act.event_name}</p>
-                    <p className="text-xs text-gray-400">{act.activation_id} · {act.event_date}</p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-600">No recorded events at this location</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">Copernicus EMS · NSW Spatial Services</p>
+          <p className="text-xs text-gray-400 mb-1">Data sources checked</p>
+          <p className="text-sm font-medium text-gray-900">{sourceCount} independent sources</p>
+          <p className="text-xs text-gray-400 mt-1">EPI overlay · Copernicus EMS · JRC 40yr history · BOM gauge · Sentinel-1 SAR</p>
         </div>
       </div>
 
-      {/* Row 2: JRC water history + BOM gauge */}
-      <div className="grid grid-cols-2 divide-x divide-gray-100">
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">40-year surface water history</p>
-          {o.jrc_water_occurrence_pct != null ? (
-            <>
-              <p className="text-lg font-semibold text-gray-900">
-                {o.jrc_water_occurrence_pct.toFixed(0)}
-                <span className="text-sm font-normal text-gray-500">% of months</span>
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {o.jrc_water_occurrence_pct === 0
-                  ? 'No surface water observed at this site 1984–present'
-                  : o.jrc_water_occurrence_pct < 5
-                  ? 'Rare — episodic inundation only'
-                  : o.jrc_water_occurrence_pct < 15
-                  ? 'Occasional — periodic inundation'
-                  : o.jrc_water_occurrence_pct < 40
-                  ? 'Frequent — seasonal or recurring inundation'
-                  : 'Persistent — regular or permanent surface water'}
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">Not available</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">JRC Global Surface Water · Landsat 1984–{o.jrc_data_year ?? 2021}</p>
-        </div>
-        <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">River gauge proximity</p>
-          {o.bom_gauge_name ? (
-            <>
-              <p className="text-sm font-semibold text-gray-900 leading-snug">{o.bom_gauge_name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{o.bom_gauge_distance_km} km from property</p>
-              {o.bom_last_major_flood_date ? (
-                <p className="text-xs text-red-700 mt-2 font-medium">
-                  Last major flood recorded: {o.bom_last_major_flood_date} — {o.bom_last_major_flood_peak_m}m peak
-                </p>
-              ) : (
-                <p className="text-xs text-gray-400 mt-2">No major flood recorded at this gauge since 2021</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-gray-400">No BOM gauge within 75 km</p>
-          )}
-          <p className="text-xs text-gray-400 mt-2">BOM WaterConnect · SOS2 API</p>
-        </div>
-      </div>
-
-      {/* SAR — shown only when data available */}
-      {o.sar_flood_detected !== null && (
-        <div className="px-6 py-4">
-          <p className="text-xs text-gray-400 mb-1">Satellite SAR flood detection</p>
-          <p className="text-sm font-medium text-gray-900">
-            {o.sar_flood_detected ? 'Flood signal detected' : 'No flood signal detected'}
-            {o.sar_confidence && <span className="font-normal text-gray-500"> — {o.sar_confidence} confidence</span>}
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">Sentinel-1 RTC · Microsoft Planetary Computer{o.sar_analysis_date ? ` · ${o.sar_analysis_date}` : ''}</p>
-        </div>
-      )}
-
-      {/* Warnings */}
+      {/* Warnings — always shown */}
       {(o.s1_gap_warning || result.warnings?.length) && (
         <div className="px-6 py-4 bg-amber-50 space-y-1">
           {o.s1_gap_warning && <p className="text-xs text-amber-800">{o.s1_gap_warning}</p>}

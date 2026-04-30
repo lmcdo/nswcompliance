@@ -224,7 +224,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 function ValidityNote({ runDate }: { runDate: string }) {
   return (
     <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+      {'Data valid as of ' + runDate + '. SEPP Housing 2021 is a state-wide instrument - re-run this report if the SEPP has been amended or before engaging a private certifier.'}
     </Text>
   );
 }
@@ -563,7 +563,7 @@ export function GrannyFlatReportDocument({ data }: { data: GrannyFlatReportData 
         )}
 
         {/* --- Section 5b: 10-Year ROI table (paid, eligible + rent data only) --- */}
-        {pass && data.is_paid !== false && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
+        {pass && data.is_paid === true && data.estimated_weekly_rent_aud != null && data.assumed_build_cost_aud != null && (() => {
           const annualRent = data.estimated_weekly_rent_aud! * 52;
           const buildCost = data.assumed_build_cost_aud!;
           const years = [1, 2, 3, 5, 7, 10];

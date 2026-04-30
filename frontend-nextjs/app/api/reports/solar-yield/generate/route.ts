@@ -1,8 +1,10 @@
 /**
  * POST /api/reports/solar-yield/generate
- * Body: { data: SolarYieldReportData } — full result from /api/satellite/solar-yield
  *
- * Computes financial ROI + solar grade, fetches aerial tile, renders the Solar Yield PDF.
+ * Two call paths:
+ *   A) Stripe webhook: { report_id } — fetches from property_reports, generates paid PDF
+ *   B) Legacy direct:  { data, report_token } — verifies HMAC, generates free PDF
+ *
  * Returns application/pdf stream.
  */
 
@@ -15,8 +17,13 @@ import {
 } from '@/lib/pdf/solar-yield-report';
 import { getLogoBase64 } from '@/lib/pdf/logo';
 import { fetchAerialTileBase64 } from '@/lib/pdf/aerial-tile';
-import { checkRateLimit, createRateLimitHeaders, getClientIdentifier, satelliteRateLimiter } from '@/lib/rate-limit';
 import { verifyReport } from '@/lib/report-token';
+import { createClient } from '@supabase/supabase-js';
+
+const getSupabase = () => createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 30;
@@ -68,34 +75,67 @@ function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
 }
 
 export async function POST(req: NextRequest) {
-  const rl = await checkRateLimit(getClientIdentifier(req), satelliteRateLimiter, 10, 60000);
-  if (!rl.success) {
-    return NextResponse.json({ error: 'Too many requests' }, { status: 429, headers: createRateLimitHeaders(rl) });
-  }
+  // No rate limit here — route is guarded by DB UUID (Path A) and HMAC (Path B).
+  // The expensive Google Solar API call is already rate-limited at /api/satellite/solar-yield.
+  // Applying satelliteRateLimiter here would cause webhook calls (which all come from the
+  // same Vercel internal IP) to compete for the same 10/min bucket and fail above 10 sales/min.
 
-  let body: { data?: unknown; is_paid?: boolean; report_token?: string };
+  let body: { data?: unknown; is_paid?: boolean; report_token?: string; report_id?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  if (!body?.data || typeof body.data !== 'object') {
-    return NextResponse.json({ error: 'data is required' }, { status: 400 });
-  }
+  let raw: Record<string, unknown>;
+  let is_paid: boolean;
 
-  const raw = body.data as Record<string, unknown>;
+  // Path A: webhook call with report_id — fetch from DB, always paid
+  if (body.report_id) {
+    const { data: row, error } = await getSupabase()
+      .from('property_reports')
+      .select('address, lat, lng, run_date, outputs, confidence, data_sources')
+      .eq('id', body.report_id.trim())
+      .single();
 
-  if (!raw.address) {
-    return NextResponse.json({ error: 'data.address is required' }, { status: 400 });
+    if (error || !row) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    const outputs = (row.outputs as Record<string, unknown>) ?? {};
+    raw = {
+      address: row.address,
+      lat: row.lat,
+      lng: row.lng,
+      run_date: row.run_date,
+      confidence: row.confidence,
+      data_sources: row.data_sources,
+      ...outputs,
+    };
+    is_paid = true;
+
+  // Path B: direct call with data + HMAC token — free version
+  } else {
+    if (!body?.data || typeof body.data !== 'object') {
+      return NextResponse.json({ error: 'report_id or data is required' }, { status: 400 });
+    }
+    raw = body.data as Record<string, unknown>;
+
+    if (!raw.address) {
+      return NextResponse.json({ error: 'data.address is required' }, { status: 400 });
+    }
+
+    const lat = typeof raw.lat === 'number' ? raw.lat : null;
+    const lng = typeof raw.lng === 'number' ? raw.lng : null;
+
+    if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
+      return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
+    }
+    is_paid = false;
   }
 
   const lat = typeof raw.lat === 'number' ? raw.lat : null;
   const lng = typeof raw.lng === 'number' ? raw.lng : null;
-
-  if (lat === null || lng === null || !verifyReport(lat, lng, String(raw.address), String(raw.run_date ?? ''), body.report_token)) {
-    return NextResponse.json({ error: 'Invalid or expired report token' }, { status: 403 });
-  }
 
   const [tile_b64, logo_b64] = await Promise.all([
     (lat && lng) ? fetchAerialTileBase64(lat, lng) : Promise.resolve(null),
@@ -125,8 +165,6 @@ export async function POST(req: NextRequest) {
   const monthly_kwh = kwh > 0
     ? MONTHLY_IRRADIANCE_SHARE.map((share) => Math.round(kwh * share))
     : null;
-
-  const is_paid = body.is_paid !== false; // default true — gated by Stripe in P2-B
 
   const today = new Date().toISOString().split('T')[0];
 

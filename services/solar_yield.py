@@ -532,8 +532,8 @@ def run_solar_yield(request: SolarYieldRequest):
             confidence=confidence,
         )
     except Exception as e:
-        # Non-fatal — analysis succeeded, DB write failed. Log and continue.
-        logger.error(f"Solar yield DB write failed (non-fatal): {e}")
+        logger.error(f"Solar yield DB write failed: {e}")
+        raise HTTPException(status_code=503, detail="Failed to save report — please retry")
 
     logger.info(
         f"Solar yield complete: {request.report_id} — "

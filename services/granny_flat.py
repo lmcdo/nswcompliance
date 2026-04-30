@@ -1000,7 +1000,7 @@ def confirm_and_calculate(req: GrannyFlatConfirmRequest):
         conn.commit()
     except Exception as e:
         logger.error(f"DB write failed: {e}")
-        warnings.append("Report could not be saved to database.")
+        raise HTTPException(status_code=503, detail="Failed to save report — please retry")
     finally:
         try:
             conn.close()

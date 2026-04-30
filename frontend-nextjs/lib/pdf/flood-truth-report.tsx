@@ -165,7 +165,7 @@ const s = StyleSheet.create({
 function ValidityNote({ runDate }: { runDate: string }) {
   return (
     <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+      {'Data valid as of ' + runDate + '. Flood data is updated periodically — re-run this report if more than 12 months have passed or before exchange of contracts.'}
     </Text>
   );
 }
@@ -322,10 +322,10 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             {data.bom_gauge_name ? (
               <>
                 <Text style={[s.cardValue, { fontSize: 10 }]}>{data.bom_gauge_name}</Text>
-                <Text style={s.cardSub}>{data.bom_gauge_distance_km} km from property</Text>
+                <Text style={s.cardSub}>{data.bom_gauge_distance_km != null ? data.bom_gauge_distance_km.toFixed(1) : '?'} km from property</Text>
                 {data.bom_last_major_flood_date ? (
                   <Text style={[s.cardSub, { color: RED, fontFamily: 'Helvetica-Bold' }]}>
-                    Last major flood: {data.bom_last_major_flood_date} — {data.bom_last_major_flood_peak_m}m peak
+                    Last major flood: {data.bom_last_major_flood_date} — {data.bom_last_major_flood_peak_m != null ? data.bom_last_major_flood_peak_m.toFixed(2) : '?'}m peak
                   </Text>
                 ) : (
                   <Text style={s.cardSub}>No major flood recorded at this gauge since 2021</Text>
@@ -341,7 +341,7 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         </View>
 
         {/* BoM flood event history table — PAID (up to 3 events) */}
-        {data.is_paid !== false && data.bom_flood_history && data.bom_flood_history.length > 0 && (
+        {data.is_paid === true && data.bom_flood_history && data.bom_flood_history.length > 0 && (
           <View style={{ marginBottom: 12 }}>
             <Text style={s.sectionTitle}>BOM flood event history</Text>
             {/* Header */}

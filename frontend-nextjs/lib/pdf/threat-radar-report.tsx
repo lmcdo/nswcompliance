@@ -194,7 +194,7 @@ function LogoRow({ logo_b64 }: { logo_b64?: string | null }) {
 function ValidityNote({ runDate }: { runDate: string }) {
   return (
     <Text style={{ fontSize: 7.5, color: GRAY_500, marginTop: 6, fontStyle: 'italic' }}>
-      {'Data valid as of ' + runDate + '. Planning controls are amended regularly - re-run this report before exchange of contracts.'}
+      {'DA data sourced from NSW ePlanning Portal and reflects applications as at ' + runDate + '. Re-run before making an offer to capture recent lodgements.'}
     </Text>
   );
 }
@@ -258,7 +258,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         <View style={s.divider} />
 
         {/* Key risk callout — paid, only when applications exist */}
-        {data.is_paid !== false && apps.length > 0 && (() => {
+        {data.is_paid === true && apps.length > 0 && (() => {
           const keyApp = [...apps].sort((a, b) => {
             const dwA = Number(a.NumberOfNewDwellings ?? 0);
             const dwB = Number(b.NumberOfNewDwellings ?? 0);
@@ -303,7 +303,7 @@ export function ThreatRadarReportDocument({ data }: { data: ThreatRadarReportDat
         })()}
 
         {/* ---- PAID analytical enhancements ---- */}
-        {data.is_paid !== false && apps.length > 0 && (() => {
+        {data.is_paid === true && apps.length > 0 && (() => {
           // 3a. Neighbourhood pressure score
           const score = calcPressureScore(apps);
           const label = pressureLabel(score);

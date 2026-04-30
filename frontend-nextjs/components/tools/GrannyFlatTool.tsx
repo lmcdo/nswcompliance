@@ -36,16 +36,6 @@ interface EligibilityResult {
   dcp_available: boolean;
   sepp_eligible: boolean;
   sepp_ineligible_reason: string | null;
-  dcp_setbacks?: Array<{
-    control_type: string;
-    value_min: number | null;
-    value_max: number | null;
-    unit: string | null;
-    condition: string | null;
-    applicability: string;
-    source_text: string | null;
-    section_ref: string | null;
-  }>;
   confirmation_required: boolean;
   checks?: {
     lot_area: CheckResult;
@@ -57,54 +47,7 @@ interface EligibilityResult {
   };
 }
 
-interface DetectedStructure {
-  index: number;
-  area_m2: number | null;
-  bbox_pixel: number[];
-  matched_prompt: string;
-  is_main_dwelling: boolean;
-}
-
-interface FullDetectResult {
-  detect_id: string;
-  address: string;
-  lat: number;
-  lng: number;
-  prop_id: string;
-  lot_area_m2: number | null;
-  sepp_eligible: boolean;
-  sepp_ineligible_reason: string | null;
-  detected_structures: DetectedStructure[];
-  samgeo_structure_count: number;
-  samgeo_validated: boolean;
-  confirmation_required: boolean;
-  tile_licence: string;
-  tile_b64?: string;
-  tile_width?: number;
-  tile_height?: number;
-}
-
-interface ConfirmResult {
-  report_id: string;
-  address: string;
-  granny_flat_buildable: boolean;
-  max_floor_area_m2: number;
-  estimated_weekly_rent_aud: number | null;
-  rental_yield_annual_pct: number | null;
-  assumed_build_cost_aud: number | null;
-  confidence: string;
-  confidence_reason: string;
-  data_sources: string[];
-  warnings: string[];
-}
-
-type PageState = 'idle' | 'loading' | 'result' | 'detecting' | 'confirming' | 'complete' | 'error';
-
-const CONFIDENCE_LABEL: Record<string, string> = {
-  high: 'High confidence',
-  medium: 'Medium confidence',
-  low: 'Low confidence (pre-validation)',
-};
+type PageState = 'idle' | 'loading' | 'result' | 'error';
 
 function formatLotArea(m2: number | null): string {
   if (m2 == null) return 'Unknown lot area';
@@ -141,74 +84,6 @@ function deriveIneligibleReason(reason: string | null, lotArea: number | null): 
 }
 
 // ---------------------------------------------------------------------------
-// StructureCanvas — aerial tile with SAM detection bboxes
-// ---------------------------------------------------------------------------
-
-function StructureCanvas({
-  tile_b64,
-  tile_width,
-  tile_height,
-  structures,
-  licence,
-}: {
-  tile_b64: string;
-  tile_width: number;
-  tile_height: number;
-  structures: DetectedStructure[];
-  licence: string;
-}) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [imgError, setImgError] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || imgError) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const img = new window.Image();
-    img.onload = () => {
-      const cw = canvas.width;
-      const ch = canvas.height;
-      if (cw <= 0 || ch <= 0) return;
-      ctx.clearRect(0, 0, cw, ch);
-      ctx.drawImage(img, 0, 0, cw, ch);
-
-      const scaleX = tile_width > 0 ? cw / tile_width : 1;
-      const scaleY = tile_height > 0 ? ch / tile_height : 1;
-
-      structures.forEach((s) => {
-        const [x0, y0, x1, y1] = s.bbox_pixel;
-        const rx = Math.max(0, Math.min(x0 * scaleX, cw - 1));
-        const ry = Math.max(0, Math.min(y0 * scaleY, ch - 1));
-        const rw = Math.max(1, Math.min((x1 - x0) * scaleX, cw - rx));
-        const rh = Math.max(1, Math.min((y1 - y0) * scaleY, ch - ry));
-        ctx.strokeStyle = s.is_main_dwelling ? '#ef4444' : '#facc15';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(rx, ry, rw, rh);
-      });
-    };
-    img.onerror = () => setImgError(true);
-    img.src = `data:image/png;base64,${tile_b64}`;
-  }, [tile_b64, tile_width, tile_height, structures, imgError]);
-
-  if (imgError) return null;
-
-  return (
-    <div className="mb-4">
-      <canvas
-        ref={canvasRef}
-        width={512}
-        height={512}
-        className="w-full rounded-lg border border-gray-200"
-        style={{ aspectRatio: '1 / 1' }}
-      />
-      <p className="text-xs text-gray-400 mt-1">{licence}</p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // SEPP Housing 2021 — secondary dwelling CDC design standards
 // Source: SEPP Housing 2021 Part 4 + Schedule 3 Subdivision 4
 // These are state-wide minimums; council DCP may impose stricter controls.
@@ -227,47 +102,55 @@ const SEPP_LEGISLATION_URL =
   'https://legislation.nsw.gov.au/view/html/inforce/current/epi-2021-0649';
 
 // ---------------------------------------------------------------------------
-// DCP setback control formatting helpers
+// LockedPreviewCard — gates paid analysis with blur-to-reveal pattern
 // ---------------------------------------------------------------------------
 
-function formatControlLabel(controlType: string): string {
-  const labels: Record<string, string> = {
-    rear_setback: 'Rear setback',
-    side_setback: 'Side setback',
-    front_setback: 'Front setback',
-    separation_from_dwelling: 'From principal dwelling',
-    height_max: 'Max. height',
-    height_storeys_max: 'Max. storeys',
-    floor_area_max: 'Max. floor area',
-    site_coverage_max: 'Max. site coverage',
-    landscaping_min: 'Min. landscaping',
-    car_parking: 'Car parking',
-    private_open_space: 'Private open space',
-  };
-  return labels[controlType] ?? controlType.replace(/_/g, ' ');
-}
-
-function formatControlValue(ctrl: {
-  value_min: number | null;
-  value_max: number | null;
-  unit: string | null;
-  applicability: string;
-}): string {
-  const u = ctrl.unit ?? '';
-  const unitSuffix = u === 'm2' ? ' m²' : u === '%' ? '%' : u ? ` ${u}` : '';
-  if (ctrl.value_min !== null && ctrl.value_max !== null) {
-    return `${ctrl.value_min}${unitSuffix} – ${ctrl.value_max}${unitSuffix}`;
-  }
-  if (ctrl.value_min !== null) return `${ctrl.value_min}${unitSuffix} min.`;
-  if (ctrl.value_max !== null) return `${ctrl.value_max}${unitSuffix} max.`;
-  return 'Check with council';
-}
-
-function formatSectionRef(ref: string): string {
-  // Trim to last segment after __ for display
-  const parts = ref.split('__');
-  const last = parts[parts.length - 1] ?? ref;
-  return last.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+function LockedPreviewCard({
+  lga_name,
+  onUnlock,
+  unlocking,
+}: {
+  lga_name: string | null;
+  onUnlock: () => void;
+  unlocking: boolean;
+}) {
+  const rows = [
+    { label: 'Aerial structure analysis', preview: '1 structure detected' },
+    { label: 'Your rental income estimate', preview: '$320/wk' },
+    { label: 'Yield on build cost', preview: '8.7% p.a.' },
+    { label: `DCP setbacks — ${lga_name ?? 'your council'}`, preview: 'front 6m · side 0.9m · rear 3m' },
+    { label: 'Break-even projection', preview: 'Year 7' },
+  ];
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+        <p className="text-sm font-semibold text-gray-900">Full property analysis</p>
+        <p className="text-xs text-gray-400 mt-0.5">AI satellite scan · personalised financials · council planning controls</p>
+      </div>
+      <div className="px-5 py-4 space-y-3">
+        {rows.map(({ label, preview }) => (
+          <div key={label} className="flex items-center justify-between gap-4">
+            <span className="text-sm text-gray-500 shrink-0">{label}</span>
+            <span className="text-sm font-medium text-gray-200 blur-sm select-none pointer-events-none" aria-hidden="true">
+              {preview}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="px-5 pb-5">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-60 transition-colors"
+        >
+          {unlocking ? 'Starting analysis…' : 'Unlock full analysis — $49'}
+        </button>
+        <p className="text-xs text-gray-400 text-center mt-2">
+          AI satellite scan · 1–3 min · results shown here + emailed
+        </p>
+      </div>
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -276,16 +159,13 @@ function formatSectionRef(ref: string): string {
 
 export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: string; lgaName?: string | null; embedRef?: string }) {
   const [address, setAddress] = useState('');
-  const [postcode, setPostcode] = useState('');
   const [pageState, setPageState] = useState<PageState>('idle');
   const [eligibility, setEligibility] = useState<EligibilityResult | null>(null);
-  const [fullDetect, setFullDetect] = useState<FullDetectResult | null>(null);
-  const [confirmedCount, setConfirmedCount] = useState(1);
-  const [finalResult, setFinalResult] = useState<ConfirmResult | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [email, setEmail] = useState('');
   const [emailSubmitted, setEmailSubmitted] = useState(false);
-  // Yield calculator
+  // Yield calculator — ineligible "if this lot qualified" teaser only
   const [calcBuildCost, setCalcBuildCost] = useState(2500); // $/m²
   const [calcWeeklyRent, setCalcWeeklyRent] = useState(450); // $/wk
   // Share
@@ -319,14 +199,13 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     });
   };
 
-  // Step 1 — quick eligibility check (extracted so auto-submit can call it directly)
+  // Quick eligibility check (extracted so auto-submit can call it directly)
   const runCheck = async (addr: string) => {
     if (!addr.trim()) return;
     setPageState('loading');
     setEligibility(null);
-    setFullDetect(null);
-    setFinalResult(null);
     setErrorMsg('');
+    setUnlocking(false);
 
     try {
       const res = await fetch('/api/canibuildit/check', {
@@ -352,10 +231,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         lga_slug: lgaSlug ?? null,
         result: result.sepp_eligible ? 'eligible' : 'ineligible',
       });
-
-      if (result.sepp_eligible) {
-        runDetect(addr);
-      }
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
       setPageState('error');
@@ -367,76 +242,42 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
     runCheck(address);
   };
 
-  // Step 2 — full ML detect (Railway via satellite API)
-  const runDetect = async (addr: string) => {
-    setPageState('detecting');
-    try {
-      const res = await fetch('/api/satellite/granny-flat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address: addr, action: 'detect' }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Detection failed');
-
-      const jobId: string = json.jobId;
-
-      // Poll until detect result written to DB
-      const poll = async (): Promise<void> => {
-        const pollRes = await fetch(`/api/satellite/granny-flat?jobId=${jobId}`);
-        const pollJson = await pollRes.json();
-
-        if (pollJson.status === 'detected') {
-          const detectData = pollJson.data as FullDetectResult;
-          setFullDetect(detectData);
-          setConfirmedCount(
-            detectData.samgeo_validated && detectData.detected_structures?.length > 0
-              ? detectData.detected_structures.length
-              : 1
-          );
-          setPageState('confirming');
-          return;
-        }
-
-        await new Promise((r) => setTimeout(r, 2000));
-        return poll();
-      };
-
-      await poll();
-    } catch (err: unknown) {
-      // Detect failed — fall back to showing just the eligibility result
-      setPageState('result');
-    }
-  };
-
-  // Step 3 — confirm structure count + calculate yield
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullDetect) return;
-
-    setPageState('detecting');
+  // Unlock — fire detect job in background, then redirect to Stripe checkout
+  const handleUnlock = async () => {
+    if (!eligibility || unlocking) return;
+    setUnlocking(true);
     setErrorMsg('');
-
     try {
-      const res = await fetch('/api/satellite/granny-flat', {
+      const detectRes = await fetch('/api/satellite/granny-flat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: fullDetect.address,
-          action: 'confirm',
-          detect_id: fullDetect.detect_id,
-          confirmed_structure_count: confirmedCount,
-          samgeo_structure_count: fullDetect.samgeo_structure_count,
-          postcode: postcode.trim() || null,
+          address: eligibility.address ?? address,
+          action: 'detect',
+          ...(email.trim() ? { notification_email: email.trim() } : {}),
         }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Calculation failed');
-      setFinalResult(json);
-      setPageState('complete');
+      const detectJson = await detectRes.json();
+      if (!detectRes.ok) throw new Error(detectJson.error ?? 'Could not start analysis');
+      const jobId: string = detectJson.jobId;
+
+      const checkoutRes = await fetch('/api/stripe/checkout/granny-flat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          job_id: jobId,
+          address: eligibility.address ?? address,
+          ...(email.trim() ? { email: email.trim() } : {}),
+        }),
+      });
+      const checkoutJson = await checkoutRes.json();
+      if (!checkoutRes.ok || !checkoutJson.checkout_url) {
+        throw new Error(checkoutJson.error ?? 'Checkout failed');
+      }
+      window.location.href = checkoutJson.checkout_url;
     } catch (err: unknown) {
-      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong');
-      setPageState('error');
+      setErrorMsg(err instanceof Error ? err.message : 'Something went wrong — please try again.');
+      setUnlocking(false);
     }
   };
 
@@ -481,16 +322,14 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
 
   const handleReset = () => {
     setAddress('');
-    setPostcode('');
     setPageState('idle');
     setEligibility(null);
-    setFullDetect(null);
-    setFinalResult(null);
     setErrorMsg('');
     setEmail('');
     setEmailSubmitted(false);
     setLgaEmail('');
     setLgaInterestSubmitted(false);
+    setUnlocking(false);
     autoSubmittedRef.current = false;
     if (typeof window !== 'undefined') {
       const url = new URL(window.location.href);
@@ -553,20 +392,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         </div>
       )}
 
-      {/* Loading — ML detect */}
-      {pageState === 'detecting' && (
-        <div className="mt-10 text-center">
-          <div className="inline-flex items-center gap-3 text-gray-500">
-            <svg className="animate-spin h-5 w-5 text-teal-600" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-            </svg>
-            <span className="text-base">Fetching aerial imagery and detecting structures…</span>
-          </div>
-          <p className="mt-3 text-sm text-gray-400">Usually takes 15–30 seconds</p>
-        </div>
-      )}
-
       {/* Error */}
       {pageState === 'error' && (
         <div className="mt-10">
@@ -579,182 +404,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
         </div>
       )}
 
-      {/* Step 2 — Confirm panel (structure count) */}
-      {pageState === 'confirming' && fullDetect && (
-        <div className="mt-6 space-y-5">
-          {/* Aerial tile with structure bboxes */}
-          {fullDetect.tile_b64 && fullDetect.tile_width != null && fullDetect.tile_height != null ? (
-            <StructureCanvas
-              tile_b64={fullDetect.tile_b64}
-              tile_width={fullDetect.tile_width}
-              tile_height={fullDetect.tile_height}
-              structures={fullDetect.detected_structures}
-              licence={fullDetect.tile_licence}
-            />
-          ) : eligibility?.lat != null && eligibility?.lng != null ? (
-            <div className="rounded-xl overflow-hidden border border-gray-200">
-              <AerialTile lat={eligibility.lat} lng={eligibility.lng} zoom={19} height={220} lotPolygon={eligibility.lot_polygon ?? undefined} />
-            </div>
-          ) : null}
-
-          <div className="rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
-            <div className="p-6">
-              <h2 className="font-semibold text-gray-900">{fullDetect.address}</h2>
-              {fullDetect.lot_area_m2 != null && (
-                <p className="text-sm text-gray-500 mt-0.5">
-                  Lot area: {fullDetect.lot_area_m2.toLocaleString('en-AU', { maximumFractionDigits: 0 })} m²
-                </p>
-              )}
-            </div>
-
-            <div className="p-6">
-              {!fullDetect.samgeo_validated ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 mb-4">
-                  Aerial detection is in pre-validation mode. Verify the structure count manually on SIX Maps before proceeding.
-                </div>
-              ) : fullDetect.detected_structures.length > 0 ? (
-                <div className="mb-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">
-                    {fullDetect.detected_structures.length} structure{fullDetect.detected_structures.length !== 1 ? 's' : ''} detected on lot
-                  </p>
-                  <div className="space-y-1">
-                    {fullDetect.detected_structures.map((s) => (
-                      <div key={s.index} className="flex items-center gap-2 text-xs text-gray-600">
-                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
-                        {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
-                        {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                        <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 mb-4">No structures detected — enter count manually.</p>
-              )}
-
-              <form onSubmit={handleConfirm} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirmed number of structures on lot
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={confirmedCount}
-                    onChange={(e) => setConfirmedCount(parseInt(e.target.value, 10) || 1)}
-                    className="w-24 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">
-                    Count all roofed structures: main dwelling, garage, shed, any secondary dwelling.
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Postcode <span className="text-gray-400 font-normal">(for rent estimate)</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={postcode}
-                    onChange={(e) => setPostcode(e.target.value)}
-                    placeholder="e.g. 2040"
-                    maxLength={4}
-                    className="w-32 px-3 py-2 rounded-lg border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 transition-colors"
-                >
-                  Calculate yield →
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <button onClick={handleReset} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            Check another address
-          </button>
-        </div>
-      )}
-
-      {/* Step 3 — Full result */}
-      {pageState === 'complete' && finalResult && (
-        <div className="mt-6 space-y-5">
-          {eligibility?.lat != null && eligibility?.lng != null && (
-            <div className="rounded-xl overflow-hidden border border-gray-200">
-              <AerialTile lat={eligibility.lat} lng={eligibility.lng} zoom={19} height={220} lotPolygon={eligibility.lot_polygon ?? undefined} />
-            </div>
-          )}
-
-          <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="font-semibold text-gray-900">{finalResult.address}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">
-                    {CONFIDENCE_LABEL[finalResult.confidence] ?? finalResult.confidence}
-                  </p>
-                  {finalResult.confidence_reason && (
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm">{finalResult.confidence_reason}</p>
-                  )}
-                </div>
-                <span className={`shrink-0 text-xs font-medium px-2 py-1 rounded-full ${
-                  finalResult.granny_flat_buildable ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  {finalResult.granny_flat_buildable ? 'Eligible under SEPP' : 'Not eligible'}
-                </span>
-              </div>
-            </div>
-
-            {finalResult.granny_flat_buildable && (
-              <div className="grid grid-cols-3 divide-x divide-gray-100">
-                <div className="p-5">
-                  <p className="text-xs text-gray-400 mb-1">Max floor area</p>
-                  <p className="text-lg font-semibold text-gray-900">{finalResult.max_floor_area_m2} m²</p>
-                </div>
-                <div className="p-5">
-                  <p className="text-xs text-gray-400 mb-1">Est. weekly rent</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {finalResult.estimated_weekly_rent_aud
-                      ? `$${finalResult.estimated_weekly_rent_aud.toLocaleString('en-AU', { maximumFractionDigits: 0 })}/wk`
-                      : 'N/A'}
-                  </p>
-                </div>
-                <div className="p-5">
-                  <p className="text-xs text-gray-400 mb-1">Yield on build cost</p>
-                  <p className="text-lg font-semibold text-gray-900">
-                    {finalResult.rental_yield_annual_pct ? `${finalResult.rental_yield_annual_pct}%` : 'N/A'}
-                  </p>
-                  {finalResult.assumed_build_cost_aud && (
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      On ${finalResult.assumed_build_cost_aud.toLocaleString('en-AU')} build cost
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {finalResult.warnings.length > 0 && (
-              <div className="px-6 py-4 bg-amber-50 space-y-1">
-                {finalResult.warnings.map((w, i) => (
-                  <p key={i} className="text-xs text-amber-800">{w}</p>
-                ))}
-              </div>
-            )}
-
-            <div className="px-6 py-4">
-              <p className="text-xs text-gray-400">Data: {finalResult.data_sources.join(' · ')}</p>
-            </div>
-          </div>
-
-          <button onClick={handleReset} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            Check another address
-          </button>
-        </div>
-      )}
-
-      {/* Quick eligibility result (shown while detect is loading or if ineligible) */}
+      {/* Eligibility result */}
       {pageState === 'result' && eligibility && (
         <div className="mt-6 space-y-5">
           {/* Aerial tile */}
@@ -881,41 +531,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </div>
           )}
 
-          {/* DCP setback controls — council-specific, shown when data exists */}
-          {eligibility.dcp_setbacks && eligibility.dcp_setbacks.length > 0 && (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
-              <div className="flex items-baseline justify-between mb-3">
-                <h3 className="text-sm font-semibold text-gray-700">
-                  {eligibility.lga_name ?? 'Council'} DCP controls
-                </h3>
-                <span className="text-xs text-amber-700 font-medium">Council-specific</span>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
-                {eligibility.dcp_setbacks.map((ctrl, i) => (
-                  <div key={i}>
-                    <p className="text-xs text-gray-400">{formatControlLabel(ctrl.control_type)}</p>
-                    <p className="text-sm font-medium text-gray-900">
-                      {formatControlValue(ctrl)}
-                    </p>
-                    {ctrl.condition && (
-                      <p className="text-xs text-amber-700">{ctrl.condition}</p>
-                    )}
-                    {ctrl.section_ref && (
-                      <p className="text-xs text-gray-400 truncate" title={ctrl.section_ref}>
-                        {formatSectionRef(ctrl.section_ref)}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-              {eligibility.dcp_setbacks.some(c => c.applicability === 'universal_residential') && (
-                <p className="text-xs text-gray-500 mt-3 border-t border-amber-200 pt-2">
-                  * Universal residential controls — apply to secondary dwellings in this LGA.
-                </p>
-              )}
-            </div>
-          )}
-
           {/* LEP planning controls — HOB, FSR, min lot size */}
           {(eligibility.height_of_buildings || eligibility.fsr || eligibility.min_lot_size_m2) && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -943,84 +558,82 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </div>
           )}
 
-          {/* Interactive yield calculator */}
-          {(() => {
-            const totalCost = calcBuildCost * 60;
-            const annualRent = calcWeeklyRent * 52;
-            const grossYield = (annualRent / totalCost * 100).toFixed(1);
-            const payback = (totalCost / annualRent).toFixed(1);
-            return (
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
-                  {eligibility.sepp_eligible ? 'Estimated return' : 'If this lot qualified'}
-                </p>
-                <div className="grid grid-cols-2 gap-5 mb-5">
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-2">Build cost per m²</label>
-                    <input
-                      type="range" min={1800} max={4500} step={100}
-                      value={calcBuildCost}
-                      onChange={(e) => setCalcBuildCost(Number(e.target.value))}
-                      className="w-full accent-teal-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">${calcBuildCost.toLocaleString()}/m²</span>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-2">Weekly rent</label>
-                    <input
-                      type="range" min={250} max={750} step={25}
-                      value={calcWeeklyRent}
-                      onChange={(e) => setCalcWeeklyRent(Number(e.target.value))}
-                      className="w-full accent-teal-600"
-                    />
-                    <span className="text-sm font-medium text-gray-700">${calcWeeklyRent}/wk</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-3 bg-gray-50 rounded-lg p-4">
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Build cost</p>
-                    <p className="text-base font-semibold text-gray-900">${(totalCost / 1000).toFixed(0)}k</p>
-                    <p className="text-xs text-gray-400">60 m² CDC max</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Annual rent</p>
-                    <p className="text-base font-semibold text-gray-900">${annualRent.toLocaleString()}</p>
-                    <p className="text-xs text-gray-400">gross</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Gross yield</p>
-                    <p className="text-base font-semibold text-teal-700">{grossYield}%</p>
-                    <p className="text-xs text-gray-400">p.a.</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">Payback</p>
-                    <p className="text-base font-semibold text-gray-900">{payback} yrs</p>
-                    <p className="text-xs text-gray-400">undiscounted</p>
-                  </div>
-                </div>
-                <p className="text-xs text-gray-400 mt-3">Illustrative only. Excludes DA/CDC fees, finance, vacancy, maintenance. Verify rent against NSW Fair Trading bond data.</p>
-              </div>
-            );
-          })()}
-
-          {/* Share this result */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleShare}
-              className="text-xs text-gray-400 hover:text-teal-600 transition-colors px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200"
-            >
-              {copied ? 'Link copied ✓' : 'Copy shareable link'}
-            </button>
-          </div>
-
-          {/* If eligible — note that full analysis is running / lead capture if ineligible */}
+          {/* Eligible: LockedPreviewCard | Ineligible: yield teaser + "what to change" */}
           {eligibility.sepp_eligible ? (
-            <div className="rounded-xl border border-teal-100 bg-teal-50 p-5 text-center">
-              <p className="text-sm text-teal-700 font-medium">Running full structure analysis…</p>
-              <p className="text-xs text-teal-600 mt-1">Aerial imagery + SAM detection — this takes 15–30 seconds</p>
-            </div>
+            <>
+              {errorMsg && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-5 py-4">
+                  <p className="text-sm text-red-700">{errorMsg}</p>
+                </div>
+              )}
+              <LockedPreviewCard
+                lga_name={eligibility.lga_name}
+                onUnlock={handleUnlock}
+                unlocking={unlocking}
+              />
+            </>
           ) : (
             <>
+              {/* Interactive yield calculator — ineligible teaser ("if this lot qualified") */}
+              {(() => {
+                const totalCost = calcBuildCost * 60;
+                const annualRent = calcWeeklyRent * 52;
+                const grossYield = (annualRent / totalCost * 100).toFixed(1);
+                const payback = (totalCost / annualRent).toFixed(1);
+                return (
+                  <div className="rounded-xl border border-gray-200 bg-white p-5">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">
+                      If this lot qualified
+                    </p>
+                    <div className="grid grid-cols-2 gap-5 mb-5">
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Build cost per m²</label>
+                        <input
+                          type="range" min={1800} max={4500} step={100}
+                          value={calcBuildCost}
+                          onChange={(e) => setCalcBuildCost(Number(e.target.value))}
+                          className="w-full accent-teal-600"
+                        />
+                        <span className="text-sm font-medium text-gray-700">${calcBuildCost.toLocaleString()}/m²</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-2">Weekly rent</label>
+                        <input
+                          type="range" min={250} max={750} step={25}
+                          value={calcWeeklyRent}
+                          onChange={(e) => setCalcWeeklyRent(Number(e.target.value))}
+                          className="w-full accent-teal-600"
+                        />
+                        <span className="text-sm font-medium text-gray-700">${calcWeeklyRent}/wk</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-4 gap-3 bg-gray-50 rounded-lg p-4">
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Build cost</p>
+                        <p className="text-base font-semibold text-gray-900">${(totalCost / 1000).toFixed(0)}k</p>
+                        <p className="text-xs text-gray-400">60 m² CDC max</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Annual rent</p>
+                        <p className="text-base font-semibold text-gray-900">${annualRent.toLocaleString()}</p>
+                        <p className="text-xs text-gray-400">gross</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Gross yield</p>
+                        <p className="text-base font-semibold text-teal-700">{grossYield}%</p>
+                        <p className="text-xs text-gray-400">p.a.</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 mb-0.5">Payback</p>
+                        <p className="text-base font-semibold text-gray-900">{payback} yrs</p>
+                        <p className="text-xs text-gray-400">undiscounted</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-3">Illustrative only. Excludes DA/CDC fees, finance, vacancy, maintenance. Verify rent against NSW Fair Trading bond data.</p>
+                  </div>
+                );
+              })()}
+
               <div className="rounded-xl border border-gray-200 bg-white p-6">
                 <h3 className="font-semibold text-gray-900 mb-1">What could change this?</h3>
                 <p className="text-sm text-gray-500 mb-4">
@@ -1071,6 +684,16 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </>
           )}
 
+          {/* Share this result */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleShare}
+              className="text-xs text-gray-400 hover:text-teal-600 transition-colors px-3 py-1.5 rounded-lg border border-gray-200 hover:border-teal-200"
+            >
+              {copied ? 'Link copied ✓' : 'Copy shareable link'}
+            </button>
+          </div>
+
           {/* LGA DCP interest — shown when this council's DCP is not yet in the database */}
           {!eligibility.dcp_available && eligibility.lga_name && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -1108,7 +731,7 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
           <div className="text-xs text-gray-400 px-2 space-y-1.5">
             <p className="font-medium text-gray-500">Legislative basis</p>
             <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 cl 53(2)(a): detached secondary dwelling minimum site area 450 m² [complying development]; cl 52 [development consent].</p>
-            <p><span className="text-gray-500">Zone</span> — SEPP (Housing) 2021 cl 50, read with definition of "residential zone" in cl 49: R1, R2, R3, R4, R5/RU5 where dwelling houses are permissible under the applicable LEP.</p>
+            <p><span className="text-gray-500">Zone</span> — SEPP (Housing) 2021 cl 50, read with definition of &ldquo;residential zone&rdquo; in cl 49: R1, R2, R3, R4, R5/RU5 where dwelling houses are permissible under the applicable LEP.</p>
             <p><span className="text-gray-500">Heritage</span> — CDC pathway: SEPP (Housing) 2021 cl 54(3)(c) excludes heritage items and draft heritage items; DA pathway: {eligibility.epi_name ?? 'applicable LEP'} cl 5.10 (Standard Instrument). Heritage Map sourced from NSW Planning Portal layerintersect.</p>
             <p><span className="text-gray-500">Flood control lot</span> — SEPP (Housing) 2021 cl 58: complying development must not be carried out on flood storage areas, floodways, flow paths, high hazard areas, or high risk areas as certified by council or hydraulic engineer. Spatial data: 12 LGAs — shown as unknown outside coverage.</p>
             <p><span className="text-gray-500">Biodiversity</span> — SEPP (Exempt and Complying Development Codes) 2008 cl 1.19(1) excludes land mapped on the NSW Biodiversity Values Map (Biodiversity Conservation Act 2016). Spatial data: NSW Biodiversity Values Map (DCCEEW).</p>

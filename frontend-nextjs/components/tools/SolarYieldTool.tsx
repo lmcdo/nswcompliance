@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
-import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { ToolCrossSell } from '@/components/reports/ToolCrossSell';
-import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
 import { posthog } from '@/components/providers/PostHogProvider';
 
 const AerialTile = dynamic(
@@ -43,27 +41,16 @@ interface ReportData {
   confidence: string;
   data_sources: string[];
   report_token?: string;
+  report_id?: string;
 }
 
 type PageState = 'idle' | 'running' | 'complete' | 'error' | 'ineligible';
 
-const RETAIL_RATE        = 0.32;
-const FEED_IN_RATE       = 0.06;
-const SELF_CONSUME_RATIO = 0.30;
-const COST_PER_WATT      = 1.00;
 const PANEL_WATTS        = 400;
-const INVERTER_REPLACE   = 2000;
-
-function calcROI(kwh: number, maxPanels: number) {
-  const systemKw  = (maxPanels * PANEL_WATTS) / 1000;
-  const selfKwh   = kwh * SELF_CONSUME_RATIO;
-  const exportKwh = kwh * (1 - SELF_CONSUME_RATIO);
-  const annualSaving = selfKwh * RETAIL_RATE + exportKwh * FEED_IN_RATE;
-  const systemCost   = systemKw * 1000 * COST_PER_WATT;
-  const paybackYears = annualSaving > 0 ? systemCost / annualSaving : null;
-  const tenYearReturn = annualSaving * 10 - systemCost - INVERTER_REPLACE;
-  return { systemKw, annualSaving, systemCost, paybackYears, tenYearReturn };
-}
+const RETAIL_RATE        = 0.32;   // $/kWh — matches solar-yield generate route
+const FEED_IN_TARIFF     = 0.06;   // $/kWh
+const SELF_CONSUME_RATIO = 0.30;
+const COST_PER_WATT      = 1.00;   // $/W installed
 
 function solarGrade(pitch: number, azimuth: number, sunshineHours: number): {
   grade: string; colour: string; reason: string;
@@ -119,10 +106,6 @@ function azimuthLabel(deg: number): string {
   return 'NW';
 }
 
-function fmt$(n: number) {
-  return n.toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
-}
-
 export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: string }) {
   const [address, setAddress] = useState('');
   const [inputAddress, setInputAddress] = useState('');
@@ -130,6 +113,37 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
   const [report, setReport] = useState<ReportData | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [ineligible, setIneligible] = useState<{ error: string; evidence?: string; evidence_label?: string } | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+  const [unlockError, setUnlockError] = useState('');
+  const [paidReportId, setPaidReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      const rid = params.get('report_id')?.trim();
+      if (rid) setPaidReportId(rid);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const handleUnlock = async () => {
+    if (!report?.report_id || !report?.address) return;
+    setUnlocking(true);
+    setUnlockError('');
+    try {
+      const res = await fetch('/api/stripe/checkout/solar-yield', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: report.report_id, address: report.address }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.checkout_url) throw new Error(json.error || 'Checkout failed');
+      window.location.href = json.checkout_url;
+    } catch (err: unknown) {
+      setUnlockError(err instanceof Error ? err.message : 'Something went wrong');
+      setUnlocking(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,29 +259,18 @@ export function SolarYieldTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedR
       {state === 'complete' && report && (
         <>
           <ReportCard report={report} />
-          {report.outputs.coverage_available && (
-            <>
-              <DownloadPdfButton
-                label="Download PDF report"
-                apiPath="/api/reports/solar-yield/generate"
-                reportToken={report.report_token}
-                data={{
-                  ...report.outputs,
-                  address: report.address,
-                  run_date: report.run_date,
-                  lat: report.lat,
-                  lng: report.lng,
-                  confidence: report.confidence,
-                  data_sources: report.data_sources,
-                }}
+          {report.outputs.coverage_available && report.report_id ? (
+            paidReportId ? (
+              <PaidDownloadCTA reportId={paidReportId} />
+            ) : (
+              <SolarLockedPreviewCard
+                outputs={report.outputs}
+                onUnlock={handleUnlock}
+                unlocking={unlocking}
+                error={unlockError}
               />
-              <PostResultEmailStrip
-                address={report.address}
-                product="solar-yield"
-                copy="Get this solar analysis emailed to you →"
-              />
-            </>
-          )}
+            )
+          ) : null}
           <ToolCrossSell currentTool="solar-yield" address={report.address} />
         </>
       )}
@@ -297,8 +300,8 @@ function ReportCard({ report }: { report: ReportData }) {
     );
   }
 
-  const roi   = calcROI(o.annual_kwh_estimate, o.max_panels);
-  const grade = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
+  const systemKw = (o.max_panels * PANEL_WATTS) / 1000;
+  const grade    = solarGrade(o.best_pitch_deg, o.best_azimuth_deg, o.sunshine_hours_per_year);
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
@@ -326,10 +329,10 @@ function ReportCard({ report }: { report: ReportData }) {
           </div>
         </div>
         <p className="text-xs text-gray-500 mt-2">
-          {grade.reason} · {roi.systemKw.toFixed(1)} kW system
+          {grade.reason} · {systemKw.toFixed(1)} kW system
         </p>
         <p className="text-xs text-gray-400 mt-1">
-          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString()} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
+          Pitch {o.best_pitch_deg}° ({grade.pitchLabel}) · Orientation {azimuthLabel(o.best_azimuth_deg)} ({grade.azLabel}) · Sunshine {o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr ({grade.sunLabel}) · A = excellent · B = good · C = moderate · D = below average · F = poor.
         </p>
       </div>
 
@@ -338,60 +341,17 @@ function ReportCard({ report }: { report: ReportData }) {
         <AerialTile lat={report.lat} lng={report.lng} lotPolygon={o.coverage_available ? report.lot_polygon : null} />
       </div>
 
-      {/* Financial ROI */}
+      {/* Free tier summary — orientation + kWh only, no $ figures */}
       <div className="p-6">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Financial return</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Annual savings</p>
-            <p className="text-xl font-semibold text-gray-900">{fmt$(roi.annualSaving)}</p>
-            <p className="text-xs text-gray-400 mt-0.5">at current NSW rates</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Payback period</p>
-            <p className="text-xl font-semibold text-gray-900">
-              {roi.paybackYears ? `${roi.paybackYears.toFixed(1)} yrs` : '—'}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">system cost {fmt$(roi.systemCost)}</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">10-year return</p>
-            <p className={`text-xl font-semibold ${roi.tenYearReturn >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-              {fmt$(roi.tenYearReturn)}
-            </p>
-            <p className="text-xs text-gray-400 mt-0.5">after install + inverter</p>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mt-4 leading-relaxed">
-          Assumes {fmt$(RETAIL_RATE * 100)}¢/kWh retail (AER DMO 2025–26 mid-market) · {fmt$(FEED_IN_RATE * 100)}¢/kWh
-          feed-in (AER benchmark) · 30% self-consumption (ARENA/CSIRO Solar Home study) ·{' '}
-          {fmt$(COST_PER_WATT * 1000)}/kW installed after STCs (SolarQuotes NSW 2026) · inverter
-          replacement {fmt$(INVERTER_REPLACE)} at year 10.
-        </p>
-      </div>
-
-      {/* Roof and system */}
-      <div className="p-6">
-        <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Roof and system</h3>
-        <div className="grid grid-cols-4 gap-4 text-sm">
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Max panels</p>
-            <p className="font-medium text-gray-800">{o.max_panels} panels</p>
-            <p className="text-xs text-gray-400">{roi.systemKw.toFixed(1)} kW</p>
-          </div>
-          <div>
-            <p className="text-xs text-gray-400 mb-0.5">Usable roof area</p>
-            <p className="font-medium text-gray-800">{o.max_panel_area_m2} m²</p>
-            <p className="text-xs text-gray-400">of {o.roof_area_m2} m² total</p>
-          </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <p className="text-xs text-gray-400 mb-0.5">Best orientation</p>
             <p className="font-medium text-gray-800">{azimuthLabel(o.best_azimuth_deg)} · {o.best_pitch_deg}° pitch</p>
-            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString()} hr/yr sun</p>
+            <p className="text-xs text-gray-400">{o.sunshine_hours_per_year.toLocaleString('en-AU')} hr/yr sun</p>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-0.5">Annual output</p>
-            <p className="font-medium text-gray-800">{o.annual_kwh_estimate.toLocaleString()} kWh</p>
+            <p className="text-xs text-gray-400 mb-0.5">Annual output estimate</p>
+            <p className="font-medium text-gray-800">{Math.round(o.annual_kwh_estimate).toLocaleString('en-AU')} kWh/yr</p>
             <p className="text-xs text-gray-400">full roof potential</p>
           </div>
         </div>
@@ -400,9 +360,9 @@ function ReportCard({ report }: { report: ReportData }) {
       {/* Commercial scale notice */}
       {o.is_commercial_scale && (
         <div className="px-6 py-4 bg-sky-50 text-xs text-sky-800">
-          Large-scale roof detected ({o.roof_area_m2.toLocaleString()} m²). Results reflect
-          the panels within this lot boundary only. Financial figures assume a single-occupant
-          system — a commercial energy assessment is recommended for multi-tenancy or strata sites.
+          Large-scale roof detected ({o.roof_area_m2.toLocaleString('en-AU')} m²). Results reflect
+          panels within this lot boundary only. A commercial energy assessment is recommended
+          for multi-tenancy or strata sites.
         </div>
       )}
 
@@ -498,6 +458,141 @@ function CoverageInterestForm({ address, lat, lng }: { address: string; lat: num
       {status === 'error' && (
         <p className="text-xs text-red-600 mt-1">Something went wrong. Please try again.</p>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SolarLockedPreviewCard — blur-to-reveal with real computed financial values
+// ---------------------------------------------------------------------------
+
+function SolarLockedPreviewCard({
+  outputs,
+  onUnlock,
+  unlocking,
+  error,
+}: {
+  outputs: SolarYieldOutputs;
+  onUnlock: () => void;
+  unlocking: boolean;
+  error: string;
+}) {
+  const systemKw        = (outputs.max_panels * PANEL_WATTS) / 1000;
+  const annualKwh       = outputs.annual_kwh_estimate;
+  const selfConsumed    = annualKwh * SELF_CONSUME_RATIO;
+  const exported        = annualKwh * (1 - SELF_CONSUME_RATIO);
+  const annualSavings   = (selfConsumed * RETAIL_RATE) + (exported * FEED_IN_TARIFF);
+  const systemCost      = systemKw * 1000 * COST_PER_WATT;
+  const paybackYears    = systemCost / annualSavings;
+
+  const fmt = (n: number, prefix = '') =>
+    prefix + Math.round(n).toLocaleString('en-AU');
+
+  const rows = [
+    { label: 'Annual electricity savings',  preview: `$${fmt(annualSavings)} / yr` },
+    { label: 'Payback period',              preview: `${paybackYears.toFixed(1)} years` },
+    { label: `System size — ${systemKw.toFixed(1)} kW`, preview: `${outputs.max_panels} panels` },
+    { label: 'Installed cost estimate',     preview: `$${fmt(systemCost)}` },
+    { label: 'Feed-in contribution',        preview: `$${fmt(exported * FEED_IN_TARIFF)} / yr` },
+    { label: 'Full PDF report',             preview: 'solar-yield-report.pdf' },
+  ];
+
+  return (
+    <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-amber-50 border-b border-amber-100 px-5 py-4">
+        <p className="text-sm font-semibold text-amber-900 leading-snug">
+          {fmt(outputs.annual_kwh_estimate)} kWh / yr potential — see the full financial case
+        </p>
+        <p className="text-xs text-amber-700 mt-1 leading-relaxed">
+          Your installer will ask for panel count, system size, and payback period before quoting.
+          Your numbers are below — unlocked with one payment.
+        </p>
+      </div>
+
+      <div className="bg-white px-5 pt-4 pb-3">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
+          Your solar financials
+        </p>
+        <div className="space-y-2">
+          {rows.map(({ label, preview }) => (
+            <div key={label} className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-gray-700">{label}</span>
+              <span className="blur-sm select-none pointer-events-none font-medium text-gray-900 tabular-nums">
+                {preview}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="bg-white px-5 pb-5 pt-2">
+        <button
+          onClick={onUnlock}
+          disabled={unlocking}
+          className="w-full py-2.5 px-4 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+        >
+          {unlocking ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Starting checkout...
+            </>
+          ) : (
+            'Unlock full analysis — $19'
+          )}
+        </button>
+        {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
+        <p className="text-xs text-gray-400 text-center mt-2">
+          Paid once. PDF delivered to your email after checkout.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PaidDownloadCTA — shown after Stripe redirects back with payment=success
+// ---------------------------------------------------------------------------
+
+function PaidDownloadCTA({ reportId }: { reportId: string }) {
+  const [downloading, setDownloading] = useState(false);
+  const [dlError, setDlError] = useState('');
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDlError('');
+    try {
+      const res = await fetch('/api/reports/solar-yield/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_id: reportId }),
+      });
+      if (!res.ok) throw new Error('PDF generation failed');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `solar-yield-report-${reportId.slice(0, 8)}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setDlError(err instanceof Error ? err.message : 'Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 rounded-xl border border-teal-200 bg-teal-50 p-5">
+      <p className="text-sm font-semibold text-teal-900 mb-1">Payment confirmed — your report is ready.</p>
+      <p className="text-xs text-teal-700 mb-3">A copy is also on its way to your email.</p>
+      <button
+        onClick={handleDownload}
+        disabled={downloading}
+        className="w-full py-2.5 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {downloading ? 'Preparing download...' : 'Download PDF report →'}
+      </button>
+      {dlError && <p className="text-xs text-red-600 mt-2">{dlError}</p>}
     </div>
   );
 }

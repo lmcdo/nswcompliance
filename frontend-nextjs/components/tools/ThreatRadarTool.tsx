@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { AddressAutocomplete } from '@/components/reports/AddressAutocomplete';
 import { PostResultEmailStrip } from '@/components/reports/PostResultEmailStrip';
 import { DownloadPdfButton } from '@/components/reports/DownloadPdfButton';
@@ -170,7 +170,15 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
 
         {/* Results */}
         {searchState === 'done' && searchResult && (
-          <SearchResults result={searchResult} onReset={reset} />
+          <SearchResults
+            result={searchResult}
+            onReset={reset}
+            email={email}
+            onEmailChange={setEmail}
+            onSubscribe={handleSubscribe}
+            subscribeState={subscribeState}
+            subscribeError={subscribeError}
+          />
         )}
 
         {/* Download PDF + email — shown only when results are available */}
@@ -241,7 +249,106 @@ export function ThreatRadarTool({ lgaSlug, embedRef }: { lgaSlug?: string; embed
   );
 }
 
-function SearchResults({ result, onReset }: { result: SearchResult; onReset: () => void }) {
+const FREE_RESULTS_LIMIT = 3;
+
+// ---------------------------------------------------------------------------
+// MonitorPreviewCard — forward-anxiety subscription gate
+// ---------------------------------------------------------------------------
+
+function MonitorPreviewCard({
+  hiddenCount,
+  email,
+  onEmailChange,
+  onSubscribe,
+  subscribeState,
+  subscribeError,
+}: {
+  hiddenCount: number;
+  email: string;
+  onEmailChange: (v: string) => void;
+  onSubscribe: (e: React.FormEvent) => void;
+  subscribeState: SubscribeState;
+  subscribeError: string;
+}) {
+  return (
+    <div className="rounded-xl border border-teal-200 bg-teal-50 p-5 space-y-3" data-testid="monitor-preview-card">
+      <div>
+        <p className="text-sm font-semibold text-teal-900">
+          {hiddenCount > 0
+            ? `${hiddenCount} more application${hiddenCount !== 1 ? 's' : ''} below — subscribe to see all weekly updates`
+            : 'What you\'d miss next week'}
+        </p>
+        <p className="text-xs text-teal-700 mt-1 leading-relaxed">
+          New DAs are lodged every week near most addresses.
+          Without alerts, you find out when the excavator arrives.
+        </p>
+      </div>
+
+      {/* Mock future DA card — visual FOMO */}
+      <div className="rounded-lg border border-teal-100 bg-white p-3 space-y-1.5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-gray-900 blur-sm select-none">DA/2026/8821</p>
+            <p className="text-xs text-gray-500 blur-sm select-none">Multi-dwelling housing</p>
+          </div>
+          <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5 blur-sm select-none">
+            85m away
+          </span>
+        </div>
+        <p className="text-sm text-gray-700 blur-sm select-none">
+          Demolition of existing dwelling and construction of 4-storey residential flat building
+        </p>
+        <div className="flex gap-4">
+          <span className="text-xs text-gray-400 blur-sm select-none">Lodged next week</span>
+          <span className="text-xs text-gray-400 blur-sm select-none">Cost $2,400,000</span>
+        </div>
+      </div>
+      <p className="text-xs text-teal-600 italic">
+        Example alert — real applications sent every Monday.
+      </p>
+
+      {/* Subscribe form */}
+      <form onSubmit={onSubscribe} className="flex gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder="you@example.com"
+          className="flex-1 px-3 py-2 rounded-lg border border-teal-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white"
+          disabled={subscribeState === 'subscribing'}
+          required
+          data-testid="monitor-email-input"
+        />
+        <button
+          type="submit"
+          disabled={subscribeState === 'subscribing' || !email.trim()}
+          className="px-4 py-2 bg-teal-600 text-white text-sm font-medium rounded-lg hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+        >
+          {subscribeState === 'subscribing' ? 'Redirecting...' : 'Subscribe — $9.99/mo →'}
+        </button>
+      </form>
+      {subscribeError && <p className="text-xs text-red-600">{subscribeError}</p>}
+    </div>
+  );
+}
+
+function SearchResults({
+  result,
+  onReset,
+  email,
+  onEmailChange,
+  onSubscribe,
+  subscribeState,
+  subscribeError,
+}: {
+  result: SearchResult;
+  onReset: () => void;
+  email: string;
+  onEmailChange: (v: string) => void;
+  onSubscribe: (e: React.FormEvent) => void;
+  subscribeState: SubscribeState;
+  subscribeError: string;
+}) {
   const apps = result.applications ?? [];
 
   return (
@@ -293,51 +400,80 @@ function SearchResults({ result, onReset }: { result: SearchResult; onReset: () 
               ? Number(app.NumberOfNewDwellings)
               : null;
 
+            const isBlurred = i >= FREE_RESULTS_LIMIT;
+
             return (
-              <div key={i} className="border border-gray-200 rounded-xl p-4 bg-white space-y-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{appNum}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{type}</p>
+              <React.Fragment key={i}>
+                {/* Inject MonitorPreviewCard between result FREE_RESULTS_LIMIT-1 and FREE_RESULTS_LIMIT */}
+                {i === FREE_RESULTS_LIMIT && (
+                  <MonitorPreviewCard
+                    hiddenCount={apps.length - FREE_RESULTS_LIMIT}
+                    email={email}
+                    onEmailChange={onEmailChange}
+                    onSubscribe={onSubscribe}
+                    subscribeState={subscribeState}
+                    subscribeError={subscribeError}
+                  />
+                )}
+                <div
+                  className={`border border-gray-200 rounded-xl p-4 bg-white space-y-2${isBlurred ? ' blur-sm select-none pointer-events-none' : ''}`}
+                  aria-hidden={isBlurred}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{appNum}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{type}</p>
+                    </div>
+                    {app._distance_m != null && (
+                      <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+                        {app._distance_m}m away
+                      </span>
+                    )}
                   </div>
-                  {app._distance_m != null && (
-                    <span className="shrink-0 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-                      {app._distance_m}m away
-                    </span>
+
+                  {app.ApplicationDescription && (
+                    <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
                   )}
+
+                  {app.PropertyAddress && (
+                    <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
+                  )}
+
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    {app.Status && (
+                      <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
+                    )}
+                    {lodged && (
+                      <span className="text-xs text-gray-400">Lodged {lodged}</span>
+                    )}
+                    {determined && (
+                      <span className="text-xs text-gray-400">Determined {determined}</span>
+                    )}
+                    {cost && (
+                      <span className="text-xs text-gray-400">Cost {cost}</span>
+                    )}
+                    {dwellings && (
+                      <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
+                    )}
+                    {app.LotDescription && (
+                      <span className="text-xs text-gray-400">{app.LotDescription}</span>
+                    )}
+                  </div>
                 </div>
-
-                {app.ApplicationDescription && (
-                  <p className="text-sm text-gray-700">{app.ApplicationDescription}</p>
-                )}
-
-                {app.PropertyAddress && (
-                  <p className="text-xs text-gray-500">{app.PropertyAddress}</p>
-                )}
-
-                <div className="flex flex-wrap gap-x-4 gap-y-1">
-                  {app.Status && (
-                    <span className="text-xs text-gray-600 font-medium">{app.Status}</span>
-                  )}
-                  {lodged && (
-                    <span className="text-xs text-gray-400">Lodged {lodged}</span>
-                  )}
-                  {determined && (
-                    <span className="text-xs text-gray-400">Determined {determined}</span>
-                  )}
-                  {cost && (
-                    <span className="text-xs text-gray-400">Cost {cost}</span>
-                  )}
-                  {dwellings && (
-                    <span className="text-xs text-gray-400">{dwellings} new dwelling{dwellings !== 1 ? 's' : ''}</span>
-                  )}
-                  {app.LotDescription && (
-                    <span className="text-xs text-gray-400">{app.LotDescription}</span>
-                  )}
-                </div>
-              </div>
+              </React.Fragment>
             );
           })}
+          {/* If fewer than FREE_RESULTS_LIMIT results, show card after all results */}
+          {apps.length <= FREE_RESULTS_LIMIT && (
+            <MonitorPreviewCard
+              hiddenCount={0}
+              email={email}
+              onEmailChange={onEmailChange}
+              onSubscribe={onSubscribe}
+              subscribeState={subscribeState}
+              subscribeError={subscribeError}
+            />
+          )}
           <a
             href={`https://map.plotdetect.com.au?lat=${result.lat}&lng=${result.lng}`}
             target="_blank"

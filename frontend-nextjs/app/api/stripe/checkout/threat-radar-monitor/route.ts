@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Payment not configured' }, { status: 500 });
   }
 
-  const origin = req.headers.get('origin') ?? 'https://canibuildit.com.au';
+  const origin = process.env.NEXT_PUBLIC_APP_URL ?? 'https://canibuildit.com.au';
 
   try {
     const session = await stripe.checkout.sessions.create({

@@ -7,6 +7,10 @@ import {
 } from '@/lib/rate-limit';
 import { signReport } from '@/lib/report-token';
 
+export const dynamic = 'force-dynamic';
+// Flood pipeline (EPI WFS + EMS + JRC + BOM + SAR) can take up to ~50s
+export const maxDuration = 60;
+
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
 /**
@@ -109,5 +113,6 @@ export async function POST(request: NextRequest) {
 
   const result = await pythonResp.json();
   const report_token = signReport(lat, lng, address, result.run_date ?? '');
-  return NextResponse.json({ ...result, report_token });
+  // Include report_id so the frontend can pass it to the Stripe checkout route
+  return NextResponse.json({ ...result, report_id, report_token });
 }

@@ -8,6 +8,10 @@ import {
   createRateLimitHeaders,
 } from '@/lib/rate-limit';
 
+export const dynamic = 'force-dynamic';
+// Confirm action calls Python with 30s AbortSignal; detect (dev) has 180s. maxDuration must exceed both.
+export const maxDuration = 60;
+
 const PYTHON_API = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
