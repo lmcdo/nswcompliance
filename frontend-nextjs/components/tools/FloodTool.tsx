@@ -34,6 +34,16 @@ interface FloodOutputs {
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
+  hawkesbury_flood_level_2aep: number | null;
+  hawkesbury_flood_level_5aep: number | null;
+  hawkesbury_flood_level_10aep: number | null;
+  hawkesbury_flood_level_20aep: number | null;
+  hawkesbury_flood_level_50aep: number | null;
+  hawkesbury_flood_level_100aep: number | null;
+  hawkesbury_flood_level_200aep: number | null;
+  hawkesbury_flood_level_500aep: number | null;
+  hawkesbury_flood_level_pmf: number | null;
+  hawkesbury_flood_study: string | null;
 }
 
 interface FloodResult {
@@ -501,6 +511,20 @@ function FloodCard({ result }: { result: FloodResult }) {
           <p className="text-xs text-gray-400">
             {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
             {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
+          </p>
+        </div>
+      )}
+
+      {/* Hawkesbury raster — 100AEP teaser (free tier hook) */}
+      {o.hawkesbury_flood_level_100aep != null && (
+        <div className="p-6 border-t border-gray-100">
+          <p className="text-xs text-gray-400 mb-1">Hawkesbury FRMSP 2025 — flood level at this site</p>
+          <p className="text-sm font-semibold text-gray-800">
+            1-in-100 yr flood level: {o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Full AEP table (2yr – PMF) included in the paid report
+            {o.hawkesbury_flood_study ? ` · ${o.hawkesbury_flood_study}` : ''}
           </p>
         </div>
       )}

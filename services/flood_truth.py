@@ -64,6 +64,7 @@ import psycopg2.extras
 import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from pyproj import Transformer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
@@ -135,6 +136,29 @@ _NSW_GAUGES = [
     ("401009", "Murrumbidgee River at Wagga",    -35.1100, 147.3696, 9.4),
 ]
 _GAUGE_MAX_DISTANCE_KM = 75.0  # don't associate gauge if further than this
+
+# ---------------------------------------------------------------------------
+# Hawkesbury FRMSP 2025 — AEP raster flood levels
+# ---------------------------------------------------------------------------
+
+HAWKESBURY_RASTER_DIR = os.path.join(
+    os.path.dirname(__file__), "..", "data", "flood_studies", "hawkesbury", "rasters"
+)
+# Keys are used as field name suffixes: hawkesbury_flood_level_{key}
+HAWKESBURY_AEP_FILES: dict[str, str] = {
+    "2aep":   "2AEP_Floodstudy_Stretched.tif",
+    "5aep":   "5AEP_Floodstudy_Stretched.tif",
+    "10aep":  "10AEP_Floodstudy_Stretched.tif",
+    "20aep":  "20AEP_Floodstudy_Stretched.tif",
+    "50aep":  "50AEP_Floodstudy_Stretched.tif",
+    "100aep": "100AEP_Floodstudy_Stretched.tif",
+    "200aep": "200AEP_Floodstudy_Stretched.tif",
+    "500aep": "500AEP_Floodstudy_Stretched.tif",
+    "pmf":    "PMF_Floodstudy_Stretched.tif",
+}
+HAWKESBURY_NODATA = -99999.0
+# Transform WGS84 lng/lat → GDA2020/MGA Zone 56 (EPSG:7856) before ds.index()
+_HAWK_TRANSFORMER = Transformer.from_crs("EPSG:4326", "EPSG:7856", always_xy=True)
 
 
 def _get_conn():
@@ -676,6 +700,72 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Hawkesbury FRMSP 2025 raster sampling
+# ---------------------------------------------------------------------------
+
+def _query_hawkesbury_rasters(lat: float, lng: float) -> dict:
+    """
+    Sample Hawkesbury FRMSP 2025 remapped flood levels at a point.
+    Returns flood water surface elevation (metres AHD) for 9 AEP events.
+    All values None if point is outside raster extent or files not present.
+
+    CRS: rasters are EPSG:7856 (GDA2020/MGA Zone 56). Point is transformed
+    before ds.index() — passing WGS84 coords directly would silently return
+    wrong pixel (CRS mismatch pattern bug).
+
+    Source: NSW Reconstruction Authority, Hawkesbury FRMSP 2025.
+    Nona Ruddell, nona.ruddell@reconstruction.nsw.gov.au.
+    """
+    null_result: dict = {f"hawkesbury_flood_level_{k}": None for k in HAWKESBURY_AEP_FILES}
+    null_result["hawkesbury_flood_study"] = None
+
+    try:
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — Hawkesbury raster sampling unavailable")
+        return null_result
+
+    # Transform WGS84 lng/lat → EPSG:7856
+    x, y = _HAWK_TRANSFORMER.transform(lng, lat)
+
+    # Bounds check using 100AEP as proxy — all 9 rasters share the same extent.
+    proxy = os.path.join(HAWKESBURY_RASTER_DIR, HAWKESBURY_AEP_FILES["100aep"])
+    if not os.path.exists(proxy):
+        logger.info("Hawkesbury rasters not present on this host — skipping")
+        return null_result
+
+    try:
+        with rasterio.open(proxy) as ds:
+            left, bottom, right, top = ds.bounds
+            if not (left <= x <= right and bottom <= y <= top):
+                return null_result  # outside Hawkesbury extent — not an error
+    except Exception as e:
+        logger.warning(f"Hawkesbury bounds check failed: {e}")
+        return null_result
+
+    result: dict = {}
+    for aep_key, filename in HAWKESBURY_AEP_FILES.items():
+        path = os.path.join(HAWKESBURY_RASTER_DIR, filename)
+        try:
+            with rasterio.open(path) as ds:
+                row, col = ds.index(x, y)
+                row = max(0, min(row, ds.height - 1))
+                col = max(0, min(col, ds.width - 1))
+                val = float(ds.read(1)[row, col])
+            if val == HAWKESBURY_NODATA or math.isnan(val) or val < 0:
+                result[f"hawkesbury_flood_level_{aep_key}"] = None
+            else:
+                result[f"hawkesbury_flood_level_{aep_key}"] = round(val, 2)
+        except Exception as e:
+            logger.warning(f"Hawkesbury raster {aep_key}: {e}")
+            result[f"hawkesbury_flood_level_{aep_key}"] = None
+
+    has_data = any(v is not None for v in result.values())
+    result["hawkesbury_flood_study"] = "Hawkesbury FRMSP 2025" if has_data else None
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Confidence + data source helpers
 # ---------------------------------------------------------------------------
 
@@ -697,8 +787,11 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
 
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
     ses_in_overlay = internal_outputs.get("ses_in_flood_planning_area") is True
-    # Combined statutory overlay signal: EPI state portal OR local council study
-    in_overlay     = epi_in_overlay or ses_in_overlay
+    # Hawkesbury FRMSP raster: non-null 100AEP level confirms site is in flood extent
+    hawk_100 = internal_outputs.get("hawkesbury_flood_level_100aep")
+    hawk_in_overlay = hawk_100 is not None
+    # Combined statutory overlay signal: EPI state portal OR local council study OR raster
+    in_overlay     = epi_in_overlay or ses_in_overlay or hawk_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
@@ -713,8 +806,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     # and Phase 2 runs; hawkesbury_flood_level_100aep is populated by Phase 3.
     epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
     ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
-    hawkesbury_level = internal_outputs.get("hawkesbury_flood_level_100aep")
-    no_local_study = not ses_queried and hawkesbury_level is None
+    no_local_study = not ses_queried and not hawk_in_overlay
     if epi_no_coverage and no_local_study and not ems_detected and not bom_flood and effective_pct < 5:
         return "unavailable"
 
@@ -790,6 +882,8 @@ def _build_data_sources(internal_outputs: dict) -> list:
         sources.append(_DATA_SOURCE_DEA)
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
+    if internal_outputs.get("hawkesbury_flood_study"):
+        sources.append("Hawkesbury FRMSP 2025 — NSW Reconstruction Authority (2m raster, 9 AEP events)")
     sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
@@ -839,6 +933,12 @@ def _normalise_outputs(raw: dict) -> dict:
         "s1_gap_warning":             raw.get("s1_gap_warning"),
         "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
+    # Hawkesbury FRMSP 2025 AEP flood levels (metres AHD)
+    for aep_key in ("2aep", "5aep", "10aep", "20aep", "50aep", "100aep", "200aep", "500aep", "pmf"):
+        field = f"hawkesbury_flood_level_{aep_key}"
+        normalised[field] = raw.get(field)
+    normalised["hawkesbury_flood_study"] = raw.get("hawkesbury_flood_study")
+
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
 
@@ -927,19 +1027,21 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    with ThreadPoolExecutor(max_workers=7) as pool:
         f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
         f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
         f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
         f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
         f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
         f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
+        f_hawk = pool.submit(_query_hawkesbury_rasters, req.lat, req.lng)
         epi  = f_epi.result()
         ems  = f_ems.result()
         jrc  = f_jrc.result()
         bom  = f_bom.result()
         ses  = f_ses.result()
         wofs = f_wofs.result()
+        hawk = f_hawk.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -948,7 +1050,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom, **ses, **wofs,
+        **epi, **ems, **jrc, **bom, **ses, **wofs, **hawk,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
