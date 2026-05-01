@@ -1,13 +1,14 @@
 """
 Wet Season Flood Truth Engine -- FastAPI router.
 
-POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + BOM gauge
+POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + DEA WOfS + BOM gauge
 POST /pipeline/flood/batch  -- batch LGA processing (Trigger.dev cron, quarterly)
 
 Data sources:
   NSW SEED EPI Flood WFS         (statutory overlay, free, no auth)
   Copernicus EMS activations      (copernicus_flood_events table, one-time ingest)
   JRC Global Surface Water        (Landsat 1984–present, GCS tiles, free)
+  DEA Water Observations (WOfS)   (Landsat 1987–present, 25m AU, ows.dea.ga.gov.au, CC BY 4.0)
   BOM/WaterConnect nearest gauge  (WaterNSW SOS2, last major flood event)
   Sentinel-1 RTC                  (Microsoft Planetary Computer, batch only)
 
@@ -79,6 +80,10 @@ EPI_REST = ("https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
 BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
+
+DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
+_DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
 
 FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
@@ -382,6 +387,65 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
     except Exception as e:
         logger.warning(f"JRC GSW query: {e}")
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
+
+
+# ---------------------------------------------------------------------------
+# DEA Water Observations (WOfS)
+# ---------------------------------------------------------------------------
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA WOfS multi-year frequency at a point via WCS GetCoverage.
+
+    Layer: ga_ls_wo_fq_myear_3 (all-of-archive composite, 1987–present, 25m).
+    Band 1 = frequency (0.0–1.0 fraction). nodata = -999.0.
+    Returns dea_wofs_frequency_pct (0–100) or None on failure.
+
+    Simpler than JRC: no vsicurl, no tile lookup — single HTTP request, in-memory rasterio.
+    """
+    try:
+        import io
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — DEA WOfS unavailable")
+        return {"dea_wofs_frequency_pct": None}
+
+    try:
+        delta = 0.001  # ~100m bbox, enough for a point sample
+        r = requests.get(
+            DEA_WCS_BASE,
+            params={
+                "service": "WCS",
+                "version": "1.0.0",
+                "request": "GetCoverage",
+                "coverage": DEA_WOFS_LAYER,
+                "format": "GeoTIFF",
+                "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+                "crs": "EPSG:4326",
+                "resx": str(delta),
+                "resy": str(delta),
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+
+        # Validate response is a GeoTIFF (not an XML error response)
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            logger.warning(f"DEA WOfS: unexpected Content-Type {ct}")
+            return {"dea_wofs_frequency_pct": None}
+
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
 
 
 # ---------------------------------------------------------------------------
@@ -794,6 +858,7 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
     # Combined statutory overlay signal: EPI state portal OR local council study OR raster
     in_overlay     = epi_in_overlay or ses_in_overlay or hawk_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
+    # Use DEA WOfS frequency when JRC is unavailable (DEA is AU-specific, 25m, 1987–present)
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
     wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
     effective_pct  = jrc_pct if jrc_pct > 0 else wofs_pct
