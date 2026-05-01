@@ -547,6 +547,22 @@ def _query_bom_gauge(lat: float, lng: float) -> dict:
 DEA_WCS_BASE   = "https://ows.dea.ga.gov.au/wcs"
 DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"
 
+# Canonical display labels for raw DB values stored in spatial_overlays.value.
+# Raw values vary by source: snake_case from FPA shapefiles, title case from EPI,
+# short codes from council FeatureServers. Always apply this before returning.
+_SES_CLASS_DISPLAY: dict[str, str] = {
+    "flood_planning_area":               "Flood Planning Area",
+    "Flood Planning Area":               "Flood Planning Area",
+    "1%AEP":                             "1% AEP Flood Extent",
+    "design_flood":                      "Design Flood (1% AEP)",
+    "PMF":                               "Probable Maximum Flood",
+    "Flood Prone and Major Creeks Land": "Flood Prone Land",
+    "1 in 100 AEP Flood Extent":         "1% AEP Flood Extent",
+    "Level of Probable Maximum Flood":   "Probable Maximum Flood",
+    "Probable Maximum Flood Line":       "Probable Maximum Flood",
+    "Area 1":                            "Flood Prone Area 1",
+}
+
 
 def _query_ses_flood_study(lat: float, lng: float) -> dict:
     """
@@ -593,7 +609,7 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
         if row:
             return {
                 "ses_in_flood_planning_area": True,
-                "ses_flood_class": row["value"],
+                "ses_flood_class": _SES_CLASS_DISPLAY.get(row["value"], row["value"]),
                 "ses_study_name": row["instrument_key"],
                 "ses_study_lga": row["lga_name"],
             }

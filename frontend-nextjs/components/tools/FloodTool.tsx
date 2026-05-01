@@ -430,6 +430,28 @@ function FloodCard({ result }: { result: FloodResult }) {
         </div>
       </div>
 
+      {/* SES / council flood study — shown when spatial_overlays has flood data for this LGA */}
+      {o.ses_in_flood_planning_area !== null && (
+        <div className="p-6">
+          <p className="text-xs text-gray-400 mb-1">Council flood study overlay</p>
+          <div className="flex items-center gap-2 mb-1">
+            <span className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${
+              o.ses_in_flood_planning_area
+                ? 'bg-red-100 text-red-800'
+                : 'bg-green-100 text-green-700'
+            }`}>
+              {o.ses_in_flood_planning_area
+                ? `In flood extent${o.ses_flood_class ? ` — ${o.ses_flood_class}` : ''}`
+                : 'Outside mapped flood extent'}
+            </span>
+          </div>
+          <p className="text-xs text-gray-400">
+            {o.ses_study_lga ? `${o.ses_study_lga} · ` : ''}
+            {o.ses_study_name ?? 'Council flood study'} · ingested from spatial overlay
+          </p>
+        </div>
+      )}
+
       {/* Warnings — always shown */}
       {(o.s1_gap_warning || result.warnings?.length) && (
         <div className="px-6 py-4 bg-amber-50 space-y-1">
