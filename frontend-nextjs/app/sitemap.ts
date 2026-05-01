@@ -24,8 +24,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }))
 
   const staticPages = [
-    { url: `${base}/`, priority: 1.0, changeFrequency: 'daily' as const, lastModified: now },
-    { url: `${base}/canibuildit`, priority: 0.95, changeFrequency: 'daily' as const, lastModified: now },
+    { url: `${base}/`,                priority: 1.0,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/granny-flat`,     priority: 0.95, changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/flood-risk`,      priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/solar-potential`, priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/shadow`,          priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/threat-radar`,    priority: 0.9,  changeFrequency: 'weekly' as const,  lastModified: now },
+    { url: `${base}/pricing`,         priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/how-it-works`,    priority: 0.7,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/partner`,         priority: 0.6,  changeFrequency: 'monthly' as const, lastModified: now },
+    { url: `${base}/contact`,         priority: 0.5,  changeFrequency: 'monthly' as const, lastModified: now },
   ]
 
   const grannyFlatPages = GRANNY_FLAT_LGAS.map(lga => ({
