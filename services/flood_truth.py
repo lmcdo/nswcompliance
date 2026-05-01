@@ -260,9 +260,11 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     try:
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
             if cur.fetchone()["n"] == 0:
                 return {"ems_flood_detected": None, "ems_activations": None}
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(
                 """
                 SELECT activation_id, event_name, event_date_start, flood_type
@@ -589,11 +591,12 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
     try:
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            # Check if there are any flood rows at all
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
             if cur.fetchone()["n"] == 0:
                 return null_result
             # Point-in-polygon: find first matching flood polygon
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(
                 """
                 SELECT instrument_key, lga_name, value
@@ -627,15 +630,22 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
             conn.close()
 
 
+_WOFS_HARD_TIMEOUT = 25  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
+
+
 def _query_dea_wofs(lat: float, lng: float) -> dict:
     """
     Sample DEA Water Observations (WOfS) multi-year composite via WCS.
     Layer: ga_ls_wo_fq_myear_3 — Band 1 = frequency fraction (0.0–1.0).
     Returns dea_wofs_frequency_pct (0.0–100.0) or None on failure/nodata.
+
+    Uses an inner ThreadPoolExecutor with a hard 25s wall-clock timeout so a
+    stalled WCS response or slow rasterio decode cannot block the main thread pool.
     """
-    try:
-        import io
-        import rasterio
+    import io
+    import rasterio
+
+    def _fetch() -> dict:
         delta = 0.001
         r = requests.get(DEA_WCS_BASE, params={
             "service": "WCS", "version": "1.0.0", "request": "GetCoverage",
@@ -652,6 +662,14 @@ def _query_dea_wofs(lat: float, lng: float) -> dict:
         if raw == -999.0 or raw < 0 or math.isnan(raw):
             return {"dea_wofs_frequency_pct": None}
         return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as inner:
+            fut = inner.submit(_fetch)
+            return fut.result(timeout=_WOFS_HARD_TIMEOUT)
+    except TimeoutError:
+        logger.warning(f"DEA WOfS query: hard timeout after {_WOFS_HARD_TIMEOUT}s")
+        return {"dea_wofs_frequency_pct": None}
     except Exception as e:
         logger.warning(f"DEA WOfS query: {e}")
         return {"dea_wofs_frequency_pct": None}
