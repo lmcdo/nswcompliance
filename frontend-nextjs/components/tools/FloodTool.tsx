@@ -166,10 +166,12 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         Enter any NSW address &mdash; the NSW EPI statutory overlay check covers the full state.
       </p>
       <p className="mt-1.5 text-sm text-gray-500">
-        Council flood study boundaries (FPA polygons) are available for 35 LGAs, including Hawkesbury,
-        Tweed Shire, Byron Shire, Port Macquarie-Hastings, Shoalhaven, Lake Macquarie, Inner West,
-        Canterbury-Bankstown, Woollahra, Georges River, Sutherland Shire, Ryde, Cumberland, Maitland,
-        City of Parramatta, MidCoast, Lismore, Ballina, Dungog, Singleton, and more across regional NSW.
+        Council flood study boundaries (FPA polygons) cover 71 NSW LGAs, including Sydney metro
+        (Inner West, Parramatta, Canterbury-Bankstown, Georges River, Woollahra, Sutherland, Ryde,
+        Cumberland, Campbelltown, Randwick, Waverley, Canada Bay, Bayside), Hunter and Coast
+        (Hawkesbury, Lake Macquarie, Maitland, Shoalhaven, MidCoast, Dungog, Singleton), Northern
+        Rivers (Tweed, Byron, Lismore, Ballina, Kyogle), and regional NSW (Dubbo, Orange, Goulburn,
+        Queanbeyan, Bathurst, Forbes, Tamworth, and more).
       </p>
       <p className="mt-1.5 text-sm text-gray-400">
         Free results show your EPI flood zone and council flood study classification. The $49 report adds
