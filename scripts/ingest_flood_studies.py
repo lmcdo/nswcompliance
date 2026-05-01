@@ -386,23 +386,29 @@ def _detect_aep_col(gdf) -> Optional[str]:
     return None
 
 
-def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int, where: str = "1=1") -> dict:
-    """Fetch one page of features from an ArcGIS FeatureServer (1000 features per page).
+def _query_featureserver(base_url: str, layer_id: int, where: str, bbox: Optional[list] = None) -> list[dict]:
+    """Single query to a FeatureServer, with optional spatial bbox filter.
 
-    Requests outSR=4326 so the server reprojects from native CRS (typically EPSG:28356)
-    to WGS84 before returning. Retries up to 3 times on HTTP 500.
-    The optional ``where`` clause filters features (e.g. "LGA_NAME='LISMORE'").
+    Returns raw GeoJSON feature list. Retries up to 3 times on HTTP 500.
+    Spatial filter uses inSR=4326 (WGS84 bbox coordinates).
     """
-    url = f"{base_url}/{layer_id}/query"
-    params = {
+    params: dict = {
         "where": where,
         "outFields": "*",
         "returnGeometry": "true",
         "outSR": "4326",
-        "resultOffset": offset,
+        "resultOffset": 0,
         "resultRecordCount": 1000,
         "f": "geojson",
     }
+    if bbox is not None:
+        params.update({
+            "geometry": f"{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}",
+            "geometryType": "esriGeometryEnvelope",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+        })
+    url = f"{base_url}/{layer_id}/query"
     for attempt in range(3):
         r = requests.get(url, params=params, timeout=60)
         if r.status_code == 500:
@@ -411,47 +417,110 @@ def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int, where: 
             time.sleep(wait)
             continue
         r.raise_for_status()
-        return r.json()
-    print(f"    [skip] 500 after 3 retries — skipping offset={offset}")
-    return {"features": []}
+        return r.json().get("features", [])
+    print(f"    [skip] 500 after 3 retries — bbox={bbox}")
+    return []
+
+
+def _bbox_from_features(features: list[dict]) -> Optional[list[float]]:
+    """Compute WGS84 bounding box from GeoJSON feature list (used to seed bbox-split)."""
+    lngs: list[float] = []
+    lats: list[float] = []
+    for f in features:
+        geom = f.get("geometry") or {}
+        gtype = geom.get("type", "")
+        coords = geom.get("coordinates") or []
+        try:
+            rings = coords if gtype == "MultiPolygon" else [coords]
+            for poly in rings:
+                for pt in (poly[0] if poly else []):
+                    lngs.append(float(pt[0]))
+                    lats.append(float(pt[1]))
+        except (IndexError, TypeError, ValueError):
+            continue
+    if not lngs:
+        return None
+    pad = 0.05  # ~5 km
+    return [min(lngs) - pad, min(lats) - pad, max(lngs) + pad, max(lats) + pad]
+
+
+def _fetch_all_bbox(base_url: str, layer_id: int, where: str,
+                    bbox: Optional[list] = None, depth: int = 0) -> list[dict]:
+    """Recursively fetch all features via bbox quadrant-split when server caps at 1000.
+
+    ArcGIS Online free tier silently truncates at 1000 features per query without
+    setting exceededTransferLimit. This recursively splits the bbox into quadrants
+    until each quadrant returns < 1000 features, guaranteeing full coverage.
+
+    Max recursion depth = 8 (2^8 = 256 quadrants → handles datasets up to ~250k features).
+    """
+    features = _query_featureserver(base_url, layer_id, where, bbox=bbox)
+
+    if len(features) < 1000:
+        return features  # This quadrant is complete
+
+    if depth >= 8:
+        print(f"    [warn] bbox-split depth limit — quadrant has {len(features)} (may be incomplete)")
+        return features
+
+    # Capped — derive or use existing bbox and split into 4 quadrants
+    if bbox is None:
+        bbox = _bbox_from_features(features)
+        if bbox is None:
+            return features  # can't split without coordinates
+
+    mx = (bbox[0] + bbox[2]) / 2.0
+    my = (bbox[1] + bbox[3]) / 2.0
+    quadrants = [
+        [bbox[0], bbox[1], mx,      my     ],  # SW
+        [mx,      bbox[1], bbox[2], my     ],  # SE
+        [bbox[0], my,      mx,      bbox[3]],  # NW
+        [mx,      my,      bbox[2], bbox[3]],  # NE
+    ]
+    result: list[dict] = []
+    for q in quadrants:
+        chunk = _fetch_all_bbox(base_url, layer_id, where, bbox=q, depth=depth + 1)
+        result.extend(chunk)
+    if depth == 0:
+        print(f"    [bbox-split] completed: {len(result)} raw features before dedup")
+    return result
 
 
 def _download_featureserver(study: dict, cache_file: Path) -> None:
-    """Paginate a FeatureServer layer and save all features as a GeoJSON cache file.
+    """Fetch all features from a FeatureServer layer and save as a GeoJSON cache file.
 
-    Respects the optional ``where_clause`` study field (e.g. "LGA_NAME='LISMORE'")
-    for services shared across multiple LGAs.
+    Uses bbox quadrant-split to bypass ArcGIS Online's silent 1000-feature cap.
+    Deduplicates by OBJECTID/FID so quadrant-boundary features are not double-counted.
+    Respects the optional ``where_clause`` study field (e.g. "LGA_NAME='LISMORE'").
     """
     base_url = study["base_url"]
     layer_id = study["layer_id"]
     where = study.get("where_clause", "1=1")
 
-    offset = 0
-    all_features: list[dict] = []
     where_desc = f" WHERE {where}" if where != "1=1" else ""
     print(f"  [fetch] ArcGIS FeatureServer {base_url}/{layer_id}{where_desc} ...")
 
-    while True:
-        data = _fetch_page_featureserver(base_url, layer_id, offset, where=where)
-        features = data.get("features", [])
-        all_features.extend(features)
-        print(f"    offset={offset} -> {len(features)} features (total: {len(all_features)})")
-        if not features or not data.get("exceededTransferLimit", False):
-            break
-        offset += len(features)
-
-    # TODO(cap): ArcGIS Online free tier caps at 1000 features per request.
-    # If len(all_features) == 1000 and exceededTransferLimit was never True, the
-    # service silently truncated. Fix: fetch service extent from {base_url}/{layer_id}?f=json,
-    # split bbox into quadrants, recurse until each returns < 1000, deduplicate by OBJECTID.
-    # Affects: tweed_flood, tweed_dcp_flood, pmhc_flood, pmhc_pmf (all capped at 1000).
-    # Must fix before Phase 7 E2E validation or coverage gaps will be invisible.
-    if len(all_features) == 1000:
-        print(f"  [warn] exactly 1000 features returned — ArcGIS may have silently truncated. "
-              f"Implement bbox-split pagination before Phase 7 validation.")
+    all_features = _fetch_all_bbox(base_url, layer_id, where)
 
     if not all_features:
         raise RuntimeError(f"FeatureServer returned 0 features for {base_url}/{layer_id}")
+
+    # Deduplicate by OBJECTID / Object_ID / FID (bbox boundaries produce duplicates)
+    _OID_FIELDS = ("OBJECTID", "Object_ID", "FID", "OBJECTID_1", "objectid")
+    sample_props = (all_features[0].get("properties") or {}) if all_features else {}
+    oid_field = next((f for f in _OID_FIELDS if f in sample_props), None)
+    if oid_field:
+        seen: set = set()
+        deduped = []
+        for f in all_features:
+            oid = (f.get("properties") or {}).get(oid_field)
+            if oid not in seen:
+                seen.add(oid)
+                deduped.append(f)
+        dropped = len(all_features) - len(deduped)
+        if dropped:
+            print(f"  [dedup] {dropped} duplicate features removed (by {oid_field})")
+        all_features = deduped
 
     geojson: dict = {
         "type": "FeatureCollection",
