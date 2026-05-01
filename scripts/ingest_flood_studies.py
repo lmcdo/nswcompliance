@@ -161,55 +161,142 @@ STUDIES = {
     # -------------------------------------------------------------------------
     # ArcGIS FeatureServer studies — free public services, no auth required.
     # outSR=4326 requested so server reprojects to WGS84 before returning.
-    # Run with --inspect-featureserver <key> to preview field names before ingest.
-    # URLs confirmed from council ArcGIS Online / GIS portal research (May 2026).
+    # Run: python scripts/ingest_flood_studies.py --study <key> --inspect-featureserver
+    # to preview layer field names before committing to full ingest.
+    # All URLs confirmed anonymous-queryable May 2026.
     # -------------------------------------------------------------------------
-    "byron_flood": {
-        "label": "Byron Shire Council — Flood Planning Area (ArcGIS FeatureServer)",
+
+    # Byron Shire — ras_byron account, all layers anonymous-queryable.
+    # FPA = binary flood planning area mask (best starting point for FPA query).
+    # GIS_GISDATA_flood likely has AEP breakdowns — inspect layer_id options.
+    "byron_fpa": {
+        "label": "Byron Shire — Flood Planning Area (ArcGIS FeatureServer)",
         "lga_names": ["BYRON"],
-        "currency_date": None,          # read from server feature attributes
-        "instrument_prefix": "BYRON_FLOOD",
+        "currency_date": None,
+        "instrument_prefix": "BYRON_FPA",
         "download_type": "arcgis_featureserver",
-        # TODO: replace with confirmed FeatureServer base URL from council research
-        # Pattern: https://<server>/arcgis/rest/services/<service>/FeatureServer
-        "base_url": "TODO_BYRON_FEATURESERVER_URL",
-        "layer_id": 0,                  # verify via --inspect-featureserver
-        "aep_source": "column",
-        "aep_col": None,                # auto-detected from field names
+        "base_url": "https://services7.arcgis.com/SqbRuGmmUbhRpdi1/arcgis/rest/services/Flood_Planning_Area/FeatureServer",
+        "layer_id": 0,          # verify via --inspect-featureserver
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
     },
+    "byron_gis_flood": {
+        "label": "Byron Shire — GIS Flood Data (AEP extents, ArcGIS FeatureServer)",
+        "lga_names": ["BYRON"],
+        "currency_date": None,
+        "instrument_prefix": "BYRON_GIS",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services7.arcgis.com/SqbRuGmmUbhRpdi1/arcgis/rest/services/GIS_GISDATA_flood/FeatureServer",
+        "layer_id": 0,
+        "aep_source": "column",
+        "aep_col": None,        # auto-detected; inspect field names first
+    },
+
+    # Tweed Shire — gis_tweed account, 12+ services. FloodingData is the primary
+    # dataset. tweed_dcp contains DCP-referenced flood levels (most compliance-relevant).
     "tweed_flood": {
-        "label": "Tweed Shire Council — Flood Extent Layers (ArcGIS FeatureServer)",
+        "label": "Tweed Shire — Flooding Data primary (ArcGIS FeatureServer)",
         "lga_names": ["TWEED"],
         "currency_date": None,
         "instrument_prefix": "TWEED_FLOOD",
         "download_type": "arcgis_featureserver",
-        "base_url": "TODO_TWEED_FEATURESERVER_URL",
+        "base_url": "https://services1.arcgis.com/KURAxOhGWn5RdCPg/arcgis/rest/services/FloodingData/FeatureServer",
         "layer_id": 0,
         "aep_source": "column",
         "aep_col": None,
     },
+    "tweed_dcp_flood": {
+        "label": "Tweed Shire — Existing DCP Flood Levels TV09/CC10 (ArcGIS FeatureServer)",
+        "lga_names": ["TWEED"],
+        "currency_date": None,
+        "instrument_prefix": "TWEED_DCP",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services1.arcgis.com/KURAxOhGWn5RdCPg/arcgis/rest/services/Flooding_ExistingDCP_TV09_CC10/FeatureServer",
+        "layer_id": 0,
+        "aep_source": "column",
+        "aep_col": None,
+    },
+
+    # Port Macquarie-Hastings — confirmed public, council-authored.
+    # Data broker: Jennifer Lang <jennifer.lang@pmhc.nsw.gov.au>
+    # Contact before commercial use to confirm licence terms.
     "pmhc_flood": {
-        "label": "Port Macquarie-Hastings Council — Flood Study Extents (ArcGIS FeatureServer)",
-        # Data broker: Jennifer Lang <jennifer.lang@pmhc.nsw.gov.au>
-        # Contact before commercial ingest to confirm licence terms.
+        "label": "Port Macquarie-Hastings — Flood Planning Info (ArcGIS FeatureServer)",
         "lga_names": ["PORT MACQUARIE-HASTINGS"],
         "currency_date": None,
         "instrument_prefix": "PMHC_FLOOD",
         "download_type": "arcgis_featureserver",
-        "base_url": "TODO_PMHC_FEATURESERVER_URL",
+        "base_url": "https://services5.arcgis.com/apQoc7QtDZkPPGVg/arcgis/rest/services/Flood_Planning_Info/FeatureServer",
         "layer_id": 0,
         "aep_source": "column",
         "aep_col": None,
     },
+
+    # Hawkesbury City Council — hsc_dave account.
+    # HSC_Flooding_LAYERS has 1% AEP categorized extents + CSIRO sea level scenarios.
+    # Complements hawkesbury_fpa (FPA boundary) with AEP-specific flood extents.
     "hawkesbury_council_flood": {
-        "label": "Hawkesbury City Council — 1% AEP Flood Extent (ArcGIS FeatureServer)",
+        "label": "Hawkesbury City Council — 1% AEP flood layers (ArcGIS FeatureServer)",
         "lga_names": ["HAWKESBURY"],
         "currency_date": None,
-        "instrument_prefix": "HAWK_COUNCIL_FLOOD",
+        "instrument_prefix": "HAWK_COUNCIL",
         "download_type": "arcgis_featureserver",
-        "base_url": "TODO_HAWKESBURY_COUNCIL_FEATURESERVER_URL",
+        "base_url": "https://services6.arcgis.com/VKqP0BP08pVXloHq/arcgis/rest/services/HSC_Flooding_LAYERS/FeatureServer",
         "layer_id": 0,
         "aep_source": "column",
+        "aep_col": None,
+    },
+
+    # NSW Flood Risk EPI overlay — covers Lismore + Ballina LEP polygons.
+    # Single FeatureServer, filtered by where_clause per LGA.
+    # Query: WHERE LGA_NAME='LISMORE' or LGA_NAME='BALLINA'
+    "lismore_epi_flood": {
+        "label": "Lismore — NSW EPI Flood Risk overlay (ArcGIS FeatureServer)",
+        "lga_names": ["LISMORE"],
+        "currency_date": None,
+        "instrument_prefix": "NSW_FLOOD_RISK_LISMORE",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services-ap1.arcgis.com/s047i49VH0D2nqIM/arcgis/rest/services/NSW_Flood_Risk/FeatureServer",
+        "layer_id": 0,
+        "where_clause": "LGA_NAME='LISMORE'",
+        "aep_source": "column",
+        "aep_col": None,
+    },
+    "ballina_epi_flood": {
+        "label": "Ballina — NSW EPI Flood Risk overlay (ArcGIS FeatureServer)",
+        "lga_names": ["BALLINA"],
+        "currency_date": None,
+        "instrument_prefix": "NSW_FLOOD_RISK_BALLINA",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services-ap1.arcgis.com/s047i49VH0D2nqIM/arcgis/rest/services/NSW_Flood_Risk/FeatureServer",
+        "layer_id": 0,
+        "where_clause": "LGA_NAME='BALLINA'",
+        "aep_source": "column",
+        "aep_col": None,
+    },
+
+    # Penrith South Creek — direct SES portal downloads (CC-BY 4.0, no auth).
+    # Replaces auth-blocked URL in south_creek_hc with working direct links.
+    "penrith_fpa": {
+        "label": "Penrith South Creek — Flood Planning Area (SES portal, direct download)",
+        "lga_names": ["PENRITH"],
+        "currency_date": date(2023, 9, 12),
+        "instrument_prefix": "PENRITH_FPA",
+        "download_type": "zip",
+        "zip_url": "https://flooddata.ses.nsw.gov.au/dataset/bbced83f-2a91-4983-b773-2efeb0709a5d/resource/406c8e42-ded2-428c-b73a-1a1375586ea4/download/flood-planning-area.zip",
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
+    },
+    "penrith_extents": {
+        "label": "Penrith South Creek — GIS Flood Extents (SES portal, direct download)",
+        "lga_names": ["PENRITH", "HAWKESBURY", "BLACKTOWN"],
+        "currency_date": date(2023, 9, 12),
+        "instrument_prefix": "PENRITH_EXTENTS",
+        "download_type": "zip",
+        "zip_url": "https://flooddata.ses.nsw.gov.au/dataset/bbced83f-2a91-4983-b773-2efeb0709a5d/resource/4617fafc-a32b-4a4d-bc6a-29aab141ba7d/download/gis-extents.zip",
+        "aep_source": "filename",
         "aep_col": None,
     },
 }
@@ -277,15 +364,16 @@ def _detect_aep_col(gdf) -> Optional[str]:
     return None
 
 
-def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int) -> dict:
+def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int, where: str = "1=1") -> dict:
     """Fetch one page of features from an ArcGIS FeatureServer (1000 features per page).
 
     Requests outSR=4326 so the server reprojects from native CRS (typically EPSG:28356)
     to WGS84 before returning. Retries up to 3 times on HTTP 500.
+    The optional ``where`` clause filters features (e.g. "LGA_NAME='LISMORE'").
     """
     url = f"{base_url}/{layer_id}/query"
     params = {
-        "where": "1=1",
+        "where": where,
         "outFields": "*",
         "returnGeometry": "true",
         "outSR": "4326",
@@ -307,22 +395,22 @@ def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int) -> dict
 
 
 def _download_featureserver(study: dict, cache_file: Path) -> None:
-    """Paginate a FeatureServer layer and save all features as a GeoJSON cache file."""
+    """Paginate a FeatureServer layer and save all features as a GeoJSON cache file.
+
+    Respects the optional ``where_clause`` study field (e.g. "LGA_NAME='LISMORE'")
+    for services shared across multiple LGAs.
+    """
     base_url = study["base_url"]
     layer_id = study["layer_id"]
-
-    if base_url.startswith("TODO_"):
-        raise RuntimeError(
-            f"FeatureServer URL not configured: {base_url}\n"
-            f"Update the study config with the real ArcGIS FeatureServer URL."
-        )
+    where = study.get("where_clause", "1=1")
 
     offset = 0
     all_features: list[dict] = []
-    print(f"  [fetch] ArcGIS FeatureServer {base_url}/{layer_id} ...")
+    where_desc = f" WHERE {where}" if where != "1=1" else ""
+    print(f"  [fetch] ArcGIS FeatureServer {base_url}/{layer_id}{where_desc} ...")
 
     while True:
-        data = _fetch_page_featureserver(base_url, layer_id, offset)
+        data = _fetch_page_featureserver(base_url, layer_id, offset, where=where)
         features = data.get("features", [])
         all_features.extend(features)
         print(f"    offset={offset} -> {len(features)} features (total: {len(all_features)})")
@@ -344,17 +432,27 @@ def _download_featureserver(study: dict, cache_file: Path) -> None:
 
 
 def _inspect_featureserver(study_key: str, study: dict) -> None:
-    """Fetch the first 1 record from a FeatureServer and print all field names + sample values."""
+    """Fetch service metadata + first record to show available layers and field names."""
     base_url = study["base_url"]
     layer_id = study["layer_id"]
 
-    if base_url.startswith("TODO_"):
-        print(f"  [skip] URL not configured: {base_url}")
-        return
+    # 1. Show all layers in the service (useful for multi-layer services)
+    meta_r = requests.get(base_url, params={"f": "json"}, timeout=30)
+    if meta_r.ok:
+        meta = meta_r.json()
+        layers = meta.get("layers", []) or meta.get("tables", [])
+        if layers:
+            print(f"\n  Available layers in {study_key}:")
+            for lyr in layers:
+                print(f"    id={lyr.get('id')}  name={lyr.get('name')!r}  type={lyr.get('type')!r}")
+        else:
+            print(f"  (no layers metadata returned)")
 
+    # 2. Fetch one record from the configured layer_id
+    where = study.get("where_clause", "1=1")
     url = f"{base_url}/{layer_id}/query"
     params = {
-        "where": "1=1",
+        "where": where,
         "outFields": "*",
         "returnGeometry": "false",
         "resultOffset": 0,
@@ -366,10 +464,10 @@ def _inspect_featureserver(study_key: str, study: dict) -> None:
     data = r.json()
     features = data.get("features", [])
     if not features:
-        print(f"  [empty] no features returned")
+        print(f"  [empty] no features returned for layer {layer_id} (where: {where})")
         return
     props = features[0].get("properties") or features[0].get("attributes") or {}
-    print(f"\n  FeatureServer field names for {study_key} (layer {layer_id}):")
+    print(f"\n  Field names for {study_key} layer {layer_id}:")
     for k, v in props.items():
         print(f"    {k!r}: {v!r}")
 
