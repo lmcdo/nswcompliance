@@ -358,6 +358,24 @@ function FloodLockedPreviewCard({
         </div>
       </div>
 
+      {signal === 'unavailable' && (
+        <div className="bg-gray-50 border-t border-gray-100 px-5 py-4">
+          <p className="text-xs font-semibold text-gray-700 mb-2">How to get the flood classification for this address</p>
+          <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
+            <li>
+              <span className="font-medium">Section 10.7 planning certificate</span> — request from your council (~$53). Includes the statutory flood overlay. Your conveyancer can request it on your behalf.
+            </li>
+            <li>
+              <span className="font-medium">Flood enquiry letter</span> — some councils issue a separate flood certificate. Ask the council&apos;s flood team directly.
+            </li>
+            <li>
+              <span className="font-medium">NSW SES flood portal</span> — flooddata.ses.nsw.gov.au lists available council flood studies. Some are public; others require a data request.
+            </li>
+          </ol>
+          <p className="text-xs text-gray-400 mt-2">We&apos;re expanding coverage to more councils. If this address is in a known flood area, contact us and we&apos;ll prioritise that council.</p>
+        </div>
+      )}
+
       <div className="bg-white px-5 pb-5 pt-2">
         <button
           onClick={onUnlock}
