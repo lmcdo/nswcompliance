@@ -54,31 +54,31 @@ type PageState = 'idle' | 'running' | 'complete' | 'error';
 const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge: string; bar: string }> = {
   none:     {
     label:    'No flood indicators detected',
-    sublabel: 'No signals across any data source',
+    sublabel: 'No signals across statutory overlay, council flood study, or observed satellite and gauge records',
     badge:    'bg-green-100 text-green-800',
     bar:      'bg-green-500',
   },
   low:      {
     label:    'Low flood signal',
-    sublabel: 'Statutory overlay only — no observed events on record',
+    sublabel: 'Property is within a statutory flood zone — no observed inundation events on record',
     badge:    'bg-yellow-100 text-yellow-800',
     bar:      'bg-yellow-400',
   },
   moderate: {
     label:    'Moderate flood signal',
-    sublabel: 'One or more data sources indicate past or potential inundation',
+    sublabel: 'One or more sources indicate flood exposure — review the full data before purchasing or developing',
     badge:    'bg-orange-100 text-orange-800',
     bar:      'bg-orange-500',
   },
   elevated: {
     label:    'Elevated flood signal',
-    sublabel: 'Multiple independent sources converge on flood exposure',
+    sublabel: 'Multiple independent sources confirm flood exposure — professional flood assessment recommended',
     badge:    'bg-red-100 text-red-800',
     bar:      'bg-red-500',
   },
   unavailable: {
-    label:    'Flood data unavailable for this area',
-    sublabel: 'No state overlay or local flood study covers this location — contact the council',
+    label:    'Flood study coverage not available for this address',
+    sublabel: 'Absence of data is not clearance — contact the local council directly to confirm flood status',
     badge:    'bg-gray-100 text-gray-600',
     bar:      'bg-gray-400',
   },
@@ -162,9 +162,18 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
     <div className="mb-8">
       <h1 className="text-2xl font-bold text-gray-900">Flood Data Summary</h1>
       <p className="mt-1.5 text-sm text-gray-500">
-        Cross-references NSW EPI statutory flood overlays, Copernicus EMS observed events,
-        40-year Landsat water history, and BOM river gauge data for any NSW address.
-        Indicative only — not a substitute for a formal Section 10.7 flood certificate.
+        Check your property&rsquo;s statutory flood status and council flood study exposure.
+        Enter any NSW address &mdash; the NSW EPI statutory overlay check covers the full state.
+      </p>
+      <p className="mt-1.5 text-sm text-gray-500">
+        Council flood study boundaries (FPA polygons) are available for 16 LGAs: Hawkesbury, Tweed Shire,
+        Byron Shire, Port Macquarie-Hastings, Lismore, Ballina, Bathurst, Clarence Valley, Forbes,
+        Hornsby, Mid-Western Regional, Tamworth, Wentworth, Wingecarribee, Wollongong, and Yass Valley.
+      </p>
+      <p className="mt-1.5 text-sm text-gray-400">
+        Free results show your EPI flood zone and council flood study classification. The $49 report adds
+        depth contours by flood frequency (1-in-20, 1-in-100, 1-in-500 year), BOM gauge event history,
+        and a source-cited PDF for conveyancers and lenders.
       </p>
 
       <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
@@ -188,7 +197,7 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         <div className="bg-white rounded-xl border border-gray-200 p-8 flex flex-col items-center text-center">
           <div className="w-8 h-8 border-2 border-teal-600 border-t-transparent rounded-full animate-spin mb-4" />
           <p className="text-sm font-medium text-gray-700">Querying flood data sources...</p>
-          <p className="text-xs text-gray-400 mt-1">EPI overlay · Copernicus EMS · JRC 40yr history · BOM gauge. Allow 15–30 seconds.</p>
+          <p className="text-xs text-gray-400 mt-1">EPI overlay · Council flood studies · Copernicus EMS · JRC 40-year satellite history · BOM gauge. Allow 15–30 seconds.</p>
         </div>
       )}
 
@@ -244,18 +253,26 @@ function FloodLockedPreviewCard({
   const signal = o.flood_signal ?? 'none';
 
   const alarmHeadline = signal === 'unavailable'
-    ? 'Flood data not available for this location — manual council check required'
-    : signal !== 'none'
-    ? `${FLOOD_SIGNAL_META[signal]?.label ?? 'Flood signal'} — lenders and insurers will want the full data`
+    ? 'No automated flood data for this address — this is the riskiest result'
+    : signal === 'elevated'
+    ? 'This property flagged on multiple independent flood sources — your lender has already seen this'
+    : signal === 'moderate'
+    ? 'Flood exposure detected — your conveyancer will ask for the depths below before settlement'
+    : signal === 'low'
+    ? 'In a statutory flood zone — insurers price premiums against the depth numbers below'
     : o.epi_flood_class && o.epi_flood_class !== 'none'
-    ? `${EPI_CLASS_META[o.epi_flood_class]?.label ?? 'Flood overlay'} — verified clean for your records`
-    : 'Flood check complete — verified clean for conveyancing';
+    ? 'In a flood planning area — get the depths in writing before exchange'
+    : 'No flood indicators — get this confirmed before settlement';
 
   const alarmDetail = signal === 'unavailable'
-    ? 'No state flood planning overlay or local flood study covers this location. Contact the local council to confirm flood status before purchasing or developing.'
-    : signal !== 'none'
-    ? 'Your conveyancer, lender, and insurer will ask for ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. Your numbers are below.'
-    : 'The full report includes ARI depths, BOM gauge data, and source citations — ready to share with your conveyancer.';
+    ? 'Absence of data is not clearance. If no flood study covers this area, no-one has certified it safe. The full report documents exactly what was checked and what was not — giving your solicitor a paper trail.'
+    : signal === 'elevated'
+    ? 'Banks, mortgage insurers, and conveyancers run the same government flood datasets before settlement. If they find flood risk you haven\'t disclosed, contracts fall over. The 1-in-100 year depth — the number they ask for — is in your report below.'
+    : signal === 'moderate'
+    ? 'One or more sources show flood exposure. Your lender\'s valuer and your insurer\'s underwriter will both want ARI depths before they commit. Those numbers are below — blurred.'
+    : signal === 'low'
+    ? 'Being in a flood zone doesn\'t kill a deal, but not knowing your depths does. Insurance underwriters price flood loading directly against the 1-in-100 year level. Your number is below.'
+    : 'The full report gives your conveyancer source citations across 6 independent datasets. For properties that come back clean, this replaces a $300+ council certificate.';
 
   const emsCount = o.ems_activations?.length ?? 0;
 
@@ -323,7 +340,9 @@ function FloodLockedPreviewCard({
               Starting checkout...
             </>
           ) : (
-            'Unlock flood report — $49'
+            signal !== 'none' && signal !== 'unavailable'
+              ? 'Get my flood depths — $49'
+              : 'Get the full flood report — $49'
           )}
         </button>
         {error && <p className="text-xs text-red-600 mt-2">{error}</p>}
@@ -407,8 +426,8 @@ function FloodCard({ result }: { result: FloodResult }) {
         </div>
         <p className="text-xs text-gray-500">{signalMeta.sublabel}</p>
         <p className="text-xs text-gray-400 mt-1">
-          Data convergence indicator across {sourceCount} independent sources.
-          A formal Section 10.7 certificate from council is required for legal flood status.
+          Screening tool only — not a legal flood determination.
+          A Section 10.7(2) or (5) certificate from council is required for flood status in conveyancing.
         </p>
       </div>
 
@@ -424,9 +443,9 @@ function FloodCard({ result }: { result: FloodResult }) {
           </p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Data sources checked</p>
+          <p className="text-xs text-gray-400 mb-1">Sources checked</p>
           <p className="text-sm font-medium text-gray-900">{sourceCount} independent sources</p>
-          <p className="text-xs text-gray-400 mt-1">EPI overlay · Copernicus EMS · JRC 40yr history · BOM gauge · Sentinel-1 SAR</p>
+          <p className="text-xs text-gray-400 mt-1">NSW EPI overlay · Council flood studies · Copernicus EMS · JRC 40-year water history · BOM river gauge</p>
         </div>
       </div>
 
@@ -446,8 +465,8 @@ function FloodCard({ result }: { result: FloodResult }) {
             </span>
           </div>
           <p className="text-xs text-gray-400">
-            {o.ses_study_lga ? `${o.ses_study_lga} · ` : ''}
-            {o.ses_study_name ?? 'Council flood study'} · ingested from spatial overlay
+            {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
+            {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
           </p>
         </div>
       )}
@@ -468,8 +487,8 @@ function FloodCard({ result }: { result: FloodResult }) {
           Sources: {(result.data_sources ?? []).join(' · ')}
         </p>
         <p className="text-xs text-gray-400 mt-0.5">
-          Indicative only. Not a substitute for a formal Section 10.7 flood certificate.
-          Consult council or a qualified flood engineer for development or conveyancing decisions.
+          Indicative only. For conveyancing, development, or insurance: obtain a Section 10.7
+          certificate from council or a report from a qualified flood engineer.
         </p>
       </div>
     </div>
