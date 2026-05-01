@@ -166,93 +166,110 @@ STUDIES = {
     # All URLs confirmed anonymous-queryable May 2026.
     # -------------------------------------------------------------------------
 
-    # Byron Shire — ras_byron account, all layers anonymous-queryable.
-    # FPA = binary flood planning area mask (best starting point for FPA query).
-    # GIS_GISDATA_flood likely has AEP breakdowns — inspect layer_id options.
+    # Byron Shire — ras_byron account, anonymous-queryable.
+    # Only one layer (id=3): FPL at 1:100 ARI + 0.5m freeboard + CC to 2100.
+    # Fields: OBJECTID, Id, Shape__Area, Shape__Length — binary FPA mask, no AEP col.
+    # GIS_GISDATA_flood service is identical data — skip it.
     "byron_fpa": {
-        "label": "Byron Shire — Flood Planning Area (ArcGIS FeatureServer)",
+        "label": "Byron Shire — Future Flood Planning Level FPA (ArcGIS FeatureServer)",
         "lga_names": ["BYRON"],
         "currency_date": None,
         "instrument_prefix": "BYRON_FPA",
         "download_type": "arcgis_featureserver",
         "base_url": "https://services7.arcgis.com/SqbRuGmmUbhRpdi1/arcgis/rest/services/Flood_Planning_Area/FeatureServer",
-        "layer_id": 0,          # verify via --inspect-featureserver
+        "layer_id": 3,          # confirmed: only layer in service
         "aep_source": "fixed",
         "fixed_scenario": "flood_planning_area",
         "fixed_ari": None,
     },
-    "byron_gis_flood": {
-        "label": "Byron Shire — GIS Flood Data (AEP extents, ArcGIS FeatureServer)",
-        "lga_names": ["BYRON"],
-        "currency_date": None,
-        "instrument_prefix": "BYRON_GIS",
-        "download_type": "arcgis_featureserver",
-        "base_url": "https://services7.arcgis.com/SqbRuGmmUbhRpdi1/arcgis/rest/services/GIS_GISDATA_flood/FeatureServer",
-        "layer_id": 0,
-        "aep_source": "column",
-        "aep_col": None,        # auto-detected; inspect field names first
-    },
 
-    # Tweed Shire — gis_tweed account, 12+ services. FloodingData is the primary
-    # dataset. tweed_dcp contains DCP-referenced flood levels (most compliance-relevant).
+    # Tweed Shire — gis_tweed account.
+    # FloodingData service: 12 layers.
+    #   Layers 1/6/11 are "Inundation Areas" with LOWER/UPPER flood level bands (m AHD),
+    #   NOT discrete AEP scenarios — contour-band polygons showing inundation depth ranges.
+    #   Layer 8 = "ARI 100 year (AEP 1%) flood" — the directly useful FPA/flood extent.
+    #   Fields: Object_ID, LOWER, UPPER, Shape__Area, Shape__Length.
+    # tweed_dcp_flood: Design Flood Inundation Areas (layer 1) — same LOWER/UPPER structure.
+    #   "Design Flood" = 1% AEP per NSW DCP standard (Tweed DCP TV09 + Coastal Creeks 2010).
     "tweed_flood": {
-        "label": "Tweed Shire — Flooding Data primary (ArcGIS FeatureServer)",
+        "label": "Tweed Shire — ARI 100yr (1%AEP) flood extent (ArcGIS FeatureServer)",
         "lga_names": ["TWEED"],
         "currency_date": None,
-        "instrument_prefix": "TWEED_FLOOD",
+        "instrument_prefix": "TWEED_1PCT",
         "download_type": "arcgis_featureserver",
         "base_url": "https://services1.arcgis.com/KURAxOhGWn5RdCPg/arcgis/rest/services/FloodingData/FeatureServer",
-        "layer_id": 0,
-        "aep_source": "column",
-        "aep_col": None,
+        "layer_id": 8,          # confirmed: 'ARI 100 year (AEP 1%) flood'
+        "aep_source": "fixed",
+        "fixed_scenario": "1%AEP",
+        "fixed_ari": 100,
     },
     "tweed_dcp_flood": {
-        "label": "Tweed Shire — Existing DCP Flood Levels TV09/CC10 (ArcGIS FeatureServer)",
+        "label": "Tweed Shire — DCP Design Flood Inundation Areas TV09/CC10 (ArcGIS FeatureServer)",
         "lga_names": ["TWEED"],
         "currency_date": None,
         "instrument_prefix": "TWEED_DCP",
         "download_type": "arcgis_featureserver",
         "base_url": "https://services1.arcgis.com/KURAxOhGWn5RdCPg/arcgis/rest/services/Flooding_ExistingDCP_TV09_CC10/FeatureServer",
-        "layer_id": 0,
-        "aep_source": "column",
-        "aep_col": None,
+        "layer_id": 1,          # confirmed: 'Design Flood Inundation Areas'
+        "aep_source": "fixed",
+        # "Design flood" in Tweed DCP TV09/CC10 = 1%AEP per NSW planning standard.
+        "fixed_scenario": "design_flood",
+        "fixed_ari": 100,
     },
 
     # Port Macquarie-Hastings — confirmed public, council-authored.
     # Data broker: Jennifer Lang <jennifer.lang@pmhc.nsw.gov.au>
     # Contact before commercial use to confirm licence terms.
+    # Two layers: layer 0 = FPA (binary), layer 1 = PMF (binary).
+    # Both have no AEP column — binary masks only.
     "pmhc_flood": {
-        "label": "Port Macquarie-Hastings — Flood Planning Info (ArcGIS FeatureServer)",
+        "label": "Port Macquarie-Hastings — Flood Planning Area layer 0 (ArcGIS FeatureServer)",
         "lga_names": ["PORT MACQUARIE-HASTINGS"],
         "currency_date": None,
-        "instrument_prefix": "PMHC_FLOOD",
+        "instrument_prefix": "PMHC_FPA",
         "download_type": "arcgis_featureserver",
         "base_url": "https://services5.arcgis.com/apQoc7QtDZkPPGVg/arcgis/rest/services/Flood_Planning_Info/FeatureServer",
-        "layer_id": 0,
-        "aep_source": "column",
-        "aep_col": None,
+        "layer_id": 0,          # confirmed: 'Flood Planning Area'
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
+    },
+    "pmhc_pmf": {
+        "label": "Port Macquarie-Hastings — Probable Maximum Flood layer 1 (ArcGIS FeatureServer)",
+        "lga_names": ["PORT MACQUARIE-HASTINGS"],
+        "currency_date": None,
+        "instrument_prefix": "PMHC_PMF",
+        "download_type": "arcgis_featureserver",
+        "base_url": "https://services5.arcgis.com/apQoc7QtDZkPPGVg/arcgis/rest/services/Flood_Planning_Info/FeatureServer",
+        "layer_id": 1,          # confirmed: 'Probable Maximum Flood'
+        "aep_source": "fixed",
+        "fixed_scenario": "PMF",
+        "fixed_ari": None,
     },
 
     # Hawkesbury City Council — hsc_dave account.
-    # HSC_Flooding_LAYERS has 1% AEP categorized extents + CSIRO sea level scenarios.
-    # Complements hawkesbury_fpa (FPA boundary) with AEP-specific flood extents.
+    # HSC_Flooding_LAYERS: layer 1 = 1%AEP categorized extent (confirmed: FID, Join_Count, Evaluated).
+    # No AEP column — the scenario is the layer itself.
+    # Also has CSIRO sea level rise scenarios (layers 4-6) and 2010 flood event (layer 7).
+    # Complements hawkesbury_fpa (FPA boundary shapefile from Nona Ruddell).
     "hawkesbury_council_flood": {
-        "label": "Hawkesbury City Council — 1% AEP flood layers (ArcGIS FeatureServer)",
+        "label": "Hawkesbury City Council — 1%AEP Flood Extent Categorized (ArcGIS FeatureServer)",
         "lga_names": ["HAWKESBURY"],
         "currency_date": None,
-        "instrument_prefix": "HAWK_COUNCIL",
+        "instrument_prefix": "HAWK_1PCT",
         "download_type": "arcgis_featureserver",
         "base_url": "https://services6.arcgis.com/VKqP0BP08pVXloHq/arcgis/rest/services/HSC_Flooding_LAYERS/FeatureServer",
-        "layer_id": 0,
-        "aep_source": "column",
-        "aep_col": None,
+        "layer_id": 1,          # confirmed: '1pc_AEP_Flood_Extent_Categorized'
+        "aep_source": "fixed",
+        "fixed_scenario": "1%AEP",
+        "fixed_ari": 100,
     },
 
-    # NSW Flood Risk EPI overlay — covers Lismore + Ballina LEP polygons.
-    # Single FeatureServer, filtered by where_clause per LGA.
-    # Query: WHERE LGA_NAME='LISMORE' or LGA_NAME='BALLINA'
+    # NSW Flood Risk EPI overlay — same field structure as EPI_Flood.shp from OEH data broker.
+    # Fields: EPI_NAME, LGA_CODE, LGA_NAME, LAY_CLASS, CURRENCY_D — routed to _ingest_epi_statewide().
+    # Filtered by where_clause per LGA (single FeatureServer covers all NSW EPI flood areas).
     "lismore_epi_flood": {
-        "label": "Lismore — NSW EPI Flood Risk overlay (ArcGIS FeatureServer)",
+        "label": "Lismore — NSW EPI Flood Risk (ArcGIS FeatureServer, filtered by LGA)",
         "lga_names": ["LISMORE"],
         "currency_date": None,
         "instrument_prefix": "NSW_FLOOD_RISK_LISMORE",
@@ -260,11 +277,12 @@ STUDIES = {
         "base_url": "https://services-ap1.arcgis.com/s047i49VH0D2nqIM/arcgis/rest/services/NSW_Flood_Risk/FeatureServer",
         "layer_id": 0,
         "where_clause": "LGA_NAME='LISMORE'",
-        "aep_source": "column",
-        "aep_col": None,
+        # Field structure identical to EPI shapefile — use same ingest path.
+        "aep_source": "epi_statewide",
+        "aep_col": "LAY_CLASS",
     },
     "ballina_epi_flood": {
-        "label": "Ballina — NSW EPI Flood Risk overlay (ArcGIS FeatureServer)",
+        "label": "Ballina — NSW EPI Flood Risk (ArcGIS FeatureServer, filtered by LGA)",
         "lga_names": ["BALLINA"],
         "currency_date": None,
         "instrument_prefix": "NSW_FLOOD_RISK_BALLINA",
@@ -272,29 +290,33 @@ STUDIES = {
         "base_url": "https://services-ap1.arcgis.com/s047i49VH0D2nqIM/arcgis/rest/services/NSW_Flood_Risk/FeatureServer",
         "layer_id": 0,
         "where_clause": "LGA_NAME='BALLINA'",
-        "aep_source": "column",
-        "aep_col": None,
+        "aep_source": "epi_statewide",
+        "aep_col": "LAY_CLASS",
     },
 
-    # Penrith South Creek — direct SES portal downloads (CC-BY 4.0, no auth).
-    # Replaces auth-blocked URL in south_creek_hc with working direct links.
+    # Penrith South Creek — SES portal downloads.
+    # Both URLs return 403 (portal requires login even for direct /download/ links).
+    # Manual workaround: download via browser, drop ZIP in data/flood_studies/penrith_fpa/
+    # and data/flood_studies/penrith_extents/, then re-run with --study penrith_fpa.
     "penrith_fpa": {
-        "label": "Penrith South Creek — Flood Planning Area (SES portal, direct download)",
+        "label": "Penrith South Creek — Flood Planning Area (SES portal, manual download required)",
         "lga_names": ["PENRITH"],
         "currency_date": date(2023, 9, 12),
         "instrument_prefix": "PENRITH_FPA",
         "download_type": "zip",
+        # 403 Forbidden — portal requires auth. Download manually and drop ZIP here.
         "zip_url": "https://flooddata.ses.nsw.gov.au/dataset/bbced83f-2a91-4983-b773-2efeb0709a5d/resource/406c8e42-ded2-428c-b73a-1a1375586ea4/download/flood-planning-area.zip",
         "aep_source": "fixed",
         "fixed_scenario": "flood_planning_area",
         "fixed_ari": None,
     },
     "penrith_extents": {
-        "label": "Penrith South Creek — GIS Flood Extents (SES portal, direct download)",
+        "label": "Penrith South Creek — GIS Flood Extents (SES portal, manual download required)",
         "lga_names": ["PENRITH", "HAWKESBURY", "BLACKTOWN"],
         "currency_date": date(2023, 9, 12),
         "instrument_prefix": "PENRITH_EXTENTS",
         "download_type": "zip",
+        # 403 Forbidden — portal requires auth. Download manually and drop ZIP here.
         "zip_url": "https://flooddata.ses.nsw.gov.au/dataset/bbced83f-2a91-4983-b773-2efeb0709a5d/resource/4617fafc-a32b-4a4d-bc6a-29aab141ba7d/download/gis-extents.zip",
         "aep_source": "filename",
         "aep_col": None,
@@ -448,7 +470,13 @@ def _inspect_featureserver(study_key: str, study: dict) -> None:
         else:
             print(f"  (no layers metadata returned)")
 
-    # 2. Fetch one record from the configured layer_id
+    # 2. Fetch one record — prefer first available layer_id from metadata over config
+    if meta_r.ok:
+        meta = meta_r.json()
+        available_ids = [lyr.get("id") for lyr in (meta.get("layers") or []) if lyr.get("id") is not None]
+        if available_ids and layer_id not in available_ids:
+            print(f"  [warn] configured layer_id={layer_id} not in service — using id={available_ids[0]}")
+            layer_id = available_ids[0]
     where = study.get("where_clause", "1=1")
     url = f"{base_url}/{layer_id}/query"
     params = {
