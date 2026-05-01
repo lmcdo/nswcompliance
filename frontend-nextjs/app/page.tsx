@@ -200,7 +200,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by council area</h2>
           <p className="text-sm text-gray-500 mb-8">
-            Select an LGA to run any tool — results are instant, address-specific, and free.
+            Select an LGA to check granny flat eligibility, flood risk, solar yield, and planning alerts for that area.
           </p>
 
           <div className="space-y-8">
