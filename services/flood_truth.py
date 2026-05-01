@@ -551,7 +551,7 @@ DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"
 
 # Canonical display labels for raw DB values stored in spatial_overlays.value.
 # Raw values vary by source: snake_case from FPA shapefiles, title case from EPI,
-# short codes from council FeatureServers. Always apply this before returning.
+# short codes from council FeatureServers, and AEP% from filename-parsed studies.
 _SES_CLASS_DISPLAY: dict[str, str] = {
     "flood_planning_area":               "Flood Planning Area",
     "Flood Planning Area":               "Flood Planning Area",
@@ -563,27 +563,52 @@ _SES_CLASS_DISPLAY: dict[str, str] = {
     "Level of Probable Maximum Flood":   "Probable Maximum Flood",
     "Probable Maximum Flood Line":       "Probable Maximum Flood",
     "Area 1":                            "Flood Prone Area 1",
+    # Campbelltown AEP tiers (parsed from filename by ingest script)
+    "0.2%AEP":  "0.2% AEP (1-in-500 yr)",
+    "0.5%AEP":  "0.5% AEP (1-in-200 yr)",
+    "1.0%AEP":  "1% AEP (1-in-100 yr)",
+    "2.0%AEP":  "2% AEP (1-in-50 yr)",
+    "5.0%AEP":  "5% AEP (1-in-20 yr)",
+    "20.0%AEP": "20% AEP (1-in-5 yr)",
+}
+
+# Lower rank = more frequent flood = more informative for day-to-day risk.
+# Used to pick the primary ses_flood_class when multiple AEP tiers match.
+_AEP_FREQUENCY_RANK: dict[str, int] = {
+    "20% AEP (1-in-5 yr)":       1,
+    "5% AEP (1-in-20 yr)":       2,
+    "2% AEP (1-in-50 yr)":       3,
+    "1% AEP (1-in-100 yr)":      4,
+    "Design Flood (1% AEP)":     4,
+    "1% AEP Flood Extent":       4,
+    "0.5% AEP (1-in-200 yr)":    5,
+    "0.2% AEP (1-in-500 yr)":    6,
+    "Flood Planning Area":        7,
+    "Flood Prone Land":           7,
+    "Flood Prone Area 1":         7,
+    "Probable Maximum Flood":     8,
 }
 
 
 def _query_ses_flood_study(lat: float, lng: float) -> dict:
     """
     Point-in-polygon against spatial_overlays for flood layer type.
-    Covers all council flood studies ingested by ingest_flood_studies.py,
-    including Hawkesbury FPA and any future SES portal studies.
+    Returns all matching AEP tiers for the point (not just the first).
 
     Returns:
       ses_in_flood_planning_area: bool | None
         True  — point is inside at least one flood extent polygon
         False — spatial_overlays has flood rows but point is outside all of them
         None  — spatial_overlays has no flood rows (table empty/unavailable)
-      ses_flood_class: str | None   — value of the matched row (e.g. "flood_planning_area")
-      ses_study_name: str | None    — instrument_key of the matched row
-      ses_study_lga: str | None     — lga_name of the matched row
+      ses_flood_class: str | None   — most frequent (highest AEP%) tier matched
+      ses_aep_tiers: list[str]      — all matched tier display labels
+      ses_study_name: str | None    — instrument_key of the primary matched row
+      ses_study_lga: str | None     — lga_name of the primary matched row
     """
     null_result = {
         "ses_in_flood_planning_area": None,
         "ses_flood_class": None,
+        "ses_aep_tiers": [],
         "ses_study_name": None,
         "ses_study_lga": None,
     }
@@ -595,32 +620,42 @@ def _query_ses_flood_study(lat: float, lng: float) -> dict:
             cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
             if cur.fetchone()["n"] == 0:
                 return null_result
-            # Point-in-polygon: find first matching flood polygon
+            # Fetch ALL matching flood polygons — no LIMIT so multi-AEP studies return all tiers.
             cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(
                 """
-                SELECT instrument_key, lga_name, value
+                SELECT DISTINCT ON (value) instrument_key, lga_name, value
                 FROM spatial_overlays
                 WHERE layer_type = 'flood'
                   AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                ORDER BY currency_date DESC
-                LIMIT 1
+                ORDER BY value, currency_date DESC
                 """,
                 (lng, lat),
             )
-            row = cur.fetchone()
-        if row:
+            rows = cur.fetchall()
+        if not rows:
             return {
-                "ses_in_flood_planning_area": True,
-                "ses_flood_class": _SES_CLASS_DISPLAY.get(row["value"], row["value"]),
-                "ses_study_name": row["instrument_key"],
-                "ses_study_lga": row["lga_name"],
+                "ses_in_flood_planning_area": False,
+                "ses_flood_class": None,
+                "ses_aep_tiers": [],
+                "ses_study_name": None,
+                "ses_study_lga": None,
             }
+        # Map all raw values to display labels
+        tiers = [_SES_CLASS_DISPLAY.get(r["value"], r["value"]) for r in rows]
+        # Primary class = most frequent tier (lowest _AEP_FREQUENCY_RANK value)
+        primary_tier = min(tiers, key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99))
+        # Use the row matching the primary tier for study provenance
+        primary_row = next(
+            r for r in rows
+            if _SES_CLASS_DISPLAY.get(r["value"], r["value"]) == primary_tier
+        )
         return {
-            "ses_in_flood_planning_area": False,
-            "ses_flood_class": None,
-            "ses_study_name": None,
-            "ses_study_lga": None,
+            "ses_in_flood_planning_area": True,
+            "ses_flood_class": primary_tier,
+            "ses_aep_tiers": sorted(tiers, key=lambda t: _AEP_FREQUENCY_RANK.get(t, 99)),
+            "ses_study_name": primary_row["instrument_key"],
+            "ses_study_lga": primary_row["lga_name"],
         }
     except Exception as e:
         logger.warning(f"SES flood study query: {e}")

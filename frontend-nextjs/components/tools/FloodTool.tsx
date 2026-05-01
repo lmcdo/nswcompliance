@@ -25,6 +25,7 @@ interface FloodOutputs {
   dea_wofs_frequency_pct: number | null;
   ses_in_flood_planning_area: boolean | null;
   ses_flood_class: string | null;
+  ses_aep_tiers: string[] | null;
   ses_study_name: string | null;
   ses_study_lga: string | null;
   bom_gauge_name: string | null;
@@ -487,17 +488,32 @@ function FloodCard({ result }: { result: FloodResult }) {
       {o.ses_in_flood_planning_area !== null && (
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Council flood study overlay</p>
-          <div className="flex items-center gap-2 mb-1">
-            <span className={`inline-block text-sm font-medium px-2 py-0.5 rounded ${
-              o.ses_in_flood_planning_area
-                ? 'bg-red-100 text-red-800'
-                : 'bg-green-100 text-green-700'
-            }`}>
-              {o.ses_in_flood_planning_area
-                ? `In flood extent${o.ses_flood_class ? ` — ${o.ses_flood_class}` : ''}`
-                : 'Outside mapped flood extent'}
-            </span>
-          </div>
+          {o.ses_in_flood_planning_area ? (
+            <>
+              {/* Multiple AEP tiers — show as tag list when available */}
+              {o.ses_aep_tiers && o.ses_aep_tiers.length > 1 ? (
+                <div className="flex flex-wrap gap-1.5 mb-1">
+                  {o.ses_aep_tiers.map((tier) => (
+                    <span key={tier} className="inline-block text-xs font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
+                      {tier}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="mb-1">
+                  <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-red-100 text-red-800">
+                    {o.ses_flood_class ? `In flood extent — ${o.ses_flood_class}` : 'In flood extent'}
+                  </span>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="mb-1">
+              <span className="inline-block text-sm font-medium px-2 py-0.5 rounded bg-green-100 text-green-700">
+                Outside mapped flood extent
+              </span>
+            </div>
+          )}
           <p className="text-xs text-gray-400">
             {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
             {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
