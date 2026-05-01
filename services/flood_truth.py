@@ -141,8 +141,9 @@ _GAUGE_MAX_DISTANCE_KM = 75.0  # don't associate gauge if further than this
 # Hawkesbury FRMSP 2025 — AEP raster flood levels
 # ---------------------------------------------------------------------------
 
-HAWKESBURY_RASTER_DIR = os.path.join(
-    os.path.dirname(__file__), "..", "data", "flood_studies", "hawkesbury", "rasters"
+HAWKESBURY_RASTER_DIR = os.environ.get(
+    "HAWKESBURY_RASTER_DIR",
+    os.path.join(os.path.dirname(__file__), "..", "data", "flood_studies", "hawkesbury", "rasters"),
 )
 # Keys are used as field name suffixes: hawkesbury_flood_level_{key}
 HAWKESBURY_AEP_FILES: dict[str, str] = {
