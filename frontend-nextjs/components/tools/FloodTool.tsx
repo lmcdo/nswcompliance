@@ -191,9 +191,9 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
         </div>
       </details>
       <p className="mt-2 text-sm text-gray-400">
-        Free results show your EPI flood zone and council flood study classification. The $49 report adds
-        depth contours by flood frequency (1-in-20, 1-in-100, 1-in-500 year), BOM gauge event history,
-        and a source-cited PDF for conveyancers and lenders.
+        Free results show your EPI flood zone, council flood study classification, and satellite water
+        history. The $49 report adds BOM gauge flood event history, 40-year JRC surface water data,
+        Copernicus EMS observed flood events, and a source-cited PDF for conveyancers and lenders.
       </p>
 
       <form onSubmit={handleSubmit} className="flex gap-3 mt-6 mb-8">
@@ -320,8 +320,8 @@ function FloodLockedPreviewCard({
         : '—',
     },
     {
-      label: 'ARI depths — 1-in-20, 1-in-100, 1-in-500 yr',
-      preview: 'Included in full report',
+      label: 'Copernicus EMS — historical flood activations',
+      preview: `${emsCount} recorded event${emsCount !== 1 ? 's' : ''} at this location`,
     },
   ];
 
@@ -451,7 +451,7 @@ function FloodCard({ result }: { result: FloodResult }) {
         </p>
       </div>
 
-      {/* Free tier: council overlay badge only — depth, history, gauge hidden behind paywall */}
+      {/* Free tier: council overlay + satellite water history */}
       <div className="grid grid-cols-2 divide-x divide-gray-100">
         <div className="p-6">
           <p className="text-xs text-gray-400 mb-1">Council flood overlay</p>
@@ -463,9 +463,23 @@ function FloodCard({ result }: { result: FloodResult }) {
           </p>
         </div>
         <div className="p-6">
-          <p className="text-xs text-gray-400 mb-1">Sources checked</p>
-          <p className="text-sm font-medium text-gray-900">{sourceCount} independent sources</p>
-          <p className="text-xs text-gray-400 mt-1">NSW EPI overlay · Council flood studies · Copernicus EMS · JRC 40-year water history · BOM river gauge</p>
+          <p className="text-xs text-gray-400 mb-1">Satellite water history (DEA WOfS)</p>
+          {o.dea_wofs_frequency_pct != null ? (
+            <>
+              <p className="text-sm font-medium text-gray-900">{o.dea_wofs_frequency_pct.toFixed(1)}% of observations</p>
+              <p className="text-xs text-gray-400 mt-1">
+                {o.dea_wofs_frequency_pct === 0
+                  ? 'No surface water detected — Landsat 1987–present'
+                  : o.dea_wofs_frequency_pct < 5
+                  ? 'Rare inundation — Landsat 1987–present'
+                  : o.dea_wofs_frequency_pct < 15
+                  ? 'Occasional inundation — Landsat 1987–present'
+                  : 'Frequent inundation — Landsat 1987–present'}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-gray-400">Not available for this location</p>
+          )}
         </div>
       </div>
 
