@@ -421,6 +421,7 @@ scripts/
 !scripts/templates/
 !scripts/templates/sepp_requirement_template.json
 !scripts/ingest_spatial_overlays.py
+!scripts/ingest_flood_studies.py
 !scripts/generate_conveyancing_report.py
 !scripts/add_new_chapter.py
 !scripts/audit_url_landscape.py

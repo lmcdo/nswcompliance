@@ -40,9 +40,11 @@ Adding new studies:
 """
 
 import argparse
+import json
 import os
 import re
 import sys
+import time
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -155,6 +157,61 @@ STUDIES = {
         "aep_source": "column",
         "aep_col": None,
     },
+
+    # -------------------------------------------------------------------------
+    # ArcGIS FeatureServer studies — free public services, no auth required.
+    # outSR=4326 requested so server reprojects to WGS84 before returning.
+    # Run with --inspect-featureserver <key> to preview field names before ingest.
+    # URLs confirmed from council ArcGIS Online / GIS portal research (May 2026).
+    # -------------------------------------------------------------------------
+    "byron_flood": {
+        "label": "Byron Shire Council — Flood Planning Area (ArcGIS FeatureServer)",
+        "lga_names": ["BYRON"],
+        "currency_date": None,          # read from server feature attributes
+        "instrument_prefix": "BYRON_FLOOD",
+        "download_type": "arcgis_featureserver",
+        # TODO: replace with confirmed FeatureServer base URL from council research
+        # Pattern: https://<server>/arcgis/rest/services/<service>/FeatureServer
+        "base_url": "TODO_BYRON_FEATURESERVER_URL",
+        "layer_id": 0,                  # verify via --inspect-featureserver
+        "aep_source": "column",
+        "aep_col": None,                # auto-detected from field names
+    },
+    "tweed_flood": {
+        "label": "Tweed Shire Council — Flood Extent Layers (ArcGIS FeatureServer)",
+        "lga_names": ["TWEED"],
+        "currency_date": None,
+        "instrument_prefix": "TWEED_FLOOD",
+        "download_type": "arcgis_featureserver",
+        "base_url": "TODO_TWEED_FEATURESERVER_URL",
+        "layer_id": 0,
+        "aep_source": "column",
+        "aep_col": None,
+    },
+    "pmhc_flood": {
+        "label": "Port Macquarie-Hastings Council — Flood Study Extents (ArcGIS FeatureServer)",
+        # Data broker: Jennifer Lang <jennifer.lang@pmhc.nsw.gov.au>
+        # Contact before commercial ingest to confirm licence terms.
+        "lga_names": ["PORT MACQUARIE-HASTINGS"],
+        "currency_date": None,
+        "instrument_prefix": "PMHC_FLOOD",
+        "download_type": "arcgis_featureserver",
+        "base_url": "TODO_PMHC_FEATURESERVER_URL",
+        "layer_id": 0,
+        "aep_source": "column",
+        "aep_col": None,
+    },
+    "hawkesbury_council_flood": {
+        "label": "Hawkesbury City Council — 1% AEP Flood Extent (ArcGIS FeatureServer)",
+        "lga_names": ["HAWKESBURY"],
+        "currency_date": None,
+        "instrument_prefix": "HAWK_COUNCIL_FLOOD",
+        "download_type": "arcgis_featureserver",
+        "base_url": "TODO_HAWKESBURY_COUNCIL_FEATURESERVER_URL",
+        "layer_id": 0,
+        "aep_source": "column",
+        "aep_col": None,
+    },
 }
 
 # AEP numeric (%) -> ARI (years) lookup for value_numeric field
@@ -220,6 +277,103 @@ def _detect_aep_col(gdf) -> Optional[str]:
     return None
 
 
+def _fetch_page_featureserver(base_url: str, layer_id: int, offset: int) -> dict:
+    """Fetch one page of features from an ArcGIS FeatureServer (1000 features per page).
+
+    Requests outSR=4326 so the server reprojects from native CRS (typically EPSG:28356)
+    to WGS84 before returning. Retries up to 3 times on HTTP 500.
+    """
+    url = f"{base_url}/{layer_id}/query"
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "returnGeometry": "true",
+        "outSR": "4326",
+        "resultOffset": offset,
+        "resultRecordCount": 1000,
+        "f": "geojson",
+    }
+    for attempt in range(3):
+        r = requests.get(url, params=params, timeout=60)
+        if r.status_code == 500:
+            wait = 10 * (attempt + 1)
+            print(f"    [warn] 500 from FeatureServer (attempt {attempt + 1}/3) — retrying in {wait}s ...")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        return r.json()
+    print(f"    [skip] 500 after 3 retries — skipping offset={offset}")
+    return {"features": []}
+
+
+def _download_featureserver(study: dict, cache_file: Path) -> None:
+    """Paginate a FeatureServer layer and save all features as a GeoJSON cache file."""
+    base_url = study["base_url"]
+    layer_id = study["layer_id"]
+
+    if base_url.startswith("TODO_"):
+        raise RuntimeError(
+            f"FeatureServer URL not configured: {base_url}\n"
+            f"Update the study config with the real ArcGIS FeatureServer URL."
+        )
+
+    offset = 0
+    all_features: list[dict] = []
+    print(f"  [fetch] ArcGIS FeatureServer {base_url}/{layer_id} ...")
+
+    while True:
+        data = _fetch_page_featureserver(base_url, layer_id, offset)
+        features = data.get("features", [])
+        all_features.extend(features)
+        print(f"    offset={offset} -> {len(features)} features (total: {len(all_features)})")
+        if not features or not data.get("exceededTransferLimit", False):
+            break
+        offset += len(features)
+
+    if not all_features:
+        raise RuntimeError(f"FeatureServer returned 0 features for {base_url}/{layer_id}")
+
+    geojson: dict = {
+        "type": "FeatureCollection",
+        "crs": {"type": "name", "properties": {"name": "EPSG:4326"}},
+        "features": all_features,
+    }
+    with open(cache_file, "w") as fh:
+        json.dump(geojson, fh)
+    print(f"  [cache] saved {len(all_features)} features -> {cache_file.name}")
+
+
+def _inspect_featureserver(study_key: str, study: dict) -> None:
+    """Fetch the first 1 record from a FeatureServer and print all field names + sample values."""
+    base_url = study["base_url"]
+    layer_id = study["layer_id"]
+
+    if base_url.startswith("TODO_"):
+        print(f"  [skip] URL not configured: {base_url}")
+        return
+
+    url = f"{base_url}/{layer_id}/query"
+    params = {
+        "where": "1=1",
+        "outFields": "*",
+        "returnGeometry": "false",
+        "resultOffset": 0,
+        "resultRecordCount": 1,
+        "f": "geojson",
+    }
+    r = requests.get(url, params=params, timeout=30)
+    r.raise_for_status()
+    data = r.json()
+    features = data.get("features", [])
+    if not features:
+        print(f"  [empty] no features returned")
+        return
+    props = features[0].get("properties") or features[0].get("attributes") or {}
+    print(f"\n  FeatureServer field names for {study_key} (layer {layer_id}):")
+    for k, v in props.items():
+        print(f"    {k!r}: {v!r}")
+
+
 def _download_file(url: str, dest: Path, label: str = "") -> None:
     if dest.exists():
         print(f"  [cache] {dest.name}")
@@ -265,6 +419,14 @@ def _prepare_study(study_key: str, study: dict) -> list[Path]:
         if not stem:
             raise RuntimeError("No .shp URL found in study config")
         return [study_dir / f"{stem}.shp"]
+
+    elif dl_type == "arcgis_featureserver":
+        cache_file = study_dir / f"{study_key}.geojson"
+        if not cache_file.exists():
+            _download_featureserver(study, cache_file)
+        else:
+            print(f"  [cache] {cache_file.name}")
+        return [cache_file]
 
     elif dl_type == "zip":
         zip_url = study["zip_url"]
@@ -530,23 +692,26 @@ def _verify_db(conn, study_key: str, instrument_prefix: str) -> None:
 
 
 def main():
+    all_keys = list(STUDIES.keys())
     parser = argparse.ArgumentParser()
     parser.add_argument("--study", default="all",
-                        help="Study key: all | hawkesbury_fpa | epi_statewide | campbelltown | narellan | greendale | south_creek_hc")
+                        help=f"Study key: all | {' | '.join(all_keys)}")
     parser.add_argument("--inspect", action="store_true",
-                        help="Print column info only -- no DB insert")
+                        help="Print column info from local files only -- no DB insert")
+    parser.add_argument("--inspect-featureserver", action="store_true",
+                        help="Fetch 1 record from FeatureServer studies and print field names")
     parser.add_argument("--dry-run", action="store_true",
                         help="Parse and validate but skip DB insert")
     args = parser.parse_args()
 
-    target_keys = list(STUDIES.keys()) if args.study == "all" else [args.study]
+    target_keys = all_keys if args.study == "all" else [args.study]
     for k in target_keys:
         if k not in STUDIES:
-            print(f"ERROR: unknown study '{k}'. Valid: {list(STUDIES.keys())}")
+            print(f"ERROR: unknown study '{k}'. Valid: {all_keys}")
             sys.exit(1)
 
     database_url = os.getenv("DATABASE_URL")
-    if not database_url and not args.inspect and not args.dry_run:
+    if not database_url and not args.inspect and not args.inspect_featureserver and not args.dry_run:
         print("ERROR: DATABASE_URL not set")
         sys.exit(1)
 
@@ -555,6 +720,14 @@ def main():
         print(f"\n{'=' * 60}")
         print(f"Processing: {study_key} -- {study['label']}")
 
+        # FeatureServer field inspection — no local file needed
+        if args.inspect_featureserver:
+            if study.get("download_type") == "arcgis_featureserver":
+                _inspect_featureserver(study_key, study)
+            else:
+                print(f"  [skip] not an arcgis_featureserver study")
+            continue
+
         try:
             shp_paths = _prepare_study(study_key, study)
         except Exception as e:
@@ -562,10 +735,10 @@ def main():
             continue
 
         if not shp_paths:
-            print(f"  ERROR: no shapefiles found after download")
+            print(f"  ERROR: no files found after download")
             continue
 
-        print(f"  Found {len(shp_paths)} shapefile(s)")
+        print(f"  Found {len(shp_paths)} file(s)")
 
         if args.inspect:
             _inspect_study(study_key, study, shp_paths)
