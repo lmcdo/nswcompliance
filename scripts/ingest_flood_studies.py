@@ -440,6 +440,16 @@ def _download_featureserver(study: dict, cache_file: Path) -> None:
             break
         offset += len(features)
 
+    # TODO(cap): ArcGIS Online free tier caps at 1000 features per request.
+    # If len(all_features) == 1000 and exceededTransferLimit was never True, the
+    # service silently truncated. Fix: fetch service extent from {base_url}/{layer_id}?f=json,
+    # split bbox into quadrants, recurse until each returns < 1000, deduplicate by OBJECTID.
+    # Affects: tweed_flood, tweed_dcp_flood, pmhc_flood, pmhc_pmf (all capped at 1000).
+    # Must fix before Phase 7 E2E validation or coverage gaps will be invisible.
+    if len(all_features) == 1000:
+        print(f"  [warn] exactly 1000 features returned — ArcGIS may have silently truncated. "
+              f"Implement bbox-split pagination before Phase 7 validation.")
+
     if not all_features:
         raise RuntimeError(f"FeatureServer returned 0 features for {base_url}/{layer_id}")
 
