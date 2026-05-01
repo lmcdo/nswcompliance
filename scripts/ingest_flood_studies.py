@@ -4,8 +4,10 @@ Multi-study flood shapefile ingest into spatial_overlays.
 
 Downloads, inspects, and ingests flood extent shapefiles from the NSW Flood
 Data Portal (flooddata.ses.nsw.gov.au) for priority Greater Sydney LGAs.
+Also ingests locally available shapefiles (e.g. Hawkesbury FPA from Nona Ruddell).
 
 Studies covered:
+  hawkesbury_fpa -- Hawkesbury FRMSP 2025 Flood Planning Area (binary FPA mask)
   campbelltown   -- Campbelltown Design Flood Extents (Campbelltown / Camden)
   narellan       -- Narellan Creek Flood Study Extents (Camden)
   greendale      -- Greendale Creek Flood Study GIS Layers (Northern Beaches)
@@ -14,6 +16,7 @@ Studies covered:
 Usage:
   python scripts/ingest_flood_studies.py --inspect              # show column names only
   python scripts/ingest_flood_studies.py --study all            # ingest all studies
+  python scripts/ingest_flood_studies.py --study hawkesbury_fpa # single study
   python scripts/ingest_flood_studies.py --study campbelltown   # single study
   python scripts/ingest_flood_studies.py --dry-run --study all  # parse without DB insert
 
@@ -21,13 +24,19 @@ AEP column detection (in priority order):
   Column names containing AEP, ARI, FLOOD_CAT, SCENARIO, CATEGORY, CLASS are inspected.
   If a study has one shapefile per AEP scenario (Hawkesbury pattern), scenario is
   parsed from the filename instead.
+  aep_source="fixed" uses the fixed_scenario value directly (e.g. for FPA binary masks).
 
   Campbelltown filename convention: 0p2AEP_Extent.shp (p = decimal point).
+
+download_type options:
+  "zip"   -- single ZIP file; all .shp files inside are candidates
+  "local" -- shapefile already downloaded; local_path must point to the .shp file
 
 Adding new studies:
   Register a download_type="zip" entry in STUDIES with the direct /download/<file> URL
   from flooddata.ses.nsw.gov.au. Resource page URLs (without /download/) return HTML
   and require portal authentication -- only uploaded files have working direct URLs.
+  For locally available data use download_type="local" with an absolute local_path.
 """
 
 import argparse
@@ -68,6 +77,39 @@ CACHE_DIR.mkdir(parents=True, exist_ok=True)
 # with a comment and will fail gracefully.
 # ---------------------------------------------------------------------------
 STUDIES = {
+    "hawkesbury_fpa": {
+        "label": "Hawkesbury FRMSP 2025 — Flood Planning Area (binary mask)",
+        "lga_names": ["HAWKESBURY"],
+        "currency_date": date(2025, 1, 1),
+        "instrument_prefix": "HFRMS_2025",
+        # Shapefile provided directly by NSW Reconstruction Authority (Nona Ruddell).
+        # 188 features, EPSG:7856, VALUE=1.0 binary mask (no AEP breakdown).
+        # Place at: data/flood_studies/hawkesbury_fpa/FPL_clipped_LGA_mapping_extent.shp
+        # Or point local_path to the original download location.
+        "download_type": "local",
+        "local_path": "C:/Users/lawre/Downloads/ses flood data/hfrms2025-fpa/FPL_clipped_LGA_mapping_extent.shp",
+        # Fixed scenario — the whole shapefile is the FPA boundary (no per-polygon AEP)
+        "aep_source": "fixed",
+        "fixed_scenario": "flood_planning_area",
+        "fixed_ari": None,
+    },
+    "epi_statewide": {
+        "label": "NSW EPI Statewide Flood Layer (OEH BIS Data Broker, 30 Apr 2026)",
+        # 10 LGAs: Bathurst, Clarence Valley, Forbes, Hornsby, Mid-Western Regional,
+        # Tamworth, Wentworth, Wingecarribee, Wollongong, Yass Valley.
+        # Not a complete NSW dataset — ~10 LGAs not covered by EPI REST Layer 1.
+        # LAY_CLASS values vary: "Flood Planning Area", "Flood Prone and Major Creeks Land",
+        # "1 in 100 AEP Flood Extent", "Level of Probable Maximum Flood", etc.
+        # LGA_NAME comes from each row, not a single config value.
+        "lga_names": ["MULTIPLE"],  # placeholder — actual LGA read from each row
+        "currency_date": None,      # read from CURRENCY_D column per row
+        "instrument_prefix": "EPI_STATEWIDE",
+        "download_type": "local",
+        "local_path": "C:/Users/lawre/Downloads/ses flood data/All_EPI_Data_Shapefile_GDA2020_30042026/All_EPI_Data_Shapefile_GDA2020_30042026/EPI_Flood.shp",
+        # Each row has its own LAY_CLASS and LGA_NAME — use specialised ingest path
+        "aep_source": "epi_statewide",
+        "aep_col": "LAY_CLASS",
+    },
     "campbelltown": {
         "label": "Campbelltown Design Flood Extents",
         "lga_names": ["CAMPBELLTOWN", "CAMDEN"],
@@ -144,6 +186,9 @@ def _normalise_aep(raw: str) -> tuple[str, Optional[float]]:
     raw = str(raw).strip()
     if "pmf" in raw.lower() or "probable" in raw.lower():
         return "PMF", None
+    # Pass through non-AEP fixed scenarios (e.g. "flood_planning_area")
+    if re.match(r"^[a-z_]+$", raw.lower()) and not re.search(r"\d", raw):
+        return raw, None
     # Match XAEp or X.XAEP (normalised internal form from filename parsing)
     m = re.match(r"^(\d+(?:\.\d+)?)AEP$", raw, re.IGNORECASE)
     if m:
@@ -200,7 +245,16 @@ def _prepare_study(study_key: str, study: dict) -> list[Path]:
 
     dl_type = study["download_type"]
 
-    if dl_type == "shp_parts":
+    if dl_type == "local":
+        local_path = Path(study["local_path"])
+        if not local_path.exists():
+            raise FileNotFoundError(
+                f"local_path not found: {local_path}\n"
+                f"Place the shapefile at that path or update the study config."
+            )
+        return [local_path]
+
+    elif dl_type == "shp_parts":
         stem = None
         for ext, url in study["shp_urls"].items():
             fname = url.split("/download/")[-1]
@@ -226,6 +280,104 @@ def _prepare_study(study_key: str, study: dict) -> list[Path]:
 
     else:
         raise NotImplementedError(f"Unknown download_type: {dl_type}")
+
+
+def _ingest_epi_statewide(study: dict, shp_paths: list[Path], conn, dry_run: bool) -> int:
+    """
+    Specialised ingest for EPI statewide shapefile where each row has its own
+    LGA_NAME, LAY_CLASS (flood class), and CURRENCY_D (currency date).
+    Uses LGA_CODE + LAY_CLASS sanitised string as the instrument_key.
+    """
+    cur = conn.cursor()
+    total = 0
+    instrument_prefix = study["instrument_prefix"]
+
+    for shp_path in shp_paths:
+        print(f"\n  [shp] {shp_path.name}")
+        try:
+            gdf = gpd.read_file(shp_path)
+        except Exception as e:
+            print(f"  [skip] cannot read: {e}")
+            continue
+
+        if len(gdf) == 0:
+            print(f"  [skip] empty")
+            continue
+
+        print(f"  rows={len(gdf)}, CRS={gdf.crs}")
+        if gdf.crs is None:
+            gdf = gdf.set_crs("EPSG:4326")
+        elif gdf.crs.to_epsg() != 4326:
+            gdf = gdf.to_crs("EPSG:4326")
+
+        rows_to_insert = []
+        for idx, row in gdf.iterrows():
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+            lga_name = str(row.get("LGA_NAME") or "UNKNOWN").strip().upper()
+            lga_code = int(row.get("LGA_CODE") or 0)
+            lay_class = str(row.get("LAY_CLASS") or "flood_planning_area").strip()
+            # Sanitise for instrument_key
+            key_class = re.sub(r"[^a-zA-Z0-9]+", "_", lay_class).strip("_").upper()
+            instrument_key = f"{instrument_prefix}_{lga_code}_{key_class}"
+            # Currency date from row CURRENCY_D (Timestamp or date)
+            raw_date = row.get("CURRENCY_D")
+            if hasattr(raw_date, "date"):
+                currency_date = raw_date.date()
+            elif isinstance(raw_date, str):
+                try:
+                    from datetime import datetime
+                    currency_date = datetime.strptime(raw_date[:10], "%Y-%m-%d").date()
+                except Exception:
+                    currency_date = date(2026, 4, 30)
+            else:
+                currency_date = date(2026, 4, 30)
+
+            rows_to_insert.append((
+                instrument_key,
+                lga_name,
+                "flood",
+                lay_class,
+                None,           # value_numeric: no ARI for EPI class labels
+                currency_date,
+                int(idx) + 1,
+                geom.wkt,
+            ))
+
+        if not rows_to_insert:
+            print(f"  [skip] no valid rows")
+            continue
+
+        print(f"  Prepared {len(rows_to_insert)} features")
+
+        if dry_run:
+            print(f"  [dry-run] would upsert {len(rows_to_insert)} features")
+            total += len(rows_to_insert)
+            continue
+
+        execute_values(
+            cur,
+            """
+            INSERT INTO spatial_overlays
+                (instrument_key, lga_name, layer_type, value, value_numeric, currency_date, source_oid, geom, synced_at)
+            VALUES %s
+            ON CONFLICT (instrument_key, layer_type, source_oid) DO UPDATE
+                SET value = EXCLUDED.value,
+                    value_numeric = EXCLUDED.value_numeric,
+                    currency_date = EXCLUDED.currency_date,
+                    geom = EXCLUDED.geom,
+                    synced_at = now()
+            """,
+            rows_to_insert,
+            template="(%s, %s, %s, %s, %s, %s, %s, ST_Multi(ST_GeomFromText(%s, 4326)), now())",
+        )
+        conn.commit()
+        print(f"  Upserted {len(rows_to_insert)} features")
+        total += len(rows_to_insert)
+
+    cur.close()
+    return total
 
 
 def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_run: bool) -> int:
@@ -257,7 +409,11 @@ def _ingest_study(study_key: str, study: dict, shp_paths: list[Path], conn, dry_
         print(f"  columns={list(gdf.columns)}")
 
         aep_source = study.get("aep_source", "column")
-        if aep_source == "filename":
+        if aep_source == "fixed":
+            # Binary mask or FPA-type study — every feature shares one fixed scenario.
+            unique_scenarios = [study["fixed_scenario"]]
+            aep_col = None
+        elif aep_source == "filename":
             stem = shp_path.stem
             if re.search(r"PMF", stem, re.IGNORECASE):
                 scenario_raw = "PMF"
@@ -376,7 +532,7 @@ def _verify_db(conn, study_key: str, instrument_prefix: str) -> None:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--study", default="all",
-                        help="Study key: all | campbelltown | narellan | greendale | south_creek_hc")
+                        help="Study key: all | hawkesbury_fpa | epi_statewide | campbelltown | narellan | greendale | south_creek_hc")
     parser.add_argument("--inspect", action="store_true",
                         help="Print column info only -- no DB insert")
     parser.add_argument("--dry-run", action="store_true",
@@ -417,7 +573,11 @@ def main():
 
         conn = psycopg2.connect(database_url)
         try:
-            total = _ingest_study(study_key, study, shp_paths, conn, dry_run=args.dry_run)
+            aep_source = study.get("aep_source")
+            if aep_source == "epi_statewide":
+                total = _ingest_epi_statewide(study, shp_paths, conn, dry_run=args.dry_run)
+            else:
+                total = _ingest_study(study_key, study, shp_paths, conn, dry_run=args.dry_run)
             if not args.dry_run:
                 _verify_db(conn, study_key, study["instrument_prefix"])
             print(f"\n[{study_key}] Total features: {total}")

@@ -31,6 +31,11 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "ems_activations": list[dict] | null,
     "jrc_water_occurrence_pct": float | null,   # % of months since 1984 classified as water
     "jrc_data_year": int | null,                # 2021 (current JRC dataset version)
+    "dea_wofs_frequency_pct": float | null,     # % of Landsat observations classified as wet (WOfS)
+    "ses_in_flood_planning_area": bool | null,  # PostGIS: point in council flood study extent
+    "ses_flood_class": str | null,              # e.g. "flood_planning_area", "1%AEP"
+    "ses_study_name": str | null,               # instrument_key of matched study
+    "ses_study_lga": str | null,                # LGA name of matched study
     "bom_gauge_name": str | null,
     "bom_gauge_distance_km": float | null,
     "bom_last_major_flood_date": str | null,
@@ -82,6 +87,8 @@ _DATA_SOURCES_BASE = ["NSW SEED EPI WFS", "Microsoft Planetary Computer S1 RTC"]
 _DATA_SOURCE_EMS   = "NSW Spatial Services / Copernicus EMS flood events"
 _DATA_SOURCE_JRC   = "JRC Global Surface Water (Landsat 1984–present)"
 _DATA_SOURCE_BOM   = "BOM Water Data Online"
+_DATA_SOURCE_SES   = "NSW SES / Council flood study (spatial_overlays)"
+_DATA_SOURCE_DEA   = "DEA Water Observations (WOfS · Landsat 1987–present)"
 
 # EPI WFS FloodClass property → our class key
 _EPI_CLASS_MAP = {
@@ -534,6 +541,107 @@ def _query_bom_gauge(lat: float, lng: float) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# SES / council flood study (PostGIS spatial_overlays)
+# ---------------------------------------------------------------------------
+
+DEA_WCS_BASE   = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"
+
+
+def _query_ses_flood_study(lat: float, lng: float) -> dict:
+    """
+    Point-in-polygon against spatial_overlays for flood layer type.
+    Covers all council flood studies ingested by ingest_flood_studies.py,
+    including Hawkesbury FPA and any future SES portal studies.
+
+    Returns:
+      ses_in_flood_planning_area: bool | None
+        True  — point is inside at least one flood extent polygon
+        False — spatial_overlays has flood rows but point is outside all of them
+        None  — spatial_overlays has no flood rows (table empty/unavailable)
+      ses_flood_class: str | None   — value of the matched row (e.g. "flood_planning_area")
+      ses_study_name: str | None    — instrument_key of the matched row
+      ses_study_lga: str | None     — lga_name of the matched row
+    """
+    null_result = {
+        "ses_in_flood_planning_area": None,
+        "ses_flood_class": None,
+        "ses_study_name": None,
+        "ses_study_lga": None,
+    }
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            # Check if there are any flood rows at all
+            cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
+            if cur.fetchone()["n"] == 0:
+                return null_result
+            # Point-in-polygon: find first matching flood polygon
+            cur.execute(
+                """
+                SELECT instrument_key, lga_name, value
+                FROM spatial_overlays
+                WHERE layer_type = 'flood'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                ORDER BY currency_date DESC
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+        if row:
+            return {
+                "ses_in_flood_planning_area": True,
+                "ses_flood_class": row["value"],
+                "ses_study_name": row["instrument_key"],
+                "ses_study_lga": row["lga_name"],
+            }
+        return {
+            "ses_in_flood_planning_area": False,
+            "ses_flood_class": None,
+            "ses_study_name": None,
+            "ses_study_lga": None,
+        }
+    except Exception as e:
+        logger.warning(f"SES flood study query: {e}")
+        return null_result
+    finally:
+        if conn:
+            conn.close()
+
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA Water Observations (WOfS) multi-year composite via WCS.
+    Layer: ga_ls_wo_fq_myear_3 — Band 1 = frequency fraction (0.0–1.0).
+    Returns dea_wofs_frequency_pct (0.0–100.0) or None on failure/nodata.
+    """
+    try:
+        import io
+        import rasterio
+        delta = 0.001
+        r = requests.get(DEA_WCS_BASE, params={
+            "service": "WCS", "version": "1.0.0", "request": "GetCoverage",
+            "coverage": DEA_WOFS_LAYER, "format": "GeoTIFF",
+            "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+            "crs": "EPSG:4326", "resx": str(delta), "resy": str(delta),
+        }, timeout=20)
+        r.raise_for_status()
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            return {"dea_wofs_frequency_pct": None}
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
+
+
+# ---------------------------------------------------------------------------
 # Confidence + data source helpers
 # ---------------------------------------------------------------------------
 
@@ -554,28 +662,46 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
         return "unavailable"
 
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
+    ses_in_overlay = internal_outputs.get("ses_in_flood_planning_area") is True
+    # Combined statutory overlay signal: EPI state portal OR local council study
+    in_overlay     = epi_in_overlay or ses_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
+    wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
+    effective_pct  = jrc_pct if jrc_pct > 0 else wofs_pct
     bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
 
-    jrc_low      = 0 < jrc_pct < 15
-    jrc_moderate = 15 <= jrc_pct < 40
-    jrc_high     = jrc_pct >= 40
+    # Phase 0 — false-negative fix.
+    # EPI Layer 1 covers only ~11 LGAs. When epi_flood_class="none" for an uncovered
+    # LGA AND no local SES flood study data exists AND no strong observational signal
+    # is present, return "unavailable" instead of misleadingly returning "none".
+    # ses_in_flood_planning_area becomes non-None once the Hawkesbury FPA is ingested
+    # and Phase 2 runs; hawkesbury_flood_level_100aep is populated by Phase 3.
+    epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
+    ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
+    hawkesbury_level = internal_outputs.get("hawkesbury_flood_level_100aep")
+    no_local_study = not ses_queried and hawkesbury_level is None
+    if epi_no_coverage and no_local_study and not ems_detected and not bom_flood and effective_pct < 5:
+        return "unavailable"
+
+    jrc_low      = 0 < effective_pct < 15
+    jrc_moderate = 15 <= effective_pct < 40
+    jrc_high     = effective_pct >= 40
 
     # Elevated: multiple independent sources agree
-    if (epi_in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
+    if (in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
             or (ems_detected and jrc_high) or jrc_high \
-            or (epi_in_overlay and jrc_moderate and bom_flood):
+            or (in_overlay and jrc_moderate and bom_flood):
         return "elevated"
 
     # Moderate: one strong observed signal or two weaker ones
-    if ems_detected or (epi_in_overlay and jrc_low) \
-            or (epi_in_overlay and bom_flood) or jrc_moderate \
+    if ems_detected or (in_overlay and jrc_low) \
+            or (in_overlay and bom_flood) or jrc_moderate \
             or (jrc_low and bom_flood):
         return "moderate"
 
     # Low: statutory overlay only — council study flags risk but no observed events
-    if epi_in_overlay:
+    if in_overlay:
         return "low"
 
     return "none"
@@ -583,15 +709,17 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
 
 def _compute_confidence(internal_outputs: dict) -> str:
     """
-    high   — EPI + EMS + JRC + BOM gauge + ≥1 SAR season
-    medium — EPI + EMS + (JRC or BOM), OR EPI + ≥2 SAR seasons
-    low    — EPI only
+    high   — EPI/SES overlay + EMS + JRC/WOfS + BOM gauge + ≥1 SAR season
+    medium — overlay + EMS + (JRC/WOfS or BOM), OR overlay + ≥2 SAR seasons
+    low    — overlay only
     """
     wet_seasons    = internal_outputs.get("wet_seasons_checked") or 0
     ems_available  = internal_outputs.get("ems_flood_detected") is not None
     jrc_available  = internal_outputs.get("jrc_water_occurrence_pct") is not None
+    wofs_available = internal_outputs.get("dea_wofs_frequency_pct") is not None
     bom_available  = internal_outputs.get("bom_gauge_name") is not None
-    spatial_layers = sum([ems_available, jrc_available, bom_available])
+    ses_available  = internal_outputs.get("ses_in_flood_planning_area") is not None
+    spatial_layers = sum([ems_available, jrc_available or wofs_available, bom_available, ses_available])
 
     if spatial_layers >= 3 and wet_seasons >= 1:
         return "high"
@@ -618,10 +746,14 @@ def _build_s1_gap_warning(internal_outputs: dict) -> str:
 
 def _build_data_sources(internal_outputs: dict) -> list:
     sources = ["NSW SEED EPI WFS"]
+    if internal_outputs.get("ses_in_flood_planning_area") is not None:
+        sources.append(_DATA_SOURCE_SES)
     if internal_outputs.get("ems_flood_detected") is not None:
         sources.append(_DATA_SOURCE_EMS)
     if internal_outputs.get("jrc_water_occurrence_pct") is not None:
         sources.append(_DATA_SOURCE_JRC)
+    if internal_outputs.get("dea_wofs_frequency_pct") is not None:
+        sources.append(_DATA_SOURCE_DEA)
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
     sources.append("Microsoft Planetary Computer S1 RTC")
@@ -658,6 +790,11 @@ def _normalise_outputs(raw: dict) -> dict:
         "ems_activations":            raw.get("ems_activations"),
         "jrc_water_occurrence_pct":   raw.get("jrc_water_occurrence_pct"),
         "jrc_data_year":              raw.get("jrc_data_year"),
+        "dea_wofs_frequency_pct":     raw.get("dea_wofs_frequency_pct"),
+        "ses_in_flood_planning_area": raw.get("ses_in_flood_planning_area"),
+        "ses_flood_class":            raw.get("ses_flood_class"),
+        "ses_study_name":             raw.get("ses_study_name"),
+        "ses_study_lga":              raw.get("ses_study_lga"),
         "bom_gauge_name":             raw.get("bom_gauge_name"),
         "bom_gauge_distance_km":      raw.get("bom_gauge_distance_km"),
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
@@ -728,7 +865,8 @@ def run_flood(req: FloodRequest):
     """
     On-demand flood analysis.
     Fast path: return pre-computed result if cached.
-    Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2).
+    Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2)
+               + SES council flood studies (PostGIS) + DEA WOfS (WCS).
     SAR analysis is batch-only (Phase 3B).
     """
     conn = None
@@ -755,15 +893,19 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
-        f_ems = pool.submit(_query_copernicus_ems, req.lat, req.lng)
-        f_jrc = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
-        f_bom = pool.submit(_query_bom_gauge, req.lat, req.lng)
-        epi = f_epi.result()
-        ems = f_ems.result()
-        jrc = f_jrc.result()
-        bom = f_bom.result()
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
+        f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
+        f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
+        f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
+        f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
+        f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
+        epi  = f_epi.result()
+        ems  = f_ems.result()
+        jrc  = f_jrc.result()
+        bom  = f_bom.result()
+        ses  = f_ses.result()
+        wofs = f_wofs.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -772,7 +914,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom,
+        **epi, **ems, **jrc, **bom, **ses, **wofs,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 

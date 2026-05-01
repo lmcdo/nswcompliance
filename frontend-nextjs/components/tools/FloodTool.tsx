@@ -22,13 +22,18 @@ interface FloodOutputs {
   ems_activations: EmsActivation[] | null;
   jrc_water_occurrence_pct: number | null;
   jrc_data_year: number | null;
+  dea_wofs_frequency_pct: number | null;
+  ses_in_flood_planning_area: boolean | null;
+  ses_flood_class: string | null;
+  ses_study_name: string | null;
+  ses_study_lga: string | null;
   bom_gauge_name: string | null;
   bom_gauge_distance_km: number | null;
   bom_last_major_flood_date: string | null;
   bom_last_major_flood_peak_m: number | null;
   s1_gap_warning: string | null;
   data_currency: string;
-  flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
+  flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
 }
 
 interface FloodResult {
@@ -70,6 +75,12 @@ const FLOOD_SIGNAL_META: Record<string, { label: string; sublabel: string; badge
     sublabel: 'Multiple independent sources converge on flood exposure',
     badge:    'bg-red-100 text-red-800',
     bar:      'bg-red-500',
+  },
+  unavailable: {
+    label:    'Flood data unavailable for this area',
+    sublabel: 'No state overlay or local flood study covers this location — contact the council',
+    badge:    'bg-gray-100 text-gray-600',
+    bar:      'bg-gray-400',
   },
 };
 
@@ -232,13 +243,17 @@ function FloodLockedPreviewCard({
   const o = result.outputs;
   const signal = o.flood_signal ?? 'none';
 
-  const alarmHeadline = signal !== 'none'
+  const alarmHeadline = signal === 'unavailable'
+    ? 'Flood data not available for this location — manual council check required'
+    : signal !== 'none'
     ? `${FLOOD_SIGNAL_META[signal]?.label ?? 'Flood signal'} — lenders and insurers will want the full data`
     : o.epi_flood_class && o.epi_flood_class !== 'none'
     ? `${EPI_CLASS_META[o.epi_flood_class]?.label ?? 'Flood overlay'} — verified clean for your records`
     : 'Flood check complete — verified clean for conveyancing';
 
-  const alarmDetail = signal !== 'none'
+  const alarmDetail = signal === 'unavailable'
+    ? 'No state flood planning overlay or local flood study covers this location. Contact the local council to confirm flood status before purchasing or developing.'
+    : signal !== 'none'
     ? 'Your conveyancer, lender, and insurer will ask for ARI flood depths — 1-in-20, 1-in-100, and 1-in-500 year. Your numbers are below.'
     : 'The full report includes ARI depths, BOM gauge data, and source citations — ready to share with your conveyancer.';
 
