@@ -96,9 +96,18 @@ def test_signal_epi_class_none_returns_none():
     assert _compute_flood_signal(out) == "none"
 
 
-def test_signal_epi_class_none_string_returns_none():
-    out = _outputs(epi_flood_class="none")
+def test_signal_epi_class_none_string_ses_queried_returns_none():
+    """epi='none' + SES was queried and confirmed NOT in FPA → 'none' (no risk found).
+    Without SES data Phase 0 returns 'unavailable' instead — see test below."""
+    out = _outputs(epi_flood_class="none", ses_in_flood_planning_area=False)
     assert _compute_flood_signal(out) == "none"
+
+
+def test_signal_epi_class_none_string_no_ses_returns_unavailable():
+    """Phase 0: epi='none' + SES not queried + no observed signals → 'unavailable'.
+    EPI Layer 1 only covers ~11 LGAs; silence is not evidence of safety."""
+    out = _outputs(epi_flood_class="none")
+    assert _compute_flood_signal(out) == "unavailable"
 
 
 def test_signal_empty_epi_class_returns_none():
@@ -593,3 +602,33 @@ def test_epi_overlay_attributes_null_does_not_crash(monkeypatch):
     # Should not raise; should return a valid dict (no class = no overlay)
     assert isinstance(result, dict)
     assert result.get("epi_flood_class") in (None, "none")
+
+
+# ---------------------------------------------------------------------------
+# _SES_CLASS_DISPLAY normalisation
+# ---------------------------------------------------------------------------
+
+def test_ses_class_display_snake_case_mapped():
+    """Raw DB value 'flood_planning_area' must map to display label."""
+    import services.flood_truth as ft
+    assert ft._SES_CLASS_DISPLAY["flood_planning_area"] == "Flood Planning Area"
+
+
+def test_ses_class_display_short_code_mapped():
+    """Short code '1%AEP' from council FeatureServers must map correctly."""
+    import services.flood_truth as ft
+    assert ft._SES_CLASS_DISPLAY["1%AEP"] == "1% AEP Flood Extent"
+
+
+def test_ses_class_display_unknown_passthrough():
+    """Any value not in the dict must pass through unchanged."""
+    import services.flood_truth as ft
+    raw = "Some Unknown Category"
+    assert ft._SES_CLASS_DISPLAY.get(raw, raw) == raw
+
+
+def test_ses_class_display_no_snake_case_values_in_dict_values():
+    """All display values must be human-readable (no underscores)."""
+    import services.flood_truth as ft
+    for key, val in ft._SES_CLASS_DISPLAY.items():
+        assert "_" not in val, f"Display value for {key!r} contains underscore: {val!r}"
