@@ -12,31 +12,23 @@ On skip: mark the row as skipped.
 Env vars required:
   TELEGRAM_BOT_TOKEN
   TELEGRAM_CHAT_ID
-  SUPABASE_URL
-  SUPABASE_SERVICE_ROLE_KEY
+  DATABASE_URL
 """
 
 import os
+import psycopg2
+import psycopg2.extras
 import httpx
-from fastapi import APIRouter, Request, HTTPException
-from supabase import create_client, Client
+from fastapi import APIRouter, Request
 
 router = APIRouter(prefix="/api/telegram")
 
 _bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 _chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
-_supabase: Client | None = None
 
 
-def _get_supabase() -> Client:
-    global _supabase
-    if _supabase is None:
-        url = os.environ.get("SUPABASE_URL", "")
-        key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-        if not url or not key:
-            raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
-        _supabase = create_client(url, key)
-    return _supabase
+def _get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"], sslmode="require")
 
 
 @router.post("/forum-webhook")
@@ -70,37 +62,45 @@ async def forum_webhook(request: Request) -> dict:
 
 
 async def _handle_approve(callback_id: str, chat_id: str, queue_id: str) -> None:
-    result = (
-        _get_supabase().table("forum_monitor_queue")
-        .select("thread_title, thread_url, draft_response, product, forum, section")
-        .eq("id", queue_id)
-        .single()
-        .execute()
-    )
-
-    if not result.data:
-        await _answer_callback(callback_id, "Thread not found")
+    try:
+        conn = _get_conn()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute(
+            "SELECT thread_title, thread_url, draft_response, product, forum, section "
+            "FROM forum_monitor_queue WHERE id = %s",
+            (queue_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            await _answer_callback(callback_id, "Thread not found")
+            cur.close(); conn.close()
+            return
+        cur.execute("UPDATE forum_monitor_queue SET status = 'approved' WHERE id = %s", (queue_id,))
+        conn.commit()
+        cur.close(); conn.close()
+    except Exception as e:
+        await _answer_callback(callback_id, f"DB error: {str(e)[:50]}")
         return
 
-    row = result.data
-
-    # Update status
-    _get_supabase().table("forum_monitor_queue").update({"status": "approved"}).eq("id", queue_id).execute()
-
-    # Send the draft as a plain copyable message
     text = (
         f"*{row['forum']} — {row['section']}*\n"
         f"{row['thread_url']}\n\n"
         f"*Draft to post:*\n\n"
         f"{row['draft_response']}"
     )
-
     await _send_message(str(chat_id), text)
     await _answer_callback(callback_id, "Draft sent — copy and paste above")
 
 
 async def _handle_skip(callback_id: str, queue_id: str) -> None:
-    _get_supabase().table("forum_monitor_queue").update({"status": "skipped"}).eq("id", queue_id).execute()
+    try:
+        conn = _get_conn()
+        cur = conn.cursor()
+        cur.execute("UPDATE forum_monitor_queue SET status = 'skipped' WHERE id = %s", (queue_id,))
+        conn.commit()
+        cur.close(); conn.close()
+    except Exception:
+        pass
     await _answer_callback(callback_id, "Skipped")
 
 

@@ -1,5 +1,15 @@
 # PlotDetect CLAUDE.md — Universal Rules
 
+## 🔴 BRANCH GUARD — DO THIS BEFORE ANYTHING ELSE 🔴
+```bash
+git branch --show-current
+```
+**If the output is `main`: STOP. Do not touch any file. Run:**
+```bash
+git checkout -b feat/<short-description>
+```
+**Only then proceed.** Every piece of work — bug fix, feature, cleanup, one-line change — must happen on a branch. Committing to `main` breaks other chats' context and causes merge chaos. No exceptions.
+
 ## ⛔ CRITICAL — READ FIRST ⛔
 - **NEVER use PM2** on Windows. Spawns cmd.exe windows. claude-mem runs via startup hook — if broken: `cd ~/.claude/plugins/marketplaces/thedotmack && npm run worker:restart`. Do not fix with PM2, scheduled tasks, or Windows startup scripts.
 - **If cmd.exe windows spawn:** Check `wmic startup list full | grep pm2`. Remove: `powershell -Command "Remove-ItemProperty -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'PM2'"`

@@ -56,6 +56,17 @@ export interface FloodReportData {
   bom_flood_history?: BomFloodEvent[] | null;
   flood_study_name?: string | null;
   flood_study_date?: string | null;
+  // Hawkesbury FRMSP 2025 — AEP flood levels (metres AHD)
+  hawkesbury_flood_level_2aep?: number | null;
+  hawkesbury_flood_level_5aep?: number | null;
+  hawkesbury_flood_level_10aep?: number | null;
+  hawkesbury_flood_level_20aep?: number | null;
+  hawkesbury_flood_level_50aep?: number | null;
+  hawkesbury_flood_level_100aep?: number | null;
+  hawkesbury_flood_level_200aep?: number | null;
+  hawkesbury_flood_level_500aep?: number | null;
+  hawkesbury_flood_level_pmf?: number | null;
+  hawkesbury_flood_study?: string | null;
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
@@ -369,6 +380,44 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             ))}
           </View>
         )}
+
+        {/* Hawkesbury AEP flood level table (paid, raster data present) */}
+        {data.is_paid === true && data.hawkesbury_flood_level_100aep != null && (() => {
+          const AEP_ROWS: Array<{ label: string; field: keyof FloodReportData }> = [
+            { label: '1-in-2 yr (50% AEP)',   field: 'hawkesbury_flood_level_2aep' },
+            { label: '1-in-5 yr (20% AEP)',   field: 'hawkesbury_flood_level_5aep' },
+            { label: '1-in-10 yr (10% AEP)',  field: 'hawkesbury_flood_level_10aep' },
+            { label: '1-in-20 yr (5% AEP)',   field: 'hawkesbury_flood_level_20aep' },
+            { label: '1-in-50 yr (2% AEP)',   field: 'hawkesbury_flood_level_50aep' },
+            { label: '1-in-100 yr (1% AEP)',  field: 'hawkesbury_flood_level_100aep' },
+            { label: '1-in-200 yr (0.5% AEP)', field: 'hawkesbury_flood_level_200aep' },
+            { label: '1-in-500 yr (0.2% AEP)', field: 'hawkesbury_flood_level_500aep' },
+            { label: 'PMF (Probable Maximum)', field: 'hawkesbury_flood_level_pmf' },
+          ];
+          return (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={s.sectionTitle}>Flood levels by AEP event — Hawkesbury FRMSP 2025</Text>
+              <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                <Text style={{ flex: 3, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>AEP event</Text>
+                <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Flood level (m AHD)</Text>
+              </View>
+              {AEP_ROWS.map((row, i) => {
+                const val = data[row.field] as number | null | undefined;
+                return (
+                  <View key={i} style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5 }}>
+                    <Text style={{ flex: 3, fontSize: 8.5, color: GRAY_700 }}>{row.label}</Text>
+                    <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: val != null ? RED : GRAY_500, textAlign: 'right' }}>
+                      {val != null ? val.toFixed(2) : 'n/a'}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+                {data.hawkesbury_flood_study ?? 'Hawkesbury FRMSP 2025'} - NSW Reconstruction Authority. 2m resolution remapped grid.
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* SAR row */}
         {data.sar_flood_detected !== null && (

@@ -34,8 +34,8 @@ export default function LoginPage() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <span className="font-semibold text-gray-900 text-xl">PlotDetect</span>
-          <p className="mt-1 text-sm text-gray-500">Property Intelligence</p>
+          <span className="font-semibold text-gray-900 text-xl">canibuildit<span className="text-teal-600">.com.au</span></span>
+          <p className="mt-1 text-sm text-gray-500">Sign in to your reports</p>
         </div>
 
         {sent ? (
