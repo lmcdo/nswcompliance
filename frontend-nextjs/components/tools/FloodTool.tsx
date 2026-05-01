@@ -34,6 +34,16 @@ interface FloodOutputs {
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | 'unavailable' | null;
+  hawkesbury_flood_level_2aep: number | null;
+  hawkesbury_flood_level_5aep: number | null;
+  hawkesbury_flood_level_10aep: number | null;
+  hawkesbury_flood_level_20aep: number | null;
+  hawkesbury_flood_level_50aep: number | null;
+  hawkesbury_flood_level_100aep: number | null;
+  hawkesbury_flood_level_200aep: number | null;
+  hawkesbury_flood_level_500aep: number | null;
+  hawkesbury_flood_level_pmf: number | null;
+  hawkesbury_flood_study: string | null;
 }
 
 interface FloodResult {
@@ -348,6 +358,24 @@ function FloodLockedPreviewCard({
         </div>
       </div>
 
+      {signal === 'unavailable' && (
+        <div className="bg-gray-50 border-t border-gray-100 px-5 py-4">
+          <p className="text-xs font-semibold text-gray-700 mb-2">How to get the flood classification for this address</p>
+          <ol className="space-y-1.5 text-xs text-gray-600 list-decimal list-inside">
+            <li>
+              <span className="font-medium">Section 10.7 planning certificate</span> — request from your council (~$53). Includes the statutory flood overlay. Your conveyancer can request it on your behalf.
+            </li>
+            <li>
+              <span className="font-medium">Flood enquiry letter</span> — some councils issue a separate flood certificate. Ask the council&apos;s flood team directly.
+            </li>
+            <li>
+              <span className="font-medium">NSW SES flood portal</span> — flooddata.ses.nsw.gov.au lists available council flood studies. Some are public; others require a data request.
+            </li>
+          </ol>
+          <p className="text-xs text-gray-400 mt-2">We&apos;re expanding coverage to more councils. If this address is in a known flood area, contact us and we&apos;ll prioritise that council.</p>
+        </div>
+      )}
+
       <div className="bg-white px-5 pb-5 pt-2">
         <button
           onClick={onUnlock}
@@ -501,6 +529,20 @@ function FloodCard({ result }: { result: FloodResult }) {
           <p className="text-xs text-gray-400">
             {o.ses_study_lga ? `${o.ses_study_lga} council flood study` : 'Council flood study'}
             {o.ses_study_name ? ` · ${o.ses_study_name}` : ''}
+          </p>
+        </div>
+      )}
+
+      {/* Hawkesbury raster — 100AEP teaser (free tier hook) */}
+      {o.hawkesbury_flood_level_100aep != null && (
+        <div className="p-6 border-t border-gray-100">
+          <p className="text-xs text-gray-400 mb-1">Hawkesbury FRMSP 2025 — flood level at this site</p>
+          <p className="text-sm font-semibold text-gray-800">
+            1-in-100 yr flood level: {o.hawkesbury_flood_level_100aep.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}m AHD
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Full AEP table (2yr – PMF) included in the paid report
+            {o.hawkesbury_flood_study ? ` · ${o.hawkesbury_flood_study}` : ''}
           </p>
         </div>
       )}

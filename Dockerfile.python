@@ -24,16 +24,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY services/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy service code
+# Copy service code + startup scripts
 COPY services/ ./services/
+COPY scripts/download_hawkesbury_rasters.py ./scripts/download_hawkesbury_rasters.py
 
 # compliance_api_server.py imports enhanced_compliance_api without 'services.' prefix
 # (it runs locally from services/), so add services/ to PYTHONPATH as well
 ENV PYTHONPATH=/app:/app/services
+
+# Hawkesbury rasters downloaded to /tmp at startup (writable, persists for container lifetime)
+ENV HAWKESBURY_RASTER_DIR=/tmp/hawkesbury_rasters
 
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "services.compliance_api_server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python3 scripts/download_hawkesbury_rasters.py && uvicorn services.compliance_api_server:app --host 0.0.0.0 --port 8000"]

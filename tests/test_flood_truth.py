@@ -632,3 +632,70 @@ def test_ses_class_display_no_snake_case_values_in_dict_values():
     import services.flood_truth as ft
     for key, val in ft._SES_CLASS_DISPLAY.items():
         assert "_" not in val, f"Display value for {key!r} contains underscore: {val!r}"
+
+
+# ---------------------------------------------------------------------------
+# _query_hawkesbury_rasters — spatial + nodata + CRS
+# ---------------------------------------------------------------------------
+
+def test_hawkesbury_missing_raster_dir_returns_null_gracefully(monkeypatch):
+    """If raster directory doesn't exist on this host, return null — not an error."""
+    import services.flood_truth as ft
+    monkeypatch.setattr(ft, "HAWKESBURY_RASTER_DIR", "/nonexistent/path/to/rasters")
+    result = ft._query_hawkesbury_rasters(-33.6134, 150.8130)
+    assert result["hawkesbury_flood_level_100aep"] is None
+    assert result["hawkesbury_flood_study"] is None
+
+
+def test_hawkesbury_result_has_all_nine_aep_fields(monkeypatch):
+    """null_result always contains all 9 AEP keys (contract stability)."""
+    import services.flood_truth as ft
+    monkeypatch.setattr(ft, "HAWKESBURY_RASTER_DIR", "/nonexistent")
+    result = ft._query_hawkesbury_rasters(-33.6134, 150.8130)
+    for k in ft.HAWKESBURY_AEP_FILES:
+        assert f"hawkesbury_flood_level_{k}" in result
+
+
+def test_signal_hawk_100aep_present_counts_as_in_overlay():
+    """hawkesbury_flood_level_100aep not None → at least 'low' signal."""
+    out = _outputs(
+        epi_flood_class="none",
+        ses_in_flood_planning_area=None,
+        hawkesbury_flood_level_100aep=17.34,
+    )
+    signal = _compute_flood_signal(out)
+    assert signal in ("low", "moderate", "elevated"), f"Expected overlay signal, got {signal!r}"
+
+
+def test_signal_all_three_overlay_sources_absent_returns_unavailable():
+    """EPI=none + SES=None + hawk_100=None → unavailable (not 'none')."""
+    out = _outputs(
+        epi_flood_class="none",
+        ses_in_flood_planning_area=None,
+        hawkesbury_flood_level_100aep=None,
+    )
+    assert _compute_flood_signal(out) == "unavailable"
+
+
+def test_normalise_outputs_includes_hawkesbury_fields():
+    """_normalise_outputs must pass through all Hawkesbury AEP fields."""
+    raw = {
+        "epi_flood_class": "none",
+        "data_currency": "2025-01-01",
+        "hawkesbury_flood_level_100aep": 17.34,
+        "hawkesbury_flood_level_pmf": 30.55,
+        "hawkesbury_flood_study": "Hawkesbury FRMSP 2025",
+    }
+    out = _normalise_outputs(raw)
+    assert out["hawkesbury_flood_level_100aep"] == 17.34
+    assert out["hawkesbury_flood_level_pmf"] == 30.55
+    assert out["hawkesbury_flood_study"] == "Hawkesbury FRMSP 2025"
+    assert out["hawkesbury_flood_level_2aep"] is None  # absent in raw → None
+
+
+def test_normalise_outputs_hawkesbury_absent_returns_none():
+    """Old cached results with no Hawkesbury keys → None (backwards compat)."""
+    raw = {"epi_flood_class": "none", "data_currency": "2025-01-01"}
+    out = _normalise_outputs(raw)
+    assert out.get("hawkesbury_flood_level_100aep") is None
+    assert out.get("hawkesbury_flood_study") is None
