@@ -23,7 +23,7 @@ const TOOLS = [
     title: 'Granny Flat Check',
     subtitle: 'Could this property earn $280–$340/week extra?',
     detail: 'Zone, lot size, strata, and SEPP Housing 2021 eligibility — instantly.',
-    href: '/reports/granny-flat',
+    href: '/granny-flat',
     cta: 'Check eligibility',
     accent: 'teal',
   },
@@ -110,7 +110,7 @@ export default function HomePage() {
           <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
             Pricing
           </a>
-          <a href="/reports/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
+          <a href="/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
             Try the tools →
           </a>
         </div>
