@@ -163,17 +163,34 @@ export function FloodTool({ lgaSlug, embedRef }: { lgaSlug?: string; embedRef?: 
       <h1 className="text-2xl font-bold text-gray-900">Flood Data Summary</h1>
       <p className="mt-1.5 text-sm text-gray-500">
         Check your property&rsquo;s statutory flood status and council flood study exposure.
-        Enter any NSW address &mdash; the NSW EPI statutory overlay check covers the full state.
+        The NSW EPI statutory overlay check covers the full state. Council flood study
+        boundaries (FPA polygons) cover Sydney metro, Hunter, Illawarra, Northern Rivers,
+        and 40+ regional NSW councils &mdash; 71 LGAs total.
       </p>
-      <p className="mt-1.5 text-sm text-gray-500">
-        Council flood study boundaries (FPA polygons) cover 71 NSW LGAs, including Sydney metro
-        (Inner West, Parramatta, Canterbury-Bankstown, Georges River, Woollahra, Sutherland, Ryde,
-        Cumberland, Campbelltown, Randwick, Waverley, Canada Bay, Bayside), Hunter and Coast
-        (Hawkesbury, Lake Macquarie, Maitland, Shoalhaven, MidCoast, Dungog, Singleton), Northern
-        Rivers (Tweed, Byron, Lismore, Ballina, Kyogle), and regional NSW (Dubbo, Orange, Goulburn,
-        Queanbeyan, Bathurst, Forbes, Tamworth, and more).
-      </p>
-      <p className="mt-1.5 text-sm text-gray-400">
+      <details className="mt-1.5 group">
+        <summary className="text-xs text-teal-600 cursor-pointer hover:text-teal-700 list-none">
+          <span className="group-open:hidden">See all covered councils ↓</span>
+          <span className="hidden group-open:inline">Hide covered councils ↑</span>
+        </summary>
+        <div className="mt-2 text-xs text-gray-500 leading-relaxed">
+          <span className="font-medium text-gray-600">Sydney metro — </span>
+          Inner West, Parramatta, Canterbury-Bankstown, Georges River, Woollahra, Sutherland Shire,
+          Ryde, Cumberland, Campbelltown, Randwick, Waverley, Canada Bay, Bayside, Sydney.{' '}
+          <span className="font-medium text-gray-600">Hunter &amp; Coast — </span>
+          Hawkesbury, Lake Macquarie, Maitland, Shoalhaven, MidCoast, Dungog, Singleton.{' '}
+          <span className="font-medium text-gray-600">Northern Rivers — </span>
+          Tweed, Byron, Lismore, Ballina, Kyogle.{' '}
+          <span className="font-medium text-gray-600">Regional NSW — </span>
+          Bathurst Regional, Blayney, Cabonne, Clarence Valley, Coolamon, Cootamundra-Gundagai,
+          Cowra, Dubbo Regional, Edward River, Federation, Forbes, Gilgandra, Goulburn Mulwaree,
+          Gunnedah, Hilltops, Hornsby, Junee, Kyogle, Lachlan, Leeton, Lithgow, Liverpool Plains,
+          Mid-Western Regional, Murray River, Narrabri, Narrandera, Narromine, Orange, Port
+          Macquarie-Hastings, Queanbeyan-Palerang, Singleton, Snowy Monaro, Snowy Valleys, Tamworth
+          Regional, Temora, Upper Lachlan, Uralla, Walcha, Warrumbungle, Weddin, Wentworth,
+          Wingecarribee, Wollongong, Yass Valley.
+        </div>
+      </details>
+      <p className="mt-2 text-sm text-gray-400">
         Free results show your EPI flood zone and council flood study classification. The $49 report adds
         depth contours by flood frequency (1-in-20, 1-in-100, 1-in-500 year), BOM gauge event history,
         and a source-cited PDF for conveyancers and lenders.
