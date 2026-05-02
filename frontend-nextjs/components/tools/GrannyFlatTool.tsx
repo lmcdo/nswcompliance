@@ -458,6 +458,13 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </div>
           </div>
 
+          {/* Check another address — immediately after result */}
+          <div className="text-center">
+            <button onClick={handleReset} className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+              Check another address
+            </button>
+          </div>
+
           {/* Check breakdown */}
           {eligibility.checks && (
             <div className="rounded-xl border border-gray-200 bg-white p-5">
@@ -740,12 +747,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
               )}
             </div>
           )}
-
-          <div className="text-center">
-            <button onClick={handleReset} className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
-              Check another address
-            </button>
-          </div>
 
           <div className="text-xs text-gray-400 px-2 space-y-1.5">
             <p className="font-medium text-gray-500">Legislative basis</p>
