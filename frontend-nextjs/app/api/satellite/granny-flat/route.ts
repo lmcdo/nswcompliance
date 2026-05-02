@@ -63,7 +63,6 @@ interface EplanningHistory {
 
 function parseLotDp(lot_description: string | null): { lot: string; dp: string } | null {
   if (!lot_description) return null;
-  // Matches "Lot 12 DP 123456", "Lot 12A DP 123456", "LOT 1 DP 1234567"
   const m = lot_description.match(/\bLot\s+(\w+)\s+DP\s+(\d+)/i);
   if (!m) return null;
   return { lot: m[1], dp: m[2] };
@@ -85,10 +84,6 @@ async function queryEPlanning(lot_description: string | null): Promise<Eplanning
   });
   const headers = { Accept: 'application/json' };
 
-  let daApps: EplanningApplication[] = [];
-  let cdcApps: EplanningApplication[] = [];
-  let timedOut = false;
-
   const [daResult, cdcResult] = await Promise.allSettled([
     fetch(`${EPLANNING_BASE}/OnlineDA?${params}`, { headers, signal: AbortSignal.timeout(8_000) })
       .then(r => r.ok ? r.json() : null)
@@ -98,12 +93,12 @@ async function queryEPlanning(lot_description: string | null): Promise<Eplanning
       .catch(() => null),
   ]);
 
-  if (daResult.status === 'rejected' || cdcResult.status === 'rejected') {
-    timedOut = true;
-  }
-
+  const timedOut = daResult.status === 'rejected' || cdcResult.status === 'rejected';
   const daData = daResult.status === 'fulfilled' ? daResult.value : null;
   const cdcData = cdcResult.status === 'fulfilled' ? cdcResult.value : null;
+
+  const daApps: EplanningApplication[] = [];
+  const cdcApps: EplanningApplication[] = [];
 
   if (daData?.Application) {
     for (const app of daData.Application) {
