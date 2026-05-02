@@ -89,6 +89,14 @@ Quick reference for what PlotDetect can and cannot do.
 - **Missing:** 31 other Inner West LGA councils
 - **SEPP provisions:** Only 241 provisions (vs 47,818 DCP provisions)
 
+### 6. Satellite Property Intelligence Reports
+- **Bushfire Pre-Screen** (`/reports/bushfire`) — RFS Bush Fire Prone Land lookup, BAL estimation, s4.14 referral triggers, 10/50 clearing entitlements, CDC pathway gating. NSW only. $29/report.
+- **Flood Truth Engine** (`/reports/flood`) — EPI flood planning overlays (71 LGAs), SAR change detection, JRC water occurrence, BoM gauge history.
+- **Solar Yield Underwriter** (`/reports/solar-yield`) — Rooftop solar potential assessment.
+- **Shadow Ambush Detector** (`/reports/shadow`) — Neighbouring development shadow impact.
+- **Threat Radar** (`/reports/threat-radar`) — Nearby DA/CDC activity monitoring.
+- **Granny Flat Yield Predictor** (`/reports/granny-flat`) — Structure detection + yield calculation.
+
 ---
 
 ## 🔧 **In Progress / Partially Working**

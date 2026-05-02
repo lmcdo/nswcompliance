@@ -35,6 +35,15 @@ See full architectural details in the exploration agent output above.
 - `/api/capacity/calculate` - Height/FSR/setbacks
 - `/api/procedural` - CDC vs DA guidance
 
+### Satellite Product Endpoints (Python backend)
+- `POST /pipeline/bushfire` - Bushfire Pre-Screen (RFS BFPL + PostGIS overlays + compliance)
+- `POST /pipeline/flood` - Flood Truth Engine (EPI + SAR + JRC + BoM)
+- `POST /pipeline/solar-yield` - Solar Yield Underwriter
+- `POST /pipeline/shadow` - Shadow Ambush Detector
+- `POST /pipeline/threat-radar` - Threat Radar
+- `POST /pipeline/granny-flat/detect` - Granny Flat structure detection
+- `POST /pipeline/granny-flat/confirm` - Granny Flat yield calculation
+
 ### Database
 - **regulatory_provisions:** 47,818 rows (DCP text)
 - **lep_land_use_table:** Land use permissibility
