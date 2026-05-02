@@ -1,13 +1,14 @@
 """
 Wet Season Flood Truth Engine -- FastAPI router.
 
-POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + BOM gauge
+POST /pipeline/flood        -- on-demand: EPI + EMS + JRC + DEA WOfS + BOM gauge
 POST /pipeline/flood/batch  -- batch LGA processing (Trigger.dev cron, quarterly)
 
 Data sources:
   NSW SEED EPI Flood WFS         (statutory overlay, free, no auth)
   Copernicus EMS activations      (copernicus_flood_events table, one-time ingest)
   JRC Global Surface Water        (Landsat 1984–present, GCS tiles, free)
+  DEA Water Observations (WOfS)   (Landsat 1987–present, 25m AU, ows.dea.ga.gov.au, CC BY 4.0)
   BOM/WaterConnect nearest gauge  (WaterNSW SOS2, last major flood event)
   Sentinel-1 RTC                  (Microsoft Planetary Computer, batch only)
 
@@ -31,6 +32,11 @@ Response contract (must match frontend-nextjs/app/reports/flood/page.tsx FloodRe
     "ems_activations": list[dict] | null,
     "jrc_water_occurrence_pct": float | null,   # % of months since 1984 classified as water
     "jrc_data_year": int | null,                # 2021 (current JRC dataset version)
+    "dea_wofs_frequency_pct": float | null,     # % of Landsat observations classified as wet (WOfS)
+    "ses_in_flood_planning_area": bool | null,  # PostGIS: point in council flood study extent
+    "ses_flood_class": str | null,              # e.g. "flood_planning_area", "1%AEP"
+    "ses_study_name": str | null,               # instrument_key of matched study
+    "ses_study_lga": str | null,                # LGA name of matched study
     "bom_gauge_name": str | null,
     "bom_gauge_distance_km": float | null,
     "bom_last_major_flood_date": str | null,
@@ -59,6 +65,7 @@ import psycopg2.extras
 import requests
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+from pyproj import Transformer
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/pipeline", tags=["satellite"])
@@ -74,6 +81,10 @@ BOM_SOS2 = "https://www.bom.gov.au/waterdata/services"
 JRC_TILE_BASE = "https://storage.googleapis.com/global-surface-water/downloads2021/occurrence"
 JRC_DATA_YEAR = 2021
 
+DEA_WCS_BASE = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"   # multi-year composite, 1987–present, no time param required
+_DATA_SOURCE_DEA = "DEA Water Observations (WOfS, Landsat 1987–present)"
+
 FLOOD_RATIO = 1.25
 S1B_GAP_START = date(2021, 12, 23)
 S1B_GAP_END   = date(2025, 3, 4)
@@ -82,6 +93,8 @@ _DATA_SOURCES_BASE = ["NSW SEED EPI WFS", "Microsoft Planetary Computer S1 RTC"]
 _DATA_SOURCE_EMS   = "NSW Spatial Services / Copernicus EMS flood events"
 _DATA_SOURCE_JRC   = "JRC Global Surface Water (Landsat 1984–present)"
 _DATA_SOURCE_BOM   = "BOM Water Data Online"
+_DATA_SOURCE_SES   = "NSW SES / Council flood study (spatial_overlays)"
+_DATA_SOURCE_DEA   = "DEA Water Observations (WOfS · Landsat 1987–present)"
 
 # EPI WFS FloodClass property → our class key
 _EPI_CLASS_MAP = {
@@ -128,6 +141,30 @@ _NSW_GAUGES = [
     ("401009", "Murrumbidgee River at Wagga",    -35.1100, 147.3696, 9.4),
 ]
 _GAUGE_MAX_DISTANCE_KM = 75.0  # don't associate gauge if further than this
+
+# ---------------------------------------------------------------------------
+# Hawkesbury FRMSP 2025 — AEP raster flood levels
+# ---------------------------------------------------------------------------
+
+HAWKESBURY_RASTER_DIR = os.environ.get(
+    "HAWKESBURY_RASTER_DIR",
+    os.path.join(os.path.dirname(__file__), "..", "data", "flood_studies", "hawkesbury", "rasters"),
+)
+# Keys are used as field name suffixes: hawkesbury_flood_level_{key}
+HAWKESBURY_AEP_FILES: dict[str, str] = {
+    "2aep":   "2AEP_Floodstudy_Stretched.tif",
+    "5aep":   "5AEP_Floodstudy_Stretched.tif",
+    "10aep":  "10AEP_Floodstudy_Stretched.tif",
+    "20aep":  "20AEP_Floodstudy_Stretched.tif",
+    "50aep":  "50AEP_Floodstudy_Stretched.tif",
+    "100aep": "100AEP_Floodstudy_Stretched.tif",
+    "200aep": "200AEP_Floodstudy_Stretched.tif",
+    "500aep": "500AEP_Floodstudy_Stretched.tif",
+    "pmf":    "PMF_Floodstudy_Stretched.tif",
+}
+HAWKESBURY_NODATA = -99999.0
+# Transform WGS84 lng/lat → GDA2020/MGA Zone 56 (EPSG:7856) before ds.index()
+_HAWK_TRANSFORMER = Transformer.from_crs("EPSG:4326", "EPSG:7856", always_xy=True)
 
 
 def _get_conn():
@@ -253,9 +290,11 @@ def _query_copernicus_ems(lat: float, lng: float) -> dict:
     try:
         conn = _get_conn()
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute("SELECT COUNT(*) AS n FROM copernicus_flood_events")
             if cur.fetchone()["n"] == 0:
                 return {"ems_flood_detected": None, "ems_activations": None}
+            cur.execute("SET LOCAL statement_timeout = '5000'")
             cur.execute(
                 """
                 SELECT activation_id, event_name, event_date_start, flood_type
@@ -348,6 +387,65 @@ def _query_jrc_surface_water(lat: float, lng: float) -> dict:
     except Exception as e:
         logger.warning(f"JRC GSW query: {e}")
         return {"jrc_water_occurrence_pct": None, "jrc_data_year": None}
+
+
+# ---------------------------------------------------------------------------
+# DEA Water Observations (WOfS)
+# ---------------------------------------------------------------------------
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA WOfS multi-year frequency at a point via WCS GetCoverage.
+
+    Layer: ga_ls_wo_fq_myear_3 (all-of-archive composite, 1987–present, 25m).
+    Band 1 = frequency (0.0–1.0 fraction). nodata = -999.0.
+    Returns dea_wofs_frequency_pct (0–100) or None on failure.
+
+    Simpler than JRC: no vsicurl, no tile lookup — single HTTP request, in-memory rasterio.
+    """
+    try:
+        import io
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — DEA WOfS unavailable")
+        return {"dea_wofs_frequency_pct": None}
+
+    try:
+        delta = 0.001  # ~100m bbox, enough for a point sample
+        r = requests.get(
+            DEA_WCS_BASE,
+            params={
+                "service": "WCS",
+                "version": "1.0.0",
+                "request": "GetCoverage",
+                "coverage": DEA_WOFS_LAYER,
+                "format": "GeoTIFF",
+                "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+                "crs": "EPSG:4326",
+                "resx": str(delta),
+                "resy": str(delta),
+            },
+            timeout=20,
+        )
+        r.raise_for_status()
+
+        # Validate response is a GeoTIFF (not an XML error response)
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            logger.warning(f"DEA WOfS: unexpected Content-Type {ct}")
+            return {"dea_wofs_frequency_pct": None}
+
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
 
 
 # ---------------------------------------------------------------------------
@@ -534,6 +632,205 @@ def _query_bom_gauge(lat: float, lng: float) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# SES / council flood study (PostGIS spatial_overlays)
+# ---------------------------------------------------------------------------
+
+DEA_WCS_BASE   = "https://ows.dea.ga.gov.au/wcs"
+DEA_WOFS_LAYER = "ga_ls_wo_fq_myear_3"
+
+# Canonical display labels for raw DB values stored in spatial_overlays.value.
+# Raw values vary by source: snake_case from FPA shapefiles, title case from EPI,
+# short codes from council FeatureServers. Always apply this before returning.
+_SES_CLASS_DISPLAY: dict[str, str] = {
+    "flood_planning_area":               "Flood Planning Area",
+    "Flood Planning Area":               "Flood Planning Area",
+    "1%AEP":                             "1% AEP Flood Extent",
+    "design_flood":                      "Design Flood (1% AEP)",
+    "PMF":                               "Probable Maximum Flood",
+    "Flood Prone and Major Creeks Land": "Flood Prone Land",
+    "1 in 100 AEP Flood Extent":         "1% AEP Flood Extent",
+    "Level of Probable Maximum Flood":   "Probable Maximum Flood",
+    "Probable Maximum Flood Line":       "Probable Maximum Flood",
+    "Area 1":                            "Flood Prone Area 1",
+}
+
+
+def _query_ses_flood_study(lat: float, lng: float) -> dict:
+    """
+    Point-in-polygon against spatial_overlays for flood layer type.
+    Covers all council flood studies ingested by ingest_flood_studies.py,
+    including Hawkesbury FPA and any future SES portal studies.
+
+    Returns:
+      ses_in_flood_planning_area: bool | None
+        True  — point is inside at least one flood extent polygon
+        False — spatial_overlays has flood rows but point is outside all of them
+        None  — spatial_overlays has no flood rows (table empty/unavailable)
+      ses_flood_class: str | None   — value of the matched row (e.g. "flood_planning_area")
+      ses_study_name: str | None    — instrument_key of the matched row
+      ses_study_lga: str | None     — lga_name of the matched row
+    """
+    null_result = {
+        "ses_in_flood_planning_area": None,
+        "ses_flood_class": None,
+        "ses_study_name": None,
+        "ses_study_lga": None,
+    }
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SET LOCAL statement_timeout = '5000'")
+            cur.execute("SELECT COUNT(*) AS n FROM spatial_overlays WHERE layer_type = 'flood'")
+            if cur.fetchone()["n"] == 0:
+                return null_result
+            # Point-in-polygon: find first matching flood polygon
+            cur.execute("SET LOCAL statement_timeout = '5000'")
+            cur.execute(
+                """
+                SELECT instrument_key, lga_name, value
+                FROM spatial_overlays
+                WHERE layer_type = 'flood'
+                  AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                ORDER BY currency_date DESC
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+        if row:
+            return {
+                "ses_in_flood_planning_area": True,
+                "ses_flood_class": _SES_CLASS_DISPLAY.get(row["value"], row["value"]),
+                "ses_study_name": row["instrument_key"],
+                "ses_study_lga": row["lga_name"],
+            }
+        return {
+            "ses_in_flood_planning_area": False,
+            "ses_flood_class": None,
+            "ses_study_name": None,
+            "ses_study_lga": None,
+        }
+    except Exception as e:
+        logger.warning(f"SES flood study query: {e}")
+        return null_result
+    finally:
+        if conn:
+            conn.close()
+
+
+_WOFS_HARD_TIMEOUT = 25  # seconds — WCS can stall after connect; requests.get timeout alone doesn't abort rasterio decode
+
+
+def _query_dea_wofs(lat: float, lng: float) -> dict:
+    """
+    Sample DEA Water Observations (WOfS) multi-year composite via WCS.
+    Layer: ga_ls_wo_fq_myear_3 — Band 1 = frequency fraction (0.0–1.0).
+    Returns dea_wofs_frequency_pct (0.0–100.0) or None on failure/nodata.
+
+    Uses an inner ThreadPoolExecutor with a hard 25s wall-clock timeout so a
+    stalled WCS response or slow rasterio decode cannot block the main thread pool.
+    """
+    import io
+    import rasterio
+
+    def _fetch() -> dict:
+        delta = 0.001
+        r = requests.get(DEA_WCS_BASE, params={
+            "service": "WCS", "version": "1.0.0", "request": "GetCoverage",
+            "coverage": DEA_WOFS_LAYER, "format": "GeoTIFF",
+            "bbox": f"{lng},{lat - delta},{lng + delta},{lat}",
+            "crs": "EPSG:4326", "resx": str(delta), "resy": str(delta),
+        }, timeout=20)
+        r.raise_for_status()
+        ct = r.headers.get("Content-Type", "")
+        if "tiff" not in ct.lower() and r.content[:4] not in (b"II*\x00", b"MM\x00*"):
+            return {"dea_wofs_frequency_pct": None}
+        with rasterio.open(io.BytesIO(r.content)) as ds:
+            raw = float(ds.read(1)[0, 0])   # Band 1 = frequency (0.0–1.0)
+        if raw == -999.0 or raw < 0 or math.isnan(raw):
+            return {"dea_wofs_frequency_pct": None}
+        return {"dea_wofs_frequency_pct": round(raw * 100.0, 2)}
+
+    try:
+        with ThreadPoolExecutor(max_workers=1) as inner:
+            fut = inner.submit(_fetch)
+            return fut.result(timeout=_WOFS_HARD_TIMEOUT)
+    except TimeoutError:
+        logger.warning(f"DEA WOfS query: hard timeout after {_WOFS_HARD_TIMEOUT}s")
+        return {"dea_wofs_frequency_pct": None}
+    except Exception as e:
+        logger.warning(f"DEA WOfS query: {e}")
+        return {"dea_wofs_frequency_pct": None}
+
+
+# ---------------------------------------------------------------------------
+# Hawkesbury FRMSP 2025 raster sampling
+# ---------------------------------------------------------------------------
+
+def _query_hawkesbury_rasters(lat: float, lng: float) -> dict:
+    """
+    Sample Hawkesbury FRMSP 2025 remapped flood levels at a point.
+    Returns flood water surface elevation (metres AHD) for 9 AEP events.
+    All values None if point is outside raster extent or files not present.
+
+    CRS: rasters are EPSG:7856 (GDA2020/MGA Zone 56). Point is transformed
+    before ds.index() — passing WGS84 coords directly would silently return
+    wrong pixel (CRS mismatch pattern bug).
+
+    Source: NSW Reconstruction Authority, Hawkesbury FRMSP 2025.
+    Nona Ruddell, nona.ruddell@reconstruction.nsw.gov.au.
+    """
+    null_result: dict = {f"hawkesbury_flood_level_{k}": None for k in HAWKESBURY_AEP_FILES}
+    null_result["hawkesbury_flood_study"] = None
+
+    try:
+        import rasterio
+    except ImportError:
+        logger.warning("rasterio not installed — Hawkesbury raster sampling unavailable")
+        return null_result
+
+    # Transform WGS84 lng/lat → EPSG:7856
+    x, y = _HAWK_TRANSFORMER.transform(lng, lat)
+
+    # Bounds check using 100AEP as proxy — all 9 rasters share the same extent.
+    proxy = os.path.join(HAWKESBURY_RASTER_DIR, HAWKESBURY_AEP_FILES["100aep"])
+    if not os.path.exists(proxy):
+        logger.info("Hawkesbury rasters not present on this host — skipping")
+        return null_result
+
+    try:
+        with rasterio.open(proxy) as ds:
+            left, bottom, right, top = ds.bounds
+            if not (left <= x <= right and bottom <= y <= top):
+                return null_result  # outside Hawkesbury extent — not an error
+    except Exception as e:
+        logger.warning(f"Hawkesbury bounds check failed: {e}")
+        return null_result
+
+    result: dict = {}
+    for aep_key, filename in HAWKESBURY_AEP_FILES.items():
+        path = os.path.join(HAWKESBURY_RASTER_DIR, filename)
+        try:
+            with rasterio.open(path) as ds:
+                row, col = ds.index(x, y)
+                row = max(0, min(row, ds.height - 1))
+                col = max(0, min(col, ds.width - 1))
+                val = float(ds.read(1)[row, col])
+            if val == HAWKESBURY_NODATA or math.isnan(val) or val < 0:
+                result[f"hawkesbury_flood_level_{aep_key}"] = None
+            else:
+                result[f"hawkesbury_flood_level_{aep_key}"] = round(val, 2)
+        except Exception as e:
+            logger.warning(f"Hawkesbury raster {aep_key}: {e}")
+            result[f"hawkesbury_flood_level_{aep_key}"] = None
+
+    has_data = any(v is not None for v in result.values())
+    result["hawkesbury_flood_study"] = "Hawkesbury FRMSP 2025" if has_data else None
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Confidence + data source helpers
 # ---------------------------------------------------------------------------
 
@@ -554,28 +851,49 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
         return "unavailable"
 
     epi_in_overlay = internal_outputs.get("epi_flood_class") not in (None, "none", "")
+    ses_in_overlay = internal_outputs.get("ses_in_flood_planning_area") is True
+    # Hawkesbury FRMSP raster: non-null 100AEP level confirms site is in flood extent
+    hawk_100 = internal_outputs.get("hawkesbury_flood_level_100aep")
+    hawk_in_overlay = hawk_100 is not None
+    # Combined statutory overlay signal: EPI state portal OR local council study OR raster
+    in_overlay     = epi_in_overlay or ses_in_overlay or hawk_in_overlay
     ems_detected   = internal_outputs.get("ems_flood_detected") is True
+    # Use DEA WOfS frequency when JRC is unavailable (DEA is AU-specific, 25m, 1987–present)
     jrc_pct        = internal_outputs.get("jrc_water_occurrence_pct") or 0.0
+    wofs_pct       = internal_outputs.get("dea_wofs_frequency_pct") or 0.0
+    effective_pct  = jrc_pct if jrc_pct > 0 else wofs_pct
     bom_flood      = internal_outputs.get("bom_last_major_flood_date") is not None
 
-    jrc_low      = 0 < jrc_pct < 15
-    jrc_moderate = 15 <= jrc_pct < 40
-    jrc_high     = jrc_pct >= 40
+    # Phase 0 — false-negative fix.
+    # EPI Layer 1 covers only ~11 LGAs. When epi_flood_class="none" for an uncovered
+    # LGA AND no local SES flood study data exists AND no strong observational signal
+    # is present, return "unavailable" instead of misleadingly returning "none".
+    # ses_in_flood_planning_area becomes non-None once the Hawkesbury FPA is ingested
+    # and Phase 2 runs; hawkesbury_flood_level_100aep is populated by Phase 3.
+    epi_no_coverage = internal_outputs.get("epi_flood_class") == "none"
+    ses_queried = internal_outputs.get("ses_in_flood_planning_area") is not None
+    no_local_study = not ses_queried and not hawk_in_overlay
+    if epi_no_coverage and no_local_study and not ems_detected and not bom_flood and effective_pct < 5:
+        return "unavailable"
+
+    jrc_low      = 0 < effective_pct < 15
+    jrc_moderate = 15 <= effective_pct < 40
+    jrc_high     = effective_pct >= 40
 
     # Elevated: multiple independent sources agree
-    if (epi_in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
+    if (in_overlay and ems_detected) or (ems_detected and jrc_moderate) \
             or (ems_detected and jrc_high) or jrc_high \
-            or (epi_in_overlay and jrc_moderate and bom_flood):
+            or (in_overlay and jrc_moderate and bom_flood):
         return "elevated"
 
     # Moderate: one strong observed signal or two weaker ones
-    if ems_detected or (epi_in_overlay and jrc_low) \
-            or (epi_in_overlay and bom_flood) or jrc_moderate \
+    if ems_detected or (in_overlay and jrc_low) \
+            or (in_overlay and bom_flood) or jrc_moderate \
             or (jrc_low and bom_flood):
         return "moderate"
 
     # Low: statutory overlay only — council study flags risk but no observed events
-    if epi_in_overlay:
+    if in_overlay:
         return "low"
 
     return "none"
@@ -583,15 +901,17 @@ def _compute_flood_signal(internal_outputs: dict) -> str:
 
 def _compute_confidence(internal_outputs: dict) -> str:
     """
-    high   — EPI + EMS + JRC + BOM gauge + ≥1 SAR season
-    medium — EPI + EMS + (JRC or BOM), OR EPI + ≥2 SAR seasons
-    low    — EPI only
+    high   — EPI/SES overlay + EMS + JRC/WOfS + BOM gauge + ≥1 SAR season
+    medium — overlay + EMS + (JRC/WOfS or BOM), OR overlay + ≥2 SAR seasons
+    low    — overlay only
     """
     wet_seasons    = internal_outputs.get("wet_seasons_checked") or 0
     ems_available  = internal_outputs.get("ems_flood_detected") is not None
     jrc_available  = internal_outputs.get("jrc_water_occurrence_pct") is not None
+    wofs_available = internal_outputs.get("dea_wofs_frequency_pct") is not None
     bom_available  = internal_outputs.get("bom_gauge_name") is not None
-    spatial_layers = sum([ems_available, jrc_available, bom_available])
+    ses_available  = internal_outputs.get("ses_in_flood_planning_area") is not None
+    spatial_layers = sum([ems_available, jrc_available or wofs_available, bom_available, ses_available])
 
     if spatial_layers >= 3 and wet_seasons >= 1:
         return "high"
@@ -618,12 +938,18 @@ def _build_s1_gap_warning(internal_outputs: dict) -> str:
 
 def _build_data_sources(internal_outputs: dict) -> list:
     sources = ["NSW SEED EPI WFS"]
+    if internal_outputs.get("ses_in_flood_planning_area") is not None:
+        sources.append(_DATA_SOURCE_SES)
     if internal_outputs.get("ems_flood_detected") is not None:
         sources.append(_DATA_SOURCE_EMS)
     if internal_outputs.get("jrc_water_occurrence_pct") is not None:
         sources.append(_DATA_SOURCE_JRC)
+    if internal_outputs.get("dea_wofs_frequency_pct") is not None:
+        sources.append(_DATA_SOURCE_DEA)
     if internal_outputs.get("bom_gauge_name") is not None:
         sources.append(_DATA_SOURCE_BOM)
+    if internal_outputs.get("hawkesbury_flood_study"):
+        sources.append("Hawkesbury FRMSP 2025 — NSW Reconstruction Authority (2m raster, 9 AEP events)")
     sources.append("Microsoft Planetary Computer S1 RTC")
     return sources
 
@@ -658,6 +984,11 @@ def _normalise_outputs(raw: dict) -> dict:
         "ems_activations":            raw.get("ems_activations"),
         "jrc_water_occurrence_pct":   raw.get("jrc_water_occurrence_pct"),
         "jrc_data_year":              raw.get("jrc_data_year"),
+        "dea_wofs_frequency_pct":     raw.get("dea_wofs_frequency_pct"),
+        "ses_in_flood_planning_area": raw.get("ses_in_flood_planning_area"),
+        "ses_flood_class":            raw.get("ses_flood_class"),
+        "ses_study_name":             raw.get("ses_study_name"),
+        "ses_study_lga":              raw.get("ses_study_lga"),
         "bom_gauge_name":             raw.get("bom_gauge_name"),
         "bom_gauge_distance_km":      raw.get("bom_gauge_distance_km"),
         "bom_last_major_flood_date":  raw.get("bom_last_major_flood_date"),
@@ -668,6 +999,12 @@ def _normalise_outputs(raw: dict) -> dict:
         "s1_gap_warning":             raw.get("s1_gap_warning"),
         "data_currency":              raw.get("data_currency") or raw.get("epi_data_currency") or "unknown",
     }
+    # Hawkesbury FRMSP 2025 AEP flood levels (metres AHD)
+    for aep_key in ("2aep", "5aep", "10aep", "20aep", "50aep", "100aep", "200aep", "500aep", "pmf"):
+        field = f"hawkesbury_flood_level_{aep_key}"
+        normalised[field] = raw.get(field)
+    normalised["hawkesbury_flood_study"] = raw.get("hawkesbury_flood_study")
+
     normalised["flood_signal"] = _compute_flood_signal(normalised)
     return normalised
 
@@ -728,7 +1065,8 @@ def run_flood(req: FloodRequest):
     """
     On-demand flood analysis.
     Fast path: return pre-computed result if cached.
-    Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2).
+    Slow path: EPI + EMS (PostGIS) + JRC (rasterio remote read) + BOM gauge (SOS2)
+               + SES council flood studies (PostGIS) + DEA WOfS (WCS).
     SAR analysis is batch-only (Phase 3B).
     """
     conn = None
@@ -755,15 +1093,21 @@ def run_flood(req: FloodRequest):
         if conn:
             conn.close()
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
-        f_epi = pool.submit(_query_epi_overlay, req.lat, req.lng)
-        f_ems = pool.submit(_query_copernicus_ems, req.lat, req.lng)
-        f_jrc = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
-        f_bom = pool.submit(_query_bom_gauge, req.lat, req.lng)
-        epi = f_epi.result()
-        ems = f_ems.result()
-        jrc = f_jrc.result()
-        bom = f_bom.result()
+    with ThreadPoolExecutor(max_workers=7) as pool:
+        f_epi  = pool.submit(_query_epi_overlay, req.lat, req.lng)
+        f_ems  = pool.submit(_query_copernicus_ems, req.lat, req.lng)
+        f_jrc  = pool.submit(_query_jrc_surface_water, req.lat, req.lng)
+        f_bom  = pool.submit(_query_bom_gauge, req.lat, req.lng)
+        f_ses  = pool.submit(_query_ses_flood_study, req.lat, req.lng)
+        f_wofs = pool.submit(_query_dea_wofs, req.lat, req.lng)
+        f_hawk = pool.submit(_query_hawkesbury_rasters, req.lat, req.lng)
+        epi  = f_epi.result()
+        ems  = f_ems.result()
+        jrc  = f_jrc.result()
+        bom  = f_bom.result()
+        ses  = f_ses.result()
+        wofs = f_wofs.result()
+        hawk = f_hawk.result()
 
     internal_outputs = {
         "wet_seasons_checked": 0,
@@ -772,7 +1116,7 @@ def run_flood(req: FloodRequest):
         "sar_flood_detected": None,
         "sar_confidence": None,
         "sar_analysis_date": None,
-        **epi, **ems, **jrc, **bom,
+        **epi, **ems, **jrc, **bom, **ses, **wofs, **hawk,
     }
     internal_outputs["s1_gap_warning"] = _build_s1_gap_warning(internal_outputs)
 
