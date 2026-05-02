@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { GrannyFlatTool } from '@/components/tools/GrannyFlatTool'
+import { GRANNY_FLAT_LGAS } from '@/lib/lga-data/granny-flat-lgas'
 import { sanitizeHTML } from '@/lib/sanitize'
 
 export const metadata: Metadata = {
@@ -40,10 +41,31 @@ const FAQS = [
 ]
 
 export default function GrannyFlatHubPage() {
+  const sydneyLgas = GRANNY_FLAT_LGAS.filter(lga =>
+    !['wollongong', 'clarence-valley', 'yass-valley', 'forbes', 'tamworth-regional', 'bathurst-regional', 'wingecarribee'].includes(lga.slug)
+  )
+  const regionalLgas = GRANNY_FLAT_LGAS.filter(lga =>
+    ['wollongong', 'clarence-valley', 'yass-valley', 'forbes', 'tamworth-regional', 'bathurst-regional', 'wingecarribee'].includes(lga.slug)
+  )
+
   return (
     <div className="max-w-2xl mx-auto px-6">
 
-      {/* THE TOOL — has its own hero when not on an LGA page */}
+      {/* Hero */}
+      <div className="pt-12 pb-6">
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
+          Can I build a granny flat in NSW?
+        </h1>
+        <p className="mt-3 text-base text-gray-500">
+          Check any NSW address against SEPP Housing 2021 — lot size, zoning, heritage
+          exclusions, <Link href="/flood-risk" className="text-blue-600 hover:underline">flood control lots</Link>,
+          biodiversity values, and acid sulfate soils. Free, instant, no signup.
+          If eligible, a <Link href="/how-it-works" className="text-teal-600 hover:underline">complying development certificate (CDC)</Link>{' '}
+          can be lodged through a private certifier without council involvement.
+        </p>
+      </div>
+
+      {/* THE TOOL */}
       <GrannyFlatTool />
 
       {/* How it works */}
@@ -128,6 +150,48 @@ export default function GrannyFlatHubPage() {
           })),
         }}
       />
+
+      {/* LGA grid — Sydney */}
+      <div className="mt-10 border-t border-gray-100 pt-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Check by council area</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Select your LGA for heritage counts, flood data availability, and LGA-specific eligibility notes.
+        </p>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Greater Sydney</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-6">
+          {sydneyLgas.map(lga => (
+            <Link
+              key={lga.slug}
+              href={`/granny-flat/${lga.slug}`}
+              className="rounded-lg border border-gray-100 px-4 py-3 hover:border-teal-300 hover:bg-teal-50 transition-colors group"
+            >
+              <p className="text-sm font-medium text-gray-800 group-hover:text-teal-700">{lga.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {lga.heritageCount.toLocaleString()} heritage items
+                {lga.hasFloodData ? ' · flood data' : ''}
+              </p>
+            </Link>
+          ))}
+        </div>
+
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Regional NSW</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {regionalLgas.map(lga => (
+            <Link
+              key={lga.slug}
+              href={`/granny-flat/${lga.slug}`}
+              className="rounded-lg border border-gray-100 px-4 py-3 hover:border-teal-300 hover:bg-teal-50 transition-colors group"
+            >
+              <p className="text-sm font-medium text-gray-800 group-hover:text-teal-700">{lga.name}</p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {lga.heritageCount.toLocaleString()} heritage items
+                {lga.hasFloodData ? ' · flood data' : ''}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </div>
 
       {/* Cross-tool CTA */}
       <div className="mt-10 rounded-xl border border-gray-200 bg-gray-50 p-6 mb-4">
