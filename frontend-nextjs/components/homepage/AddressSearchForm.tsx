@@ -28,7 +28,7 @@ export function AddressSearchForm() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!address.trim()) return;
-    router.push(`/reports/granny-flat?address=${encodeURIComponent(address.trim())}`);
+    router.push(`/granny-flat?address=${encodeURIComponent(address.trim())}`);
   }
 
   return (
