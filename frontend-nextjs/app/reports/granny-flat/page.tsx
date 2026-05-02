@@ -555,7 +555,7 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
           {isPaid ? (
             <PaidDownloadCTA reportId={finalResult.report_id} address={finalResult.address ?? inputAddress} />
           ) : (
@@ -581,6 +581,14 @@ function GrannyFlatPageInner() {
             buildable={finalResult.granny_flat_buildable}
             address={finalResult.address ?? inputAddress}
           />
+          <div className="pt-2 text-center">
+            <button
+              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Check another address
+            </button>
+          </div>
         </div>
       )}
 
