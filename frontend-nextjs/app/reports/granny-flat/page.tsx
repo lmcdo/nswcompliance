@@ -167,11 +167,14 @@ function GrannyFlatPageInner() {
     const jobId = searchParams?.get('jobId');
     const addr = searchParams?.get('address');
     const payment = searchParams?.get('payment');
+    const emailParam = searchParams?.get('email');
     if (!jobId && payment !== 'success') {
       router.replace('/granny-flat');
       return;
     }
     setParamsChecked(true);
+    // Restore email from success_url so auto-confirm can send results email
+    if (emailParam) setEmail(decodeURIComponent(emailParam));
     if (jobId && addr) resumePoll(jobId, addr);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

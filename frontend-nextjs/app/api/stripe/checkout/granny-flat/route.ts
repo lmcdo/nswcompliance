@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
         email: email ?? '',
         product: 'granny-flat-analysis',
       },
-      success_url: `${origin}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`,
+      success_url: `${origin}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}${email ? `&email=${encodeURIComponent(email)}` : ''}`,
       cancel_url: `${origin}/granny-flat?payment=cancelled&address=${encodeURIComponent(address)}`,
     });
 
