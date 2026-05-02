@@ -37,6 +37,21 @@ interface DetectResult {
   lot_polygon_wgs84?: number[][][]; // [[lng, lat], ...] rings in WGS84
 }
 
+interface EplanningApplication {
+  type: 'DA' | 'CDC';
+  development_type: string;
+  status: string;
+  lodgement_date: string | null;
+  reference: string;
+}
+
+interface EplanningHistory {
+  found: boolean;
+  applications: EplanningApplication[];
+  source_note: string;
+  error: 'timeout' | 'unavailable' | null;
+}
+
 interface ConfirmResult {
   report_id: string;
   address: string;
@@ -49,6 +64,7 @@ interface ConfirmResult {
   confidence_reason: string;
   data_sources: string[];
   warnings: string[];
+  eplanning_history?: EplanningHistory;
 }
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
@@ -872,6 +888,24 @@ function GrannyFlatFAQs() {
   );
 }
 
+type StructureTypeAnswer = 'part_of_main' | 'garage' | 'existing_gf' | 'unsure';
+
+const STRUCTURE_TYPE_OPTIONS: { label: string; value: StructureTypeAnswer; hint: string }[] = [
+  { label: 'Part of main house', value: 'part_of_main', hint: 'e.g. rear extension, garage attached to house' },
+  { label: 'Garage / outbuilding', value: 'garage', hint: 'separate shed, carport, workshop' },
+  { label: 'Existing granny flat', value: 'existing_gf', hint: 'studio, secondary dwelling, converted garage' },
+  { label: 'Not sure', value: 'unsure', hint: "unsure \u2014 we'll flag for certifier review" },
+];
+
+function getPositionLabel(bbox_pixel: number[], tileHeight: number | undefined): string {
+  if (!tileHeight || !bbox_pixel || bbox_pixel.length < 4) return '';
+  const cy = (bbox_pixel[1] + bbox_pixel[3]) / 2;
+  const norm = cy / tileHeight;
+  if (norm < 0.35) return 'front of lot';
+  if (norm > 0.65) return 'rear of lot';
+  return 'mid-lot';
+}
+
 function ConfirmationPanel({
   detectResult,
   inputAddress,
@@ -891,6 +925,26 @@ function ConfirmationPanel({
   onConfirm: (e: React.FormEvent) => void;
   onBack: () => void;
 }) {
+  const [structureTypes, setStructureTypes] = useState<Record<number, StructureTypeAnswer>>({});
+
+  const secondaryStructures = detectResult.detected_structures.filter(s => !s.is_main_dwelling);
+  const usePerStructureQuestions = detectResult.samgeo_validated && secondaryStructures.length > 0;
+
+  const handleStructureType = (idx: number, type: StructureTypeAnswer) => {
+    setStructureTypes(prev => {
+      const next = { ...prev, [idx]: type };
+      const values = Object.values(next);
+      if (values.some(t => t === 'existing_gf')) {
+        onExistingSecondaryDwellingChange(true);
+      } else if (secondaryStructures.every(s => s.index in next)) {
+        // All answered — false if no GF, null if any unsure
+        const anyUnsure = values.some(t => t === 'unsure');
+        onExistingSecondaryDwellingChange(anyUnsure ? null : false);
+      }
+      return next;
+    });
+  };
+
   const canonical = detectResult.address;
   const showCanonical = canonical && canonical.toLowerCase() !== inputAddress.toLowerCase();
   return (
@@ -942,17 +996,29 @@ function ConfirmationPanel({
               return (
                 <>
                   <p className="text-sm font-medium text-gray-700 mb-2">
-                    {valid.length} structure{valid.length !== 1 ? 's' : ''} detected on lot
+                    AI detected {valid.length} structure{valid.length !== 1 ? 's' : ''} on lot
                   </p>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {valid.map((s) => (
-                      <div key={s.index} className="flex items-center gap-2 text-xs text-gray-600">
-                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
-                        {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
-                        {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                        {!s.is_main_dwelling && (
-                          <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
-                        )}
+                      <div key={s.index} className="flex items-start gap-2 text-xs text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0 mt-1" />
+                        <div>
+                          <span className="font-medium">{s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}</span>
+                          {s.area_m2 != null && (
+                            <span>
+                              {` — ~${s.area_m2} m²`}
+                              {!s.is_main_dwelling && s.area_m2 >= 100 && (
+                                <span className="text-amber-600 ml-1">(unusually large for an outbuilding — verify type)</span>
+                              )}
+                              {!s.is_main_dwelling && s.area_m2 >= 60 && s.area_m2 < 100 && (
+                                <span className="text-gray-400 ml-1">(~size of a double garage)</span>
+                              )}
+                            </span>
+                          )}
+                          {s.area_m2 == null && !s.is_main_dwelling && (
+                            <span className="text-gray-400"> — size unknown</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -968,8 +1034,13 @@ function ConfirmationPanel({
         {(() => {
           const mainDwelling = detectResult.detected_structures.find(s => s.is_main_dwelling);
           const mainDwellingArea = mainDwelling?.area_m2 ?? null;
+          const otherStructuresArea = detectResult.detected_structures
+            .filter(s => !s.is_main_dwelling && s.area_m2 != null)
+            .reduce((sum, s) => sum + (s.area_m2 ?? 0), 0);
           const lotArea = detectResult.lot_area_m2;
-          const residualArea = lotArea != null && mainDwellingArea != null ? lotArea - mainDwellingArea : null;
+          const residualArea = lotArea != null && mainDwellingArea != null
+            ? lotArea - mainDwellingArea - otherStructuresArea
+            : null;
           const proxyFails = residualArea != null && residualArea < 120;
 
           if (!detectResult.sepp_eligible || proxyFails) {
@@ -979,7 +1050,9 @@ function ConfirmationPanel({
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-2">
                     <p className="font-medium">Insufficient space for a complying development granny flat</p>
                     <p>
-                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m² of a {lotArea!.toFixed(0)} m² lot,
+                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m²
+                      {otherStructuresArea > 0 && ` and other detected structures occupy ~${otherStructuresArea.toFixed(0)} m²`}
+                      {' '}of a {lotArea!.toFixed(0)} m² lot,
                       leaving ~{residualArea!.toFixed(0)} m² of residual space. A 60 m² secondary dwelling requires at least
                       120 m² of residual area to accommodate the structure plus mandatory SEPP Housing 2021 setbacks:
                       3 m from the rear boundary, 0.9 m from each side boundary, and 3 m separation from the principal dwelling.
@@ -1009,48 +1082,102 @@ function ConfirmationPanel({
 
           return (
         <form onSubmit={onConfirm} className="space-y-5">
-          {/* Secondary dwelling question — the only thing SEPP cl 53(1) cares about */}
-          <div>
-            <p className="text-sm font-medium text-gray-700 mb-1">
-              Is there an existing secondary dwelling or granny flat on this property?
-            </p>
-            <p className="text-xs text-gray-400 mb-3">
-              NSW planning rules only allow one secondary dwelling (granny flat) per lot. A converted garage, studio, or detached cabin counts as one.
-            </p>
-            <div className="flex gap-2">
-              {([
-                { label: 'Yes', value: true },
-                { label: 'No', value: false },
-                { label: 'Not sure', value: null },
-              ] as { label: string; value: boolean | null }[]).map(({ label, value }) => {
-                const active = existingSecondaryDwelling === value;
+          {/* Structure type questions — per-structure when detection validated, binary fallback otherwise */}
+          {usePerStructureQuestions ? (
+            <div className="space-y-5">
+              <p className="text-sm font-medium text-gray-700">Confirm each detected structure</p>
+              <p className="text-xs text-gray-400 -mt-3">
+                NSW rules allow only one secondary dwelling per lot. Identifying each structure correctly affects eligibility.
+              </p>
+              {secondaryStructures.map(s => {
+                const posLabel = getPositionLabel(s.bbox_pixel, detectResult.tile_height);
+                const sizeContext = s.area_m2 != null
+                  ? `~${s.area_m2} m²`
+                  : 'size unknown';
+                const selected = structureTypes[s.index];
                 return (
-                  <button
-                    key={label}
-                    type="button"
-                    onClick={() => onExistingSecondaryDwellingChange(value)}
-                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                      active
-                        ? 'bg-teal-600 text-white border-teal-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {label}
-                  </button>
+                  <div key={s.index} className="rounded-lg border border-gray-200 p-4 space-y-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-800">
+                        Structure {s.index + 1} — {sizeContext}
+                        {posLabel && <span className="ml-1 text-gray-400 font-normal">· {posLabel}</span>}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">What is this structure?</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {STRUCTURE_TYPE_OPTIONS.map(opt => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => handleStructureType(s.index, opt.value)}
+                          className={`text-left px-3 py-2.5 rounded-lg border text-xs transition-colors ${
+                            selected === opt.value
+                              ? 'bg-teal-600 text-white border-teal-600'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <span className="font-medium block">{opt.label}</span>
+                          <span className={`block mt-0.5 ${selected === opt.value ? 'text-teal-100' : 'text-gray-400'}`}>{opt.hint}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {selected === 'existing_gf' && (
+                      <p className="text-xs text-red-600">A second granny flat cannot be approved on this lot under SEPP Housing 2021.</p>
+                    )}
+                    {selected === 'unsure' && (
+                      <p className="text-xs text-amber-600">Confidence will be capped at Medium. Check on SIX Maps or ask the owner.</p>
+                    )}
+                  </div>
                 );
               })}
+              <p className="text-xs text-gray-400">
+                Eligibility depends on the accuracy of your structure classifications. If you selected the wrong type,{' '}
+                <button type="button" onClick={() => { setStructureTypes({}); onExistingSecondaryDwellingChange(null); }} className="underline hover:no-underline">reset answers</button>.
+              </p>
             </div>
-            {existingSecondaryDwelling === true && (
-              <p className="mt-2 text-xs text-red-600">
-                If there&apos;s already a granny flat on this lot, a second one cannot be approved under NSW planning rules. This property would be ineligible.
+          ) : (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-1">
+                Is there an existing secondary dwelling or granny flat on this property?
               </p>
-            )}
-            {existingSecondaryDwelling === null && (
-              <p className="mt-2 text-xs text-amber-600">
-                If you&apos;re not sure, we&apos;ll still run the analysis — but confidence will be capped at Medium until this is confirmed. Check the lot on the NSW Planning Portal or ask the owner.
+              <p className="text-xs text-gray-400 mb-3">
+                NSW planning rules only allow one secondary dwelling (granny flat) per lot. A converted garage, studio, or detached cabin counts as one.
               </p>
-            )}
-          </div>
+              <div className="flex gap-2">
+                {([
+                  { label: 'Yes', value: true },
+                  { label: 'No', value: false },
+                  { label: 'Not sure', value: null },
+                ] as { label: string; value: boolean | null }[]).map(({ label, value }) => {
+                  const active = existingSecondaryDwelling === value;
+                  return (
+                    <button
+                      key={label}
+                      type="button"
+                      onClick={() => onExistingSecondaryDwellingChange(value)}
+                      className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                        active
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {existingSecondaryDwelling === true && (
+                <p className="mt-2 text-xs text-red-600">
+                  If there&apos;s already a granny flat on this lot, a second one cannot be approved under NSW planning rules. This property would be ineligible.
+                </p>
+              )}
+              {existingSecondaryDwelling === null && (
+                <p className="mt-2 text-xs text-amber-600">
+                  If you&apos;re not sure, we&apos;ll still run the analysis — but confidence will be capped at Medium until this is confirmed. Check the lot on the NSW Planning Portal or ask the owner.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Warn when SAM ran but couldn't size the main dwelling — envelope unverifiable */}
           {detectResult.samgeo_validated &&
@@ -1499,6 +1626,35 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
           {result.warnings.map((w, i) => (
             <p key={i} className="text-xs text-amber-800">{w}</p>
           ))}
+        </div>
+      )}
+
+      {result.eplanning_history && (
+        <div className="px-6 py-4 space-y-1.5">
+          <p className="text-xs font-medium text-gray-600">NSW ePlanning Portal history</p>
+          {result.eplanning_history.error ? (
+            <p className="text-xs text-gray-400">{result.eplanning_history.source_note}</p>
+          ) : result.eplanning_history.found ? (
+            <>
+              {result.eplanning_history.applications.map((app, i) => (
+                <div key={i} className="flex items-baseline gap-2 text-xs text-gray-600">
+                  <span className={`shrink-0 font-medium ${app.type === 'DA' ? 'text-blue-600' : 'text-teal-600'}`}>{app.type}</span>
+                  <span>{app.development_type}</span>
+                  <span className="text-gray-400">·</span>
+                  <span className="text-gray-500">{app.status}</span>
+                  {app.lodgement_date && (
+                    <><span className="text-gray-400">·</span><span className="text-gray-400">{app.lodgement_date.slice(0, 10)}</span></>
+                  )}
+                  {app.reference && <span className="text-gray-400 ml-auto shrink-0">{app.reference}</span>}
+                </div>
+              ))}
+              <p className="text-xs text-gray-400 mt-1">{result.eplanning_history.source_note}</p>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400">
+              No secondary dwelling application found. {result.eplanning_history.source_note}
+            </p>
+          )}
         </div>
       )}
 
