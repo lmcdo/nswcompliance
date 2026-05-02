@@ -591,14 +591,6 @@ function GrannyFlatPageInner() {
             ineligibleReason={finalResult.granny_flat_buildable ? null : (detectResult?.sepp_ineligible_reason ?? null)}
             address={finalResult.address ?? inputAddress}
           />
-          <div className="pt-2 text-center">
-            <button
-              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
-            >
-              Check another address
-            </button>
-          </div>
         </div>
       )}
 
