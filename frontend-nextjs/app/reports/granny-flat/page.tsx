@@ -556,6 +556,15 @@ function GrannyFlatPageInner() {
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
           <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          {/* Check another address — shown immediately after result, before other content */}
+          <div className="text-center">
+            <button
+              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Check another address
+            </button>
+          </div>
           {isPaid ? (
             <PaidDownloadCTA reportId={finalResult.report_id} address={finalResult.address ?? inputAddress} />
           ) : (
@@ -579,6 +588,7 @@ function GrannyFlatPageInner() {
           />
           <CrossSellCards
             buildable={finalResult.granny_flat_buildable}
+            ineligibleReason={finalResult.granny_flat_buildable ? null : (detectResult?.sepp_ineligible_reason ?? null)}
             address={finalResult.address ?? inputAddress}
           />
           <div className="pt-2 text-center">
@@ -1116,8 +1126,10 @@ function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
 // Fail variant: Threat Radar only (monitor for zone/DA changes)
 // ---------------------------------------------------------------------------
 
-function CrossSellCards({ buildable, address }: { buildable: boolean; address: string }) {
+function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: boolean; address: string; ineligibleReason?: string | null }) {
   const encoded = encodeURIComponent(address);
+  const reason = (ineligibleReason ?? '').toLowerCase();
+
   const passCards = [
     {
       title: 'Neighbour Development Threat Radar',
@@ -1132,14 +1144,81 @@ function CrossSellCards({ buildable, address }: { buildable: boolean; address: s
       label: 'Check flood risk →',
     },
   ];
-  const failCards = [
-    {
-      title: 'Neighbour Development Threat Radar',
-      body: 'Monitor nearby DA applications — a rezoning or approval nearby could change your eligibility.',
-      href: `/reports/threat-radar?address=${encoded}`,
-      label: 'Monitor this area →',
-    },
-  ];
+
+  // Reason-specific fail cards — show the most relevant tool first
+  let failCards;
+  if (reason.includes('flood')) {
+    failCards = [
+      {
+        title: 'Flood Truth Report',
+        body: 'Your lot is in a flood control area. Get the full flood study overlay, BOM gauge history, and satellite water extent data — required for any DA on a flood-affected lot.',
+        href: `/reports/flood?address=${encoded}`,
+        label: 'Get flood report →',
+      },
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Monitor nearby DAs — a flood study amendment or rezoning could change your eligibility.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Monitor this area →',
+      },
+    ];
+  } else if (reason.includes('heritage')) {
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Heritage exclusions apply to CDC only — a DA may still be viable. Monitor nearby approvals to understand what council is approving in your area.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Check nearby approvals →',
+      },
+      {
+        title: 'Rooftop Solar Yield',
+        body: 'Heritage restrictions limit new structures — but solar on an existing roof may still be viable. Check your annual kWh yield.',
+        href: `/reports/solar-yield?address=${encoded}`,
+        label: 'Check solar potential →',
+      },
+    ];
+  } else if (reason.includes('zone') || reason.includes('zoning')) {
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Monitor nearby rezoning proposals — a zone change in your area could make your lot eligible in future.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Monitor rezoning activity →',
+      },
+    ];
+  } else if (reason.includes('existing') || reason.includes('secondary dwelling') || reason.includes('granny flat')) {
+    failCards = [
+      {
+        title: 'Rooftop Solar Yield',
+        body: 'You already have a secondary dwelling — optimise what you have. Check solar yield on your existing structures.',
+        href: `/reports/solar-yield?address=${encoded}`,
+        label: 'Check solar potential →',
+      },
+      {
+        title: 'Shadow Detector',
+        body: 'Check whether a neighbour\'s development proposal would overshadow your existing structures.',
+        href: `/reports/shadow?address=${encoded}`,
+        label: 'Check shadow risk →',
+      },
+    ];
+  } else {
+    // Default ineligible (lot size, other) — DA may still be viable
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'The CDC pathway isn\'t available — but a DA through council may still be possible. Monitor nearby secondary dwelling approvals to gauge what council is accepting.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Check nearby approvals →',
+      },
+      {
+        title: 'Wet Season Flood Truth',
+        body: 'Verify flood risk before pursuing a DA — flood overlay is required in any development application.',
+        href: `/reports/flood?address=${encoded}`,
+        label: 'Check flood risk →',
+      },
+    ];
+  }
+
   const cards = buildable ? passCards : failCards;
 
   return (

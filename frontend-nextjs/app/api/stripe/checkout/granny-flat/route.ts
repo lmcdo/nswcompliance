@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
         product: 'granny-flat-analysis',
       },
       success_url: `${origin}/reports/granny-flat?jobId=${job_id}&payment=success&address=${encodeURIComponent(address)}`,
-      cancel_url: `${origin}/canibuildit?payment=cancelled&address=${encodeURIComponent(address)}`,
+      cancel_url: `${origin}/granny-flat?payment=cancelled&address=${encodeURIComponent(address)}`,
     });
 
     return NextResponse.json({ checkout_url: session.url });
