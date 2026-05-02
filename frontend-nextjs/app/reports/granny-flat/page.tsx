@@ -576,7 +576,8 @@ function GrannyFlatPageInner() {
               setEmail={setEmail}
               emailCaptured={reportEmailCaptured}
               onEmailSubmit={handleReportEmailSubmit}
-              reportId={finalResult.report_id}
+              jobId={detectResult?.detect_id ?? ''}
+              address={finalResult.address ?? inputAddress}
             />
           )}
           <YieldCalculator
@@ -1303,7 +1304,8 @@ function ReportUnlockCTA({
   setEmail,
   emailCaptured,
   onEmailSubmit,
-  reportId,
+  jobId,
+  address,
 }: {
   buildable: boolean;
   sepp_ineligible_reason: string | null;
@@ -1312,21 +1314,22 @@ function ReportUnlockCTA({
   setEmail: (v: string) => void;
   emailCaptured: boolean;
   onEmailSubmit: (e: React.FormEvent) => void;
-  reportId?: string;
+  jobId: string;
+  address: string;
 }) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
   const handleBuyReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !reportId) return;
+    if (!email.trim() || !jobId) return;
     setCheckoutLoading(true);
     setCheckoutError('');
     try {
       const res = await fetch('/api/stripe/checkout/granny-flat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, email: email.trim() }),
+        body: JSON.stringify({ job_id: jobId, address, email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok || !data.checkout_url) throw new Error(data.error ?? 'Checkout failed');

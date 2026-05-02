@@ -728,6 +728,12 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             </div>
           )}
 
+          <div className="text-center">
+            <button onClick={handleReset} className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors">
+              Check another address
+            </button>
+          </div>
+
           <div className="text-xs text-gray-400 px-2 space-y-1.5">
             <p className="font-medium text-gray-500">Legislative basis</p>
             <p><span className="text-gray-500">Lot area</span> — SEPP (Housing) 2021 cl 53(2)(a): detached secondary dwelling minimum site area 450 m² [complying development]; cl 52 [development consent].</p>
@@ -739,9 +745,6 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
             <p className="pt-1 border-t border-gray-100 mt-2">DCP setback, height, floor space ratio, and landscaping controls not assessed here. This check is indicative only — verify with a qualified town planner before lodging a DA or CDC.</p>
           </div>
 
-          <button onClick={handleReset} className="w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors">
-            Check another address
-          </button>
         </div>
       )}
 
