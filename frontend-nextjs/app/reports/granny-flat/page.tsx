@@ -513,6 +513,15 @@ function GrannyFlatPageInner() {
       {/* Step 2: confirmation */}
       {state === 'confirming' && detectResult && (
         <>
+          {isPaid && (
+            <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 flex items-center gap-3">
+              <span className="text-teal-600 font-bold text-lg">✓</span>
+              <div>
+                <p className="text-sm font-semibold text-teal-900">Payment confirmed</p>
+                <p className="text-xs text-teal-700">One more step — confirm the structure count below to unlock your full analysis and PDF download.</p>
+              </div>
+            </div>
+          )}
           <ConfirmationPanel
             detectResult={detectResult}
             inputAddress={inputAddress}

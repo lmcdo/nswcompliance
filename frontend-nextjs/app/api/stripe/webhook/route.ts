@@ -149,18 +149,20 @@ async function handleThreatRadarMonitor(
 // ---------------------------------------------------------------------------
 
 async function handleGrannyFlatAnalysis(
-  _session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session,
   meta: Record<string, string>
 ) {
-  const { job_id, email, address } = meta;
+  const { job_id, address } = meta;
+  // Use metadata email first; fall back to email Stripe collected at checkout
+  const email = meta.email || session.customer_details?.email || session.customer_email || '';
 
   if (!job_id || !address) {
-    console.error('[stripe/webhook] granny-flat-analysis missing metadata on session:', _session.id);
+    console.error('[stripe/webhook] granny-flat-analysis missing metadata on session:', session.id);
     return NextResponse.json({ received: true });
   }
 
   if (!email) {
-    // No email — nothing to send, but still acknowledge
+    // No email anywhere — nothing to send, but still acknowledge
     return NextResponse.json({ received: true });
   }
 
