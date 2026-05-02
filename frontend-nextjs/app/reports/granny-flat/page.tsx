@@ -82,6 +82,7 @@ function GrannyFlatPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const isPaid = searchParams?.get('payment') === 'success';
+  const [paramsChecked, setParamsChecked] = useState(false);
   const [address, setAddress] = useState('');
   const [postcode, setPostcode] = useState(''); // from Google Places address_components
   const [inputAddress, setInputAddress] = useState('');
@@ -167,9 +168,10 @@ function GrannyFlatPageInner() {
     const addr = searchParams?.get('address');
     const payment = searchParams?.get('payment');
     if (!jobId && payment !== 'success') {
-      router.replace('/canibuildit');
+      router.replace('/granny-flat');
       return;
     }
+    setParamsChecked(true);
     if (jobId && addr) resumePoll(jobId, addr);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -351,6 +353,8 @@ function GrannyFlatPageInner() {
   };
 
   const isRunning = state === 'detecting';
+
+  if (!paramsChecked) return null;
 
   return (
     <div className="max-w-2xl">
