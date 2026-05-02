@@ -942,17 +942,29 @@ function ConfirmationPanel({
               return (
                 <>
                   <p className="text-sm font-medium text-gray-700 mb-2">
-                    {valid.length} structure{valid.length !== 1 ? 's' : ''} detected on lot
+                    AI detected {valid.length} structure{valid.length !== 1 ? 's' : ''} on lot
                   </p>
-                  <div className="space-y-1">
+                  <div className="space-y-1.5">
                     {valid.map((s) => (
-                      <div key={s.index} className="flex items-center gap-2 text-xs text-gray-600">
-                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0" />
-                        {s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}
-                        {s.area_m2 != null && ` — ~${s.area_m2} m²`}
-                        {!s.is_main_dwelling && (
-                          <span className="text-gray-400 capitalize">({s.matched_prompt})</span>
-                        )}
+                      <div key={s.index} className="flex items-start gap-2 text-xs text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-teal-400 shrink-0 mt-1" />
+                        <div>
+                          <span className="font-medium">{s.is_main_dwelling ? 'Main dwelling' : `Structure ${s.index + 1}`}</span>
+                          {s.area_m2 != null && (
+                            <span>
+                              {` — ~${s.area_m2} m²`}
+                              {!s.is_main_dwelling && s.area_m2 >= 100 && (
+                                <span className="text-amber-600 ml-1">(unusually large for an outbuilding — verify type)</span>
+                              )}
+                              {!s.is_main_dwelling && s.area_m2 >= 60 && s.area_m2 < 100 && (
+                                <span className="text-gray-400 ml-1">(~size of a double garage)</span>
+                              )}
+                            </span>
+                          )}
+                          {s.area_m2 == null && !s.is_main_dwelling && (
+                            <span className="text-gray-400"> — size unknown</span>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
