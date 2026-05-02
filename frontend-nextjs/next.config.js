@@ -28,7 +28,7 @@ const nextConfig = {
        permanent: false,
      },
      // Clean distribution URLs — for builder emails, QR cards, social links
-     { source: '/granny-flat', destination: '/reports/granny-flat', permanent: false },
+     // Note: /granny-flat is now the tool itself — no redirect needed
      { source: '/flood-risk', destination: '/reports/flood', permanent: false },
      { source: '/solar-yield', destination: '/reports/solar-yield', permanent: false },
      { source: '/shadow-check', destination: '/reports/shadow', permanent: false },
