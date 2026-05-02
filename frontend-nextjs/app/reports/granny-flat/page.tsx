@@ -167,11 +167,14 @@ function GrannyFlatPageInner() {
     const jobId = searchParams?.get('jobId');
     const addr = searchParams?.get('address');
     const payment = searchParams?.get('payment');
+    const emailParam = searchParams?.get('email');
     if (!jobId && payment !== 'success') {
       router.replace('/granny-flat');
       return;
     }
     setParamsChecked(true);
+    // Restore email from success_url so auto-confirm can send results email
+    if (emailParam) setEmail(decodeURIComponent(emailParam));
     if (jobId && addr) resumePoll(jobId, addr);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -305,16 +308,13 @@ function GrannyFlatPageInner() {
     }
   };
 
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!detectResult) return;
-
+  const runConfirm = useCallback(async (detect: DetectResult, count: number, existingGF: boolean | null, pc: string, notifEmail: string) => {
     setState('detecting'); // reuse spinner
     setFinalResult(null);
     setErrorMsg('');
     posthog?.capture('granny_flat_confirm', {
-      address: detectResult.address,
-      confirmed_count: confirmedCount,
+      address: detect.address,
+      confirmed_count: count,
     });
 
     try {
@@ -322,15 +322,15 @@ function GrannyFlatPageInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: detectResult.address,
+          address: detect.address,
           action: 'confirm',
-          detect_id: detectResult.detect_id,
-          confirmed_structure_count: confirmedCount,
-          samgeo_structure_count: detectResult.samgeo_structure_count,
-          postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
-          existing_secondary_dwelling: existingSecondaryDwelling,
-          main_dwelling_area_m2: detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
-          ...(email.trim() ? { notification_email: email.trim() } : {}),
+          detect_id: detect.detect_id,
+          confirmed_structure_count: count,
+          samgeo_structure_count: detect.samgeo_structure_count,
+          postcode: pc || detect.address.match(/\b(\d{4})\b/)?.[1] || null,
+          existing_secondary_dwelling: existingGF,
+          main_dwelling_area_m2: detect.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
+          ...(notifEmail.trim() ? { notification_email: notifEmail.trim() } : {}),
         }),
       });
 
@@ -338,7 +338,7 @@ function GrannyFlatPageInner() {
       if (!res.ok) throw new Error(json.error || 'Calculation failed');
 
       posthog?.capture('granny_flat_result', {
-        address: detectResult.address,
+        address: detect.address,
         eligible: json.granny_flat_buildable,
         max_floor_area_m2: json.max_floor_area_m2 ?? null,
       });
@@ -346,11 +346,27 @@ function GrannyFlatPageInner() {
       setState('complete');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      posthog?.capture('granny_flat_confirm_error', { address: detectResult.address, error: msg });
+      posthog?.capture('granny_flat_confirm_error', { address: detect.address, error: msg });
       setErrorMsg(msg);
       setState('error');
     }
+  }, []);
+
+  const handleConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detectResult) return;
+    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email);
   };
+
+  // Auto-confirm after payment return — skip the confirmation step entirely
+  const autoConfirmedRef = useRef(false);
+  useEffect(() => {
+    if (isPaid && state === 'confirming' && detectResult && !autoConfirmedRef.current) {
+      autoConfirmedRef.current = true;
+      runConfirm(detectResult, confirmedCount, null, postcode, email);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, detectResult]);
 
   const isRunning = state === 'detecting';
 
@@ -513,6 +529,15 @@ function GrannyFlatPageInner() {
       {/* Step 2: confirmation */}
       {state === 'confirming' && detectResult && (
         <>
+          {isPaid && (
+            <div className="mb-4 rounded-xl border border-teal-200 bg-teal-50 px-5 py-3 flex items-center gap-3">
+              <span className="text-teal-600 font-bold text-lg">✓</span>
+              <div>
+                <p className="text-sm font-semibold text-teal-900">Payment confirmed</p>
+                <p className="text-xs text-teal-700">One more step — confirm the structure count below to unlock your full analysis and PDF download.</p>
+              </div>
+            </div>
+          )}
           <ConfirmationPanel
             detectResult={detectResult}
             inputAddress={inputAddress}
@@ -555,7 +580,16 @@ function GrannyFlatPageInner() {
       {/* Step 3: result */}
       {state === 'complete' && finalResult && (
         <div className="space-y-5">
-          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); }} />
+          <ResultCard result={finalResult} inputAddress={inputAddress} onReset={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
+          {/* Check another address — shown immediately after result, before other content */}
+          <div className="text-center">
+            <button
+              onClick={() => { setState('idle'); setDetectResult(null); setFinalResult(null); setAddress(''); setPostcode(''); setEmail(''); setEmailSubmitted(false); setReportEmailCaptured(false); setExistingSecondaryDwelling(null); setSelectedLat(null); setSelectedLng(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-5 py-2.5 bg-white text-gray-600 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              Check another address
+            </button>
+          </div>
           {isPaid ? (
             <PaidDownloadCTA reportId={finalResult.report_id} address={finalResult.address ?? inputAddress} />
           ) : (
@@ -567,7 +601,8 @@ function GrannyFlatPageInner() {
               setEmail={setEmail}
               emailCaptured={reportEmailCaptured}
               onEmailSubmit={handleReportEmailSubmit}
-              reportId={finalResult.report_id}
+              jobId={detectResult?.detect_id ?? ''}
+              address={finalResult.address ?? inputAddress}
             />
           )}
           <YieldCalculator
@@ -579,6 +614,7 @@ function GrannyFlatPageInner() {
           />
           <CrossSellCards
             buildable={finalResult.granny_flat_buildable}
+            ineligibleReason={finalResult.granny_flat_buildable ? null : (detectResult?.sepp_ineligible_reason ?? null)}
             address={finalResult.address ?? inputAddress}
           />
         </div>
@@ -1108,8 +1144,10 @@ function NearbyEligible({ lat, lng }: { lat: number; lng: number }) {
 // Fail variant: Threat Radar only (monitor for zone/DA changes)
 // ---------------------------------------------------------------------------
 
-function CrossSellCards({ buildable, address }: { buildable: boolean; address: string }) {
+function CrossSellCards({ buildable, address, ineligibleReason }: { buildable: boolean; address: string; ineligibleReason?: string | null }) {
   const encoded = encodeURIComponent(address);
+  const reason = (ineligibleReason ?? '').toLowerCase();
+
   const passCards = [
     {
       title: 'Neighbour Development Threat Radar',
@@ -1124,14 +1162,81 @@ function CrossSellCards({ buildable, address }: { buildable: boolean; address: s
       label: 'Check flood risk →',
     },
   ];
-  const failCards = [
-    {
-      title: 'Neighbour Development Threat Radar',
-      body: 'Monitor nearby DA applications — a rezoning or approval nearby could change your eligibility.',
-      href: `/reports/threat-radar?address=${encoded}`,
-      label: 'Monitor this area →',
-    },
-  ];
+
+  // Reason-specific fail cards — show the most relevant tool first
+  let failCards;
+  if (reason.includes('flood')) {
+    failCards = [
+      {
+        title: 'Flood Truth Report',
+        body: 'Your lot is in a flood control area. Get the full flood study overlay, BOM gauge history, and satellite water extent data — required for any DA on a flood-affected lot.',
+        href: `/reports/flood?address=${encoded}`,
+        label: 'Get flood report →',
+      },
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Monitor nearby DAs — a flood study amendment or rezoning could change your eligibility.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Monitor this area →',
+      },
+    ];
+  } else if (reason.includes('heritage')) {
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Heritage exclusions apply to CDC only — a DA may still be viable. Monitor nearby approvals to understand what council is approving in your area.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Check nearby approvals →',
+      },
+      {
+        title: 'Rooftop Solar Yield',
+        body: 'Heritage restrictions limit new structures — but solar on an existing roof may still be viable. Check your annual kWh yield.',
+        href: `/reports/solar-yield?address=${encoded}`,
+        label: 'Check solar potential →',
+      },
+    ];
+  } else if (reason.includes('zone') || reason.includes('zoning')) {
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'Monitor nearby rezoning proposals — a zone change in your area could make your lot eligible in future.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Monitor rezoning activity →',
+      },
+    ];
+  } else if (reason.includes('existing') || reason.includes('secondary dwelling') || reason.includes('granny flat')) {
+    failCards = [
+      {
+        title: 'Rooftop Solar Yield',
+        body: 'You already have a secondary dwelling — optimise what you have. Check solar yield on your existing structures.',
+        href: `/reports/solar-yield?address=${encoded}`,
+        label: 'Check solar potential →',
+      },
+      {
+        title: 'Shadow Detector',
+        body: 'Check whether a neighbour\'s development proposal would overshadow your existing structures.',
+        href: `/reports/shadow?address=${encoded}`,
+        label: 'Check shadow risk →',
+      },
+    ];
+  } else {
+    // Default ineligible (lot size, other) — DA may still be viable
+    failCards = [
+      {
+        title: 'Neighbour Development Threat Radar',
+        body: 'The CDC pathway isn\'t available — but a DA through council may still be possible. Monitor nearby secondary dwelling approvals to gauge what council is accepting.',
+        href: `/reports/threat-radar?address=${encoded}`,
+        label: 'Check nearby approvals →',
+      },
+      {
+        title: 'Wet Season Flood Truth',
+        body: 'Verify flood risk before pursuing a DA — flood overlay is required in any development application.',
+        href: `/reports/flood?address=${encoded}`,
+        label: 'Check flood risk →',
+      },
+    ];
+  }
+
   const cards = buildable ? passCards : failCards;
 
   return (
@@ -1224,7 +1329,8 @@ function ReportUnlockCTA({
   setEmail,
   emailCaptured,
   onEmailSubmit,
-  reportId,
+  jobId,
+  address,
 }: {
   buildable: boolean;
   sepp_ineligible_reason: string | null;
@@ -1233,21 +1339,22 @@ function ReportUnlockCTA({
   setEmail: (v: string) => void;
   emailCaptured: boolean;
   onEmailSubmit: (e: React.FormEvent) => void;
-  reportId?: string;
+  jobId: string;
+  address: string;
 }) {
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
 
   const handleBuyReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !reportId) return;
+    if (!email.trim() || !jobId) return;
     setCheckoutLoading(true);
     setCheckoutError('');
     try {
       const res = await fetch('/api/stripe/checkout/granny-flat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ report_id: reportId, email: email.trim() }),
+        body: JSON.stringify({ job_id: jobId, address, email: email.trim() }),
       });
       const data = await res.json();
       if (!res.ok || !data.checkout_url) throw new Error(data.error ?? 'Checkout failed');
