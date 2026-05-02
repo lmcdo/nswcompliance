@@ -37,6 +37,21 @@ interface DetectResult {
   lot_polygon_wgs84?: number[][][]; // [[lng, lat], ...] rings in WGS84
 }
 
+interface EplanningApplication {
+  type: 'DA' | 'CDC';
+  development_type: string;
+  status: string;
+  lodgement_date: string | null;
+  reference: string;
+}
+
+interface EplanningHistory {
+  found: boolean;
+  applications: EplanningApplication[];
+  source_note: string;
+  error: 'timeout' | 'unavailable' | null;
+}
+
 interface ConfirmResult {
   report_id: string;
   address: string;
@@ -49,6 +64,7 @@ interface ConfirmResult {
   confidence_reason: string;
   data_sources: string[];
   warnings: string[];
+  eplanning_history?: EplanningHistory;
 }
 
 type PageState = 'idle' | 'detecting' | 'confirming' | 'complete' | 'error' | 'ineligible';
@@ -1392,6 +1408,35 @@ function ResultCard({ result, inputAddress, onReset }: { result: ConfirmResult; 
           {result.warnings.map((w, i) => (
             <p key={i} className="text-xs text-amber-800">{w}</p>
           ))}
+        </div>
+      )}
+
+      {result.eplanning_history && (
+        <div className="px-6 py-4 space-y-1.5">
+          <p className="text-xs font-medium text-gray-600">NSW ePlanning Portal history</p>
+          {result.eplanning_history.error ? (
+            <p className="text-xs text-gray-400">{result.eplanning_history.source_note}</p>
+          ) : result.eplanning_history.found ? (
+            <>
+              {result.eplanning_history.applications.map((app, i) => (
+                <div key={i} className="flex items-baseline gap-2 text-xs text-gray-600">
+                  <span className={`shrink-0 font-medium ${app.type === 'DA' ? 'text-blue-600' : 'text-teal-600'}`}>{app.type}</span>
+                  <span>{app.development_type}</span>
+                  <span className="text-gray-400">·</span>
+                  <span className="text-gray-500">{app.status}</span>
+                  {app.lodgement_date && (
+                    <><span className="text-gray-400">·</span><span className="text-gray-400">{app.lodgement_date.slice(0, 10)}</span></>
+                  )}
+                  {app.reference && <span className="text-gray-400 ml-auto shrink-0">{app.reference}</span>}
+                </div>
+              ))}
+              <p className="text-xs text-gray-400 mt-1">{result.eplanning_history.source_note}</p>
+            </>
+          ) : (
+            <p className="text-xs text-gray-400">
+              No secondary dwelling application found. {result.eplanning_history.source_note}
+            </p>
+          )}
         </div>
       )}
 

@@ -1,0 +1,551 @@
+"""
+NSW Bushfire Pre-Screen Pipeline -- FastAPI router.
+
+POST /pipeline/bushfire  -- on-demand: RFS BFPL + PostGIS cross-overlays
+
+Data sources:
+  NSW RFS Bush Fire Prone Land Map   (ArcGIS REST, free, no auth)
+  PostGIS spatial_overlays           (flood, heritage, zone cross-overlays)
+
+Response contract (must match frontend BushfireResult):
+{
+  "address": str,
+  "lat": float,
+  "lng": float,
+  "run_date": str,
+  "outputs": {
+    "is_bushfire_prone": bool | null,
+    "designation_source": str | null,
+    "designation_category": str | null,
+    "designation_guideline": str | null,
+    "estimated_bal_band": str | null,
+    "bal_assessment_likely_required": bool | null,
+    "bal_formal_assessment_cost_range": str | null,
+    "bal_assessor_directory_url": str | null,
+    "fire_signal": "none" | "low" | "moderate" | "elevated" | "unavailable",
+    "compliance": {
+      "state_legislation": str | null,
+      "rfs_referral_required": bool | null,
+      "rfs_referral_triggers": list[str] | null,
+      "cdc_pathway_available": bool | null,
+      "clearing_10_50_entitled": bool | null,
+      "clearing_10_50_exceptions": str | null,
+      "cross_overlays": list[dict] | null,
+      "estimated_consultant_costs": str | null,
+      "zone": str | null,
+      "compliance_depth": str,
+      "legislation_url": str | null
+    },
+    "data_currency": str
+  },
+  "confidence": "high" | "medium" | "low",
+  "data_sources": list[str]
+}
+"""
+import logging
+import os
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date
+from typing import Optional
+
+import psycopg2
+import psycopg2.extras
+import requests
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/pipeline", tags=["satellite"])
+
+# NSW RFS Bush Fire Prone Land Map — ArcGIS REST API
+# Layer 0: Bush Fire Prone Land categories (Vegetation Category 1/2/3, Vegetation Buffer)
+RFS_BFPL_REST = (
+    "https://mapprod3.environment.nsw.gov.au/arcgis/rest/services/"
+    "Fire/BFPL/MapServer/0/query"
+)
+
+_DATA_SOURCE_RFS = "NSW Rural Fire Service Bush Fire Prone Land Map"
+_DATA_SOURCE_SPATIAL = "PostGIS spatial_overlays"
+
+# NSW bounding box (rough) — reject obviously out-of-state coordinates
+_NSW_BBOX = {"min_lat": -37.6, "max_lat": -28.0, "min_lng": 140.9, "max_lng": 154.0}
+
+# Default outputs shape — used to fill gaps in cached blobs written by older code versions
+_DEFAULT_OUTPUTS: dict = {
+    "is_bushfire_prone": None,
+    "designation_source": None,
+    "designation_category": None,
+    "designation_guideline": None,
+    "estimated_bal_band": None,
+    "bal_assessment_likely_required": None,
+    "bal_formal_assessment_cost_range": None,
+    "bal_assessor_directory_url": None,
+    "fire_signal": "unavailable",
+    "compliance": {
+        "state_legislation": None,
+        "rfs_referral_required": None,
+        "rfs_referral_triggers": None,
+        "cdc_pathway_available": None,
+        "clearing_10_50_entitled": None,
+        "clearing_10_50_exceptions": None,
+        "cross_overlays": None,
+        "estimated_consultant_costs": None,
+        "zone": None,
+        "compliance_depth": "state-level",
+        "legislation_url": None,
+    },
+    "data_currency": "unknown",
+}
+
+# BAL estimation from BFPL category (indicative only — formal BAL assessment required)
+_BAL_LOOKUP = {
+    "vegetation buffer":     ("BAL-12.5", True),
+    "vegetation category 3": ("BAL-19", True),
+    "vegetation category 2": ("BAL-29", True),
+    "vegetation category 1": ("BAL-40 to BAL-FZ", True),
+}
+
+# Fire signal convergence from BFPL category
+_FIRE_SIGNAL_MAP = {
+    "vegetation buffer":     "low",
+    "vegetation category 3": "low",
+    "vegetation category 2": "moderate",
+    "vegetation category 1": "elevated",
+}
+
+# s4.14 integrated development triggers — state-wide, not LGA-specific
+# These determine when RFS referral is required
+_S414_TRIGGERS = [
+    "Subdivision of bushfire-prone land",
+    "Development for special fire protection purpose (schools, hospitals, childcare, seniors housing)",
+    "Residential infill development resulting in 3 or more lots",
+]
+
+
+def _get_conn():
+    dsn = os.environ.get("DATABASE_URL")
+    if dsn:
+        return psycopg2.connect(dsn)
+    return psycopg2.connect(
+        host=os.environ.get("DB_HOST", "127.0.0.1"),
+        database=os.environ.get("DB_NAME", "nsw_planning"),
+        user=os.environ.get("DB_USER", "postgres"),
+        password=os.environ.get("DB_PASSWORD", ""),
+        port=int(os.environ.get("DB_PORT", 5432)),
+    )
+
+
+# ---------------------------------------------------------------------------
+# RFS BFPL overlay query
+# ---------------------------------------------------------------------------
+
+def _is_in_nsw(lat: float, lng: float) -> bool:
+    """Rough bounding box check — rejects obviously out-of-state coordinates."""
+    return (
+        _NSW_BBOX["min_lat"] <= lat <= _NSW_BBOX["max_lat"]
+        and _NSW_BBOX["min_lng"] <= lng <= _NSW_BBOX["max_lng"]
+    )
+
+
+def _query_rfs_bfpl(lat: float, lng: float) -> dict:
+    """Query NSW RFS Bush Fire Prone Land Map via ArcGIS REST (Layer 0).
+
+    Returns designation category, guideline, and BAL estimation.
+    Empty features array = not bushfire prone (correct, not error).
+    Out-of-NSW coordinates return null (unknown), not False (not prone).
+    """
+    if not _is_in_nsw(lat, lng):
+        return {
+            "is_bushfire_prone": None,
+            "designation_source": None,
+            "designation_category": None,
+            "designation_guideline": None,
+            "estimated_bal_band": None,
+            "bal_assessment_likely_required": None,
+            "fire_signal": "unavailable",
+            "data_currency": "outside_nsw",
+        }
+
+    try:
+        params = {
+            "geometry": f"{lng},{lat}",
+            "geometryType": "esriGeometryPoint",
+            "inSR": "4326",
+            "spatialRel": "esriSpatialRelIntersects",
+            "outFields": "d_Category,d_Guidelin",
+            "returnGeometry": "false",
+            "f": "json",
+        }
+        r = requests.get(RFS_BFPL_REST, params=params, timeout=20)
+        r.raise_for_status()
+        body = r.json()
+
+        if "error" in body:
+            raise ValueError(f"ArcGIS error: {body['error']}")
+
+        feats = body.get("features") or []
+        if not feats:
+            return {
+                "is_bushfire_prone": False,
+                "designation_source": None,
+                "designation_category": None,
+                "designation_guideline": None,
+                "estimated_bal_band": "BAL-LOW",
+                "bal_assessment_likely_required": False,
+                "fire_signal": "none",
+                "data_currency": date.today().isoformat(),
+            }
+
+        attrs = feats[0].get("attributes") or {}
+        raw_category = (attrs.get("d_Category") or "").strip()
+        raw_guideline = (attrs.get("d_Guidelin") or "").strip()
+        category_lower = raw_category.lower()
+
+        bal_band, bal_required = _BAL_LOOKUP.get(
+            category_lower, ("BAL-12.5", True)
+        )
+        fire_signal = _FIRE_SIGNAL_MAP.get(category_lower, "low")
+
+        return {
+            "is_bushfire_prone": True,
+            "designation_source": _DATA_SOURCE_RFS,
+            "designation_category": raw_category or None,
+            "designation_guideline": raw_guideline or None,
+            "estimated_bal_band": bal_band,
+            "bal_assessment_likely_required": bal_required,
+            "fire_signal": fire_signal,
+            "data_currency": date.today().isoformat(),
+        }
+    except Exception as e:
+        logger.warning(f"RFS BFPL query: {e}")
+        return {
+            "is_bushfire_prone": None,
+            "designation_source": None,
+            "designation_category": None,
+            "designation_guideline": None,
+            "estimated_bal_band": None,
+            "bal_assessment_likely_required": None,
+            "fire_signal": "unavailable",
+            "data_currency": "query_failed",
+        }
+
+
+# ---------------------------------------------------------------------------
+# PostGIS cross-overlay queries
+# ---------------------------------------------------------------------------
+
+def _query_flood_overlay(lat: float, lng: float) -> Optional[dict]:
+    """Query spatial_overlays for flood layers at this point."""
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT value, layer_type FROM spatial_overlays
+                WHERE layer_type = 'flood'
+                AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+        if row:
+            return {"type": "flood", "value": row["value"], "source": "spatial_overlays"}
+        return None
+    except Exception as e:
+        logger.warning(f"Flood overlay query: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+def _query_heritage_overlay(lat: float, lng: float) -> Optional[dict]:
+    """Query spatial_overlays for heritage layers at this point."""
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT value, layer_type FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+        if row:
+            return {"type": "heritage", "value": row["value"], "source": "spatial_overlays"}
+        return None
+    except Exception as e:
+        logger.warning(f"Heritage overlay query: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+def _query_zone_overlay(lat: float, lng: float) -> Optional[str]:
+    """Query spatial_overlays for zone at this point."""
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT value FROM spatial_overlays
+                WHERE layer_type = 'zone'
+                AND ST_Intersects(geom, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
+                LIMIT 1
+                """,
+                (lng, lat),
+            )
+            row = cur.fetchone()
+        if row:
+            return row["value"]
+        return None
+    except Exception as e:
+        logger.warning(f"Zone overlay query: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Confidence + compliance helpers
+# ---------------------------------------------------------------------------
+
+def _compute_confidence(rfs_result: dict, cross_overlays: list, zone: Optional[str]) -> str:
+    """
+    high   — RFS BFPL + zone + at least one cross-overlay
+    medium — RFS BFPL + (zone or cross-overlay)
+    low    — RFS BFPL query failed or only partial data
+    """
+    rfs_ok = rfs_result.get("is_bushfire_prone") is not None
+    has_zone = zone is not None
+    has_overlays = len(cross_overlays) > 0
+
+    if rfs_ok and has_zone and has_overlays:
+        return "high"
+    if rfs_ok and (has_zone or has_overlays):
+        return "medium"
+    if rfs_ok:
+        return "medium"
+    return "low"
+
+
+def _build_compliance(
+    rfs_result: dict,
+    cross_overlays: list,
+    zone: Optional[str],
+) -> dict:
+    """Build the compliance sub-object from RFS + overlay results."""
+    is_prone = rfs_result.get("is_bushfire_prone")
+    bal_band = rfs_result.get("estimated_bal_band")
+
+    # RFS referral required if bushfire prone (s4.14 EP&A Act)
+    rfs_referral_required = is_prone if is_prone is not None else None
+
+    # CDC pathway: available if estimated BAL <= 29 for some dev types under Codes SEPP
+    # BAL-40 or BAL-FZ -> DA pathway mandatory
+    cdc_available = None
+    if bal_band is not None:
+        cdc_available = bal_band not in ("BAL-40 to BAL-FZ",)
+
+    # 10/50 vegetation clearing entitlement — applies to bushfire prone land
+    clearing_entitled = is_prone if is_prone is not None else None
+    # Exceptions depend on what overlays actually intersect the property
+    has_heritage = any(o.get("type") == "heritage" for o in cross_overlays)
+    clearing_exceptions = None
+    if clearing_entitled:
+        if has_heritage:
+            clearing_exceptions = (
+                "Heritage conservation area detected — 10/50 clearing entitlements "
+                "may be restricted. Check with council before clearing."
+            )
+        else:
+            clearing_exceptions = (
+                "Standard 10/50 entitlements apply. Does not apply within "
+                "threatened species habitat or 40m of a waterway."
+            )
+
+    return {
+        "state_legislation": (
+            "Environmental Planning and Assessment Act 1979 s4.14; "
+            "Rural Fires Act 1997; Planning for Bush Fire Protection 2019"
+            if is_prone else None
+        ),
+        "rfs_referral_required": rfs_referral_required,
+        "rfs_referral_triggers": _S414_TRIGGERS if rfs_referral_required else None,
+        "cdc_pathway_available": cdc_available,
+        "clearing_10_50_entitled": clearing_entitled,
+        "clearing_10_50_exceptions": clearing_exceptions,
+        "cross_overlays": cross_overlays if cross_overlays else None,
+        "estimated_consultant_costs": (
+            "$500-$2,000 (formal BAL assessment) + $2,000-$5,000 (bushfire report if required)"
+            if rfs_result.get("bal_assessment_likely_required") else None
+        ),
+        "zone": zone,
+        "compliance_depth": "state-level",
+        "legislation_url": (
+            "https://legislation.nsw.gov.au/view/html/inforce/current/act-1979-203/part-4/div-4.8/sec-4.14"
+            if is_prone else None
+        ),
+    }
+
+
+def _build_data_sources(rfs_result: dict, cross_overlays: list) -> list:
+    sources = [_DATA_SOURCE_RFS]
+    if cross_overlays:
+        sources.append(_DATA_SOURCE_SPATIAL)
+    return sources
+
+
+# ---------------------------------------------------------------------------
+# DB write
+# ---------------------------------------------------------------------------
+
+def _write_report(report_id, address, lat, lng, prop_id, inputs, internal_outputs, confidence, data_sources):
+    sql = """
+        INSERT INTO property_reports
+            (id, product, address, lat, lng, prop_id, run_date, inputs, outputs, confidence, data_sources)
+        VALUES (%s, 'bushfire', %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET outputs = EXCLUDED.outputs
+    """
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor() as cur:
+            cur.execute(sql, (
+                report_id, address, lat, lng, prop_id, date.today(),
+                psycopg2.extras.Json(inputs),
+                psycopg2.extras.Json(internal_outputs),
+                confidence,
+                data_sources,
+            ))
+        conn.commit()
+    finally:
+        if conn:
+            conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Request model
+# ---------------------------------------------------------------------------
+
+class BushfireRequest(BaseModel):
+    address: str
+    prop_id: Optional[str] = None
+    lat: float
+    lng: float
+    report_id: str
+
+
+# ---------------------------------------------------------------------------
+# Endpoint
+# ---------------------------------------------------------------------------
+
+@router.post("/bushfire")
+def run_bushfire(req: BushfireRequest):
+    """
+    On-demand bushfire pre-screen.
+    Fast path: return pre-computed result if cached.
+    Slow path: RFS BFPL (ArcGIS REST) + PostGIS cross-overlays (flood, heritage, zone).
+    """
+    # Cache check
+    conn = None
+    try:
+        conn = _get_conn()
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute(
+                "SELECT outputs, confidence, data_sources FROM property_reports "
+                "WHERE product='bushfire' AND address=%s ORDER BY run_date DESC LIMIT 1",
+                (req.address,)
+            )
+            cached = cur.fetchone()
+        if cached:
+            raw = cached["outputs"] or {}
+            # Merge with defaults so cached blobs from older code versions still have all fields
+            compliance_merged = {**_DEFAULT_OUTPUTS["compliance"], **(raw.get("compliance") or {})}
+            merged = {**_DEFAULT_OUTPUTS, **raw, "compliance": compliance_merged}
+            return {
+                "address": req.address, "lat": req.lat, "lng": req.lng,
+                "run_date": date.today().isoformat(),
+                "outputs": merged,
+                "confidence": cached["confidence"],
+                "data_sources": cached["data_sources"] or [_DATA_SOURCE_RFS],
+            }
+    except Exception as e:
+        logger.warning(f"Cache lookup: {e}")
+    finally:
+        if conn:
+            conn.close()
+
+    # Run queries in parallel
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        f_rfs = pool.submit(_query_rfs_bfpl, req.lat, req.lng)
+        f_flood = pool.submit(_query_flood_overlay, req.lat, req.lng)
+        f_heritage = pool.submit(_query_heritage_overlay, req.lat, req.lng)
+
+        rfs_result = f_rfs.result(timeout=15)
+        flood_overlay = f_flood.result(timeout=15)
+        heritage_overlay = f_heritage.result(timeout=15)
+
+    # Zone query (separate — quick)
+    zone = _query_zone_overlay(req.lat, req.lng)
+
+    # Build cross-overlays list
+    cross_overlays = []
+    if flood_overlay:
+        cross_overlays.append(flood_overlay)
+    if heritage_overlay:
+        cross_overlays.append(heritage_overlay)
+
+    # Build compliance
+    compliance = _build_compliance(rfs_result, cross_overlays, zone)
+
+    # Build full outputs
+    confidence = _compute_confidence(rfs_result, cross_overlays, zone)
+    data_sources = _build_data_sources(rfs_result, cross_overlays)
+
+    internal_outputs = {
+        "is_bushfire_prone": rfs_result.get("is_bushfire_prone"),
+        "designation_source": rfs_result.get("designation_source"),
+        "designation_category": rfs_result.get("designation_category"),
+        "designation_guideline": rfs_result.get("designation_guideline"),
+        "estimated_bal_band": rfs_result.get("estimated_bal_band"),
+        "bal_assessment_likely_required": rfs_result.get("bal_assessment_likely_required"),
+        "bal_formal_assessment_cost_range": (
+            "$500-$2,000" if rfs_result.get("bal_assessment_likely_required") else None
+        ),
+        "bal_assessor_directory_url": (
+            "https://www.rfs.nsw.gov.au/plan-and-prepare/building-in-a-bush-fire-area/find-a-practitioner"
+            if rfs_result.get("bal_assessment_likely_required") else None
+        ),
+        "fire_signal": rfs_result.get("fire_signal", "unavailable"),
+        "compliance": compliance,
+        "data_currency": rfs_result.get("data_currency", "unknown"),
+    }
+
+    # Write to DB
+    try:
+        _write_report(
+            req.report_id, req.address, req.lat, req.lng,
+            req.prop_id, {"lat": req.lat, "lng": req.lng},
+            internal_outputs, confidence, data_sources,
+        )
+    except Exception as e:
+        logger.error(f"Bushfire report DB write failed: {e}")
+        raise HTTPException(status_code=503, detail="Failed to save report — please retry")
+
+    return {
+        "address": req.address, "lat": req.lat, "lng": req.lng,
+        "run_date": date.today().isoformat(),
+        "outputs": internal_outputs,
+        "confidence": confidence,
+        "data_sources": data_sources,
+    }
