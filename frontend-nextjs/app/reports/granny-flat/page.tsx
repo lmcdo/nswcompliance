@@ -980,8 +980,13 @@ function ConfirmationPanel({
         {(() => {
           const mainDwelling = detectResult.detected_structures.find(s => s.is_main_dwelling);
           const mainDwellingArea = mainDwelling?.area_m2 ?? null;
+          const otherStructuresArea = detectResult.detected_structures
+            .filter(s => !s.is_main_dwelling && s.area_m2 != null)
+            .reduce((sum, s) => sum + (s.area_m2 ?? 0), 0);
           const lotArea = detectResult.lot_area_m2;
-          const residualArea = lotArea != null && mainDwellingArea != null ? lotArea - mainDwellingArea : null;
+          const residualArea = lotArea != null && mainDwellingArea != null
+            ? lotArea - mainDwellingArea - otherStructuresArea
+            : null;
           const proxyFails = residualArea != null && residualArea < 120;
 
           if (!detectResult.sepp_eligible || proxyFails) {
@@ -991,7 +996,9 @@ function ConfirmationPanel({
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800 space-y-2">
                     <p className="font-medium">Insufficient space for a complying development granny flat</p>
                     <p>
-                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m² of a {lotArea!.toFixed(0)} m² lot,
+                      The principal dwelling occupies ~{mainDwellingArea!.toFixed(0)} m²
+                      {otherStructuresArea > 0 && ` and other detected structures occupy ~${otherStructuresArea.toFixed(0)} m²`}
+                      {' '}of a {lotArea!.toFixed(0)} m² lot,
                       leaving ~{residualArea!.toFixed(0)} m² of residual space. A 60 m² secondary dwelling requires at least
                       120 m² of residual area to accommodate the structure plus mandatory SEPP Housing 2021 setbacks:
                       3 m from the rear boundary, 0.9 m from each side boundary, and 3 m separation from the principal dwelling.
