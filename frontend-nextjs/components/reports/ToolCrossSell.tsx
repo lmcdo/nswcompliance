@@ -21,7 +21,7 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
   'granny-flat': (address) => ({
     title: 'Granny Flat Yield Predictor',
     body: 'Find out if your lot is eligible for a granny flat and estimate the rental income.',
-    href: `/reports/granny-flat?address=${encodeURIComponent(address)}`,
+    href: `/granny-flat?address=${encodeURIComponent(address)}`,
     label: 'Check granny flat eligibility →',
   }),
   'flood-truth': (address) => ({

@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         <Link href="/" className="text-base font-bold tracking-tight text-gray-900">
           canibuildit<span className="text-teal-600">.com.au</span>
         </Link>
-        <Link href="/reports/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
           Try the tools →
         </Link>
       </nav>

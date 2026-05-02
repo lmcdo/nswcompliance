@@ -1,7 +1,7 @@
 import Link from 'next/link';
 
 const HERO_PRODUCT = {
-  href: '/reports/granny-flat',
+  href: '/granny-flat',
   title: 'Granny Flat Yield Predictor',
   tagline: 'Could this property earn an extra $280–$340/week?',
   description:
