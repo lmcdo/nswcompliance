@@ -305,16 +305,13 @@ function GrannyFlatPageInner() {
     }
   };
 
-  const handleConfirm = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!detectResult) return;
-
+  const runConfirm = useCallback(async (detect: DetectResult, count: number, existingGF: boolean | null, pc: string, notifEmail: string) => {
     setState('detecting'); // reuse spinner
     setFinalResult(null);
     setErrorMsg('');
     posthog?.capture('granny_flat_confirm', {
-      address: detectResult.address,
-      confirmed_count: confirmedCount,
+      address: detect.address,
+      confirmed_count: count,
     });
 
     try {
@@ -322,15 +319,15 @@ function GrannyFlatPageInner() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          address: detectResult.address,
+          address: detect.address,
           action: 'confirm',
-          detect_id: detectResult.detect_id,
-          confirmed_structure_count: confirmedCount,
-          samgeo_structure_count: detectResult.samgeo_structure_count,
-          postcode: postcode || address.match(/\b(\d{4})\b/)?.[1] || null,
-          existing_secondary_dwelling: existingSecondaryDwelling,
-          main_dwelling_area_m2: detectResult.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
-          ...(email.trim() ? { notification_email: email.trim() } : {}),
+          detect_id: detect.detect_id,
+          confirmed_structure_count: count,
+          samgeo_structure_count: detect.samgeo_structure_count,
+          postcode: pc || detect.address.match(/\b(\d{4})\b/)?.[1] || null,
+          existing_secondary_dwelling: existingGF,
+          main_dwelling_area_m2: detect.detected_structures.find(s => s.is_main_dwelling)?.area_m2 ?? null,
+          ...(notifEmail.trim() ? { notification_email: notifEmail.trim() } : {}),
         }),
       });
 
@@ -338,7 +335,7 @@ function GrannyFlatPageInner() {
       if (!res.ok) throw new Error(json.error || 'Calculation failed');
 
       posthog?.capture('granny_flat_result', {
-        address: detectResult.address,
+        address: detect.address,
         eligible: json.granny_flat_buildable,
         max_floor_area_m2: json.max_floor_area_m2 ?? null,
       });
@@ -346,11 +343,27 @@ function GrannyFlatPageInner() {
       setState('complete');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
-      posthog?.capture('granny_flat_confirm_error', { address: detectResult.address, error: msg });
+      posthog?.capture('granny_flat_confirm_error', { address: detect.address, error: msg });
       setErrorMsg(msg);
       setState('error');
     }
+  }, []);
+
+  const handleConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!detectResult) return;
+    await runConfirm(detectResult, confirmedCount, existingSecondaryDwelling, postcode, email);
   };
+
+  // Auto-confirm after payment return — skip the confirmation step entirely
+  const autoConfirmedRef = useRef(false);
+  useEffect(() => {
+    if (isPaid && state === 'confirming' && detectResult && !autoConfirmedRef.current) {
+      autoConfirmedRef.current = true;
+      runConfirm(detectResult, confirmedCount, null, postcode, email);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, detectResult]);
 
   const isRunning = state === 'detecting';
 

@@ -109,10 +109,14 @@ function LockedPreviewCard({
   lga_name,
   onUnlock,
   unlocking,
+  email,
+  onEmailChange,
 }: {
   lga_name: string | null;
   onUnlock: () => void;
   unlocking: boolean;
+  email: string;
+  onEmailChange: (v: string) => void;
 }) {
   const rows = [
     { label: 'Aerial structure analysis', preview: '1 structure detected' },
@@ -137,16 +141,23 @@ function LockedPreviewCard({
           </div>
         ))}
       </div>
-      <div className="px-5 pb-5">
+      <div className="px-5 pb-5 space-y-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder="your@email.com — results emailed to you"
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+        />
         <button
           onClick={onUnlock}
-          disabled={unlocking}
+          disabled={unlocking || !email.trim()}
           className="w-full py-3 bg-teal-600 text-white text-sm font-semibold rounded-lg hover:bg-teal-700 disabled:opacity-60 transition-colors"
         >
           {unlocking ? 'Starting analysis…' : 'Unlock full analysis — $49'}
         </button>
-        <p className="text-xs text-gray-400 text-center mt-2">
-          AI satellite scan · 1–3 min · results shown here + emailed
+        <p className="text-xs text-gray-400 text-center">
+          Results shown here and emailed · PDF included
         </p>
       </div>
     </div>
@@ -570,6 +581,8 @@ export function GrannyFlatTool({ lgaSlug, lgaName, embedRef }: { lgaSlug?: strin
                 lga_name={eligibility.lga_name}
                 onUnlock={handleUnlock}
                 unlocking={unlocking}
+                email={email}
+                onEmailChange={setEmail}
               />
             </>
           ) : (
