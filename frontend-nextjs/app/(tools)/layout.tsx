@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 const TOOLS = [
   { label: 'Granny Flat Check', href: '/granny-flat', emoji: '🏡' },
@@ -22,8 +23,23 @@ const TOP_LGAS = [
   { name: 'Canterbury-Bankstown', slug: 'canterbury-bankstown' },
 ];
 
+const TOOL_PREFIXES: Record<string, string> = {
+  '/granny-flat': '/granny-flat',
+  '/flood-risk': '/flood-risk',
+  '/solar-potential': '/solar-potential',
+  '/shadow': '/shadow',
+  '/threat-radar': '/threat-radar',
+};
+
+function useToolPrefix(): string {
+  const pathname = usePathname();
+  const match = Object.keys(TOOL_PREFIXES).find(prefix => pathname?.startsWith(prefix));
+  return match ? TOOL_PREFIXES[match] : '/granny-flat';
+}
+
 export default function ToolsLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  const toolPrefix = useToolPrefix();
 
   return (
     <div className="min-h-screen bg-white">
@@ -116,7 +132,7 @@ export default function ToolsLayout({ children }: { children: React.ReactNode })
             <ul className="space-y-2">
               {TOP_LGAS.map(lga => (
                 <li key={lga.slug}>
-                  <Link href={`/granny-flat/${lga.slug}`} className="text-xs text-gray-500 hover:text-gray-900 transition-colors">
+                  <Link href={`${toolPrefix}/${lga.slug}`} className="text-xs text-gray-500 hover:text-gray-900 transition-colors">
                     {lga.name}
                   </Link>
                 </li>

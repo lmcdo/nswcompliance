@@ -1,15 +1,21 @@
-'use client';
+import type { Metadata } from 'next';
+import { AddressSearchForm } from '@/components/homepage/AddressSearchForm';
+import { sanitizeHTML } from '@/lib/sanitize';
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-
-const PLACEHOLDER_ADDRESSES = [
-  '14 Rosebery Ave, Rosebery NSW 2018',
-  '38 Cabarita Rd, Concord NSW 2137',
-  '5 Griffith St, Balmain NSW 2041',
-  '22 Livingstone Rd, Marrickville NSW 2204',
-  '101 Terry Rd, Eastwood NSW 2122',
-];
+export const metadata: Metadata = {
+  title: 'canibuildit — Free NSW Property Planning Tools',
+  description: 'Check granny flat eligibility, flood risk, solar yield, shadow impact, and planning alerts for any NSW address. Free. Live data from the NSW Planning Portal.',
+  openGraph: {
+    title: 'canibuildit — Free NSW Property Planning Tools',
+    description: 'Five free tools for any NSW address: granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts.',
+    url: 'https://canibuildit.com.au',
+    siteName: 'canibuildit',
+    type: 'website',
+  },
+  alternates: {
+    canonical: 'https://canibuildit.com.au',
+  },
+};
 
 const TOOLS = [
   {
@@ -17,7 +23,7 @@ const TOOLS = [
     title: 'Granny Flat Check',
     subtitle: 'Could this property earn $280–$340/week extra?',
     detail: 'Zone, lot size, strata, and SEPP Housing 2021 eligibility — instantly.',
-    href: '/reports/granny-flat',
+    href: '/granny-flat',
     cta: 'Check eligibility',
     accent: 'teal',
   },
@@ -67,28 +73,34 @@ const ACCENT: Record<string, { border: string; bg: string; cta: string; icon: st
   violet: { border: 'border-violet-200', bg: 'hover:bg-violet-50', cta: 'bg-violet-600 hover:bg-violet-700', icon: 'bg-violet-100' },
 };
 
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'WebApplication',
+  name: 'canibuildit',
+  url: 'https://canibuildit.com.au',
+  description: 'Five free NSW property planning tools: granny flat eligibility, flood risk, solar yield, shadow analysis, and planning alerts.',
+  applicationCategory: 'RealEstateApplication',
+  operatingSystem: 'Web',
+  offers: {
+    '@type': 'Offer',
+    price: '0',
+    priceCurrency: 'AUD',
+  },
+  areaServed: {
+    '@type': 'State',
+    name: 'New South Wales',
+    addressCountry: 'AU',
+  },
+};
+
 export default function HomePage() {
-  const router = useRouter();
-  const [address, setAddress] = useState('');
-  const [placeholder, setPlaceholder] = useState(PLACEHOLDER_ADDRESSES[0]);
-  const idxRef = useRef(0);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      idxRef.current = (idxRef.current + 1) % PLACEHOLDER_ADDRESSES.length;
-      setPlaceholder(PLACEHOLDER_ADDRESSES[idxRef.current]);
-    }, 3000);
-    return () => clearInterval(id);
-  }, []);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!address.trim()) return;
-    router.push(`/reports/granny-flat?address=${encodeURIComponent(address.trim())}`);
-  }
-
   return (
     <main className="min-h-screen bg-[#0b1628] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: sanitizeHTML(JSON.stringify(jsonLd)) }}
+      />
+
       {/* Nav */}
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
         <span className="text-lg font-bold tracking-tight">
@@ -98,7 +110,7 @@ export default function HomePage() {
           <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
             Pricing
           </a>
-          <a href="/reports/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
+          <a href="/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
             Try the tools →
           </a>
         </div>
@@ -116,21 +128,8 @@ export default function HomePage() {
           solar yield, shadow analysis, and planning alerts.
         </p>
 
-        <form onSubmit={handleSubmit} className="flex gap-2 max-w-xl mx-auto">
-          <input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder={placeholder}
-            className="flex-1 px-4 py-3 rounded-xl bg-white/10 border border-white/20 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#00d9b8] focus:border-transparent transition-all"
-          />
-          <button
-            type="submit"
-            className="px-5 py-3 bg-[#00d9b8] text-[#0b1628] font-semibold text-sm rounded-xl hover:bg-[#00c4a7] transition-colors whitespace-nowrap"
-          >
-            Check →
-          </button>
-        </form>
+        <AddressSearchForm />
+
         <p className="text-xs text-slate-600 mt-3">
           Starts the Granny Flat Check — pick any tool below for other questions.
         </p>
