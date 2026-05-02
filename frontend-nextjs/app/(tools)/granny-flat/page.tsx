@@ -43,21 +43,7 @@ export default function GrannyFlatHubPage() {
   return (
     <div className="max-w-2xl mx-auto px-6">
 
-      {/* Hero */}
-      <div className="pt-12 pb-6">
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">
-          Can I build a granny flat in NSW?
-        </h1>
-        <p className="mt-3 text-base text-gray-500">
-          Check any NSW address against SEPP Housing 2021 — lot size, zoning, heritage
-          exclusions, <Link href="/flood-risk" className="text-blue-600 hover:underline">flood control lots</Link>,
-          biodiversity values, and acid sulfate soils. Free, instant, no signup.
-          If eligible, a <Link href="/how-it-works" className="text-teal-600 hover:underline">complying development certificate (CDC)</Link>{' '}
-          can be lodged through a private certifier without council involvement.
-        </p>
-      </div>
-
-      {/* THE TOOL */}
+      {/* THE TOOL — has its own hero when not on an LGA page */}
       <GrannyFlatTool />
 
       {/* How it works */}
