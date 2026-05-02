@@ -14,7 +14,7 @@ const NAV_ITEMS = [
   { href: '/reports/shadow', label: 'Shadow' },
   { href: '/reports/threat-radar', label: 'Threat Radar' },
   { href: '/reports/flood', label: 'Flood Truth' },
-  { href: '/reports/granny-flat', label: 'Granny Flat' },
+  { href: '/granny-flat', label: 'Granny Flat' },
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
