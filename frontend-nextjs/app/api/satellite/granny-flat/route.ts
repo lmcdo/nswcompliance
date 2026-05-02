@@ -42,6 +42,111 @@ const NSW_ZONE_NAMES: Record<string, string> = {
 const TRIGGER_API = 'https://api.trigger.dev/api/v1/tasks/satellite-job-runner/trigger';
 const TRIGGER_SECRET = process.env.TRIGGER_SECRET_KEY!;
 
+// ePlanning API — DA and CDC history lookup by lot/DP
+const EPLANNING_BASE = 'https://api.apps1.nsw.gov.au/eplanning/data/v0';
+const SECONDARY_DWELLING_TYPES = ['secondary dwelling', 'granny flat', 'secondary dwelling (granny flat)'];
+
+interface EplanningApplication {
+  type: 'DA' | 'CDC';
+  development_type: string;
+  status: string;
+  lodgement_date: string | null;
+  reference: string;
+}
+
+interface EplanningHistory {
+  found: boolean;
+  applications: EplanningApplication[];
+  source_note: string;
+  error: 'timeout' | 'unavailable' | null;
+}
+
+function parseLotDp(lot_description: string | null): { lot: string; dp: string } | null {
+  if (!lot_description) return null;
+  const m = lot_description.match(/\bLot\s+(\w+)\s+DP\s+(\d+)/i);
+  if (!m) return null;
+  return { lot: m[1], dp: m[2] };
+}
+
+async function queryEPlanning(lot_description: string | null): Promise<EplanningHistory> {
+  const parsed = parseLotDp(lot_description);
+  if (!parsed) {
+    return { found: false, applications: [], source_note: 'Lot/DP reference not available for this property.', error: null };
+  }
+
+  const { lot, dp } = parsed;
+  const params = new URLSearchParams({
+    'filters[LotNumber]': lot,
+    'filters[SectionNumber]': '',
+    'filters[PlanNumber]': dp,
+    'filters[PageSize]': '20',
+    'filters[PageNumber]': '1',
+  });
+  const headers = { Accept: 'application/json' };
+
+  const [daResult, cdcResult] = await Promise.allSettled([
+    fetch(`${EPLANNING_BASE}/OnlineDA?${params}`, { headers, signal: AbortSignal.timeout(8_000) })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null),
+    fetch(`${EPLANNING_BASE}/OnlineCDC?${params}`, { headers, signal: AbortSignal.timeout(8_000) })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null),
+  ]);
+
+  const timedOut = daResult.status === 'rejected' || cdcResult.status === 'rejected';
+  const daData = daResult.status === 'fulfilled' ? daResult.value : null;
+  const cdcData = cdcResult.status === 'fulfilled' ? cdcResult.value : null;
+
+  const daApps: EplanningApplication[] = [];
+  const cdcApps: EplanningApplication[] = [];
+
+  if (daData?.Application) {
+    for (const app of daData.Application) {
+      const devType: string = (app.DevelopmentType ?? app.ApplicationType ?? '').toLowerCase();
+      if (SECONDARY_DWELLING_TYPES.some(t => devType.includes(t))) {
+        daApps.push({
+          type: 'DA',
+          development_type: app.DevelopmentType ?? 'Secondary dwelling',
+          status: app.ApplicationStatus ?? 'Unknown',
+          lodgement_date: app.LodgementDate ?? null,
+          reference: app.LodgementNumber ?? app.ApplicationNumber ?? '',
+        });
+      }
+    }
+  }
+
+  if (cdcData?.Application) {
+    for (const app of cdcData.Application) {
+      const devType: string = (app.DevelopmentType ?? app.ApplicationType ?? '').toLowerCase();
+      if (SECONDARY_DWELLING_TYPES.some(t => devType.includes(t))) {
+        cdcApps.push({
+          type: 'CDC',
+          development_type: app.DevelopmentType ?? 'Secondary dwelling',
+          status: app.ApplicationStatus ?? 'Issued',
+          lodgement_date: app.LodgementDate ?? null,
+          reference: app.CertificateNumber ?? app.LodgementNumber ?? '',
+        });
+      }
+    }
+  }
+
+  const applications = [...daApps, ...cdcApps];
+
+  if (timedOut && applications.length === 0) {
+    return { found: false, applications: [], source_note: 'NSW ePlanning Portal lookup timed out.', error: 'timeout' };
+  }
+  if (!daData && !cdcData && !timedOut) {
+    return { found: false, applications: [], source_note: 'NSW ePlanning Portal unavailable.', error: 'unavailable' };
+  }
+
+  return {
+    found: applications.length > 0,
+    applications,
+    source_note: 'Records available from approximately 2012. "Determined" status covers both approved and refused applications — approval cannot be confirmed from this data.',
+    error: null,
+  };
+}
+
 const getSupabase = () => createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -344,9 +449,9 @@ export async function POST(request: NextRequest) {
 
     const is_heritage = !!(propData.property?.heritage_status || propData.property?.heritage_overlays?.length);
 
-    let pythonResp: Response;
-    try {
-      pythonResp = await fetch(`${PYTHON_API}/pipeline/granny-flat/confirm`, {
+    // Fire Python confirm + ePlanning history lookup in parallel
+    const [pythonSettled, ePlanningSettled] = await Promise.allSettled([
+      fetch(`${PYTHON_API}/pipeline/granny-flat/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -365,11 +470,19 @@ export async function POST(request: NextRequest) {
           main_dwelling_area_m2: main_dwelling_area_m2 ?? null,
         }),
         signal: AbortSignal.timeout(30_000),
-      });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      }),
+      queryEPlanning(lot_description),
+    ]);
+
+    if (pythonSettled.status === 'rejected') {
+      const msg = pythonSettled.reason instanceof Error ? pythonSettled.reason.message : String(pythonSettled.reason);
       return NextResponse.json({ error: `Confirm failed: ${msg}` }, { status: 502 });
     }
+
+    const pythonResp = pythonSettled.value;
+    const ePlanningHistory = ePlanningSettled.status === 'fulfilled'
+      ? ePlanningSettled.value
+      : { found: false, applications: [], source_note: 'NSW ePlanning Portal unavailable.', error: 'unavailable' as const };
 
     if (!pythonResp.ok) {
       const text = await pythonResp.text().catch(() => '');
@@ -380,6 +493,8 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await pythonResp.json();
+    // Attach ePlanning history — never blocks the confirm result
+    result.eplanning_history = ePlanningHistory;
 
     // Send results email — fire-and-forget, never blocks the response
     if (notification_email && process.env.RESEND_API_KEY) {

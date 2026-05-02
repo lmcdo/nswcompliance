@@ -30,7 +30,7 @@ export default function PricingPage() {
         <Link href="/" className="text-lg font-bold tracking-tight text-gray-900">
           canibuildit<span className="text-teal-600">.com.au</span>
         </Link>
-        <Link href="/reports/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+        <Link href="/granny-flat" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
           Try the tools →
         </Link>
       </nav>
@@ -73,7 +73,7 @@ export default function PricingPage() {
               ))}
             </ul>
             <Link
-              href="/reports/granny-flat"
+              href="/granny-flat"
               className="block text-center py-3 px-6 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Start checking
@@ -112,7 +112,7 @@ export default function PricingPage() {
               ))}
             </ul>
             <Link
-              href="/reports/granny-flat"
+              href="/granny-flat"
               className="block text-center py-3 px-6 bg-teal-600 text-white rounded-xl text-sm font-semibold hover:bg-teal-700 transition-colors"
             >
               Run free check first →

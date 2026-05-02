@@ -149,18 +149,20 @@ async function handleThreatRadarMonitor(
 // ---------------------------------------------------------------------------
 
 async function handleGrannyFlatAnalysis(
-  _session: Stripe.Checkout.Session,
+  session: Stripe.Checkout.Session,
   meta: Record<string, string>
 ) {
-  const { job_id, email, address } = meta;
+  const { job_id, address } = meta;
+  // Use metadata email first; fall back to email Stripe collected at checkout
+  const email = meta.email || session.customer_details?.email || session.customer_email || '';
 
   if (!job_id || !address) {
-    console.error('[stripe/webhook] granny-flat-analysis missing metadata on session:', _session.id);
+    console.error('[stripe/webhook] granny-flat-analysis missing metadata on session:', session.id);
     return NextResponse.json({ received: true });
   }
 
   if (!email) {
-    // No email — nothing to send, but still acknowledge
+    // No email anywhere — nothing to send, but still acknowledge
     return NextResponse.json({ received: true });
   }
 
@@ -298,7 +300,7 @@ const SATELLITE_REPORT_META: Record<
   'flood-truth': {
     generatePath: '/api/reports/flood/generate',
     subject: 'Your Flood Truth Report',
-    bodyLine: 'Your Flood Truth Report is attached as a PDF. It includes ARI flood depths at 1-in-20, 1-in-100, and 1-in-500 year return periods, access risk, historical flood events, and full data source citations.',
+    bodyLine: 'Your Flood Truth Report is attached as a PDF. It includes your statutory flood zone classification, council flood study overlay, BOM gauge flood event history, 40-year satellite water history, Copernicus EMS observed events, and full data source citations.',
     filePrefix: 'flood-truth-report',
   },
   'shadow': {

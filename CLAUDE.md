@@ -1,5 +1,8 @@
 # PlotDetect CLAUDE.md — Universal Rules
 
+## Worktree Rule
+After context compaction, if `.claude/worktrees/` contains directories, check which branch you're supposed to be on and run all commands from that worktree path. Never cd to the main repo root when a worktree is active.
+
 ## 🔴 BRANCH GUARD — DO THIS BEFORE ANYTHING ELSE 🔴
 ```bash
 git branch --show-current

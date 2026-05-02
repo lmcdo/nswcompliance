@@ -47,6 +47,7 @@ export interface FloodReportData {
   ems_activations: EmsActivation[] | null;
   jrc_water_occurrence_pct: number | null;
   jrc_data_year: number | null;
+  dea_wofs_frequency_pct: number | null;
   bom_gauge_name: string | null;
   bom_gauge_distance_km: number | null;
   bom_last_major_flood_date: string | null;
@@ -55,6 +56,17 @@ export interface FloodReportData {
   bom_flood_history?: BomFloodEvent[] | null;
   flood_study_name?: string | null;
   flood_study_date?: string | null;
+  // Hawkesbury FRMSP 2025 — AEP flood levels (metres AHD)
+  hawkesbury_flood_level_2aep?: number | null;
+  hawkesbury_flood_level_5aep?: number | null;
+  hawkesbury_flood_level_10aep?: number | null;
+  hawkesbury_flood_level_20aep?: number | null;
+  hawkesbury_flood_level_50aep?: number | null;
+  hawkesbury_flood_level_100aep?: number | null;
+  hawkesbury_flood_level_200aep?: number | null;
+  hawkesbury_flood_level_500aep?: number | null;
+  hawkesbury_flood_level_pmf?: number | null;
+  hawkesbury_flood_study?: string | null;
   s1_gap_warning: string | null;
   data_currency: string;
   flood_signal: 'none' | 'low' | 'moderate' | 'elevated' | null;
@@ -293,29 +305,33 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         <View style={s.row2}>
           <View style={s.card}>
             <Text style={s.cardLabel}>40-year surface water history</Text>
-            {data.jrc_water_occurrence_pct != null ? (
-              <>
-                <Text style={s.cardValue}>
-                  {data.jrc_water_occurrence_pct.toFixed(0)}% of months
-                </Text>
-                <Text style={s.cardSub}>
-                  {data.jrc_water_occurrence_pct === 0
-                    ? 'No surface water observed 1984–present'
-                    : data.jrc_water_occurrence_pct < 5
-                    ? 'Rare — episodic inundation only'
-                    : data.jrc_water_occurrence_pct < 15
-                    ? 'Occasional — periodic inundation'
-                    : data.jrc_water_occurrence_pct < 40
-                    ? 'Frequent — seasonal or recurring inundation'
-                    : 'Persistent — regular or permanent surface water'}
-                </Text>
-                <Text style={[s.cardSub, { color: GRAY_500 }]}>
-                  JRC Global Surface Water · Landsat 1984–{data.jrc_data_year ?? 2021}
-                </Text>
-              </>
-            ) : (
-              <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Not available</Text>
-            )}
+            {(() => {
+              const pct = data.dea_wofs_frequency_pct ?? data.jrc_water_occurrence_pct;
+              const srcLabel = data.dea_wofs_frequency_pct != null
+                ? 'DEA WOfS · Landsat 1987–present'
+                : `JRC Global Surface Water · Landsat 1984–${data.jrc_data_year ?? 2021}`;
+              return pct != null ? (
+                <>
+                  <Text style={s.cardValue}>
+                    {pct.toFixed(1)}% of observations
+                  </Text>
+                  <Text style={s.cardSub}>
+                    {pct === 0
+                      ? 'No surface water observed'
+                      : pct < 5
+                      ? 'Rare — episodic inundation only'
+                      : pct < 15
+                      ? 'Occasional — periodic inundation'
+                      : pct < 40
+                      ? 'Frequent — seasonal or recurring inundation'
+                      : 'Persistent — regular or permanent surface water'}
+                  </Text>
+                  <Text style={[s.cardSub, { color: GRAY_500 }]}>{srcLabel}</Text>
+                </>
+              ) : (
+                <Text style={[s.cardValue, { fontSize: 9, color: GRAY_500 }]}>Not available</Text>
+              );
+            })()}
           </View>
           <View style={s.card}>
             <Text style={s.cardLabel}>Nearest BOM river gauge</Text>
@@ -364,6 +380,44 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
             ))}
           </View>
         )}
+
+        {/* Hawkesbury AEP flood level table (paid, raster data present) */}
+        {data.is_paid === true && data.hawkesbury_flood_level_100aep != null && (() => {
+          const AEP_ROWS: Array<{ label: string; field: keyof FloodReportData }> = [
+            { label: '1-in-2 yr (50% AEP)',   field: 'hawkesbury_flood_level_2aep' },
+            { label: '1-in-5 yr (20% AEP)',   field: 'hawkesbury_flood_level_5aep' },
+            { label: '1-in-10 yr (10% AEP)',  field: 'hawkesbury_flood_level_10aep' },
+            { label: '1-in-20 yr (5% AEP)',   field: 'hawkesbury_flood_level_20aep' },
+            { label: '1-in-50 yr (2% AEP)',   field: 'hawkesbury_flood_level_50aep' },
+            { label: '1-in-100 yr (1% AEP)',  field: 'hawkesbury_flood_level_100aep' },
+            { label: '1-in-200 yr (0.5% AEP)', field: 'hawkesbury_flood_level_200aep' },
+            { label: '1-in-500 yr (0.2% AEP)', field: 'hawkesbury_flood_level_500aep' },
+            { label: 'PMF (Probable Maximum)', field: 'hawkesbury_flood_level_pmf' },
+          ];
+          return (
+            <View style={{ marginBottom: 12 }}>
+              <Text style={s.sectionTitle}>Flood levels by AEP event — Hawkesbury FRMSP 2025</Text>
+              <View style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 4 }}>
+                <Text style={{ flex: 3, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase' }}>AEP event</Text>
+                <Text style={{ flex: 2, fontSize: 7, color: GRAY_500, fontFamily: 'Helvetica-Bold', textTransform: 'uppercase', textAlign: 'right' }}>Flood level (m AHD)</Text>
+              </View>
+              {AEP_ROWS.map((row, i) => {
+                const val = data[row.field] as number | null | undefined;
+                return (
+                  <View key={i} style={{ flexDirection: 'row', borderBottom: `1 solid ${GRAY_300}`, paddingVertical: 5 }}>
+                    <Text style={{ flex: 3, fontSize: 8.5, color: GRAY_700 }}>{row.label}</Text>
+                    <Text style={{ flex: 2, fontSize: 8.5, fontFamily: 'Helvetica-Bold', color: val != null ? RED : GRAY_500, textAlign: 'right' }}>
+                      {val != null ? val.toFixed(2) : 'n/a'}
+                    </Text>
+                  </View>
+                );
+              })}
+              <Text style={{ fontSize: 7, color: GRAY_500, marginTop: 4 }}>
+                {data.hawkesbury_flood_study ?? 'Hawkesbury FRMSP 2025'} - NSW Reconstruction Authority. 2m resolution remapped grid.
+              </Text>
+            </View>
+          );
+        })()}
 
         {/* SAR row */}
         {data.sar_flood_detected !== null && (
@@ -434,7 +488,10 @@ export function FloodTruthReportDocument({ data }: { data: FloodReportData }) {
         </Text>
         <Text style={s.bodyText}>
           JRC Global Surface Water data uses Landsat imagery from 1984 to present at 30m
-          resolution. Small water bodies below detection threshold may not be captured.
+          resolution. DEA Water Observations (WOfS) uses Landsat imagery from 1987 to present
+          at 25m resolution (Australian Government, CC BY 4.0). Both datasets classify surface
+          water from satellite observations; small or ephemeral water bodies below detection
+          threshold may not be captured.
         </Text>
         <Text style={[s.bodyText, { color: GRAY_500 }]}>
           Report generated by PlotDetect · plotdetect.com.au · {data.run_date}

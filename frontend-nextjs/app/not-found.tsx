@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function NotFound() {
   const TOOLS = [
-    { emoji: '🏡', label: 'Granny Flat', href: '/reports/granny-flat', color: 'border-teal-800 hover:border-teal-600' },
+    { emoji: '🏡', label: 'Granny Flat', href: '/granny-flat', color: 'border-teal-800 hover:border-teal-600' },
     { emoji: '🌊', label: 'Flood Risk',  href: '/reports/flood',        color: 'border-blue-800 hover:border-blue-600' },
     { emoji: '☀️', label: 'Solar Yield', href: '/reports/solar-yield',  color: 'border-amber-800 hover:border-amber-600' },
     { emoji: '🌑', label: 'Shadow',      href: '/reports/shadow',       color: 'border-slate-700 hover:border-slate-500' },
