@@ -52,7 +52,7 @@ export default function ThreatRadarPage() {
           { feature: 'Ongoing monitoring', free: false, paid: true },
         ]}
         paidLabel="monitoring — $9.99/month"
-        methodology="Your address is geocoded and we scan the NSW planning system for every DA and CDC lodged within 500m in the past 180 days. Distance is calculated from the applicant site to your property. Subscribers receive a weekly digest every Monday at 7am with any new applications detected since the last scan."
+        methodology="Your address is geocoded and we scan the NSW Government planning system for every DA and CDC lodged within 500m in the past 180 days. Distance is calculated from the applicant site to your property. Subscribers receive a weekly digest every Monday at 7am with any new applications detected since the last scan."
         coverage="All of NSW. Any council that publishes development applications through the state planning system is covered."
       />
       <ThreatRadarTool />

@@ -29,7 +29,7 @@ export default function FloodPage() {
         checks={[
           {
             title: 'Government flood planning overlay',
-            description: 'Whether council has formally classified this land under the statutory flood planning framework. Covers the full NSW state — the same data that appears on a Section 10.7 certificate.',
+            description: 'Whether council has formally classified this land under the NSW Government flood planning framework. Covers the full state — the same data that appears on a Section 10.7 certificate.',
           },
           {
             title: 'Council flood model depth and level',
@@ -41,19 +41,19 @@ export default function FloodPage() {
           },
           {
             title: 'Satellite flood detection',
-            description: 'Radar satellite imagery that sees through cloud cover, compared against a dry-season baseline. Detects recent standing water independent of any government dataset.',
+            description: 'European Space Agency radar satellite imagery that sees through cloud cover, compared against a dry-season baseline. Detects recent standing water independent of any government dataset.',
           },
           {
             title: 'Long-term surface water history',
-            description: 'Four decades of satellite imagery analysed to calculate what percentage of time your property has had visible surface water. Catches properties near creeks or drainage lines that regularly pool.',
+            description: 'Four decades of European and US satellite imagery analysed to calculate what percentage of time your property has had visible surface water. Catches properties near creeks or drainage lines that regularly pool.',
           },
           {
             title: 'River gauge flood history',
-            description: 'The nearest government river gauge — how far away, when it last recorded a major flood event, and the peak water height. Shows whether the local catchment has a recent flood record.',
+            description: 'The nearest Bureau of Meteorology river gauge — how far away, when it last recorded a major flood event, and the peak water height. Shows whether the local catchment has a recent flood record.',
           },
           {
             title: 'Ground elevation',
-            description: 'Terrain height above sea level from a high-resolution government elevation model. Flood depth is the difference between the modelled water level and this ground elevation.',
+            description: 'Terrain height above sea level from a high-resolution NSW Government elevation model. Flood depth is the difference between the modelled water level and this ground elevation.',
           },
           {
             title: 'Emergency service activations',
@@ -74,7 +74,7 @@ export default function FloodPage() {
           { feature: 'Downloadable PDF report', free: false, paid: true },
         ]}
         paidLabel="full report — $49"
-        methodology="Your address is resolved to precise coordinates, then queried against every available flood dataset simultaneously. Where council has published flood model grids, we sample the actual raster cell at your property — giving you depth in metres, not just a binary yes or no. All sources are independent: a positive from one confirms or contradicts another. The overall flood signal reflects convergence across all sources."
+        methodology="Your address is resolved to precise coordinates, then queried against every available flood dataset simultaneously — NSW Government planning layers, council engineering flood models, European Space Agency radar satellites, Bureau of Meteorology river gauges, and international emergency management records. Where council has published flood model grids, we sample the actual raster cell at your property — giving you depth in metres, not just a binary yes or no. All sources are independent: a positive from one confirms or contradicts another."
         coverage="Government flood overlays cover all of NSW. Council flood model depths are available for select areas where councils have published engineering flood study data — coverage is expanding as new studies are released. Satellite and river gauge data cover the full state."
       />
       <FloodTool />

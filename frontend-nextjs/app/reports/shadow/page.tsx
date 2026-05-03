@@ -41,7 +41,7 @@ export default function ShadowPage() {
           },
           {
             title: 'Construction activity detection',
-            description: 'Satellite imagery analysis to check whether construction has already begun on the adjacent lot. If earthworks or building activity is detected, you may need to act faster.',
+            description: 'High-resolution satellite imagery analysis to check whether construction has already begun on the adjacent lot. If earthworks or building activity is detected, you may need to act faster.',
           },
         ]}
         comparison={[
@@ -55,7 +55,7 @@ export default function ShadowPage() {
           { feature: 'Downloadable PDF report', free: false, paid: true },
         ]}
         paidLabel="full report — $29"
-        methodology="Solar position is calculated using astronomical algorithms for your exact latitude and longitude at each test date and time. Shadow length and direction are derived geometrically from the maximum permissible building height on the adjacent lot, sourced from the applicable planning controls. No assumptions are made about the design — the model uses the full height envelope. Construction detection uses spectral analysis of satellite imagery to identify disturbed ground."
+        methodology="Solar position is calculated using astronomical algorithms for your exact latitude and longitude at each test date and time. Shadow length and direction are derived geometrically from the maximum permissible building height on the adjacent lot, sourced from NSW Government planning controls. No assumptions are made about the design — the model uses the full height envelope. Construction detection uses spectral analysis of high-resolution satellite imagery to identify disturbed ground."
         coverage="All of NSW. Shadow geometry works anywhere with planning height controls. Construction detection requires recent cloud-free satellite imagery over the site."
       />
       <ShadowTool />

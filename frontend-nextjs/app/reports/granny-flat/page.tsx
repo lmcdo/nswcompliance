@@ -368,7 +368,7 @@ function GrannyFlatPageInner() {
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="rounded-lg border border-gray-100 bg-white p-4">
               <p className="text-sm font-medium text-gray-900">Aerial structure detection</p>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed">High-resolution satellite imagery is analysed to detect existing buildings, garages, sheds, and other structures on the lot. This determines the available building envelope for a new secondary dwelling.</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">High-resolution NSW Government aerial imagery is analysed to detect existing buildings, garages, sheds, and other structures on the lot. This determines the available building envelope for a new secondary dwelling.</p>
             </div>
             <div className="rounded-lg border border-gray-100 bg-white p-4">
               <p className="text-sm font-medium text-gray-900">SEPP Housing 2021 eligibility</p>
@@ -387,7 +387,7 @@ function GrannyFlatPageInner() {
 
         <div className="mt-8 rounded-lg bg-gray-50 border border-gray-100 p-4">
           <p className="text-xs font-medium text-gray-500 mb-1">How it works</p>
-          <p className="text-xs text-gray-500 leading-relaxed">Your address is resolved against the NSW planning system to retrieve lot boundaries, zoning, and constraint overlays. Satellite imagery of the lot is then processed through an AI structure detection model to identify existing buildings. The results are cross-referenced against SEPP Housing 2021 eligibility criteria and local planning controls. The full analysis takes 1–3 minutes.</p>
+          <p className="text-xs text-gray-500 leading-relaxed">Your address is resolved against the NSW Government planning system to retrieve lot boundaries, zoning, and constraint overlays. NSW Government aerial imagery of the lot is then processed through an AI structure detection model to identify existing buildings. The results are cross-referenced against SEPP Housing 2021 eligibility criteria and local planning controls. The full analysis takes 1–3 minutes.</p>
         </div>
 
         <div className="border-t border-gray-200 mt-10 mb-8" />

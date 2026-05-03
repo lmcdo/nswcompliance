@@ -29,11 +29,11 @@ export default function SolarYieldPage() {
         checks={[
           {
             title: 'Roof geometry and orientation',
-            description: 'Roof area, pitch angle, and compass orientation derived from building footprint data. The best-performing roof plane is identified automatically.',
+            description: 'Roof area, pitch angle, and compass orientation derived from NSW Government building footprint data. The best-performing roof plane is identified automatically.',
           },
           {
             title: 'Local solar irradiance',
-            description: 'Annual sunshine hours and irradiance for your location, sourced from long-term meteorological records. Accounts for latitude, cloud cover, and local climate patterns.',
+            description: 'Annual sunshine hours and irradiance for your location, sourced from Bureau of Meteorology climate records. Accounts for latitude, cloud cover, and local climate patterns.',
           },
           {
             title: 'Annual generation estimate',
@@ -56,7 +56,7 @@ export default function SolarYieldPage() {
           { feature: 'Downloadable PDF report', free: false, paid: true },
         ]}
         paidLabel="full report — $19"
-        methodology="Building footprints are matched to your address using property boundary and structure data. Roof orientation and pitch are derived from the footprint geometry. Annual irradiance is calculated from long-term meteorological records for your location. The generation estimate applies standard panel efficiency and system loss factors to the usable roof area and irradiance."
+        methodology="Building footprints are matched to your address using NSW Government property boundary and structure data. Roof orientation and pitch are derived from the footprint geometry. Annual irradiance is calculated from Bureau of Meteorology climate records for your location. The generation estimate applies standard panel efficiency and system loss factors to the usable roof area and irradiance."
         coverage="Sydney metropolitan area and major NSW regional centres. Properties in areas without building footprint coverage will show as unavailable — coverage is expanding."
       />
       <SolarYieldTool />

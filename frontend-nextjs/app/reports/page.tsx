@@ -5,7 +5,7 @@ const HERO_PRODUCT = {
   title: 'Granny Flat Yield Predictor',
   tagline: 'Could this property earn an extra $280–$340/week?',
   description:
-    'Satellite structure detection, planning rule analysis, and rental yield estimate for any NSW address. Find out in under 3 minutes whether a secondary dwelling is feasible.',
+    'NSW Government aerial imagery, AI structure detection, planning rule analysis, and rental yield estimate for any NSW address. Find out in under 3 minutes whether a secondary dwelling is feasible.',
   cta: 'Check my property',
   badge: 'Most popular',
   free: true,
@@ -17,7 +17,7 @@ const OTHER_PRODUCTS = [
     title: 'Flood Risk Check',
     tagline: 'How deep does it flood — not just whether it floods.',
     description:
-      'Government overlays, satellite detection, river gauges, and council flood model depths cross-referenced for any NSW address.',
+      'NSW Government overlays, ESA satellite radar, Bureau of Meteorology river gauges, and council flood model depths cross-referenced for any NSW address.',
     badge: 'Free',
   },
   {
@@ -41,7 +41,7 @@ const OTHER_PRODUCTS = [
     title: 'Rooftop Solar Yield',
     tagline: 'How much could solar earn on this roof?',
     description:
-      'Roof geometry, orientation, and local irradiance combined to estimate annual generation. Size the system before you visit the site.',
+      'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation. Size the system before you visit the site.',
     badge: '$19',
   },
 ];
@@ -108,7 +108,7 @@ export default function ReportsLanding() {
 
       {/* Trust line */}
       <p className="text-xs text-gray-400 text-center pb-4">
-        Government data sources only — planning overlays, satellite imagery, and published council flood models. No guesswork.
+        NSW Government planning data, European Space Agency satellite radar, Bureau of Meteorology records, and council flood models. No guesswork.
       </p>
     </div>
   );
