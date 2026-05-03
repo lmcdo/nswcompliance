@@ -8,7 +8,7 @@
 
 import React from 'react';
 
-type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat';
+type ToolKey = 'solar-yield' | 'shadow-detector' | 'flood-truth' | 'threat-radar' | 'granny-flat' | 'pre-da-history';
 
 interface Card {
   title: string;
@@ -48,15 +48,22 @@ const ALL_CARDS: Record<ToolKey, (address: string) => Card> = {
     href: `/reports/solar-yield?address=${encodeURIComponent(address)}`,
     label: 'Check solar potential →',
   }),
+  'pre-da-history': (address) => ({
+    title: 'Pre-DA Site History',
+    body: 'Eight years of satellite change detection cross-referenced with DA records and heritage overlays.',
+    href: `/reports/pre-da-history?address=${encodeURIComponent(address)}`,
+    label: 'Check site history →',
+  }),
 };
 
 // Relevance order per tool — granny flat income angle always first when applicable
 const ORDER: Record<ToolKey, ToolKey[]> = {
-  'solar-yield':      ['granny-flat', 'shadow-detector', 'flood-truth', 'threat-radar'],
-  'shadow-detector':  ['granny-flat', 'threat-radar', 'flood-truth', 'solar-yield'],
-  'flood-truth':      ['granny-flat', 'threat-radar', 'shadow-detector', 'solar-yield'],
-  'threat-radar':     ['granny-flat', 'flood-truth', 'shadow-detector', 'solar-yield'],
-  'granny-flat':      ['flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
+  'solar-yield':      ['granny-flat', 'shadow-detector', 'flood-truth', 'threat-radar', 'pre-da-history'],
+  'shadow-detector':  ['granny-flat', 'threat-radar', 'flood-truth', 'solar-yield', 'pre-da-history'],
+  'flood-truth':      ['granny-flat', 'threat-radar', 'shadow-detector', 'solar-yield', 'pre-da-history'],
+  'threat-radar':     ['granny-flat', 'flood-truth', 'shadow-detector', 'solar-yield', 'pre-da-history'],
+  'granny-flat':      ['flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield', 'pre-da-history'],
+  'pre-da-history':   ['granny-flat', 'flood-truth', 'threat-radar', 'shadow-detector', 'solar-yield'],
 };
 
 export function ToolCrossSell({

@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/reports/threat-radar', label: 'Threat Radar' },
   { href: '/reports/flood', label: 'Flood Truth' },
   { href: '/reports/granny-flat', label: 'Granny Flat' },
+  { href: '/reports/pre-da-history', label: 'Site History' },
 ];
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {

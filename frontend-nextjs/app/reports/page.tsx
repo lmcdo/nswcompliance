@@ -44,6 +44,14 @@ const OTHER_PRODUCTS = [
       'NSW Government building footprints and Bureau of Meteorology irradiance data combined to estimate annual generation. Size the system before you visit the site.',
     badge: '$19',
   },
+  {
+    href: '/reports/pre-da-history',
+    title: 'Pre-DA Site History',
+    tagline: 'What happened on this land before you got here?',
+    description:
+      'Eight years of European Space Agency satellite imagery cross-referenced with DA records, heritage overlays, and natural disaster events. Surface unapproved works, vegetation clearing, or heritage constraints before you lodge.',
+    badge: '$49',
+  },
 ];
 
 export default function ReportsLanding() {
@@ -55,7 +63,7 @@ export default function ReportsLanding() {
           Know exactly what your property can do
         </h1>
         <p className="mt-2 text-gray-500 max-w-xl">
-          Six data-driven property intelligence tools for NSW — from granny flat yield to flood depth. No consultants, no waiting rooms.
+          Seven data-driven property intelligence tools for NSW — from granny flat yield to flood depth. No consultants, no waiting rooms.
         </p>
       </div>
 
