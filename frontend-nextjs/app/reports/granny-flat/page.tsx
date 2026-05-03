@@ -354,13 +354,43 @@ function GrannyFlatPageInner() {
 
   return (
     <div className="max-w-2xl">
-      <div className="mb-8">
+      <div className="mb-10">
         <h1 className="text-3xl font-bold text-gray-900 leading-tight">
           Could this property earn an extra $280–$340/week?
         </h1>
-        <p className="mt-2 text-gray-500">
-          Granny flat eligibility check for any NSW address — aerial structure detection, SEPP Housing 2021 analysis, and rental yield estimate.
+        <p className="mt-2 text-lg text-gray-600">Granny flat eligibility check for any NSW address.</p>
+        <p className="mt-3 text-sm text-gray-500 max-w-xl leading-relaxed">
+          Aerial structure detection, planning rule analysis, and rental yield estimate — all from one address lookup. Find out in under 3 minutes whether this property can support a secondary dwelling under NSW planning rules, how large it can be, and what it could earn.
         </p>
+
+        <div className="mt-8">
+          <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">What this report checks</h2>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <p className="text-sm font-medium text-gray-900">Aerial structure detection</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">High-resolution satellite imagery is analysed to detect existing buildings, garages, sheds, and other structures on the lot. This determines the available building envelope for a new secondary dwelling.</p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <p className="text-sm font-medium text-gray-900">SEPP Housing 2021 eligibility</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Six mandatory criteria are checked: lot area, zoning, heritage exclusion, flood control lot status, biodiversity values, and acid sulfate soils. If any criterion fails, the CDC pathway is blocked — but a DA may still be available.</p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <p className="text-sm font-medium text-gray-900">Maximum floor area calculation</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">The maximum permissible floor area for a complying development secondary dwelling, derived from the lot area and applicable planning controls. Up to 60 m² under SEPP Housing 2021.</p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-4">
+              <p className="text-sm font-medium text-gray-900">Rental yield estimate</p>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed">Estimated weekly rent based on postcode-level rental data, with a build cost calculator to project gross yield and payback period. Helps you decide whether the investment stacks up before engaging a builder.</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 rounded-lg bg-gray-50 border border-gray-100 p-4">
+          <p className="text-xs font-medium text-gray-500 mb-1">How it works</p>
+          <p className="text-xs text-gray-500 leading-relaxed">Your address is resolved against the NSW planning system to retrieve lot boundaries, zoning, and constraint overlays. Satellite imagery of the lot is then processed through an AI structure detection model to identify existing buildings. The results are cross-referenced against SEPP Housing 2021 eligibility criteria and local planning controls. The full analysis takes 1–3 minutes.</p>
+        </div>
+
+        <div className="border-t border-gray-200 mt-10 mb-8" />
       </div>
 
       {/* Step 1: address entry — stays visible and disabled during detection */}

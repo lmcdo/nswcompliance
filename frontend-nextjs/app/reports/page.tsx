@@ -5,7 +5,7 @@ const HERO_PRODUCT = {
   title: 'Granny Flat Yield Predictor',
   tagline: 'Could this property earn an extra $280–$340/week?',
   description:
-    'Aerial structure detection, SEPP Housing 2021 eligibility, and a rental yield estimate for any NSW address. Free check — detailed report $29.',
+    'Satellite structure detection, planning rule analysis, and rental yield estimate for any NSW address. Find out in under 3 minutes whether a secondary dwelling is feasible.',
   cta: 'Check my property',
   badge: 'Most popular',
   free: true,
@@ -13,11 +13,19 @@ const HERO_PRODUCT = {
 
 const OTHER_PRODUCTS = [
   {
+    href: '/reports/flood',
+    title: 'Flood Risk Check',
+    tagline: 'How deep does it flood — not just whether it floods.',
+    description:
+      'Government overlays, satellite detection, river gauges, and council flood model depths cross-referenced for any NSW address.',
+    badge: 'Free',
+  },
+  {
     href: '/reports/threat-radar',
     title: 'Neighbour Threat Radar',
-    tagline: 'Is something being built next door?',
+    tagline: 'Know before your neighbour breaks ground.',
     description:
-      'Monitor DA and CDC activity within 200m. Know before your neighbour breaks ground.',
+      'Every DA and CDC within 500m of your property — with weekly email alerts for new lodgements.',
     badge: 'Free',
   },
   {
@@ -25,7 +33,7 @@ const OTHER_PRODUCTS = [
     title: 'Shadow Risk Analyser',
     tagline: 'Will a new build block your sun?',
     description:
-      'Model shadow cast by a maximum-permissible adjacent build across the five ADG solar access scenarios.',
+      'Shadow modelled from the maximum-height building envelope across the five ADG solar access test dates used by NSW planning panels.',
     badge: '$29',
   },
   {
@@ -33,16 +41,8 @@ const OTHER_PRODUCTS = [
     title: 'Rooftop Solar Yield',
     tagline: 'How much could solar earn on this roof?',
     description:
-      'Detect existing panels, estimate usable roof area, and calculate annual kWh yield from 10 cm NSW aerial imagery.',
-    badge: '$29',
-  },
-  {
-    href: '/reports/flood',
-    title: 'Flood History',
-    tagline: 'Has this lot ever flooded?',
-    description:
-      'Cross-reference Sentinel-1 SAR satellite flood detection with NSW statutory overlays for any NSW parcel.',
-    badge: 'Free',
+      'Roof geometry, orientation, and local irradiance combined to estimate annual generation. Size the system before you visit the site.',
+    badge: '$19',
   },
 ];
 
@@ -55,7 +55,7 @@ export default function ReportsLanding() {
           Know exactly what your property can do
         </h1>
         <p className="mt-2 text-gray-500 max-w-xl">
-          Five data-driven tools for NSW property owners and investors — from granny flat yield to flood risk. No consultants, no waiting rooms.
+          Six data-driven property intelligence tools for NSW — from granny flat yield to flood depth. No consultants, no waiting rooms.
         </p>
       </div>
 
@@ -108,7 +108,7 @@ export default function ReportsLanding() {
 
       {/* Trust line */}
       <p className="text-xs text-gray-400 text-center pb-4">
-        Authoritative data only — NSW Planning Portal, NSW SIX Maps LPI Imagery, and Sentinel-1 SAR. No guesswork.
+        Government data sources only — planning overlays, satellite imagery, and published council flood models. No guesswork.
       </p>
     </div>
   );
