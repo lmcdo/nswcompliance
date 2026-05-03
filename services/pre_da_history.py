@@ -387,8 +387,35 @@ def compute_similarity_timeline(
 # Layer 3 — Sentinel-2 NDVI/NDBI timeline
 # ---------------------------------------------------------------------------
 
+# SCL clean pixel classes: 4=vegetation, 5=bare_soil, 6=water, 11=snow/ice
+_SCL_CLEAN = {4, 5, 6, 11}
+_MAX_SCENES_PER_YEAR = 3  # top-N least-cloudy scenes for median composite
+
+
+def _sample_3x3_median(src, native_x: float, native_y: float) -> float | None:
+    """Read a 3x3 window around the point and return the median non-zero value."""
+    import rasterio as _rio
+    row, col = src.index(native_x, native_y)
+    # Clamp to raster bounds
+    row = max(1, min(row, src.height - 2))
+    col = max(1, min(col, src.width - 2))
+    window = _rio.windows.Window(col - 1, row - 1, 3, 3)
+    data = src.read(1, window=window).flatten().astype(float)
+    valid = data[data > 0]
+    if len(valid) == 0:
+        return None
+    return float(np.median(valid))
+
+
 def _fetch_ndvi_ndbi_year(year: int, lat: float, lon: float, bbox: list) -> tuple[int, dict]:
-    """Fetch Sentinel-2 NDVI + NDBI for a single year. Thread-safe — own STAC client."""
+    """
+    Fetch Sentinel-2 NDVI + NDBI for a single year. Thread-safe — own STAC client.
+
+    Noise reduction (3 layers):
+      1. SCL cloud mask — skip scenes where the target pixel is cloud/shadow
+      2. Multi-scene median — median across top-N clean scenes per year
+      3. 3x3 spatial median — median of 9 pixels per scene (catches edge noise)
+    """
     import pystac_client
     import rasterio
     from pyproj import Transformer
@@ -405,27 +432,53 @@ def _fetch_ndvi_ndbi_year(year: int, lat: float, lon: float, bbox: list) -> tupl
     if not items:
         return year, null
 
-    item = sorted(items, key=lambda x: x.properties.get("eo:cloud_cover", 100))[0]
-    epsg = item.properties.get("proj:epsg", 32756)
-    tx = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
-    native_x, native_y = tx.transform(lon, lat)
+    # Sort by cloud cover, take top N
+    items_sorted = sorted(items, key=lambda x: x.properties.get("eo:cloud_cover", 100))
+    candidates = items_sorted[:_MAX_SCENES_PER_YEAR]
 
-    # Element84 asset names: B08 (NIR) → "nir", B04 (Red) → "red", B11 (SWIR) → "swir16"
-    with (
-        rasterio.open(item.assets["nir"].href) as b8_src,
-        rasterio.open(item.assets["red"].href) as b4_src,
-        rasterio.open(item.assets["swir16"].href) as b11_src,
-    ):
-        b8_raw = list(b8_src.sample([(native_x, native_y)]))[0][0]
-        b4_raw = list(b4_src.sample([(native_x, native_y)]))[0][0]
-        b11_raw = list(b11_src.sample([(native_x, native_y)]))[0][0]
+    ndvi_samples: list[float] = []
+    ndbi_samples: list[float] = []
 
-        if b8_raw == 0 and b4_raw == 0 and b11_raw == 0:
-            return year, null
+    for item in candidates:
+        try:
+            epsg = item.properties.get("proj:epsg", 32756)
+            tx = Transformer.from_crs("EPSG:4326", f"EPSG:{epsg}", always_xy=True)
+            native_x, native_y = tx.transform(lon, lat)
 
-        b8, b4, b11 = b8_raw / 10000.0, b4_raw / 10000.0, b11_raw / 10000.0
-        ndvi = float((b8 - b4) / (b8 + b4)) if b8 + b4 > 0 else None
-        ndbi = float((b11 - b8) / (b11 + b8)) if b11 + b8 > 0 else None
+            # Fix 1: SCL cloud mask check — skip contaminated pixels
+            if "scl" in item.assets:
+                with rasterio.open(item.assets["scl"].href) as scl_src:
+                    scl_val = list(scl_src.sample([(native_x, native_y)]))[0][0]
+                    if int(scl_val) not in _SCL_CLEAN:
+                        continue  # cloud, shadow, or cirrus — skip this scene
+
+            # Fix 3: 3x3 spatial median per band
+            # Element84 asset names: B08 (NIR) → "nir", B04 (Red) → "red", B11 (SWIR) → "swir16"
+            with (
+                rasterio.open(item.assets["nir"].href) as nir_src,
+                rasterio.open(item.assets["red"].href) as red_src,
+                rasterio.open(item.assets["swir16"].href) as swir_src,
+            ):
+                b8_raw = _sample_3x3_median(nir_src, native_x, native_y)
+                b4_raw = _sample_3x3_median(red_src, native_x, native_y)
+                b11_raw = _sample_3x3_median(swir_src, native_x, native_y)
+
+            if b8_raw is None or b4_raw is None or b11_raw is None:
+                continue
+
+            b8, b4, b11 = b8_raw / 10000.0, b4_raw / 10000.0, b11_raw / 10000.0
+
+            if b8 + b4 > 0:
+                ndvi_samples.append((b8 - b4) / (b8 + b4))
+            if b11 + b8 > 0:
+                ndbi_samples.append((b11 - b8) / (b11 + b8))
+        except Exception as exc:
+            logger.debug(f"Sentinel-2 {year} scene {item.id}: {exc}")
+            continue
+
+    # Fix 2: median across clean scenes
+    ndvi = float(np.median(ndvi_samples)) if ndvi_samples else None
+    ndbi = float(np.median(ndbi_samples)) if ndbi_samples else None
 
     return year, {"ndvi": ndvi, "ndbi": ndbi}
 
@@ -821,6 +874,18 @@ def build_year_annotation(
                     "change_type": "noise",
                     "da_events": [],
                 }
+
+    # Step 3b: spectral escalation — strong NDVI/NDBI overrides Tessera "stable"
+    # Tessera embeddings are 10m neighbourhood-scale features. A single tree removal
+    # or driveway pour may not register in the embedding but shows clearly in NDVI/NDBI.
+    if classification["level"] == "stable" and change_type in ("construction", "vegetation", "hardening"):
+        strong_ndvi = ndvi_delta is not None and ndvi_delta < -0.15
+        strong_ndbi = ndbi_delta is not None and ndbi_delta > 0.08
+        if strong_ndvi or strong_ndbi:
+            classification["level"] = "minor"
+            classification["color"] = "yellow"
+            classification["label"] = "Minor change detected"
+            classification["spectral_escalation"] = True
 
     # Step 4: DA event cross-reference
     # Use date_updated year as proxy for event year (LodgementDate not in API response)
