@@ -98,8 +98,8 @@ export default function HomePage() {
           <a href="/pricing" className="text-sm text-slate-400 hover:text-white transition-colors">
             Pricing
           </a>
-          <a href="/reports/granny-flat" className="text-sm text-slate-400 hover:text-white transition-colors">
-            Try the tools →
+          <a href="/reports" className="text-sm text-slate-400 hover:text-white transition-colors">
+            All tools →
           </a>
         </div>
       </nav>
@@ -141,7 +141,7 @@ export default function HomePage() {
         <div className="max-w-5xl mx-auto">
           <h2 className="text-2xl font-bold text-center mb-2">Five tools. One address.</h2>
           <p className="text-center text-gray-500 text-sm mb-10">
-            Live data from the NSW Planning Portal — no stale PDFs, no guesswork.
+            NSW Government planning data, ESA satellite radar, and Bureau of Meteorology records — no stale PDFs, no guesswork.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -196,7 +196,7 @@ export default function HomePage() {
       </section>
 
       {/* Browse by area */}
-      <section className="bg-gray-50 border-t border-gray-100 py-16 px-6">
+      <section id="browse-by-area" className="bg-gray-50 border-t border-gray-100 py-16 px-6">
         <div className="max-w-5xl mx-auto">
           <h2 className="text-xl font-bold text-gray-900 mb-1">Browse by council area</h2>
           <p className="text-sm text-gray-500 mb-8">
@@ -291,8 +291,8 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-center gap-x-8 gap-y-3 text-sm text-slate-500">
             {[
               { color: 'bg-teal-500',   label: 'NSW Planning Portal' },
-              { color: 'bg-blue-500',   label: 'NSW Flood Data Service' },
-              { color: 'bg-amber-500',  label: 'Google Earth Engine' },
+              { color: 'bg-blue-500',   label: 'Bureau of Meteorology' },
+              { color: 'bg-amber-500',  label: 'European Space Agency' },
               { color: 'bg-violet-500', label: 'NSW ePlanning Portal' },
               { color: 'bg-slate-400',  label: 'Spatial Services NSW' },
             ].map(({ color, label }) => (

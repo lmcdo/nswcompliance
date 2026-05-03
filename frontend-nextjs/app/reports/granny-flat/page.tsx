@@ -167,7 +167,7 @@ function GrannyFlatPageInner() {
     const addr = searchParams?.get('address');
     const payment = searchParams?.get('payment');
     if (!jobId && payment !== 'success') {
-      router.replace('/canibuildit');
+      // No job or payment — just show the idle state (landing page + address input)
       return;
     }
     if (jobId && addr) resumePoll(jobId, addr);
