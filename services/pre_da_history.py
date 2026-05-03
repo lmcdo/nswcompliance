@@ -71,6 +71,10 @@ SIM_MODERATE = 0.70
 # Lot area below which we also run Wayback SSIM (Tessera resolution is poor)
 SMALL_LOT_THRESHOLD_M2 = 300
 
+# Max pages to fetch from ePlanning per application type (50 records/page).
+# 10 pages = 500 DAs — covers all but the very largest councils.
+EPLANNING_MAX_PAGES = 10
+
 DATA_QUALITY_NOTE = (
     "Satellite analysis based on Tessera/Clay v1.5 annual embeddings (10m resolution). "
     "DA events sourced from NSW ePlanning Portal — complete from July 2021; "
@@ -392,17 +396,23 @@ def get_ndvi_ndbi_timeline(lat: float, lon: float) -> dict[int, dict]:
     For each year 2017–2025, fetch Sentinel-2 L2A and compute NDVI + NDBI at centroid.
     Uses Element84 Earth Search — free, no auth.
     Returns dict of year → {"ndvi": float|None, "ndbi": float|None}.
+
+    CRS note: Element84 COGs are in native UTM. Must transform (lon, lat) from
+    EPSG:4326 → raster CRS before rasterio.sample(). Pattern from flood_truth.py.
     """
     try:
         import pystac_client
         import rasterio
+        from pyproj import Transformer
     except ImportError:
-        logger.warning("pystac_client or rasterio not installed — NDVI/NDBI skipped")
+        logger.warning("pystac_client, rasterio, or pyproj not installed — NDVI/NDBI skipped")
         return {y: {"ndvi": None, "ndbi": None} for y in YEARS}
 
     catalog = pystac_client.Client.open(ELEMENT84_URL)
     bbox = [lon - 0.001, lat - 0.001, lon + 0.001, lat + 0.001]
     results = {}
+    # Cache transformer per EPSG code (typically one per session — all Sydney tiles are 32756)
+    _transformers: dict[int, Transformer] = {}
 
     for year in YEARS:
         ndvi_val, ndbi_val = None, None
@@ -420,14 +430,32 @@ def get_ndvi_ndbi_timeline(lat: float, lon: float) -> dict[int, dict]:
 
             item = sorted(items, key=lambda x: x.properties.get("eo:cloud_cover", 100))[0]
 
+            # Get native CRS from STAC item and build transformer
+            epsg = item.properties.get("proj:epsg", 32756)
+            if epsg not in _transformers:
+                _transformers[epsg] = Transformer.from_crs(
+                    "EPSG:4326", f"EPSG:{epsg}", always_xy=True
+                )
+            tx = _transformers[epsg]
+            native_x, native_y = tx.transform(lon, lat)
+
             with (
                 rasterio.open(item.assets["B08"].href) as b8_src,
                 rasterio.open(item.assets["B04"].href) as b4_src,
                 rasterio.open(item.assets["B11"].href) as b11_src,
             ):
-                b8 = list(b8_src.sample([(lon, lat)]))[0][0] / 10000.0
-                b4 = list(b4_src.sample([(lon, lat)]))[0][0] / 10000.0
-                b11 = list(b11_src.sample([(lon, lat)]))[0][0] / 10000.0
+                b8_raw = list(b8_src.sample([(native_x, native_y)]))[0][0]
+                b4_raw = list(b4_src.sample([(native_x, native_y)]))[0][0]
+                b11_raw = list(b11_src.sample([(native_x, native_y)]))[0][0]
+
+                # Nodata check: L2A nodata is 0 in reflectance bands
+                if b8_raw == 0 and b4_raw == 0 and b11_raw == 0:
+                    results[year] = {"ndvi": None, "ndbi": None}
+                    continue
+
+                b8 = b8_raw / 10000.0
+                b4 = b4_raw / 10000.0
+                b11 = b11_raw / 10000.0
 
                 if b8 + b4 > 0:
                     ndvi_val = float((b8 - b4) / (b8 + b4))
@@ -517,7 +545,7 @@ def get_da_events(council: str, address_fragment: str) -> list[dict]:
     results = []
     for app_type in ["Development Application", "Complying Development Certificate"]:
         page = 1
-        while True:
+        while page <= EPLANNING_MAX_PAGES:
             try:
                 batch = _fetch_eplanning_page(
                     "OnlineDA",
@@ -548,7 +576,7 @@ def get_pcc_events(council: str, address_fragment: str) -> list[dict]:
     results = []
     for app_type in ["Construction Certificate", "Occupation Certificate"]:
         page = 1
-        while True:
+        while page <= EPLANNING_MAX_PAGES:
             try:
                 batch = _fetch_eplanning_page(
                     "OnlinePCC",
@@ -576,28 +604,37 @@ def get_pcc_events(council: str, address_fragment: str) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def check_heritage_flag(lat: float, lon: float) -> dict:
-    """Query PostGIS for heritage overlay at point. Returns flag + note."""
+    """Query PostGIS for heritage overlay at point. Returns flag + note.
+    Pattern matched to solar_yield.py:_check_heritage (confirmed working).
+    """
+    conn = None
     try:
-        import psycopg2.extras
         conn = _get_conn()
-        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+        with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT overlay_type, overlay_name
-                FROM spatial_overlays
-                WHERE ST_Contains(geometry, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-                  AND overlay_type IN ('heritage_conservation_area', 'heritage_item')
+                SELECT 1 FROM spatial_overlays
+                WHERE layer_type = 'heritage'
+                  AND is_active = TRUE
+                  AND ST_Contains(
+                        ST_SetSRID(ST_GeomFromGeoJSON(geom::text), 4326),
+                        ST_SetSRID(ST_MakePoint(%s, %s), 4326)
+                      )
                 LIMIT 1
                 """,
                 (lon, lat),
             )
-            row = cur.fetchone()
-        conn.close()
-        if row:
-            return {"flag": True, "note": f"Within {row['overlay_name']}"}
+            found = cur.fetchone() is not None
+        return {
+            "flag": found,
+            "note": "Within a heritage overlay — any works may require a Statement of Heritage Impact" if found else None,
+        }
     except Exception as exc:
         logger.warning(f"Heritage flag query failed: {exc}")
-    return {"flag": False, "note": None}
+        return {"flag": False, "note": None}
+    finally:
+        if conn:
+            conn.close()
 
 # ---------------------------------------------------------------------------
 # Layer 6 — Flood/fire event annotation
@@ -928,6 +965,9 @@ def run_pre_da_history(req: PreDAHistoryRequest):
     }
 
     # --- Store to Supabase ---
+    # DB write MUST succeed — if it fails, the frontend poll will hang on 'pending' forever.
+    # Raise so Trigger.dev retries or the error propagates to the caller.
+    conn = None
     try:
         conn = _get_conn()
         with conn.cursor() as cur:
@@ -958,9 +998,13 @@ def run_pre_da_history(req: PreDAHistoryRequest):
                 if row:
                     result["id"] = str(row[0])
         conn.commit()
-        conn.close()
     except Exception as exc:
-        logger.warning(f"Supabase write failed: {exc}")
+        logger.error(f"Supabase write failed: {exc}")
+        _mark_error(req.report_id, f"DB write failed: {exc}")
+        raise HTTPException(status_code=503, detail="Report storage failed — please retry")
+    finally:
+        if conn:
+            conn.close()
 
     return result
 

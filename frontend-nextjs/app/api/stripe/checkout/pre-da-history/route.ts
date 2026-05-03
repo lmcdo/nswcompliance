@@ -44,18 +44,21 @@ export async function POST(req: NextRequest) {
   const origin = req.headers.get('origin') ?? 'https://canibuildit.com.au';
 
   try {
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      customer_email: email,
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: {
-        report_id,
-        email,
-        product: 'pre-da-history-report',
+    const session = await stripe.checkout.sessions.create(
+      {
+        mode: 'payment',
+        customer_email: email,
+        line_items: [{ price: priceId, quantity: 1 }],
+        metadata: {
+          report_id,
+          email,
+          product: 'pre-da-history-report',
+        },
+        success_url: `${origin}/reports/pre-da-history?payment=success&report_id=${report_id}`,
+        cancel_url: `${origin}/reports/pre-da-history?payment=cancelled`,
       },
-      success_url: `${origin}/reports/pre-da-history?payment=success&report_id=${report_id}`,
-      cancel_url: `${origin}/reports/pre-da-history?payment=cancelled`,
-    });
+      { idempotencyKey: `pre-da-${report_id}` },
+    );
 
     return NextResponse.json({ checkout_url: session.url });
   } catch (err) {

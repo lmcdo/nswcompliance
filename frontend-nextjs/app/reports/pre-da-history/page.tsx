@@ -119,11 +119,23 @@ function PreDAHistoryPageInner() {
     return () => { stepTimersRef.current.forEach(clearTimeout); };
   }, [state]);
 
-  // Start polling a report_id
+  // Start polling a report_id (max 60 polls × 3s = 3 min)
+  const pollCountRef = useRef(0);
+  const MAX_POLLS = 60;
+
   const startPolling = useCallback((id: string) => {
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    pollCountRef.current = 0;
 
     const poll = async () => {
+      pollCountRef.current += 1;
+      if (pollCountRef.current > MAX_POLLS) {
+        if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        setErrorMsg('Analysis timed out after 3 minutes — please try again.');
+        setState('error');
+        return;
+      }
+
       try {
         const res = await fetch(`/api/satellite/pre-da-history?report_id=${id}`);
         const json = await res.json();
